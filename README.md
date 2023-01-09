@@ -1,0 +1,2 @@
+# lsdb
+Large Survey DataBase
