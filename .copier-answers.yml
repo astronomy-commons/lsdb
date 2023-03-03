@@ -1,6 +1,6 @@
 # Changes here will be overwritten by Copier
 _commit: 1.2.0-2-g65de5ff
-_src_path: python-project-template/
+_src_path: gh:lincc-frameworks/python-project-template
 author_email: delucchi@andrew.cmu.edu
 author_name: LINCC-Frameworks
 module_name: lsdb
