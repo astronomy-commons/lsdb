@@ -3,7 +3,7 @@ name = "lsdb"
 license = {file = "LICENSE"}
 readme = "README.md"
 authors = [
-    { name = "LINCC-Frameworks", email = "delucchi@andrew.cmu.edu" }
+    { name = "LINCC Frameworks", email = "lincc-frameworks-team@lists.lsst.org" }
 ]
 classifiers = [
     "Development Status :: 4 - Beta",

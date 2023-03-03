@@ -1,8 +1,9 @@
 # Changes here will be overwritten by Copier
-_commit: 1.2.0-2-g65de5ff
-_src_path: python-project-template/
-author_email: delucchi@andrew.cmu.edu
-author_name: LINCC-Frameworks
+_commit: v1.2.1
+_src_path: gh:lincc-frameworks/python-project-template
+author_email: lincc-frameworks-team@lists.lsst.org
+author_name: LINCC Frameworks
+create_example_module: false
 module_name: lsdb
 preferred_linter: pylint
 project_name: lsdb
