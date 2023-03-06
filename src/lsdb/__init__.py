@@ -1,1 +1,2 @@
-from .example_module import *
+from .catalog import Catalog
+from .loaders import from_hipscat
