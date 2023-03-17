@@ -8,7 +8,7 @@ from lsdb.core.healpix.healpix_pixel import HealpixPixel
 DaskDFPixelMap = Dict[HealpixPixel, int]
 
 
-# pylint: disable=R0903
+# pylint: disable=R0903, W0212
 class Catalog:
     """LSDB Catalog DataFrame to perform analysis of sky catalogs and efficient
     spatial operations.
@@ -38,3 +38,13 @@ class Catalog:
         self._ddf = ddf
         self._ddf_pixel_map = ddf_pixel_map
         self.hc_structure = hc_structure
+
+    def __repr__(self):
+        return self._ddf.__repr__()
+
+    def _repr_html_(self):
+        return self._ddf._repr_html_()
+
+    def compute(self):
+        """Compute dask distributed dataframe to pandas dataframe"""
+        return self._ddf.compute()

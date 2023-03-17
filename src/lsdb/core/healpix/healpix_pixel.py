@@ -29,3 +29,9 @@ class HealpixPixel:
         """Hashes pixels by order and pixel, so equal pixel objects are looked up the same in
         hashable data structures"""
         return hash(self._key())
+
+    def __str__(self) -> str:
+        return f"Order: {self.order}, Pixel: {self.pixel}"
+
+    def __repr__(self):
+        return self.__str__()
