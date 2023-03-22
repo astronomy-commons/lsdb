@@ -1,1 +1,1 @@
-from .from_hipscat import from_hipscat
+from .read_hipscat import read_hipscat
