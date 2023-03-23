@@ -20,7 +20,7 @@ for more information on partitioning, installation, and contributing.
 
 See related projects:
 
-* HiPSCat Import ([on GitHub](https://github.com/astronomy-commons/hipscat))
+* HiPSCat ([on GitHub](https://github.com/astronomy-commons/hipscat))
   ([on ReadTheDocs](https://hipscat.readthedocs.io/en/latest/))
 * HiPSCat Import ([on GitHub](https://github.com/astronomy-commons/hipscat-import))
   ([on ReadTheDocs](https://hipscat-import.readthedocs.io/en/latest/))
