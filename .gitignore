@@ -71,6 +71,7 @@ instance/
 
 # Sphinx documentation
 docs/_build/
+_readthedocs/
 
 # PyBuilder
 target/
@@ -134,3 +135,6 @@ dmypy.json
 
 # dask
 dask-worker-space/
+
+# tmp directory
+tmp/

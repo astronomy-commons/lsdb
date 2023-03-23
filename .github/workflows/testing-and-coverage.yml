@@ -35,3 +35,6 @@ jobs:
         python -m pytest tests --cov=lsdb --cov-report=xml
     - name: Upload coverage report to codecov
       uses: codecov/codecov-action@v3
+    - name: Build docs
+      run: |
+        sphinx-build -T -E -b html -d docs/build/doctrees ./docs docs/build/html
