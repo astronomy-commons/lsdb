@@ -23,7 +23,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "mypy", # Used for static type checking of files
-  "pre-commit", # Used to run checks before finalizing a git commit
+    "pre-commit", # Used to run checks before finalizing a git commit
     "pylint", # Used for static linting of files
     "pytest",
     "pytest-cov", # Used to report total code coverage
