@@ -1,6 +1,5 @@
 import dask.dataframe as dd
 import hipscat as hc
-import pandas as pd
 import pyarrow
 
 from lsdb import io
@@ -11,14 +10,14 @@ from lsdb.loaders.hipscat.hipscat_loading_config import HipscatLoadingConfig
 
 # pylint: disable=R0903
 class HipscatCatalogLoader:
-    """Loads a HiPSCat formatted Catalog from local files"""
+    """Loads a HiPSCat formatted Catalog"""
 
     def __init__(self, path: str, config: HipscatLoadingConfig) -> None:
-        """Initializes a LocalHipscatCatalogLoader
+        """Initializes a HipscatCatalogLoader
 
         Args:
             path: path to the root of the HiPSCat catalog
-            config:
+            config: options to configure how the catalog is loaded
         """
         self.path = path
         self.base_catalog_dir = hc.io.get_file_pointer_from_path(self.path)
@@ -47,7 +46,7 @@ class HipscatCatalogLoader:
         pixel_to_index_map = {
             pixel: index for index, pixel in enumerate(ordered_pixels)
         }
-        ddf = self._load_df_from_paths(ordered_paths)
+        ddf = self._load_df_from_paths(catalog, ordered_paths)
         return ddf, pixel_to_index_map
 
     def _get_ordered_pixel_list(
@@ -77,19 +76,20 @@ class HipscatCatalogLoader:
         ]
         return paths
 
-    def _load_df_from_paths(self, paths: list[hc.io.FilePointer]) -> dd.DataFrame:
-        metadata_schema = self._load_parquet_metadata_schema(paths)
-        dask_meta_schema = self._get_schema_from_metadata(metadata_schema)
+    def _load_df_from_paths(
+        self, catalog: hc.catalog.Catalog, paths: list[hc.io.FilePointer]
+    ) -> dd.DataFrame:
+        metadata_schema = self._load_parquet_metadata_schema(catalog, paths)
+        dask_meta_schema = metadata_schema.empty_table().to_pandas()
         ddf = dd.from_map(io.read_parquet_file_to_pandas, paths, meta=dask_meta_schema)
         return ddf
 
     def _load_parquet_metadata_schema(
-        self, paths: list[hc.io.FilePointer]
+        self, catalog: hc.catalog.Catalog, paths: list[hc.io.FilePointer]
     ) -> pyarrow.Schema:
+        metadata_pointer = hc.io.paths.get_parquet_metadata_pointer(
+            catalog.catalog_base_dir
+        )
+        if hc.io.file_io.does_file_or_directory_exist(metadata_pointer):
+            return io.read_parquet_schema(metadata_pointer)
         return io.read_parquet_schema(paths[0])
-
-    def _get_schema_from_metadata(
-        self, metadata_schema: pyarrow.Schema
-    ) -> pd.DataFrame:
-        empty_table = metadata_schema.empty_table()
-        return empty_table.to_pandas()

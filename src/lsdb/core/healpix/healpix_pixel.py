@@ -1,10 +1,15 @@
 from __future__ import annotations
 
-MAXIMUM_ORDER = 29
+import hipscat.pixel_math.hipscat_id
+
+MAXIMUM_ORDER = hipscat.pixel_math.hipscat_id.HIPSCAT_ID_HEALPIX_ORDER
 
 
 class HealpixPixel:
-    """A HEALPix pixel, represented by an order and pixel number in NESTED ordering scheme"""
+    """A HEALPix pixel, represented by an order and pixel number in NESTED ordering scheme
+
+    see https://lambda.gsfc.nasa.gov/toolbox/pixelcoords.html for more information
+    """
 
     def __init__(self, order: int, pixel: int) -> None:
         """Initialize a HEALPix pixel
@@ -21,8 +26,10 @@ class HealpixPixel:
         """Returns tuple of order and pixel, for use in hashing and equality"""
         return self.order, self.pixel
 
-    def __eq__(self, other: HealpixPixel) -> bool:
+    def __eq__(self, other: object) -> bool:
         """Defines 2 pixels as equal if they have the same order and pixel"""
+        if not isinstance(other, HealpixPixel):
+            return False
         return self._key() == other._key()
 
     def __hash__(self) -> int:
