@@ -25,6 +25,11 @@ class HipscatCatalogLoader:
         self.config = config
 
     def load_catalog(self) -> Catalog:
+        """Load a catalog from the configuration specified when the loader was created
+
+        Returns:
+            Catalog object with data from the source given at loader initialization
+        """
         hc_catalog = self.load_hipscat_catalog()
         dask_df, dask_df_pixel_map = self._load_dask_df_and_map(hc_catalog)
         return Catalog(dask_df, dask_df_pixel_map, hc_catalog)
@@ -72,19 +77,19 @@ class HipscatCatalogLoader:
         ]
         return paths
 
-    def _load_df_from_paths(
-        self, paths: list[hc.io.FilePointer]
-    ) -> dd.DataFrame:
+    def _load_df_from_paths(self, paths: list[hc.io.FilePointer]) -> dd.DataFrame:
         metadata_schema = self._load_parquet_metadata_schema(paths)
         dask_meta_schema = self._get_schema_from_metadata(metadata_schema)
         ddf = dd.from_map(io.read_parquet_file_to_pandas, paths, meta=dask_meta_schema)
         return ddf
 
-    def _load_parquet_metadata_schema(self, paths: list[hc.io.FilePointer]) -> pyarrow.Schema:
-        return io.read_parquet_schema(
-            paths[0]
-        )
+    def _load_parquet_metadata_schema(
+        self, paths: list[hc.io.FilePointer]
+    ) -> pyarrow.Schema:
+        return io.read_parquet_schema(paths[0])
 
-    def _get_schema_from_metadata(self, metadata_schema: pyarrow.Schema) -> pd.DataFrame:
+    def _get_schema_from_metadata(
+        self, metadata_schema: pyarrow.Schema
+    ) -> pd.DataFrame:
         empty_table = metadata_schema.empty_table()
         return empty_table.to_pandas()

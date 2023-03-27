@@ -48,3 +48,20 @@ class Catalog:
     def compute(self):
         """Compute dask distributed dataframe to pandas dataframe"""
         return self._ddf.compute()
+
+    def get_partition(self, order: int, pixel: int) -> dd.DataFrame:
+        """Get the dask partition for a given HEALPix pixel
+
+        Args:
+            order: Order of HEALPix pixel
+            pixel: HEALPix pixel number in NESTED ordering scheme
+        Returns:
+            Dask Dataframe with a single partition with data at that pixel
+        Raises:
+            Value error if no data exists for the specified pixel
+        """
+        hp_pixel = HealpixPixel(order, pixel)
+        if not hp_pixel in self._ddf_pixel_map:
+            raise ValueError(f"Pixel at order {order} pixel {pixel} not in Catalog")
+        partition_index = self._ddf_pixel_map[hp_pixel]
+        return self._ddf.partitions[partition_index]

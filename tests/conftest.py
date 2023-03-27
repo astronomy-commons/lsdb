@@ -3,6 +3,8 @@ import os
 import hipscat as hc
 import pytest
 
+import lsdb
+
 DATA_DIR_NAME = "data"
 SMALL_SKY_DIR_NAME = "small_sky"
 SMALL_SKY_ORDER1_DIR_NAME = "small_sky_order1"
@@ -25,10 +27,20 @@ def small_sky_order1_dir(test_data_dir):
 
 
 @pytest.fixture
-def small_sky_catalog(small_sky_dir):
+def small_sky_hipscat_catalog(small_sky_dir):
     return hc.catalog.Catalog(small_sky_dir)
 
 
 @pytest.fixture
-def small_sky_order1_catalog(small_sky_order1_dir):
+def small_sky_catalog(small_sky_dir):
+    return lsdb.read_hipscat(small_sky_dir)
+
+
+@pytest.fixture
+def small_sky_order1_hipscat_catalog(small_sky_order1_dir):
     return hc.catalog.Catalog(small_sky_order1_dir)
+
+
+@pytest.fixture
+def small_sky_order1_catalog(small_sky_order1_dir):
+    return lsdb.read_hipscat(small_sky_order1_dir)
