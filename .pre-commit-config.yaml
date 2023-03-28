@@ -100,9 +100,9 @@ repos:
         files: ^(src|tests)/
         args:
           [
-          
+
             "--ignore-missing-imports", # Ignore imports without type hints
-          
+
           ]
 
     # Make sure Sphinx can build the documentation without issues.

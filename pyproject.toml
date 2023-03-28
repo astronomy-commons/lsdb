@@ -15,6 +15,9 @@ classifiers = [
 ]
 dynamic = ["version"]
 dependencies = [
+    "dask",
+    "hipscat",
+    "pyarrow",
     "deprecated",
     "ipykernel", # Support for Jupyter notebooks
 ]
