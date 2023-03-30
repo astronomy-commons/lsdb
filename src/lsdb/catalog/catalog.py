@@ -1,9 +1,15 @@
-from typing import Dict
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Dict
 
 import dask.dataframe as dd
 import hipscat as hc
 
 from lsdb.core.healpix.healpix_pixel import HealpixPixel
+
+if TYPE_CHECKING:
+    from lsdb.catalog.association_catalog.association_catalog import \
+        AssociationCatalog
 
 DaskDFPixelMap = Dict[HealpixPixel, int]
 
@@ -21,7 +27,7 @@ class Catalog:
 
     def __init__(
         self,
-        ddf: dd.DataFrame,
+        ddf: dd.core.DataFrame,
         ddf_pixel_map: DaskDFPixelMap,
         hc_structure: hc.catalog.Catalog,
     ):
@@ -49,7 +55,7 @@ class Catalog:
         """Compute dask distributed dataframe to pandas dataframe"""
         return self._ddf.compute()
 
-    def get_partition(self, order: int, pixel: int) -> dd.DataFrame:
+    def get_partition(self, order: int, pixel: int) -> dd.core.DataFrame:
         """Get the dask partition for a given HEALPix pixel
 
         Args:
@@ -65,3 +71,6 @@ class Catalog:
             raise ValueError(f"Pixel at order {order} pixel {pixel} not in Catalog")
         partition_index = self._ddf_pixel_map[hp_pixel]
         return self._ddf.partitions[partition_index]
+
+    def join(self, other: Catalog, through: AssociationCatalog=None) -> Catalog:
+        pass

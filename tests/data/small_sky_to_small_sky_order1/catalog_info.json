@@ -1,0 +1,13 @@
+{
+  "catalog_name": "small_sky_to_small_sky_order1",
+  "catalog_type": "association",
+  "primary_catalog": "small_sky",
+  "primary_column": "id",
+  "primary_type": "int64",
+  "join_catalog": "small_sky_order1",
+  "join_column": null,
+  "join_type": null,
+  "epoch": "J2000",
+  "ra_kw": "ra",
+  "dec_kw": "dec"
+}
