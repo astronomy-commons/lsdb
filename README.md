@@ -31,3 +31,9 @@ See related projects:
 
 See the [contribution guide](https://lsdb.readthedocs.io/en/latest/overview/contributing.html)
 for complete installation instructions and contribution best practices.
+
+## Acknowledgements
+
+LINCC Frameworks is supported by Schmidt Futures, a philanthropic initiative
+founded by Eric and Wendy Schmidt, as part of the Virtual Institute of 
+Astrophysics (VIA).
