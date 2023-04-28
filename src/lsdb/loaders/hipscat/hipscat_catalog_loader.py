@@ -3,28 +3,22 @@ from typing import Generic, Type, TypeVar
 import dask.dataframe as dd
 import hipscat as hc
 import pyarrow
+from hipscat.pixel_math import HealpixPixel
+from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_HEALPIX_ORDER
 
 from lsdb import io
 from lsdb.catalog.association_catalog.association_catalog import \
     AssociationCatalog
 from lsdb.catalog.catalog import Catalog, DaskDFPixelMap
-from lsdb.core.healpix.healpix_pixel import MAXIMUM_ORDER, HealpixPixel
 from lsdb.loaders.hipscat.hipscat_loading_config import HipscatLoadingConfig
-
-CatalogTypeVar = TypeVar("CatalogTypeVar", bound=Catalog)
 
 
 # pylint: disable=R0903
-class HipscatCatalogLoader(Generic[CatalogTypeVar]):
+class HipscatCatalogLoader:
     """Loads a HiPSCat formatted Catalog"""
 
-    HIPSCAT_CATALOG_TYPE_FROM_TYPE = {
-        Catalog: hc.catalog.Catalog,
-        AssociationCatalog: hc.catalog.AssociationCatalog,
-    }
-
     def __init__(
-            self, path: str, catalog_type: Type[CatalogTypeVar], config: HipscatLoadingConfig
+            self, path: str, config: HipscatLoadingConfig
     ) -> None:
         """Initializes a HipscatCatalogLoader
 
@@ -33,11 +27,10 @@ class HipscatCatalogLoader(Generic[CatalogTypeVar]):
             config: options to configure how the catalog is loaded
         """
         self.path = path
-        self.catalog_type = catalog_type
         self.base_catalog_dir = hc.io.get_file_pointer_from_path(self.path)
         self.config = config
 
-    def load_catalog(self) -> CatalogTypeVar:
+    def load_catalog(self) -> Catalog:
         """Load a catalog from the configuration specified when the loader was created
 
         Returns:
@@ -45,12 +38,11 @@ class HipscatCatalogLoader(Generic[CatalogTypeVar]):
         """
         hc_catalog = self.load_hipscat_catalog()
         dask_df, dask_df_pixel_map = self._load_dask_df_and_map(hc_catalog)
-        return self.catalog_type(dask_df, dask_df_pixel_map, hc_catalog)
+        return Catalog(dask_df, dask_df_pixel_map, hc_catalog)
 
     def load_hipscat_catalog(self) -> hc.catalog.Catalog:
         """Load `hipscat` library catalog object with catalog metadata and partition data"""
-        hc_catalog_type = self.HIPSCAT_CATALOG_TYPE_FROM_TYPE[self.catalog_type]
-        return hc_catalog_type(catalog_path=self.path)
+        return hc.catalog.Catalog.read_from_hipscat(self.path)
 
     def _load_dask_df_and_map(
         self, catalog: hc.catalog.Catalog
@@ -74,7 +66,7 @@ class HipscatCatalogLoader(Generic[CatalogTypeVar]):
             pixels.append(HealpixPixel(order, pixel))
         # Sort pixels by pixel number at highest order
         sorted_pixels = sorted(
-            pixels, key=lambda pixel: (4 ** (MAXIMUM_ORDER - pixel.order)) * pixel.pixel
+            pixels, key=lambda pixel: (4 ** (HIPSCAT_ID_HEALPIX_ORDER - pixel.order)) * pixel.pixel
         )
         return sorted_pixels
 
@@ -95,7 +87,7 @@ class HipscatCatalogLoader(Generic[CatalogTypeVar]):
         self, catalog: hc.catalog.Catalog, paths: list[hc.io.FilePointer]
     ) -> dd.core.DataFrame:
         metadata_schema = self._load_parquet_metadata_schema(catalog, paths)
-        dask_meta_schema = metadata_schema.empty_table().to_pandas()
+        dask_meta_schema = metadata_schema.empty_table().to_pandas().set_index("_hipscat_index")
         ddf = dd.from_map(io.read_parquet_file_to_pandas, paths, meta=dask_meta_schema)
         return ddf
 

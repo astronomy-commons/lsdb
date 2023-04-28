@@ -1,11 +1,13 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Dict
+from typing import TYPE_CHECKING, Dict, Tuple
 
 import dask.dataframe as dd
 import hipscat as hc
+from hipscat.pixel_math import HealpixPixel
 
-from lsdb.core.healpix.healpix_pixel import HealpixPixel
+from lsdb.catalog.dataset.dataset import Dataset
+from lsdb.core.dataframe.join_catalog_data import join_catalog_data, crossmatch_catalog_data
 
 if TYPE_CHECKING:
     from lsdb.catalog.association_catalog.association_catalog import \
@@ -15,7 +17,7 @@ DaskDFPixelMap = Dict[HealpixPixel, int]
 
 
 # pylint: disable=R0903, W0212
-class Catalog:
+class Catalog(Dataset):
     """LSDB Catalog DataFrame to perform analysis of sky catalogs and efficient
     spatial operations.
 
@@ -41,19 +43,8 @@ class Catalog:
             ddf_pixel_map: Dictionary mapping HEALPix order and pixel to partition index of ddf
             hc_structure: `hipscat.Catalog` object with hipscat metadata of the catalog
         """
-        self._ddf = ddf
+        super().__init__(ddf, hc_structure)
         self._ddf_pixel_map = ddf_pixel_map
-        self.hc_structure = hc_structure
-
-    def __repr__(self):
-        return self._ddf.__repr__()
-
-    def _repr_html_(self):
-        return self._ddf._repr_html_()
-
-    def compute(self):
-        """Compute dask distributed dataframe to pandas dataframe"""
-        return self._ddf.compute()
 
     def get_partition(self, order: int, pixel: int) -> dd.core.DataFrame:
         """Get the dask partition for a given HEALPix pixel
@@ -86,5 +77,14 @@ class Catalog:
         partition_index = self._ddf_pixel_map[hp_pixel]
         return partition_index
 
-    def join(self, other: Catalog, through: AssociationCatalog=None) -> Catalog:
-        pass
+    def join(self, other: Catalog, through: AssociationCatalog=None, suffixes: Tuple[str, str] | None = None) -> Catalog:
+        if through is None:
+            raise NotImplementedError("must specify through association catalog")
+        ddf, ddf_map, alignment = join_catalog_data(self, other, through, suffixes=suffixes)
+        hc_catalog = hc.catalog.Catalog(self.hc_structure.catalog_info, alignment.pixel_tree)
+        return Catalog(ddf, ddf_map, hc_catalog)
+
+    def crossmatch(self, other: Catalog, suffixes: Tuple[str, str] | None = None) -> Catalog:
+        ddf, ddf_map, alignment = crossmatch_catalog_data(self, other, suffixes)
+        hc_catalog = hc.catalog.Catalog(self.hc_structure.catalog_info, alignment.pixel_tree)
+        return Catalog(ddf, ddf_map, hc_catalog)

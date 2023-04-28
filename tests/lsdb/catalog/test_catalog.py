@@ -1,7 +1,6 @@
 import dask.dataframe as dd
 import pandas as pd
-
-from lsdb.core.healpix.healpix_pixel import HealpixPixel
+from hipscat.pixel_math import HealpixPixel
 
 
 def test_catalog_repr_equals_ddf_repr(small_sky_order1_catalog):
