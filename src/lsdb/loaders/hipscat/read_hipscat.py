@@ -1,20 +1,35 @@
-import dataclasses
+from __future__ import annotations
 
-from lsdb import Catalog
-from lsdb.loaders.hipscat.hipscat_catalog_loader import HipscatCatalogLoader
+import dataclasses
+from typing import Type, overload
+
+from lsdb.catalog.catalog import Catalog
+from lsdb.loaders.hipscat.hipscat_loader_factory import CatalogTypeVar, get_loader_for_type
 from lsdb.loaders.hipscat.hipscat_loading_config import HipscatLoadingConfig
+
+
+@overload
+def read_hipscat(path: str) -> Catalog:
+    ...
+
+
+@overload
+def read_hipscat(path: str, catalog_type: Type[CatalogTypeVar]) -> CatalogTypeVar:
+    ...
 
 
 def read_hipscat(
     path: str,
-) -> Catalog:
+    catalog_type: Type[CatalogTypeVar] | None = None,
+) -> CatalogTypeVar | Catalog:
     """Load a catalog from a HiPSCat formatted catalog.
 
     Args:
         path: The path that locates the root of the HiPSCat catalog
-        source: Source to load the catalog from. Default is `None`, in which case the source is
-        inferred from the path. Currently supported options are:
-            -`'local'`: HiPSCat files stored locally on disk
+        catalog_type: Default `lsdb.Catalog` The type of catalog being loaded. Use by specifying the lsdb
+        class for that catalog.
+    Returns:
+        Catalog object loaded from the given parameters
     """
 
     # Creates a config object to store loading parameters from all keyword arguments. I
@@ -28,6 +43,11 @@ def read_hipscat(
     }
     config = HipscatLoadingConfig(**config_args)
 
-    loader = HipscatCatalogLoader(path, config)
+    catalog_type_to_use = Catalog
+
+    if catalog_type is not None:
+        catalog_type_to_use = catalog_type
+
+    loader = get_loader_for_type(catalog_type_to_use, path, config)
 
     return loader.load_catalog()

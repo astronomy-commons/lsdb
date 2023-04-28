@@ -3,10 +3,11 @@ from typing import List
 import dask.dataframe as dd
 import hipscat as hc
 import pyarrow
+from hipscat.pixel_math import HealpixPixel
+from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_HEALPIX_ORDER
 
 from lsdb import io
 from lsdb.catalog.catalog import Catalog, DaskDFPixelMap
-from lsdb.core.healpix.healpix_pixel import MAXIMUM_ORDER, HealpixPixel
 from lsdb.loaders.hipscat.hipscat_loading_config import HipscatLoadingConfig
 
 
@@ -14,7 +15,9 @@ from lsdb.loaders.hipscat.hipscat_loading_config import HipscatLoadingConfig
 class HipscatCatalogLoader:
     """Loads a HiPSCat formatted Catalog"""
 
-    def __init__(self, path: str, config: HipscatLoadingConfig) -> None:
+    def __init__(
+            self, path: str, config: HipscatLoadingConfig
+    ) -> None:
         """Initializes a HipscatCatalogLoader
 
         Args:
@@ -37,7 +40,7 @@ class HipscatCatalogLoader:
 
     def load_hipscat_catalog(self) -> hc.catalog.Catalog:
         """Load `hipscat` library catalog object with catalog metadata and partition data"""
-        return hc.catalog.Catalog(catalog_path=self.path)
+        return hc.catalog.Catalog.read_from_hipscat(self.path)
 
     def _load_dask_df_and_map(
         self, catalog: hc.catalog.Catalog
@@ -61,7 +64,7 @@ class HipscatCatalogLoader:
             pixels.append(HealpixPixel(order, pixel))
         # Sort pixels by pixel number at highest order
         sorted_pixels = sorted(
-            pixels, key=lambda pixel: (4 ** (MAXIMUM_ORDER - pixel.order)) * pixel.pixel
+            pixels, key=lambda pixel: (4 ** (HIPSCAT_ID_HEALPIX_ORDER - pixel.order)) * pixel.pixel
         )
         return sorted_pixels
 

@@ -2,14 +2,15 @@ from typing import Dict
 
 import dask.dataframe as dd
 import hipscat as hc
+from hipscat.pixel_math import HealpixPixel
 
-from lsdb.core.healpix.healpix_pixel import HealpixPixel
+from lsdb.catalog.dataset.dataset import Dataset
 
 DaskDFPixelMap = Dict[HealpixPixel, int]
 
 
 # pylint: disable=R0903, W0212
-class Catalog:
+class Catalog(Dataset):
     """LSDB Catalog DataFrame to perform analysis of sky catalogs and efficient
     spatial operations.
 
@@ -35,21 +36,24 @@ class Catalog:
             ddf_pixel_map: Dictionary mapping HEALPix order and pixel to partition index of ddf
             hc_structure: `hipscat.Catalog` object with hipscat metadata of the catalog
         """
-        self._ddf = ddf
+        super().__init__(ddf, hc_structure)
         self._ddf_pixel_map = ddf_pixel_map
-        self.hc_structure = hc_structure
-
-    def __repr__(self):
-        return self._ddf.__repr__()
-
-    def _repr_html_(self):
-        return self._ddf._repr_html_()
-
-    def compute(self):
-        """Compute dask distributed dataframe to pandas dataframe"""
-        return self._ddf.compute()
 
     def get_partition(self, order: int, pixel: int) -> dd.DataFrame:
+        """Get the dask partition for a given HEALPix pixel
+
+        Args:
+            order: Order of HEALPix pixel
+            pixel: HEALPix pixel number in NESTED ordering scheme
+        Returns:
+            Dask Dataframe with a single partition with data at that pixel
+        Raises:
+            Value error if no data exists for the specified pixel
+        """
+        partition_index = self.get_partition_index(order, pixel)
+        return self._ddf.partitions[partition_index]
+
+    def get_partition_index(self, order: int, pixel: int) -> int:
         """Get the dask partition for a given HEALPix pixel
 
         Args:
@@ -64,4 +68,4 @@ class Catalog:
         if not hp_pixel in self._ddf_pixel_map:
             raise ValueError(f"Pixel at order {order} pixel {pixel} not in Catalog")
         partition_index = self._ddf_pixel_map[hp_pixel]
-        return self._ddf.partitions[partition_index]
+        return partition_index

@@ -1,5 +1,6 @@
 {
     "catalog_name": "small_sky_order1",
+    "catalog_type": "source",
     "version": "0.0.0",
     "generation_date": "2022.12.21",
     "epoch": "J2000",
