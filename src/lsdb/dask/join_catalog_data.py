@@ -4,16 +4,12 @@ from typing import TYPE_CHECKING, List, Tuple
 
 import dask
 import dask.dataframe as dd
-import numpy as np
 import pandas as pd
 import hipscat as hc
 from hipscat.catalog.association_catalog.partition_join_info import \
     PartitionJoinInfo
 from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_tree import PixelAlignmentType, PixelAlignment
-from sklearn.neighbors import KDTree
-
-import healpy as hp
 
 if TYPE_CHECKING:
     from lsdb.catalog.association_catalog.association_catalog import \
@@ -76,8 +72,10 @@ def concat_dfs(dfs: List[pd.DataFrame]):
 
 
 def join_catalog_data(
-        left: Catalog, right: Catalog, through: AssociationCatalog, suffixes: Tuple[str, str] = ("_left", "_right")
+        left: Catalog, right: Catalog, through: AssociationCatalog, suffixes: Tuple[str, str] | None = None
 ) -> Tuple[dd.core.DataFrame, DaskDFPixelMap, PixelAlignment]:
+    if suffixes is None:
+        suffixes = ("", "")
     join_pixels = through.hc_structure.get_join_pixels()
     left_aligned_to_join_partitions = align_catalog_to_partitions(
         left,
@@ -135,13 +133,3 @@ def join_catalog_data(
         meta.append((name + suffixes[1], t))
     ddf = dd.from_delayed(final_partitions, meta=meta)
     return ddf, partition_map, alignment
-
-
-def join_catalogs(
-        left: Catalog, right: Catalog, through: AssociationCatalog
-) -> Catalog:
-    joined_raw_dataframe = join_catalog_data(left, right, through)
-    catalog_alignment = hc.catalog.align_catalogs(left.hc_structure, right.hc_structure)
-    joined_structure = hc.Catalog(catalog_alignment.get_pixel_tree())
-    joined_aligned_dataframe, joined_df_pixel_map = partition_joined_data_to_structure(joined_raw_dataframe, through.hc_structure.get_join_pixels(), joined_structure)
-    return Catalog(joined_aligned_dataframe, joined_df_pixel_map, joined_structure)

@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from typing import Callable, Tuple
+from typing import Callable, Tuple, TYPE_CHECKING
 
+import dask
 import numpy as np
 import pandas as pd
 import dask.dataframe as dd
@@ -10,12 +11,14 @@ from hipscat.catalog.association_catalog import PartitionJoinInfo
 from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_tree import PixelAlignment, PixelAlignmentType
 
-from lsdb import Catalog, dask
-from lsdb.catalog.catalog import DaskDFPixelMap
 from lsdb.core.crossmatch.crossmatch_algorithms import CrossmatchAlgorithm
 from lsdb.core.crossmatch.kdtree_match import kd_tree_crossmatch
 from lsdb.dask.join_catalog_data import align_catalog_to_partitions, filter_index_to_range, \
     concat_dfs
+
+
+if TYPE_CHECKING:
+    from lsdb.catalog.catalog import Catalog, DaskDFPixelMap
 
 crossmatch_algorithms = {
     CrossmatchAlgorithm.KD_TREE: kd_tree_crossmatch

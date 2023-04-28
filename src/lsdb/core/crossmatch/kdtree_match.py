@@ -52,8 +52,8 @@ def kd_tree_crossmatch(
 
     # save the order/pix/and distances for each nearest neighbor
     out["_DIST"] = gc_dist(
-        out[left_md['ra_kw']], out[left_md['dec_kw']],
-        out[right_md['ra_kw']], out[right_md['dec_kw']]
+        out[left_md['ra_kw'] + suffixes[0]], out[left_md['dec_kw'] + suffixes[0]],
+        out[right_md['ra_kw'] + suffixes[1]], out[right_md['dec_kw'] + suffixes[1]]
     )
 
     # cull the return dataframe based on the distance threshold
