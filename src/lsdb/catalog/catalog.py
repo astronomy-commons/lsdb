@@ -7,7 +7,9 @@ import hipscat as hc
 from hipscat.pixel_math import HealpixPixel
 
 from lsdb.catalog.dataset.dataset import Dataset
-from lsdb.core.dataframe.join_catalog_data import join_catalog_data, crossmatch_catalog_data
+from lsdb.dask.crossmatch_catalog_data import crossmatch_catalog_data
+from lsdb.dask.join_catalog_data import join_catalog_data
+
 
 if TYPE_CHECKING:
     from lsdb.catalog.association_catalog.association_catalog import \
