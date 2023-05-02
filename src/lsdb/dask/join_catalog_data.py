@@ -124,12 +124,14 @@ def join_catalog_data(
         final_pixel = HealpixPixel(aligned_order, aligned_pixel)
         partition_map[final_pixel] = partition_index
         partition_index += 1
-    meta = []
+    meta = {}
     for name, t in left._ddf.dtypes.items():
-        meta.append((name + suffixes[0], t))
+        meta[name + suffixes[0]] = pd.Series(dtype=t)
     for name, t in through._ddf.dtypes.items():
-        meta.append((name, t))
+        meta[name] = pd.Series(dtype=t)
     for name, t in right._ddf.dtypes.items():
-        meta.append((name + suffixes[1], t))
-    ddf = dd.from_delayed(final_partitions, meta=meta)
+        meta[name + suffixes[1]] = pd.Series(dtype=t)
+    meta_df = pd.DataFrame(meta)
+    meta_df.index.name = "_hipscat_index"
+    ddf = dd.from_delayed(final_partitions, meta=meta_df)
     return ddf, partition_map, alignment

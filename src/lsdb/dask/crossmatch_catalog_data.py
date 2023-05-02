@@ -90,11 +90,13 @@ def crossmatch_catalog_data(
         final_pixel = HealpixPixel(aligned_order, aligned_pixel)
         partition_map[final_pixel] = partition_index
         partition_index += 1
-    meta = []
+    meta = {}
     for name, t in left._ddf.dtypes.items():
-        meta.append((name + suffixes[0], t))
+        meta[name + suffixes[0]] = pd.Series(dtype=t)
     for name, t in right._ddf.dtypes.items():
-        meta.append((name + suffixes[1], t))
-    meta.append(('_DIST', np.dtype("float64")))
-    ddf = dd.from_delayed(final_partitions, meta=meta)
+        meta[name + suffixes[1]] = pd.Series(dtype=t)
+    meta['_DIST'] = pd.Series(dtype=np.dtype("float64"))
+    meta_df = pd.DataFrame(meta)
+    meta_df.index.name = "_hipscat_index"
+    ddf = dd.from_delayed(final_partitions, meta=meta_df)
     return ddf, partition_map, alignment
