@@ -74,8 +74,6 @@ def concat_dfs(dfs: List[pd.DataFrame]):
 def join_catalog_data(
         left: Catalog, right: Catalog, through: AssociationCatalog, suffixes: Tuple[str, str] | None = None
 ) -> Tuple[dd.core.DataFrame, DaskDFPixelMap, PixelAlignment]:
-    if suffixes is None:
-        suffixes = ("", "")
     join_pixels = through.hc_structure.get_join_pixels()
     left_aligned_to_join_partitions = align_catalog_to_partitions(
         left,
