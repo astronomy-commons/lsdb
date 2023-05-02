@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import dataclasses
 from typing import TYPE_CHECKING, Dict, Tuple
 
 import dask.dataframe as dd
@@ -83,13 +84,27 @@ class Catalog(Dataset):
     def join(self, other: Catalog, through: AssociationCatalog=None, suffixes: Tuple[str, str] | None = None) -> Catalog:
         if through is None:
             raise NotImplementedError("must specify through association catalog")
+        if suffixes is None:
+            suffixes = ("", "")
         ddf, ddf_map, alignment = join_catalog_data(self, other, through, suffixes=suffixes)
-        hc_catalog = hc.catalog.Catalog(self.hc_structure.catalog_info, alignment.pixel_tree)
+        new_catalog_info = dataclasses.replace(
+            self.hc_structure.catalog_info,
+            ra_column=self.hc_structure.catalog_info.ra_column + suffixes[0],
+            dec_column=self.hc_structure.catalog_info.dec_column + suffixes[0],
+        )
+        hc_catalog = hc.catalog.Catalog(new_catalog_info, alignment.pixel_tree)
         return Catalog(ddf, ddf_map, hc_catalog)
 
     def crossmatch(self, other: Catalog, suffixes: Tuple[str, str] | None = None) -> Catalog:
+        if suffixes is None:
+            suffixes = ("", "")
         ddf, ddf_map, alignment = crossmatch_catalog_data(self, other, suffixes)
-        hc_catalog = hc.catalog.Catalog(self.hc_structure.catalog_info, alignment.pixel_tree)
+        new_catalog_info = dataclasses.replace(
+            self.hc_structure.catalog_info,
+            ra_column=self.hc_structure.catalog_info.ra_column + suffixes[0],
+            dec_column=self.hc_structure.catalog_info.dec_column + suffixes[0],
+        )
+        hc_catalog = hc.catalog.Catalog(new_catalog_info, alignment.pixel_tree)
         return Catalog(ddf, ddf_map, hc_catalog)
     
     def skymap(self, col: str=None, ufunc: callable=np.mean, k=6) -> np.ndarray:
