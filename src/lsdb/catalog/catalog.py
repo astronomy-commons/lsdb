@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Dict, Tuple
 import dask.dataframe as dd
 import hipscat as hc
 from hipscat.pixel_math import HealpixPixel
+import numpy as np
 
 from lsdb.catalog.dataset.dataset import Dataset
 from lsdb.dask.crossmatch_catalog_data import crossmatch_catalog_data
@@ -91,6 +92,10 @@ class Catalog(Dataset):
         hc_catalog = hc.catalog.Catalog(self.hc_structure.catalog_info, alignment.pixel_tree)
         return Catalog(ddf, ddf_map, hc_catalog)
     
+    def skymap(self, col: str=None, ufunc: callable=np.mean, k=6) -> np.ndarray:
+        #
+        pass
+
     def query(self, qarg: str=None) -> Catalog:
         if qarg is None:
             raise Exception("Must pass a string query argument like: 'column_name1 > 0'")
