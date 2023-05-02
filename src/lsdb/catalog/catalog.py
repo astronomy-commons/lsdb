@@ -106,10 +106,6 @@ class Catalog(Dataset):
         )
         hc_catalog = hc.catalog.Catalog(new_catalog_info, alignment.pixel_tree)
         return Catalog(ddf, ddf_map, hc_catalog)
-    
-    def skymap(self, col: str=None, ufunc: callable=np.mean, k=6) -> np.ndarray:
-        #
-        pass
 
     def query(self, qarg: str=None) -> Catalog:
         if qarg is None:
