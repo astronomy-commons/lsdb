@@ -90,3 +90,22 @@ class Catalog(Dataset):
         ddf, ddf_map, alignment = crossmatch_catalog_data(self, other, suffixes)
         hc_catalog = hc.catalog.Catalog(self.hc_structure.catalog_info, alignment.pixel_tree)
         return Catalog(ddf, ddf_map, hc_catalog)
+    
+    def query(self, qarg: str=None) -> Catalog:
+        if qarg is None:
+            raise Exception("Must pass a string query argument like: 'column_name1 > 0'")
+        ddf = self._ddf.query(qarg)
+        return Catalog(ddf, self._ddf_pixel_map, self.hc_structure)
+
+    def where(self, qarg: str) -> Catalog:
+        return self.query(qarg=qarg)
+    
+    def assign(self, **kwargs) -> Catalog:
+        if len(kwargs) == 0 or len(kwargs) > 1:
+            raise Exception("Invalid assigning of column. Must be a single lambda function")
+        ddf = self._ddf.assign(**kwargs)
+        return Catalog(ddf, self._ddf_pixel_map, self.hc_structure)
+    
+    def for_each(self, ufunc, **kwargs) -> Catalog:
+        ddf = self._ddf.groupby("_hipscat_index").apply(ufunc, **kwargs)
+        return Catalog(ddf, self._ddf_pixel_map, self.hc_structure)
