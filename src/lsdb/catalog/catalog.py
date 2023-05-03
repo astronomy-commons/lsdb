@@ -11,6 +11,7 @@ import numpy as np
 from lsdb.catalog.dataset.dataset import Dataset
 from lsdb.dask.crossmatch_catalog_data import crossmatch_catalog_data
 from lsdb.dask.join_catalog_data import join_catalog_data
+from lsdb.dask.skymap_catalog_data import skymap_catalog_data
 
 
 if TYPE_CHECKING:
@@ -123,5 +124,12 @@ class Catalog(Dataset):
         return Catalog(ddf, self._ddf_pixel_map, self.hc_structure)
     
     def for_each(self, ufunc, **kwargs) -> Catalog:
+        if "cat_info" not in kwargs.keys():
+            kwargs["cat_info"] = self.hc_structure.catalog_info
         ddf = self._ddf.groupby("_hipscat_index").apply(ufunc, **kwargs)
         return Catalog(ddf, self._ddf_pixel_map, self.hc_structure)
+    
+    def compute_skymap(self, col, f=np.mean, k=6) -> np.ndarray:
+        img = skymap_catalog_data(self, col=col, order=k, func=f)
+        return img
+
