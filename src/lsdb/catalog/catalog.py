@@ -8,6 +8,7 @@ import hipscat as hc
 from hipscat.pixel_math import HealpixPixel
 
 from lsdb.catalog.dataset.dataset import Dataset
+from lsdb.core.cone_search import cone_filter
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
 from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorithm
 from lsdb.dask.crossmatch_catalog_data import crossmatch_catalog_data
@@ -170,3 +171,41 @@ class Catalog(Dataset):
         )
         hc_catalog = hc.catalog.Catalog(new_catalog_info, alignment.pixel_tree)
         return Catalog(ddf, ddf_map, hc_catalog)
+
+    @staticmethod
+    def _check_ra_dec_values_valid(ra: float, dec: float):
+        if ra < -180 or ra > 180:
+            raise ValueError("ra must be between -180 and 180")
+        if dec > 90 or dec < -90:
+            raise ValueError("dec must be between -90 and 90")
+
+    def cone_search(self, ra: float, dec: float, radius: float):
+        """Perform a cone search to filter the catalog
+
+        Filters to points within radius great circle distance to the point specified by ra and dec in degrees.
+        Filters partitions in the catalog to those that have some overlap with the cone.
+
+        Args:
+            ra: Right Ascension of the center of the cone in degrees
+            dec: Declination of the center of the cone in degrees
+            radius: Radius of the cone in degrees
+
+        Returns:
+            A new Catalog containing the points filtered to those within the cone, and the partitions that
+            overlap the cone.
+        """
+        if radius < 0:
+            raise ValueError("Cone radius must be non negative")
+        self._check_ra_dec_values_valid(ra, dec)
+        filtered_hc_structure = self.hc_structure.filter_by_cone(ra, dec, radius)
+        pixels_in_cone = filtered_hc_structure.get_healpix_pixels()
+        partitions = self._ddf.to_delayed()
+        partitions_in_cone = [
+            partitions[self._ddf_pixel_map[pixel]] for pixel in pixels_in_cone
+        ]
+        filtered_partitions = [
+            cone_filter(partition, ra, dec, radius, self.hc_structure) for partition in partitions_in_cone
+        ]
+        cone_search_ddf = dd.from_delayed(filtered_partitions, meta=self._ddf._meta)
+        ddf_partition_map = {pixel: i for i, pixel in enumerate(pixels_in_cone)}
+        return Catalog(cone_search_ddf, ddf_partition_map, filtered_hc_structure)
