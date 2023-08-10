@@ -5,12 +5,6 @@ import pytest
 import lsdb
 
 
-def test_read_hipscat(small_sky_order1_dir):
-    cat = lsdb.read_hipscat(small_sky_order1_dir)
-    print("")
-    print(cat._ddf.compute())
-
-
 def test_hc_catalog_equal(small_sky_order1_dir, small_sky_order1_hipscat_catalog):
     catalog = lsdb.read_hipscat(small_sky_order1_dir)
     assert (
@@ -52,3 +46,26 @@ def test_parquet_data_in_partitions_match_files(
         )
         loaded_df = pd.read_parquet(parquet_path)
         pd.testing.assert_frame_equal(partition_df, loaded_df)
+
+
+def test_read_hipscat_specify_catalog_type(small_sky_catalog, small_sky_dir):
+    catalog = lsdb.read_hipscat(small_sky_dir, catalog_type=lsdb.Catalog)
+    pd.testing.assert_frame_equal(catalog.compute(), small_sky_catalog.compute())
+    pd.testing.assert_frame_equal(
+        catalog.hc_structure.get_pixels(), small_sky_catalog.hc_structure.get_pixels()
+    )
+    assert catalog.hc_structure.catalog_info == small_sky_catalog.hc_structure.catalog_info
+
+
+def test_read_hipscat_no_parquet_metadata(small_sky_catalog, small_sky_no_metadata_dir):
+    catalog = lsdb.read_hipscat(small_sky_no_metadata_dir)
+    pd.testing.assert_frame_equal(catalog.compute(), small_sky_catalog.compute())
+    pd.testing.assert_frame_equal(
+        catalog.hc_structure.get_pixels(), small_sky_catalog.hc_structure.get_pixels()
+    )
+    assert catalog.hc_structure.catalog_info == small_sky_catalog.hc_structure.catalog_info
+
+
+def test_read_hipscat_wrong_catalog_type(small_sky_dir):
+    with pytest.raises(ValueError):
+        lsdb.read_hipscat(small_sky_dir, catalog_type=int)
