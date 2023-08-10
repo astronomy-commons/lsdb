@@ -3,6 +3,7 @@ import dask.dataframe as dd
 
 
 class Dataset:
+    """Base HiPSCat Dataset"""
 
     def __init__(
         self,
@@ -26,7 +27,7 @@ class Dataset:
         return self._ddf.__repr__()
 
     def _repr_html_(self):
-        return self._ddf._repr_html_()
+        return self._ddf._repr_html_()  # pylint: disable=protected-access
 
     def compute(self):
         """Compute dask distributed dataframe to pandas dataframe"""

@@ -15,7 +15,6 @@ class Catalog(Dataset):
     spatial operations.
 
     Attributes:
-        name: Name of the catalog
         hc_structure: `hipscat.Catalog` object representing the structure
                       and metadata of the HiPSCat catalog
     """

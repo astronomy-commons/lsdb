@@ -26,8 +26,8 @@ def read_hipscat(
 
     Args:
         path: The path that locates the root of the HiPSCat catalog
-        catalog_type: Default `lsdb.Catalog` The type of catalog being loaded. Use by specifying the lsdb
-        class for that catalog.
+        catalog_type: Default `lsdb.Catalog` The type of catalog being loaded. Use by specifying the
+        lsdb class for that catalog.
     Returns:
         Catalog object loaded from the given parameters
     """

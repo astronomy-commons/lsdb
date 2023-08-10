@@ -32,5 +32,5 @@ def get_loader_for_type(
     """
     if catalog_type_to_use not in loader_class_for_catalog_type:
         raise ValueError(f"Cannot load catalog type: {str(catalog_type_to_use)}")
-    LoaderClass = loader_class_for_catalog_type[catalog_type_to_use]
-    return LoaderClass(path, config)
+    loader_class = loader_class_for_catalog_type[catalog_type_to_use]
+    return loader_class(path, config)
