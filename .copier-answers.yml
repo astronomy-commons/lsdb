@@ -1,13 +1,14 @@
 # Changes here will be overwritten by Copier
-_commit: v1.3.3
+_commit: v1.4.1
 _src_path: gh:lincc-frameworks/python-project-template
 author_email: lincc-frameworks-team@lists.lsst.org
 author_name: LINCC Frameworks
 create_example_module: false
 custom_install: true
+include_docs: true
 include_notebooks: false
-module_name: lsdb
 mypy_type_checking: basic
+package_name: lsdb
 preferred_linter: pylint
 project_license: BSD
 project_name: lsdb

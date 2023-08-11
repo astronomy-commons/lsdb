@@ -33,4 +33,3 @@ jobs:
 
       run: |
         mypy ./src ./tests --ignore-missing-imports
-

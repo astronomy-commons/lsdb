@@ -33,4 +33,3 @@ jobs:
 
       run: |
         pylint -rn -sn --recursive=y ./src --rcfile=./src/.pylintrc
-

@@ -4,7 +4,7 @@ repos:
     # This hook should always pass. It will print a message if the local version 
     # is out of date.
   - repo: https://github.com/lincc-frameworks/pre-commit-hooks
-    rev: v0.1
+    rev: v0.1.1
     hooks:
       - id: check-lincc-frameworks-template-version
         name: Check template version
@@ -132,7 +132,7 @@ repos:
             "-b", # Flag to select which builder to use
             "html", # Use the HTML builder
             "-d", # Flag for cached environment and doctrees
-            "docs/build/doctrees", # directory
+            "./docs/_build/doctrees", # directory
             "./docs", # Source directory of documents
-            "docs/build/html", # Output directory for rendered documents.
+            "./_readthedocs", # Output directory for rendered documents.
           ]
