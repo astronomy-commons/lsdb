@@ -4,6 +4,7 @@ import dataclasses
 from typing import Type, overload
 
 from lsdb.catalog.catalog import Catalog
+from lsdb.catalog.dataset.dataset import Dataset
 from lsdb.loaders.hipscat.hipscat_loader_factory import CatalogTypeVar, get_loader_for_type
 from lsdb.loaders.hipscat.hipscat_loading_config import HipscatLoadingConfig
 
@@ -43,7 +44,7 @@ def read_hipscat(
     }
     config = HipscatLoadingConfig(**config_args)
 
-    catalog_type_to_use = Catalog
+    catalog_type_to_use: Type[Dataset] = Catalog
 
     if catalog_type is not None:
         catalog_type_to_use = catalog_type
