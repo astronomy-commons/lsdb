@@ -15,9 +15,7 @@ from lsdb.loaders.hipscat.hipscat_loading_config import HipscatLoadingConfig
 class HipscatCatalogLoader:
     """Loads a HiPSCat formatted Catalog"""
 
-    def __init__(
-            self, path: str, config: HipscatLoadingConfig
-    ) -> None:
+    def __init__(self, path: str, config: HipscatLoadingConfig) -> None:
         """Initializes a HipscatCatalogLoader
 
         Args:
