@@ -1,6 +1,6 @@
 from typing import TypeVar, Type, Dict
 
-from lsdb import Catalog
+from lsdb.catalog.catalog import Catalog
 from lsdb.catalog.dataset.dataset import Dataset
 from lsdb.loaders.hipscat.hipscat_catalog_loader import HipscatCatalogLoader
 from lsdb.loaders.hipscat.hipscat_loading_config import HipscatLoadingConfig

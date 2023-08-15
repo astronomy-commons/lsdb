@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import Type, overload, Dict
+from typing import Type, Dict
 
 import hipscat as hc
 from hipscat.catalog import CatalogType
