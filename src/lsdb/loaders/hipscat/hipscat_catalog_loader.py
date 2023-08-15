@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Tuple
 
 import dask.dataframe as dd
 import hipscat as hc
@@ -42,7 +42,7 @@ class HipscatCatalogLoader:
 
     def _load_dask_df_and_map(
         self, catalog: hc.catalog.Catalog
-    ) -> tuple[dd.DataFrame, DaskDFPixelMap]:
+    ) -> Tuple[dd.DataFrame, DaskDFPixelMap]:
         """Load Dask DF from parquet files and make dict of HEALPix pixel to partition index"""
         ordered_pixels = self._get_ordered_pixel_list(catalog)
         ordered_paths = self._get_paths_from_pixels(catalog, ordered_pixels)
