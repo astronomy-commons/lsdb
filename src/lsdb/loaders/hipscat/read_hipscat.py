@@ -19,16 +19,6 @@ dataset_class_for_catalog_type: Dict[CatalogType, Type[Dataset]] = {
 }
 
 
-@overload
-def read_hipscat(path: str) -> Dataset:
-    ...
-
-
-@overload
-def read_hipscat(path: str, catalog_type: Type[CatalogTypeVar]) -> CatalogTypeVar:
-    ...
-
-
 def read_hipscat(
     path: str,
     catalog_type: Type[CatalogTypeVar] | None = None,
