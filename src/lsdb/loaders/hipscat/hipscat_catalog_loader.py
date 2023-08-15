@@ -1,10 +1,13 @@
+from typing import List
+
 import dask.dataframe as dd
 import hipscat as hc
 import pyarrow
+from hipscat.pixel_math import HealpixPixel
+from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_HEALPIX_ORDER
 
 from lsdb import io
 from lsdb.catalog.catalog import Catalog, DaskDFPixelMap
-from lsdb.core.healpix.healpix_pixel import MAXIMUM_ORDER, HealpixPixel
 from lsdb.loaders.hipscat.hipscat_loading_config import HipscatLoadingConfig
 
 
@@ -35,7 +38,7 @@ class HipscatCatalogLoader:
 
     def load_hipscat_catalog(self) -> hc.catalog.Catalog:
         """Load `hipscat` library catalog object with catalog metadata and partition data"""
-        return hc.catalog.Catalog(catalog_path=self.path)
+        return hc.catalog.Catalog.read_from_hipscat(self.path)
 
     def _load_dask_df_and_map(
         self, catalog: hc.catalog.Catalog
@@ -51,7 +54,7 @@ class HipscatCatalogLoader:
 
     def _get_ordered_pixel_list(
         self, catalog: hc.catalog.Catalog
-    ) -> list[HealpixPixel]:
+    ) -> List[HealpixPixel]:
         pixels = []
         for _, row in catalog.get_pixels().iterrows():
             order = row[hc.catalog.PartitionInfo.METADATA_ORDER_COLUMN_NAME]
@@ -59,13 +62,13 @@ class HipscatCatalogLoader:
             pixels.append(HealpixPixel(order, pixel))
         # Sort pixels by pixel number at highest order
         sorted_pixels = sorted(
-            pixels, key=lambda pixel: (4 ** (MAXIMUM_ORDER - pixel.order)) * pixel.pixel
+            pixels, key=lambda pixel: (4 ** (HIPSCAT_ID_HEALPIX_ORDER - pixel.order)) * pixel.pixel
         )
         return sorted_pixels
 
     def _get_paths_from_pixels(
-        self, catalog: hc.catalog.Catalog, ordered_pixels: list[HealpixPixel]
-    ) -> list[hc.io.FilePointer]:
+        self, catalog: hc.catalog.Catalog, ordered_pixels: List[HealpixPixel]
+    ) -> List[hc.io.FilePointer]:
         paths = [
             hc.io.paths.pixel_catalog_file(
                 catalog_base_dir=catalog.catalog_base_dir,
@@ -77,7 +80,7 @@ class HipscatCatalogLoader:
         return paths
 
     def _load_df_from_paths(
-        self, catalog: hc.catalog.Catalog, paths: list[hc.io.FilePointer]
+        self, catalog: hc.catalog.Catalog, paths: List[hc.io.FilePointer]
     ) -> dd.DataFrame:
         metadata_schema = self._load_parquet_metadata_schema(catalog, paths)
         dask_meta_schema = metadata_schema.empty_table().to_pandas()
@@ -85,7 +88,7 @@ class HipscatCatalogLoader:
         return ddf
 
     def _load_parquet_metadata_schema(
-        self, catalog: hc.catalog.Catalog, paths: list[hc.io.FilePointer]
+        self, catalog: hc.catalog.Catalog, paths: List[hc.io.FilePointer]
     ) -> pyarrow.Schema:
         metadata_pointer = hc.io.paths.get_parquet_metadata_pointer(
             catalog.catalog_base_dir
