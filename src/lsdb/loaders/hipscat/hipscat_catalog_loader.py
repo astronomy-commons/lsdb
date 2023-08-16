@@ -11,7 +11,6 @@ from lsdb.catalog.catalog import Catalog, DaskDFPixelMap
 from lsdb.loaders.hipscat.hipscat_loading_config import HipscatLoadingConfig
 
 
-# pylint: disable=R0903
 class HipscatCatalogLoader:
     """Loads a HiPSCat formatted Catalog"""
 
