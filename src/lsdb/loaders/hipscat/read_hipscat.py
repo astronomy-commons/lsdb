@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import Type, Dict
+from typing import Dict, Type
 
 import hipscat as hc
 from hipscat.catalog import CatalogType
@@ -11,7 +11,6 @@ from lsdb.catalog.catalog import Catalog
 from lsdb.catalog.dataset.dataset import Dataset
 from lsdb.loaders.hipscat.hipscat_loader_factory import CatalogTypeVar, get_loader_for_type
 from lsdb.loaders.hipscat.hipscat_loading_config import HipscatLoadingConfig
-
 
 dataset_class_for_catalog_type: Dict[CatalogType, Type[Dataset]] = {
     CatalogType.OBJECT: Catalog,
@@ -41,10 +40,7 @@ def read_hipscat(
     # they weren't needed, so this object is now empty. But I wanted to keep this here for future
     # use
     kwd_args = locals().copy()
-    config_args = {
-        field.name: kwd_args[field.name]
-        for field in dataclasses.fields(HipscatLoadingConfig)
-    }
+    config_args = {field.name: kwd_args[field.name] for field in dataclasses.fields(HipscatLoadingConfig)}
     config = HipscatLoadingConfig(**config_args)
 
     catalog_type_to_use = _get_dataset_class_from_catalog_info(path)

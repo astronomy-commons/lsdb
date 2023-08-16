@@ -34,9 +34,7 @@ templates_path = []
 exclude_patterns = ["_build", "**.ipynb_checkpoints"]
 
 master_doc = "index"  # This assumes that sphinx-build is called from the root directory
-html_show_sourcelink = (
-    False  # Remove 'view source code' from top of page (for html, not python)
-)
+html_show_sourcelink = False  # Remove 'view source code' from top of page (for html, not python)
 add_module_names = False  # Remove namespaces from class/method signatures
 
 autoapi_type = "python"

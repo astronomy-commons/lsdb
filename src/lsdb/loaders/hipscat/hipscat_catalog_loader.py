@@ -39,21 +39,15 @@ class HipscatCatalogLoader:
         """Load `hipscat` library catalog object with catalog metadata and partition data"""
         return hc.catalog.Catalog.read_from_hipscat(self.path)
 
-    def _load_dask_df_and_map(
-        self, catalog: hc.catalog.Catalog
-    ) -> Tuple[dd.DataFrame, DaskDFPixelMap]:
+    def _load_dask_df_and_map(self, catalog: hc.catalog.Catalog) -> Tuple[dd.DataFrame, DaskDFPixelMap]:
         """Load Dask DF from parquet files and make dict of HEALPix pixel to partition index"""
         ordered_pixels = self._get_ordered_pixel_list(catalog)
         ordered_paths = self._get_paths_from_pixels(catalog, ordered_pixels)
-        pixel_to_index_map = {
-            pixel: index for index, pixel in enumerate(ordered_pixels)
-        }
+        pixel_to_index_map = {pixel: index for index, pixel in enumerate(ordered_pixels)}
         ddf = self._load_df_from_paths(catalog, ordered_paths)
         return ddf, pixel_to_index_map
 
-    def _get_ordered_pixel_list(
-        self, catalog: hc.catalog.Catalog
-    ) -> List[HealpixPixel]:
+    def _get_ordered_pixel_list(self, catalog: hc.catalog.Catalog) -> List[HealpixPixel]:
         pixels = []
         for _, row in catalog.get_pixels().iterrows():
             order = row[hc.catalog.PartitionInfo.METADATA_ORDER_COLUMN_NAME]
@@ -61,7 +55,8 @@ class HipscatCatalogLoader:
             pixels.append(HealpixPixel(order, pixel))
         # Sort pixels by pixel number at highest order
         sorted_pixels = sorted(
-            pixels, key=lambda pixel: (4 ** (HIPSCAT_ID_HEALPIX_ORDER - pixel.order)) * pixel.pixel
+            pixels,
+            key=lambda pixel: (4 ** (HIPSCAT_ID_HEALPIX_ORDER - pixel.order)) * pixel.pixel,
         )
         return sorted_pixels
 
@@ -89,9 +84,7 @@ class HipscatCatalogLoader:
     def _load_parquet_metadata_schema(
         self, catalog: hc.catalog.Catalog, paths: List[hc.io.FilePointer]
     ) -> pyarrow.Schema:
-        metadata_pointer = hc.io.paths.get_parquet_metadata_pointer(
-            catalog.catalog_base_dir
-        )
+        metadata_pointer = hc.io.paths.get_parquet_metadata_pointer(catalog.catalog_base_dir)
         if hc.io.file_io.does_file_or_directory_exist(metadata_pointer):
             return io.read_parquet_schema(metadata_pointer)
         return io.read_parquet_schema(paths[0])

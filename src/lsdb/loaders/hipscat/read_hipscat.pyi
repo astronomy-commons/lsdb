@@ -11,17 +11,12 @@ For more information on stub files, view here: https://mypy.readthedocs.io/en/st
 
 """
 
-from typing import overload, Type
+from typing import Type, overload
 
 from lsdb.catalog.dataset.dataset import Dataset
 from lsdb.loaders.hipscat.hipscat_loader_factory import CatalogTypeVar
 
-
 @overload
-def read_hipscat(path: str) -> Dataset:
-    ...
-
-
+def read_hipscat(path: str) -> Dataset: ...
 @overload
-def read_hipscat(path: str, catalog_type: Type[CatalogTypeVar]) -> CatalogTypeVar:
-    ...
+def read_hipscat(path: str, catalog_type: Type[CatalogTypeVar]) -> CatalogTypeVar: ...

@@ -1,7 +1,7 @@
 import pandas as pd
+import pyarrow.parquet as pq
 from hipscat.io import FilePointer
 from pyarrow import Schema
-import pyarrow.parquet as pq
 
 
 def read_parquet_schema(file_pointer: FilePointer) -> Schema:
