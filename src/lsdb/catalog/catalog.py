@@ -1,10 +1,14 @@
-from typing import Dict
+from __future__ import annotations
+
+import dataclasses
+from typing import Dict, Tuple
 
 import dask.dataframe as dd
 import hipscat as hc
 from hipscat.pixel_math import HealpixPixel
 
 from lsdb.catalog.dataset.dataset import Dataset
+from lsdb.dask.crossmatch_catalog_data import crossmatch_catalog_data
 
 DaskDFPixelMap = Dict[HealpixPixel, int]
 
@@ -68,3 +72,20 @@ class Catalog(Dataset):
             raise ValueError(f"Pixel at order {order} pixel {pixel} not in Catalog")
         partition_index = self._ddf_pixel_map[hp_pixel]
         return partition_index
+
+    @property
+    def name(self):
+        return self.hc_structure.catalog_name
+
+    def crossmatch(self, other: Catalog, suffixes: Tuple[str, str] | None = None) -> Catalog:
+        if suffixes is None:
+            suffixes = (f"_{self.name}", f"_{other.name}")
+        ddf, ddf_map, alignment = crossmatch_catalog_data(self, other, suffixes)
+        new_catalog_info = dataclasses.replace(
+            self.hc_structure.catalog_info,
+            catalog_name=f"{self.name}_x_{other.name}",
+            ra_column=self.hc_structure.catalog_info.ra_column + suffixes[0],
+            dec_column=self.hc_structure.catalog_info.dec_column + suffixes[0],
+        )
+        hc_catalog = hc.catalog.Catalog(new_catalog_info, alignment.pixel_tree)
+        return Catalog(ddf, ddf_map, hc_catalog)
