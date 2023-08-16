@@ -26,9 +26,12 @@ def read_hipscat(
     """Load a catalog from a HiPSCat formatted catalog.
 
     Args:
-        path: The path that locates the root of the HiPSCat catalog
-        catalog_type: Default `lsdb.Catalog` The type of catalog being loaded. Use by specifying the
-             lsdb class for that catalog.
+        path (str): The path that locates the root of the HiPSCat catalog
+        catalog_type (Type[Dataset]): Default `None`. By default, the type of the catalog is loaded
+            from the catalog info and the corresponding object type is returned. Python's type hints
+            cannot allow a return type specified by a loaded value, so to use the correct return
+            type for type checking, the type of the catalog can be specified here. Use by specifying
+            the lsdb class for that catalog.
     Returns:
         Catalog object loaded from the given parameters
     """
