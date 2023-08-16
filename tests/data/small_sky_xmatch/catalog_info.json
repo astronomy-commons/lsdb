@@ -1,0 +1,12 @@
+{
+    "catalog_name": "small_sky_xmatch",
+    "catalog_type": "object",
+    "version": "0.0.0",
+    "generation_date": "2023.8.9",
+    "epoch": "J2000",
+    "ra_kw": "ra",
+    "dec_kw": "dec",
+    "id_kw": "id",
+    "total_objects": 113,
+    "pixel_threshold": 50
+}
