@@ -51,3 +51,16 @@ testpaths = [
 
 [tool.setuptools.package-data]
 lsdb = ["py.typed"]
+
+[tool.coverage.report]
+omit = [
+    "src/lsdb/_version.py", # auto-generated
+]
+
+[tool.black]
+line-length = 110
+target-version = ["py38"]
+
+[tool.isort]
+profile = "black"
+line_length = 110

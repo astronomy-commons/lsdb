@@ -8,18 +8,13 @@ import lsdb
 def test_read_hipscat(small_sky_order1_dir, small_sky_order1_hipscat_catalog):
     catalog = lsdb.read_hipscat(small_sky_order1_dir)
     assert isinstance(catalog, lsdb.Catalog)
-    assert (
-        catalog.hc_structure.catalog_base_dir
-        == small_sky_order1_hipscat_catalog.catalog_base_dir
-    )
+    assert catalog.hc_structure.catalog_base_dir == small_sky_order1_hipscat_catalog.catalog_base_dir
     pd.testing.assert_frame_equal(
         catalog.hc_structure.get_pixels(), small_sky_order1_hipscat_catalog.get_pixels()
     )
 
 
-def test_pixels_in_map_equal_catalog_pixels(
-    small_sky_order1_dir, small_sky_order1_hipscat_catalog
-):
+def test_pixels_in_map_equal_catalog_pixels(small_sky_order1_dir, small_sky_order1_hipscat_catalog):
     catalog = lsdb.read_hipscat(small_sky_order1_dir)
     for _, row in small_sky_order1_hipscat_catalog.get_pixels().iterrows():
         hp_order = row["Norder"]
@@ -33,9 +28,7 @@ def test_wrong_pixel_raises_value_error(small_sky_order1_dir):
         catalog.get_partition(-1, -1)
 
 
-def test_parquet_data_in_partitions_match_files(
-    small_sky_order1_dir, small_sky_order1_hipscat_catalog
-):
+def test_parquet_data_in_partitions_match_files(small_sky_order1_dir, small_sky_order1_hipscat_catalog):
     catalog = lsdb.read_hipscat(small_sky_order1_dir)
     for _, row in small_sky_order1_hipscat_catalog.get_pixels().iterrows():
         hp_order = row["Norder"]

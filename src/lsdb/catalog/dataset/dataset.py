@@ -1,5 +1,5 @@
-import hipscat as hc
 import dask.dataframe as dd
+import hipscat as hc
 
 
 class Dataset:

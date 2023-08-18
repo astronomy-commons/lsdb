@@ -4,22 +4,15 @@ from hipscat.pixel_math import HealpixPixel
 
 
 def test_catalog_repr_equals_ddf_repr(small_sky_order1_catalog):
-    assert (
-        repr(small_sky_order1_catalog) == repr(small_sky_order1_catalog._ddf)
-    )
+    assert repr(small_sky_order1_catalog) == repr(small_sky_order1_catalog._ddf)
 
 
 def test_catalog_html_repr_equals_ddf_html_repr(small_sky_order1_catalog):
-    assert (
-        small_sky_order1_catalog._repr_html_()
-        == small_sky_order1_catalog._ddf._repr_html_()
-    )
+    assert small_sky_order1_catalog._repr_html_() == small_sky_order1_catalog._ddf._repr_html_()
 
 
 def test_catalog_compute_equals_ddf_compute(small_sky_order1_catalog):
-    pd.testing.assert_frame_equal(
-        small_sky_order1_catalog.compute(), small_sky_order1_catalog._ddf.compute()
-    )
+    pd.testing.assert_frame_equal(small_sky_order1_catalog.compute(), small_sky_order1_catalog._ddf.compute())
 
 
 def test_get_catalog_partition_gets_correct_partition(small_sky_order1_catalog):
