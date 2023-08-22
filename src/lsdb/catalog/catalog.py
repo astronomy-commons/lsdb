@@ -8,7 +8,8 @@ import hipscat as hc
 from hipscat.pixel_math import HealpixPixel
 
 from lsdb.catalog.dataset.dataset import Dataset
-from lsdb.dask.crossmatch_catalog_data import crossmatch_catalog_data
+from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorithm
+from lsdb.dask.crossmatch_catalog_data import crossmatch_catalog_data, CrossmatchAlgorithmType
 
 DaskDFPixelMap = Dict[HealpixPixel, int]
 
@@ -77,10 +78,20 @@ class Catalog(Dataset):
     def name(self):
         return self.hc_structure.catalog_name
 
-    def crossmatch(self, other: Catalog, suffixes: Tuple[str, str] | None = None) -> Catalog:
+    def crossmatch(self,
+                   other: Catalog,
+                   suffixes: Tuple[str, str] | None = None,
+                   algorithm: CrossmatchAlgorithmType | BuiltInCrossmatchAlgorithm = BuiltInCrossmatchAlgorithm.KD_TREE,
+                   **kwargs,
+                   ) -> Catalog:
         if suffixes is None:
             suffixes = (f"_{self.name}", f"_{other.name}")
-        ddf, ddf_map, alignment = crossmatch_catalog_data(self, other, suffixes)
+        ddf, ddf_map, alignment = crossmatch_catalog_data(
+            self,
+            other,
+            suffixes,
+            algorithm=algorithm,
+            **kwargs)
         new_catalog_info = dataclasses.replace(
             self.hc_structure.catalog_info,
             catalog_name=f"{self.name}_x_{other.name}",
