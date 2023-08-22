@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import dask.dataframe as dd
 from hipscat.pixel_math import HealpixPixel
+from hipscat.pixel_math.hipscat_id import healpix_to_hipscat_id
 from hipscat.pixel_tree import PixelAlignment, PixelAlignmentType, align_trees
 
 from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorithm
@@ -22,6 +23,36 @@ crossmatch_algorithms = {
 CrossmatchAlgorithmType = Callable[[pd.DataFrame, pd.DataFrame], pd.DataFrame]
 
 
+@dask.delayed
+def perform_crossmatch(
+        algorithm,
+        left_df,
+        right_df,
+        left_order,
+        left_pixel,
+        right_order,
+        right_pixel,
+        left_hc_structure,
+        right_hc_structure,
+        suffixes,
+        **kwargs
+):
+    if right_order > left_order:
+        lower_bound = healpix_to_hipscat_id(right_order, right_pixel)
+        upper_bound = healpix_to_hipscat_id(right_order, right_pixel+1)
+        left_df = left_df[(left_df.index > lower_bound) & (left_df.index < upper_bound)]
+    return algorithm(
+        left_df,
+        right_df,
+        left_order,
+        left_pixel,
+        left_hc_structure,
+        right_hc_structure,
+        suffixes,
+        **kwargs
+    )
+
+
 def crossmatch_catalog_data(
         left: Catalog,
         right: Catalog,
@@ -29,7 +60,7 @@ def crossmatch_catalog_data(
         algorithm: CrossmatchAlgorithmType | BuiltInCrossmatchAlgorithm = BuiltInCrossmatchAlgorithm.KD_TREE,
         **kwargs
 ) -> Tuple[dd.core.DataFrame, DaskDFPixelMap, PixelAlignment]:
-    crossmatch_algorithm = dask.delayed(get_crossmatch_algorithm(algorithm))
+    crossmatch_algorithm = get_crossmatch_algorithm(algorithm)
     alignment = align_trees(
         left.hc_structure.pixel_tree,
         right.hc_structure.pixel_tree,
@@ -48,21 +79,26 @@ def crossmatch_catalog_data(
         order_col=PixelAlignment.JOIN_ORDER_COLUMN_NAME,
         pixel_col=PixelAlignment.JOIN_PIXEL_COLUMN_NAME,
     )
-    orders = [row[PixelAlignment.PRIMARY_ORDER_COLUMN_NAME] for _, row in join_pixels.iterrows()]
-    pixels = [row[PixelAlignment.PRIMARY_PIXEL_COLUMN_NAME] for _, row in join_pixels.iterrows()]
+    left_orders = [row[PixelAlignment.PRIMARY_ORDER_COLUMN_NAME] for _, row in join_pixels.iterrows()]
+    left_pixels = [row[PixelAlignment.PRIMARY_PIXEL_COLUMN_NAME] for _, row in join_pixels.iterrows()]
+    right_orders = [row[PixelAlignment.JOIN_ORDER_COLUMN_NAME] for _, row in join_pixels.iterrows()]
+    right_pixels = [row[PixelAlignment.JOIN_PIXEL_COLUMN_NAME] for _, row in join_pixels.iterrows()]
     joined_partitions = [
-        crossmatch_algorithm(
+        perform_crossmatch(
+            crossmatch_algorithm,
             left_df,
             right_df,
-            order,
-            pixel,
+            left_order,
+            left_pixel,
+            right_order,
+            right_pixel,
             left.hc_structure,
             right.hc_structure,
             suffixes,
             **kwargs
         )
-        for left_df, right_df, order, pixel in
-        zip(left_aligned_to_join_partitions, right_aligned_to_join_partitions, orders, pixels)
+        for left_df, right_df, left_order, left_pixel, right_order, right_pixel in
+        zip(left_aligned_to_join_partitions, right_aligned_to_join_partitions, left_orders, left_pixels, right_orders, right_pixels)
     ]
     partition_map = {}
     for i, (_, row) in enumerate(join_pixels.iterrows()):

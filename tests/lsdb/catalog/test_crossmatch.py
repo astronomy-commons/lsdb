@@ -26,8 +26,6 @@ def test_kdtree_crossmatch_multiple_neighbors(small_sky_catalog, small_sky_xmatc
     assert len(xmatched) == len(xmatch_correct_3n_2t)
     for _, correct_row in xmatch_correct_3n_2t.iterrows():
         assert correct_row["ss_id"] in xmatched["id_small_sky"].values
-        xmatch_row = xmatched[xmatched["id_small_sky"] == correct_row["ss_id"] & xmatched["id_small_sky_xmatch"] == correct_row["xmatch_id"]]
+        xmatch_row = xmatched[(xmatched["id_small_sky"] == correct_row["ss_id"]) & (xmatched["id_small_sky_xmatch"] == correct_row["xmatch_id"])]
         assert len(xmatch_row) == 1
         assert xmatch_row["_DIST"].values == pytest.approx(correct_row["dist"])
-
-

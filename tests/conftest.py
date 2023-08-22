@@ -13,7 +13,7 @@ SMALL_SKY_NO_METADATA_DIR_NAME = "small_sky_no_metadata"
 SMALL_SKY_ORDER1_DIR_NAME = "small_sky_order1"
 XMATCH_CORRECT_FILE = "xmatch_correct.csv"
 XMATCH_CORRECT_005_FILE = "xmatch_correct_0_005.csv"
-XMATCH_CORRECT_3n_2t_FILE = "xmatch_correct_3n_2t.csv"
+XMATCH_CORRECT_3n_2t_FILE = "xmatch_correct_3n_2t_no_margin.csv"
 TEST_DIR = os.path.dirname(__file__)
 
 
