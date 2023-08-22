@@ -26,7 +26,8 @@ def crossmatch_catalog_data(
         left: Catalog,
         right: Catalog,
         suffixes: Tuple[str, str] | None = None,
-        algorithm: CrossmatchAlgorithmType | BuiltInCrossmatchAlgorithm = BuiltInCrossmatchAlgorithm.KD_TREE
+        algorithm: CrossmatchAlgorithmType | BuiltInCrossmatchAlgorithm = BuiltInCrossmatchAlgorithm.KD_TREE,
+        **kwargs
 ) -> Tuple[dd.core.DataFrame, DaskDFPixelMap, PixelAlignment]:
     crossmatch_algorithm = dask.delayed(get_crossmatch_algorithm(algorithm))
     alignment = align_trees(
@@ -51,7 +52,14 @@ def crossmatch_catalog_data(
     pixels = [row[PixelAlignment.PRIMARY_PIXEL_COLUMN_NAME] for _, row in join_pixels.iterrows()]
     joined_partitions = [
         crossmatch_algorithm(
-            left_df, right_df, order, pixel, left.hc_structure, right.hc_structure, suffixes
+            left_df,
+            right_df,
+            order,
+            pixel,
+            left.hc_structure,
+            right.hc_structure,
+            suffixes,
+            **kwargs
         )
         for left_df, right_df, order, pixel in
         zip(left_aligned_to_join_partitions, right_aligned_to_join_partitions, orders, pixels)
