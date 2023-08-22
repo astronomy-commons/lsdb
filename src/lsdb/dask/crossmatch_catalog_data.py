@@ -16,7 +16,7 @@ from lsdb.core.crossmatch.kdtree_match import kd_tree_crossmatch
 if TYPE_CHECKING:
     from lsdb.catalog.catalog import Catalog, DaskDFPixelMap
 
-crossmatch_algorithms = {
+builtin_crossmatch_algorithms = {
     BuiltInCrossmatchAlgorithm.KD_TREE: kd_tree_crossmatch
 }
 
@@ -46,6 +46,8 @@ def perform_crossmatch(
         right_df,
         left_order,
         left_pixel,
+        right_order,
+        right_pixel,
         left_hc_structure,
         right_hc_structure,
         suffixes,
@@ -118,7 +120,7 @@ def crossmatch_catalog_data(
 
 def get_crossmatch_algorithm(algorithm: CrossmatchAlgorithmType | BuiltInCrossmatchAlgorithm) -> CrossmatchAlgorithmType:
     if isinstance(algorithm, BuiltInCrossmatchAlgorithm):
-        return crossmatch_algorithms[algorithm]
+        return builtin_crossmatch_algorithms[algorithm]
     elif callable(algorithm):
         return algorithm
     raise TypeError("algorithm must be either callable or a string for a builtin algorithm")

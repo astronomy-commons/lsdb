@@ -10,8 +10,10 @@ from sklearn.neighbors import KDTree
 def kd_tree_crossmatch(
         left: pd.DataFrame,
         right: pd.DataFrame,
-        order: int,
-        pixel: int,
+        left_order: int,
+        left_pixel: int,
+        right_order: int,
+        right_pixel: int,
         left_metadata: hc.catalog.Catalog,
         right_metadata: hc.catalog.Catalog,
         suffixes: Tuple[str, str],
@@ -21,7 +23,7 @@ def kd_tree_crossmatch(
     left = left.copy(deep=False)
     right = right.copy(deep=False)
 
-    (clon, clat) = hp.pix2ang(hp.order2nside(order), pixel, nest=True, lonlat=True)
+    (clon, clat) = hp.pix2ang(hp.order2nside(left_order), left_pixel, nest=True, lonlat=True)
     left_md = {'ra_kw': left_metadata.catalog_info.ra_column,
                'dec_kw': left_metadata.catalog_info.dec_column}
     right_md = {'ra_kw': right_metadata.catalog_info.ra_column,
