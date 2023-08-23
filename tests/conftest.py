@@ -13,7 +13,8 @@ SMALL_SKY_NO_METADATA_DIR_NAME = "small_sky_no_metadata"
 SMALL_SKY_ORDER1_DIR_NAME = "small_sky_order1"
 XMATCH_CORRECT_FILE = "xmatch_correct.csv"
 XMATCH_CORRECT_005_FILE = "xmatch_correct_0_005.csv"
-XMATCH_CORRECT_3n_2t_FILE = "xmatch_correct_3n_2t_no_margin.csv"
+XMATCH_CORRECT_3n_2t_NO_MARGIN_FILE = "xmatch_correct_3n_2t_no_margin.csv"
+XMATCH_MOCK_FILE = "xmatch_mock.csv"
 TEST_DIR = os.path.dirname(__file__)
 
 
@@ -78,5 +79,10 @@ def xmatch_correct_005(small_sky_xmatch_dir):
 
 
 @pytest.fixture
-def xmatch_correct_3n_2t(small_sky_xmatch_dir):
-    return pd.read_csv(os.path.join(small_sky_xmatch_dir, XMATCH_CORRECT_3n_2t_FILE))
+def xmatch_correct_3n_2t_no_margin(small_sky_xmatch_dir):
+    return pd.read_csv(os.path.join(small_sky_xmatch_dir, XMATCH_CORRECT_3n_2t_NO_MARGIN_FILE))
+
+
+@pytest.fixture
+def xmatch_mock(small_sky_xmatch_dir):
+    return pd.read_csv(os.path.join(small_sky_xmatch_dir, XMATCH_MOCK_FILE))
