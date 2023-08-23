@@ -9,7 +9,10 @@ from hipscat.pixel_math import HealpixPixel
 
 from lsdb.catalog.dataset.dataset import Dataset
 from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorithm
-from lsdb.dask.crossmatch_catalog_data import crossmatch_catalog_data, CrossmatchAlgorithmType
+from lsdb.dask.crossmatch_catalog_data import (
+    crossmatch_catalog_data,
+    CrossmatchAlgorithmType,
+)
 
 DaskDFPixelMap = Dict[HealpixPixel, int]
 
@@ -78,13 +81,15 @@ class Catalog(Dataset):
     def name(self):
         return self.hc_structure.catalog_name
 
-    def crossmatch(self,
-                   other: Catalog,
-                   suffixes: Tuple[str, str] | None = None,
-                   algorithm: CrossmatchAlgorithmType | BuiltInCrossmatchAlgorithm = BuiltInCrossmatchAlgorithm.KD_TREE,
-                   name: str | None = None,
-                   **kwargs,
-                   ) -> Catalog:
+    def crossmatch(
+        self,
+        other: Catalog,
+        suffixes: Tuple[str, str] | None = None,
+        algorithm: CrossmatchAlgorithmType
+        | BuiltInCrossmatchAlgorithm = BuiltInCrossmatchAlgorithm.KD_TREE,
+        name: str | None = None,
+        **kwargs,
+    ) -> Catalog:
         """Perform a cross-match between two catalogs
 
         The pixels from each catalog are aligned via a `PixelAlignment`, and cross-matching is
@@ -141,11 +146,8 @@ class Catalog(Dataset):
         if name is None:
             name = f"{self.name}_x_{other.name}"
         ddf, ddf_map, alignment = crossmatch_catalog_data(
-            self,
-            other,
-            suffixes,
-            algorithm=algorithm,
-            **kwargs)
+            self, other, suffixes, algorithm=algorithm, **kwargs
+        )
         new_catalog_info = dataclasses.replace(
             self.hc_structure.catalog_info,
             catalog_name=name,

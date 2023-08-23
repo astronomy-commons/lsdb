@@ -61,7 +61,9 @@ class HipscatCatalogLoader:
             pixels.append(HealpixPixel(order, pixel))
         # Sort pixels by pixel number at highest order
         sorted_pixels = sorted(
-            pixels, key=lambda pixel: (4 ** (HIPSCAT_ID_HEALPIX_ORDER - pixel.order)) * pixel.pixel
+            pixels,
+            key=lambda pixel: (4 ** (HIPSCAT_ID_HEALPIX_ORDER - pixel.order))
+            * pixel.pixel,
         )
         return sorted_pixels
 
