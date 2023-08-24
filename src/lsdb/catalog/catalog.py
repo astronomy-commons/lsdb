@@ -79,6 +79,7 @@ class Catalog(Dataset):
 
     @property
     def name(self):
+        """The name of the catalog"""
         return self.hc_structure.catalog_name
 
     def crossmatch(
