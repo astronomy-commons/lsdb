@@ -160,10 +160,10 @@ def crossmatch_catalog_data(
 
     # generate meta table structure for dask df
     meta = {}
-    for name, t in left._ddf.dtypes.items():
-        meta[name + suffixes[0]] = pd.Series(dtype=t)
-    for name, t in right._ddf.dtypes.items():
-        meta[name + suffixes[1]] = pd.Series(dtype=t)
+    for name, col_type in left.dtypes.items():
+        meta[name + suffixes[0]] = pd.Series(dtype=col_type)
+    for name, col_type in right.dtypes.items():
+        meta[name + suffixes[1]] = pd.Series(dtype=col_type)
     meta["_DIST"] = pd.Series(dtype=np.dtype("float64"))
     meta_df = pd.DataFrame(meta)
     meta_df.index.name = "_hipscat_index"
@@ -189,7 +189,7 @@ def get_crossmatch_algorithm(
     """
     if isinstance(algorithm, BuiltInCrossmatchAlgorithm):
         return builtin_crossmatch_algorithms[algorithm]
-    elif callable(algorithm):
+    if callable(algorithm):
         return algorithm
     raise TypeError(
         "algorithm must be either callable or a string for a builtin algorithm"
@@ -215,7 +215,7 @@ def align_catalog_to_partitions(
         order they appear in the input dataframe
 
     """
-    dfs = catalog._ddf.to_delayed()
+    dfs = catalog.to_delayed()
     partitions = pixels.apply(
         lambda row: dfs[catalog.get_partition_index(row[order_col], row[pixel_col])],
         axis=1,

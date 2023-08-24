@@ -51,54 +51,19 @@ def kd_tree_crossmatch(
     left = left.copy(deep=False)
     right = right.copy(deep=False)
 
-    # calculate the gnomic distances to use with the KDTree
-    clon, clat = hp.pix2ang(
-        hp.order2nside(left_order), left_pixel, nest=True, lonlat=True
-    )
-    left_md = {
-        "ra_kw": left_metadata.catalog_info.ra_column,
-        "dec_kw": left_metadata.catalog_info.dec_column,
-    }
-    right_md = {
-        "ra_kw": right_metadata.catalog_info.ra_column,
-        "dec_kw": right_metadata.catalog_info.dec_column,
-    }
-    xy1 = frame_gnomonic(left, left_md, clon, clat)
-    xy2 = frame_gnomonic(right, right_md, clon, clat)
+    left_idx, right_idx = _find_crossmatch_indices(left, left_metadata, right, right_metadata,
+                                                   left_order, left_pixel, n_neighbors)
 
-    # construct the KDTree from the right catalog
-    tree = KDTree(xy2, leaf_size=2)
-    # find the indices for the nearest neighbors
-    # this is the cross-match calculation
-    dists, inds = tree.query(xy1, k=min([n_neighbors, len(xy2)]))
+    # filter indexes to only include rows with points within the distance threshold
+    distances, left_ids_filtered, right_ids_filtered = _filter_indexes_to_threshold(
+        d_thresh, left, left_idx, left_metadata.catalog_info, right, right_idx, right_metadata.catalog_info
+    )
 
     # rename columns so no same names during merging
     left_columns_renamed = {name: name + suffixes[0] for name in left.columns}
     left.rename(columns=left_columns_renamed, inplace=True)
     right_columns_renamed = {name: name + suffixes[1] for name in right.columns}
     right.rename(columns=right_columns_renamed, inplace=True)
-
-    left_md = {
-        "ra_kw": left_metadata.catalog_info.ra_column + suffixes[0],
-        "dec_kw": left_metadata.catalog_info.dec_column + suffixes[0],
-    }
-    right_md = {
-        "ra_kw": right_metadata.catalog_info.ra_column + suffixes[1],
-        "dec_kw": right_metadata.catalog_info.dec_column + suffixes[1],
-    }
-
-    # numpy indexing to join the two catalogs
-    # index of each row in the output table # (0... number of output rows)
-    outIdx = np.arange(len(left) * n_neighbors)
-    # index of the corresponding row in the left table (0, 0, 0, 1, 1, 1, 2, 2, 2, ...)
-    leftIdx = outIdx // n_neighbors
-    # index of the corresponding row in the right table (22, 33, 44, 55, 66, ...)
-    rightIdx = inds.ravel()
-
-    # filter indexes to only include rows with points within the distance threshold
-    distances, left_ids_filtered, right_ids_filtered = _filter_indexes_to_threshold(
-        d_thresh, left, leftIdx, left_md, right, rightIdx, right_md
-    )
 
     # concat dataframes together
     left.index.name = "_hipscat_index"
@@ -117,8 +82,30 @@ def kd_tree_crossmatch(
     return out
 
 
+def _find_crossmatch_indices(left, left_metadata, right, right_metadata, order, pixel, n_neighbors):
+    # calculate the gnomic distances to use with the KDTree
+    clon, clat = hp.pix2ang(
+        hp.order2nside(order), pixel, nest=True, lonlat=True
+    )
+    xy1 = frame_gnomonic(left, left_metadata.catalog_info, clon, clat)
+    xy2 = frame_gnomonic(right, right_metadata.catalog_info, clon, clat)
+    # construct the KDTree from the right catalog
+    tree = KDTree(xy2, leaf_size=2)
+    # find the indices for the nearest neighbors
+    # this is the cross-match calculation
+    _, inds = tree.query(xy1, k=min([n_neighbors, len(xy2)]))
+    # numpy indexing to join the two catalogs
+    # index of each row in the output table # (0... number of output rows)
+    out_idx = np.arange(len(left) * n_neighbors)
+    # index of the corresponding row in the left table (0, 0, 0, 1, 1, 1, 2, 2, 2, ...)
+    left_idx = out_idx // n_neighbors
+    # index of the corresponding row in the right table (22, 33, 44, 55, 66, ...)
+    right_idx = inds.ravel()
+    return left_idx, right_idx
+
+
 def _filter_indexes_to_threshold(
-    d_thresh, left, leftIdx, left_md, right, rightIdx, right_md
+    d_thresh, left, left_idx, left_catalog_info, right, right_idx, right_catalog_info
 ):
     """
     Filters indexes to merge dataframes to the points separated by distances within the threshold
@@ -126,29 +113,27 @@ def _filter_indexes_to_threshold(
     Returns:
         A tuple of (distances, filtered_left_indices, filtered_right_indices)
     """
-    # join the tables with just the ra and dec columns
-    left_radec = left[[left_md["ra_kw"], left_md["dec_kw"]]]
-    left_radec_join_part = left_radec.iloc[leftIdx].reset_index(drop=True)
-    right_radec = right[[right_md["ra_kw"], right_md["dec_kw"]]]
-    right_radec_join_part = right_radec.iloc[rightIdx].reset_index(drop=True)
-    merged_df = pd.concat([left_radec_join_part, right_radec_join_part], axis=1)
+    # align radec to indices
+    left_radec = left[[left_catalog_info.ra_column, left_catalog_info.dec_column]]
+    left_radec_aligned = left_radec.iloc[left_idx]
+    right_radec = right[[right_catalog_info.ra_column, right_catalog_info.dec_column]]
+    right_radec_aligned = right_radec.iloc[right_idx]
 
     # store the indices from each row
-    merged_df["_left_idx"] = leftIdx
-    merged_df["_right_idx"] = rightIdx
+    distances_df = pd.DataFrame.from_dict({"_left_idx": left_idx, "_right_idx": right_idx})
 
     # calculate distances of each pair
-    merged_df["_DIST"] = gc_dist(
-        merged_df[left_md["ra_kw"]],
-        merged_df[left_md["dec_kw"]],
-        merged_df[right_md["ra_kw"]],
-        merged_df[right_md["dec_kw"]],
+    distances_df["_DIST"] = gc_dist(
+        left_radec_aligned[left_catalog_info.ra_column].values,
+        left_radec_aligned[left_catalog_info.dec_column].values,
+        right_radec_aligned[right_catalog_info.ra_column].values,
+        right_radec_aligned[right_catalog_info.dec_column].values,
     )
     # cull based on the distance threshold
-    merged_df = merged_df.loc[merged_df["_DIST"] < d_thresh]
-    left_ids_filtered = merged_df["_left_idx"]
-    right_ids_filtered = merged_df["_right_idx"]
-    distances = merged_df["_DIST"].to_numpy()
+    distances_df = distances_df.loc[distances_df["_DIST"] < d_thresh]
+    left_ids_filtered = distances_df["_left_idx"]
+    right_ids_filtered = distances_df["_right_idx"]
+    distances = distances_df["_DIST"].to_numpy()
     return distances, left_ids_filtered, right_ids_filtered
 
 
@@ -177,15 +162,15 @@ def gc_dist(lon1, lat1, lon2, lat2):
     )
 
 
-def frame_gnomonic(df, df_md, clon, clat):
+def frame_gnomonic(df, catalog_info, clon, clat):
     """
     method taken from lsd1:
     creates a np.array of gnomonic distances for each source in the dataframe
     from the center of the ordered pixel. These values are passed into
     the kdtree NN query during the xmach routine.
     """
-    phi = np.radians(df[df_md["dec_kw"]].values)
-    l = np.radians(df[df_md["ra_kw"]].values)
+    phi = np.radians(df[catalog_info.ra_column].values)
+    l = np.radians(df[catalog_info.dec_column].values)
     phi1 = np.radians(clat)
     l0 = np.radians(clon)
 
