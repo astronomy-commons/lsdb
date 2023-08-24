@@ -169,8 +169,8 @@ def frame_gnomonic(df, catalog_info, clon, clat):
     from the center of the ordered pixel. These values are passed into
     the kdtree NN query during the xmach routine.
     """
-    phi = np.radians(df[catalog_info.ra_column].values)
-    l = np.radians(df[catalog_info.dec_column].values)
+    phi = np.radians(df[catalog_info.dec_column].values)
+    l = np.radians(df[catalog_info.ra_column].values)
     phi1 = np.radians(clat)
     l0 = np.radians(clon)
 
