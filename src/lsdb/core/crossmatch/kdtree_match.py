@@ -51,6 +51,7 @@ def kd_tree_crossmatch(
     left = left.copy(deep=False)
     right = right.copy(deep=False)
 
+    # get matching indices for cross-matched rows
     left_idx, right_idx = _find_crossmatch_indices(left, left_metadata, right, right_metadata,
                                                    left_order, left_pixel, n_neighbors)
 
@@ -60,10 +61,8 @@ def kd_tree_crossmatch(
     )
 
     # rename columns so no same names during merging
-    left_columns_renamed = {name: name + suffixes[0] for name in left.columns}
-    left.rename(columns=left_columns_renamed, inplace=True)
-    right_columns_renamed = {name: name + suffixes[1] for name in right.columns}
-    right.rename(columns=right_columns_renamed, inplace=True)
+    _rename_columns_with_suffix(left, suffixes[0])
+    _rename_columns_with_suffix(right, suffixes[1])
 
     # concat dataframes together
     left.index.name = "_hipscat_index"
@@ -80,6 +79,11 @@ def kd_tree_crossmatch(
     out["_DIST"] = distances
 
     return out
+
+
+def _rename_columns_with_suffix(dataframe, suffix):
+    columns_renamed = {name: name + suffix for name in dataframe.columns}
+    dataframe.rename(columns=columns_renamed, inplace=True)
 
 
 def _find_crossmatch_indices(left, left_metadata, right, right_metadata, order, pixel, n_neighbors):
