@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable, List, Tuple
+from typing import TYPE_CHECKING, List, Tuple, Type
 
 import dask
 import dask.dataframe as dd
@@ -10,18 +10,19 @@ from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.hipscat_id import healpix_to_hipscat_id
 from hipscat.pixel_tree import PixelAlignment, PixelAlignmentType, align_trees
 
-from lsdb.core.crossmatch.crossmatch_algorithms import \
-    BuiltInCrossmatchAlgorithm
-from lsdb.core.crossmatch.kdtree_match import kd_tree_crossmatch
+from lsdb.core.crossmatch.abstract_crossmatch_algorithm import (
+    AbstractCrossmatchAlgorithm,
+)
+from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorithm
+from lsdb.core.crossmatch.kdtree_match import KdTreeCrossmatch
 
 if TYPE_CHECKING:
     from lsdb.catalog.catalog import Catalog, DaskDFPixelMap
 
-builtin_crossmatch_algorithms = {BuiltInCrossmatchAlgorithm.KD_TREE: kd_tree_crossmatch}
-
-CrossmatchAlgorithmType = Callable[[pd.DataFrame, pd.DataFrame], pd.DataFrame]
+builtin_crossmatch_algorithms = {BuiltInCrossmatchAlgorithm.KD_TREE: KdTreeCrossmatch}
 
 
+# pylint: disable=too-many-arguments
 @dask.delayed
 def perform_crossmatch(
     algorithm,
@@ -55,15 +56,15 @@ def perform_crossmatch(
         left_hc_structure,
         right_hc_structure,
         suffixes,
-        **kwargs,
-    )
+    ).crossmatch(**kwargs)
 
 
+# pylint: disable=too-many-locals
 def crossmatch_catalog_data(
     left: Catalog,
     right: Catalog,
     suffixes: Tuple[str, str] | None = None,
-    algorithm: CrossmatchAlgorithmType
+    algorithm: Type[AbstractCrossmatchAlgorithm]
     | BuiltInCrossmatchAlgorithm = BuiltInCrossmatchAlgorithm.KD_TREE,
     **kwargs,
 ) -> Tuple[dd.core.DataFrame, DaskDFPixelMap, PixelAlignment]:
@@ -175,8 +176,8 @@ def crossmatch_catalog_data(
 
 
 def get_crossmatch_algorithm(
-    algorithm: CrossmatchAlgorithmType | BuiltInCrossmatchAlgorithm,
-) -> CrossmatchAlgorithmType:
+    algorithm: Type[AbstractCrossmatchAlgorithm] | BuiltInCrossmatchAlgorithm,
+) -> Type[AbstractCrossmatchAlgorithm]:
     """Gets the function to perform a cross-match algorithm
 
     Args:
@@ -189,7 +190,7 @@ def get_crossmatch_algorithm(
     """
     if isinstance(algorithm, BuiltInCrossmatchAlgorithm):
         return builtin_crossmatch_algorithms[algorithm]
-    if callable(algorithm):
+    if issubclass(algorithm, AbstractCrossmatchAlgorithm):
         return algorithm
     raise TypeError(
         "algorithm must be either callable or a string for a builtin algorithm"

@@ -1,17 +1,19 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import Dict, Tuple
+from typing import Dict, Tuple, Type
 
 import dask.dataframe as dd
 import hipscat as hc
 from hipscat.pixel_math import HealpixPixel
 
 from lsdb.catalog.dataset.dataset import Dataset
+from lsdb.core.crossmatch.abstract_crossmatch_algorithm import (
+    AbstractCrossmatchAlgorithm,
+)
 from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorithm
 from lsdb.dask.crossmatch_catalog_data import (
     crossmatch_catalog_data,
-    CrossmatchAlgorithmType,
 )
 
 DaskDFPixelMap = Dict[HealpixPixel, int]
@@ -86,7 +88,7 @@ class Catalog(Dataset):
         self,
         other: Catalog,
         suffixes: Tuple[str, str] | None = None,
-        algorithm: CrossmatchAlgorithmType
+        algorithm: Type[AbstractCrossmatchAlgorithm]
         | BuiltInCrossmatchAlgorithm = BuiltInCrossmatchAlgorithm.KD_TREE,
         name: str | None = None,
         **kwargs,
