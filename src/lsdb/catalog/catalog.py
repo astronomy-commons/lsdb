@@ -29,6 +29,8 @@ class Catalog(Dataset):
                       and metadata of the HiPSCat catalog
     """
 
+    hc_structure: hc.catalog.Catalog
+
     def __init__(
         self,
         ddf: dd.DataFrame,

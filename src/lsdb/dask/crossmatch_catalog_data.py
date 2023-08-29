@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, List, Tuple, Type
 
 import dask
+from dask.delayed import Delayed
 import dask.dataframe as dd
 import numpy as np
 import pandas as pd
@@ -63,7 +64,7 @@ def perform_crossmatch(
 def crossmatch_catalog_data(
     left: Catalog,
     right: Catalog,
-    suffixes: Tuple[str, str] | None = None,
+    suffixes: Tuple[str, str],
     algorithm: Type[AbstractCrossmatchAlgorithm]
     | BuiltInCrossmatchAlgorithm = BuiltInCrossmatchAlgorithm.KD_TREE,
     **kwargs,
@@ -202,7 +203,7 @@ def align_catalog_to_partitions(
     pixels: pd.DataFrame,
     order_col: str = "Norder",
     pixel_col: str = "Npix",
-) -> List[dask.delayed.Delayed]:
+) -> List[Delayed]:
     """Aligns the partitions of a Catalog to a dataframe with HEALPix pixels in each row
 
     Args:
