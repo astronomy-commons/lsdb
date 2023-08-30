@@ -112,19 +112,23 @@ class Catalog(Dataset):
                 name when they are joined. Default: uses the name of the catalog for the suffix
             algorithm (BuiltInCrossmatchAlgorithm | ufunc): The algorithm to use to perform the
                 crossmatch. Can be either a string to specify one of the built-in cross-matching
-                methods, or a function with a custom method.
+                methods, or a custom method defined by subclassing AbstractCrossmatchAlgorithm.
 
                 Built-in methods:
                     -`kd_tree`: find the k-nearest neighbors using a kd_tree
 
                 Custom function:
+                    To specify a custom function, write a class that subclasses the
+                    `AbstractCrossmatchAlgorithm` class, and overwrite the `crossmatch` function.
+
                     The function should be able to perform a crossmatch on two pandas DataFrames
                     from a HEALPix pixel from each catalog. It should return a dataframe with the
                     combined set of columns from the input dataframes with the appropriate suffixes,
                     and a column `_DIST` with the distance between the points.
 
-                    The signature of the function should be:
-                    crossmatch(
+                    The class will have been initialized with the following parameters, which the
+                    crossmatch function should use:
+
                         left: pd.DataFrame,
                         right: pd.DataFrame,
                         left_order: int,
@@ -133,9 +137,12 @@ class Catalog(Dataset):
                         right_pixel: int,
                         left_metadata: hc.catalog.Catalog,
                         right_metadata: hc.catalog.Catalog,
-                        suffixes: Tuple[str, str],
-                        **kwargs:
-                    )
+                        suffixes: Tuple[str, str]
+
+                    You may add any additional keyword argument parameters to the crossmatch
+                    function definition, and the user will be able to pass them in as kwargs in the
+                    `Catalog.crossmatch` method.
+
             name (str): The name of the resulting catalog. Default: {left_name}_x_{right_name}
 
         Returns:
