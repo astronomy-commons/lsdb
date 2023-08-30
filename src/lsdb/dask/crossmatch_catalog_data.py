@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Tuple, Type
+from typing import TYPE_CHECKING, List, Tuple, Type, cast
 
 import dask
 from dask.delayed import Delayed
@@ -172,6 +172,7 @@ def crossmatch_catalog_data(
 
     # create dask df from delayed partitions
     ddf = dd.from_delayed(joined_partitions, meta=meta_df)
+    ddf = cast(dd.DataFrame, ddf)
 
     return ddf, partition_map, alignment
 
