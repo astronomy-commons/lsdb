@@ -156,10 +156,10 @@ class Catalog(Dataset):
             {AbstractCrossmatchAlgorithm.DISTANCE_COLUMN_NAME} with the great circle separation
             between the points.
         """
-        if len(suffixes) != 2:
-            raise ValueError("`suffixes` must be a tuple with two strings")
         if suffixes is None:
             suffixes = (f"_{self.name}", f"_{other.name}")
+        if len(suffixes) != 2:
+            raise ValueError("`suffixes` must be a tuple with two strings")
         if output_catalog_name is None:
             output_catalog_name = f"{self.name}_x_{other.name}"
         ddf, ddf_map, alignment = crossmatch_catalog_data(
