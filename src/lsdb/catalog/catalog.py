@@ -110,9 +110,10 @@ class Catalog(Dataset):
             other (Catalog): The right catalog to cross-match against
             suffixes (Tuple[str, str]): A pair of suffixes to be appended to the end of each column
                 name when they are joined. Default: uses the name of the catalog for the suffix
-            algorithm (BuiltInCrossmatchAlgorithm | ufunc): The algorithm to use to perform the
-                crossmatch. Can be either a string to specify one of the built-in cross-matching
-                methods, or a custom method defined by subclassing AbstractCrossmatchAlgorithm.
+            algorithm (BuiltInCrossmatchAlgorithm | Type[AbstractCrossmatchAlgorithm]): The
+                algorithm to use to perform the crossmatch. Can be either a string to specify one of
+                the built-in cross-matching methods, or a custom method defined by subclassing
+                AbstractCrossmatchAlgorithm.
 
                 Built-in methods:
                     -`kd_tree`: find the k-nearest neighbors using a kd_tree
