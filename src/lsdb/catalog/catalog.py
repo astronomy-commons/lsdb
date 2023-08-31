@@ -130,21 +130,22 @@ class Catalog(Dataset):
                     The class will have been initialized with the following parameters, which the
                     crossmatch function should use:
 
-                        left: pd.DataFrame,
-                        right: pd.DataFrame,
-                        left_order: int,
-                        left_pixel: int,
-                        right_order: int,
-                        right_pixel: int,
-                        left_metadata: hc.catalog.Catalog,
-                        right_metadata: hc.catalog.Catalog,
-                        suffixes: Tuple[str, str]
+                        - left: pd.DataFrame,
+                        - right: pd.DataFrame,
+                        - left_order: int,
+                        - left_pixel: int,
+                        - right_order: int,
+                        - right_pixel: int,
+                        - left_metadata: hc.catalog.Catalog,
+                        - right_metadata: hc.catalog.Catalog,
+                        - suffixes: Tuple[str, str]
 
                     You may add any additional keyword argument parameters to the crossmatch
                     function definition, and the user will be able to pass them in as kwargs in the
                     `Catalog.crossmatch` method.
 
-            output_catalog_name (str): The name of the resulting catalog. Default: {left_name}_x_{right_name}
+            output_catalog_name (str): The name of the resulting catalog.
+                Default: {left_name}_x_{right_name}
 
         Returns:
             A Catalog with the data from the left and right catalogs merged with one row for each
