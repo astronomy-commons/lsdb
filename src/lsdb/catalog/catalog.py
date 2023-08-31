@@ -143,7 +143,7 @@ class Catalog(Dataset):
                     function definition, and the user will be able to pass them in as kwargs in the
                     `Catalog.crossmatch` method.
 
-            name (str): The name of the resulting catalog. Default: {left_name}_x_{right_name}
+            output_catalog_name (str): The name of the resulting catalog. Default: {left_name}_x_{right_name}
 
         Returns:
             A Catalog with the data from the left and right catalogs merged with one row for each
@@ -155,14 +155,14 @@ class Catalog(Dataset):
         """
         if suffixes is None:
             suffixes = (f"_{self.name}", f"_{other.name}")
-        if name is None:
-            name = f"{self.name}_x_{other.name}"
+        if output_catalog_name is None:
+            output_catalog_name = f"{self.name}_x_{other.name}"
         ddf, ddf_map, alignment = crossmatch_catalog_data(
             self, other, suffixes, algorithm=algorithm, **kwargs
         )
         new_catalog_info = dataclasses.replace(
             self.hc_structure.catalog_info,
-            catalog_name=name,
+            catalog_name=output_catalog_name,
             ra_column=self.hc_structure.catalog_info.ra_column + suffixes[0],
             dec_column=self.hc_structure.catalog_info.dec_column + suffixes[0],
         )
