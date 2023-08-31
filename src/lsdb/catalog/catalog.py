@@ -92,7 +92,7 @@ class Catalog(Dataset):
         suffixes: Tuple[str, str] | None = None,
         algorithm: Type[AbstractCrossmatchAlgorithm]
         | BuiltInCrossmatchAlgorithm = BuiltInCrossmatchAlgorithm.KD_TREE,
-        name: str | None = None,
+        output_catalog_name: str | None = None,
         **kwargs,
     ) -> Catalog:
         """Perform a cross-match between two catalogs
