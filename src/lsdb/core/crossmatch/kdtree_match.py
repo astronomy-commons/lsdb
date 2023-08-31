@@ -23,13 +23,14 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
 
         Args:
             n_neighbors (int): The number of neighbors to find within each point
-            d_thresh (float): The threshold distance beyond which neighbors are not added
+            d_thresh (float): The threshold distance in degrees beyond which neighbors are not added
 
         Returns:
             A DataFrame from the left and right tables merged with one row for each pair of
             neighbors found from cross-matching. The resulting table contains the columns from the
             left table with the first suffix appended, the right columns with the second suffix, and
-            a `_DIST` column with the great circle separation between the points.
+            a column with the name {AbstractCrossmatchAlgorithm.DISTANCE_COLUMN_NAME} with the
+            great circle separation between the points.
         """
 
         # get matching indices for cross-matched rows
@@ -64,15 +65,9 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
 
     def _find_crossmatch_indices(self, n_neighbors):
         # calculate the gnomic distances to use with the KDTree
-        clon, clat = hp.pix2ang(
-            hp.order2nside(self.left_order), self.left_pixel, nest=True, lonlat=True
-        )
-        xy1 = self._frame_gnomonic(
-            self.left, self.left_metadata.catalog_info, clon, clat
-        )
-        xy2 = self._frame_gnomonic(
-            self.right, self.right_metadata.catalog_info, clon, clat
-        )
+        clon, clat = hp.pix2ang(hp.order2nside(self.left_order), self.left_pixel, nest=True, lonlat=True)
+        xy1 = _frame_gnomonic(self.left, self.left_metadata.catalog_info, clon, clat)
+        xy2 = _frame_gnomonic(self.right, self.right_metadata.catalog_info, clon, clat)
         # construct the KDTree from the right catalog
         tree = KDTree(xy2, leaf_size=2)
         # find the indices for the nearest neighbors
@@ -98,80 +93,70 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
         left_catalog_info = self.left_metadata.catalog_info
         right_catalog_info = self.right_metadata.catalog_info
         # align radec to indices
-        left_radec = self.left[
-            [left_catalog_info.ra_column, left_catalog_info.dec_column]
-        ]
+        left_radec = self.left[[left_catalog_info.ra_column, left_catalog_info.dec_column]]
         left_radec_aligned = left_radec.iloc[left_idx]
-        right_radec = self.right[
-            [right_catalog_info.ra_column, right_catalog_info.dec_column]
-        ]
+        right_radec = self.right[[right_catalog_info.ra_column, right_catalog_info.dec_column]]
         right_radec_aligned = right_radec.iloc[right_idx]
 
         # store the indices from each row
-        distances_df = pd.DataFrame.from_dict(
-            {"_left_idx": left_idx, "_right_idx": right_idx}
-        )
+        distances_df = pd.DataFrame.from_dict({"_left_idx": left_idx, "_right_idx": right_idx})
 
         # calculate distances of each pair
-        distances_df["_DIST"] = self._gc_dist(
+        distances_df[self.DISTANCE_COLUMN_NAME] = _great_circle_dist(
             left_radec_aligned[left_catalog_info.ra_column].values,
             left_radec_aligned[left_catalog_info.dec_column].values,
             right_radec_aligned[right_catalog_info.ra_column].values,
             right_radec_aligned[right_catalog_info.dec_column].values,
         )
         # cull based on the distance threshold
-        distances_df = distances_df.loc[distances_df["_DIST"] < d_thresh]
+        distances_df = distances_df.loc[distances_df[self.DISTANCE_COLUMN_NAME] < d_thresh]
         left_ids_filtered = distances_df["_left_idx"]
         right_ids_filtered = distances_df["_right_idx"]
-        distances = distances_df["_DIST"].to_numpy()
+        distances = distances_df[self.DISTANCE_COLUMN_NAME].to_numpy()
         return distances, left_ids_filtered, right_ids_filtered
 
-    @staticmethod
-    def _gc_dist(lon1, lat1, lon2, lat2):
-        """
-        function that calculates the distance between two points
-            p1 (lon1, lat1) or (ra1, dec1)
-            p2 (lon2, lat2) or (ra2, dec2)
 
-            can be np.array()
-            returns np.array()
-        """
-        lon1 = np.radians(lon1)
-        lat1 = np.radians(lat1)
-        lon2 = np.radians(lon2)
-        lat2 = np.radians(lat2)
+def _great_circle_dist(lon1, lat1, lon2, lat2):
+    """
+    function that calculates the distance between two points
+        p1 (lon1, lat1) or (ra1, dec1)
+        p2 (lon2, lat2) or (ra2, dec2)
 
-        return np.degrees(
-            2
-            * np.arcsin(
-                np.sqrt(
-                    (np.sin((lat1 - lat2) * 0.5)) ** 2
-                    + np.cos(lat1) * np.cos(lat2) * (np.sin((lon1 - lon2) * 0.5)) ** 2
-                )
+        can be np.array()
+        returns np.array()
+    """
+    lon1 = np.radians(lon1)
+    lat1 = np.radians(lat1)
+    lon2 = np.radians(lon2)
+    lat2 = np.radians(lat2)
+
+    return np.degrees(
+        2
+        * np.arcsin(
+            np.sqrt(
+                (np.sin((lat1 - lat2) * 0.5)) ** 2
+                + np.cos(lat1) * np.cos(lat2) * (np.sin((lon1 - lon2) * 0.5)) ** 2
             )
         )
+    )
 
-    @staticmethod
-    def _frame_gnomonic(data_frame, catalog_info, clon, clat):
-        """
-        method taken from lsd1:
-        creates a np.array of gnomonic distances for each source in the dataframe
-        from the center of the ordered pixel. These values are passed into
-        the kdtree NN query during the xmach routine.
-        """
-        phi = np.radians(data_frame[catalog_info.dec_column].values)
-        lam = np.radians(data_frame[catalog_info.ra_column].values)
-        phi1 = np.radians(clat)
-        lam0 = np.radians(clon)
 
-        cosc = np.sin(phi1) * np.sin(phi) + np.cos(phi1) * np.cos(phi) * np.cos(
-            lam - lam0
-        )
-        x_projected = np.cos(phi) * np.sin(lam - lam0) / cosc
-        y_projected = (
-            np.cos(phi1) * np.sin(phi) - np.sin(phi1) * np.cos(phi) * np.cos(lam - lam0)
-        ) / cosc
+def _frame_gnomonic(data_frame, catalog_info, clon, clat):
+    """
+    method taken from lsd1:
+    creates a np.array of gnomonic distances for each source in the dataframe
+    from the center of the ordered pixel. These values are passed into
+    the kdtree NN query during the xmach routine.
+    """
+    phi = np.radians(data_frame[catalog_info.dec_column].values)
+    lam = np.radians(data_frame[catalog_info.ra_column].values)
+    phi1 = np.radians(clat)
+    lam0 = np.radians(clon)
 
-        ret = np.column_stack((np.degrees(x_projected), np.degrees(y_projected)))
-        del phi, lam, phi1, lam0, cosc, x_projected, y_projected
-        return ret
+    cosc = np.sin(phi1) * np.sin(phi) + np.cos(phi1) * np.cos(phi) * np.cos(lam - lam0)
+    x_projected = np.cos(phi) * np.sin(lam - lam0) / cosc
+    y_projected = (np.cos(phi1) * np.sin(phi) - np.sin(phi1) * np.cos(phi) * np.cos(lam - lam0)) / cosc
+
+    ret = np.column_stack((np.degrees(x_projected), np.degrees(y_projected)))
+    del phi, lam, phi1, lam0, cosc, x_projected, y_projected
+    return ret

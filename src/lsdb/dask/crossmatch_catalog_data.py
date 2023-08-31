@@ -111,22 +111,12 @@ def crossmatch_catalog_data(
     )
 
     # get lists of HEALPix pixels from alignment to pass to cross-match
-    left_orders = [
-        row[PixelAlignment.PRIMARY_ORDER_COLUMN_NAME]
-        for _, row in join_pixels.iterrows()
-    ]
-    left_pixels = [
-        row[PixelAlignment.PRIMARY_PIXEL_COLUMN_NAME]
-        for _, row in join_pixels.iterrows()
-    ]
-    right_orders = [
-        row[PixelAlignment.JOIN_ORDER_COLUMN_NAME] for _, row in join_pixels.iterrows()
-    ]
-    right_pixels = [
-        row[PixelAlignment.JOIN_PIXEL_COLUMN_NAME] for _, row in join_pixels.iterrows()
-    ]
+    left_orders = [row[PixelAlignment.PRIMARY_ORDER_COLUMN_NAME] for _, row in join_pixels.iterrows()]
+    left_pixels = [row[PixelAlignment.PRIMARY_PIXEL_COLUMN_NAME] for _, row in join_pixels.iterrows()]
+    right_orders = [row[PixelAlignment.JOIN_ORDER_COLUMN_NAME] for _, row in join_pixels.iterrows()]
+    right_pixels = [row[PixelAlignment.JOIN_PIXEL_COLUMN_NAME] for _, row in join_pixels.iterrows()]
 
-    # perform the crossmatch on each partition pairing using dask delayed for laziness
+    # perform the crossmatch on each partition pairing using dask delayed for lazy computation
     joined_partitions = [
         perform_crossmatch(
             crossmatch_algorithm,
@@ -194,9 +184,7 @@ def get_crossmatch_algorithm(
         return builtin_crossmatch_algorithms[algorithm]
     if issubclass(algorithm, AbstractCrossmatchAlgorithm):
         return algorithm
-    raise TypeError(
-        "algorithm must be either callable or a string for a builtin algorithm"
-    )
+    raise TypeError("algorithm must be either callable or a string for a builtin algorithm")
 
 
 def align_catalog_to_partitions(

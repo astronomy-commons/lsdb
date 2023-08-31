@@ -9,6 +9,8 @@ import pandas as pd
 class AbstractCrossmatchAlgorithm(ABC):
     """Abstract class used to write a crossmatch algorithm"""
 
+    DISTANCE_COLUMN_NAME = "_DIST"
+
     # pylint: disable=too-many-instance-attributes, too-many-arguments
     def __init__(
         self,

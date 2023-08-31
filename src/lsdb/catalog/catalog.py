@@ -124,7 +124,8 @@ class Catalog(Dataset):
                     The function should be able to perform a crossmatch on two pandas DataFrames
                     from a HEALPix pixel from each catalog. It should return a dataframe with the
                     combined set of columns from the input dataframes with the appropriate suffixes,
-                    and a column `_DIST` with the distance between the points.
+                    and a column with the name {AbstractCrossmatchAlgorithm.DISTANCE_COLUMN_NAME}
+                    with the distance between the points.
 
                     The class will have been initialized with the following parameters, which the
                     crossmatch function should use:
@@ -150,9 +151,12 @@ class Catalog(Dataset):
             pair of neighbors found from cross-matching.
 
             The resulting table contains all columns from the left and right catalogs with their
-            respective suffixes, and a `_DIST` column with the great circle separation between the
-            points.
+            respective suffixes, and a column with the name
+            {AbstractCrossmatchAlgorithm.DISTANCE_COLUMN_NAME} with the great circle separation
+            between the points.
         """
+        if len(suffixes) != 2:
+            raise ValueError("`suffixes` must be a tuple with two strings")
         if suffixes is None:
             suffixes = (f"_{self.name}", f"_{other.name}")
         if output_catalog_name is None:
