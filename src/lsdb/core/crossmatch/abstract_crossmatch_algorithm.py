@@ -6,12 +6,12 @@ import hipscat as hc
 import pandas as pd
 
 
+# pylint: disable=too-many-instance-attributes, too-many-arguments
 class AbstractCrossmatchAlgorithm(ABC):
     """Abstract class used to write a crossmatch algorithm"""
 
     DISTANCE_COLUMN_NAME = "_DIST"
 
-    # pylint: disable=too-many-instance-attributes, too-many-arguments
     def __init__(
         self,
         left: pd.DataFrame,
