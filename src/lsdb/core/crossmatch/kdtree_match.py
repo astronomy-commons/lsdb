@@ -1,11 +1,9 @@
+import healpy as hp
 import numpy as np
 import pandas as pd
-import healpy as hp
 from sklearn.neighbors import KDTree
 
-from lsdb.core.crossmatch.abstract_crossmatch_algorithm import (
-    AbstractCrossmatchAlgorithm,
-)
+from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
 
 
 class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):

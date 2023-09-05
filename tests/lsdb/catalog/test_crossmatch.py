@@ -54,6 +54,11 @@ def test_custom_crossmatch_algorithm(small_sky_catalog, small_sky_xmatch_catalog
         assert xmatch_row["_DIST"].values == pytest.approx(correct_row["dist"])
 
 
+def test_wrong_suffixes(small_sky_catalog, small_sky_xmatch_catalog):
+    with pytest.raises(ValueError):
+        small_sky_catalog.crossmatch(small_sky_xmatch_catalog, suffixes=("wrong",))
+
+
 class MockCrossmatchAlgorithm(AbstractCrossmatchAlgorithm):
     def crossmatch(self, mock_results: pd.DataFrame = None):
         left_reset = self.left.reset_index(drop=True)

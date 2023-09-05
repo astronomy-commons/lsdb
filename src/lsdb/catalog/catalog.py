@@ -8,13 +8,9 @@ import hipscat as hc
 from hipscat.pixel_math import HealpixPixel
 
 from lsdb.catalog.dataset.dataset import Dataset
-from lsdb.core.crossmatch.abstract_crossmatch_algorithm import (
-    AbstractCrossmatchAlgorithm,
-)
+from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
 from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorithm
-from lsdb.dask.crossmatch_catalog_data import (
-    crossmatch_catalog_data,
-)
+from lsdb.dask.crossmatch_catalog_data import crossmatch_catalog_data
 
 DaskDFPixelMap = Dict[HealpixPixel, int]
 

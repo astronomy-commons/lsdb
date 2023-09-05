@@ -3,17 +3,15 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, List, Tuple, Type, cast
 
 import dask
-from dask.delayed import Delayed
 import dask.dataframe as dd
 import numpy as np
 import pandas as pd
+from dask.delayed import Delayed
 from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.hipscat_id import healpix_to_hipscat_id
 from hipscat.pixel_tree import PixelAlignment, PixelAlignmentType, align_trees
 
-from lsdb.core.crossmatch.abstract_crossmatch_algorithm import (
-    AbstractCrossmatchAlgorithm,
-)
+from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
 from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorithm
 from lsdb.core.crossmatch.kdtree_match import KdTreeCrossmatch
 

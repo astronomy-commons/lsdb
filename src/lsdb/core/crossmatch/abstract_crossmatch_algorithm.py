@@ -2,7 +2,6 @@ from abc import ABC, abstractmethod
 from typing import Tuple
 
 import hipscat as hc
-
 import pandas as pd
 
 

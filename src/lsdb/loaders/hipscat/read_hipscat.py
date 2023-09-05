@@ -9,10 +9,7 @@ from hipscat.catalog.dataset import BaseCatalogInfo
 
 from lsdb.catalog.catalog import Catalog
 from lsdb.catalog.dataset.dataset import Dataset
-from lsdb.loaders.hipscat.hipscat_loader_factory import (
-    CatalogTypeVar,
-    get_loader_for_type,
-)
+from lsdb.loaders.hipscat.hipscat_loader_factory import CatalogTypeVar, get_loader_for_type
 from lsdb.loaders.hipscat.hipscat_loading_config import HipscatLoadingConfig
 
 dataset_class_for_catalog_type: Dict[CatalogType, Type[Dataset]] = {
