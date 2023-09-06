@@ -34,7 +34,15 @@ dev = [
     "sphinx==6.1.3", # Used to automatically generate documentation
     "sphinx-rtd-theme==1.2.0", # Used to render documentation
     "sphinx-autoapi==2.0.1", # Used to automatically generate api documentation
-] 
+    # if you add dependencies here while experimenting in a notebook and you
+    # want that notebook to render in your documentation, please add the
+    # dependencies to ./docs/requirements.txt as well.
+    "nbconvert", # Needed for pre-commit check to clear output from Python notebooks
+    "nbsphinx", # Used to integrate Python notebooks into Sphinx documentation
+    "ipython", # Also used in building notebooks into Sphinx
+    "asv", # Used to compute performance benchmarks
+]
+
 [build-system]
 requires = [
     "setuptools>=62", # Used to build and package the Python project

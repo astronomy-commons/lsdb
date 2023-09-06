@@ -29,6 +29,7 @@ version = ".".join(release.split(".")[:2])
 extensions = ["sphinx.ext.mathjax", "sphinx.ext.napoleon", "sphinx.ext.viewcode"]
 
 extensions.append("autoapi.extension")
+extensions.append("nbsphinx")
 
 templates_path = []
 exclude_patterns = ["_build", "**.ipynb_checkpoints"]
