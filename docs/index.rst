@@ -10,7 +10,4 @@ Welcome to lsdb's documentation!
 
    Home page <self>
    API Reference <autoapi/index>
-<<<<<<< before updating
-=======
    Notebooks <notebooks>
->>>>>>> after updating
