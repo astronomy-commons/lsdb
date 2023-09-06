@@ -138,3 +138,13 @@ dask-worker-space/
 
 # tmp directory
 tmp/
+
+# benchmarking
+_results/
+_html/
+
+# Mac OS
+.DS_Store
+
+# IntelliJ
+.idea
