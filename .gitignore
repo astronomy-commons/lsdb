@@ -148,3 +148,7 @@ _html/
 
 # IntelliJ
 .idea
+
+# Airspeed Velocity performance results
+_results/
+_html/
