@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import Dict, Tuple, Type
+from typing import Dict, Tuple, Type, cast
 
 import dask.dataframe as dd
 import hipscat as hc
@@ -207,5 +207,6 @@ class Catalog(Dataset):
             cone_filter(partition, ra, dec, radius, self.hc_structure) for partition in partitions_in_cone
         ]
         cone_search_ddf = dd.from_delayed(filtered_partitions, meta=self._ddf._meta)
+        cone_search_ddf = cast(dd.DataFrame, cone_search_ddf)
         ddf_partition_map = {pixel: i for i, pixel in enumerate(pixels_in_cone)}
         return Catalog(cone_search_ddf, ddf_partition_map, filtered_hc_structure)
