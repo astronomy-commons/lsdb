@@ -186,9 +186,9 @@ class Catalog(Dataset):
         Filters partitions in the catalog to those that have some overlap with the cone.
 
         Args:
-            ra: Right Ascension of the center of the cone in degrees
-            dec: Declination of the center of the cone in degrees
-            radius: Radius of the cone in degrees
+            ra (float): Right Ascension of the center of the cone in degrees
+            dec (float): Declination of the center of the cone in degrees
+            radius (float): Radius of the cone in degrees
 
         Returns:
             A new Catalog containing the points filtered to those within the cone, and the partitions that
