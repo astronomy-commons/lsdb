@@ -1,1 +1,1 @@
-[{"name": "benchmarks.time_crossmatch", "idx": null, "pretty_name": "benchmarks.time_crossmatch", "last_rev": 80, "last_value": 0.05815213050000523, "last_err": 0.0, "prev_value": 0.04973857299999196, "change_rev": [77, 80]}]
+[{"name": "benchmarks.time_crossmatch", "idx": null, "pretty_name": "benchmarks.time_crossmatch", "last_rev": 85, "last_value": 0.04925399200001834, "last_err": 0.0034878430988061117, "prev_value": null, "change_rev": null}]
