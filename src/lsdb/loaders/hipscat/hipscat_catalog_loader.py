@@ -80,7 +80,10 @@ class HipscatCatalogLoader:
         metadata_schema = self._load_parquet_metadata_schema(catalog, paths)
         dask_meta_schema = metadata_schema.empty_table().to_pandas()
         ddf = dd.from_map(
-            file_io.read_parquet_file_to_pandas, paths, storage_options=self.storage_options, meta=dask_meta_schema
+            file_io.read_parquet_file_to_pandas,
+            paths,
+            storage_options=self.storage_options,
+            meta=dask_meta_schema
         )
         return ddf
 
