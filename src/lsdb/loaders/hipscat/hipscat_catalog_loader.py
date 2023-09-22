@@ -6,7 +6,7 @@ import pyarrow
 from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_HEALPIX_ORDER
 
-from lsdb import io
+from hipscat.io.file_io import file_io, file_pointer
 from lsdb.catalog.catalog import Catalog, DaskDFPixelMap
 from lsdb.loaders.hipscat.hipscat_loading_config import HipscatLoadingConfig
 
@@ -80,7 +80,7 @@ class HipscatCatalogLoader:
         metadata_schema = self._load_parquet_metadata_schema(catalog, paths)
         dask_meta_schema = metadata_schema.empty_table().to_pandas()
         ddf = dd.from_map(
-            io.read_parquet_file_to_pandas, paths, storage_options=self.storage_options, meta=dask_meta_schema
+            file_io.read_parquet_file_to_pandas, paths, storage_options=self.storage_options, meta=dask_meta_schema
         )
         return ddf
 
@@ -88,6 +88,8 @@ class HipscatCatalogLoader:
         self, catalog: hc.catalog.Catalog, paths: List[hc.io.FilePointer]
     ) -> pyarrow.Schema:
         metadata_pointer = hc.io.paths.get_parquet_metadata_pointer(catalog.catalog_base_dir)
-        if hc.io.file_io.does_file_or_directory_exist(metadata_pointer, storage_options=self.storage_options):
-            return io.read_parquet_schema(metadata_pointer, storage_options=self.storage_options)
-        return io.read_parquet_schema(paths[0], storage_options=self.storage_options)
+        if file_pointer.does_file_or_directory_exist(metadata_pointer, storage_options=self.storage_options):
+            metadata = file_io.read_parquet_metadata(metadata_pointer, storage_options=self.storage_options)
+            return metadata.schema.to_arrow_schema()
+        metadata = file_io.read_parquet_metadata(paths[0], storage_options=self.storage_options)
+        return metadata.schema.to_arrow_schema()
