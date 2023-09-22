@@ -1,0 +1,12 @@
+{
+    "catalog_name": "small_sky_order1",
+    "catalog_type": "source",
+    "version": "0.0.0",
+    "generation_date": "2022.12.21",
+    "epoch": "J2000",
+    "ra_kw": "ra",
+    "dec_kw": "dec",
+    "id_kw": "id",
+    "total_objects": 131,
+    "pixel_threshold": 50
+}
