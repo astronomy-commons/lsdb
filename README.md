@@ -5,9 +5,9 @@
 
 [![Template](https://img.shields.io/badge/Template-LINCC%20Frameworks%20Python%20Project%20Template-brightgreen)](https://lincc-ppt.readthedocs.io/en/latest/)
 
-![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/astronomy-commons/lsdb)
+[![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/astronomy-commons/lsdb)](https://pypi.org/project/lsdb/)
 ![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/astronomy-commons/lsdb/testing-and-coverage.yml)
-![Read the Docs](https://img.shields.io/readthedocs/lsdb)
+[![Read the Docs](https://img.shields.io/readthedocs/lsdb)](https://lsdb.readthedocs.io/en/latest/)
 
 ## LSDB - Large Survey DataBase
 
