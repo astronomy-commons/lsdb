@@ -58,7 +58,6 @@ def _get_dataset_class_from_catalog_info(
     ) -> Type[Dataset]:
     base_catalog_dir = hc.io.get_file_pointer_from_path(base_catalog_path)
     catalog_info_path = hc.io.paths.get_catalog_info_pointer(base_catalog_dir)
-    print(catalog_info_path, storage_options)
     catalog_info = BaseCatalogInfo.read_from_metadata_file(catalog_info_path, storage_options=storage_options)
     catalog_type = catalog_info.catalog_type
     if catalog_type not in dataset_class_for_catalog_type:
