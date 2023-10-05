@@ -1,2 +1,2 @@
 from .catalog import Catalog
-from .loaders import read_hipscat
+from .loaders import read_dataframe, read_hipscat
