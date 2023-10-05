@@ -44,7 +44,7 @@ def perform_crossmatch(
     if right_order > left_order:
         lower_bound = healpix_to_hipscat_id(right_order, right_pixel)
         upper_bound = healpix_to_hipscat_id(right_order, right_pixel + 1)
-        left_df = left_df[(left_df.index > lower_bound) & (left_df.index < upper_bound)]
+        left_df = left_df[(left_df.index >= lower_bound) & (left_df.index < upper_bound)]
     return algorithm(
         left_df,
         right_df,
