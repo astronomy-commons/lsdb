@@ -1,8 +1,8 @@
-from typing import List, Tuple
+from typing import List, Tuple, Union, Dict
 
-import pyarrow
 import dask.dataframe as dd
 import hipscat as hc
+import pyarrow
 from hipscat.io.file_io import file_io, file_pointer
 from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_HEALPIX_ORDER
@@ -14,7 +14,9 @@ from lsdb.loaders.hipscat.hipscat_loading_config import HipscatLoadingConfig
 class HipscatCatalogLoader:
     """Loads a HiPSCat formatted Catalog"""
 
-    def __init__(self, path: str, config: HipscatLoadingConfig, storage_options: dict = None) -> None:
+    def __init__(
+            self, path: str, config: HipscatLoadingConfig, 
+            storage_options: Union[Dict[s, str], None] = None) -> None:
         """Initializes a HipscatCatalogLoader
 
         Args:

@@ -1,7 +1,4 @@
-from typing import Tuple
-
 import pandas as pd
-import hipscat as hc
 import pytest
 
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
