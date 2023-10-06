@@ -15,8 +15,8 @@ class HipscatCatalogLoader:
     """Loads a HiPSCat formatted Catalog"""
 
     def __init__(
-            self, path: str, config: HipscatLoadingConfig, 
-            storage_options: Union[Dict[s, str], None] = None) -> None:
+            self, path: str, config: HipscatLoadingConfig,
+            storage_options: Union[Dict[str, str], None] = None) -> None:
         """Initializes a HipscatCatalogLoader
 
         Args:
