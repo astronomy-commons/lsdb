@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import Dict, Type
+from typing import Any, Dict, Type, Union
 
 import hipscat as hc
 from hipscat.catalog import CatalogType
@@ -21,7 +21,7 @@ dataset_class_for_catalog_type: Dict[CatalogType, Type[Dataset]] = {
 def read_hipscat(
     path: str,
     catalog_type: Type[CatalogTypeVar] | None = None,
-    storage_options: dict = None
+    storage_options: Union[Dict[Any, Any], None] = None
 ) -> CatalogTypeVar | Dataset:
     """Load a catalog from a HiPSCat formatted catalog.
 

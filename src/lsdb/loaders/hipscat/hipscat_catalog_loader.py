@@ -1,4 +1,4 @@
-from typing import List, Tuple, Union, Dict
+from typing import Any, Dict, List, Tuple, Union
 
 import dask.dataframe as dd
 import hipscat as hc
@@ -16,7 +16,7 @@ class HipscatCatalogLoader:
 
     def __init__(
             self, path: str, config: HipscatLoadingConfig,
-            storage_options: Union[Dict[str, str], None] = None) -> None:
+            storage_options: Union[Dict[Any, Any], None] = None) -> None:
         """Initializes a HipscatCatalogLoader
 
         Args:
