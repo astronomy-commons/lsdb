@@ -5,6 +5,7 @@ import hipscat as hc
 import pandas as pd
 from dask import delayed
 from hipscat.catalog.catalog_info import CatalogInfo
+from hipscat.io import FilePointer, get_file_pointer_from_path
 from hipscat.pixel_math import generate_histogram, HealpixPixel
 from hipscat.pixel_math.hipscat_id import healpix_to_hipscat_id, compute_hipscat_id
 
@@ -25,9 +26,16 @@ class DataframeCatalogLoader:
             threshold (int): The maximum number of data points per pixel
             **kwargs: Arguments to pass to the creation of the catalog info
         """
+        self._check_path_is_valid(get_file_pointer_from_path(path))
         self.path = hc.io.get_file_pointer_from_path(path)
         self.threshold = threshold
         self.catalog_info = CatalogInfo(**kwargs)
+
+    @staticmethod
+    def _check_path_is_valid(path: FilePointer):
+        """Checks if pointer to CSV file is valid."""
+        if not hc.io.file_io.is_regular_file(path):
+            raise FileNotFoundError("Catalog file could not be found")
 
     def load_catalog(self) -> Catalog:
         """Load a catalog from a pandas Dataframe, in CSV format
@@ -125,7 +133,8 @@ class DataframeCatalogLoader:
 
         # Create a Dask DataFrame from the list of delayed objects
         delayed_dfs = [delayed(pd.DataFrame)(df) for df in pixel_dfs]
-        ddf = dd.from_delayed(delayed_dfs)
+        schema = pd.DataFrame(columns=df.columns).astype(df.dtypes)
+        ddf = dd.from_delayed(delayed_dfs, meta=schema)
 
         return ddf, ddf_pixel_map
 
