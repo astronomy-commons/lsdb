@@ -10,7 +10,7 @@ from lsdb.loaders.hipscat.hipscat_loader_factory import CatalogTypeVar
 def read_dataframe(
     path: str,
     catalog_name: str = "",
-    catalog_type: CatalogType = None,
+    catalog_type: CatalogType | None = None,
     ra_column: str = "ra",
     dec_column: str = "dec",
     threshold: int = 50,

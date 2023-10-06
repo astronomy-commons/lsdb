@@ -1,4 +1,4 @@
-from typing import Dict, List, Tuple
+from typing import Dict, List, NamedTuple, Tuple
 
 import dask.dataframe as dd
 import hipscat as hc
@@ -11,6 +11,8 @@ from hipscat.pixel_math.hipscat_id import compute_hipscat_id, healpix_to_hipscat
 
 from lsdb.catalog.catalog import Catalog, DaskDFPixelMap
 from lsdb.io.csv_io import read_csv_file_to_pandas
+
+HealpixInfo = NamedTuple("HealpixInfo", [("num_points", int), ("pixels", List[int])])
 
 
 class DataframeCatalogLoader:
@@ -65,7 +67,7 @@ class DataframeCatalogLoader:
         )
         df.set_index("hipscat_index", inplace=True)
 
-    def _get_pixel_map(self, df: pd.DataFrame) -> Dict[HealpixPixel, Tuple[int, List[int]]]:
+    def _get_pixel_map(self, df: pd.DataFrame) -> Dict[HealpixPixel, HealpixInfo]:
         """Compute object histogram and generate the mapping between
         Healpix pixels and the respective original pixel information
 
@@ -88,14 +90,14 @@ class DataframeCatalogLoader:
         )
 
     def _load_dask_df_and_map(
-        self, df: pd.DataFrame, pixel_map: Dict[HealpixPixel, Tuple]
+        self, df: pd.DataFrame, pixel_map: Dict[HealpixPixel, HealpixInfo]
     ) -> Tuple[dd.DataFrame, DaskDFPixelMap]:
         """Load Dask DataFrame from Healpix pixel Dataframes and
         generate a mapping of Healpix pixels to Healpix Dataframes
 
         Args:
             df (pd.Dataframe): The catalog Pandas Dataframe
-            pixel_map (Dict[HealpixPixel, Tuple]): The mapping between
+            pixel_map (Dict[HealpixPixel, HealpixInfo]): The mapping between
                 HealPix pixels and respective data information
 
         Returns:

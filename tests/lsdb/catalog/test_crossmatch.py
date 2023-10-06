@@ -1,7 +1,4 @@
-from typing import Tuple
-
 import pandas as pd
-import hipscat as hc
 import pytest
 
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
@@ -59,7 +56,9 @@ def test_wrong_suffixes(small_sky_catalog, small_sky_xmatch_catalog):
         small_sky_catalog.crossmatch(small_sky_xmatch_catalog, suffixes=("wrong",))
 
 
+# pylint: disable=too-few-public-methods
 class MockCrossmatchAlgorithm(AbstractCrossmatchAlgorithm):
+    """Mock class used to test a crossmatch algorithm"""
     def crossmatch(self, mock_results: pd.DataFrame = None):
         left_reset = self.left.reset_index(drop=True)
         right_reset = self.right.reset_index(drop=True)
