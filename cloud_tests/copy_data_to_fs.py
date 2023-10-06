@@ -2,6 +2,7 @@ import os
 
 from hipscat.io.file_io.file_io import get_fs
 
+
 def copy_tree_fs_to_fs(
         fs1_source: str, fs2_destination: str,
         storage_options1: dict = None, storage_options2: dict = None,
