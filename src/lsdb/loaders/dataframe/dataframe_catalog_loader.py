@@ -1,4 +1,4 @@
-from typing import Dict, Tuple, List
+from typing import Dict, List, Tuple
 
 import dask.dataframe as dd
 import hipscat as hc
@@ -6,8 +6,8 @@ import pandas as pd
 from dask import delayed
 from hipscat.catalog.catalog_info import CatalogInfo
 from hipscat.io import FilePointer, get_file_pointer_from_path
-from hipscat.pixel_math import generate_histogram, HealpixPixel
-from hipscat.pixel_math.hipscat_id import healpix_to_hipscat_id, compute_hipscat_id
+from hipscat.pixel_math import HealpixPixel, generate_histogram
+from hipscat.pixel_math.hipscat_id import compute_hipscat_id, healpix_to_hipscat_id
 
 from lsdb.catalog.catalog import Catalog, DaskDFPixelMap
 from lsdb.io.csv_io import read_csv_file_to_pandas
@@ -33,27 +33,22 @@ class DataframeCatalogLoader:
 
     @staticmethod
     def _check_path_is_valid(path: FilePointer):
-        """Checks if pointer to CSV file is valid."""
+        """Checks if pointer to CSV file is valid"""
         if not hc.io.file_io.is_regular_file(path):
             raise FileNotFoundError("Catalog file could not be found")
 
     def load_catalog(self) -> Catalog:
-        """Load a catalog from a pandas Dataframe, in CSV format
+        """Load a catalog from a Pandas Dataframe, in CSV format
 
         Returns:
             Catalog object with data from the source given at loader initialization
         """
-        # Read data points from catalog CSV
         df = read_csv_file_to_pandas(self.path)
-        # Compute hipscat indices and use them as Dataframe index
         self._set_hipscat_index(df)
-        # Compute pixel mapping
         pixel_map = self._get_pixel_map(df)
-        # Load dask dataframe and get Healpix Pixel to partition mapping
         ddf, ddf_pixel_map = self._load_dask_df_and_map(df, pixel_map)
-        # Init Hipscat Catalog object
-        hc_structure = self._init_hipscat_catalog(list(pixel_map.keys()))
-        # Init LSDB Catalog
+        healpix_pixels = list(pixel_map.keys())
+        hc_structure = self._init_hipscat_catalog(healpix_pixels)
         return Catalog(ddf, ddf_pixel_map, hc_structure)
 
     def _set_hipscat_index(self, df: pd.DataFrame):
@@ -63,13 +58,10 @@ class DataframeCatalogLoader:
         Args:
             df (pd.Dataframe): The catalog Pandas Dataframe
         """
-        # For each data point, calculate HiPSCat index
-        # and add index as column of the dataframe
         df["hipscat_index"] = compute_hipscat_id(
             ra_values=df[self.catalog_info.ra_column],
             dec_values=df[self.catalog_info.dec_column],
         )
-        # Update index of the dataframe
         df.set_index("hipscat_index", inplace=True)
 
     def _get_pixel_map(self, df: pd.DataFrame) -> Dict[HealpixPixel, Tuple[int, List[int]]]:
@@ -84,19 +76,12 @@ class DataframeCatalogLoader:
             information tuple. The first value of the tuple is the number
             of objects in the Healpix pixel, the second is the list of pixels
         """
-        # Generate object histogram (for each Healpix pixel, have the number
-        # of objects it contains)
         raw_histogram = generate_histogram(
             df,
             highest_order=self.HISTOGRAM_ORDER,
             ra_column=self.catalog_info.ra_column,
             dec_column=self.catalog_info.dec_column,
         )
-        # Compute pixel map (Dict[HealpixPixel, tuple])
-        # {OnPk : (n_points, [pix1,pix2])}
-        # : For each Healpix pixel of order k (being k the order used for
-        # generating the histogram), get the number of objects in it and
-        # the original pixels containing them
         return hc.pixel_math.compute_pixel_map(
             raw_histogram, highest_order=self.HISTOGRAM_ORDER, threshold=self.threshold
         )
@@ -116,22 +101,18 @@ class DataframeCatalogLoader:
             Tuple containing the Dask Dataframe and the mapping of
             Healpix pixels to the respective Pandas Dataframes
         """
-        # For each destination Healpix pixel, get the list of Dataframes
-        # (i.e., the data points belonging to that pixel)
-        # [OnPk,...] -> [df(n,k)...]
+        # Dataframes for each destination Healpix pixel
         pixel_dfs: List[pd.DataFrame] = []
-
-        # Map Healpix pixel to the respective Pandas Dataframe index
-        # Dict[HP,int], where int is the Pandas DataFrame index
+        # Mapping Healpix pixels to the respective Dataframe indices
         ddf_pixel_map: Dict[HealpixPixel, int] = {}
 
-        # Calculate Hipscat indices for the current Healpix pixel
         for hp_pixel_index, hp_pixel_info in enumerate(pixel_map.items()):
             hp_pixel, (_, pixels) = hp_pixel_info
+            # Obtain Dataframe for the current Healpix pixel
             pixel_dfs.append(self._get_dataframe_for_healpix(df, pixels))
             ddf_pixel_map[hp_pixel] = hp_pixel_index
 
-        # Create a Dask DataFrame from the list of delayed objects
+        # Create a Dask DataFrame from the list of Healpix pixel Dataframes
         delayed_dfs = [delayed(pd.DataFrame)(df) for df in pixel_dfs]
         schema = pd.DataFrame(columns=df.columns).astype(df.dtypes)
         ddf = dd.from_delayed(delayed_dfs, meta=schema)
@@ -150,15 +131,14 @@ class DataframeCatalogLoader:
         return hc.catalog.Catalog(self.catalog_info, pixels)
 
     def _get_dataframe_for_healpix(self, df: pd.DataFrame, pixels: List[int]) -> pd.DataFrame:
-        """Computes the Pandas Dataframe containing the data points
-        for a certain HealPix pixel.
+        """Computes the Pandas Dataframe containing the data points for a certain HealPix pixel
 
         Args:
             df (pd.Dataframe): The catalog Pandas Dataframe
-            pixels (List[int]): The indices of the pixels inside the Healpix pixel.
+            pixels (List[int]): The indices of the pixels inside the Healpix pixel
 
         Returns:
-            The Pandas Dataframe containing the data points for the Healpix pixel.
+            The Pandas Dataframe containing the data points for the Healpix pixel
         """
         left_bound = healpix_to_hipscat_id(self.HISTOGRAM_ORDER, pixels[0])
         right_bound = healpix_to_hipscat_id(self.HISTOGRAM_ORDER, pixels[-1] + 1)
