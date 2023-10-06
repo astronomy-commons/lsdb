@@ -17,6 +17,7 @@ class DataframeCatalogLoader:
     """Loads a HiPSCat formatted Catalog from a Pandas Dataframe"""
 
     HISTOGRAM_ORDER = 10
+    PARTITION_SIZE = "100MB"
 
     def __init__(self, path: str, threshold: int = 50, **kwargs) -> None:
         """Initializes a DataframeCatalogLoader
@@ -112,12 +113,24 @@ class DataframeCatalogLoader:
             pixel_dfs.append(self._get_dataframe_for_healpix(df, pixels))
             ddf_pixel_map[hp_pixel] = hp_pixel_index
 
-        # Create a Dask DataFrame from the list of Healpix pixel Dataframes
-        delayed_dfs = [delayed(pd.DataFrame)(df) for df in pixel_dfs]
+        # Generate Dask Dataframe with original schema
         schema = pd.DataFrame(columns=df.columns).astype(df.dtypes)
-        ddf = dd.from_delayed(delayed_dfs, meta=schema)
+        ddf = self._generate_dask_dataframe(pixel_dfs, schema)
 
         return ddf, ddf_pixel_map
+
+    def _generate_dask_dataframe(self, pixel_dfs: List[pd.DataFrame], schema: pd.DataFrame) -> dd.DataFrame:
+        """Create the Dask Dataframe from the list of Healpix pixel Dataframes
+
+        Args:
+            pixel_dfs (List[pd.DataFrame]): The list of Healpix pixel Dataframes
+            schema (pd.Dataframe): The original Dataframe schema
+
+        Returns:
+            The catalog's Dask Dataframe
+        """
+        delayed_dfs = [delayed(pd.DataFrame)(df) for df in pixel_dfs]
+        return dd.from_delayed(delayed_dfs, meta=schema).repartition(self.PARTITION_SIZE)
 
     def _init_hipscat_catalog(self, pixels: List[HealpixPixel]) -> hc.catalog.Catalog:
         """Initializes the Hipscat Catalog object
