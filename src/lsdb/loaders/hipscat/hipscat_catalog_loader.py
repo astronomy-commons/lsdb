@@ -1,12 +1,12 @@
 from typing import List, Tuple
 
+import pyarrow
 import dask.dataframe as dd
 import hipscat as hc
-import pyarrow
+from hipscat.io.file_io import file_io, file_pointer
 from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_HEALPIX_ORDER
 
-from hipscat.io.file_io import file_io, file_pointer
 from lsdb.catalog.catalog import Catalog, DaskDFPixelMap
 from lsdb.loaders.hipscat.hipscat_loading_config import HipscatLoadingConfig
 
