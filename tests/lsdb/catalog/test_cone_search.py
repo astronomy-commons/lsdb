@@ -25,7 +25,7 @@ def test_cone_search_filters_partitions(small_sky_order1_catalog):
     radius = 20
     hc_conesearch = small_sky_order1_catalog.hc_structure.filter_by_cone(ra, dec, radius)
     consearch_catalog = small_sky_order1_catalog.cone_search(ra, dec, radius)
-    assert len(hc_conesearch.get_healpix_pixels()) == len(consearch_catalog.hc_structure.get_pixels())
+    assert len(hc_conesearch.get_healpix_pixels()) == len(consearch_catalog.get_pixels())
     assert len(hc_conesearch.get_healpix_pixels()) == consearch_catalog._ddf.npartitions
     print(hc_conesearch.get_healpix_pixels())
     for pixel in hc_conesearch.get_healpix_pixels():
