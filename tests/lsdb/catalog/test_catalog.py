@@ -3,6 +3,12 @@ import pandas as pd
 from hipscat.pixel_math import HealpixPixel
 
 
+def test_catalog_pixels_equals_hc_catalog_pixels(small_sky_order1_catalog, small_sky_order1_hipscat_catalog):
+    pd.testing.assert_frame_equal(
+        small_sky_order1_catalog.get_pixels(), small_sky_order1_hipscat_catalog.get_pixels()
+    )
+
+
 def test_catalog_repr_equals_ddf_repr(small_sky_order1_catalog):
     assert repr(small_sky_order1_catalog) == repr(small_sky_order1_catalog._ddf)
 
