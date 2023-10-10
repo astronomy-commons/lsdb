@@ -5,6 +5,7 @@ from typing import Dict, Tuple, Type, cast
 
 import dask.dataframe as dd
 import hipscat as hc
+import pandas as pd
 from hipscat.pixel_math import HealpixPixel
 
 from lsdb.catalog.dataset.dataset import Dataset
@@ -46,6 +47,14 @@ class Catalog(Dataset):
         """
         super().__init__(ddf, hc_structure)
         self._ddf_pixel_map = ddf_pixel_map
+
+    def get_pixels(self) -> pd.DataFrame:
+        """Get all HEALPix pixels that are contained in the catalog
+
+        Returns:
+            Data frame with per-pixel data.
+        """
+        return self.hc_structure.get_pixels()
 
     def get_partition(self, order: int, pixel: int) -> dd.DataFrame:
         """Get the dask partition for a given HEALPix pixel

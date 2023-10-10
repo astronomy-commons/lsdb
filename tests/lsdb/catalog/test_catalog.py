@@ -3,6 +3,12 @@ import pandas as pd
 from hipscat.pixel_math import HealpixPixel
 
 
+def test_catalog_pixels_equals_hc_catalog_pixels(small_sky_order1_catalog, small_sky_order1_hipscat_catalog):
+    pd.testing.assert_frame_equal(
+        small_sky_order1_catalog.get_pixels(), small_sky_order1_hipscat_catalog.get_pixels()
+    )
+
+
 def test_catalog_repr_equals_ddf_repr(small_sky_order1_catalog):
     assert repr(small_sky_order1_catalog) == repr(small_sky_order1_catalog._ddf)
 
@@ -16,7 +22,7 @@ def test_catalog_compute_equals_ddf_compute(small_sky_order1_catalog):
 
 
 def test_get_catalog_partition_gets_correct_partition(small_sky_order1_catalog):
-    for _, row in small_sky_order1_catalog.hc_structure.get_pixels().iterrows():
+    for _, row in small_sky_order1_catalog.get_pixels().iterrows():
         hp_order = row["Norder"]
         hp_pixel = row["Npix"]
         partition = small_sky_order1_catalog.get_partition(hp_order, hp_pixel)
