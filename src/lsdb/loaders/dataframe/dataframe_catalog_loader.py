@@ -35,7 +35,7 @@ class DataframeCatalogLoader:
         self.catalog_info = self._create_catalog_info(**kwargs)
 
     @staticmethod
-    def _create_catalog_info(**kwargs):
+    def _create_catalog_info(**kwargs) -> CatalogInfo:
         """Creates the catalog info object
 
         Args:
