@@ -70,8 +70,8 @@ def small_sky_order1_catalog(small_sky_order1_dir):
 
 
 @pytest.fixture
-def small_sky_order1_csv(small_sky_order1_dir):
-    return os.path.join(small_sky_order1_dir, SMALL_SKY_ORDER1_CSV)
+def small_sky_order1_df(small_sky_order1_dir):
+    return pd.read_csv(os.path.join(small_sky_order1_dir, SMALL_SKY_ORDER1_CSV))
 
 
 @pytest.fixture

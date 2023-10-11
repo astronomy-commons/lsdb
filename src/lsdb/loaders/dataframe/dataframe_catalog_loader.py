@@ -45,9 +45,10 @@ class DataframeCatalogLoader:
             The catalog info object
         """
         valid_catalog_types = [CatalogType.OBJECT, CatalogType.SOURCE]
-        if kwargs.get("catalog_type") not in valid_catalog_types:
+        catalog_info = CatalogInfo(**kwargs)
+        if catalog_info.catalog_type not in valid_catalog_types:
             raise ValueError("Catalog must be of type OBJECT or SOURCE")
-        return CatalogInfo(**kwargs)
+        return catalog_info
 
     def load_catalog(self) -> Catalog:
         """Load a catalog from a Pandas Dataframe, in CSV format
@@ -94,7 +95,7 @@ class DataframeCatalogLoader:
         )
 
     def _generate_dask_df_and_map(
-            self, pixel_map: Dict[HealpixPixel, HealpixInfo]
+        self, pixel_map: Dict[HealpixPixel, HealpixInfo]
     ) -> Tuple[dd.DataFrame, DaskDFPixelMap]:
         """Load Dask DataFrame from HEALPix pixel Dataframes and
         generate a mapping of HEALPix pixels to HEALPix Dataframes
