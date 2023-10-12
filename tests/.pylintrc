@@ -426,6 +426,7 @@ disable=raw-checker-failed,
         redefined-outer-name,
         protected-access,
         missing-module-docstring,
+        missing-class-docstring,
         unnecessary-pass,
 
 # Enable the message, report, category or checker with the given id(s). You can
