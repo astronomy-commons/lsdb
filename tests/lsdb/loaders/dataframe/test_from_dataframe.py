@@ -2,8 +2,10 @@ import pandas as pd
 import pytest
 from hipscat.catalog import CatalogType
 from hipscat.pixel_math import HealpixPixel
+from hipscat.pixel_tree.pixel_node_type import PixelNodeType
 
 import lsdb
+from lsdb.loaders.dataframe.dataframe_catalog_loader import DataframeCatalogLoader
 
 
 def get_catalog_kwargs(catalog, **kwargs):
@@ -13,13 +15,14 @@ def get_catalog_kwargs(catalog, **kwargs):
     kwargs = {
         "catalog_name": catalog_info.catalog_name,
         "catalog_type": catalog_info.catalog_type,
-        "partition_size": 1 << 10,
+        "highest_order": 5,
+        "threshold": 50,
         **kwargs,
     }
     return kwargs
 
 
-def test_read_catalog_from_dataframe(small_sky_order1_df, small_sky_order1_catalog):
+def test_from_dataframe(small_sky_order1_df, small_sky_order1_catalog):
     """Tests that we can initialize a catalog from a Pandas Dataframe and
     that the loaded content is correct"""
     kwargs = get_catalog_kwargs(small_sky_order1_catalog)
@@ -36,11 +39,11 @@ def test_read_catalog_from_dataframe(small_sky_order1_df, small_sky_order1_catal
     )
 
 
-def test_read_catalog_of_invalid_type(small_sky_order1_df):
+def test_from_dataframe_catalog_of_invalid_type(small_sky_order1_df, small_sky_order1_catalog):
     """Tests that an exception is thrown if the catalog is not of type OBJECT or SOURCE"""
     valid_catalog_types = [CatalogType.OBJECT, CatalogType.SOURCE]
     for catalog_type in CatalogType.all_types():
-        kwargs = {"catalog_name": "catalog", "catalog_type": catalog_type}
+        kwargs = get_catalog_kwargs(small_sky_order1_catalog, catalog_type=catalog_type)
         if catalog_type in valid_catalog_types:
             lsdb.from_dataframe(small_sky_order1_df, **kwargs)
         else:
@@ -48,6 +51,15 @@ def test_read_catalog_of_invalid_type(small_sky_order1_df):
                 lsdb.from_dataframe(small_sky_order1_df, **kwargs)
         # Drop hipscat_index that might have been created in place
         small_sky_order1_df.reset_index(drop=True, inplace=True)
+
+
+def test_from_dataframe_when_threshold_and_partition_size_specified(
+    small_sky_order1_df, small_sky_order1_catalog
+):
+    """Tests that specifying simultaneously threshold and partition_size is invalid"""
+    kwargs = get_catalog_kwargs(small_sky_order1_catalog, partition_size=10, threshold=10_000)
+    with pytest.raises(ValueError, match="Specify only one: threshold or partition_size"):
+        lsdb.from_dataframe(small_sky_order1_df, **kwargs)
 
 
 def test_partitions_on_map_equal_partitions_in_df(small_sky_order1_df, small_sky_order1_catalog):
@@ -76,8 +88,8 @@ def test_partitions_on_map_match_pixel_tree(small_sky_order1_df, small_sky_order
     kwargs = get_catalog_kwargs(small_sky_order1_catalog)
     catalog = lsdb.from_dataframe(small_sky_order1_df, **kwargs)
     for hp_pixel, _ in catalog._ddf_pixel_map.items():
-        pixels = catalog.hc_structure.pixel_tree.get_leaf_nodes_at_healpix_pixel(hp_pixel)
-        assert len(pixels) > 0
+        if hp_pixel in catalog.hc_structure.pixel_tree:
+            assert catalog.hc_structure.pixel_tree[hp_pixel].node_type == PixelNodeType.LEAF
 
 
 def test_from_dataframe_with_non_default_ra_dec_columns(small_sky_order1_df, small_sky_order1_catalog):
@@ -91,17 +103,42 @@ def test_from_dataframe_with_non_default_ra_dec_columns(small_sky_order1_df, sma
     lsdb.from_dataframe(small_sky_order1_df, **kwargs)
 
 
-def test_partitions_size_is_correct(small_sky_order1_df, small_sky_order1_catalog):
+def test_partitions_obey_partition_size(small_sky_order1_df, small_sky_order1_catalog):
     """Tests that partitions are limited by the specified size"""
-    partition_size = 1 << 10  # 1 KB in bytes
+    partition_size_bytes = 1 << 10
+    partition_size_megabytes = partition_size_bytes / (1 << 20)
     # Read CSV file for the small sky order 1 catalog
     kwargs = get_catalog_kwargs(
-        small_sky_order1_catalog,
-        partition_size=(partition_size / (1 << 20)),  # 1 KB in MB
+        small_sky_order1_catalog, partition_size=partition_size_megabytes, threshold=None
     )
     catalog = lsdb.from_dataframe(small_sky_order1_df, **kwargs)
-    # Calculate each partition size
+    # Calculate size of dataframe per partition
     partition_sizes = [
         partition_df.compute().memory_usage().sum() for partition_df in catalog._ddf.partitions
     ]
-    assert all(size <= partition_size for size in partition_sizes)
+    assert all(size <= partition_size_bytes for size in partition_sizes)
+
+
+def test_partitions_obey_threshold(small_sky_order1_df, small_sky_order1_catalog):
+    """Tests that partitions are limited by the specified threshold"""
+    threshold = 50
+    # Read CSV file for the small sky order 1 catalog
+    kwargs = get_catalog_kwargs(small_sky_order1_catalog, partition_size=None, threshold=threshold)
+    catalog = lsdb.from_dataframe(small_sky_order1_df, **kwargs)
+    # Calculate number of pixels per partition
+    num_partition_pixels = [len(partition_df.compute().index) for partition_df in catalog._ddf.partitions]
+    assert all(num_pixels <= threshold for num_pixels in num_partition_pixels)
+
+
+def test_partitions_obey_default_threshold_when_no_arguments_specified(
+    small_sky_order1_df, small_sky_order1_catalog
+):
+    """Tests that partitions are limited by the default threshold
+    when no partition size or threshold is specified"""
+    default_threshold = DataframeCatalogLoader.DEFAULT_THRESHOLD
+    # Read CSV file for the small sky order 1 catalog
+    kwargs = get_catalog_kwargs(small_sky_order1_catalog, threshold=None, partition_size=None)
+    catalog = lsdb.from_dataframe(small_sky_order1_df, **kwargs)
+    # Calculate number of pixels per partition
+    num_partition_pixels = [len(partition_df.compute().index) for partition_df in catalog._ddf.partitions]
+    assert all(num_pixels <= default_threshold for num_pixels in num_partition_pixels)

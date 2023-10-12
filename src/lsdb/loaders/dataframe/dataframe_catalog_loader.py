@@ -17,20 +17,29 @@ HealpixInfo = NamedTuple("HealpixInfo", [("num_points", int), ("pixels", List[in
 class DataframeCatalogLoader:
     """Creates a HiPSCat formatted Catalog from a Pandas Dataframe"""
 
-    HISTOGRAM_ORDER = 10
+    DEFAULT_THRESHOLD = 100_000
     HIPSCAT_INDEX_COLUMN = "_hipscat_index"
 
-    def __init__(self, df: pd.DataFrame, lowest_order: int = 0, threshold: int = 100_000, **kwargs) -> None:
+    def __init__(
+            self,
+            df: pd.DataFrame,
+            lowest_order: int = 0,
+            highest_order: int = 10,
+            threshold: int = DEFAULT_THRESHOLD,
+            **kwargs,
+    ) -> None:
         """Initializes a DataframeCatalogLoader
 
         Args:
             df (pd.Dataframe): Catalog Pandas Dataframe
             lowest_order (int): The lowest partition order
+            highest_order (int): The highest partition order
             threshold (int): The maximum number of data points per pixel
             **kwargs: Arguments to pass to the creation of the catalog info
         """
         self.df = df
         self.lowest_order = lowest_order
+        self.highest_order = highest_order
         self.threshold = threshold
         self.catalog_info = self._create_catalog_info(**kwargs)
 
@@ -83,13 +92,13 @@ class DataframeCatalogLoader:
         """
         raw_histogram = generate_histogram(
             self.df,
-            highest_order=self.HISTOGRAM_ORDER,
+            highest_order=self.highest_order,
             ra_column=self.catalog_info.ra_column,
             dec_column=self.catalog_info.dec_column,
         )
         return hc.pixel_math.compute_pixel_map(
             raw_histogram,
-            highest_order=self.HISTOGRAM_ORDER,
+            highest_order=self.highest_order,
             lowest_order=self.lowest_order,
             threshold=self.threshold,
         )
@@ -167,6 +176,6 @@ class DataframeCatalogLoader:
         Returns:
             The Pandas Dataframe containing the data points for the HEALPix pixel
         """
-        left_bound = healpix_to_hipscat_id(self.HISTOGRAM_ORDER, pixels[0])
-        right_bound = healpix_to_hipscat_id(self.HISTOGRAM_ORDER, pixels[-1] + 1)
+        left_bound = healpix_to_hipscat_id(self.highest_order, pixels[0])
+        right_bound = healpix_to_hipscat_id(self.highest_order, pixels[-1] + 1)
         return self.df.loc[(self.df.index >= left_bound) & (self.df.index < right_bound)]
