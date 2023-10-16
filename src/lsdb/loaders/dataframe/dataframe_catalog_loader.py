@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import math
-from typing import Dict, List, Tuple, TypeAlias
+from typing import Dict, List, Tuple
 
 import dask.dataframe as dd
 import hipscat as hc
@@ -11,6 +11,7 @@ from hipscat.catalog import CatalogType
 from hipscat.catalog.catalog_info import CatalogInfo
 from hipscat.pixel_math import HealpixPixel, generate_histogram
 from hipscat.pixel_math.hipscat_id import compute_hipscat_id, healpix_to_hipscat_id
+from typing_extensions import TypeAlias
 
 from lsdb.catalog.catalog import Catalog, DaskDFPixelMap
 
