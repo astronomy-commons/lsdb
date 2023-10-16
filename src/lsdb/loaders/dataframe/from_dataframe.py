@@ -7,12 +7,12 @@ from lsdb.loaders.dataframe.dataframe_catalog_loader import DataframeCatalogLoad
 
 
 def from_dataframe(
-        df: pd.DataFrame,
-        lowest_order: int = 0,
-        highest_order: int = 10,
-        partition_size: float = None,
-        threshold: int = None,
-        **kwargs,
+    df: pd.DataFrame,
+    lowest_order: int = 0,
+    highest_order: int = 10,
+    partition_size: float | None = None,
+    threshold: int | None = None,
+    **kwargs,
 ) -> Catalog:
     """Load a catalog from a Pandas Dataframe in CSV format.
 
