@@ -18,7 +18,7 @@ from lsdb.catalog.catalog import Catalog, DaskDFPixelMap
 # Compute pixel map returns a tuple. The first element is
 # the number of data points within the HEALPix pixel, the
 # second element is the list of pixels it contains.
-HealpixInfo: TypeAlias = tuple[int, list[int]]
+HealpixInfo: TypeAlias = Tuple[int, List[int]]
 
 
 class DataframeCatalogLoader:
