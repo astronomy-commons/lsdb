@@ -1,6 +1,7 @@
 import healpy as hp
 import numpy as np
 import pandas as pd
+from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
 from sklearn.neighbors import KDTree
 
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
@@ -46,7 +47,7 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
         self._rename_columns_with_suffix(self.right, self.suffixes[1])
 
         # concat dataframes together
-        self.left.index.name = "_hipscat_index"
+        self.left.index.name = HIPSCAT_ID_COLUMN
         left_join_part = self.left.iloc[left_ids_filtered].reset_index()
         right_join_part = self.right.iloc[right_ids_filtered].reset_index(drop=True)
         out = pd.concat(
@@ -56,7 +57,7 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
             ],
             axis=1,
         )
-        out.set_index("_hipscat_index", inplace=True)
+        out.set_index(HIPSCAT_ID_COLUMN, inplace=True)
         out["_DIST"] = distances
 
         return out

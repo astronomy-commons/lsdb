@@ -1,5 +1,6 @@
 import pandas as pd
 import pytest
+from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
 
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
 
@@ -79,7 +80,7 @@ class MockCrossmatchAlgorithm(AbstractCrossmatchAlgorithm):
             ],
             axis=1,
         )
-        out.set_index("_hipscat_index", inplace=True)
+        out.set_index(HIPSCAT_ID_COLUMN, inplace=True)
         out["_DIST"] = mock_results["dist"].to_numpy()
 
         return out

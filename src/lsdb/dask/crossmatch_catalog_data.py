@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 from dask.delayed import Delayed
 from hipscat.pixel_math import HealpixPixel
-from hipscat.pixel_math.hipscat_id import healpix_to_hipscat_id
+from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN, healpix_to_hipscat_id
 from hipscat.pixel_tree import PixelAlignment, PixelAlignmentType, align_trees
 
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
@@ -156,7 +156,7 @@ def crossmatch_catalog_data(
         meta[name + suffixes[1]] = pd.Series(dtype=col_type)
     meta["_DIST"] = pd.Series(dtype=np.dtype("float64"))
     meta_df = pd.DataFrame(meta)
-    meta_df.index.name = "_hipscat_index"
+    meta_df.index.name = HIPSCAT_ID_COLUMN
 
     # create dask df from delayed partitions
     ddf = dd.from_delayed(joined_partitions, meta=meta_df)
