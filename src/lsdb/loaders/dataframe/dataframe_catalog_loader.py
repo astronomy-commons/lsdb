@@ -1,4 +1,5 @@
-from typing import Dict, List, NamedTuple, Tuple
+import math
+from typing import Dict, List, Tuple, TypeAlias
 
 import dask.dataframe as dd
 import hipscat as hc
@@ -11,7 +12,10 @@ from hipscat.pixel_math.hipscat_id import compute_hipscat_id, healpix_to_hipscat
 
 from lsdb.catalog.catalog import Catalog, DaskDFPixelMap
 
-HealpixInfo = NamedTuple("HealpixInfo", [("num_points", int), ("pixels", List[int])])
+# Compute pixel map returns a tuple. The first element is
+# the number of data points within the HEALPix pixel, the
+# second element is the list of pixels it contains.
+HealpixInfo: TypeAlias = tuple[int, list[int]]
 
 
 class DataframeCatalogLoader:
@@ -24,8 +28,9 @@ class DataframeCatalogLoader:
             self,
             df: pd.DataFrame,
             lowest_order: int = 0,
-            highest_order: int = 10,
-            threshold: int = DEFAULT_THRESHOLD,
+            highest_order: int = 5,
+            partition_size: float | None = None,
+            threshold: int | None = None,
             **kwargs,
     ) -> None:
         """Initializes a DataframeCatalogLoader
@@ -34,14 +39,38 @@ class DataframeCatalogLoader:
             df (pd.Dataframe): Catalog Pandas Dataframe
             lowest_order (int): The lowest partition order
             highest_order (int): The highest partition order
+            partition_size (float): The desired partition size, in megabytes
             threshold (int): The maximum number of data points per pixel
             **kwargs: Arguments to pass to the creation of the catalog info
         """
         self.df = df
         self.lowest_order = lowest_order
         self.highest_order = highest_order
-        self.threshold = threshold
+        self.threshold = self._calculate_threshold(partition_size, threshold)
         self.catalog_info = self._create_catalog_info(**kwargs)
+
+    def _calculate_threshold(self, partition_size: float = None, threshold: int = None) -> int:
+        """Calculates the number of pixels per HEALPix pixel (threshold)
+        for the desired partition size.
+
+        Args:
+            partition_size (float): The desired partition size, in megabytes
+            threshold (int): The maximum number of data points per pixel
+
+        Returns:
+            The HEALPix pixel threshold
+        """
+        if threshold is not None and partition_size is not None:
+            raise ValueError("Specify only one: threshold or partition_size")
+        if threshold is None and partition_size is None:
+            threshold = DataframeCatalogLoader.DEFAULT_THRESHOLD
+        elif threshold is None and partition_size is not None:
+            df_size_bytes = self.df.memory_usage().sum()
+            # Round the number of partitions to the next integer, otherwise the
+            # number of pixels per partition may exceed the threshold
+            num_partitions = math.ceil(df_size_bytes / (partition_size * (1 << 20)))
+            threshold = len(self.df.index) // num_partitions
+        return threshold
 
     @staticmethod
     def _create_catalog_info(**kwargs) -> CatalogInfo:
@@ -69,7 +98,7 @@ class DataframeCatalogLoader:
         pixel_map = self._compute_pixel_map()
         ddf, ddf_pixel_map = self._generate_dask_df_and_map(pixel_map)
         healpix_pixels = list(pixel_map.keys())
-        hc_structure = self._init_hipscat_catalog(healpix_pixels)
+        hc_structure = hc.catalog.Catalog(self.catalog_info, healpix_pixels)
         return Catalog(ddf, ddf_pixel_map, hc_structure)
 
     def _set_hipscat_index(self):
@@ -148,17 +177,6 @@ class DataframeCatalogLoader:
         delayed_dfs = [delayed(df) for df in pixel_dfs]
         ddf = dd.from_delayed(delayed_dfs, meta=schema)
         return ddf if isinstance(ddf, dd.DataFrame) else ddf.to_frame()
-
-    def _init_hipscat_catalog(self, pixels: List[HealpixPixel]) -> hc.catalog.Catalog:
-        """Initializes the Hipscat Catalog object
-
-        Args:
-            pixels (List[HealpixPixel]): The list of HEALPix pixels
-
-        Returns:
-            The Hipscat catalog object
-        """
-        return hc.catalog.Catalog(self.catalog_info, pixels)
 
     def _get_dataframe_for_healpix(self, pixels: List[int]) -> pd.DataFrame:
         """Computes the Pandas Dataframe containing the data points

@@ -1,3 +1,4 @@
+import healpy as hp
 import pandas as pd
 import pytest
 from hipscat.catalog import CatalogType
@@ -66,9 +67,12 @@ def test_partitions_on_map_equal_partitions_in_df(small_sky_order1_df, small_sky
     """Tests that partitions on the partition map exist in the Dask Dataframe"""
     kwargs = get_catalog_kwargs(small_sky_order1_catalog)
     catalog = lsdb.from_dataframe(small_sky_order1_df, **kwargs)
-    for _, partition_index in catalog._ddf_pixel_map.items():
+    for hp_pixel, partition_index in catalog._ddf_pixel_map.items():
         partition_df = catalog._ddf.partitions[partition_index].compute()
         assert isinstance(partition_df, pd.DataFrame)
+        for _, row in partition_df.iterrows():
+            ipix = hp.ang2pix(2**hp_pixel.order, row["ra"], row["dec"], nest=True, lonlat=True)
+            assert ipix == hp_pixel.pixel
 
 
 def test_partitions_in_partition_info_equal_partitions_on_map(small_sky_order1_df, small_sky_order1_catalog):
@@ -105,6 +109,7 @@ def test_from_dataframe_with_non_default_ra_dec_columns(small_sky_order1_df, sma
 
 def test_partitions_obey_partition_size(small_sky_order1_df, small_sky_order1_catalog):
     """Tests that partitions are limited by the specified size"""
+    # Use 1KB size partitions
     partition_size_bytes = 1 << 10
     partition_size_megabytes = partition_size_bytes / (1 << 20)
     # Read CSV file for the small sky order 1 catalog
