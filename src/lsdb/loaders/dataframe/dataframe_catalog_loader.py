@@ -10,7 +10,7 @@ from dask import delayed
 from hipscat.catalog import CatalogType
 from hipscat.catalog.catalog_info import CatalogInfo
 from hipscat.pixel_math import HealpixPixel, generate_histogram
-from hipscat.pixel_math.hipscat_id import compute_hipscat_id, healpix_to_hipscat_id
+from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN, compute_hipscat_id, healpix_to_hipscat_id
 from typing_extensions import TypeAlias
 
 from lsdb.catalog.catalog import Catalog, DaskDFPixelMap
@@ -25,7 +25,6 @@ class DataframeCatalogLoader:
     """Creates a HiPSCat formatted Catalog from a Pandas Dataframe"""
 
     DEFAULT_THRESHOLD = 100_000
-    HIPSCAT_INDEX_COLUMN = "_hipscat_index"
 
     def __init__(
             self,
@@ -107,12 +106,12 @@ class DataframeCatalogLoader:
 
     def _set_hipscat_index(self):
         """Generates the hipscat indices for each data point and assigns
-        the _hipscat_index column as the Dataframe index."""
-        self.df[self.HIPSCAT_INDEX_COLUMN] = compute_hipscat_id(
+        the hipscat index column as the Dataframe index."""
+        self.df[HIPSCAT_ID_COLUMN] = compute_hipscat_id(
             ra_values=self.df[self.catalog_info.ra_column],
             dec_values=self.df[self.catalog_info.dec_column],
         )
-        self.df.set_index(self.HIPSCAT_INDEX_COLUMN, inplace=True)
+        self.df.set_index(HIPSCAT_ID_COLUMN, inplace=True)
 
     def _compute_pixel_map(self) -> Dict[HealpixPixel, HealpixInfo]:
         """Compute object histogram and generate the mapping between
