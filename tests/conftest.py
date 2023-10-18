@@ -11,6 +11,7 @@ SMALL_SKY_DIR_NAME = "small_sky"
 SMALL_SKY_XMATCH_NAME = "small_sky_xmatch"
 SMALL_SKY_NO_METADATA_DIR_NAME = "small_sky_no_metadata"
 SMALL_SKY_ORDER1_DIR_NAME = "small_sky_order1"
+SMALL_SKY_ORDER1_CSV = "small_sky_order1.csv"
 XMATCH_CORRECT_FILE = "xmatch_correct.csv"
 XMATCH_CORRECT_005_FILE = "xmatch_correct_0_005.csv"
 XMATCH_CORRECT_3N_2T_NO_MARGIN_FILE = "xmatch_correct_3n_2t_no_margin.csv"
@@ -66,6 +67,11 @@ def small_sky_order1_hipscat_catalog(small_sky_order1_dir):
 @pytest.fixture
 def small_sky_order1_catalog(small_sky_order1_dir):
     return lsdb.read_hipscat(small_sky_order1_dir)
+
+
+@pytest.fixture
+def small_sky_order1_df(small_sky_order1_dir):
+    return pd.read_csv(os.path.join(small_sky_order1_dir, SMALL_SKY_ORDER1_CSV))
 
 
 @pytest.fixture
