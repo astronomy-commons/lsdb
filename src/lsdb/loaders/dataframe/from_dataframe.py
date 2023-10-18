@@ -9,7 +9,7 @@ from lsdb.loaders.dataframe.dataframe_catalog_loader import DataframeCatalogLoad
 def from_dataframe(
     df: pd.DataFrame,
     lowest_order: int = 0,
-    highest_order: int = 10,
+    highest_order: int = 5,
     partition_size: float | None = None,
     threshold: int | None = None,
     **kwargs,
