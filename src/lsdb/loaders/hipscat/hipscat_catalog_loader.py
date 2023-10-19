@@ -48,14 +48,9 @@ class HipscatCatalogLoader:
         return ddf, pixel_to_index_map
 
     def _get_ordered_pixel_list(self, catalog: hc.catalog.Catalog) -> List[HealpixPixel]:
-        pixels = []
-        for _, row in catalog.get_pixels().iterrows():
-            order = row[hc.catalog.PartitionInfo.METADATA_ORDER_COLUMN_NAME]
-            pixel = row[hc.catalog.PartitionInfo.METADATA_PIXEL_COLUMN_NAME]
-            pixels.append(HealpixPixel(order, pixel))
         # Sort pixels by pixel number at highest order
         sorted_pixels = sorted(
-            pixels,
+            catalog.get_healpix_pixels(),
             key=lambda pixel: (4 ** (HIPSCAT_ID_HEALPIX_ORDER - pixel.order)) * pixel.pixel,
         )
         return sorted_pixels

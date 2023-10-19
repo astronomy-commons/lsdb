@@ -6,7 +6,7 @@ import os
 
 import lsdb
 
-TEST_DIR = os.path.join(os.path.dirname(__file__), '..', 'tests')
+TEST_DIR = os.path.join(os.path.dirname(__file__), "..", "tests")
 DATA_DIR_NAME = "data"
 SMALL_SKY_DIR_NAME = "small_sky"
 SMALL_SKY_XMATCH_NAME = "small_sky_xmatch"
