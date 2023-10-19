@@ -48,13 +48,13 @@ class Catalog(Dataset):
         super().__init__(ddf, hc_structure)
         self._ddf_pixel_map = ddf_pixel_map
 
-    def get_pixels(self) -> pd.DataFrame:
+    def get_healpix_pixels(self) -> pd.DataFrame:
         """Get all HEALPix pixels that are contained in the catalog
 
         Returns:
             Data frame with per-pixel data.
         """
-        return self.hc_structure.get_pixels()
+        return self.hc_structure.get_healpix_pixels()
 
     def get_partition(self, order: int, pixel: int) -> dd.DataFrame:
         """Get the dask partition for a given HEALPix pixel
@@ -209,9 +209,7 @@ class Catalog(Dataset):
         filtered_hc_structure = self.hc_structure.filter_by_cone(ra, dec, radius)
         pixels_in_cone = filtered_hc_structure.get_healpix_pixels()
         partitions = self._ddf.to_delayed()
-        partitions_in_cone = [
-            partitions[self._ddf_pixel_map[pixel]] for pixel in pixels_in_cone
-        ]
+        partitions_in_cone = [partitions[self._ddf_pixel_map[pixel]] for pixel in pixels_in_cone]
         filtered_partitions = [
             cone_filter(partition, ra, dec, radius, self.hc_structure) for partition in partitions_in_cone
         ]
