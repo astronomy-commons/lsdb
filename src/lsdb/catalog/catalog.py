@@ -48,7 +48,7 @@ class Catalog(Dataset):
         super().__init__(ddf, hc_structure)
         self._ddf_pixel_map = ddf_pixel_map
 
-    def get_healpix_pixels(self) -> pd.DataFrame:
+    def get_healpix_pixels(self) -> List[HealpixPixel]:
         """Get all HEALPix pixels that are contained in the catalog
 
         Returns:
