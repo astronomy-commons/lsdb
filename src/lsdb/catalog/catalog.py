@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import Dict, Tuple, Type, cast
+from typing import Dict, List, Tuple, Type, cast
 
 import dask.dataframe as dd
 import hipscat as hc
@@ -52,7 +52,7 @@ class Catalog(Dataset):
         """Get all HEALPix pixels that are contained in the catalog
 
         Returns:
-            Data frame with per-pixel data.
+            List of all Healpix pixels in the catalog
         """
         return self.hc_structure.get_healpix_pixels()
 
