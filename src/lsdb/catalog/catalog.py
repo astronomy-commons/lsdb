@@ -5,7 +5,6 @@ from typing import Dict, List, Tuple, Type, cast
 
 import dask.dataframe as dd
 import hipscat as hc
-import pandas as pd
 from hipscat.pixel_math import HealpixPixel
 
 from lsdb.catalog.dataset.dataset import Dataset
