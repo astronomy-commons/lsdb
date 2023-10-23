@@ -1,12 +1,12 @@
-from typing import List, Tuple
+from typing import Any, Dict, List, Tuple, Union
 
 import dask.dataframe as dd
 import hipscat as hc
 import pyarrow
+from hipscat.io.file_io import file_io, file_pointer
 from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_HEALPIX_ORDER
 
-from lsdb import io
 from lsdb.catalog.catalog import Catalog, DaskDFPixelMap
 from lsdb.loaders.hipscat.hipscat_loading_config import HipscatLoadingConfig
 
@@ -14,7 +14,9 @@ from lsdb.loaders.hipscat.hipscat_loading_config import HipscatLoadingConfig
 class HipscatCatalogLoader:
     """Loads a HiPSCat formatted Catalog"""
 
-    def __init__(self, path: str, config: HipscatLoadingConfig) -> None:
+    def __init__(
+            self, path: str, config: HipscatLoadingConfig,
+            storage_options: Union[Dict[Any, Any], None] = None) -> None:
         """Initializes a HipscatCatalogLoader
 
         Args:
@@ -24,6 +26,7 @@ class HipscatCatalogLoader:
         self.path = path
         self.base_catalog_dir = hc.io.get_file_pointer_from_path(self.path)
         self.config = config
+        self.storage_options = storage_options
 
     def load_catalog(self) -> Catalog:
         """Load a catalog from the configuration specified when the loader was created
@@ -37,7 +40,7 @@ class HipscatCatalogLoader:
 
     def load_hipscat_catalog(self) -> hc.catalog.Catalog:
         """Load `hipscat` library catalog object with catalog metadata and partition data"""
-        return hc.catalog.Catalog.read_from_hipscat(self.path)
+        return hc.catalog.Catalog.read_from_hipscat(self.path, storage_options=self.storage_options)
 
     def _load_dask_df_and_map(self, catalog: hc.catalog.Catalog) -> Tuple[dd.DataFrame, DaskDFPixelMap]:
         """Load Dask DF from parquet files and make dict of HEALPix pixel to partition index"""
@@ -73,13 +76,20 @@ class HipscatCatalogLoader:
     ) -> dd.DataFrame:
         metadata_schema = self._load_parquet_metadata_schema(catalog, paths)
         dask_meta_schema = metadata_schema.empty_table().to_pandas()
-        ddf = dd.from_map(io.read_parquet_file_to_pandas, paths, meta=dask_meta_schema)
+        ddf = dd.from_map(
+            file_io.read_parquet_file_to_pandas,
+            paths,
+            storage_options=self.storage_options,
+            meta=dask_meta_schema
+        )
         return ddf
 
     def _load_parquet_metadata_schema(
         self, catalog: hc.catalog.Catalog, paths: List[hc.io.FilePointer]
     ) -> pyarrow.Schema:
         metadata_pointer = hc.io.paths.get_parquet_metadata_pointer(catalog.catalog_base_dir)
-        if hc.io.file_io.does_file_or_directory_exist(metadata_pointer):
-            return io.read_parquet_schema(metadata_pointer)
-        return io.read_parquet_schema(paths[0])
+        if file_pointer.does_file_or_directory_exist(metadata_pointer, storage_options=self.storage_options):
+            metadata = file_io.read_parquet_metadata(metadata_pointer, storage_options=self.storage_options)
+            return metadata.schema.to_arrow_schema()
+        metadata = file_io.read_parquet_metadata(paths[0], storage_options=self.storage_options)
+        return metadata.schema.to_arrow_schema()

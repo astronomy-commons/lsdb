@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import Dict, Type
+from typing import Any, Dict, Type, Union
 
 import hipscat as hc
 from hipscat.catalog import CatalogType
@@ -21,6 +21,7 @@ dataset_class_for_catalog_type: Dict[CatalogType, Type[Dataset]] = {
 def read_hipscat(
     path: str,
     catalog_type: Type[CatalogTypeVar] | None = None,
+    storage_options: Union[Dict[Any, Any], None] = None
 ) -> CatalogTypeVar | Dataset:
     """Load a catalog from a HiPSCat formatted catalog.
 
@@ -43,20 +44,21 @@ def read_hipscat(
     config_args = {field.name: kwd_args[field.name] for field in dataclasses.fields(HipscatLoadingConfig)}
     config = HipscatLoadingConfig(**config_args)
 
-    catalog_type_to_use = _get_dataset_class_from_catalog_info(path)
+    catalog_type_to_use = _get_dataset_class_from_catalog_info(path, storage_options=storage_options)
 
     if catalog_type is not None:
         catalog_type_to_use = catalog_type
 
-    loader = get_loader_for_type(catalog_type_to_use, path, config)
-
+    loader = get_loader_for_type(catalog_type_to_use, path, config, storage_options=storage_options)
     return loader.load_catalog()
 
 
-def _get_dataset_class_from_catalog_info(base_catalog_path: str) -> Type[Dataset]:
+def _get_dataset_class_from_catalog_info(
+        base_catalog_path: str, storage_options: dict = None
+    ) -> Type[Dataset]:
     base_catalog_dir = hc.io.get_file_pointer_from_path(base_catalog_path)
     catalog_info_path = hc.io.paths.get_catalog_info_pointer(base_catalog_dir)
-    catalog_info = BaseCatalogInfo.read_from_metadata_file(catalog_info_path)
+    catalog_info = BaseCatalogInfo.read_from_metadata_file(catalog_info_path, storage_options=storage_options)
     catalog_type = catalog_info.catalog_type
     if catalog_type not in dataset_class_for_catalog_type:
         raise NotImplementedError(f"Cannot load catalog of type {catalog_type}")

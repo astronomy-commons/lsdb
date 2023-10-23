@@ -1,4 +1,4 @@
-from typing import Dict, Type, TypeVar
+from typing import Any, Dict, Type, TypeVar, Union
 
 from lsdb.catalog.catalog import Catalog
 from lsdb.catalog.dataset.dataset import Dataset
@@ -14,7 +14,8 @@ loader_class_for_catalog_type: Dict[Type[Dataset], Type[HipscatCatalogLoader]] =
 
 
 def get_loader_for_type(
-    catalog_type_to_use: Type[CatalogTypeVar], path: str, config: HipscatLoadingConfig
+    catalog_type_to_use: Type[CatalogTypeVar], path: str, config: HipscatLoadingConfig,
+    storage_options: Union[Dict[Any, Any], None] = None
 ) -> HipscatCatalogLoader:
     """Constructs a CatalogLoader that loads a Dataset of the specified type
 
@@ -30,4 +31,4 @@ def get_loader_for_type(
     if catalog_type_to_use not in loader_class_for_catalog_type:
         raise ValueError(f"Cannot load catalog type: {str(catalog_type_to_use)}")
     loader_class = loader_class_for_catalog_type[catalog_type_to_use]
-    return loader_class(path, config)
+    return loader_class(path, config, storage_options=storage_options)
