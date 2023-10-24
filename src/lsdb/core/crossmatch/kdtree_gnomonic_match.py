@@ -58,7 +58,7 @@ class KdTreeGnomonicCrossmatch(AbstractCrossmatchAlgorithm):
             axis=1,
         )
         out.set_index(HIPSCAT_ID_COLUMN, inplace=True)
-        out["_DIST"] = distances
+        out[self.DISTANCE_COLUMN_NAME] = distances
 
         return out
 
@@ -71,7 +71,8 @@ class KdTreeGnomonicCrossmatch(AbstractCrossmatchAlgorithm):
         tree = KDTree(xy2, leaf_size=2)
         # find the indices for the nearest neighbors
         # this is the cross-match calculation
-        _, inds = tree.query(xy1, k=min([n_neighbors, len(xy2)]))
+        n_neighbors = min(n_neighbors, len(xy2))
+        _, inds = tree.query(xy1, k=n_neighbors)
         # numpy indexing to join the two catalogs
         # index of each row in the output table # (0... number of output rows)
         out_idx = np.arange(len(self.left) * n_neighbors)
