@@ -20,6 +20,5 @@ from lsdb.loaders.hipscat.hipscat_loader_factory import CatalogTypeVar
 def read_hipscat(path: str, storage_options: Union[Dict[Any, Any], None] = None) -> Dataset: ...
 @overload
 def read_hipscat(
-    path: str, catalog_type: Type[CatalogTypeVar],
-    storage_options: Union[Dict[Any, Any], None] = None
+    path: str, catalog_type: Type[CatalogTypeVar], storage_options: Union[Dict[Any, Any], None] = None
 ) -> CatalogTypeVar: ...

@@ -4,10 +4,12 @@ from hipscat.io.file_io.file_io import get_fs
 
 
 def copy_tree_fs_to_fs(
-        fs1_source: str, fs2_destination: str,
-        storage_options1: dict = None, storage_options2: dict = None,
-        verbose=False
-    ):
+    fs1_source: str,
+    fs2_destination: str,
+    storage_options1: dict = None,
+    storage_options2: dict = None,
+    verbose=False,
+):
     """Recursive Copies directory from one filesystem to the other.
 
     Args:
@@ -22,7 +24,7 @@ def copy_tree_fs_to_fs(
     copy_dir(source_fs, source_fp, destination_fs, desintation_fp, verbose=verbose)
 
 
-def copy_dir(source_fs, source_fp, destination_fs, desintation_fp, verbose=False, chunksize=1024*1024):
+def copy_dir(source_fs, source_fp, destination_fs, desintation_fp, verbose=False, chunksize=1024 * 1024):
     """Recursive method to copy directories and their contents.
 
     Args:
@@ -56,17 +58,18 @@ def copy_dir(source_fs, source_fp, destination_fs, desintation_fp, verbose=False
 
     dirs = [x for x in dir_contents if x["type"] == "directory"]
     for _dir in dirs:
-        copy_dir(source_fs, _dir["name"], destination_fs, destination_folder, chunksize=chunksize, verbose=verbose)
+        copy_dir(
+            source_fs, _dir["name"], destination_fs, destination_folder, chunksize=chunksize, verbose=verbose
+        )
+
 
 if __name__ == "__main__":
-    
+
     source_pw = f"{os.getcwd()}/../tests/data"
     target_pw = "new_protocol:///path/to/pytest/lsdb"
 
     target_so = {
-        "valid_storage_option_param1" : os.environ.get("NEW_PROTOCOL_PARAM1"),
-        "valid_storage_option_param1" : os.environ.get("NEW_PROTOCOL_PARAM2"),
+        "valid_storage_option_param1": os.environ.get("NEW_PROTOCOL_PARAM1"),
+        "valid_storage_option_param1": os.environ.get("NEW_PROTOCOL_PARAM2"),
     }
-    copy_tree_fs_to_fs(
-        source_pw, target_pw, {}, target_so, verbose=True
-    )
+    copy_tree_fs_to_fs(source_pw, target_pw, {}, target_so, verbose=True)

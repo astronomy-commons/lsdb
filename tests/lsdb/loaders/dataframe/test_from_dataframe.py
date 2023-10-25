@@ -2,7 +2,6 @@ import healpy as hp
 import pandas as pd
 import pytest
 from hipscat.catalog import CatalogType
-from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_tree.pixel_node_type import PixelNodeType
 
 import lsdb
@@ -79,8 +78,7 @@ def test_partitions_in_partition_info_equal_partitions_on_map(small_sky_order1_d
     """Tests that partitions in the partition info match those on the partition map"""
     kwargs = get_catalog_kwargs(small_sky_order1_catalog)
     catalog = lsdb.from_dataframe(small_sky_order1_df, **kwargs)
-    for _, row in catalog.hc_structure.get_pixels().iterrows():
-        hp_pixel = HealpixPixel(row["Norder"], row["Npix"])
+    for hp_pixel in catalog.hc_structure.get_healpix_pixels():
         partition_from_df = catalog.get_partition(hp_pixel.order, hp_pixel.pixel)
         partition_index = catalog._ddf_pixel_map[hp_pixel]
         partition_from_map = catalog._ddf.partitions[partition_index]
