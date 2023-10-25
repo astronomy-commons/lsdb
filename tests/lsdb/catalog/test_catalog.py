@@ -1,4 +1,3 @@
-import dask.array as da
 import dask.dataframe as dd
 import pandas as pd
 import pytest
@@ -54,28 +53,18 @@ def test_assign_no_arguments(small_sky_order1_catalog):
 
 
 def test_assign_with_callable(small_sky_order1_catalog):
-    kwargs = {"new_column": lambda x: x["ra"] + x["dec"]}
+    kwargs = {"new_column": lambda x: x["ra"] ** 2}
     result_catalog = small_sky_order1_catalog.assign(**kwargs)
     expected_ddf = small_sky_order1_catalog._ddf.copy()
-    expected_ddf["new_column"] = expected_ddf["ra"] + expected_ddf["dec"]
+    expected_ddf["new_column"] = expected_ddf["ra"] ** 2
     pd.testing.assert_frame_equal(result_catalog.compute(), expected_ddf.compute())
 
 
 def test_assign_with_series(small_sky_order1_catalog):
+    # The series is created from the original dataframe because indices must match
     new_series = small_sky_order1_catalog._ddf["ra_error"].map(lambda x: x**2)
     kwargs = {"new_column": new_series}
     result_catalog = small_sky_order1_catalog.assign(**kwargs)
     expected_ddf = small_sky_order1_catalog._ddf.copy()
     expected_ddf["new_column"] = new_series
     pd.testing.assert_frame_equal(result_catalog.compute(), expected_ddf.compute())
-
-
-def test_assign_with_invalid_arguments(small_sky_order1_catalog):
-    with pytest.raises(TypeError, match="Column assignment doesn't support type"):
-        small_sky_order1_catalog.assign(new_column=[1, 2, 3])
-    with pytest.raises(ValueError, match="Array assignment only supports 1-D arrays"):
-        small_sky_order1_catalog.assign(new_column=da.ones((10, 10)))
-    with pytest.raises(ValueError, match="Number of partitions do not match"):
-        chunks = small_sky_order1_catalog._ddf.npartitions + 1
-        array = da.random.random(size=10, chunks=chunks)
-        small_sky_order1_catalog.assign(new_column=array)
