@@ -1,12 +1,13 @@
 import math
+from typing import Tuple
 
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
 from scipy.spatial import KDTree
 
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
-
 
 
 class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
@@ -21,7 +22,9 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
         d_chord = 2.0 * math.sin(math.radians(0.5 * d_thresh))
 
         # get matching indices for cross-matched rows
-        chord_distances, left_idx, right_idx = self._find_crossmatch_indices(n_neighbors=n_neighbors, distance=d_chord)
+        chord_distances, left_idx, right_idx = self._find_crossmatch_indices(
+            n_neighbors=n_neighbors, distance=d_chord
+        )
         arc_distances = np.degrees(2.0 * np.arcsin(0.5 * chord_distances))
 
         # rename columns so no same names during merging
@@ -44,7 +47,9 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
 
         return out
 
-    def _find_crossmatch_indices(self, n_neighbors: int, distance: float) -> (np.ndarray[np.float64], np.ndarray[np.int64], np.ndarray[np.int64]):
+    def _find_crossmatch_indices(
+        self, n_neighbors: int, distance: float
+    ) -> Tuple[npt.NDArray[np.float64], npt.NDArray[np.int64], npt.NDArray[np.int64]]:
         # calculate the cartesian coordinates of the points
         left_xyz = _lon_lat_to_xyz(
             lon=self.left[self.left_metadata.catalog_info.ra_column].values,
@@ -59,7 +64,13 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
         n_neighbors = min(n_neighbors, len(right_xyz))
 
         # construct the KDTree from the right catalog
-        tree = KDTree(right_xyz, leafsize=n_neighbors, compact_nodes=True, balanced_tree=True, copy_data=False)
+        tree = KDTree(
+            right_xyz,
+            leafsize=n_neighbors,
+            compact_nodes=True,
+            balanced_tree=True,
+            copy_data=False,
+        )
 
         # find the indices for the nearest neighbors
         # this is the cross-match calculation
@@ -76,7 +87,7 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
         return distances[match_mask], left_index[match_mask], right_index[match_mask]
 
 
-def _lon_lat_to_xyz(lon: np.ndarray[np.float64], lat: np.ndarray[np.float64]) -> np.ndarray[np.float64]:
+def _lon_lat_to_xyz(lon: npt.NDArray[np.float64], lat: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
     """Converts longitude and latitude to cartesian coordinates on the unit sphere
 
     Args:
