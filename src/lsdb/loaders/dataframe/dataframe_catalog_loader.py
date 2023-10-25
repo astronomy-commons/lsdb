@@ -28,7 +28,7 @@ class DataframeCatalogLoader:
 
     def __init__(
         self,
-        df: pd.DataFrame,
+        dataframe: pd.DataFrame,
         lowest_order: int = 0,
         highest_order: int = 5,
         partition_size: float | None = None,
@@ -38,14 +38,14 @@ class DataframeCatalogLoader:
         """Initializes a DataframeCatalogLoader
 
         Args:
-            df (pd.Dataframe): Catalog Pandas Dataframe
+            dataframe (pd.Dataframe): Catalog Pandas Dataframe
             lowest_order (int): The lowest partition order
             highest_order (int): The highest partition order
             partition_size (float): The desired partition size, in megabytes
             threshold (int): The maximum number of data points per pixel
             **kwargs: Arguments to pass to the creation of the catalog info
         """
-        self.df = df
+        self.dataframe = dataframe
         self.lowest_order = lowest_order
         self.highest_order = highest_order
         self.threshold = self._calculate_threshold(partition_size, threshold)
@@ -66,11 +66,11 @@ class DataframeCatalogLoader:
             raise ValueError("Specify only one: threshold or partition_size")
         if threshold is None:
             if partition_size is not None:
-                df_size_bytes = self.df.memory_usage().sum()
+                df_size_bytes = self.dataframe.memory_usage().sum()
                 # Round the number of partitions to the next integer, otherwise the
                 # number of pixels per partition may exceed the threshold
                 num_partitions = math.ceil(df_size_bytes / (partition_size * (1 << 20)))
-                threshold = len(self.df.index) // num_partitions
+                threshold = len(self.dataframe.index) // num_partitions
             else:
                 threshold = DataframeCatalogLoader.DEFAULT_THRESHOLD
         return threshold
@@ -107,11 +107,11 @@ class DataframeCatalogLoader:
     def _set_hipscat_index(self):
         """Generates the hipscat indices for each data point and assigns
         the hipscat index column as the Dataframe index."""
-        self.df[HIPSCAT_ID_COLUMN] = compute_hipscat_id(
-            ra_values=self.df[self.catalog_info.ra_column],
-            dec_values=self.df[self.catalog_info.dec_column],
+        self.dataframe[HIPSCAT_ID_COLUMN] = compute_hipscat_id(
+            ra_values=self.dataframe[self.catalog_info.ra_column],
+            dec_values=self.dataframe[self.catalog_info.dec_column],
         )
-        self.df.set_index(HIPSCAT_ID_COLUMN, inplace=True)
+        self.dataframe.set_index(HIPSCAT_ID_COLUMN, inplace=True)
 
     def _compute_pixel_map(self) -> Dict[HealpixPixel, HealpixInfo]:
         """Compute object histogram and generate the mapping between
@@ -123,7 +123,7 @@ class DataframeCatalogLoader:
             of objects in the HEALPix pixel, the second is the list of pixels
         """
         raw_histogram = generate_histogram(
-            self.df,
+            self.dataframe,
             highest_order=self.highest_order,
             ra_column=self.catalog_info.ra_column,
             dec_column=self.catalog_info.dec_column,
@@ -161,7 +161,7 @@ class DataframeCatalogLoader:
             ddf_pixel_map[hp_pixel] = hp_pixel_index
 
         # Generate Dask Dataframe with original schema
-        schema = pd.DataFrame(columns=self.df.columns).astype(self.df.dtypes)
+        schema = pd.DataFrame(columns=self.dataframe.columns).astype(self.dataframe.dtypes)
         ddf = self._generate_dask_dataframe(pixel_dfs, schema)
 
         return ddf, ddf_pixel_map
@@ -199,4 +199,4 @@ class DataframeCatalogLoader:
         """
         left_bound = healpix_to_hipscat_id(self.highest_order, pixels[0])
         right_bound = healpix_to_hipscat_id(self.highest_order, pixels[-1] + 1)
-        return self.df.loc[(self.df.index >= left_bound) & (self.df.index < right_bound)]
+        return self.dataframe.loc[(self.dataframe.index >= left_bound) & (self.dataframe.index < right_bound)]

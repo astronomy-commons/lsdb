@@ -54,7 +54,7 @@ def read_hipscat(
 
 
 def _get_dataset_class_from_catalog_info(
-    base_catalog_path: str, storage_options: dict = None
+    base_catalog_path: str, storage_options: Union[Dict[Any, Any], None] = None
 ) -> Type[Dataset]:
     base_catalog_dir = hc.io.get_file_pointer_from_path(base_catalog_path)
     catalog_info_path = hc.io.paths.get_catalog_info_pointer(base_catalog_dir)
