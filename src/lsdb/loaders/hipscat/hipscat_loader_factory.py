@@ -14,8 +14,10 @@ loader_class_for_catalog_type: Dict[Type[Dataset], Type[HipscatCatalogLoader]] =
 
 
 def get_loader_for_type(
-    catalog_type_to_use: Type[CatalogTypeVar], path: str, config: HipscatLoadingConfig,
-    storage_options: Union[Dict[Any, Any], None] = None
+    catalog_type_to_use: Type[CatalogTypeVar],
+    path: str,
+    config: HipscatLoadingConfig,
+    storage_options: Union[Dict[Any, Any], None] = None,
 ) -> HipscatCatalogLoader:
     """Constructs a CatalogLoader that loads a Dataset of the specified type
 

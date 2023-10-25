@@ -15,8 +15,8 @@ class HipscatCatalogLoader:
     """Loads a HiPSCat formatted Catalog"""
 
     def __init__(
-            self, path: str, config: HipscatLoadingConfig,
-            storage_options: Union[Dict[Any, Any], None] = None) -> None:
+        self, path: str, config: HipscatLoadingConfig, storage_options: Union[Dict[Any, Any], None] = None
+    ) -> None:
         """Initializes a HipscatCatalogLoader
 
         Args:
@@ -80,7 +80,7 @@ class HipscatCatalogLoader:
             file_io.read_parquet_file_to_pandas,
             paths,
             storage_options=self.storage_options,
-            meta=dask_meta_schema
+            meta=dask_meta_schema,
         )
         return ddf
 

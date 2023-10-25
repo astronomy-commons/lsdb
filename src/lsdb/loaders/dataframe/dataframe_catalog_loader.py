@@ -27,13 +27,13 @@ class DataframeCatalogLoader:
     DEFAULT_THRESHOLD = 100_000
 
     def __init__(
-            self,
-            df: pd.DataFrame,
-            lowest_order: int = 0,
-            highest_order: int = 5,
-            partition_size: float | None = None,
-            threshold: int | None = None,
-            **kwargs,
+        self,
+        df: pd.DataFrame,
+        lowest_order: int = 0,
+        highest_order: int = 5,
+        partition_size: float | None = None,
+        threshold: int | None = None,
+        **kwargs,
     ) -> None:
         """Initializes a DataframeCatalogLoader
 
