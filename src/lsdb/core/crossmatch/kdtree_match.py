@@ -47,24 +47,30 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
     def _find_crossmatch_indices(self, n_neighbors: int, distance: float) -> (np.ndarray[np.float64], np.ndarray[np.int64], np.ndarray[np.int64]):
         # calculate the cartesian coordinates of the points
         left_xyz = _lon_lat_to_xyz(
-            self.left[self.left_metadata.catalog_info.dec_column].values,
-            self.left[self.left_metadata.catalog_info.ra_column].values,
+            lon=self.left[self.left_metadata.catalog_info.ra_column].values,
+            lat=self.left[self.left_metadata.catalog_info.dec_column].values,
         )
         right_xyz = _lon_lat_to_xyz(
-            self.right[self.right_metadata.catalog_info.dec_column].values,
-            self.right[self.right_metadata.catalog_info.ra_column].values,
+            lon=self.right[self.right_metadata.catalog_info.ra_column].values,
+            lat=self.right[self.right_metadata.catalog_info.dec_column].values,
         )
-        n_neighbors = min([n_neighbors, len(right_xyz)])
+
+        # Make sure we don't ask for more neighbors than there are points
+        n_neighbors = min(n_neighbors, len(right_xyz))
+
         # construct the KDTree from the right catalog
         tree = KDTree(right_xyz, leafsize=n_neighbors, compact_nodes=True, balanced_tree=True, copy_data=False)
+
         # find the indices for the nearest neighbors
         # this is the cross-match calculation
         distances, right_index = tree.query(left_xyz, k=n_neighbors, distance_upper_bound=distance)
+
         # index of the corresponding row in the left table [[0, 0, 0], [1, 1, 1], [2, 2, 2], ...]
         left_index = np.arange(left_xyz.shape[0])
         # We need make the shape the same as for right_index
         if n_neighbors > 1:
             left_index = np.stack([left_index] * n_neighbors, axis=1)
+
         # Infinite distance means no match
         match_mask = np.isfinite(distances)
         return distances[match_mask], left_index[match_mask], right_index[match_mask]
