@@ -7,7 +7,6 @@ import os
 import lsdb
 from lsdb.core.crossmatch.kdtree_gnomonic_match import KdTreeGnomonicCrossmatch
 
-
 TEST_DIR = os.path.join(os.path.dirname(__file__), "..", "tests")
 DATA_DIR_NAME = "data"
 SMALL_SKY_DIR_NAME = "small_sky"
