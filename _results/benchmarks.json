@@ -1,8 +1,8 @@
 {
-    "benchmarks.time_crossmatch": {
-        "code": "def time_crossmatch():\n    \"\"\"Time computations are prefixed with 'time'.\"\"\"\n    small_sky = load_small_sky()\n    small_sky_xmatch = load_small_sky_xmatch()\n    small_sky.crossmatch(small_sky_xmatch).compute()",
+    "benchmarks.time_kdtree_crossmatch": {
+        "code": "def time_kdtree_crossmatch():\n    \"\"\"Time computations are prefixed with 'time'.\"\"\"\n    small_sky = load_small_sky()\n    small_sky_xmatch = load_small_sky_xmatch()\n    small_sky.crossmatch(small_sky_xmatch).compute()",
         "min_run_count": 2,
-        "name": "benchmarks.time_crossmatch",
+        "name": "benchmarks.time_kdtree_crossmatch",
         "number": 0,
         "param_names": [],
         "params": [],
@@ -12,7 +12,23 @@
         "timeout": 60.0,
         "type": "time",
         "unit": "seconds",
-        "version": "89f284d276e9bb0aefae8b49f199a867deb1009e927e634a5e78e3cb070a3560",
+        "version": "f723cec0bbf1a08bdb018e50f7c5095cdaed2a193d6eb25133c2600fd73fd2c5",
+        "warmup_time": -1
+    },
+    "benchmarks.time_kdtree_gnomonic_crossmatch": {
+        "code": "def time_kdtree_gnomonic_crossmatch():\n    \"\"\"Time computations are prefixed with 'time'.\"\"\"\n    small_sky = load_small_sky()\n    small_sky_xmatch = load_small_sky_xmatch()\n    small_sky.crossmatch(small_sky_xmatch, algorithm=KdTreeGnomonicCrossmatch).compute()",
+        "min_run_count": 2,
+        "name": "benchmarks.time_kdtree_gnomonic_crossmatch",
+        "number": 0,
+        "param_names": [],
+        "params": [],
+        "repeat": 0,
+        "rounds": 2,
+        "sample_time": 0.01,
+        "timeout": 60.0,
+        "type": "time",
+        "unit": "seconds",
+        "version": "baceacbaabe820de82b9230e8c2b582c5b0c527988fd59172265e4401245b975",
         "warmup_time": -1
     },
     "version": 2
