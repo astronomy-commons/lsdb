@@ -11,19 +11,35 @@ from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatc
 
 
 class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
-    """Nearest neighbor crossmatch using a 3-D Tree"""
+    """Nearest neighbor crossmatch using a 3D k-D tree"""
 
     def crossmatch(
         self,
         n_neighbors: int = 1,
         d_thresh: float = 0.01,
     ) -> pd.DataFrame:
+        """Perform a cross-match between the data from two HEALPix pixels
+
+        Finds the n closest neighbors in the right catalog for each point in the left catalog that
+        are within a threshold distance by using a K-D Tree.
+
+        Args:
+            n_neighbors (int): The number of neighbors to find within each point
+            d_thresh (float): The threshold distance in degrees beyond which neighbors are not added
+
+        Returns:
+            A DataFrame from the left and right tables merged with one row for each pair of
+            neighbors found from cross-matching. The resulting table contains the columns from the
+            left table with the first suffix appended, the right columns with the second suffix, and
+            a column with the name {AbstractCrossmatchAlgorithm.DISTANCE_COLUMN_NAME} with the great
+            circle separation between the points.
+        """
         # Distance in 3-D space for unit sphere
         d_chord = 2.0 * math.sin(math.radians(0.5 * d_thresh))
 
         # get matching indices for cross-matched rows
         chord_distances, left_idx, right_idx = self._find_crossmatch_indices(
-            n_neighbors=n_neighbors, distance=d_chord
+            n_neighbors=n_neighbors, max_distance=d_chord
         )
         arc_distances = np.degrees(2.0 * np.arcsin(0.5 * chord_distances))
 
@@ -48,7 +64,7 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
         return out
 
     def _find_crossmatch_indices(
-        self, n_neighbors: int, distance: float
+        self, n_neighbors: int, max_distance: float
     ) -> Tuple[npt.NDArray[np.float64], npt.NDArray[np.int64], npt.NDArray[np.int64]]:
         # calculate the cartesian coordinates of the points
         left_xyz = _lon_lat_to_xyz(
@@ -74,7 +90,7 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
 
         # find the indices for the nearest neighbors
         # this is the cross-match calculation
-        distances, right_index = tree.query(left_xyz, k=n_neighbors, distance_upper_bound=distance)
+        distances, right_index = tree.query(left_xyz, k=n_neighbors, distance_upper_bound=max_distance)
 
         # index of the corresponding row in the left table [[0, 0, 0], [1, 1, 1], [2, 2, 2], ...]
         left_index = np.arange(left_xyz.shape[0])
