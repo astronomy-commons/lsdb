@@ -91,6 +91,37 @@ class Catalog(Dataset):
         """The name of the catalog"""
         return self.hc_structure.catalog_name
 
+    def query(self, expr: str | None = None) -> Catalog:
+        """Filters catalog using a complex query expression
+
+        Args:
+            expr (str): Query expression to evaluate. The column names that are not
+                valid Python variables names should be wrapped in backticks, and any
+                variable values can be injected using f-strings.
+
+        Returns:
+            A catalog that contains the data from the original catalog that complies
+            with the query expression
+        """
+        if expr is None:
+            raise ValueError("Provided query expression is not valid")
+        ddf = self._ddf.query(expr)
+        return Catalog(ddf, self._ddf_pixel_map, self.hc_structure)
+
+    def assign(self, **kwargs) -> Catalog:
+        """Assigns new columns to a catalog
+
+        Args:
+            **kwargs: Arguments to pass to the assign method. This dictionary
+                should contain the column names as keys and either a lambda
+                function or a 1-D Dask array as their corresponding value.
+
+        Returns:
+            The catalog containing both the old columns and the newly created columns
+        """
+        ddf = self._ddf.assign(**kwargs)
+        return Catalog(ddf, self._ddf_pixel_map, self.hc_structure)
+
     def crossmatch(
         self,
         other: Catalog,
