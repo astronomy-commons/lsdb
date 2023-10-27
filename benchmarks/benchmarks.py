@@ -5,6 +5,7 @@ https://asv.readthedocs.io/en/stable/writing_benchmarks.html."""
 import os
 
 import lsdb
+from lsdb.core.crossmatch.kdtree_gnomonic_match import KdTreeGnomonicCrossmatch
 
 TEST_DIR = os.path.join(os.path.dirname(__file__), "..", "tests")
 DATA_DIR_NAME = "data"
@@ -22,8 +23,15 @@ def load_small_sky_xmatch():
     return lsdb.read_hipscat(path, catalog_type=lsdb.Catalog)
 
 
-def time_crossmatch():
+def time_kdtree_crossmatch():
     """Time computations are prefixed with 'time'."""
     small_sky = load_small_sky()
     small_sky_xmatch = load_small_sky_xmatch()
     small_sky.crossmatch(small_sky_xmatch).compute()
+
+
+def time_kdtree_gnomonic_crossmatch():
+    """Time computations are prefixed with 'time'."""
+    small_sky = load_small_sky()
+    small_sky_xmatch = load_small_sky_xmatch()
+    small_sky.crossmatch(small_sky_xmatch, algorithm=KdTreeGnomonicCrossmatch).compute()

@@ -21,6 +21,7 @@ dependencies = [
     "deprecated",
     "ipykernel", # Support for Jupyter notebooks
     "scikit-learn",
+    "scipy", # kdtree
 ]
 
 # On a mac, install optional dependencies with `pip install '.[dev]'` (include the single quotes)
