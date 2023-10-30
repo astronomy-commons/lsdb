@@ -16,6 +16,7 @@ classifiers = [
 dynamic = ["version"]
 dependencies = [
     "dask",
+    "ray",
     "hipscat",
     "pyarrow",
     "deprecated",

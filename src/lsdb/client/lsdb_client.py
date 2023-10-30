@@ -3,7 +3,7 @@ import ray
 from ray.util.dask import enable_dask_on_ray, disable_dask_on_ray
 
 class lsdb_client():
-    def __init__(self, dask_on_ray=True, num_workers=4):
+    def __init__(self, dask_on_ray=True, num_workers=4, temp_dir=None):
         self.dask_on_ray = dask_on_ray
         self.num_workers=num_workers
         self.start()
@@ -13,7 +13,7 @@ class lsdb_client():
         if self.dask_on_ray:
             self.client = ray.init(
                 num_cpus=self.num_workers,
-                _temp_dir="/data3/epyc/projects3/sam_hipscat"
+                _temp_dir=temp_dir
             )
             enable_dask_on_ray()
         else:
