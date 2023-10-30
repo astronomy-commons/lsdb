@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Tuple, Union
 import dask.dataframe as dd
 import hipscat as hc
 import pyarrow
+import pandas as pd
 from hipscat.io.file_io import file_io, file_pointer
 from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_HEALPIX_ORDER
@@ -15,7 +16,8 @@ class HipscatCatalogLoader:
     """Loads a HiPSCat formatted Catalog"""
 
     def __init__(
-        self, path: str, config: HipscatLoadingConfig, storage_options: Union[Dict[Any, Any], None] = None
+        self, path: str, config: HipscatLoadingConfig, storage_options: Union[Dict[Any, Any], None] = None,
+        columns: List[str] = None
     ) -> None:
         """Initializes a HipscatCatalogLoader
 
@@ -27,6 +29,7 @@ class HipscatCatalogLoader:
         self.base_catalog_dir = hc.io.get_file_pointer_from_path(self.path)
         self.config = config
         self.storage_options = storage_options
+        self.columns = columns
 
     def load_catalog(self) -> Catalog:
         """Load a catalog from the configuration specified when the loader was created
@@ -76,11 +79,14 @@ class HipscatCatalogLoader:
     ) -> dd.DataFrame:
         metadata_schema = self._load_parquet_metadata_schema(catalog, paths)
         dask_meta_schema = metadata_schema.empty_table().to_pandas()
+        if self.columns is not None:
+            dask_meta_schema = dask_meta_schema[self.columns]
         ddf = dd.from_map(
             file_io.read_parquet_file_to_pandas,
             paths,
             storage_options=self.storage_options,
             meta=dask_meta_schema,
+            columns=self.columns
         )
         return ddf
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import Dict, List, Tuple, Type, cast
+from typing import Dict, List, Tuple, Type, cast, TYPE_CHECKING
 
 import dask.dataframe as dd
 import hipscat as hc
@@ -12,9 +12,13 @@ from lsdb.core.cone_search import cone_filter
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
 from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorithm
 from lsdb.dask.crossmatch_catalog_data import crossmatch_catalog_data
+from lsdb.dask.join_catalog_data import join_catalog_data, join_catalog_data_on, join_to_sources_on
 
 DaskDFPixelMap = Dict[HealpixPixel, int]
 
+if TYPE_CHECKING:
+    from lsdb.catalog.association_catalog.association_catalog import \
+        AssociationCatalog
 
 # pylint: disable=R0903, W0212
 class Catalog(Dataset):
@@ -218,7 +222,7 @@ class Catalog(Dataset):
         if dec > 90 or dec < -90:
             raise ValueError("dec must be between -90 and 90")
 
-    def cone_search(self, ra: float, dec: float, radius: float):
+    def cone_search(self, ra: float, dec: float, radius: float) -> Catalog:
         """Perform a cone search to filter the catalog
 
         Filters to points within radius great circle distance to the point specified by ra and dec in degrees.
@@ -247,3 +251,41 @@ class Catalog(Dataset):
         cone_search_ddf = cast(dd.DataFrame, cone_search_ddf)
         ddf_partition_map = {pixel: i for i, pixel in enumerate(pixels_in_cone)}
         return Catalog(cone_search_ddf, ddf_partition_map, filtered_hc_structure)
+
+    def join(
+            self,
+            other: Catalog,
+            through: AssociationCatalog=None,
+            left_on: str = None,
+            right_on: str = None,
+            suffixes: Tuple[str, str] | None = None
+    ) -> Catalog:
+        if suffixes is None:
+            suffixes = ("", "")
+        if through is None:
+            ddf, ddf_map, alignment = join_catalog_data_on(self, other, left_on, right_on, suffixes=suffixes)
+        else:
+            ddf, ddf_map, alignment = join_catalog_data(self, other, through, suffixes=suffixes)
+        new_catalog_info = dataclasses.replace(
+            self.hc_structure.catalog_info,
+            ra_column=self.hc_structure.catalog_info.ra_column + suffixes[0],
+            dec_column=self.hc_structure.catalog_info.dec_column + suffixes[0],
+        )
+        hc_catalog = hc.catalog.Catalog(new_catalog_info, alignment.pixel_tree)
+        return Catalog(ddf, ddf_map, hc_catalog)
+
+    def join_sources(
+            self,
+            sources: List[Tuple[Catalog, str, str]],
+            suffixes: List[str] | None = None,
+    ) -> Catalog:
+        if suffixes is None:
+            suffixes = [""] * (len(sources) + 1)
+        ddf, ddf_map, tree = join_to_sources_on(self, sources, suffixes=suffixes)
+        new_catalog_info = dataclasses.replace(
+            self.hc_structure.catalog_info,
+            ra_column=self.hc_structure.catalog_info.ra_column + suffixes[0],
+            dec_column=self.hc_structure.catalog_info.dec_column + suffixes[0],
+        )
+        hc_catalog = hc.catalog.Catalog(new_catalog_info, tree)
+        return Catalog(ddf, ddf_map, hc_catalog)

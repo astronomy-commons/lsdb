@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import Any, Dict, Type, Union
+from typing import Any, Dict, Type, Union, List
 
 import hipscat as hc
+from hipscat.inspection import Almanac
 from hipscat.catalog import CatalogType
 from hipscat.catalog.dataset import BaseCatalogInfo
 
@@ -22,6 +23,7 @@ def read_hipscat(
     path: str,
     catalog_type: Type[CatalogTypeVar] | None = None,
     storage_options: Union[Dict[Any, Any], None] = None,
+    columns: List[str] | None = None
 ) -> CatalogTypeVar | Dataset:
     """Load a catalog from a HiPSCat formatted catalog.
 
@@ -49,8 +51,16 @@ def read_hipscat(
     if catalog_type is not None:
         catalog_type_to_use = catalog_type
 
-    loader = get_loader_for_type(catalog_type_to_use, path, config, storage_options=storage_options)
+    loader = get_loader_for_type(catalog_type_to_use, path, config, storage_options=storage_options, columns=columns)
     return loader.load_catalog()
+
+
+def from_almanac(catalog_name: str, almanac: Almanac, columns: List[str] = None):
+    if catalog_name not in almanac.catalogs():
+        raise AttributeError(f"{catalog_name} not in Almanac catalogs")
+
+    catalog_path = almanac.entries[catalog_name].catalog_path
+    return read_hipscat(catalog_path, storage_options=almanac.storage_options, columns=columns)
 
 
 def _get_dataset_class_from_catalog_info(
