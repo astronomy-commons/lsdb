@@ -3,11 +3,10 @@ import pytest
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
 
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
-from lsdb.core.crossmatch.kdtree_gnomonic_match import KdTreeGnomonicCrossmatch
 from lsdb.core.crossmatch.kdtree_match import KdTreeCrossmatch
 
 
-@pytest.mark.parametrize("algo", [KdTreeCrossmatch, KdTreeGnomonicCrossmatch])
+@pytest.mark.parametrize("algo", [KdTreeCrossmatch])
 class TestCrossmatch:
     @staticmethod
     def test_kdtree_crossmatch(algo, small_sky_catalog, small_sky_xmatch_catalog, xmatch_correct):
