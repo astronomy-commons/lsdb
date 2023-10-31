@@ -9,10 +9,12 @@ from hipscat.pixel_math import HealpixPixel
 
 from lsdb.catalog.dataset.dataset import Dataset
 from lsdb.core.cone_search import cone_filter
+from lsdb.core.polygon_search import polygon_filter
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
 from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorithm
 from lsdb.dask.crossmatch_catalog_data import crossmatch_catalog_data
 from lsdb.dask.join_catalog_data import join_catalog_data, join_catalog_data_on, join_to_sources_on
+from lsdb.io.to_hipscat import write_catalog
 
 DaskDFPixelMap = Dict[HealpixPixel, int]
 
@@ -252,6 +254,42 @@ class Catalog(Dataset):
         ddf_partition_map = {pixel: i for i, pixel in enumerate(pixels_in_cone)}
         return Catalog(cone_search_ddf, ddf_partition_map, filtered_hc_structure)
 
+    @staticmethod
+    def check_polygon(polygon):
+        pass
+        # if ra < -180 or ra > 180:
+        #     raise ValueError("ra must be between -180 and 180")
+        # if dec > 90 or dec < -90:
+        #     raise ValueError("dec must be between -90 and 90")
+
+    def polygon_search(self, polygon) -> Catalog:
+        """Perform a cone search to filter the catalog
+
+        Filters to points within radius great circle distance to the point specified by ra and dec in degrees.
+        Filters partitions in the catalog to those that have some overlap with the cone.
+
+        Args:
+            ra (float): Right Ascension of the center of the cone in degrees
+            dec (float): Declination of the center of the cone in degrees
+            radius (float): Radius of the cone in degrees
+
+        Returns:
+            A new Catalog containing the points filtered to those within the cone, and the partitions that
+            overlap the cone.
+        """
+        self.check_polygon(polygon)
+        filtered_hc_structure, polygon_pixels, max_order = self.hc_structure.filter_by_polygon(polygogn)
+        pixels_in_polygon = filtered_hc_structure.get_healpix_pixels()
+        partitions = self._ddf.to_delayed()
+        partiions_in_polygon = [partitions[self._ddf_pixel_map[pixel]] for pixel in pixels_in_polygon]
+        filtered_partitions = [
+            polygon_filter(partition, polygon_pixels, max_order, self.hc_structure) for partition in partiions_in_polygon
+        ]
+        polygon_search_ddf = dd.from_delayed(filtered_partitions, meta=self._ddf._meta)
+        polygon_search_ddf = cast(dd.DataFrame, polygon_search_ddf)
+        ddf_partition_map = {pixel: i for i, pixel in enumerate(pixels_in_polygon)}
+        return Catalog(polygon_search_ddf, ddf_partition_map, filtered_hc_structure)
+
     def join(
             self,
             other: Catalog,
@@ -289,3 +327,6 @@ class Catalog(Dataset):
         )
         hc_catalog = hc.catalog.Catalog(new_catalog_info, tree)
         return Catalog(ddf, ddf_map, hc_catalog)
+
+    def to_hipscat(self, path: str, catalog_name=None):
+        write_catalog(self, path, catalog_name=catalog_name)
