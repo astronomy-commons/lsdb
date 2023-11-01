@@ -91,20 +91,20 @@ class Catalog(Dataset):
         """The name of the catalog"""
         return self.hc_structure.catalog_name
 
-    def query(self, expr: str | None = None) -> Catalog:
+    def query(self, expr: str) -> Catalog:
         """Filters catalog using a complex query expression
 
         Args:
-            expr (str): Query expression to evaluate. The column names that are not
-                valid Python variables names should be wrapped in backticks, and any
-                variable values can be injected using f-strings.
+            expr (str): Query expression to evaluate. The column names that are not valid Python
+                variables names should be wrapped in backticks, and any variable values can be
+                injected using f-strings. The use of '@' to reference variables is not supported.
+                More information about pandas query strings is available
+                `here <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.query.html>`__.
 
         Returns:
             A catalog that contains the data from the original catalog that complies
             with the query expression
         """
-        if expr is None:
-            raise ValueError("Provided query expression is not valid")
         ddf = self._ddf.query(expr)
         return Catalog(ddf, self._ddf_pixel_map, self.hc_structure)
 

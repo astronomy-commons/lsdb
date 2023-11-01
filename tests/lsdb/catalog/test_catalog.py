@@ -55,8 +55,8 @@ def test_query(small_sky_order1_catalog):
 
 
 def test_query_no_arguments(small_sky_order1_catalog):
-    with pytest.raises(ValueError, match="Provided query expression is not valid"):
-        small_sky_order1_catalog.query()
+    with pytest.raises(ValueError):
+        small_sky_order1_catalog.query(None)
 
 
 def test_assign_no_arguments(small_sky_order1_catalog):
