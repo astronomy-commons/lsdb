@@ -22,7 +22,7 @@ def load_small_sky_xmatch():
     return lsdb.read_hipscat(path, catalog_type=lsdb.Catalog)
 
 
-def time_crossmatch():
+def time_kdtree_crossmatch():
     """Time computations are prefixed with 'time'."""
     small_sky = load_small_sky()
     small_sky_xmatch = load_small_sky_xmatch()

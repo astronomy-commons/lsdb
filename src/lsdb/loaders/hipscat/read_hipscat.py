@@ -21,7 +21,7 @@ dataset_class_for_catalog_type: Dict[CatalogType, Type[Dataset]] = {
 def read_hipscat(
     path: str,
     catalog_type: Type[CatalogTypeVar] | None = None,
-    storage_options: Union[Dict[Any, Any], None] = None
+    storage_options: Union[Dict[Any, Any], None] = None,
 ) -> CatalogTypeVar | Dataset:
     """Load a catalog from a HiPSCat formatted catalog.
 
@@ -54,8 +54,8 @@ def read_hipscat(
 
 
 def _get_dataset_class_from_catalog_info(
-        base_catalog_path: str, storage_options: dict = None
-    ) -> Type[Dataset]:
+    base_catalog_path: str, storage_options: Union[Dict[Any, Any], None] = None
+) -> Type[Dataset]:
     base_catalog_dir = hc.io.get_file_pointer_from_path(base_catalog_path)
     catalog_info_path = hc.io.paths.get_catalog_info_pointer(base_catalog_dir)
     catalog_info = BaseCatalogInfo.read_from_metadata_file(catalog_info_path, storage_options=storage_options)

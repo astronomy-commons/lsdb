@@ -7,7 +7,7 @@ from lsdb.loaders.dataframe.dataframe_catalog_loader import DataframeCatalogLoad
 
 
 def from_dataframe(
-    df: pd.DataFrame,
+    dataframe: pd.DataFrame,
     lowest_order: int = 0,
     highest_order: int = 5,
     partition_size: float | None = None,
@@ -17,7 +17,7 @@ def from_dataframe(
     """Load a catalog from a Pandas Dataframe in CSV format.
 
     Args:
-        df (pd.Dataframe): The catalog Pandas Dataframe
+        dataframe (pd.Dataframe): The catalog Pandas Dataframe
         lowest_order (int): The lowest partition order
         highest_order (int): The highest partition order
         partition_size (float): The desired partition size, in megabytes
@@ -27,5 +27,7 @@ def from_dataframe(
     Returns:
         Catalog object loaded from the given parameters
     """
-    loader = DataframeCatalogLoader(df, lowest_order, highest_order, partition_size, threshold, **kwargs)
+    loader = DataframeCatalogLoader(
+        dataframe, lowest_order, highest_order, partition_size, threshold, **kwargs
+    )
     return loader.load_catalog()

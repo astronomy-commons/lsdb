@@ -14,7 +14,9 @@ def test_kdtree_crossmatch(small_sky_catalog_cloud, small_sky_xmatch_catalog_clo
         assert xmatch_row["_DIST"].values == pytest.approx(correct_row["dist"])
 
 
-def test_kdtree_crossmatch_thresh(small_sky_catalog_cloud, small_sky_xmatch_catalog_cloud, xmatch_correct_005_cloud):
+def test_kdtree_crossmatch_thresh(
+    small_sky_catalog_cloud, small_sky_xmatch_catalog_cloud, xmatch_correct_005_cloud
+):
     xmatched = small_sky_catalog_cloud.crossmatch(small_sky_xmatch_catalog_cloud, d_thresh=0.005).compute()
     assert len(xmatched) == len(xmatch_correct_005_cloud)
     for _, correct_row in xmatch_correct_005_cloud.iterrows():
@@ -27,7 +29,9 @@ def test_kdtree_crossmatch_thresh(small_sky_catalog_cloud, small_sky_xmatch_cata
 def test_kdtree_crossmatch_multiple_neighbors(
     small_sky_catalog_cloud, small_sky_xmatch_catalog_cloud, xmatch_correct_3n_2t_no_margin_cloud
 ):
-    xmatched = small_sky_catalog_cloud.crossmatch(small_sky_xmatch_catalog_cloud, n_neighbors=3, d_thresh=2).compute()
+    xmatched = small_sky_catalog_cloud.crossmatch(
+        small_sky_xmatch_catalog_cloud, n_neighbors=3, d_thresh=2
+    ).compute()
     assert len(xmatched) == len(xmatch_correct_3n_2t_no_margin_cloud)
     for _, correct_row in xmatch_correct_3n_2t_no_margin_cloud.iterrows():
         assert correct_row["ss_id"] in xmatched["id_small_sky"].values
@@ -39,7 +43,9 @@ def test_kdtree_crossmatch_multiple_neighbors(
         assert xmatch_row["_DIST"].values == pytest.approx(correct_row["dist"])
 
 
-def test_custom_crossmatch_algorithm(small_sky_catalog_cloud, small_sky_xmatch_catalog_cloud, xmatch_mock_cloud):
+def test_custom_crossmatch_algorithm(
+    small_sky_catalog_cloud, small_sky_xmatch_catalog_cloud, xmatch_mock_cloud
+):
     xmatched = small_sky_catalog_cloud.crossmatch(
         small_sky_xmatch_catalog_cloud, algorithm=MockCrossmatchAlgorithm, mock_results=xmatch_mock_cloud
     ).compute()
