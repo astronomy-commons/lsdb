@@ -113,7 +113,7 @@ class Catalog(Dataset):
 
         Args:
             **kwargs: Arguments to pass to the assign method. This dictionary
-                should contain the column names as keys and either a lambda
+                should contain the column names as keys and either a
                 function or a 1-D Dask array as their corresponding value.
 
         Returns:
