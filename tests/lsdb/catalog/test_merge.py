@@ -44,7 +44,7 @@ def test_catalog_inner_merge(small_sky_catalog, small_sky_order1_catalog):
 
     # The join column matches the intersection of values on both dataframes
     on_intersected = pd.Series(list(set(left_df[on]) & set(right_df[on])))
-    assert_series_are_equal(merged_df[on], on_intersected)
+    assert_series_match(merged_df[on], on_intersected)
 
     # The remaining columns come from the original dataframes
     non_join_columns_df = merged_df.drop(on, axis=1)
@@ -65,7 +65,7 @@ def test_catalog_outer_merge(small_sky_catalog, small_sky_order1_catalog):
 
     # The join column matches the whole set of values on both dataframes
     on_joined = pd.concat([left_df[on], right_df[on]])
-    assert_series_are_equal(merged_df[on], on_joined)
+    assert_series_match(merged_df[on], on_joined)
 
     # The remaining columns come from the original dataframes
     non_join_columns_df = merged_df.drop(on, axis=1)
@@ -85,7 +85,7 @@ def test_catalog_left_merge(small_sky_catalog, small_sky_order1_catalog):
     right_df = small_sky_order1_catalog._ddf.compute()
 
     # The join column matches the values on the left dataframe
-    assert_series_are_equal(merged_df[on], left_df[on])
+    assert_series_match(merged_df[on], left_df[on])
 
     # The remaining columns come from the original dataframes
     non_join_columns_df = merged_df.drop(on, axis=1)
@@ -105,7 +105,7 @@ def test_catalog_right_merge(small_sky_catalog, small_sky_order1_catalog):
     right_df = small_sky_order1_catalog._ddf.compute()
 
     # The join column matches the values on the right dataframe
-    assert_series_are_equal(merged_df[on], right_df[on])
+    assert_series_match(merged_df[on], right_df[on])
 
     # The remaining columns come from the original dataframes
     non_join_columns_df = merged_df.drop(on, axis=1)
@@ -120,20 +120,20 @@ def assert_other_columns_in_parent_dataframes(non_join_columns_df, left_df, righ
     for col_name, _ in non_join_columns_df.items():
         if col_name.endswith(_left):
             original_col_name = col_name[: -len(_left)]
-            assert_series_are_equal(non_join_columns_df[col_name], left_df[original_col_name])
+            assert_series_match(non_join_columns_df[col_name], left_df[original_col_name])
         elif col_name.endswith(_right):
             original_col_name = col_name[: -len(_right)]
-            assert_series_are_equal(non_join_columns_df[col_name], right_df[original_col_name])
+            assert_series_match(non_join_columns_df[col_name], right_df[original_col_name])
         elif col_name in left_df.columns:
             assert col_name not in right_df.columns
-            assert_series_are_equal(non_join_columns_df[col_name], left_df[col_name])
+            assert_series_match(non_join_columns_df[col_name], left_df[col_name])
         else:
             assert col_name in right_df.columns and col_name not in left_df.columns
-            assert_series_are_equal(non_join_columns_df[col_name], right_df[col_name])
+            assert_series_match(non_join_columns_df[col_name], right_df[col_name])
 
 
-def assert_series_are_equal(series_1, series_2):
-    """Checks if a pandas series is equal to another (in value), ignoring duplicates."""
+def assert_series_match(series_1, series_2):
+    """Checks if a pandas series matches another in value, ignoring duplicates."""
     sorted_unique_1 = np.sort(series_1.drop_duplicates().to_numpy(), axis=0)
     sorted_unique_2 = np.sort(series_2.drop_duplicates().to_numpy(), axis=0)
     assert np.array_equal(sorted_unique_1, sorted_unique_2)

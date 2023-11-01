@@ -230,6 +230,9 @@ class Catalog(Dataset):
     ) -> dd.DataFrame:
         """Performs the merge of two catalog Dataframes
 
+        More information about pandas merge is available
+        `here <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.merge.html>`__.
+
         Args:
             other (Catalog): The right catalog to merge with.
             how (str): How to handle the merge of the two catalogs.
