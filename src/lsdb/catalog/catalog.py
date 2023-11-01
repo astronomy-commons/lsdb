@@ -255,7 +255,7 @@ class Catalog(Dataset):
         return Catalog(cone_search_ddf, ddf_partition_map, filtered_hc_structure)
 
     @staticmethod
-    def check_polygon(polygon):
+    def _check_polygon(polygon):
         pass
         # if ra < -180 or ra > 180:
         #     raise ValueError("ra must be between -180 and 180")
@@ -277,13 +277,13 @@ class Catalog(Dataset):
             A new Catalog containing the points filtered to those within the cone, and the partitions that
             overlap the cone.
         """
-        self.check_polygon(polygon)
-        filtered_hc_structure, polygon_pixels, max_order = self.hc_structure.filter_by_polygon(polygogn)
+        self._check_polygon(polygon)
+        filtered_hc_structure, polygon_pixels, max_order = self.hc_structure.filter_by_polygon(polygon)
         pixels_in_polygon = filtered_hc_structure.get_healpix_pixels()
         partitions = self._ddf.to_delayed()
-        partiions_in_polygon = [partitions[self._ddf_pixel_map[pixel]] for pixel in pixels_in_polygon]
+        partitions_in_polygon = [partitions[self._ddf_pixel_map[pixel]] for pixel in pixels_in_polygon]
         filtered_partitions = [
-            polygon_filter(partition, polygon_pixels, max_order, self.hc_structure) for partition in partiions_in_polygon
+            polygon_filter(partition, polygon_pixels, max_order, self.hc_structure) for partition in partitions_in_polygon
         ]
         polygon_search_ddf = dd.from_delayed(filtered_partitions, meta=self._ddf._meta)
         polygon_search_ddf = cast(dd.DataFrame, polygon_search_ddf)

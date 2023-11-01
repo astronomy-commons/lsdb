@@ -1,6 +1,7 @@
 import dask
 import hipscat as hc
 import pandas as pd
+import healpy as hp
 from astropy.coordinates import SkyCoord
 
 
