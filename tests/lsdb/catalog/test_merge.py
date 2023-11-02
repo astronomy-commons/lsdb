@@ -1,7 +1,60 @@
 import dask.dataframe as dd
-import numpy as np
 import pandas as pd
 import pytest
+
+
+@pytest.mark.parametrize("how", ["left", "right", "inner", "outer"])
+def test_catalog_merge_on_indices(small_sky_catalog, small_sky_order1_catalog, how):
+    kwargs = {
+        "how": how,
+        "left_index": True,
+        "right_index": True,
+        "suffixes": ("_left", "_right")
+    }
+    # Setting the object "id" for index on both catalogs
+    small_sky_catalog._ddf = small_sky_catalog._ddf.set_index("id")
+    small_sky_order1_catalog._ddf = small_sky_order1_catalog._ddf.set_index("id")
+    # The wrapper outputs the same result as the underlying pandas merge
+    merged_ddf = small_sky_catalog.merge(small_sky_order1_catalog, **kwargs)
+    assert isinstance(merged_ddf, dd.DataFrame)
+    expected_df = small_sky_catalog._ddf.merge(small_sky_order1_catalog._ddf, **kwargs)
+    pd.testing.assert_frame_equal(expected_df.compute(), merged_ddf.compute())
+
+
+@pytest.mark.parametrize("how", ["left", "right", "inner", "outer"])
+def test_catalog_merge_on_columns(small_sky_catalog, small_sky_order1_catalog, how):
+    kwargs = {
+        "how": how,
+        "on": "id",
+        "suffixes": ("_left", "_right")
+    }
+    # Make sure none of the test catalogs have "id" for index
+    small_sky_catalog._ddf = small_sky_catalog._ddf.reset_index()
+    small_sky_order1_catalog._ddf = small_sky_order1_catalog._ddf.reset_index()
+    # The wrapper outputs the same result as the underlying pandas merge
+    merged_ddf = small_sky_catalog.merge(small_sky_order1_catalog, **kwargs)
+    assert isinstance(merged_ddf, dd.DataFrame)
+    expected_df = small_sky_catalog._ddf.merge(small_sky_order1_catalog._ddf, **kwargs)
+    pd.testing.assert_frame_equal(expected_df.compute(), merged_ddf.compute())
+
+
+@pytest.mark.parametrize("how", ["left", "right", "inner", "outer"])
+def test_catalog_merge_on_index_and_column(small_sky_catalog, small_sky_order1_catalog, how):
+    kwargs = {
+        "how": how,
+        "left_index": True,
+        "right_on": "id",
+        "suffixes": ("_left", "_right")
+    }
+    # Setting the object "id" for index on the left catalog
+    small_sky_catalog._ddf = small_sky_catalog._ddf.set_index("id")
+    # Make sure the right catalog does not have "id" for index
+    small_sky_order1_catalog._ddf = small_sky_order1_catalog._ddf.reset_index()
+    # The wrapper outputs the same result as the underlying pandas merge
+    merged_ddf = small_sky_catalog.merge(small_sky_order1_catalog, **kwargs)
+    assert isinstance(merged_ddf, dd.DataFrame)
+    expected_df = small_sky_catalog._ddf.merge(small_sky_order1_catalog._ddf, **kwargs)
+    pd.testing.assert_frame_equal(expected_df.compute(), merged_ddf.compute())
 
 
 def test_catalog_merge_invalid_suffixes(small_sky_catalog, small_sky_order1_catalog):
@@ -12,128 +65,14 @@ def test_catalog_merge_invalid_suffixes(small_sky_catalog, small_sky_order1_cata
 
 
 def test_catalog_merge_no_suffixes(small_sky_catalog, small_sky_order1_catalog):
-    on = "id"
-    how = "inner"
-
-    merged_ddf = small_sky_catalog.merge(small_sky_order1_catalog, how=how, on=on)
+    merged_ddf = small_sky_catalog.merge(small_sky_order1_catalog, how="inner", on="id")
     assert isinstance(merged_ddf, dd.DataFrame)
-
-    # Columns in the merged dataframe have the catalog name as suffix
-    non_join_columns_left = small_sky_catalog._ddf.columns.drop(on)
-    non_join_columns_right = small_sky_order1_catalog._ddf.columns.drop(on)
+    # Get the columns with the same name in both catalogs
+    non_join_columns_left = small_sky_catalog._ddf.columns.drop("id")
+    non_join_columns_right = small_sky_order1_catalog._ddf.columns.drop("id")
     intersected_cols = list(set(non_join_columns_left) & set(non_join_columns_right))
-
+    # The suffixes of these columns in the dataframe include the catalog names
     suffixes = [f"_{small_sky_catalog.name}", f"_{small_sky_order1_catalog.name}"]
-
     for column in intersected_cols:
         for suffix in suffixes:
             assert f"{column}{suffix}" in merged_ddf.columns
-
-
-def test_catalog_inner_merge(small_sky_catalog, small_sky_order1_catalog):
-    on = "id"
-    how = "inner"
-    suffixes = ("_left", "_right")
-
-    merged_ddf = small_sky_catalog.merge(small_sky_order1_catalog, how=how, on=on, suffixes=suffixes)
-    assert isinstance(merged_ddf, dd.DataFrame)
-
-    merged_df = merged_ddf.compute()
-    left_df = small_sky_catalog._ddf.compute()
-    right_df = small_sky_order1_catalog._ddf.compute()
-
-    # The join column matches the intersection of values on both dataframes
-    on_intersected = pd.Series(list(set(left_df[on]) & set(right_df[on])))
-    assert_series_match(merged_df[on], on_intersected)
-
-    # The remaining columns come from the original dataframes
-    non_join_columns_df = merged_df.drop(on, axis=1)
-    assert_other_columns_in_parent_dataframes(non_join_columns_df, left_df, right_df, suffixes)
-
-
-def test_catalog_outer_merge(small_sky_catalog, small_sky_order1_catalog):
-    on = "id"
-    how = "outer"
-    suffixes = ("_left", "_right")
-
-    merged_ddf = small_sky_catalog.merge(small_sky_order1_catalog, how=how, on=on, suffixes=suffixes)
-    assert isinstance(merged_ddf, dd.DataFrame)
-
-    merged_df = merged_ddf.compute()
-    left_df = small_sky_catalog._ddf.compute()
-    right_df = small_sky_order1_catalog._ddf.compute()
-
-    # The join column matches the whole set of values on both dataframes
-    on_joined = pd.concat([left_df[on], right_df[on]])
-    assert_series_match(merged_df[on], on_joined)
-
-    # The remaining columns come from the original dataframes
-    non_join_columns_df = merged_df.drop(on, axis=1)
-    assert_other_columns_in_parent_dataframes(non_join_columns_df, left_df, right_df, suffixes)
-
-
-def test_catalog_left_merge(small_sky_catalog, small_sky_order1_catalog):
-    on = "id"
-    how = "left"
-    suffixes = ("_left", "_right")
-
-    merged_ddf = small_sky_catalog.merge(small_sky_order1_catalog, how=how, on=on, suffixes=suffixes)
-    assert isinstance(merged_ddf, dd.DataFrame)
-
-    merged_df = merged_ddf.compute()
-    left_df = small_sky_catalog.compute()
-    right_df = small_sky_order1_catalog._ddf.compute()
-
-    # The join column matches the values on the left dataframe
-    assert_series_match(merged_df[on], left_df[on])
-
-    # The remaining columns come from the original dataframes
-    non_join_columns_df = merged_df.drop(on, axis=1)
-    assert_other_columns_in_parent_dataframes(non_join_columns_df, left_df, right_df, suffixes)
-
-
-def test_catalog_right_merge(small_sky_catalog, small_sky_order1_catalog):
-    on = "id"
-    how = "right"
-    suffixes = ("_left", "_right")
-
-    merged_ddf = small_sky_catalog.merge(small_sky_order1_catalog, how=how, on=on, suffixes=suffixes)
-    assert isinstance(merged_ddf, dd.DataFrame)
-
-    merged_df = merged_ddf.compute()
-    left_df = small_sky_catalog._ddf.compute()
-    right_df = small_sky_order1_catalog._ddf.compute()
-
-    # The join column matches the values on the right dataframe
-    assert_series_match(merged_df[on], right_df[on])
-
-    # The remaining columns come from the original dataframes
-    non_join_columns_df = merged_df.drop(on, axis=1)
-    assert_other_columns_in_parent_dataframes(non_join_columns_df, left_df, right_df, suffixes)
-
-
-def assert_other_columns_in_parent_dataframes(non_join_columns_df, left_df, right_df, suffixes):
-    """Ensures the columns of a merged dataframe have the expected provenience. If a column has
-    a suffix, the original dataframes had the same named column. If the column name has no suffix,
-    it is present in one of the dataframes, but not in both."""
-    _left, _right = suffixes
-    for col_name, _ in non_join_columns_df.items():
-        if col_name.endswith(_left):
-            original_col_name = col_name[: -len(_left)]
-            assert_series_match(non_join_columns_df[col_name], left_df[original_col_name])
-        elif col_name.endswith(_right):
-            original_col_name = col_name[: -len(_right)]
-            assert_series_match(non_join_columns_df[col_name], right_df[original_col_name])
-        elif col_name in left_df.columns:
-            assert col_name not in right_df.columns
-            assert_series_match(non_join_columns_df[col_name], left_df[col_name])
-        else:
-            assert col_name in right_df.columns and col_name not in left_df.columns
-            assert_series_match(non_join_columns_df[col_name], right_df[col_name])
-
-
-def assert_series_match(series_1, series_2):
-    """Checks if a pandas series matches another in value, ignoring duplicates."""
-    sorted_unique_1 = np.sort(series_1.drop_duplicates().to_numpy(), axis=0)
-    sorted_unique_2 = np.sort(series_2.drop_duplicates().to_numpy(), axis=0)
-    assert np.array_equal(sorted_unique_1, sorted_unique_2)
