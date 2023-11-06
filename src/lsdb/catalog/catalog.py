@@ -321,6 +321,7 @@ class Catalog(Dataset):
         hc.io.write_partition_info(base_catalog_dir_fp, partition_info)
 
         # Write out the catalog info
+        catalog_name = catalog_name if catalog_name is not None else self.hc_structure.catalog_name
         total_rows = sum(pi[0] for pi in partition_info.values())
         self.update_catalog_info(catalog_name=catalog_name, total_rows=total_rows)
         hc.io.write_catalog_info(base_catalog_path, self.hc_structure.catalog_info)
