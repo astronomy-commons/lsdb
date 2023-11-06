@@ -118,5 +118,6 @@ def test_save_catalog(small_sky_catalog, tmp_path):
     small_sky_catalog.to_hipscat(base_catalog_path, catalog_name=new_catalog_name)
     expected_catalog = lsdb.read_hipscat(base_catalog_path)
     assert expected_catalog.hc_structure.catalog_name == new_catalog_name
+    assert expected_catalog.hc_structure.catalog_info == small_sky_catalog.hc_structure.catalog_info
     assert expected_catalog.get_healpix_pixels() == small_sky_catalog.get_healpix_pixels()
     pd.testing.assert_frame_equal(expected_catalog.compute(), small_sky_catalog._ddf.compute())
