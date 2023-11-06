@@ -3,12 +3,13 @@ from __future__ import annotations
 import dataclasses
 import os
 from importlib.metadata import version
-from typing import Any, Dict, List, Tuple, Type, TypeAlias, Union, cast
+from typing import Any, Dict, List, Tuple, Type, Union, cast
 
 import dask.dataframe as dd
 import hipscat as hc
 import numpy as np
 from hipscat.pixel_math import HealpixPixel
+from typing_extensions import TypeAlias
 
 from lsdb.catalog.dataset.dataset import Dataset
 from lsdb.core.cone_search import cone_filter
