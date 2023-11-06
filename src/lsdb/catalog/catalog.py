@@ -40,10 +40,10 @@ class Catalog(Dataset):
     hc_structure: hc.catalog.Catalog
 
     def __init__(
-            self,
-            ddf: dd.DataFrame,
-            ddf_pixel_map: DaskDFPixelMap,
-            hc_structure: hc.catalog.Catalog,
+        self,
+        ddf: dd.DataFrame,
+        ddf_pixel_map: DaskDFPixelMap,
+        hc_structure: hc.catalog.Catalog,
     ):
         """Initialise a Catalog object.
 
@@ -101,12 +101,12 @@ class Catalog(Dataset):
         """Returns the HEALPix pixels highest order
 
         Returns:
-            An integer representing the healpix pixels highest order.
+            The HEALPix pixels highest order, as an integer.
         """
         pixel_orders = [pixel.order for pixel in self.get_healpix_pixels()]
-        return np.max(pixel_orders)
+        return int(np.max(pixel_orders))
 
-    def get_histogram(self, partition_map: Dict[HealpixPixel, int]):
+    def _compute_pixel_histogram(self, partition_map: Dict[HealpixPixel, int]):
         """Creates the HEALPix pixel histogram
 
         Args:
@@ -123,7 +123,7 @@ class Catalog(Dataset):
             histogram[i] = num_points
         return histogram
 
-    def get_provenance_info(self) -> dict:
+    def _get_provenance_info(self) -> dict:
         """Fill all known information in a dictionary for provenance tracking.
 
         Returns:
@@ -153,7 +153,7 @@ class Catalog(Dataset):
             # "input_file_list": self.input_file_list,
             "ra_column": catalog_info.ra_column,
             "dec_column": catalog_info.dec_column,
-            "highest_healpix_order": int(self.get_healpix_highest_order()),
+            "highest_healpix_order": self.get_healpix_highest_order(),
             # "pixel_threshold": self.pixel_threshold,
             # "mapping_healpix_order": self.mapping_healpix_order,
             # "debug_stats_only": self.debug_stats_only,
@@ -167,7 +167,9 @@ class Catalog(Dataset):
         }
         return provenance_info
 
-    def get_pixel_map(self, ddf_points_map: Dict[HealpixPixel, int]) -> Dict[HealpixPixel, HealpixInfo]:
+    def _get_partition_info_dict(
+        self, ddf_points_map: Dict[HealpixPixel, int]
+    ) -> Dict[HealpixPixel, HealpixInfo]:
         """Creates the partition info dictionary
 
         Args:
@@ -227,13 +229,13 @@ class Catalog(Dataset):
         return Catalog(ddf, self._ddf_pixel_map, self.hc_structure)
 
     def crossmatch(
-            self,
-            other: Catalog,
-            suffixes: Tuple[str, str] | None = None,
-            algorithm: Type[AbstractCrossmatchAlgorithm]
-                       | BuiltInCrossmatchAlgorithm = BuiltInCrossmatchAlgorithm.KD_TREE,
-            output_catalog_name: str | None = None,
-            **kwargs,
+        self,
+        other: Catalog,
+        suffixes: Tuple[str, str] | None = None,
+        algorithm: Type[AbstractCrossmatchAlgorithm]
+        | BuiltInCrossmatchAlgorithm = BuiltInCrossmatchAlgorithm.KD_TREE,
+        output_catalog_name: str | None = None,
+        **kwargs,
     ) -> Catalog:
         """Perform a cross-match between two catalogs
 
@@ -353,10 +355,10 @@ class Catalog(Dataset):
         return Catalog(cone_search_ddf, ddf_partition_map, filtered_hc_structure)
 
     def to_hipscat(
-            self,
-            base_catalog_path: str,
-            catalog_name: Union[str | None] = None,
-            storage_options: Union[Dict[Any, Any], None] = None,
+        self,
+        base_catalog_path: str,
+        catalog_name: Union[str | None] = None,
+        storage_options: Union[Dict[Any, Any], None] = None,
     ):
         """Saves the catalog to disk in HiPSCat format
 
@@ -378,7 +380,7 @@ class Catalog(Dataset):
             partition_map[pixel] = len(partition)
 
         # Write partition info
-        partition_info = self.get_pixel_map(partition_map)
+        partition_info = self._get_partition_info_dict(partition_map)
         hc.io.write_partition_info(base_catalog_dir_fp, partition_info, storage_options)
 
         # Write the catalog info (and update the catalog_name and total_rows, as needed)
@@ -388,7 +390,7 @@ class Catalog(Dataset):
         hc.io.write_catalog_info(base_catalog_path, self.hc_structure.catalog_info, storage_options)
 
         # Write provenance info
-        provenance_info = self.get_provenance_info()
+        provenance_info = self._get_provenance_info()
         write_provenance_info(
             base_catalog_dir_fp, self.hc_structure.catalog_info, provenance_info, storage_options
         )
@@ -397,5 +399,5 @@ class Catalog(Dataset):
         hc.io.write_parquet_metadata(base_catalog_path, storage_options)
 
         # Write fits map
-        pixel_histogram = self.get_histogram(partition_map)
+        pixel_histogram = self._compute_pixel_histogram(partition_map)
         hc.io.write_metadata.write_fits_map(base_catalog_path, pixel_histogram, storage_options)
