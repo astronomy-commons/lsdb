@@ -9,7 +9,6 @@
         "repeat": 0,
         "rounds": 2,
         "sample_time": 0.01,
-        "timeout": 60.0,
         "type": "time",
         "unit": "seconds",
         "version": "f723cec0bbf1a08bdb018e50f7c5095cdaed2a193d6eb25133c2600fd73fd2c5",
