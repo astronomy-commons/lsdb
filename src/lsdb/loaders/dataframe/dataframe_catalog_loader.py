@@ -11,14 +11,8 @@ from hipscat.catalog import CatalogType
 from hipscat.catalog.catalog_info import CatalogInfo
 from hipscat.pixel_math import HealpixPixel, generate_histogram
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN, compute_hipscat_id, healpix_to_hipscat_id
-from typing_extensions import TypeAlias
 
-from lsdb.catalog.catalog import Catalog, DaskDFPixelMap
-
-# Compute pixel map returns a tuple. The first element is
-# the number of data points within the HEALPix pixel, the
-# second element is the list of pixels it contains.
-HealpixInfo: TypeAlias = Tuple[int, List[int]]
+from lsdb.catalog.catalog import Catalog, DaskDFPixelMap, HealpixInfo
 
 
 class DataframeCatalogLoader:
@@ -160,25 +154,23 @@ class DataframeCatalogLoader:
             pixel_dfs.append(self._get_dataframe_for_healpix(pixels))
             ddf_pixel_map[hp_pixel] = hp_pixel_index
 
-        # Generate Dask Dataframe with original schema
-        schema = pd.DataFrame(columns=self.dataframe.columns).astype(self.dataframe.dtypes)
-        ddf = self._generate_dask_dataframe(pixel_dfs, schema)
+        # Generate Dask Dataframe
+        ddf = self._generate_dask_dataframe(pixel_dfs)
 
         return ddf, ddf_pixel_map
 
     @staticmethod
-    def _generate_dask_dataframe(pixel_dfs: List[pd.DataFrame], schema: pd.DataFrame) -> dd.DataFrame:
+    def _generate_dask_dataframe(pixel_dfs: List[pd.DataFrame]) -> dd.DataFrame:
         """Create the Dask Dataframe from the list of HEALPix pixel Dataframes
 
         Args:
             pixel_dfs (List[pd.DataFrame]): The list of HEALPix pixel Dataframes
-            schema (pd.Dataframe): The original Dataframe schema
 
         Returns:
             The catalog's Dask Dataframe
         """
         delayed_dfs = [delayed(df) for df in pixel_dfs]
-        ddf = dd.from_delayed(delayed_dfs, meta=schema)
+        ddf = dd.from_delayed(delayed_dfs)
         return ddf if isinstance(ddf, dd.DataFrame) else ddf.to_frame()
 
     def _get_dataframe_for_healpix(self, pixels: List[int]) -> pd.DataFrame:
