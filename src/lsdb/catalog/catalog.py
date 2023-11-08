@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import dataclasses
 import os
+from copy import copy
 from importlib.metadata import version
 from typing import Any, Dict, List, Tuple, Type, Union, cast
 
 import dask.dataframe as dd
 import hipscat as hc
-import numpy as np
+from hipscat.io import FilePointer, file_io
 from hipscat.pixel_math import HealpixPixel
 from typing_extensions import TypeAlias
 
@@ -16,8 +17,7 @@ from lsdb.core.cone_search import cone_filter
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
 from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorithm
 from lsdb.dask.crossmatch_catalog_data import crossmatch_catalog_data
-from lsdb.io import file_io
-from lsdb.io.file_io import write_provenance_info
+from lsdb.io.file_io import write_dataframe_to_parquet
 
 DaskDFPixelMap = Dict[HealpixPixel, int]
 
@@ -97,76 +97,6 @@ class Catalog(Dataset):
         partition_index = self._ddf_pixel_map[hp_pixel]
         return partition_index
 
-    def get_healpix_highest_order(self) -> int:
-        """Returns the HEALPix pixels highest order
-
-        Returns:
-            The HEALPix pixels highest order, as an integer.
-        """
-        pixel_orders = [pixel.order for pixel in self.get_healpix_pixels()]
-        return int(np.max(pixel_orders))
-
-    def _compute_pixel_histogram(self, partition_map: Dict[HealpixPixel, int]):
-        """Creates the HEALPix pixel histogram
-
-        Args:
-            partition_map (Dict[HealpixPixel, int]): The mapping between each
-                HEALPix pixel and the respective number of points
-
-        Returns:
-            A one-dimensional numpy array of long integers where the value at each
-            index corresponds to the number of objects found at the healpix pixel.
-        """
-        highest_order = self.get_healpix_highest_order()
-        histogram = hc.pixel_math.empty_histogram(highest_order)
-        for i, (_, num_points) in enumerate(partition_map.items()):
-            histogram[i] = num_points
-        return histogram
-
-    def _get_provenance_info(self) -> dict:
-        """Fill all known information in a dictionary for provenance tracking.
-
-        Returns:
-            dictionary with all argument_name -> argument_value as key -> value pairs.
-        """
-        catalog_info = self.hc_structure.catalog_info
-
-        runtime_args = {
-            "catalog_name": self.hc_structure.catalog_name,
-            "output_path": self.hc_structure.catalog_path,
-            "output_catalog_name": self.hc_structure.catalog_name,
-            # "tmp_dir": str(self.tmp_dir),
-            # "overwrite": self.overwrite,
-            # "dask_tmp": str(self.dask_tmp),
-            # "dask_n_workers": self.dask_n_workers,
-            # "dask_threads_per_worker": self.dask_threads_per_worker,
-            "catalog_path": self.hc_structure.catalog_path,
-            # "tmp_path": str(self.tmp_path),
-        }
-        additional_args = {
-            "catalog_name": self.hc_structure.catalog_name,
-            "epoch": catalog_info.epoch,
-            "catalog_type": catalog_info.catalog_type,
-            # "input_path": str(self.input_path),
-            # "input_paths": self.input_paths,
-            # "input_format": self.input_format,
-            # "input_file_list": self.input_file_list,
-            "ra_column": catalog_info.ra_column,
-            "dec_column": catalog_info.dec_column,
-            "highest_healpix_order": self.get_healpix_highest_order(),
-            # "pixel_threshold": self.pixel_threshold,
-            # "mapping_healpix_order": self.mapping_healpix_order,
-            # "debug_stats_only": self.debug_stats_only,
-            # "file_reader_info": self.file_reader.provenance_info() if self.file_reader is not None else {},
-        }
-        runtime_args.update(additional_args)
-        provenance_info = {
-            "tool_name": "lsdb",
-            "version": version("lsdb"),
-            "runtime_args": runtime_args,
-        }
-        return provenance_info
-
     def _get_partition_info_dict(
         self, ddf_points_map: Dict[HealpixPixel, int]
     ) -> Dict[HealpixPixel, HealpixInfo]:
@@ -187,15 +117,6 @@ class Catalog(Dataset):
     def name(self):
         """The name of the catalog"""
         return self.hc_structure.catalog_name
-
-    def update_catalog_info(self, **kwargs):
-        """Updates catalog information
-
-        Args:
-            **kwargs: Parameters to update in catalog info
-        """
-        catalog_info = dataclasses.replace(self.hc_structure.catalog_info, **kwargs)
-        self.hc_structure.catalog_info = catalog_info
 
     def query(self, expr: str) -> Catalog:
         """Filters catalog using a complex query expression
@@ -354,6 +275,51 @@ class Catalog(Dataset):
         ddf_partition_map = {pixel: i for i, pixel in enumerate(pixels_in_cone)}
         return Catalog(cone_search_ddf, ddf_partition_map, filtered_hc_structure)
 
+    def write_partitions(
+        self, base_catalog_dir_fp: FilePointer, storage_options: Union[Dict[Any, Any], None] = None
+    ) -> Dict[HealpixPixel, int]:
+        """Saves catalog partitions as parquet to disk
+
+        Args:
+            base_catalog_dir_fp (FilePointer): Path to the base directory of the catalog
+            storage_options (dict): dictionary that contains abstract filesystem credentials
+
+        Returns:
+            A dictionary mapping each HEALPix pixel to the number of data points in it.
+        """
+        pixel_to_partition_size_map = {}
+        for pixel, partition_index in self._ddf_pixel_map.items():
+            partition = self._ddf.partitions[partition_index].compute()
+            pixel_path = hc.io.paths.pixel_catalog_file(base_catalog_dir_fp, pixel.order, pixel.pixel)
+            write_dataframe_to_parquet(partition, pixel_path, storage_options)
+            pixel_to_partition_size_map[pixel] = len(partition)
+        return pixel_to_partition_size_map
+
+    def create_modified_hc_structure(self, catalog_base_dir: str, catalog_name: str, **kwargs):
+        """Creates a modified version of the HiPSCat catalog structure
+
+        Args:
+            catalog_base_dir (str): Base location for the catalog
+            catalog_name (str): The name of the catalog to be saved
+            **kwargs: The remaining parameters to be updated in the catalog info object
+
+        Returns:
+            A HiPSCat structure, modified with the parameters provided
+        """
+        new_hc_structure = copy(self.hc_structure)
+        # Update catalog path and name in the structure
+        new_hc_structure.catalog_name = catalog_name
+        new_hc_structure.catalog_path = catalog_base_dir
+        new_hc_structure.catalog_base_dir = file_io.get_file_pointer_from_path(catalog_base_dir)
+        new_hc_structure.on_disk = True
+        # Update information on the catalog info object
+        new_hc_structure.catalog_info = dataclasses.replace(
+            new_hc_structure.catalog_info,
+            catalog_name=catalog_name,
+            **kwargs
+        )
+        return new_hc_structure
+
     def to_hipscat(
         self,
         base_catalog_path: str,
@@ -365,39 +331,65 @@ class Catalog(Dataset):
         Args:
             base_catalog_path (str): Location where catalog is saved to
             catalog_name (str): The name of the catalog to be saved
-            storage_options: dictionary that contains abstract filesystem credentials
+            storage_options (dict): dictionary that contains abstract filesystem credentials
         """
         os.makedirs(base_catalog_path)
 
         base_catalog_dir_fp = hc.io.get_file_pointer_from_path(base_catalog_path)
 
         # Write partition parquet files
-        partition_map = {}
-        for pixel, partition_index in self._ddf_pixel_map.items():
-            partition = self._ddf.partitions[partition_index].compute()
-            pixel_path = hc.io.paths.pixel_catalog_file(base_catalog_dir_fp, pixel.order, pixel.pixel)
-            file_io.write_dataframe_to_parquet(partition, pixel_path)
-            partition_map[pixel] = len(partition)
-
-        # Write partition info
-        partition_info = self._get_partition_info_dict(partition_map)
-        hc.io.write_partition_info(base_catalog_dir_fp, partition_info, storage_options)
-
-        # Write the catalog info (and update the catalog_name and total_rows, as needed)
-        catalog_name = catalog_name if catalog_name is not None else self.hc_structure.catalog_name
-        self.update_catalog_info(catalog_name=catalog_name)
-        self.hc_structure.catalog_path = base_catalog_path
-        hc.io.write_catalog_info(base_catalog_path, self.hc_structure.catalog_info, storage_options)
-
-        # Write provenance info
-        provenance_info = self._get_provenance_info()
-        write_provenance_info(
-            base_catalog_dir_fp, self.hc_structure.catalog_info, provenance_info, storage_options
-        )
+        pixel_to_partition_size_map = self.write_partitions(base_catalog_dir_fp, storage_options)
 
         # Write parquet metadata
         hc.io.write_parquet_metadata(base_catalog_path, storage_options)
 
-        # Write fits map
-        pixel_histogram = self._compute_pixel_histogram(partition_map)
-        hc.io.write_metadata.write_fits_map(base_catalog_path, pixel_histogram, storage_options)
+        # Write partition info
+        partition_info = self._get_partition_info_dict(pixel_to_partition_size_map)
+        hc.io.write_partition_info(base_catalog_dir_fp, partition_info, storage_options)
+
+        # Generate most recent HiPSCat catalog information
+        new_hc_structure = self.create_modified_hc_structure(
+            base_catalog_path,
+            catalog_name if catalog_name else self.hc_structure.catalog_name,
+            total_rows=sum(pi[0] for pi in partition_info.values()),
+        )
+
+        # Write the catalog info
+        hc.io.write_catalog_info(
+            catalog_base_dir=base_catalog_path,
+            dataset_info=new_hc_structure.catalog_info,
+            storage_options=storage_options,
+        )
+
+        # Write provenance info
+        hc.io.write_metadata.write_provenance_info(
+            catalog_base_dir=base_catalog_dir_fp,
+            dataset_info=new_hc_structure.catalog_info,
+            tool_args=self._get_provenance_info(new_hc_structure),
+            storage_options=storage_options,
+        )
+
+    @staticmethod
+    def _get_provenance_info(catalog_structure) -> dict:
+        """Fill all known information in a dictionary for provenance tracking.
+
+        Returns:
+            dictionary with all argument_name -> argument_value as key -> value pairs.
+        """
+        catalog_info = catalog_structure.catalog_info
+        args = {
+            "catalog_name": catalog_structure.catalog_name,
+            "output_path": catalog_structure.catalog_path,
+            "output_catalog_name": catalog_structure.catalog_name,
+            "catalog_path": catalog_structure.catalog_path,
+            "epoch": catalog_info.epoch,
+            "catalog_type": catalog_info.catalog_type,
+            "ra_column": catalog_info.ra_column,
+            "dec_column": catalog_info.dec_column,
+        }
+        provenance_info = {
+            "tool_name": "lsdb",
+            "version": version("lsdb"),
+            "runtime_args": args,
+        }
+        return provenance_info
