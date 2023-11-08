@@ -304,7 +304,7 @@ class Catalog(Dataset):
             **kwargs: The remaining parameters to be updated in the catalog info object
 
         Returns:
-            A HiPSCat structure, modified with the parameters provided
+            A HiPSCat structure, modified with the parameters provided.
         """
         new_hc_structure = copy(self.hc_structure)
         # Update catalog path and name in the structure

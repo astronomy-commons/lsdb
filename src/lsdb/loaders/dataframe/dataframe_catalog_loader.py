@@ -148,8 +148,8 @@ class DataframeCatalogLoader:
                 HEALPix pixels and respective data information
 
         Returns:
-            Tuple containing the Dask Dataframe and the mapping of
-            HEALPix pixels to the respective Pandas Dataframes
+            Tuple containing the Dask Dataframe, the mapping of HEALPix pixels
+            to the respective Pandas Dataframes and the total number of rows.
         """
         # Dataframes for each destination HEALPix pixel
         pixel_dfs: List[pd.DataFrame] = []
@@ -180,7 +180,7 @@ class DataframeCatalogLoader:
             pixel (HealpixPixel): The HEALPix pixel for the current partition
 
         Returns:
-            A HEALPix dataframe, with data points and respective partition information.
+            The dataframe for a HEALPix, with data points and respective partition information.
         """
         ordered_columns = ["Norder", "Dir", "Npix"]
         # Generate partition information
@@ -203,7 +203,7 @@ class DataframeCatalogLoader:
             schema (pd.Dataframe): The original Dataframe schema
 
         Returns:
-            The catalog's Dask Dataframe
+            The catalog's Dask Dataframe and its total number of rows.
         """
         delayed_dfs = [delayed(df) for df in pixel_dfs]
         ddf = dd.from_delayed(delayed_dfs, meta=schema)
