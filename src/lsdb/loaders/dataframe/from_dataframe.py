@@ -12,6 +12,7 @@ def from_dataframe(
     highest_order: int = 5,
     partition_size: float | None = None,
     threshold: int | None = None,
+    append_partition_info: bool = False,
     **kwargs,
 ) -> Catalog:
     """Load a catalog from a Pandas Dataframe in CSV format.
@@ -22,12 +23,14 @@ def from_dataframe(
         highest_order (int): The highest partition order
         partition_size (float): The desired partition size, in megabytes
         threshold (int): The maximum number of data points per pixel
+        append_partition_info (bool): Whether to include partition information
+            in the resulting catalog dataframe
         **kwargs: Arguments to pass to the creation of the catalog info
 
     Returns:
         Catalog object loaded from the given parameters
     """
     loader = DataframeCatalogLoader(
-        dataframe, lowest_order, highest_order, partition_size, threshold, **kwargs
+        dataframe, lowest_order, highest_order, partition_size, threshold, append_partition_info, **kwargs
     )
     return loader.load_catalog()

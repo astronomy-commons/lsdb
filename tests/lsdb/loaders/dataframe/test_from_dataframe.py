@@ -27,15 +27,15 @@ def test_from_dataframe(small_sky_order1_df, small_sky_order1_catalog):
     that the loaded content is correct"""
     kwargs = get_catalog_kwargs(small_sky_order1_catalog)
     # Read CSV file for the small sky order 1 catalog
-    catalog = lsdb.from_dataframe(small_sky_order1_df, **kwargs)
+    catalog = lsdb.from_dataframe(small_sky_order1_df, append_partition_info=True, **kwargs)
     assert isinstance(catalog, lsdb.Catalog)
     # Catalogs have the same information
     assert catalog.hc_structure.catalog_info == small_sky_order1_catalog.hc_structure.catalog_info
     # Dataframes have the same data (column data types may differ)
     pd.testing.assert_frame_equal(
-        catalog.compute().reset_index(drop=True),
-        small_sky_order1_catalog.compute().reset_index(drop=True),
-        check_column_type=False,
+        catalog.compute().sort_index(),
+        small_sky_order1_catalog.compute().sort_index(),
+        check_dtype=False,
     )
 
 

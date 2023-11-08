@@ -314,9 +314,7 @@ class Catalog(Dataset):
         new_hc_structure.on_disk = True
         # Update information on the catalog info object
         new_hc_structure.catalog_info = dataclasses.replace(
-            new_hc_structure.catalog_info,
-            catalog_name=catalog_name,
-            **kwargs
+            new_hc_structure.catalog_info, catalog_name=catalog_name, **kwargs
         )
         return new_hc_structure
 
