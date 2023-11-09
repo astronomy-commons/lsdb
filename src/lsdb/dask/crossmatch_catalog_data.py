@@ -16,7 +16,8 @@ from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorith
 from lsdb.core.crossmatch.kdtree_match import KdTreeCrossmatch
 
 if TYPE_CHECKING:
-    from lsdb.catalog.catalog import Catalog, DaskDFPixelMap
+    from lsdb.catalog.catalog import Catalog
+    from lsdb.types import DaskDFPixelMap
 
 builtin_crossmatch_algorithms = {BuiltInCrossmatchAlgorithm.KD_TREE: KdTreeCrossmatch}
 

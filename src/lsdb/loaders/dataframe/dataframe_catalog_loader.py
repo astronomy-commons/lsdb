@@ -13,7 +13,8 @@ from hipscat.catalog.catalog_info import CatalogInfo
 from hipscat.pixel_math import HealpixPixel, generate_histogram
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN, compute_hipscat_id, healpix_to_hipscat_id
 
-from lsdb.catalog.catalog import Catalog, DaskDFPixelMap, HealpixInfo
+from lsdb.catalog.catalog import Catalog
+from lsdb.types import DaskDFPixelMap, HealpixInfo
 
 pd.options.mode.chained_assignment = None  # default='warn'
 
@@ -24,14 +25,14 @@ class DataframeCatalogLoader:
     DEFAULT_THRESHOLD = 100_000
 
     def __init__(
-        self,
-        dataframe: pd.DataFrame,
-        lowest_order: int = 0,
-        highest_order: int = 5,
-        partition_size: float | None = None,
-        threshold: int | None = None,
-        append_partition_info: bool = False,
-        **kwargs,
+            self,
+            dataframe: pd.DataFrame,
+            lowest_order: int = 0,
+            highest_order: int = 5,
+            partition_size: float | None = None,
+            threshold: int | None = None,
+            append_partition_info: bool = False,
+            **kwargs,
     ) -> None:
         """Initializes a DataframeCatalogLoader
 
@@ -138,7 +139,7 @@ class DataframeCatalogLoader:
         )
 
     def _generate_dask_df_and_map(
-        self, pixel_map: Dict[HealpixPixel, HealpixInfo]
+            self, pixel_map: Dict[HealpixPixel, HealpixInfo]
     ) -> Tuple[dd.DataFrame, DaskDFPixelMap, int]:
         """Load Dask DataFrame from HEALPix pixel Dataframes and
         generate a mapping of HEALPix pixels to HEALPix Dataframes
@@ -194,7 +195,7 @@ class DataframeCatalogLoader:
 
     @staticmethod
     def _generate_dask_dataframe(
-        pixel_dfs: List[pd.DataFrame], schema: pd.DataFrame
+            pixel_dfs: List[pd.DataFrame], schema: pd.DataFrame
     ) -> Tuple[dd.DataFrame, int]:
         """Create the Dask Dataframe from the list of HEALPix pixel Dataframes
 
