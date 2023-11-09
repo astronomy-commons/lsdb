@@ -29,9 +29,8 @@ class DataframeCatalogLoader:
         dataframe: pd.DataFrame,
         lowest_order: int = 0,
         highest_order: int = 5,
-        partition_size: float | None = None,
+        partition_size: int | None = None,
         threshold: int | None = None,
-        append_partition_info: bool = False,
         **kwargs,
     ) -> None:
         """Initializes a DataframeCatalogLoader
@@ -40,10 +39,8 @@ class DataframeCatalogLoader:
             dataframe (pd.Dataframe): Catalog Pandas Dataframe
             lowest_order (int): The lowest partition order
             highest_order (int): The highest partition order
-            partition_size (float): The desired partition size, in megabytes
+            partition_size (int): The desired partition size, in number of rows
             threshold (int): The maximum number of data points per pixel
-            append_partition_info (bool): Whether to include partition information
-                in the resulting catalog dataframe
             **kwargs: Arguments to pass to the creation of the catalog info
         """
         self.dataframe = dataframe
@@ -51,14 +48,13 @@ class DataframeCatalogLoader:
         self.highest_order = highest_order
         self.threshold = self._calculate_threshold(partition_size, threshold)
         self.catalog_info = self._create_catalog_info(**kwargs)
-        self.append_partition_info = append_partition_info
 
-    def _calculate_threshold(self, partition_size: float | None = None, threshold: int | None = None) -> int:
-        """Calculates the number of pixels per HEALPix pixel (threshold)
-        for the desired partition size.
+    def _calculate_threshold(self, partition_size: int | None = None, threshold: int | None = None) -> int:
+        """Calculates the number of pixels per HEALPix pixel (threshold) for the
+        desired partition size.
 
         Args:
-            partition_size (float): The desired partition size, in megabytes
+            partition_size (int): The desired partition size, in number of rows
             threshold (int): The maximum number of data points per pixel
 
         Returns:
@@ -68,10 +64,9 @@ class DataframeCatalogLoader:
             raise ValueError("Specify only one: threshold or partition_size")
         if threshold is None:
             if partition_size is not None:
-                df_size_bytes = self.dataframe.memory_usage().sum()
                 # Round the number of partitions to the next integer, otherwise the
                 # number of pixels per partition may exceed the threshold
-                num_partitions = math.ceil(df_size_bytes / (partition_size * (1 << 20)))
+                num_partitions = math.ceil(len(self.dataframe) / partition_size)
                 threshold = len(self.dataframe.index) // num_partitions
             else:
                 threshold = DataframeCatalogLoader.DEFAULT_THRESHOLD
@@ -162,8 +157,7 @@ class DataframeCatalogLoader:
             ddf_pixel_map[hp_pixel] = hp_pixel_index
             # Obtain Dataframe for the current HEALPix pixel
             df = self._get_dataframe_for_healpix(pixels)
-            if self.append_partition_info:
-                df = self.append_partition_information_to_dataframe(df, hp_pixel)
+            df = self.append_partition_information_to_dataframe(df, hp_pixel)
             # Save current dataframe
             pixel_dfs.append(df)
 
