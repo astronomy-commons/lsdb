@@ -250,7 +250,7 @@ class Catalog(Dataset):
     def to_hipscat(
         self,
         base_catalog_path: str,
-        catalog_name: Union[str | None] = None,
+        catalog_name: Union[str, None] = None,
         storage_options: Union[Dict[Any, Any], None] = None,
         **kwargs
     ):
