@@ -252,6 +252,7 @@ class Catalog(Dataset):
         base_catalog_path: str,
         catalog_name: Union[str | None] = None,
         storage_options: Union[Dict[Any, Any], None] = None,
+        **kwargs
     ):
         """Saves the catalog to disk in HiPSCat format
 
@@ -259,5 +260,6 @@ class Catalog(Dataset):
             base_catalog_path (str): Location where catalog is saved to
             catalog_name (str): The name of the catalog to be saved
             storage_options (dict): Dictionary that contains abstract filesystem credentials
+            **kwargs: Arguments to pass to the parquet write operations
         """
-        io.to_hipscat(self, base_catalog_path, catalog_name, storage_options)
+        io.to_hipscat(self, base_catalog_path, catalog_name, storage_options, **kwargs)

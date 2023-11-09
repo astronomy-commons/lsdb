@@ -17,6 +17,7 @@ def to_hipscat(
     base_catalog_path: str,
     catalog_name: Union[str | None] = None,
     storage_options: Union[Dict[Any, Any], None] = None,
+    **kwargs,
 ):
     """Writes a catalog to disk, in HiPSCat format. The output catalog comprises
     partition parquet files and respective metadata, as well as JSON files detailing
@@ -27,14 +28,15 @@ def to_hipscat(
         base_catalog_path (str): Location where catalog is saved to
         catalog_name (str): The name of the output catalog
         storage_options (dict): Dictionary that contains abstract filesystem credentials
+        **kwargs: Arguments to pass to the parquet write operations
     """
     # Create base directory
     base_catalog_dir_fp = hc.io.get_file_pointer_from_path(base_catalog_path)
     hc.io.file_io.make_directory(base_catalog_dir_fp)
     # Save partition parquet files
-    pixel_to_partition_size_map = write_partitions(catalog, base_catalog_dir_fp, storage_options)
+    pixel_to_partition_size_map = write_partitions(catalog, base_catalog_dir_fp, storage_options, **kwargs)
     # Save parquet metadata
-    hc.io.write_parquet_metadata(base_catalog_path, storage_options)
+    hc.io.write_parquet_metadata(base_catalog_path, storage_options, **kwargs)
     # Save partition info
     partition_info = _get_partition_info_dict(pixel_to_partition_size_map)
     hc.io.write_partition_info(base_catalog_dir_fp, partition_info, storage_options)
@@ -60,7 +62,7 @@ def to_hipscat(
 
 
 def write_partitions(
-    catalog, base_catalog_dir_fp: FilePointer, storage_options: Union[Dict[Any, Any], None] = None
+    catalog, base_catalog_dir_fp: FilePointer, storage_options: Union[Dict[Any, Any], None] = None, **kwargs
 ) -> Dict[HealpixPixel, int]:
     """Saves catalog partitions as parquet to disk
 
@@ -68,6 +70,7 @@ def write_partitions(
         catalog (Catalog): A catalog to export
         base_catalog_dir_fp (FilePointer): Path to the base directory of the catalog
         storage_options (dict): Dictionary that contains abstract filesystem credentials
+        **kwargs: Arguments to pass to the parquet write operations
 
     Returns:
         A dictionary mapping each HEALPix pixel to the number of data points in it.
@@ -76,7 +79,7 @@ def write_partitions(
     for pixel, partition_index in catalog._ddf_pixel_map.items():
         partition = catalog._ddf.partitions[partition_index].compute()
         pixel_path = hc.io.paths.pixel_catalog_file(base_catalog_dir_fp, pixel.order, pixel.pixel)
-        file_io.write_dataframe_to_parquet(partition, pixel_path, storage_options)
+        file_io.write_dataframe_to_parquet(partition, pixel_path, storage_options, **kwargs)
         pixel_to_partition_size_map[pixel] = len(partition)
     return pixel_to_partition_size_map
 
