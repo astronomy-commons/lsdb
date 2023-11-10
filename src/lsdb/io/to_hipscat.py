@@ -7,7 +7,6 @@ import hipscat as hc
 from hipscat.io import FilePointer
 from hipscat.pixel_math import HealpixPixel
 
-from lsdb.io import file_io
 from lsdb.types import HealpixInfo
 
 
@@ -76,11 +75,17 @@ def write_partitions(
         A dictionary mapping each HEALPix pixel to the number of data points in it.
     """
     pixel_to_partition_size_map = {}
-    for pixel, partition_index in catalog._ddf_pixel_map.items():
+
+    for hp_pixel, partition_index in catalog._ddf_pixel_map.items():
+        # Create pixel directory if it does not exist
+        pixel_dir = hc.io.pixel_directory(base_catalog_dir_fp, hp_pixel.order, hp_pixel.pixel)
+        hc.io.file_io.make_directory(pixel_dir, exist_ok=True, storage_options=storage_options)
+        # Write parquet file
         partition = catalog._ddf.partitions[partition_index].compute()
-        pixel_path = hc.io.paths.pixel_catalog_file(base_catalog_dir_fp, pixel.order, pixel.pixel)
-        file_io.write_dataframe_to_parquet(partition, pixel_path, storage_options, **kwargs)
-        pixel_to_partition_size_map[pixel] = len(partition)
+        pixel_path = hc.io.paths.pixel_catalog_file(base_catalog_dir_fp, hp_pixel.order, hp_pixel.pixel)
+        hc.io.file_io.write_dataframe_to_parquet(partition, pixel_path, storage_options, **kwargs)
+        pixel_to_partition_size_map[hp_pixel] = len(partition)
+
     return pixel_to_partition_size_map
 
 
