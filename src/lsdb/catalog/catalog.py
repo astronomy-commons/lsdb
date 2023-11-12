@@ -13,6 +13,9 @@ from lsdb.core.cone_search import cone_filter
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
 from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorithm
 from lsdb.dask.crossmatch_catalog_data import crossmatch_catalog_data
+from lsdb.dask.join_catalog_data import join_catalog_data_on
+
+DaskDFPixelMap = Dict[HealpixPixel, int]
 from lsdb.types import DaskDFPixelMap
 
 
@@ -317,3 +320,27 @@ class Catalog(Dataset):
             **kwargs: Arguments to pass to the parquet write operations
         """
         io.to_hipscat(self, base_catalog_path, catalog_name, storage_options, **kwargs)
+
+    def join(
+        self,
+        other: Catalog,
+        left_on: str = None,
+        right_on: str = None,
+        suffixes: Tuple[str, str] | None = None,
+        output_catalog_name: str | None = None
+    ) -> Catalog:
+        if suffixes is None:
+            suffixes = ("", "")
+
+        ddf, ddf_map, alignment = join_catalog_data_on(self, other, left_on, right_on, suffixes=suffixes)
+
+        if output_catalog_name is None:
+            output_catalog_name = self.hc_structure.catalog_info.catalog_name
+        new_catalog_info = dataclasses.replace(
+            self.hc_structure.catalog_info,
+            catalog_name=output_catalog_name,
+            ra_column=self.hc_structure.catalog_info.ra_column + suffixes[0],
+            dec_column=self.hc_structure.catalog_info.dec_column + suffixes[0],
+        )
+        hc_catalog = hc.catalog.Catalog(new_catalog_info, alignment.pixel_tree)
+        return Catalog(ddf, ddf_map, hc_catalog)
