@@ -3,7 +3,7 @@ from __future__ import annotations
 import dataclasses
 from copy import copy
 from importlib.metadata import version
-from typing import Any, Dict, Union, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, Union
 
 import dask
 import hipscat as hc
@@ -22,7 +22,7 @@ def perform_write(
         df: pd.DataFrame,
         hp_pixel: HealpixPixel,
         base_catalog_dir: FilePointer,
-        storage_options: dict = None,
+        storage_options: dict | None = None,
         **kwargs
 ):
     """Performs a write of a pandas dataframe to a single parquet file, following the hipscat structure.
