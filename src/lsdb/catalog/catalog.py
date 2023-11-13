@@ -1,19 +1,19 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import Dict, List, Tuple, Type, cast
+from typing import Any, Dict, List, Tuple, Type, Union, cast
 
 import dask.dataframe as dd
 import hipscat as hc
 from hipscat.pixel_math import HealpixPixel
 
+from lsdb import io
 from lsdb.catalog.dataset.dataset import Dataset
 from lsdb.core.cone_search import cone_filter
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
 from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorithm
 from lsdb.dask.crossmatch_catalog_data import crossmatch_catalog_data
-
-DaskDFPixelMap = Dict[HealpixPixel, int]
+from lsdb.types import DaskDFPixelMap
 
 
 # pylint: disable=R0903, W0212
@@ -25,7 +25,6 @@ class Catalog(Dataset):
         hc_structure: `hipscat.Catalog` object representing the structure
                       and metadata of the HiPSCat catalog
     """
-
     hc_structure: hc.catalog.Catalog
 
     def __init__(
@@ -247,3 +246,20 @@ class Catalog(Dataset):
         cone_search_ddf = cast(dd.DataFrame, cone_search_ddf)
         ddf_partition_map = {pixel: i for i, pixel in enumerate(pixels_in_cone)}
         return Catalog(cone_search_ddf, ddf_partition_map, filtered_hc_structure)
+
+    def to_hipscat(
+        self,
+        base_catalog_path: str,
+        catalog_name: Union[str, None] = None,
+        storage_options: Union[Dict[Any, Any], None] = None,
+        **kwargs
+    ):
+        """Saves the catalog to disk in HiPSCat format
+
+        Args:
+            base_catalog_path (str): Location where catalog is saved to
+            catalog_name (str): The name of the catalog to be saved
+            storage_options (dict): Dictionary that contains abstract filesystem credentials
+            **kwargs: Arguments to pass to the parquet write operations
+        """
+        io.to_hipscat(self, base_catalog_path, catalog_name, storage_options, **kwargs)
