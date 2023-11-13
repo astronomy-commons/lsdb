@@ -11,10 +11,10 @@ import pandas as pd
 from hipscat.io import FilePointer
 from hipscat.pixel_math import HealpixPixel
 
+from lsdb.types import HealpixInfo
+
 if TYPE_CHECKING:
     from lsdb.catalog.catalog import Catalog
-
-from lsdb.types import HealpixInfo
 
 
 @dask.delayed
@@ -25,6 +25,20 @@ def perform_write(
         storage_options: dict = None,
         **kwargs
 ):
+    """Performs a write of a pandas dataframe to a single parquet file, following the hipscat structure.
+
+    To be used as a dask delayed method as part of a dask task graph.
+
+    Args:
+        df (pd.DataFrame): dataframe to write to file
+        hp_pixel: HEALPix pixel of file to be written
+        base_catalog_dir: Location of the base catalog directory to write to
+        storage_options: fsspec storage options
+        **kwargs: other kwargs to pass to pd.to_parquet method
+
+    Returns:
+        number of rows written to disk
+    """
     pixel_dir = hc.io.pixel_directory(base_catalog_dir, hp_pixel.order, hp_pixel.pixel)
     hc.io.file_io.make_directory(pixel_dir, exist_ok=True, storage_options=storage_options)
     pixel_path = hc.io.paths.pixel_catalog_file(base_catalog_dir, hp_pixel.order, hp_pixel.pixel)
@@ -83,7 +97,10 @@ def to_hipscat(
 
 
 def write_partitions(
-    catalog: Catalog, base_catalog_dir_fp: FilePointer, storage_options: Union[Dict[Any, Any], None] = None, **kwargs
+    catalog: Catalog,
+    base_catalog_dir_fp: FilePointer,
+    storage_options: Union[Dict[Any, Any], None] = None,
+    **kwargs
 ) -> Dict[HealpixPixel, int]:
     """Saves catalog partitions as parquet to disk
 
