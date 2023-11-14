@@ -24,16 +24,16 @@ def perform_write(
         base_catalog_dir: FilePointer,
         storage_options: dict | None = None,
         **kwargs
-):
+) -> int:
     """Performs a write of a pandas dataframe to a single parquet file, following the hipscat structure.
 
     To be used as a dask delayed method as part of a dask task graph.
 
     Args:
         df (pd.DataFrame): dataframe to write to file
-        hp_pixel: HEALPix pixel of file to be written
-        base_catalog_dir: Location of the base catalog directory to write to
-        storage_options: fsspec storage options
+        hp_pixel (HealpixPixel): HEALPix pixel of file to be written
+        base_catalog_dir (FilePointer): Location of the base catalog directory to write to
+        storage_options (dict): fsspec storage options
         **kwargs: other kwargs to pass to pd.to_parquet method
 
     Returns:
