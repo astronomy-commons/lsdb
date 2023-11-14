@@ -9,7 +9,6 @@ import lsdb
 DATA_DIR_NAME = "data"
 SMALL_SKY_DIR_NAME = "small_sky"
 SMALL_SKY_XMATCH_NAME = "small_sky_xmatch"
-SMALL_SKY_NO_METADATA_DIR_NAME = "small_sky_no_metadata"
 SMALL_SKY_ORDER1_DIR_NAME = "small_sky_order1"
 SMALL_SKY_ORDER1_CSV = "small_sky_order1.csv"
 XMATCH_CORRECT_FILE = "xmatch_correct.csv"
@@ -32,11 +31,6 @@ def small_sky_dir(test_data_dir):
 @pytest.fixture
 def small_sky_xmatch_dir(test_data_dir):
     return os.path.join(test_data_dir, SMALL_SKY_XMATCH_NAME)
-
-
-@pytest.fixture
-def small_sky_no_metadata_dir(test_data_dir):
-    return os.path.join(test_data_dir, SMALL_SKY_NO_METADATA_DIR_NAME)
 
 
 @pytest.fixture

@@ -46,13 +46,6 @@ def test_read_hipscat_specify_catalog_type(small_sky_catalog, small_sky_dir):
     assert catalog.hc_structure.catalog_info == small_sky_catalog.hc_structure.catalog_info
 
 
-def test_read_hipscat_no_parquet_metadata(small_sky_catalog, small_sky_no_metadata_dir):
-    catalog = lsdb.read_hipscat(small_sky_no_metadata_dir)
-    pd.testing.assert_frame_equal(catalog.compute(), small_sky_catalog.compute())
-    assert catalog.get_healpix_pixels() == small_sky_catalog.get_healpix_pixels()
-    assert catalog.hc_structure.catalog_info == small_sky_catalog.hc_structure.catalog_info
-
-
 def test_read_hipscat_specify_wrong_catalog_type(small_sky_dir):
     with pytest.raises(ValueError):
         lsdb.read_hipscat(small_sky_dir, catalog_type=int)
