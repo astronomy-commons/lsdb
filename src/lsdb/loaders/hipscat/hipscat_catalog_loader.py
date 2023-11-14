@@ -88,8 +88,5 @@ class HipscatCatalogLoader:
         self, catalog: hc.catalog.Catalog, paths: List[hc.io.FilePointer]
     ) -> pyarrow.Schema:
         metadata_pointer = hc.io.paths.get_parquet_metadata_pointer(catalog.catalog_base_dir)
-        if file_pointer.does_file_or_directory_exist(metadata_pointer, storage_options=self.storage_options):
-            metadata = file_io.read_parquet_metadata(metadata_pointer, storage_options=self.storage_options)
-            return metadata.schema.to_arrow_schema()
-        metadata = file_io.read_parquet_metadata(paths[0], storage_options=self.storage_options)
+        metadata = file_io.read_parquet_metadata(metadata_pointer, storage_options=self.storage_options)
         return metadata.schema.to_arrow_schema()
