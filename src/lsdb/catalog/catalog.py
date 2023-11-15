@@ -247,6 +247,60 @@ class Catalog(Dataset):
         ddf_partition_map = {pixel: i for i, pixel in enumerate(pixels_in_cone)}
         return Catalog(cone_search_ddf, ddf_partition_map, filtered_hc_structure)
 
+    def merge(
+        self,
+        other: Catalog,
+        how: str = "inner",
+        on: str | List | None = None,
+        left_on: str | List | None = None,
+        right_on: str | List | None = None,
+        left_index: bool = False,
+        right_index: bool = False,
+        suffixes: Tuple[str, str] | None = None,
+    ) -> dd.DataFrame:
+        """Performs the merge of two catalog Dataframes
+
+        More information about pandas merge is available
+        `here <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.merge.html>`__.
+
+        Args:
+            other (Catalog): The right catalog to merge with.
+            how (str): How to handle the merge of the two catalogs.
+                One of {'left', 'right', 'outer', 'inner'}, defaults to 'inner'.
+            on (str | List): Column or index names to join on. Defaults to the
+                intersection of columns in both Dataframes if on is None and not
+                merging on indexes.
+            left_on (str | List): Column to join on the left Dataframe. Lists are
+                supported if their length is one.
+            right_on (str | List): Column to join on the right Dataframe. Lists are
+                supported if their length is one.
+            left_index (bool): Use the index of the left Dataframe as the join key.
+                Defaults to False.
+            right_index (bool): Use the index of the right Dataframe as the join key.
+                Defaults to False.
+            suffixes (Tuple[str, str]): A pair of suffixes to be appended to the
+                end of each column name when they are joined. Defaults to using the
+                name of the catalog for the suffix.
+
+        Returns:
+            A new Dask Dataframe containing the data points that result from the merge
+            of the two catalogs.
+        """
+        if suffixes is None:
+            suffixes = (f"_{self.name}", f"_{other.name}")
+        if len(suffixes) != 2:
+            raise ValueError("`suffixes` must be a tuple with two strings")
+        return self._ddf.merge(
+            other._ddf,
+            how=how,
+            on=on,
+            left_on=left_on,
+            right_on=right_on,
+            left_index=left_index,
+            right_index=right_index,
+            suffixes=suffixes,
+        )
+
     def to_hipscat(
         self,
         base_catalog_path: str,
