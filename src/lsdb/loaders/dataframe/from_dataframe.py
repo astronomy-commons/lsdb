@@ -10,7 +10,7 @@ def from_dataframe(
     dataframe: pd.DataFrame,
     lowest_order: int = 0,
     highest_order: int = 5,
-    partition_size: float | None = None,
+    partition_size: int | None = None,
     threshold: int | None = None,
     **kwargs,
 ) -> Catalog:
@@ -20,7 +20,7 @@ def from_dataframe(
         dataframe (pd.Dataframe): The catalog Pandas Dataframe
         lowest_order (int): The lowest partition order
         highest_order (int): The highest partition order
-        partition_size (float): The desired partition size, in megabytes
+        partition_size (int): The desired partition size, in number of rows
         threshold (int): The maximum number of data points per pixel
         **kwargs: Arguments to pass to the creation of the catalog info
 

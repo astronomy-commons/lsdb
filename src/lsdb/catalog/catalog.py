@@ -1,19 +1,19 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import Dict, List, Tuple, Type, cast
+from typing import Any, Dict, List, Tuple, Type, Union, cast
 
 import dask.dataframe as dd
 import hipscat as hc
 from hipscat.pixel_math import HealpixPixel
 
+from lsdb import io
 from lsdb.catalog.dataset.dataset import Dataset
 from lsdb.core.cone_search import cone_filter
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
 from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorithm
 from lsdb.dask.crossmatch_catalog_data import crossmatch_catalog_data
-
-DaskDFPixelMap = Dict[HealpixPixel, int]
+from lsdb.types import DaskDFPixelMap
 
 
 # pylint: disable=R0903, W0212
@@ -25,7 +25,6 @@ class Catalog(Dataset):
         hc_structure: `hipscat.Catalog` object representing the structure
                       and metadata of the HiPSCat catalog
     """
-
     hc_structure: hc.catalog.Catalog
 
     def __init__(
@@ -90,6 +89,37 @@ class Catalog(Dataset):
     def name(self):
         """The name of the catalog"""
         return self.hc_structure.catalog_name
+
+    def query(self, expr: str) -> Catalog:
+        """Filters catalog using a complex query expression
+
+        Args:
+            expr (str): Query expression to evaluate. The column names that are not valid Python
+                variables names should be wrapped in backticks, and any variable values can be
+                injected using f-strings. The use of '@' to reference variables is not supported.
+                More information about pandas query strings is available
+                `here <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.query.html>`__.
+
+        Returns:
+            A catalog that contains the data from the original catalog that complies
+            with the query expression
+        """
+        ddf = self._ddf.query(expr)
+        return Catalog(ddf, self._ddf_pixel_map, self.hc_structure)
+
+    def assign(self, **kwargs) -> Catalog:
+        """Assigns new columns to a catalog
+
+        Args:
+            **kwargs: Arguments to pass to the assign method. This dictionary
+                should contain the column names as keys and either a
+                function or a 1-D Dask array as their corresponding value.
+
+        Returns:
+            The catalog containing both the old columns and the newly created columns
+        """
+        ddf = self._ddf.assign(**kwargs)
+        return Catalog(ddf, self._ddf_pixel_map, self.hc_structure)
 
     def crossmatch(
         self,
@@ -270,3 +300,20 @@ class Catalog(Dataset):
             right_index=right_index,
             suffixes=suffixes,
         )
+
+    def to_hipscat(
+        self,
+        base_catalog_path: str,
+        catalog_name: Union[str, None] = None,
+        storage_options: Union[Dict[Any, Any], None] = None,
+        **kwargs
+    ):
+        """Saves the catalog to disk in HiPSCat format
+
+        Args:
+            base_catalog_path (str): Location where catalog is saved to
+            catalog_name (str): The name of the catalog to be saved
+            storage_options (dict): Dictionary that contains abstract filesystem credentials
+            **kwargs: Arguments to pass to the parquet write operations
+        """
+        io.to_hipscat(self, base_catalog_path, catalog_name, storage_options, **kwargs)

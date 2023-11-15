@@ -3,7 +3,7 @@ from typing import Any, Dict, List, Tuple, Union
 import dask.dataframe as dd
 import hipscat as hc
 import pyarrow
-from hipscat.io.file_io import file_io, file_pointer
+from hipscat.io.file_io import file_io
 from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_HEALPIX_ORDER
 
@@ -74,7 +74,7 @@ class HipscatCatalogLoader:
     def _load_df_from_paths(
         self, catalog: hc.catalog.Catalog, paths: List[hc.io.FilePointer]
     ) -> dd.DataFrame:
-        metadata_schema = self._load_parquet_metadata_schema(catalog, paths)
+        metadata_schema = self._load_parquet_metadata_schema(catalog)
         dask_meta_schema = metadata_schema.empty_table().to_pandas()
         ddf = dd.from_map(
             file_io.read_parquet_file_to_pandas,
@@ -84,12 +84,7 @@ class HipscatCatalogLoader:
         )
         return ddf
 
-    def _load_parquet_metadata_schema(
-        self, catalog: hc.catalog.Catalog, paths: List[hc.io.FilePointer]
-    ) -> pyarrow.Schema:
+    def _load_parquet_metadata_schema(self, catalog: hc.catalog.Catalog) -> pyarrow.Schema:
         metadata_pointer = hc.io.paths.get_parquet_metadata_pointer(catalog.catalog_base_dir)
-        if file_pointer.does_file_or_directory_exist(metadata_pointer, storage_options=self.storage_options):
-            metadata = file_io.read_parquet_metadata(metadata_pointer, storage_options=self.storage_options)
-            return metadata.schema.to_arrow_schema()
-        metadata = file_io.read_parquet_metadata(paths[0], storage_options=self.storage_options)
+        metadata = file_io.read_parquet_metadata(metadata_pointer, storage_options=self.storage_options)
         return metadata.schema.to_arrow_schema()

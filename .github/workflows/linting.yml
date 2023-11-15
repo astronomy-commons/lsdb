@@ -33,3 +33,4 @@ jobs:
       run: |
         pylint -rn -sn --recursive=y ./src --rcfile=./src/.pylintrc
         pylint -rn -sn --recursive=y ./tests --rcfile=./tests/.pylintrc
+        pylint -rn -sn --recursive=y ./benchmarks --rcfile=./tests/.pylintrc

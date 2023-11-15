@@ -33,9 +33,9 @@ def test_from_dataframe(small_sky_order1_df, small_sky_order1_catalog):
     assert catalog.hc_structure.catalog_info == small_sky_order1_catalog.hc_structure.catalog_info
     # Dataframes have the same data (column data types may differ)
     pd.testing.assert_frame_equal(
-        catalog.compute().reset_index(drop=True),
-        small_sky_order1_catalog.compute().reset_index(drop=True),
-        check_column_type=False,
+        catalog.compute().sort_index(),
+        small_sky_order1_catalog.compute().sort_index(),
+        check_dtype=False,
     )
 
 
@@ -107,19 +107,14 @@ def test_from_dataframe_with_non_default_ra_dec_columns(small_sky_order1_df, sma
 
 def test_partitions_obey_partition_size(small_sky_order1_df, small_sky_order1_catalog):
     """Tests that partitions are limited by the specified size"""
-    # Use 1KB size partitions
-    partition_size_bytes = 1 << 10
-    partition_size_megabytes = partition_size_bytes / (1 << 20)
+    # Use partitions with 10 rows
+    partition_size = 10
     # Read CSV file for the small sky order 1 catalog
-    kwargs = get_catalog_kwargs(
-        small_sky_order1_catalog, partition_size=partition_size_megabytes, threshold=None
-    )
+    kwargs = get_catalog_kwargs(small_sky_order1_catalog, partition_size=partition_size, threshold=None)
     catalog = lsdb.from_dataframe(small_sky_order1_df, **kwargs)
     # Calculate size of dataframe per partition
-    partition_sizes = [
-        partition_df.compute().memory_usage().sum() for partition_df in catalog._ddf.partitions
-    ]
-    assert all(size <= partition_size_bytes for size in partition_sizes)
+    partition_sizes = [len(partition_df) for partition_df in catalog._ddf.partitions]
+    assert all(size <= partition_size for size in partition_sizes)
 
 
 def test_partitions_obey_threshold(small_sky_order1_df, small_sky_order1_catalog):

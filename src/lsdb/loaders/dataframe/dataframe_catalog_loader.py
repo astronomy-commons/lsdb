@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import dataclasses
 import math
 from typing import Dict, List, Tuple
 
@@ -11,14 +12,11 @@ from hipscat.catalog import CatalogType
 from hipscat.catalog.catalog_info import CatalogInfo
 from hipscat.pixel_math import HealpixPixel, generate_histogram
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN, compute_hipscat_id, healpix_to_hipscat_id
-from typing_extensions import TypeAlias
 
-from lsdb.catalog.catalog import Catalog, DaskDFPixelMap
+from lsdb.catalog.catalog import Catalog
+from lsdb.types import DaskDFPixelMap, HealpixInfo
 
-# Compute pixel map returns a tuple. The first element is
-# the number of data points within the HEALPix pixel, the
-# second element is the list of pixels it contains.
-HealpixInfo: TypeAlias = Tuple[int, List[int]]
+pd.options.mode.chained_assignment = None  # default='warn'
 
 
 class DataframeCatalogLoader:
@@ -31,7 +29,7 @@ class DataframeCatalogLoader:
         dataframe: pd.DataFrame,
         lowest_order: int = 0,
         highest_order: int = 5,
-        partition_size: float | None = None,
+        partition_size: int | None = None,
         threshold: int | None = None,
         **kwargs,
     ) -> None:
@@ -41,7 +39,7 @@ class DataframeCatalogLoader:
             dataframe (pd.Dataframe): Catalog Pandas Dataframe
             lowest_order (int): The lowest partition order
             highest_order (int): The highest partition order
-            partition_size (float): The desired partition size, in megabytes
+            partition_size (int): The desired partition size, in number of rows
             threshold (int): The maximum number of data points per pixel
             **kwargs: Arguments to pass to the creation of the catalog info
         """
@@ -51,12 +49,12 @@ class DataframeCatalogLoader:
         self.threshold = self._calculate_threshold(partition_size, threshold)
         self.catalog_info = self._create_catalog_info(**kwargs)
 
-    def _calculate_threshold(self, partition_size: float | None = None, threshold: int | None = None) -> int:
-        """Calculates the number of pixels per HEALPix pixel (threshold)
-        for the desired partition size.
+    def _calculate_threshold(self, partition_size: int | None = None, threshold: int | None = None) -> int:
+        """Calculates the number of pixels per HEALPix pixel (threshold) for the
+        desired partition size.
 
         Args:
-            partition_size (float): The desired partition size, in megabytes
+            partition_size (int): The desired partition size, in number of rows
             threshold (int): The maximum number of data points per pixel
 
         Returns:
@@ -66,10 +64,9 @@ class DataframeCatalogLoader:
             raise ValueError("Specify only one: threshold or partition_size")
         if threshold is None:
             if partition_size is not None:
-                df_size_bytes = self.dataframe.memory_usage().sum()
                 # Round the number of partitions to the next integer, otherwise the
                 # number of pixels per partition may exceed the threshold
-                num_partitions = math.ceil(df_size_bytes / (partition_size * (1 << 20)))
+                num_partitions = math.ceil(len(self.dataframe) / partition_size)
                 threshold = len(self.dataframe.index) // num_partitions
             else:
                 threshold = DataframeCatalogLoader.DEFAULT_THRESHOLD
@@ -99,7 +96,8 @@ class DataframeCatalogLoader:
         """
         self._set_hipscat_index()
         pixel_map = self._compute_pixel_map()
-        ddf, ddf_pixel_map = self._generate_dask_df_and_map(pixel_map)
+        ddf, ddf_pixel_map, total_rows = self._generate_dask_df_and_map(pixel_map)
+        self.catalog_info = dataclasses.replace(self.catalog_info, total_rows=total_rows)
         healpix_pixels = list(pixel_map.keys())
         hc_structure = hc.catalog.Catalog(self.catalog_info, healpix_pixels)
         return Catalog(ddf, ddf_pixel_map, hc_structure)
@@ -137,7 +135,7 @@ class DataframeCatalogLoader:
 
     def _generate_dask_df_and_map(
         self, pixel_map: Dict[HealpixPixel, HealpixInfo]
-    ) -> Tuple[dd.DataFrame, DaskDFPixelMap]:
+    ) -> Tuple[dd.DataFrame, DaskDFPixelMap, int]:
         """Load Dask DataFrame from HEALPix pixel Dataframes and
         generate a mapping of HEALPix pixels to HEALPix Dataframes
 
@@ -146,8 +144,8 @@ class DataframeCatalogLoader:
                 HEALPix pixels and respective data information
 
         Returns:
-            Tuple containing the Dask Dataframe and the mapping of
-            HEALPix pixels to the respective Pandas Dataframes
+            Tuple containing the Dask Dataframe, the mapping of HEALPix pixels
+            to the respective Pandas Dataframes and the total number of rows.
         """
         # Dataframes for each destination HEALPix pixel
         pixel_dfs: List[pd.DataFrame] = []
@@ -156,18 +154,43 @@ class DataframeCatalogLoader:
 
         for hp_pixel_index, hp_pixel_info in enumerate(pixel_map.items()):
             hp_pixel, (_, pixels) = hp_pixel_info
-            # Obtain Dataframe for the current HEALPix pixel
-            pixel_dfs.append(self._get_dataframe_for_healpix(pixels))
             ddf_pixel_map[hp_pixel] = hp_pixel_index
+            # Obtain Dataframe for the current HEALPix pixel
+            df = self._get_dataframe_for_healpix(pixels)
+            df = self.append_partition_information_to_dataframe(df, hp_pixel)
+            # Save current dataframe
+            pixel_dfs.append(df)
 
         # Generate Dask Dataframe with original schema
-        schema = pd.DataFrame(columns=self.dataframe.columns).astype(self.dataframe.dtypes)
-        ddf = self._generate_dask_dataframe(pixel_dfs, schema)
+        schema = pd.DataFrame(columns=pixel_dfs[0].columns).astype(pixel_dfs[0].dtypes)
+        ddf, total_rows = self._generate_dask_dataframe(pixel_dfs, schema)
 
-        return ddf, ddf_pixel_map
+        return ddf, ddf_pixel_map, total_rows
+
+    def append_partition_information_to_dataframe(self, dataframe: pd.DataFrame, pixel: HealpixPixel):
+        """Appends partitioning information to a HEALPix dataframe
+
+        Args:
+            dataframe (pd.Dataframe): A HEALPix's pandas dataframe
+            pixel (HealpixPixel): The HEALPix pixel for the current partition
+
+        Returns:
+            The dataframe for a HEALPix, with data points and respective partition information.
+        """
+        ordered_columns = ["Norder", "Dir", "Npix"]
+        # Generate partition information
+        dataframe["Norder"] = pixel.order
+        dataframe["Npix"] = pixel.pixel
+        dataframe["Dir"] = [int(x / 10_000) * 10_000 for x in dataframe["Npix"]]
+        # Force new column types to int
+        dataframe[ordered_columns] = dataframe[ordered_columns].astype(int)
+        # Reorder the columns to match full path
+        return dataframe[[col for col in dataframe.columns if col not in ordered_columns] + ordered_columns]
 
     @staticmethod
-    def _generate_dask_dataframe(pixel_dfs: List[pd.DataFrame], schema: pd.DataFrame) -> dd.DataFrame:
+    def _generate_dask_dataframe(
+        pixel_dfs: List[pd.DataFrame], schema: pd.DataFrame
+    ) -> Tuple[dd.DataFrame, int]:
         """Create the Dask Dataframe from the list of HEALPix pixel Dataframes
 
         Args:
@@ -175,11 +198,11 @@ class DataframeCatalogLoader:
             schema (pd.Dataframe): The original Dataframe schema
 
         Returns:
-            The catalog's Dask Dataframe
+            The catalog's Dask Dataframe and its total number of rows.
         """
         delayed_dfs = [delayed(df) for df in pixel_dfs]
         ddf = dd.from_delayed(delayed_dfs, meta=schema)
-        return ddf if isinstance(ddf, dd.DataFrame) else ddf.to_frame()
+        return ddf if isinstance(ddf, dd.DataFrame) else ddf.to_frame(), len(ddf)
 
     def _get_dataframe_for_healpix(self, pixels: List[int]) -> pd.DataFrame:
         """Computes the Pandas Dataframe containing the data points

@@ -42,8 +42,12 @@ dev = [
     "ipython", # Also used in building notebooks into Sphinx
     "matplotlib", # Used in sample notebook intro_notebook.ipynb
     "numpy", # Used in sample notebook intro_notebook.ipynb
-    "asv==0.5.1", # Used to compute performance benchmarks
+    "asv==0.6.1", # Used to compute performance benchmarks
 ]
+
+[metadata]
+long_description = { file = "README.md" }
+url = "https://github.com/astronomy-commons/lsdb"
 
 [build-system]
 requires = [
