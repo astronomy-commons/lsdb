@@ -155,7 +155,7 @@ def crossmatch_catalog_data(
         meta[name + suffixes[0]] = pd.Series(dtype=col_type)
     for name, col_type in right.dtypes.items():
         meta[name + suffixes[1]] = pd.Series(dtype=col_type)
-    meta["_DIST"] = pd.Series(dtype=np.dtype("float64"))
+    meta[algorithm.DISTANCE_COLUMN_NAME] = pd.Series(dtype=np.dtype("float64"))
     meta_df = pd.DataFrame(meta)
     meta_df.index.name = HIPSCAT_ID_COLUMN
 
