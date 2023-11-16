@@ -6,26 +6,21 @@ import dask
 import dask.dataframe as dd
 import pandas as pd
 from hipscat.pixel_math import HealpixPixel
+from hipscat.pixel_math.hipscat_id import healpix_to_hipscat_id, HIPSCAT_ID_COLUMN
 from hipscat.pixel_tree import PixelAlignmentType, PixelAlignment, align_trees
+
+from lsdb.dask.crossmatch_catalog_data import align_catalog_to_partitions
 
 if TYPE_CHECKING:
     from lsdb.catalog.catalog import Catalog, DaskDFPixelMap
 
 
-def align_catalog_to_partitions(
-        catalog: Catalog,
-        pixels: pd.DataFrame,
-        order_col: str = "Norder",
-        pixel_col: str = "Npix"
-) -> dd.core.DataFrame:
-    dfs = catalog._ddf.to_delayed()
-    partitions = pixels.apply(lambda row: dfs[
-        catalog.get_partition_index(row[order_col], row[pixel_col])], axis=1)
-    partitions_list = partitions.to_list()
-    return partitions_list
-
 @dask.delayed
-def perform_join_on(left: pd.DataFrame, right: pd.DataFrame, left_on: str, right_on: str, suffixes: Tuple[str, str]):
+def perform_join_on(left: pd.DataFrame, right: pd.DataFrame, left_on: str, right_on: str, left_pixel: HealpixPixel, right_pixel: HealpixPixel, suffixes: Tuple[str, str]):
+    if right_pixel.order > left_pixel.order:
+        lower_bound = healpix_to_hipscat_id(right_pixel.order, right_pixel.pixel)
+        upper_bound = healpix_to_hipscat_id(right_pixel.order, right_pixel.pixel + 1)
+        left = left[(left.index >= lower_bound) & (left.index < upper_bound)]
     left_columns_renamed = {name: name + suffixes[0] for name in left.columns}
     left = left.rename(columns=left_columns_renamed)
     right_columns_renamed = {name: name + suffixes[1] for name in right.columns}
@@ -72,7 +67,7 @@ def join_catalog_data_on(
     for name, t in right._ddf.dtypes.items():
         meta[name + suffixes[1]] = pd.Series(dtype=t)
     meta_df = pd.DataFrame(meta)
-    meta_df.index.name = "_hipscat_index"
+    meta_df.index.name = HIPSCAT_ID_COLUMN
     ddf = dd.from_delayed(joined_partitions, meta=meta_df)
     ddf = cast(dd.DataFrame, ddf)
     return ddf, partition_map, alignment
