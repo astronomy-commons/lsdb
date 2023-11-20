@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Tuple, Type, cast
+from typing import TYPE_CHECKING, List, Tuple, Type, cast, Dict, Sequence
 
 import dask
 import dask.dataframe as dd
@@ -43,9 +43,7 @@ def perform_crossmatch(
     the result.
     """
     if right_order > left_order:
-        lower_bound = healpix_to_hipscat_id(right_order, right_pixel)
-        upper_bound = healpix_to_hipscat_id(right_order, right_pixel + 1)
-        left_df = left_df[(left_df.index >= lower_bound) & (left_df.index < upper_bound)]
+        left_df = filter_by_hipscat_index_to_pixel(left_df, right_order, right_pixel)
     return algorithm(
         left_df,
         right_df,
@@ -57,6 +55,13 @@ def perform_crossmatch(
         right_hc_structure,
         suffixes,
     ).crossmatch(**kwargs)
+
+
+def filter_by_hipscat_index_to_pixel(dataframe: pd.DataFrame, order: int, pixel: int) -> pd.DataFrame:
+    lower_bound = healpix_to_hipscat_id(order, pixel)
+    upper_bound = healpix_to_hipscat_id(order, pixel + 1)
+    filtered_df = dataframe[(dataframe.index >= lower_bound) & (dataframe.index < upper_bound)]
+    return filtered_df
 
 
 # pylint: disable=too-many-locals
@@ -141,6 +146,41 @@ def crossmatch_catalog_data(
     ]
 
     # generate dask df partition map from alignment
+    partition_map = get_partition_map_from_alignment_pixels(join_pixels)
+
+    # generate meta table structure for dask df
+    extra_columns = {
+        crossmatch_algorithm.DISTANCE_COLUMN_NAME: pd.Series(dtype=np.dtype("float64"))
+    }
+    meta_df = generate_meta_df_for_joined_tables([left, right], suffixes, extra_columns=extra_columns)
+
+    # create dask df from delayed partitions
+    ddf = dd.from_delayed(joined_partitions, meta=meta_df)
+    ddf = cast(dd.DataFrame, ddf)
+
+    return ddf, partition_map, alignment
+
+
+def generate_meta_df_for_joined_tables(
+        tables: Sequence[Catalog],
+        suffixes: Sequence[str],
+        extra_columns: Dict[str, pd.Series] | None = None,
+        index_name: str = HIPSCAT_ID_COLUMN,
+):
+    if len(tables) != len(suffixes):
+        raise ValueError("tables and suffixes must have the same length")
+    meta = {}
+    for table, suffix in zip(tables, suffixes):
+        for name, col_type in table.dtypes.items():
+            meta[name + suffix] = pd.Series(dtype=col_type)
+    if extra_columns is not None:
+        meta.update(extra_columns)
+    meta_df = pd.DataFrame(meta)
+    meta_df.index.name = index_name
+    return meta_df
+
+
+def get_partition_map_from_alignment_pixels(join_pixels):
     partition_map = {}
     for i, (_, row) in enumerate(join_pixels.iterrows()):
         pixel = HealpixPixel(
@@ -148,22 +188,7 @@ def crossmatch_catalog_data(
             pixel=row[PixelAlignment.ALIGNED_PIXEL_COLUMN_NAME],
         )
         partition_map[pixel] = i
-
-    # generate meta table structure for dask df
-    meta = {}
-    for name, col_type in left.dtypes.items():
-        meta[name + suffixes[0]] = pd.Series(dtype=col_type)
-    for name, col_type in right.dtypes.items():
-        meta[name + suffixes[1]] = pd.Series(dtype=col_type)
-    meta[crossmatch_algorithm.DISTANCE_COLUMN_NAME] = pd.Series(dtype=np.dtype("float64"))
-    meta_df = pd.DataFrame(meta)
-    meta_df.index.name = HIPSCAT_ID_COLUMN
-
-    # create dask df from delayed partitions
-    ddf = dd.from_delayed(joined_partitions, meta=meta_df)
-    ddf = cast(dd.DataFrame, ddf)
-
-    return ddf, partition_map, alignment
+    return partition_map
 
 
 def get_crossmatch_algorithm(
