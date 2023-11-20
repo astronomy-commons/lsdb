@@ -6,12 +6,14 @@ from typing import Any, Dict, List, Tuple, Type, Union, cast
 import dask.dataframe as dd
 import hipscat as hc
 from hipscat.pixel_math import HealpixPixel
+from regions import PolygonSkyRegion
 
 from lsdb import io
 from lsdb.catalog.dataset.dataset import Dataset
-from lsdb.core.cone_search import cone_filter
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
 from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorithm
+from lsdb.core.search.cone_search import cone_filter
+from lsdb.core.search.polygon_search import polygon_filter
 from lsdb.dask.crossmatch_catalog_data import crossmatch_catalog_data
 from lsdb.types import DaskDFPixelMap
 
@@ -25,6 +27,7 @@ class Catalog(Dataset):
         hc_structure: `hipscat.Catalog` object representing the structure
                       and metadata of the HiPSCat catalog
     """
+
     hc_structure: hc.catalog.Catalog
 
     def __init__(
@@ -301,12 +304,40 @@ class Catalog(Dataset):
             suffixes=suffixes,
         )
 
+    def polygon_search(self, polygon: PolygonSkyRegion) -> Catalog:
+        """Perform a polygonal search to filter the catalog
+
+        Filters to points within the polygonal region specified in ra and dec in degrees.
+        Filters partitions in the catalog to those that have some overlap with the region.
+
+        Args:
+            polygon (PolygonSkyRegion): The polygon to filter pixels with. Its
+                vertices are specified in sky coordinates (ra, dec).
+
+        Returns:
+            A new catalog containing the points filtered to those within the
+            polygonal region, and the partitions that have some overlap with it
+        """
+        filtered_hc_structure, max_order = self.hc_structure.filter_by_polygon(polygon)
+        pixels_in_polygon = filtered_hc_structure.get_healpix_pixels()
+        partitions = self._ddf.to_delayed()
+        partitions_in_polygon = [partitions[self._ddf_pixel_map[hp_pixel]] for hp_pixel in pixels_in_polygon]
+        polygon_pixels = [hp_pixel.pixel for hp_pixel in pixels_in_polygon]
+        filtered_partitions = [
+            polygon_filter(partition, polygon_pixels, max_order, self.hc_structure)
+            for partition in partitions_in_polygon
+        ]
+        polygon_search_ddf = dd.from_delayed(filtered_partitions, meta=self._ddf._meta)
+        polygon_search_ddf = cast(dd.DataFrame, polygon_search_ddf)
+        ddf_partition_map = {pixel: i for i, pixel in enumerate(pixels_in_polygon)}
+        return Catalog(polygon_search_ddf, ddf_partition_map, filtered_hc_structure)
+
     def to_hipscat(
         self,
         base_catalog_path: str,
         catalog_name: Union[str, None] = None,
         storage_options: Union[Dict[Any, Any], None] = None,
-        **kwargs
+        **kwargs,
     ):
         """Saves the catalog to disk in HiPSCat format
 
