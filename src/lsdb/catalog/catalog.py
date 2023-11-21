@@ -324,18 +324,28 @@ class Catalog(Dataset):
     def join(
         self,
         other: Catalog,
-        left_on: str = None,
-        right_on: str = None,
+        left_on: str,
+        right_on: str,
         suffixes: Tuple[str, str] | None = None,
         output_catalog_name: str | None = None
     ) -> Catalog:
         if suffixes is None:
-            suffixes = ("", "")
+            suffixes = (f"_{self.name}", f"_{other.name}")
+
+        if len(suffixes) != 2:
+            raise ValueError("`suffixes` must be a tuple with two strings")
+
+        if left_on not in self._ddf.columns:
+            raise ValueError("left_on must be a column in the left catalog")
+
+        if right_on not in other._ddf.columns:
+            raise ValueError("right_on must be a column in the right catalog")
 
         ddf, ddf_map, alignment = join_catalog_data_on(self, other, left_on, right_on, suffixes=suffixes)
 
         if output_catalog_name is None:
             output_catalog_name = self.hc_structure.catalog_info.catalog_name
+
         new_catalog_info = dataclasses.replace(
             self.hc_structure.catalog_info,
             catalog_name=output_catalog_name,
