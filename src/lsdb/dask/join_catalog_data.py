@@ -1,3 +1,5 @@
+# pylint: disable=duplicate-code
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Tuple, cast
@@ -6,11 +8,15 @@ import dask
 import dask.dataframe as dd
 import pandas as pd
 from hipscat.pixel_math import HealpixPixel
-from hipscat.pixel_math.hipscat_id import healpix_to_hipscat_id, HIPSCAT_ID_COLUMN
-from hipscat.pixel_tree import PixelAlignmentType, PixelAlignment, align_trees
+from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
+from hipscat.pixel_tree import PixelAlignment, PixelAlignmentType, align_trees
 
-from lsdb.dask.crossmatch_catalog_data import align_catalog_to_partitions, filter_by_hipscat_index_to_pixel, \
-    get_partition_map_from_alignment_pixels, generate_meta_df_for_joined_tables
+from lsdb.dask.crossmatch_catalog_data import (
+    align_catalog_to_partitions,
+    filter_by_hipscat_index_to_pixel,
+    generate_meta_df_for_joined_tables,
+    get_partition_map_from_alignment_pixels,
+)
 
 if TYPE_CHECKING:
     from lsdb.catalog.catalog import Catalog, DaskDFPixelMap
@@ -26,6 +32,20 @@ def perform_join_on(
         right_pixel: HealpixPixel,
         suffixes: Tuple[str, str]
 ):
+    """Performs a join on two catalog partitions
+
+    Args:
+        left (pd.DataFrame): the left partition to merge
+        right (pd.DataFrame): the right partition to merge
+        left_on (str): the column to join on from the left partition
+        right_on (str): the column to join on from the right partition
+        left_pixel (HealpixPixel): the HEALPix pixel of the left partition
+        right_pixel (HealpixPixel): the HEALPix pixel of the right partition
+        suffixes (Tuple[str,str]): the suffixes to apply to each partition's column names
+
+    Returns:
+        A dataframe with the result of merging the left and right partitions on the specified columns
+    """
     if right_pixel.order > left_pixel.order:
         left = filter_by_hipscat_index_to_pixel(left, right_pixel.order, right_pixel.pixel)
     left_columns_renamed = {name: name + suffixes[0] for name in left.columns}
@@ -40,10 +60,24 @@ def perform_join_on(
 def join_catalog_data_on(
         left: Catalog,
         right: Catalog,
-        left_on: str = None,
-        right_on: str = None,
-        suffixes: Tuple[str, str] | None = None
+        left_on: str,
+        right_on: str,
+        suffixes: Tuple[str, str]
 ) -> Tuple[dd.core.DataFrame, DaskDFPixelMap, PixelAlignment]:
+    """Joins two catalogs spatially on a specified column
+
+    Args:
+        left (Catalog): the left catalog to join
+        right (Catalog): the right catalog to join
+        left_on (str): the column to join on from the left partition
+        right_on (str): the column to join on from the right partition
+        suffixes (Tuple[str,str]): the suffixes to apply to each partition's column names
+
+    Returns:
+        A tuple of the dask dataframe with the result of the join, the pixel map from HEALPix
+        pixel to partition index within the dataframe, and the PixelAlignment of the two input
+        catalogs.
+    """
     alignment = align_trees(
         left.hc_structure.pixel_tree,
         right.hc_structure.pixel_tree,

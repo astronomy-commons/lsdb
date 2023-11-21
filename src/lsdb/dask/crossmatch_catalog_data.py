@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Tuple, Type, cast, Dict, Sequence
+from typing import TYPE_CHECKING, Dict, List, Sequence, Tuple, Type, cast
 
 import dask
 import dask.dataframe as dd
@@ -58,6 +58,16 @@ def perform_crossmatch(
 
 
 def filter_by_hipscat_index_to_pixel(dataframe: pd.DataFrame, order: int, pixel: int) -> pd.DataFrame:
+    """Filters a catalog dataframe to the points within a specified HEALPix pixel using the hipscat index
+
+    Args:
+        dataframe (pd.DataFrame): The dataframe to filter
+        order (int): The order of the HEALPix pixel to filter to
+        pixel (int): The pixel number in NESTED numbering of the HEALPix pixel to filter to
+
+    Returns:
+        The filtered dataframe with only the rows that are within the specified HEALPix pixel
+    """
     lower_bound = healpix_to_hipscat_id(order, pixel)
     upper_bound = healpix_to_hipscat_id(order, pixel + 1)
     filtered_df = dataframe[(dataframe.index >= lower_bound) & (dataframe.index < upper_bound)]
@@ -162,15 +172,28 @@ def crossmatch_catalog_data(
 
 
 def generate_meta_df_for_joined_tables(
-        tables: Sequence[Catalog],
+        catalogs: Sequence[Catalog],
         suffixes: Sequence[str],
         extra_columns: Dict[str, pd.Series] | None = None,
         index_name: str = HIPSCAT_ID_COLUMN,
-):
-    if len(tables) != len(suffixes):
-        raise ValueError("tables and suffixes must have the same length")
+) -> pd.DataFrame:
+    """Generates a Dask meta DataFrame that would result from joining two catalogs
+
+    Creates an empty dataframe with the columns of each catalog appended with a suffix. Allows specifying
+    extra columns that should also be added, and the name of the index of the resulting dataframe.
+
+    Args:
+        catalogs (Sequence[Catalog]): The catalogs to merge together
+        suffixes (Sequence[Str]): The column suffixes to apply each catalog
+        extra_columns (Dict[str, pd.Series]): Any additional columns to the merged catalogs
+        index_name: The name of the index in the resulting DataFrame
+
+    Returns:
+    An empty dataframe with the columns of each catalog with their respective suffix, and any extra columns
+    specified, with the index name set.
+    """
     meta = {}
-    for table, suffix in zip(tables, suffixes):
+    for table, suffix in zip(catalogs, suffixes):
         for name, col_type in table.dtypes.items():
             meta[name + suffix] = pd.Series(dtype=col_type)
     if extra_columns is not None:
@@ -180,7 +203,15 @@ def generate_meta_df_for_joined_tables(
     return meta_df
 
 
-def get_partition_map_from_alignment_pixels(join_pixels):
+def get_partition_map_from_alignment_pixels(join_pixels: pd.DataFrame) -> DaskDFPixelMap:
+    """Gets a dictionary mapping HEALPix pixel to index of pixel in the pixel_mapping of a `PixelAlignment`
+
+    Args:
+        join_pixels (pd.DataFrame): The pixel_mapping from a `PixelAlignment` object
+
+    Returns:
+        A dictionary mapping HEALPix pixel to the index that the pixel occurs in the pixel_mapping table
+    """
     partition_map = {}
     for i, (_, row) in enumerate(join_pixels.iterrows()):
         pixel = HealpixPixel(

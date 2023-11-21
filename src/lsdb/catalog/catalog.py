@@ -329,6 +329,23 @@ class Catalog(Dataset):
         suffixes: Tuple[str, str] | None = None,
         output_catalog_name: str | None = None
     ) -> Catalog:
+        """Perform a spatial join to another catalog
+
+        Joins two catalogs together on a shared column value, merging rows where they match. The operation
+        only joins data from matching partitions, and does not join rows that have a matching column value but
+        are in separate partitions in the sky. For a more general join, see the `merge` function.
+
+        Args:
+            other (Catalog): the right catalog to join to
+            left_on (str): the name of the column in the left catalog to join on
+            right_on (str): the name of the column in the right catalog to join on
+            suffixes (Tuple[str,str]): suffixes to apply to the columns of each table
+            output_catalog_name (str): The name of the resulting catalog to be stored in metadata
+
+        Returns:
+            A new catalog with the columns from each of the input catalogs with their respective suffixes
+            added, and the rows merged on the specified columns.
+        """
         if suffixes is None:
             suffixes = (f"_{self.name}", f"_{other.name}")
 
