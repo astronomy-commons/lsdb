@@ -15,7 +15,6 @@ from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorith
 from lsdb.dask.crossmatch_catalog_data import crossmatch_catalog_data
 from lsdb.dask.join_catalog_data import join_catalog_data_on
 
-DaskDFPixelMap = Dict[HealpixPixel, int]
 from lsdb.types import DaskDFPixelMap
 
 
