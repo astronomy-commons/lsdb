@@ -2,6 +2,7 @@ import healpy as hp
 import pandas as pd
 import pytest
 from hipscat.catalog import CatalogType
+from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
 from hipscat.pixel_tree.pixel_node_type import PixelNodeType
 
 import lsdb
@@ -31,6 +32,8 @@ def test_from_dataframe(small_sky_order1_df, small_sky_order1_catalog):
     assert isinstance(catalog, lsdb.Catalog)
     # Catalogs have the same information
     assert catalog.hc_structure.catalog_info == small_sky_order1_catalog.hc_structure.catalog_info
+    # Index is set to hipscat index
+    assert catalog._ddf.index.name == HIPSCAT_ID_COLUMN
     # Dataframes have the same data (column data types may differ)
     pd.testing.assert_frame_equal(
         catalog.compute().sort_index(),
