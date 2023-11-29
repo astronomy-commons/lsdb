@@ -162,7 +162,7 @@ class DataframeCatalogLoader:
             pixel_dfs.append(df)
 
         # Generate Dask Dataframe with original schema
-        schema = pd.DataFrame(columns=pixel_dfs[0].columns).astype(pixel_dfs[0].dtypes)
+        schema = pixel_dfs[0].iloc[:0, :].copy()
         ddf, total_rows = self._generate_dask_dataframe(pixel_dfs, schema)
 
         return ddf, ddf_pixel_map, total_rows

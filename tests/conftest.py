@@ -5,6 +5,7 @@ import pandas as pd
 import pytest
 
 import lsdb
+from lsdb import Catalog
 
 DATA_DIR_NAME = "data"
 SMALL_SKY_DIR_NAME = "small_sky"
@@ -45,7 +46,7 @@ def small_sky_hipscat_catalog(small_sky_dir):
 
 @pytest.fixture
 def small_sky_catalog(small_sky_dir):
-    return lsdb.read_hipscat(small_sky_dir)
+    return lsdb.read_hipscat(small_sky_dir, catalog_type=Catalog)
 
 
 @pytest.fixture
