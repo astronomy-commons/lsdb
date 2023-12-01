@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Tuple, Type, Union, cast
 import dask.dataframe as dd
 import hipscat as hc
 from hipscat.pixel_math import HealpixPixel
-from regions import PolygonSkyRegion
+from spherical_geometry.polygon import SingleSphericalPolygon
 
 from lsdb import io
 from lsdb.catalog.dataset.dataset import Dataset
@@ -251,28 +251,25 @@ class Catalog(Dataset):
         ddf_partition_map = {pixel: i for i, pixel in enumerate(pixels_in_cone)}
         return Catalog(cone_search_ddf, ddf_partition_map, filtered_hc_structure)
 
-    def polygon_search(self, polygon: PolygonSkyRegion) -> Catalog:
+    def polygon_search(self, polygon: SingleSphericalPolygon) -> Catalog:
         """Perform a polygonal search to filter the catalog.
 
         Filters to points within the polygonal region specified in ra and dec, in degrees.
         Filters partitions in the catalog to those that have some overlap with the region.
 
         Args:
-            polygon (PolygonSkyRegion): The convex polygon to filter pixels with.
-                Its vertices are specified in sky coordinates, ra and dec.
+            polygon (SingleSphericalPolygon): The polygon to filter pixels with.
 
         Returns:
             A new catalog containing the points filtered to those within the
             polygonal region, and the partitions that have some overlap with it.
         """
-        filtered_hc_structure, max_order = self.hc_structure.filter_by_polygon(polygon)
+        filtered_hc_structure = self.hc_structure.filter_by_polygon(polygon)
         pixels_in_polygon = filtered_hc_structure.get_healpix_pixels()
         partitions = self._ddf.to_delayed()
         partitions_in_polygon = [partitions[self._ddf_pixel_map[hp_pixel]] for hp_pixel in pixels_in_polygon]
-        polygon_pixels = [hp_pixel.pixel for hp_pixel in pixels_in_polygon]
         filtered_partitions = [
-            polygon_filter(partition, polygon_pixels, max_order, self.hc_structure)
-            for partition in partitions_in_polygon
+            polygon_filter(partition, polygon, self.hc_structure) for partition in partitions_in_polygon
         ]
         polygon_search_ddf = dd.from_delayed(filtered_partitions, meta=self._ddf._meta)
         polygon_search_ddf = cast(dd.DataFrame, polygon_search_ddf)
@@ -356,7 +353,7 @@ class Catalog(Dataset):
         left_on: str,
         right_on: str,
         suffixes: Tuple[str, str] | None = None,
-        output_catalog_name: str | None = None
+        output_catalog_name: str | None = None,
     ) -> Catalog:
         """Perform a spatial join to another catalog
 
