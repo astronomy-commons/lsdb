@@ -7,3 +7,4 @@ jupytext
 jupyter
 matplotlib
 numpy
+spherical_geometry
