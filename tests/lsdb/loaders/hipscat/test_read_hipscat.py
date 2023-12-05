@@ -3,6 +3,23 @@ import pandas as pd
 import pytest
 
 import lsdb
+from lsdb import Catalog
+
+
+def assert_divisions_are_correct(catalog: Catalog):
+    # Get partitions in correct order
+    partitions = [
+        catalog.get_partition(hp.order, hp.pixel)
+        for hp in catalog.get_ordered_healpix_pixels()
+    ]
+    # Check that divisions are the ones expected
+    divisions = []
+    for index, partition in enumerate(partitions):
+        indices = partition.compute().index.values
+        divisions.append(min(indices))
+        if index == len(partitions) - 1:
+            divisions.append(max(indices))
+    assert catalog._ddf.divisions == tuple(divisions)
 
 
 def test_read_hipscat(small_sky_order1_dir, small_sky_order1_hipscat_catalog):
@@ -10,6 +27,7 @@ def test_read_hipscat(small_sky_order1_dir, small_sky_order1_hipscat_catalog):
     assert isinstance(catalog, lsdb.Catalog)
     assert catalog.hc_structure.catalog_base_dir == small_sky_order1_hipscat_catalog.catalog_base_dir
     assert catalog.get_healpix_pixels() == small_sky_order1_hipscat_catalog.get_healpix_pixels()
+    assert_divisions_are_correct(catalog)
 
 
 def test_pixels_in_map_equal_catalog_pixels(small_sky_order1_dir, small_sky_order1_hipscat_catalog):

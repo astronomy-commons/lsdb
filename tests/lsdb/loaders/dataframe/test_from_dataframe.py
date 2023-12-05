@@ -2,10 +2,11 @@ import healpy as hp
 import pandas as pd
 import pytest
 from hipscat.catalog import CatalogType
-from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
+from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN, hipscat_id_to_healpix
 from hipscat.pixel_tree.pixel_node_type import PixelNodeType
 
 import lsdb
+from lsdb import Catalog
 from lsdb.loaders.dataframe.dataframe_catalog_loader import DataframeCatalogLoader
 
 
@@ -21,6 +22,23 @@ def get_catalog_kwargs(catalog, **kwargs):
         **kwargs,
     }
     return kwargs
+
+
+def assert_divisions_are_correct(catalog: Catalog):
+    # Check that the number of divisions is correct
+    hp_pixels = catalog.get_ordered_healpix_pixels()
+    assert len(catalog._ddf.divisions) == len(hp_pixels) + 1
+    # And that they belong to the correct healpix pixel
+    for hp_pixel, division in zip(hp_pixels, catalog._ddf.divisions):
+        div_pixel = hipscat_id_to_healpix([division], target_order=hp_pixel.order)
+        assert hp_pixel.pixel == div_pixel
+    # The last division hipscat_id belongs to the pixel at order+1
+    last_division_pixel = hipscat_id_to_healpix(
+        [catalog._ddf.divisions[-1]],
+        target_order=hp_pixels[-1].order + 1
+    )
+    next_order_pixel = (hp_pixels[-1].pixel + 1) * 4
+    assert next_order_pixel == last_division_pixel
 
 
 def test_from_dataframe(small_sky_order1_df, small_sky_order1_catalog):
@@ -40,6 +58,8 @@ def test_from_dataframe(small_sky_order1_df, small_sky_order1_catalog):
         small_sky_order1_catalog.compute().sort_index(),
         check_dtype=False,
     )
+    # Divisions belong to the respective HEALPix pixels
+    assert_divisions_are_correct(catalog)
 
 
 def test_from_dataframe_catalog_of_invalid_type(small_sky_order1_df, small_sky_order1_catalog):
@@ -57,7 +77,7 @@ def test_from_dataframe_catalog_of_invalid_type(small_sky_order1_df, small_sky_o
 
 
 def test_from_dataframe_when_threshold_and_partition_size_specified(
-    small_sky_order1_df, small_sky_order1_catalog
+        small_sky_order1_df, small_sky_order1_catalog
 ):
     """Tests that specifying simultaneously threshold and partition_size is invalid"""
     kwargs = get_catalog_kwargs(small_sky_order1_catalog, partition_size=10, threshold=10_000)
@@ -73,7 +93,7 @@ def test_partitions_on_map_equal_partitions_in_df(small_sky_order1_df, small_sky
         partition_df = catalog._ddf.partitions[partition_index].compute()
         assert isinstance(partition_df, pd.DataFrame)
         for _, row in partition_df.iterrows():
-            ipix = hp.ang2pix(2**hp_pixel.order, row["ra"], row["dec"], nest=True, lonlat=True)
+            ipix = hp.ang2pix(2 ** hp_pixel.order, row["ra"], row["dec"], nest=True, lonlat=True)
             assert ipix == hp_pixel.pixel
 
 
@@ -132,7 +152,7 @@ def test_partitions_obey_threshold(small_sky_order1_df, small_sky_order1_catalog
 
 
 def test_partitions_obey_default_threshold_when_no_arguments_specified(
-    small_sky_order1_df, small_sky_order1_catalog
+        small_sky_order1_df, small_sky_order1_catalog
 ):
     """Tests that partitions are limited by the default threshold
     when no partition size or threshold is specified"""

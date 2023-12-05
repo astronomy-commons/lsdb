@@ -9,6 +9,7 @@ from hipscat.pixel_math import HealpixPixel
 
 from lsdb import io
 from lsdb.catalog.dataset.dataset import Dataset
+from lsdb.catalog.utils import get_ordered_pixel_list
 from lsdb.core.cone_search import cone_filter
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
 from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorithm
@@ -54,6 +55,14 @@ class Catalog(Dataset):
             List of all Healpix pixels in the catalog
         """
         return self.hc_structure.get_healpix_pixels()
+
+    def get_ordered_healpix_pixels(self) -> List[HealpixPixel]:
+        """Get all HEALPix pixels that are contained in the catalog
+
+        Returns:
+            List of all Healpix pixels in the catalog
+        """
+        return get_ordered_pixel_list(self.get_healpix_pixels())
 
     def get_partition(self, order: int, pixel: int) -> dd.DataFrame:
         """Get the dask partition for a given HEALPix pixel
