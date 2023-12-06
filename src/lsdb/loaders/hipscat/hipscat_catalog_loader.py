@@ -2,14 +2,14 @@ from typing import Any, Dict, List, Tuple, Union
 
 import dask.dataframe as dd
 import hipscat as hc
+import numpy as np
 import pyarrow
-from hipscat.io import read_row_group_fragments
 from hipscat.io.file_io import file_io
 from hipscat.pixel_math import HealpixPixel
-from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
+from hipscat.pixel_math.healpix_pixel_function import get_pixel_argsort
 
 from lsdb.catalog.catalog import Catalog, DaskDFPixelMap
-from lsdb.catalog.utils import get_ordered_pixel_list
+from lsdb.dask.divisions import get_pixel_divisions
 from lsdb.loaders.hipscat.hipscat_loading_config import HipscatLoadingConfig
 
 
@@ -46,9 +46,10 @@ class HipscatCatalogLoader:
 
     def _load_dask_df_and_map(self, catalog: hc.catalog.Catalog) -> Tuple[dd.DataFrame, DaskDFPixelMap]:
         """Load Dask DF from parquet files and make dict of HEALPix pixel to partition index"""
-        ordered_pixels = get_ordered_pixel_list(catalog.get_healpix_pixels())
+        pixels = catalog.get_healpix_pixels()
+        ordered_pixels = np.array(pixels)[get_pixel_argsort(pixels)]
         ordered_paths = self._get_paths_from_pixels(catalog, ordered_pixels)
-        divisions = self._load_divisions_from_metadata(catalog)
+        divisions = get_pixel_divisions(ordered_pixels)
         ddf = self._load_df_from_paths(catalog, ordered_paths, divisions)
         pixel_to_index_map = {pixel: index for index, pixel in enumerate(ordered_pixels)}
         return ddf, pixel_to_index_map
@@ -84,15 +85,3 @@ class HipscatCatalogLoader:
         metadata_pointer = hc.io.paths.get_parquet_metadata_pointer(catalog.catalog_base_dir)
         metadata = file_io.read_parquet_metadata(metadata_pointer, storage_options=self.storage_options)
         return metadata.schema.to_arrow_schema()
-
-    def _load_divisions_from_metadata(self, catalog: hc.catalog.Catalog) -> Tuple[int, ...]:
-        """Loads divisions from the global _metadata file"""
-        metadata_pointer = hc.io.paths.get_parquet_metadata_pointer(catalog.catalog_base_dir)
-        row_groups = list(read_row_group_fragments(metadata_pointer, self.storage_options)) # type: ignore
-        divisions: List[int] = []
-        for index, row_group in enumerate(row_groups):
-            index_stats = row_group.statistics[HIPSCAT_ID_COLUMN]
-            divisions.append(index_stats["min"])
-            if index == len(row_groups) - 1:
-                divisions.append(index_stats["max"])
-        return tuple(divisions)

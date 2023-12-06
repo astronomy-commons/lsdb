@@ -6,15 +6,17 @@ from typing import Dict, List, Tuple
 
 import dask.dataframe as dd
 import hipscat as hc
+import numpy as np
 import pandas as pd
 from dask import delayed
 from hipscat.catalog import CatalogType
 from hipscat.catalog.catalog_info import CatalogInfo
 from hipscat.pixel_math import HealpixPixel, generate_histogram
+from hipscat.pixel_math.healpix_pixel_function import get_pixel_argsort
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN, compute_hipscat_id, healpix_to_hipscat_id
 
 from lsdb.catalog.catalog import Catalog
-from lsdb.catalog.utils import get_ordered_pixel_list
+from lsdb.dask.divisions import get_pixel_divisions
 from lsdb.types import DaskDFPixelMap, HealpixInfo
 
 pd.options.mode.chained_assignment = None  # default='warn'
@@ -134,7 +136,8 @@ class DataframeCatalogLoader:
             lowest_order=self.lowest_order,
             threshold=self.threshold,
         )
-        ordered_pixels = get_ordered_pixel_list(list(pixel_map.keys()))
+        pixels = list(pixel_map.keys())
+        ordered_pixels = np.array(pixels)[get_pixel_argsort(pixels)]
         return {pixel: pixel_map[pixel] for pixel in ordered_pixels}
 
     def _generate_dask_df_and_map(
@@ -145,8 +148,8 @@ class DataframeCatalogLoader:
 
         Args:
             pixel_map (Dict[HealpixPixel, HealpixInfo]): The mapping between
-                HEALPix pixels and respective data information (sorted by
-                pixel number at higher order, also known as depth-first).
+                catalog HEALPix pixels, sorted by hipscat_id, and respective
+                data information.
 
         Returns:
             Tuple containing the Dask Dataframe, the mapping of HEALPix pixels
@@ -159,7 +162,7 @@ class DataframeCatalogLoader:
         ddf_pixel_map: Dict[HealpixPixel, int] = {}
 
         # Dask Dataframe divisions
-        divisions = self.get_pixel_divisions(list(pixel_map.keys()))
+        divisions = get_pixel_divisions(list(pixel_map.keys()))
 
         for hp_pixel_index, hp_pixel_info in enumerate(pixel_map.items()):
             hp_pixel, (_, pixels) = hp_pixel_info
@@ -172,27 +175,6 @@ class DataframeCatalogLoader:
         schema = pixel_dfs[0].iloc[:0, :].copy()
         ddf, total_rows = self._generate_dask_dataframe(pixel_dfs, schema, divisions)
         return ddf, ddf_pixel_map, total_rows
-
-    def get_pixel_divisions(self, pixels: List[HealpixPixel]) -> Tuple[int, ...]:
-        """Calculates the hipscat_id bounds for a list of HEALPix pixels.
-        These represent the minimum and maximum hipscat_id values for the
-        target pixels.
-
-        Args:
-            pixels (List[HealpixPixel]): The list of HEALPix pixels to
-                calculate the hipscat_id bounds for.
-
-        Returns:
-            The catalog divisions, as a tuple of integer.
-        """
-        divisions = []
-        for index, hp_pixel in enumerate(pixels):
-            left_bound = healpix_to_hipscat_id(hp_pixel.order, hp_pixel.pixel)
-            divisions.append(left_bound)
-            if index == len(pixels) - 1:
-                right_bound = healpix_to_hipscat_id(hp_pixel.order + 1, (hp_pixel.pixel + 1) * 4)
-                divisions.append(right_bound)
-        return tuple(divisions)
 
     @staticmethod
     def _generate_dask_dataframe(

@@ -3,6 +3,7 @@ import os
 import hipscat as hc
 import pandas as pd
 import pytest
+from hipscat.pixel_math import hipscat_id_to_healpix
 
 import lsdb
 from lsdb import Catalog
@@ -87,3 +88,21 @@ def xmatch_correct_3n_2t_no_margin(small_sky_xmatch_dir):
 @pytest.fixture
 def xmatch_mock(small_sky_xmatch_dir):
     return pd.read_csv(os.path.join(small_sky_xmatch_dir, XMATCH_MOCK_FILE))
+
+
+def assert_divisions_are_correct(catalog: Catalog):
+    # Check that the number of divisions is correct
+    hp_pixels = catalog.get_ordered_healpix_pixels()
+    assert len(catalog._ddf.divisions) == len(hp_pixels) + 1
+    # And that they belong to the correct healpix pixel
+    for hp_pixel, division in zip(hp_pixels, catalog._ddf.divisions):
+        div_pixel = hipscat_id_to_healpix([division], target_order=hp_pixel.order)
+        assert hp_pixel.pixel == div_pixel
+    # The last division hipscat_id belongs to the pixel at order+1
+    next_order = hp_pixels[-1].order + 1
+    next_order_pixel = (hp_pixels[-1].pixel + 1) * 4
+    last_division_pixel = hipscat_id_to_healpix(
+        [catalog._ddf.divisions[-1]],
+        target_order=next_order
+    )
+    assert next_order_pixel == last_division_pixel

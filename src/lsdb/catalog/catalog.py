@@ -5,11 +5,12 @@ from typing import Any, Dict, List, Tuple, Type, Union, cast
 
 import dask.dataframe as dd
 import hipscat as hc
+import numpy as np
 from hipscat.pixel_math import HealpixPixel
+from hipscat.pixel_math.healpix_pixel_function import get_pixel_argsort
 
 from lsdb import io
 from lsdb.catalog.dataset.dataset import Dataset
-from lsdb.catalog.utils import get_ordered_pixel_list
 from lsdb.core.cone_search import cone_filter
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
 from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorithm
@@ -62,7 +63,8 @@ class Catalog(Dataset):
         Returns:
             List of all Healpix pixels in the catalog
         """
-        return get_ordered_pixel_list(self.get_healpix_pixels())
+        pixels = self.get_healpix_pixels()
+        return np.array(pixels)[get_pixel_argsort(pixels)]
 
     def get_partition(self, order: int, pixel: int) -> dd.DataFrame:
         """Get the dask partition for a given HEALPix pixel
