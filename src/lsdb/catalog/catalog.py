@@ -28,6 +28,7 @@ class Catalog(Dataset):
         hc_structure: `hipscat.Catalog` object representing the structure
                       and metadata of the HiPSCat catalog
     """
+
     hc_structure: hc.catalog.Catalog
 
     def __init__(
@@ -318,7 +319,7 @@ class Catalog(Dataset):
         base_catalog_path: str,
         catalog_name: Union[str, None] = None,
         storage_options: Union[Dict[Any, Any], None] = None,
-        **kwargs
+        **kwargs,
     ):
         """Saves the catalog to disk in HiPSCat format
 
@@ -336,7 +337,7 @@ class Catalog(Dataset):
         left_on: str,
         right_on: str,
         suffixes: Tuple[str, str] | None = None,
-        output_catalog_name: str | None = None
+        output_catalog_name: str | None = None,
     ) -> Catalog:
         """Perform a spatial join to another catalog
 

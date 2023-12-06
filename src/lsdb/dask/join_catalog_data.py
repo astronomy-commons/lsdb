@@ -25,8 +25,6 @@ if TYPE_CHECKING:
     from lsdb.catalog.catalog import Catalog, DaskDFPixelMap
 
 
-
-
 @dask.delayed
 def perform_join_on(
         left: pd.DataFrame,

@@ -100,8 +100,5 @@ def assert_divisions_are_correct(catalog):
     # The last division hipscat_id belongs to the pixel at order+1
     next_order = hp_pixels[-1].order + 1
     next_order_pixel = (hp_pixels[-1].pixel + 1) * 4
-    last_division_pixel = hipscat_id_to_healpix(
-        [catalog._ddf.divisions[-1]],
-        target_order=next_order
-    )
+    last_division_pixel = hipscat_id_to_healpix([catalog._ddf.divisions[-1]], target_order=next_order)
     assert next_order_pixel == last_division_pixel
