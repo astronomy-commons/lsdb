@@ -9,7 +9,7 @@ from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.healpix_pixel_function import get_pixel_argsort
 
 from lsdb.catalog.catalog import Catalog, DaskDFPixelMap
-from lsdb.dask.divisions import get_pixel_divisions
+from lsdb.dask.divisions import get_pixels_divisions
 from lsdb.loaders.hipscat.hipscat_loading_config import HipscatLoadingConfig
 
 
@@ -49,7 +49,7 @@ class HipscatCatalogLoader:
         pixels = catalog.get_healpix_pixels()
         ordered_pixels = np.array(pixels)[get_pixel_argsort(pixels)]
         ordered_paths = self._get_paths_from_pixels(catalog, ordered_pixels)
-        divisions = get_pixel_divisions(ordered_pixels)
+        divisions = get_pixels_divisions(ordered_pixels)
         ddf = self._load_df_from_paths(catalog, ordered_paths, divisions)
         pixel_to_index_map = {pixel: index for index, pixel in enumerate(ordered_pixels)}
         return ddf, pixel_to_index_map

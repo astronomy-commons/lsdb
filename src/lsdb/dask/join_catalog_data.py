@@ -6,8 +6,10 @@ from typing import TYPE_CHECKING, Tuple, cast
 
 import dask
 import dask.dataframe as dd
+import numpy as np
 import pandas as pd
 from hipscat.pixel_math import HealpixPixel
+from hipscat.pixel_math.healpix_pixel_function import get_pixel_argsort
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
 from hipscat.pixel_tree import PixelAlignment, PixelAlignmentType, align_trees
 
@@ -17,9 +19,12 @@ from lsdb.dask.crossmatch_catalog_data import (
     generate_meta_df_for_joined_tables,
     get_partition_map_from_alignment_pixels,
 )
+from lsdb.dask.divisions import get_pixels_divisions
 
 if TYPE_CHECKING:
     from lsdb.catalog.catalog import Catalog, DaskDFPixelMap
+
+
 
 
 @dask.delayed
@@ -121,6 +126,9 @@ def join_catalog_data_on(
 
     partition_map = get_partition_map_from_alignment_pixels(join_pixels)
     meta_df = generate_meta_df_for_joined_tables([left, right], suffixes)
-    ddf = dd.from_delayed(joined_partitions, meta=meta_df)
+    pixels = list(partition_map.keys())
+    ordered_pixels = np.array(pixels)[get_pixel_argsort(pixels)]
+    divisions = get_pixels_divisions(ordered_pixels)
+    ddf = dd.from_delayed(joined_partitions, meta=meta_df, divisions=divisions)
     ddf = cast(dd.DataFrame, ddf)
     return ddf, partition_map, alignment

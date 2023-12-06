@@ -4,7 +4,7 @@ from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.hipscat_id import healpix_to_hipscat_id
 
 
-def get_pixel_divisions(ordered_pixels: List[HealpixPixel]) -> Tuple[int, ...]:
+def get_pixels_divisions(ordered_pixels: List[HealpixPixel]) -> Tuple[int, ...]:
     """Calculates the Dask Dataframe divisions for a list of HEALPix pixels.
 
     Divisions include the minimum value of every HEALPix pixel hipscat_id

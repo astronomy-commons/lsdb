@@ -16,7 +16,7 @@ from hipscat.pixel_math.healpix_pixel_function import get_pixel_argsort
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN, compute_hipscat_id, healpix_to_hipscat_id
 
 from lsdb.catalog.catalog import Catalog
-from lsdb.dask.divisions import get_pixel_divisions
+from lsdb.dask.divisions import get_pixels_divisions
 from lsdb.types import DaskDFPixelMap, HealpixInfo
 
 pd.options.mode.chained_assignment = None  # default='warn'
@@ -117,7 +117,7 @@ class DataframeCatalogLoader:
     def _compute_pixel_map(self) -> Dict[HealpixPixel, HealpixInfo]:
         """Compute object histogram and generate the sorted mapping between
         HEALPix pixels and the respective original pixel information. The
-        pixels are sorted by pixel number at a higher order (depth-first).
+        pixels are sorted by ascending hipscat_id.
 
         Returns:
             A dictionary mapping each HEALPix pixel to the respective
@@ -162,7 +162,7 @@ class DataframeCatalogLoader:
         ddf_pixel_map: Dict[HealpixPixel, int] = {}
 
         # Dask Dataframe divisions
-        divisions = get_pixel_divisions(list(pixel_map.keys()))
+        divisions = get_pixels_divisions(list(pixel_map.keys()))
 
         for hp_pixel_index, hp_pixel_info in enumerate(pixel_map.items()):
             hp_pixel, (_, pixels) = hp_pixel_info
@@ -185,10 +185,7 @@ class DataframeCatalogLoader:
         Args:
             pixel_dfs (List[pd.DataFrame]): The list of HEALPix pixel Dataframes
             schema (pd.Dataframe): The original Dataframe schema
-            divisions (Tuple[int, ...]): The partitions divisions. The divisions include
-                the minimum value of every partition’s index and the maximum value
-                of the last partition’s index. In our case they are defined by the
-                target pixels hipscat indices.
+            divisions (Tuple[int, ...]): The partitions divisions
 
         Returns:
             The catalog's Dask Dataframe and its total number of rows.
