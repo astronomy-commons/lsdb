@@ -241,7 +241,7 @@ class Catalog(Dataset):
         self._check_ra_dec_values_valid(ra, dec)
         filtered_hc_structure = self.hc_structure.filter_by_cone(ra, dec, radius)
         pixels_in_cone = filtered_hc_structure.get_healpix_pixels()
-        partitions = self._ddf.to_delayed()
+        partitions = self.to_delayed()
         partitions_in_cone = [partitions[self._ddf_pixel_map[pixel]] for pixel in pixels_in_cone]
         filtered_partitions = [
             cone_filter(partition, ra, dec, radius, self.hc_structure) for partition in partitions_in_cone
@@ -266,7 +266,7 @@ class Catalog(Dataset):
         """
         filtered_hc_structure = self.hc_structure.filter_by_polygon(polygon)
         pixels_in_polygon = filtered_hc_structure.get_healpix_pixels()
-        partitions = self._ddf.to_delayed()
+        partitions = self.to_delayed()
         partitions_in_polygon = [partitions[self._ddf_pixel_map[hp_pixel]] for hp_pixel in pixels_in_polygon]
         filtered_partitions = [
             polygon_filter(partition, polygon, self.hc_structure) for partition in partitions_in_polygon
