@@ -25,6 +25,9 @@ def read_hipscat(
 ) -> CatalogTypeVar | Dataset:
     """Load a catalog from a HiPSCat formatted catalog.
 
+    Typical usage example, where we load a catalog with a subset of columns:
+        lsdb.read_hipscat(path="./my_catalog_dir", catalog_type=lsdb.Catalog, columns=["ra","dec"])
+
     Args:
         path (str): The path that locates the root of the HiPSCat catalog
         catalog_type (Type[Dataset]): Default `None`. By default, the type of the catalog is loaded
