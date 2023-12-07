@@ -15,3 +15,7 @@ class HipscatLoadingConfig:
 
     kwargs: dict | None = None
     """Extra kwargs"""
+
+    def get_kwargs_dict(self) -> dict:
+        """Returns a dictionary with the extra kwargs"""
+        return self.kwargs if self.kwargs is not None else {}
