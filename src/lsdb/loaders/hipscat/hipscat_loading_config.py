@@ -1,6 +1,7 @@
-import dataclasses
+from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import List, Union
+from typing import List
 
 
 @dataclass
@@ -9,9 +10,8 @@ class HipscatLoadingConfig:
 
     Contains all parameters needed for a user to specify how to correctly read a hipscat catalog.
     """
-    columns: Union[List[str],None] = None
+    columns: List[str] | None = None
     """Columns to load from the catalog - if not specified, all columns are loaded"""
 
-    def as_dict(self) -> dict:
-        """Returns the HipscatLoadingConfig as a dictionary"""
-        return dataclasses.asdict(self)
+    kwargs: dict | None = None
+    """Extra kwargs"""

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Type, Union
+import dataclasses
+from typing import Any, Dict, List, Type, Union
 
 import hipscat as hc
 from hipscat.catalog import CatalogType
@@ -17,10 +18,12 @@ dataset_class_for_catalog_type: Dict[CatalogType, Type[Dataset]] = {
 }
 
 
+# pylint: disable=unused-argument
 def read_hipscat(
     path: str,
     catalog_type: Type[CatalogTypeVar] | None = None,
     storage_options: dict | None = None,
+    columns: List[str] | None = None,
     **kwargs,
 ) -> CatalogTypeVar | Dataset:
     """Load a catalog from a HiPSCat formatted catalog.
@@ -36,7 +39,8 @@ def read_hipscat(
             type for type checking, the type of the catalog can be specified here. Use by specifying
             the lsdb class for that catalog.
         storage_options (dict): Dictionary that contains abstract filesystem credentials
-        **kwargs: Arguments to pass to the parquet file readers
+        columns (List[str]): Default `None`. The set of columns to filter the catalog on.
+        **kwargs: Arguments to pass to the pandas parquet file reader
 
     Returns:
         Catalog object loaded from the given parameters
@@ -47,7 +51,9 @@ def read_hipscat(
     # they weren't needed, so this object is now empty. But I wanted to keep this here for future
     # use
     # all_kwd_args = locals().copy()
-    config = HipscatLoadingConfig(**kwargs)
+    kwd_args = locals().copy()
+    config_args = {field.name: kwd_args[field.name] for field in dataclasses.fields(HipscatLoadingConfig)}
+    config = HipscatLoadingConfig(**config_args)
 
     catalog_type_to_use = _get_dataset_class_from_catalog_info(path, storage_options=storage_options)
 
