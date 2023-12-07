@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import Any, Dict, Type, Union
+from typing import Any, Dict, List, Type, Union
 
 import hipscat as hc
 from hipscat.catalog import CatalogType
@@ -18,12 +18,18 @@ dataset_class_for_catalog_type: Dict[CatalogType, Type[Dataset]] = {
 }
 
 
+# pylint: disable=unused-argument
 def read_hipscat(
     path: str,
     catalog_type: Type[CatalogTypeVar] | None = None,
-    storage_options: Union[Dict[Any, Any], None] = None,
+    storage_options: dict | None = None,
+    columns: List[str] | None = None,
+    **kwargs,
 ) -> CatalogTypeVar | Dataset:
     """Load a catalog from a HiPSCat formatted catalog.
+
+    Typical usage example, where we load a catalog with a subset of columns:
+        lsdb.read_hipscat(path="./my_catalog_dir", catalog_type=lsdb.Catalog, columns=["ra","dec"])
 
     Args:
         path (str): The path that locates the root of the HiPSCat catalog
@@ -32,14 +38,15 @@ def read_hipscat(
             cannot allow a return type specified by a loaded value, so to use the correct return
             type for type checking, the type of the catalog can be specified here. Use by specifying
             the lsdb class for that catalog.
+        storage_options (dict): Dictionary that contains abstract filesystem credentials
+        columns (List[str]): Default `None`. The set of columns to filter the catalog on.
+        **kwargs: Arguments to pass to the pandas parquet file reader
+
     Returns:
         Catalog object loaded from the given parameters
     """
 
-    # Creates a config object to store loading parameters from all keyword arguments. I
-    # originally had a few parameters in here, but after changing the file loading implementation
-    # they weren't needed, so this object is now empty. But I wanted to keep this here for future
-    # use
+    # Creates a config object to store loading parameters from all keyword arguments.
     kwd_args = locals().copy()
     config_args = {field.name: kwd_args[field.name] for field in dataclasses.fields(HipscatLoadingConfig)}
     config = HipscatLoadingConfig(**config_args)
