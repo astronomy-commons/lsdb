@@ -46,11 +46,7 @@ def read_hipscat(
         Catalog object loaded from the given parameters
     """
 
-    # Creates a config object to store loading parameters from all keyword arguments. I
-    # originally had a few parameters in here, but after changing the file loading implementation
-    # they weren't needed, so this object is now empty. But I wanted to keep this here for future
-    # use
-    # all_kwd_args = locals().copy()
+    # Creates a config object to store loading parameters from all keyword arguments.
     kwd_args = locals().copy()
     config_args = {field.name: kwd_args[field.name] for field in dataclasses.fields(HipscatLoadingConfig)}
     config = HipscatLoadingConfig(**config_args)
