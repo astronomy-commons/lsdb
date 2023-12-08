@@ -72,12 +72,16 @@ class HipscatCatalogLoader:
     ) -> dd.DataFrame:
         metadata_schema = self._load_parquet_metadata_schema(catalog)
         dask_meta_schema = metadata_schema.empty_table().to_pandas()
+        if self.config.columns:
+            dask_meta_schema = dask_meta_schema[self.config.columns]
         ddf = dd.from_map(
             file_io.read_parquet_file_to_pandas,
             paths,
             divisions=divisions,
             storage_options=self.storage_options,
             meta=dask_meta_schema,
+            columns=self.config.columns,
+            **self.config.get_kwargs_dict(),
         )
         return ddf
 

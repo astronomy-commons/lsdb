@@ -148,8 +148,7 @@ class DataframeCatalogLoader:
 
         Args:
             pixel_map (Dict[HealpixPixel, HealpixInfo]): The mapping between
-                catalog HEALPix pixels, sorted by hipscat_id, and respective
-                data information.
+                catalog HEALPix pixels and respective data information.
 
         Returns:
             Tuple containing the Dask Dataframe, the mapping of HEALPix pixels
@@ -232,7 +231,7 @@ class DataframeCatalogLoader:
         # Generate partition information
         dataframe["Norder"] = pixel.order
         dataframe["Npix"] = pixel.pixel
-        dataframe["Dir"] = [int(x / 10_000) * 10_000 for x in dataframe["Npix"]]
+        dataframe["Dir"] = pixel.dir
         # Force new column types to int
         dataframe[ordered_columns] = dataframe[ordered_columns].astype(int)
         # Reorder the columns to match full path

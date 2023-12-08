@@ -59,7 +59,8 @@ class Catalog(Dataset):
         return self.hc_structure.get_healpix_pixels()
 
     def get_ordered_healpix_pixels(self) -> List[HealpixPixel]:
-        """Get all HEALPix pixels that are contained in the catalog
+        """Get all HEALPix pixels that are contained in the catalog,
+        ordered by breadth-first nested ordering.
 
         Returns:
             List of all Healpix pixels in the catalog
