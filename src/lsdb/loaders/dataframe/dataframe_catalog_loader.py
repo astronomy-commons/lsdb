@@ -217,7 +217,9 @@ class DataframeCatalogLoader:
         ]
         return self._append_partition_information_to_dataframe(pixel_df, hp_pixel)
 
-    def _append_partition_information_to_dataframe(self, dataframe: pd.DataFrame, pixel: HealpixPixel):
+    def _append_partition_information_to_dataframe(
+        self, dataframe: pd.DataFrame, pixel: HealpixPixel
+    ) -> pd.DataFrame:
         """Appends partitioning information to a HEALPix dataframe
 
         Args:
