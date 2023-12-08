@@ -7,3 +7,4 @@ jupytext
 jupyter
 matplotlib
 numpy
+git+https://github.com/astronomy-commons/hipscat.git@main
