@@ -3,7 +3,7 @@ import numpy as np
 import numpy.testing as npt
 import pandas as pd
 import pytest
-from conftest import assert_divisions_are_correct
+from conftest import assert_divisions_are_correct  # pylint: disable=import-error
 
 import lsdb
 
@@ -15,6 +15,7 @@ def test_read_hipscat(small_sky_order1_dir, small_sky_order1_hipscat_catalog):
     assert catalog.get_healpix_pixels() == small_sky_order1_hipscat_catalog.get_healpix_pixels()
     assert len(catalog.compute().columns) == 8
     assert_divisions_are_correct(catalog)
+
 
 def test_read_hipscat_with_columns(small_sky_order1_dir):
     filter_columns = ["ra", "dec"]
