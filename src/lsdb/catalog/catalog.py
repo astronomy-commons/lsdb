@@ -5,7 +5,9 @@ from typing import Any, Dict, List, Tuple, Type, Union, cast
 
 import dask.dataframe as dd
 import hipscat as hc
+import numpy as np
 from hipscat.pixel_math import HealpixPixel
+from hipscat.pixel_math.healpix_pixel_function import get_pixel_argsort
 from spherical_geometry.polygon import SingleSphericalPolygon
 
 from lsdb import io
@@ -57,6 +59,16 @@ class Catalog(Dataset):
             List of all Healpix pixels in the catalog
         """
         return self.hc_structure.get_healpix_pixels()
+
+    def get_ordered_healpix_pixels(self) -> List[HealpixPixel]:
+        """Get all HEALPix pixels that are contained in the catalog,
+        ordered by breadth-first nested ordering.
+
+        Returns:
+            List of all Healpix pixels in the catalog
+        """
+        pixels = self.get_healpix_pixels()
+        return np.array(pixels)[get_pixel_argsort(pixels)]
 
     def get_partition(self, order: int, pixel: int) -> dd.DataFrame:
         """Get the dask partition for a given HEALPix pixel
@@ -241,7 +253,7 @@ class Catalog(Dataset):
         self._check_ra_dec_values_valid(ra, dec)
         filtered_hc_structure = self.hc_structure.filter_by_cone(ra, dec, radius)
         pixels_in_cone = filtered_hc_structure.get_healpix_pixels()
-        partitions = self.to_delayed()
+        partitions = self._ddf.to_delayed()
         partitions_in_cone = [partitions[self._ddf_pixel_map[pixel]] for pixel in pixels_in_cone]
         filtered_partitions = [
             cone_filter(partition, ra, dec, radius, self.hc_structure) for partition in partitions_in_cone

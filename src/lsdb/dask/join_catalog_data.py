@@ -17,6 +17,7 @@ from lsdb.dask.crossmatch_catalog_data import (
     generate_meta_df_for_joined_tables,
     get_partition_map_from_alignment_pixels,
 )
+from lsdb.dask.divisions import get_pixels_divisions
 
 if TYPE_CHECKING:
     from lsdb.catalog.catalog import Catalog, DaskDFPixelMap
@@ -121,6 +122,7 @@ def join_catalog_data_on(
 
     partition_map = get_partition_map_from_alignment_pixels(join_pixels)
     meta_df = generate_meta_df_for_joined_tables([left, right], suffixes)
-    ddf = dd.from_delayed(joined_partitions, meta=meta_df)
+    divisions = get_pixels_divisions(list(partition_map.keys()))
+    ddf = dd.from_delayed(joined_partitions, meta=meta_df, divisions=divisions)
     ddf = cast(dd.DataFrame, ddf)
     return ddf, partition_map, alignment

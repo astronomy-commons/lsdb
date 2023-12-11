@@ -1,6 +1,7 @@
 import healpy as hp
 import pandas as pd
 import pytest
+from conftest import assert_divisions_are_correct
 from hipscat.catalog import CatalogType
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
 from hipscat.pixel_tree.pixel_node_type import PixelNodeType
@@ -40,6 +41,8 @@ def test_from_dataframe(small_sky_order1_df, small_sky_order1_catalog):
         small_sky_order1_catalog.compute().sort_index(),
         check_dtype=False,
     )
+    # Divisions belong to the respective HEALPix pixels
+    assert_divisions_are_correct(catalog)
 
 
 def test_from_dataframe_catalog_of_invalid_type(small_sky_order1_df, small_sky_order1_catalog):

@@ -1,4 +1,5 @@
 import pytest
+from conftest import assert_divisions_are_correct
 
 
 def test_small_sky_join_small_sky_order1(small_sky_catalog, small_sky_order1_catalog):
@@ -17,6 +18,7 @@ def test_small_sky_join_small_sky_order1(small_sky_catalog, small_sky_order1_cat
         joined_row = joined_compute.query(f"id{suffixes[0]} == {row['id']}")
         assert joined_row.index.values[0] == index
         assert joined_row[f"id{suffixes[1]}"].values[0] == row["id"]
+    assert_divisions_are_correct(joined)
 
 
 def test_join_wrong_columns(small_sky_catalog, small_sky_order1_catalog):

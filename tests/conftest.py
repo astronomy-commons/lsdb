@@ -3,9 +3,10 @@ import os
 import hipscat as hc
 import pandas as pd
 import pytest
+from hipscat.pixel_math import hipscat_id_to_healpix
 
 import lsdb
-from lsdb import Catalog
+from lsdb.dask.divisions import HIPSCAT_ID_MAX
 
 DATA_DIR_NAME = "data"
 SMALL_SKY_DIR_NAME = "small_sky"
@@ -46,7 +47,7 @@ def small_sky_hipscat_catalog(small_sky_dir):
 
 @pytest.fixture
 def small_sky_catalog(small_sky_dir):
-    return lsdb.read_hipscat(small_sky_dir, catalog_type=Catalog)
+    return lsdb.read_hipscat(small_sky_dir, catalog_type=lsdb.catalog.Catalog)
 
 
 @pytest.fixture
@@ -87,3 +88,15 @@ def xmatch_correct_3n_2t_no_margin(small_sky_xmatch_dir):
 @pytest.fixture
 def xmatch_mock(small_sky_xmatch_dir):
     return pd.read_csv(os.path.join(small_sky_xmatch_dir, XMATCH_MOCK_FILE))
+
+
+def assert_divisions_are_correct(catalog: lsdb.Catalog):
+    # Check that number of divisions == number of pixels + 1
+    hp_pixels = catalog.get_ordered_healpix_pixels()
+    assert len(catalog._ddf.divisions) == len(hp_pixels) + 1
+    # Check that divisions belong to the correct pixel
+    for division, hp_pixel in zip(catalog._ddf.divisions, hp_pixels):
+        div_pixel = hipscat_id_to_healpix([division], target_order=hp_pixel.order)
+        assert hp_pixel.pixel == div_pixel
+    # The last division corresponds to the HIPSCAT_ID_MAX
+    assert catalog._ddf.divisions[-1] == HIPSCAT_ID_MAX

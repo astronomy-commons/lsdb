@@ -6,14 +6,17 @@ from typing import Dict, List, Tuple
 
 import dask.dataframe as dd
 import hipscat as hc
+import numpy as np
 import pandas as pd
 from dask import delayed
 from hipscat.catalog import CatalogType
 from hipscat.catalog.catalog_info import CatalogInfo
 from hipscat.pixel_math import HealpixPixel, generate_histogram
+from hipscat.pixel_math.healpix_pixel_function import get_pixel_argsort
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN, compute_hipscat_id, healpix_to_hipscat_id
 
 from lsdb.catalog.catalog import Catalog
+from lsdb.dask.divisions import get_pixels_divisions
 from lsdb.types import DaskDFPixelMap, HealpixInfo
 
 pd.options.mode.chained_assignment = None  # default='warn'
@@ -112,13 +115,14 @@ class DataframeCatalogLoader:
         self.dataframe.set_index(HIPSCAT_ID_COLUMN, inplace=True)
 
     def _compute_pixel_map(self) -> Dict[HealpixPixel, HealpixInfo]:
-        """Compute object histogram and generate the mapping between
-        HEALPix pixels and the respective original pixel information
+        """Compute object histogram and generate the sorted mapping between
+        HEALPix pixels and the respective original pixel information. The
+        pixels are sorted by ascending hipscat_id.
 
         Returns:
             A dictionary mapping each HEALPix pixel to the respective
             information tuple. The first value of the tuple is the number
-            of objects in the HEALPix pixel, the second is the list of pixels
+            of objects in the HEALPix pixel, the second is the list of pixels.
         """
         raw_histogram = generate_histogram(
             self.dataframe,
@@ -126,12 +130,15 @@ class DataframeCatalogLoader:
             ra_column=self.catalog_info.ra_column,
             dec_column=self.catalog_info.dec_column,
         )
-        return hc.pixel_math.compute_pixel_map(
+        pixel_map = hc.pixel_math.compute_pixel_map(
             raw_histogram,
             highest_order=self.highest_order,
             lowest_order=self.lowest_order,
             threshold=self.threshold,
         )
+        pixels = list(pixel_map.keys())
+        ordered_pixels = np.array(pixels)[get_pixel_argsort(pixels)]
+        return {pixel: pixel_map[pixel] for pixel in ordered_pixels}
 
     def _generate_dask_df_and_map(
         self, pixel_map: Dict[HealpixPixel, HealpixInfo]
@@ -141,7 +148,7 @@ class DataframeCatalogLoader:
 
         Args:
             pixel_map (Dict[HealpixPixel, HealpixInfo]): The mapping between
-                HEALPix pixels and respective data information
+                catalog HEALPix pixels and respective data information.
 
         Returns:
             Tuple containing the Dask Dataframe, the mapping of HEALPix pixels
@@ -149,25 +156,70 @@ class DataframeCatalogLoader:
         """
         # Dataframes for each destination HEALPix pixel
         pixel_dfs: List[pd.DataFrame] = []
+
         # Mapping HEALPix pixels to the respective Dataframe indices
         ddf_pixel_map: Dict[HealpixPixel, int] = {}
 
+        # Dask Dataframe divisions
+        divisions = get_pixels_divisions(list(pixel_map.keys()))
+
         for hp_pixel_index, hp_pixel_info in enumerate(pixel_map.items()):
             hp_pixel, (_, pixels) = hp_pixel_info
+            # Store HEALPix pixel in map
             ddf_pixel_map[hp_pixel] = hp_pixel_index
-            # Obtain Dataframe for the current HEALPix pixel
-            df = self._get_dataframe_for_healpix(pixels)
-            df = self.append_partition_information_to_dataframe(df, hp_pixel)
-            # Save current dataframe
-            pixel_dfs.append(df)
+            # Obtain Dataframe for current HEALPix pixel
+            pixel_dfs.append(self._get_dataframe_for_healpix(hp_pixel, pixels))
 
         # Generate Dask Dataframe with original schema
         schema = pixel_dfs[0].iloc[:0, :].copy()
-        ddf, total_rows = self._generate_dask_dataframe(pixel_dfs, schema)
-
+        ddf, total_rows = self._generate_dask_dataframe(pixel_dfs, schema, divisions)
         return ddf, ddf_pixel_map, total_rows
 
-    def append_partition_information_to_dataframe(self, dataframe: pd.DataFrame, pixel: HealpixPixel):
+    @staticmethod
+    def _generate_dask_dataframe(
+        pixel_dfs: List[pd.DataFrame], schema: pd.DataFrame, divisions: Tuple[int, ...]
+    ) -> Tuple[dd.DataFrame, int]:
+        """Create the Dask Dataframe from the list of HEALPix pixel Dataframes
+
+        Args:
+            pixel_dfs (List[pd.DataFrame]): The list of HEALPix pixel Dataframes
+            schema (pd.Dataframe): The original Dataframe schema
+            divisions (Tuple[int, ...]): The partitions divisions
+
+        Returns:
+            The catalog's Dask Dataframe and its total number of rows.
+        """
+        delayed_dfs = [delayed(df) for df in pixel_dfs]
+        ddf = dd.from_delayed(delayed_dfs, meta=schema, divisions=divisions)
+        return ddf if isinstance(ddf, dd.DataFrame) else ddf.to_frame(), len(ddf)
+
+    def _get_dataframe_for_healpix(self, hp_pixel: HealpixPixel, pixels: List[int]) -> pd.DataFrame:
+        """Computes the Pandas Dataframe containing the data points
+        for a certain HEALPix pixel.
+
+        Using NESTED ordering scheme, the provided list is a sequence of contiguous
+        pixel numbers, in ascending order, inside the HEALPix pixel. Therefore, the
+        corresponding points in the Dataframe will be located between the hipscat
+        index of the lowest numbered pixel (left_bound) and the hipscat index of the
+        highest numbered pixel (right_bound).
+
+        Args:
+            hp_pixel (HealpixPixel): The HEALPix pixel to generate the Dataframe for
+            pixels (List[int]): The indices of the pixels inside the HEALPix pixel
+
+        Returns:
+            The Pandas Dataframe containing the data points for the HEALPix pixel.
+        """
+        left_bound = healpix_to_hipscat_id(self.highest_order, pixels[0])
+        right_bound = healpix_to_hipscat_id(self.highest_order, pixels[-1] + 1)
+        pixel_df = self.dataframe.loc[
+            (self.dataframe.index >= left_bound) & (self.dataframe.index < right_bound)
+        ]
+        return self._append_partition_information_to_dataframe(pixel_df, hp_pixel)
+
+    def _append_partition_information_to_dataframe(
+        self, dataframe: pd.DataFrame, pixel: HealpixPixel
+    ) -> pd.DataFrame:
         """Appends partitioning information to a HEALPix dataframe
 
         Args:
@@ -181,45 +233,8 @@ class DataframeCatalogLoader:
         # Generate partition information
         dataframe["Norder"] = pixel.order
         dataframe["Npix"] = pixel.pixel
-        dataframe["Dir"] = [int(x / 10_000) * 10_000 for x in dataframe["Npix"]]
+        dataframe["Dir"] = pixel.dir
         # Force new column types to int
         dataframe[ordered_columns] = dataframe[ordered_columns].astype(int)
         # Reorder the columns to match full path
         return dataframe[[col for col in dataframe.columns if col not in ordered_columns] + ordered_columns]
-
-    @staticmethod
-    def _generate_dask_dataframe(
-        pixel_dfs: List[pd.DataFrame], schema: pd.DataFrame
-    ) -> Tuple[dd.DataFrame, int]:
-        """Create the Dask Dataframe from the list of HEALPix pixel Dataframes
-
-        Args:
-            pixel_dfs (List[pd.DataFrame]): The list of HEALPix pixel Dataframes
-            schema (pd.Dataframe): The original Dataframe schema
-
-        Returns:
-            The catalog's Dask Dataframe and its total number of rows.
-        """
-        delayed_dfs = [delayed(df) for df in pixel_dfs]
-        ddf = dd.from_delayed(delayed_dfs, meta=schema)
-        return ddf if isinstance(ddf, dd.DataFrame) else ddf.to_frame(), len(ddf)
-
-    def _get_dataframe_for_healpix(self, pixels: List[int]) -> pd.DataFrame:
-        """Computes the Pandas Dataframe containing the data points
-        for a certain HEALPix pixel.
-
-        Using NESTED ordering scheme, the provided list is a sequence of contiguous
-        pixel numbers, in ascending order, inside the HEALPix pixel. Therefore, the
-        corresponding points in the Dataframe will be located between the hipscat
-        index of the lowest numbered pixel (left_bound) and the hipscat index of the
-        highest numbered pixel (right_bound).
-
-        Args:
-            pixels (List[int]): The indices of the pixels inside the HEALPix pixel
-
-        Returns:
-            The Pandas Dataframe containing the data points for the HEALPix pixel
-        """
-        left_bound = healpix_to_hipscat_id(self.highest_order, pixels[0])
-        right_bound = healpix_to_hipscat_id(self.highest_order, pixels[-1] + 1)
-        return self.dataframe.loc[(self.dataframe.index >= left_bound) & (self.dataframe.index < right_bound)]
