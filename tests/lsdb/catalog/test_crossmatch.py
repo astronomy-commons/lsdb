@@ -70,9 +70,7 @@ def test_custom_crossmatch_algorithm(small_sky_catalog, small_sky_xmatch_catalog
 class MockCrossmatchAlgorithm(AbstractCrossmatchAlgorithm):
     """Mock class used to test a crossmatch algorithm"""
 
-    extra_columns: pd.DataFrame = pd.DataFrame({
-        "_DIST": pd.Series(dtype=np.dtype("float64"))
-    })
+    extra_columns = {"_DIST": pd.Series(dtype=np.dtype("float64"))}
 
     def crossmatch(self, mock_results: pd.DataFrame = None):
         left_reset = self.left.reset_index(drop=True)
@@ -96,12 +94,6 @@ class MockCrossmatchAlgorithm(AbstractCrossmatchAlgorithm):
             axis=1,
         )
         out.set_index(HIPSCAT_ID_COLUMN, inplace=True)
-
-        self._append_extra_columns(
-            out,
-            extra_columns=pd.DataFrame({
-                "_DIST": mock_results["dist"].to_numpy()
-            })
-        )
+        self._append_extra_columns(out, extra_columns={"_DIST": mock_results["dist"]})
 
         return out
