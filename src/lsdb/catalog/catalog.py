@@ -5,7 +5,9 @@ from typing import Any, Dict, List, Tuple, Type, Union, cast
 
 import dask.dataframe as dd
 import hipscat as hc
+import numpy as np
 from hipscat.pixel_math import HealpixPixel
+from hipscat.pixel_math.healpix_pixel_function import get_pixel_argsort
 
 from lsdb import io
 from lsdb.catalog.dataset.dataset import Dataset
@@ -26,6 +28,7 @@ class Catalog(Dataset):
         hc_structure: `hipscat.Catalog` object representing the structure
                       and metadata of the HiPSCat catalog
     """
+
     hc_structure: hc.catalog.Catalog
 
     def __init__(
@@ -54,6 +57,16 @@ class Catalog(Dataset):
             List of all Healpix pixels in the catalog
         """
         return self.hc_structure.get_healpix_pixels()
+
+    def get_ordered_healpix_pixels(self) -> List[HealpixPixel]:
+        """Get all HEALPix pixels that are contained in the catalog,
+        ordered by breadth-first nested ordering.
+
+        Returns:
+            List of all Healpix pixels in the catalog
+        """
+        pixels = self.get_healpix_pixels()
+        return np.array(pixels)[get_pixel_argsort(pixels)]
 
     def get_partition(self, order: int, pixel: int) -> dd.DataFrame:
         """Get the dask partition for a given HEALPix pixel
@@ -307,7 +320,7 @@ class Catalog(Dataset):
         base_catalog_path: str,
         catalog_name: Union[str, None] = None,
         storage_options: Union[Dict[Any, Any], None] = None,
-        **kwargs
+        **kwargs,
     ):
         """Saves the catalog to disk in HiPSCat format
 
@@ -325,7 +338,7 @@ class Catalog(Dataset):
         left_on: str,
         right_on: str,
         suffixes: Tuple[str, str] | None = None,
-        output_catalog_name: str | None = None
+        output_catalog_name: str | None = None,
     ) -> Catalog:
         """Perform a spatial join to another catalog
 
