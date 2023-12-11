@@ -62,22 +62,26 @@ class AbstractCrossmatchAlgorithm(ABC):
         columns_renamed = {name: name + suffix for name in dataframe.columns}
         dataframe.rename(columns=columns_renamed, inplace=True)
 
+    @classmethod
     def _append_extra_columns(
-        self, dataframe: pd.DataFrame, extra_columns: Dict[str, pd.Series] | None = None
+        cls, dataframe: pd.DataFrame, extra_columns: Dict[str, pd.Series] | None = None
     ):
         """Adds crossmatch extra columns to the resulting Dataframe."""
-        if self.extra_columns is None:
+        if cls.extra_columns is None:
             return
         if extra_columns is None:
             raise ValueError("No extra column values were provided")
         # Check if the provided columns are in the specification
-        for col, col_type in extra_columns.items():
-            if col not in self.extra_columns:
-                raise ValueError(f"Provided extra column '{col}' of type '{col_type} not found in definition")
+        for col in extra_columns.keys():
+            if col not in cls.extra_columns.keys():
+                raise ValueError(f"Provided extra column '{col}' not found in definition")
         # Update columns according to crossmatch algorithm specification
-        for col, col_type in self.extra_columns.items():
+        columns_to_update = []
+        for col, col_type in cls.extra_columns.items():
             if col not in extra_columns:
                 raise ValueError(f"Missing extra column '{col} of type {col_type}'")
             if col_type.dtype != extra_columns[col].dtype:
-                raise ValueError(f"Invalid type '{col_type}' for extra_column '{col}'")
+                raise ValueError(f"Invalid type '{col_type}' for extra column '{col}'")
+            columns_to_update.append(col)
+        for col in columns_to_update:
             dataframe[col] = extra_columns[col].values
