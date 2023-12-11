@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 import pytest
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
@@ -69,6 +70,10 @@ def test_custom_crossmatch_algorithm(small_sky_catalog, small_sky_xmatch_catalog
 class MockCrossmatchAlgorithm(AbstractCrossmatchAlgorithm):
     """Mock class used to test a crossmatch algorithm"""
 
+    extra_columns: pd.DataFrame = pd.DataFrame({
+        "_DIST": pd.Series(dtype=np.dtype("float64"))
+    })
+
     def crossmatch(self, mock_results: pd.DataFrame = None):
         left_reset = self.left.reset_index(drop=True)
         right_reset = self.right.reset_index(drop=True)
@@ -91,6 +96,12 @@ class MockCrossmatchAlgorithm(AbstractCrossmatchAlgorithm):
             axis=1,
         )
         out.set_index(HIPSCAT_ID_COLUMN, inplace=True)
-        out["_DIST"] = mock_results["dist"].to_numpy()
+
+        self._append_extra_columns(
+            out,
+            extra_columns=pd.DataFrame({
+                "_DIST": mock_results["dist"].to_numpy()
+            })
+        )
 
         return out

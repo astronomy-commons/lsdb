@@ -13,6 +13,10 @@ from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatc
 class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
     """Nearest neighbor crossmatch using a 3D k-D tree"""
 
+    extra_columns: pd.DataFrame = pd.DataFrame({
+        "_DIST": pd.Series(dtype=np.dtype("float64"))
+    })
+
     def crossmatch(
         self,
         n_neighbors: int = 1,
@@ -59,7 +63,13 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
             axis=1,
         )
         out.set_index(HIPSCAT_ID_COLUMN, inplace=True)
-        out[self.DISTANCE_COLUMN_NAME] = pd.Series(arc_distances, index=out.index)
+
+        self._append_extra_columns(
+            out,
+            extra_columns=pd.DataFrame({
+                "_DIST": pd.Series(arc_distances, index=out.index)
+            })
+        )
 
         return out
 
