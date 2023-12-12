@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import List, Tuple, Generic, TypeVar
+from typing import Generic, List, Tuple, TypeVar
 
 import dask.dataframe as dd
 import hipscat as hc
@@ -16,7 +16,6 @@ from lsdb.catalog.catalog import DaskDFPixelMap
 from lsdb.catalog.dataset.dataset import Dataset
 from lsdb.dask.divisions import get_pixels_divisions
 from lsdb.loaders.hipscat.hipscat_loading_config import HipscatLoadingConfig
-
 
 CatalogTypeVar = TypeVar("CatalogTypeVar", bound=Dataset)
 

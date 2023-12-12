@@ -1,11 +1,13 @@
+import dask.dataframe as dd
+import hipscat as hc
+
 from lsdb.catalog.association_catalog import AssociationCatalog
 from lsdb.loaders.hipscat.abstract_catalog_loader import AbstractCatalogLoader
 
-import hipscat as hc
-import dask.dataframe as dd
-
 
 class AssociationCatalogLoader(AbstractCatalogLoader[AssociationCatalog]):
+    """Loads an HiPSCat AssociationCatalog"""
+
     def load_catalog(self) -> AssociationCatalog:
         """Load a catalog from the configuration specified when the loader was created
 

@@ -1,12 +1,10 @@
 from typing import List
 
+import dask.dataframe as dd
 from hipscat.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
 from hipscat.pixel_math import HealpixPixel
 
 from lsdb.catalog.dataset.dataset import Dataset
-
-import dask.dataframe as dd
-
 from lsdb.types import DaskDFPixelMap
 
 

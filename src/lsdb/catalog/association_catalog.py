@@ -1,8 +1,7 @@
-from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
-
-import hipscat as hc
 import dask.dataframe as dd
+import hipscat as hc
 
+from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
 from lsdb.types import DaskDFPixelMap
 
 

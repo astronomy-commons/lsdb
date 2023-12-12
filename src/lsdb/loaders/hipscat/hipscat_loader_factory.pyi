@@ -1,4 +1,4 @@
-from typing import Dict, Type, TypeVar, Union, Any
+from typing import Any, Dict, Type, TypeVar, Union
 
 from lsdb.catalog.dataset.dataset import Dataset
 from lsdb.loaders.hipscat.abstract_catalog_loader import AbstractCatalogLoader, CatalogTypeVar

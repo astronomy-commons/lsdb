@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from typing import Sequence, Dict, List, TYPE_CHECKING
+from typing import TYPE_CHECKING, Dict, List, Sequence, Tuple
 
 import pandas as pd
 from dask.delayed import Delayed
 from hipscat.pixel_math import HealpixPixel
-from hipscat.pixel_math.hipscat_id import healpix_to_hipscat_id, HIPSCAT_ID_COLUMN
+from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN, healpix_to_hipscat_id
 from hipscat.pixel_tree import PixelAlignment
 
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
@@ -32,16 +32,26 @@ def filter_by_hipscat_index_to_pixel(dataframe: pd.DataFrame, order: int, pixel:
     return filtered_df
 
 
-def get_healpix_pixels_from_alignment(join_pixels):
+def get_healpix_pixels_from_alignment(
+    pixel_mapping: pd.DataFrame,
+) -> Tuple[List[HealpixPixel], List[HealpixPixel]]:
+    """Gets the list of primary and join pixels as the HealpixPixel class from a PixelAlignment
+
+    Args:
+        pixel_mapping (pd.DataFrame): the pixel_mapping dataframe from a PixelAlignment
+
+    Returns:
+        a tuple of (primary_pixels, join_pixels) with lists of HealpixPixel objects
+    """
     left_pixels = [
         HealpixPixel(
             row[PixelAlignment.PRIMARY_ORDER_COLUMN_NAME], row[PixelAlignment.PRIMARY_PIXEL_COLUMN_NAME]
         )
-        for _, row in join_pixels.iterrows()
+        for _, row in pixel_mapping.iterrows()
     ]
     right_pixels = [
         HealpixPixel(row[PixelAlignment.JOIN_ORDER_COLUMN_NAME], row[PixelAlignment.JOIN_PIXEL_COLUMN_NAME])
-        for _, row in join_pixels.iterrows()
+        for _, row in pixel_mapping.iterrows()
     ]
     return left_pixels, right_pixels
 
@@ -125,16 +135,29 @@ def align_catalog_to_partitions(
     return partitions_list
 
 
-def align_catalogs_to_alignment_mapping(join_pixels, left, right):
+def align_catalogs_to_alignment_mapping(
+    pixel_mapping: pd.DataFrame, left: HealpixDataset, right: HealpixDataset
+) -> Tuple[List[Delayed], List[Delayed]]:
+    """Aligns a pair of catalogs to the primary and join pixels of a PixelAlignment
+
+    Args:
+        pixel_mapping (pd.DataFrame): the pixel_mapping dataframe from a PixelAlignment
+        left (HealpixDataset): the HealpixDataset to align to the primary pixels
+        right (HealpixDataset): the HealpixDataset to align to the join pixels
+
+    Returns:
+        a tuple of the left and right partitions from the catalogs as dask delayed objects aligned to the
+        primary and join pixels in the alignment
+    """
     left_aligned_to_join_partitions = align_catalog_to_partitions(
         left,
-        join_pixels,
+        pixel_mapping,
         order_col=PixelAlignment.PRIMARY_ORDER_COLUMN_NAME,
         pixel_col=PixelAlignment.PRIMARY_PIXEL_COLUMN_NAME,
     )
     right_aligned_to_join_partitions = align_catalog_to_partitions(
         right,
-        join_pixels,
+        pixel_mapping,
         order_col=PixelAlignment.JOIN_ORDER_COLUMN_NAME,
         pixel_col=PixelAlignment.JOIN_PIXEL_COLUMN_NAME,
     )

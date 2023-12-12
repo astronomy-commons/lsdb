@@ -6,23 +6,21 @@ from typing import TYPE_CHECKING, Tuple, cast
 
 import dask
 import dask.dataframe as dd
+import hipscat as hc
 import pandas as pd
-from hipscat.catalog.association_catalog import PartitionJoinInfo
 from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
 from hipscat.pixel_tree import PixelAlignment, PixelAlignmentType, align_trees
 
-from lsdb.dask.divisions import get_pixels_divisions
 from lsdb.catalog.association_catalog import AssociationCatalog
-import hipscat as hc
-
+from lsdb.dask.divisions import get_pixels_divisions
 from lsdb.dask.merge_catalog_functions import (
+    align_catalog_to_partitions,
+    align_catalogs_to_alignment_mapping,
+    filter_by_hipscat_index_to_pixel,
+    generate_meta_df_for_joined_tables,
     get_healpix_pixels_from_alignment,
     get_partition_map_from_alignment_pixels,
-    generate_meta_df_for_joined_tables,
-    align_catalog_to_partitions,
-    filter_by_hipscat_index_to_pixel,
-    align_catalogs_to_alignment_mapping,
 )
 from lsdb.types import DaskDFPixelMap
 
@@ -33,7 +31,17 @@ if TYPE_CHECKING:
 NON_JOINING_ASSOCIATION_COLUMNS = ["Norder", "Dir", "Npix", "join_Norder", "join_Dir", "join_Npix"]
 
 
-def rename_columns_with_suffixes(left, right, suffixes):
+def rename_columns_with_suffixes(left: pd.DataFrame, right: pd.DataFrame, suffixes: Tuple[str, str]):
+    """Renames two dataframes with the suffixes specified
+
+    Args:
+        left (pd.DataFrame): the left dataframe to apply the first suffix to
+        right (pd.DataFrame): the right dataframe to apply the second suffix to
+        suffixes (Tuple[str, str]): the pair of suffixes to apply to the dataframes
+
+    Returns:
+        A tuple of (left, right) updated dataframes with their columns renamed
+    """
     left_columns_renamed = {name: name + suffixes[0] for name in left.columns}
     left = left.rename(columns=left_columns_renamed)
     right_columns_renamed = {name: name + suffixes[1] for name in right.columns}
@@ -171,6 +179,20 @@ def join_catalog_data_on(
 def join_catalog_data_through(
     left: Catalog, right: Catalog, association: AssociationCatalog, suffixes: Tuple[str, str]
 ) -> Tuple[dd.core.DataFrame, DaskDFPixelMap, PixelAlignment]:
+    """Joins two catalogs with an association table
+
+    Args:
+        left (Catalog): the left catalog to join
+        right (Catalog): the right catalog to join
+        association (AssociationCatalog): the association catalog to join the catalogs with
+        suffixes (Tuple[str,str]): the suffixes to apply to each partition's column names
+
+    Returns:
+        A tuple of the dask dataframe with the result of the join, the pixel map from HEALPix
+        pixel to partition index within the dataframe, and the PixelAlignment of the two input
+        catalogs.
+
+    """
     if not association.hc_structure.catalog_info.contains_leaf_files:
         return join_catalog_data_on(
             left,

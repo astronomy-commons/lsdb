@@ -1,4 +1,5 @@
 import hipscat as hc
+
 from lsdb.catalog.catalog import Catalog
 from lsdb.loaders.hipscat.abstract_catalog_loader import AbstractCatalogLoader
 
