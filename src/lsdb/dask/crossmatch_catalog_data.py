@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Dict, List, Sequence, Tuple, Type, cast
+from typing import TYPE_CHECKING, List, Sequence, Tuple, Type, cast
 
 import dask
 import dask.dataframe as dd
@@ -172,7 +172,7 @@ def crossmatch_catalog_data(
 def generate_meta_df_for_joined_tables(
     catalogs: Sequence[Catalog],
     suffixes: Sequence[str],
-    extra_columns: Dict[str, pd.Series] | None = None,
+    extra_columns: pd.DataFrame | None = None,
     index_name: str = HIPSCAT_ID_COLUMN,
 ) -> pd.DataFrame:
     """Generates a Dask meta DataFrame that would result from joining two catalogs
@@ -183,7 +183,7 @@ def generate_meta_df_for_joined_tables(
     Args:
         catalogs (Sequence[Catalog]): The catalogs to merge together
         suffixes (Sequence[Str]): The column suffixes to apply each catalog
-        extra_columns (Dict[str, pd.Series] | None = None): Any additional columns to the merged catalogs
+        extra_columns (pd.Dataframe): Any additional columns to the merged catalogs
         index_name (str): The name of the index in the resulting DataFrame
 
     Returns:
