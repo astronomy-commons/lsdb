@@ -8,7 +8,7 @@ from lsdb.loaders.hipscat.association_catalog_loader import AssociationCatalogLo
 from lsdb.loaders.hipscat.hipscat_catalog_loader import HipscatCatalogLoader
 from lsdb.loaders.hipscat.hipscat_loading_config import HipscatLoadingConfig
 
-loader_class_for_catalog_type = {
+loader_class_for_catalog_type: Dict[Type[Dataset], Type[AbstractCatalogLoader]] = {
     Catalog: HipscatCatalogLoader,
     AssociationCatalog: AssociationCatalogLoader,
 }

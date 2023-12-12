@@ -334,6 +334,8 @@ class Catalog(HealpixDataset):
             )
             hc_catalog = hc.catalog.Catalog(new_catalog_info, alignment.pixel_tree)
             return Catalog(ddf, ddf_map, hc_catalog)
+        if left_on is None or right_on is None:
+            raise ValueError("Either both of left_on and right_on, or through must be set")
         if left_on not in self._ddf.columns:
             raise ValueError("left_on must be a column in the left catalog")
 

@@ -105,6 +105,8 @@ def perform_join_through(
     Returns:
         A dataframe with the result of merging the left and right partitions on the specified columns
     """
+    if catalog_info.primary_column is None or catalog_info.join_column is None:
+        raise ValueError("Invalid catalog_info")
     if right_pixel.order > left_pixel.order:
         left = filter_by_hipscat_index_to_pixel(left, right_pixel.order, right_pixel.pixel)
     left, right = rename_columns_with_suffixes(left, right, suffixes)
@@ -193,6 +195,12 @@ def join_catalog_data_through(
         catalogs.
 
     """
+    if (
+        association.hc_structure.catalog_info.primary_column is None
+        or association.hc_structure.catalog_info.join_column is None
+    ):
+        raise ValueError("Invalid catalog_info")
+
     if not association.hc_structure.catalog_info.contains_leaf_files:
         return join_catalog_data_on(
             left,
