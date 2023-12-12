@@ -1,6 +1,5 @@
 from typing import Any, Dict, List, Tuple, Union
 
-import dask.dataframe as dd
 import hipscat as hc
 import numpy as np
 import pyarrow
@@ -11,24 +10,12 @@ from hipscat.pixel_math.healpix_pixel_function import get_pixel_argsort
 from lsdb.catalog.catalog import Catalog, DaskDFPixelMap
 from lsdb.dask.divisions import get_pixels_divisions
 from lsdb.loaders.hipscat.hipscat_loading_config import HipscatLoadingConfig
+from lsdb.catalog.catalog import Catalog
+from lsdb.loaders.hipscat.abstract_catalog_loader import AbstractCatalogLoader
 
 
-class HipscatCatalogLoader:
+class HipscatCatalogLoader(AbstractCatalogLoader[Catalog]):
     """Loads a HiPSCat formatted Catalog"""
-
-    def __init__(
-        self, path: str, config: HipscatLoadingConfig, storage_options: Union[Dict[Any, Any], None] = None
-    ) -> None:
-        """Initializes a HipscatCatalogLoader
-
-        Args:
-            path: path to the root of the HiPSCat catalog
-            config: options to configure how the catalog is loaded
-        """
-        self.path = path
-        self.base_catalog_dir = hc.io.get_file_pointer_from_path(self.path)
-        self.config = config
-        self.storage_options = storage_options
 
     def load_catalog(self) -> Catalog:
         """Load a catalog from the configuration specified when the loader was created

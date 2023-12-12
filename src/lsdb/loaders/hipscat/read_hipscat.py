@@ -7,25 +7,27 @@ import hipscat as hc
 from hipscat.catalog import CatalogType
 from hipscat.catalog.dataset import BaseCatalogInfo
 
+from lsdb.catalog.association_catalog import AssociationCatalog
 from lsdb.catalog.catalog import Catalog
 from lsdb.catalog.dataset.dataset import Dataset
-from lsdb.loaders.hipscat.hipscat_loader_factory import CatalogTypeVar, get_loader_for_type
+from lsdb.loaders.hipscat.hipscat_loader_factory import get_loader_for_type
 from lsdb.loaders.hipscat.hipscat_loading_config import HipscatLoadingConfig
 
 dataset_class_for_catalog_type: Dict[CatalogType, Type[Dataset]] = {
     CatalogType.OBJECT: Catalog,
     CatalogType.SOURCE: Catalog,
+    CatalogType.ASSOCIATION: AssociationCatalog,
 }
 
 
 # pylint: disable=unused-argument
 def read_hipscat(
     path: str,
-    catalog_type: Type[CatalogTypeVar] | None = None,
+    catalog_type: Type[Dataset] | None = None,
     storage_options: dict | None = None,
     columns: List[str] | None = None,
     **kwargs,
-) -> CatalogTypeVar | Dataset:
+) -> Dataset:
     """Load a catalog from a HiPSCat formatted catalog.
 
     Typical usage example, where we load a catalog with a subset of columns:

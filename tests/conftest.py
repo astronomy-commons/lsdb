@@ -11,6 +11,8 @@ from lsdb.dask.divisions import HIPSCAT_ID_MAX
 DATA_DIR_NAME = "data"
 SMALL_SKY_DIR_NAME = "small_sky"
 SMALL_SKY_XMATCH_NAME = "small_sky_xmatch"
+SMALL_SKY_TO_XMATCH_NAME = "small_sky_to_xmatch"
+SMALL_SKY_TO_XMATCH_SOFT_NAME = "small_sky_to_xmatch_soft"
 SMALL_SKY_ORDER1_DIR_NAME = "small_sky_order1"
 SMALL_SKY_ORDER1_CSV = "small_sky_order1.csv"
 XMATCH_CORRECT_FILE = "xmatch_correct.csv"
@@ -36,6 +38,16 @@ def small_sky_xmatch_dir(test_data_dir):
 
 
 @pytest.fixture
+def small_sky_to_xmatch_dir(test_data_dir):
+    return os.path.join(test_data_dir, SMALL_SKY_TO_XMATCH_NAME)
+
+
+@pytest.fixture
+def small_sky_to_xmatch_soft_dir(test_data_dir):
+    return os.path.join(test_data_dir, SMALL_SKY_TO_XMATCH_SOFT_NAME)
+
+
+@pytest.fixture
 def small_sky_order1_dir(test_data_dir):
     return os.path.join(test_data_dir, SMALL_SKY_ORDER1_DIR_NAME)
 
@@ -53,6 +65,11 @@ def small_sky_catalog(small_sky_dir):
 @pytest.fixture
 def small_sky_xmatch_catalog(small_sky_xmatch_dir):
     return lsdb.read_hipscat(small_sky_xmatch_dir)
+
+
+@pytest.fixture
+def small_sky_to_xmatch_catalog(small_sky_to_xmatch_dir):
+    return lsdb.read_hipscat(small_sky_to_xmatch_dir)
 
 
 @pytest.fixture
