@@ -125,3 +125,19 @@ def align_catalog_to_partitions(
     )
     partitions_list = partitions.to_list()
     return partitions_list
+
+
+def align_catalogs_to_alignment_mapping(join_pixels, left, right):
+    left_aligned_to_join_partitions = align_catalog_to_partitions(
+        left,
+        join_pixels,
+        order_col=PixelAlignment.PRIMARY_ORDER_COLUMN_NAME,
+        pixel_col=PixelAlignment.PRIMARY_PIXEL_COLUMN_NAME,
+    )
+    right_aligned_to_join_partitions = align_catalog_to_partitions(
+        right,
+        join_pixels,
+        order_col=PixelAlignment.JOIN_ORDER_COLUMN_NAME,
+        pixel_col=PixelAlignment.JOIN_PIXEL_COLUMN_NAME,
+    )
+    return left_aligned_to_join_partitions, right_aligned_to_join_partitions

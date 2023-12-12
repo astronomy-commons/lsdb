@@ -15,8 +15,9 @@ from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
 from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorithm
 from lsdb.core.crossmatch.kdtree_match import KdTreeCrossmatch
-from lsdb.dask.join_catalogs import filter_by_hipscat_index_to_pixel, align_catalog_to_partitions, \
-    get_partition_map_from_alignment_pixels, generate_meta_df_for_joined_tables
+from lsdb.dask.merge_catalog_functions import filter_by_hipscat_index_to_pixel, align_catalog_to_partitions, \
+    get_partition_map_from_alignment_pixels, generate_meta_df_for_joined_tables, \
+    align_catalogs_to_alignment_mapping
 from lsdb.types import DaskDFPixelMap
 
 if TYPE_CHECKING:
@@ -98,17 +99,8 @@ def crossmatch_catalog_data(
     join_pixels = alignment.pixel_mapping
 
     # align partitions from the catalogs to match the pixel alignment
-    left_aligned_to_join_partitions = align_catalog_to_partitions(
-        left,
-        join_pixels,
-        order_col=PixelAlignment.PRIMARY_ORDER_COLUMN_NAME,
-        pixel_col=PixelAlignment.PRIMARY_PIXEL_COLUMN_NAME,
-    )
-    right_aligned_to_join_partitions = align_catalog_to_partitions(
-        right,
-        join_pixels,
-        order_col=PixelAlignment.JOIN_ORDER_COLUMN_NAME,
-        pixel_col=PixelAlignment.JOIN_PIXEL_COLUMN_NAME,
+    left_aligned_partitions, right_aligned_partitions = align_catalogs_to_alignment_mapping(
+        join_pixels, left, right
     )
 
     # get lists of HEALPix pixels from alignment to pass to cross-match
@@ -133,8 +125,8 @@ def crossmatch_catalog_data(
             **kwargs,
         )
         for left_df, right_df, left_order, left_pixel, right_order, right_pixel in zip(
-            left_aligned_to_join_partitions,
-            right_aligned_to_join_partitions,
+            left_aligned_partitions,
+            right_aligned_partitions,
             left_orders,
             left_pixels,
             right_orders,
@@ -156,7 +148,6 @@ def crossmatch_catalog_data(
     ddf = cast(dd.DataFrame, ddf)
 
     return ddf, partition_map, alignment
-
 
 
 def get_crossmatch_algorithm(
