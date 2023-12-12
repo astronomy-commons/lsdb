@@ -35,26 +35,22 @@ def filter_by_hipscat_index_to_pixel(dataframe: pd.DataFrame, order: int, pixel:
 def get_healpix_pixels_from_alignment(join_pixels):
     left_pixels = [
         HealpixPixel(
-            row[PixelAlignment.PRIMARY_ORDER_COLUMN_NAME],
-            row[PixelAlignment.PRIMARY_PIXEL_COLUMN_NAME]
+            row[PixelAlignment.PRIMARY_ORDER_COLUMN_NAME], row[PixelAlignment.PRIMARY_PIXEL_COLUMN_NAME]
         )
         for _, row in join_pixels.iterrows()
     ]
     right_pixels = [
-        HealpixPixel(
-            row[PixelAlignment.JOIN_ORDER_COLUMN_NAME],
-            row[PixelAlignment.JOIN_PIXEL_COLUMN_NAME]
-        )
+        HealpixPixel(row[PixelAlignment.JOIN_ORDER_COLUMN_NAME], row[PixelAlignment.JOIN_PIXEL_COLUMN_NAME])
         for _, row in join_pixels.iterrows()
     ]
     return left_pixels, right_pixels
 
 
 def generate_meta_df_for_joined_tables(
-        catalogs: Sequence[Catalog],
-        suffixes: Sequence[str],
-        extra_columns: Dict[str, pd.Series] | None = None,
-        index_name: str = HIPSCAT_ID_COLUMN,
+    catalogs: Sequence[Catalog],
+    suffixes: Sequence[str],
+    extra_columns: Dict[str, pd.Series] | None = None,
+    index_name: str = HIPSCAT_ID_COLUMN,
 ) -> pd.DataFrame:
     """Generates a Dask meta DataFrame that would result from joining two catalogs
 

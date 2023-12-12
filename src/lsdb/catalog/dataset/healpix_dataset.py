@@ -18,6 +18,7 @@ class HealpixDataset(Dataset):
         hc_structure: `hipscat.Catalog` object representing the structure
                       and metadata of the HiPSCat catalog
     """
+
     hc_structure: HCHealpixDataset
 
     def __init__(

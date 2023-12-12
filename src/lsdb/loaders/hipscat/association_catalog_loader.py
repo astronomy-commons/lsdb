@@ -6,7 +6,6 @@ import dask.dataframe as dd
 
 
 class AssociationCatalogLoader(AbstractCatalogLoader[AssociationCatalog]):
-
     def load_catalog(self) -> AssociationCatalog:
         """Load a catalog from the configuration specified when the loader was created
 

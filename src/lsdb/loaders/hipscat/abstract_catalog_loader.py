@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import List, Tuple, Generic, Union, Dict, Any, TypeVar
+from typing import List, Tuple, Generic, TypeVar
 
 import dask.dataframe as dd
 import hipscat as hc
@@ -22,15 +22,15 @@ CatalogTypeVar = TypeVar("CatalogTypeVar", bound=Dataset)
 
 
 class AbstractCatalogLoader(Generic[CatalogTypeVar]):
+    """Loads a HiPSCat Dataset with the type specified by the type variable"""
 
-    def __init__(
-        self, path: str, config: HipscatLoadingConfig, storage_options: dict | None = None
-    ) -> None:
+    def __init__(self, path: str, config: HipscatLoadingConfig, storage_options: dict | None = None) -> None:
         """Initializes a HipscatCatalogLoader
 
         Args:
             path: path to the root of the HiPSCat catalog
             config: options to configure how the catalog is loaded
+            storage_options: options for the file system the catalog is loaded from
         """
         self.path = path
         self.base_catalog_dir = hc.io.get_file_pointer_from_path(self.path)
@@ -39,6 +39,11 @@ class AbstractCatalogLoader(Generic[CatalogTypeVar]):
 
     @abstractmethod
     def load_catalog(self) -> CatalogTypeVar:
+        """Load a dataset from the configuration specified when the loader was created
+
+        Returns:
+            Dataset object of the class's type with data from the source given at loader initialization
+        """
         pass
 
     def _load_dask_df_and_map(self, catalog: HCHealpixDataset) -> Tuple[dd.DataFrame, DaskDFPixelMap]:

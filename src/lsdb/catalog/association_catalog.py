@@ -14,6 +14,7 @@ class AssociationCatalog(HealpixDataset):
         hc_structure: `hipscat.Catalog` object representing the structure
                       and metadata of the HiPSCat catalog
     """
+
     hc_structure: hc.catalog.AssociationCatalog
 
     def __init__(

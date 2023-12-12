@@ -1,23 +1,22 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Dict, List, Sequence, Tuple, Type, cast
+from typing import TYPE_CHECKING, Tuple, Type, cast
 
 import dask
 import dask.dataframe as dd
 import numpy as np
 import pandas as pd
-from dask.delayed import Delayed
-from hipscat.pixel_math import HealpixPixel
-from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN, healpix_to_hipscat_id
 from hipscat.pixel_tree import PixelAlignment, PixelAlignmentType, align_trees
 
-from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
 from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorithm
 from lsdb.core.crossmatch.kdtree_match import KdTreeCrossmatch
-from lsdb.dask.merge_catalog_functions import filter_by_hipscat_index_to_pixel, align_catalog_to_partitions, \
-    get_partition_map_from_alignment_pixels, generate_meta_df_for_joined_tables, \
-    align_catalogs_to_alignment_mapping
+from lsdb.dask.merge_catalog_functions import (
+    filter_by_hipscat_index_to_pixel,
+    get_partition_map_from_alignment_pixels,
+    generate_meta_df_for_joined_tables,
+    align_catalogs_to_alignment_mapping,
+)
 from lsdb.types import DaskDFPixelMap
 
 if TYPE_CHECKING:
@@ -59,7 +58,6 @@ def perform_crossmatch(
         right_hc_structure,
         suffixes,
     ).crossmatch(**kwargs)
-
 
 
 # pylint: disable=too-many-locals
@@ -138,9 +136,7 @@ def crossmatch_catalog_data(
     partition_map = get_partition_map_from_alignment_pixels(join_pixels)
 
     # generate meta table structure for dask df
-    extra_columns = {
-        crossmatch_algorithm.DISTANCE_COLUMN_NAME: pd.Series(dtype=np.dtype("float64"))
-    }
+    extra_columns = {crossmatch_algorithm.DISTANCE_COLUMN_NAME: pd.Series(dtype=np.dtype("float64"))}
     meta_df = generate_meta_df_for_joined_tables([left, right], suffixes, extra_columns=extra_columns)
 
     # create dask df from delayed partitions

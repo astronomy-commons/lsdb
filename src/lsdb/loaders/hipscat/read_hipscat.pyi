@@ -16,7 +16,6 @@ from typing import Any, Dict, Type, Union, overload
 from lsdb.catalog.dataset.dataset import Dataset
 from lsdb.loaders.hipscat.abstract_catalog_loader import CatalogTypeVar
 
-
 @overload
 def read_hipscat(path: str, storage_options: Union[Dict[Any, Any], None] = None) -> Dataset: ...
 @overload
