@@ -73,6 +73,11 @@ def small_sky_to_xmatch_catalog(small_sky_to_xmatch_dir):
 
 
 @pytest.fixture
+def small_sky_to_xmatch_soft_catalog(small_sky_to_xmatch_soft_dir):
+    return lsdb.read_hipscat(small_sky_to_xmatch_soft_dir)
+
+
+@pytest.fixture
 def small_sky_order1_hipscat_catalog(small_sky_order1_dir):
     return hc.catalog.Catalog.read_from_hipscat(small_sky_order1_dir)
 
