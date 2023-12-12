@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 import pytest
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
@@ -65,9 +66,39 @@ def test_custom_crossmatch_algorithm(small_sky_catalog, small_sky_xmatch_catalog
         assert xmatch_row["_DIST"].values == pytest.approx(correct_row["dist"])
 
 
+def test_append_extra_columns(small_sky_xmatch_catalog):
+    algo = MockCrossmatchAlgorithm
+    # Create mock values for extra_columns
+    xmatch_df = small_sky_xmatch_catalog.compute()
+    dist_values = np.arange(len(xmatch_df))
+    extra_columns = {"_DIST": pd.Series(dist_values, dtype=np.dtype("float64"))}
+    # At least a provided column is not in the specification
+    with pytest.raises(ValueError, match="Provided extra column"):
+        no_specified_columns = {"_DIST_2": extra_columns["_DIST"]}
+        algo._append_extra_columns(xmatch_df, pd.DataFrame(no_specified_columns))
+    # At least an extra column is missing
+    with pytest.raises(ValueError, match="Missing extra column"):
+        missing_columns = {"_DIST_2": extra_columns["_DIST"]}
+        algo.extra_columns = pd.DataFrame({**extra_columns, **missing_columns})
+        algo._append_extra_columns(xmatch_df, pd.DataFrame(extra_columns))
+    # At least an extra column is of invalid type
+    with pytest.raises(ValueError, match="Invalid type"):
+        invalid_type_columns = {"_DIST": extra_columns["_DIST"].astype("int64")}
+        algo._append_extra_columns(xmatch_df, pd.DataFrame(invalid_type_columns))
+    # No extra_columns were specified
+    with pytest.raises(ValueError, match="No extra column values"):
+        algo._append_extra_columns(xmatch_df, extra_columns=None)
+    # The crossmatch algorithm has no extra_columns specified
+    algo.extra_columns = None
+    algo._append_extra_columns(xmatch_df, pd.DataFrame(extra_columns))
+    assert "_DIST" not in xmatch_df.columns
+
+
 # pylint: disable=too-few-public-methods
 class MockCrossmatchAlgorithm(AbstractCrossmatchAlgorithm):
     """Mock class used to test a crossmatch algorithm"""
+
+    extra_columns = pd.DataFrame({"_DIST": pd.Series(dtype=np.dtype("float64"))})
 
     def crossmatch(self, mock_results: pd.DataFrame = None):
         left_reset = self.left.reset_index(drop=True)
@@ -91,6 +122,7 @@ class MockCrossmatchAlgorithm(AbstractCrossmatchAlgorithm):
             axis=1,
         )
         out.set_index(HIPSCAT_ID_COLUMN, inplace=True)
-        out["_DIST"] = mock_results["dist"].to_numpy()
+        extra_columns = pd.DataFrame({"_DIST": mock_results["dist"]})
+        self._append_extra_columns(out, extra_columns)
 
         return out
