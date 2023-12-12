@@ -1,9 +1,8 @@
+import hipscat as hc
 import pandas as pd
 
 import lsdb
 from lsdb.catalog.association_catalog import AssociationCatalog
-
-import hipscat as hc
 
 
 def test_load_association(small_sky_to_xmatch_dir):
