@@ -241,6 +241,7 @@ def join_catalog_data_through(
         association.hc_structure.catalog_info.primary_column_association,
         association.hc_structure.catalog_info.join_column_association,
     ]
+    # pylint: disable=protected-access
     extra_df = association._ddf._meta.drop(NON_JOINING_ASSOCIATION_COLUMNS + association_join_columns, axis=1)
     meta_df = generate_meta_df_for_joined_tables([left, extra_df, right], [suffixes[0], "", suffixes[1]])
     divisions = get_pixels_divisions(list(partition_map.keys()))

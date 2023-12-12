@@ -1,4 +1,4 @@
-from typing import Any, Dict, Type, TypeVar, Union
+from typing import Any, Dict, Type, Union
 
 from lsdb.catalog.association_catalog import AssociationCatalog
 from lsdb.catalog.catalog import Catalog
