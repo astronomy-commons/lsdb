@@ -1,18 +1,20 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import List, Tuple, Generic, Union, Dict, Any, TYPE_CHECKING, TypeVar
+from typing import List, Tuple, Generic, Union, Dict, Any, TypeVar
 
 import dask.dataframe as dd
 import hipscat as hc
+import numpy as np
 import pyarrow
 from hipscat.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
 from hipscat.io.file_io import file_io
 from hipscat.pixel_math import HealpixPixel
-from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_HEALPIX_ORDER
+from hipscat.pixel_math.healpix_pixel_function import get_pixel_argsort
 
 from lsdb.catalog.catalog import DaskDFPixelMap
 from lsdb.catalog.dataset.dataset import Dataset
+from lsdb.dask.divisions import get_pixels_divisions
 from lsdb.loaders.hipscat.hipscat_loading_config import HipscatLoadingConfig
 
 
@@ -22,7 +24,7 @@ CatalogTypeVar = TypeVar("CatalogTypeVar", bound=Dataset)
 class AbstractCatalogLoader(Generic[CatalogTypeVar]):
 
     def __init__(
-        self, path: str, config: HipscatLoadingConfig, storage_options: Union[Dict[Any, Any], None] = None
+        self, path: str, config: HipscatLoadingConfig, storage_options: dict | None = None
     ) -> None:
         """Initializes a HipscatCatalogLoader
 
@@ -41,19 +43,13 @@ class AbstractCatalogLoader(Generic[CatalogTypeVar]):
 
     def _load_dask_df_and_map(self, catalog: HCHealpixDataset) -> Tuple[dd.DataFrame, DaskDFPixelMap]:
         """Load Dask DF from parquet files and make dict of HEALPix pixel to partition index"""
-        ordered_pixels = self._get_ordered_pixel_list(catalog)
+        pixels = catalog.get_healpix_pixels()
+        ordered_pixels = np.array(pixels)[get_pixel_argsort(pixels)]
         ordered_paths = self._get_paths_from_pixels(catalog, ordered_pixels)
+        divisions = get_pixels_divisions(ordered_pixels)
+        ddf = self._load_df_from_paths(catalog, ordered_paths, divisions)
         pixel_to_index_map = {pixel: index for index, pixel in enumerate(ordered_pixels)}
-        ddf = self._load_df_from_paths(catalog, ordered_paths)
         return ddf, pixel_to_index_map
-
-    def _get_ordered_pixel_list(self, catalog: HCHealpixDataset) -> List[HealpixPixel]:
-        # Sort pixels by pixel number at highest order
-        sorted_pixels = sorted(
-            catalog.get_healpix_pixels(),
-            key=lambda pixel: (4 ** (HIPSCAT_ID_HEALPIX_ORDER - pixel.order)) * pixel.pixel,
-        )
-        return sorted_pixels
 
     def _get_paths_from_pixels(
         self, catalog: HCHealpixDataset, ordered_pixels: List[HealpixPixel]
@@ -69,15 +65,20 @@ class AbstractCatalogLoader(Generic[CatalogTypeVar]):
         return paths
 
     def _load_df_from_paths(
-        self, catalog: HCHealpixDataset, paths: List[hc.io.FilePointer]
+        self, catalog: HCHealpixDataset, paths: List[hc.io.FilePointer], divisions: Tuple[int, ...]
     ) -> dd.DataFrame:
         metadata_schema = self._load_parquet_metadata_schema(catalog)
         dask_meta_schema = metadata_schema.empty_table().to_pandas()
+        if self.config.columns:
+            dask_meta_schema = dask_meta_schema[self.config.columns]
         ddf = dd.from_map(
             file_io.read_parquet_file_to_pandas,
             paths,
+            divisions=divisions,
             storage_options=self.storage_options,
             meta=dask_meta_schema,
+            columns=self.config.columns,
+            **self.config.get_kwargs_dict(),
         )
         return ddf
 
