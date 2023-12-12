@@ -78,15 +78,15 @@ def perform_join_through(
         catalog_info: hc.catalog.association_catalog.AssociationCatalogInfo,
         suffixes: Tuple[str, str]
 ):
-    """Performs a join on two catalog partitions
+    """Performs a join on two catalog partitions through an association catalog
 
     Args:
         left (pd.DataFrame): the left partition to merge
         right (pd.DataFrame): the right partition to merge
-        left_on (str): the column to join on from the left partition
-        right_on (str): the column to join on from the right partition
+        through (pd.DataFrame): the association column partition to merge with
         left_pixel (HealpixPixel): the HEALPix pixel of the left partition
         right_pixel (HealpixPixel): the HEALPix pixel of the right partition
+        catalog_info (AssociationCatalogInfo): the catalog_info of the association catalog
         suffixes (Tuple[str,str]): the suffixes to apply to each partition's column names
 
     Returns:
@@ -206,6 +206,7 @@ def join_catalog_data_through(
                                 association.hc_structure.catalog_info.join_column_association]
     extra_df = association._ddf._meta.copy().drop(NON_JOINING_ASSOCIATION_COLUMNS + association_join_columns)
     meta_df = generate_meta_df_for_joined_tables([left, extra_df, right], [suffixes[0], "", suffixes[1]])
-    ddf = dd.from_delayed(joined_partitions, meta=meta_df)
+    divisions = get_pixels_divisions(list(partition_map.keys()))
+    ddf = dd.from_delayed(joined_partitions, meta=meta_df, divisions=divisions)
     ddf = cast(dd.DataFrame, ddf)
     return ddf, partition_map, alignment
