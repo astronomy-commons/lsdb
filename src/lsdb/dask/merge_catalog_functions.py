@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Sequence, Dict, List
+from typing import Sequence, Dict, List, TYPE_CHECKING
 
 import pandas as pd
 from dask.delayed import Delayed
@@ -8,9 +8,11 @@ from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.hipscat_id import healpix_to_hipscat_id, HIPSCAT_ID_COLUMN
 from hipscat.pixel_tree import PixelAlignment
 
-from lsdb import Catalog
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
 from lsdb.types import DaskDFPixelMap
+
+if TYPE_CHECKING:
+    from lsdb.catalog.catalog import Catalog
 
 
 def filter_by_hipscat_index_to_pixel(dataframe: pd.DataFrame, order: int, pixel: int) -> pd.DataFrame:

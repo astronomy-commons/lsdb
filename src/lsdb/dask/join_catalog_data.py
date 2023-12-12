@@ -19,9 +19,10 @@ import hipscat as hc
 from lsdb.dask.merge_catalog_functions import get_healpix_pixels_from_alignment, \
     get_partition_map_from_alignment_pixels, generate_meta_df_for_joined_tables, align_catalog_to_partitions, \
     filter_by_hipscat_index_to_pixel, align_catalogs_to_alignment_mapping
+from lsdb.types import DaskDFPixelMap
 
 if TYPE_CHECKING:
-    from lsdb.catalog.catalog import Catalog, DaskDFPixelMap
+    from lsdb.catalog.catalog import Catalog
 
 
 NON_JOINING_ASSOCIATION_COLUMNS = ["Norder", "Dir", "Npix", "join_Norder", "join_Dir", "join_Npix"]
