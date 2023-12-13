@@ -17,6 +17,7 @@ from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorith
 from lsdb.core.search.cone_search import cone_filter
 from lsdb.core.search.polygon_search import polygon_filter
 from lsdb.dask.crossmatch_catalog_data import crossmatch_catalog_data
+from lsdb.dask.divisions import get_pixels_divisions
 from lsdb.dask.join_catalog_data import join_catalog_data_on
 from lsdb.types import DaskDFPixelMap
 
@@ -258,7 +259,8 @@ class Catalog(Dataset):
         filtered_partitions = [
             cone_filter(partition, ra, dec, radius, self.hc_structure) for partition in partitions_in_cone
         ]
-        cone_search_ddf = dd.from_delayed(filtered_partitions, meta=self._ddf._meta)
+        divisions = get_pixels_divisions(pixels_in_cone)
+        cone_search_ddf = dd.from_delayed(filtered_partitions, meta=self._ddf._meta, divisions=divisions)
         cone_search_ddf = cast(dd.DataFrame, cone_search_ddf)
         ddf_partition_map = {pixel: i for i, pixel in enumerate(pixels_in_cone)}
         return Catalog(cone_search_ddf, ddf_partition_map, filtered_hc_structure)
@@ -283,7 +285,8 @@ class Catalog(Dataset):
         filtered_partitions = [
             polygon_filter(partition, polygon, self.hc_structure) for partition in partitions_in_polygon
         ]
-        polygon_search_ddf = dd.from_delayed(filtered_partitions, meta=self._ddf._meta)
+        divisions = get_pixels_divisions(pixels_in_polygon)
+        polygon_search_ddf = dd.from_delayed(filtered_partitions, meta=self._ddf._meta, divisions=divisions)
         polygon_search_ddf = cast(dd.DataFrame, polygon_search_ddf)
         ddf_partition_map = {pixel: i for i, pixel in enumerate(pixels_in_polygon)}
         return Catalog(polygon_search_ddf, ddf_partition_map, filtered_hc_structure)

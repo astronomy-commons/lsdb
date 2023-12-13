@@ -1,5 +1,6 @@
 import pytest
 from astropy.coordinates import SkyCoord
+from conftest import assert_divisions_are_correct
 
 
 def test_cone_search_filters_correct_points(small_sky_order1_catalog):
@@ -7,16 +8,18 @@ def test_cone_search_filters_correct_points(small_sky_order1_catalog):
     dec = -80
     radius = 20
     center_coord = SkyCoord(ra, dec, unit="deg")
-    cone_search_catalog = small_sky_order1_catalog.cone_search(ra, dec, radius).compute()
-    print(len(cone_search_catalog))
+    cone_search_catalog = small_sky_order1_catalog.cone_search(ra, dec, radius)
+    cone_search_df = cone_search_catalog.compute()
+    print(len(cone_search_df))
     for _, row in small_sky_order1_catalog.compute().iterrows():
         row_ra = row[small_sky_order1_catalog.hc_structure.catalog_info.ra_column]
         row_dec = row[small_sky_order1_catalog.hc_structure.catalog_info.dec_column]
         sep = SkyCoord(row_ra, row_dec, unit="deg").separation(center_coord)
         if sep.degree <= radius:
-            assert len(cone_search_catalog.loc[cone_search_catalog["id"] == row["id"]]) == 1
+            assert len(cone_search_df.loc[cone_search_df["id"] == row["id"]]) == 1
         else:
-            assert len(cone_search_catalog.loc[cone_search_catalog["id"] == row["id"]]) == 0
+            assert len(cone_search_df.loc[cone_search_df["id"] == row["id"]]) == 0
+    assert_divisions_are_correct(cone_search_catalog)
 
 
 def test_cone_search_filters_partitions(small_sky_order1_catalog):

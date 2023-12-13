@@ -90,7 +90,7 @@ def xmatch_mock(small_sky_xmatch_dir):
     return pd.read_csv(os.path.join(small_sky_xmatch_dir, XMATCH_MOCK_FILE))
 
 
-def assert_divisions_are_correct(catalog: lsdb.Catalog):
+def assert_divisions_are_correct(catalog):
     # Check that number of divisions == number of pixels + 1
     hp_pixels = catalog.get_ordered_healpix_pixels()
     assert len(catalog._ddf.divisions) == len(hp_pixels) + 1
