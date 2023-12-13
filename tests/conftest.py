@@ -94,6 +94,8 @@ def assert_divisions_are_correct(catalog):
     # Check that number of divisions == number of pixels + 1
     hp_pixels = catalog.get_ordered_healpix_pixels()
     assert len(catalog._ddf.divisions) == len(hp_pixels) + 1
+    # Check that the divisions are not None
+    assert None not in catalog._ddf.divisions
     # Check that divisions belong to the correct pixel
     for division, hp_pixel in zip(catalog._ddf.divisions, hp_pixels):
         div_pixel = hipscat_id_to_healpix([division], target_order=hp_pixel.order)

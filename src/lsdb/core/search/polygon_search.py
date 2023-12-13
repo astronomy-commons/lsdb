@@ -17,9 +17,10 @@ def polygon_filter(data_frame: pd.DataFrame, polygon: SingleSphericalPolygon, me
         A new DataFrame with the rows from `dataframe` filtered to only the pixels inside the polygon.
     """
     data_frame["_INSIDE_POLYGON"] = [
-        polygon.contains_radec(ra, dec) for ra, dec in zip(
+        polygon.contains_radec(ra, dec)
+        for ra, dec in zip(
             data_frame[metadata.catalog_info.ra_column].values,
-            data_frame[metadata.catalog_info.dec_column].values
+            data_frame[metadata.catalog_info.dec_column].values,
         )
     ]
     data_frame = data_frame.loc[data_frame["_INSIDE_POLYGON"]]

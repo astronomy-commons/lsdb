@@ -177,7 +177,7 @@ class DataframeCatalogLoader:
 
     @staticmethod
     def _generate_dask_dataframe(
-        pixel_dfs: List[pd.DataFrame], schema: pd.DataFrame, divisions: Tuple[int, ...]
+        pixel_dfs: List[pd.DataFrame], schema: pd.DataFrame, divisions: Tuple[int, ...] | None
     ) -> Tuple[dd.DataFrame, int]:
         """Create the Dask Dataframe from the list of HEALPix pixel Dataframes
 
