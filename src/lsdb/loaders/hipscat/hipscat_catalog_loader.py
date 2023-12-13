@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Any, Dict, List, Tuple, Union
 
 import dask.dataframe as dd
@@ -68,7 +70,7 @@ class HipscatCatalogLoader:
         return paths
 
     def _load_df_from_paths(
-        self, catalog: hc.catalog.Catalog, paths: List[hc.io.FilePointer], divisions: Tuple[int, ...]
+        self, catalog: hc.catalog.Catalog, paths: List[hc.io.FilePointer], divisions: Tuple[int, ...] | None
     ) -> dd.DataFrame:
         metadata_schema = self._load_parquet_metadata_schema(catalog)
         dask_meta_schema = metadata_schema.empty_table().to_pandas()
