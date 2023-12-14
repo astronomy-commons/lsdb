@@ -1,4 +1,4 @@
-<img src="https://www.lsstcorporation.org/lincc/sites/default/files/PastedGraphic-8.png" width="300" height="100">
+<img src="https://github.com/lincc-frameworks/tape/blob/main/docs/DARK_Combo_sm.png?raw=true" width="300" height="100">
 <img src="https://user-images.githubusercontent.com/113376043/211332292-4705c34c-5e74-4f12-85e2-be4bacaa8700.jpg" width="300">
 
 # LSDB
