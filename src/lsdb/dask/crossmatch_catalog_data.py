@@ -15,7 +15,7 @@ from lsdb.dask.merge_catalog_functions import (
     align_catalogs_to_alignment_mapping,
     filter_by_hipscat_index_to_pixel,
     generate_meta_df_for_joined_tables,
-    get_partition_map_from_alignment_pixels,
+    get_partition_map_from_alignment_pixels, get_healpix_pixels_from_alignment,
 )
 from lsdb.types import DaskDFPixelMap
 
@@ -102,35 +102,29 @@ def crossmatch_catalog_data(
     )
 
     # get lists of HEALPix pixels from alignment to pass to cross-match
-    left_orders = [row[PixelAlignment.PRIMARY_ORDER_COLUMN_NAME] for _, row in join_pixels.iterrows()]
-    left_pixels = [row[PixelAlignment.PRIMARY_PIXEL_COLUMN_NAME] for _, row in join_pixels.iterrows()]
-    right_orders = [row[PixelAlignment.JOIN_ORDER_COLUMN_NAME] for _, row in join_pixels.iterrows()]
-    right_pixels = [row[PixelAlignment.JOIN_PIXEL_COLUMN_NAME] for _, row in join_pixels.iterrows()]
+    left_pixels, right_pixels = get_healpix_pixels_from_alignment(join_pixels)
 
     # perform the crossmatch on each partition pairing using dask delayed for lazy computation
-    joined_partitions = [
-        perform_crossmatch(
+    apply_crossmatch = np.vectorize(lambda left_df, right_df, left_pix, right_pix: perform_crossmatch(
             crossmatch_algorithm,
             left_df,
             right_df,
-            left_order,
-            left_pixel,
-            right_order,
-            right_pixel,
+            left_pix.order,
+            left_pix.pixel,
+            right_pix.order,
+            right_pix.pixel,
             left.hc_structure,
             right.hc_structure,
             suffixes,
             **kwargs,
-        )
-        for left_df, right_df, left_order, left_pixel, right_order, right_pixel in zip(
-            left_aligned_partitions,
-            right_aligned_partitions,
-            left_orders,
-            left_pixels,
-            right_orders,
-            right_pixels,
-        )
-    ]
+        ))
+
+    joined_partitions = apply_crossmatch(
+        left_aligned_partitions,
+        right_aligned_partitions,
+        left_pixels,
+        right_pixels,
+    )
 
     # generate dask df partition map from alignment
     partition_map = get_partition_map_from_alignment_pixels(join_pixels)

@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Tuple, cast
 import dask
 import dask.dataframe as dd
 import hipscat as hc
+import numpy as np
 import pandas as pd
 from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
@@ -163,12 +164,17 @@ def join_catalog_data_on(
 
     left_pixels, right_pixels = get_healpix_pixels_from_alignment(join_pixels)
 
-    joined_partitions = [
-        perform_join_on(left_df, right_df, left_on, right_on, left_pixel, right_pixel, suffixes)
-        for left_df, right_df, left_pixel, right_pixel in zip(
-            left_aligned_partitions, right_aligned_partitions, left_pixels, right_pixels
-        )
-    ]
+    apply_join = np.vectorize(lambda left_df, right_df, left_pix, right_pix: perform_join_on(
+            left_df,
+            right_df,
+            left_on,
+            right_on,
+            left_pix,
+            right_pix,
+            suffixes,
+        ))
+
+    joined_partitions = apply_join(left_aligned_partitions, right_aligned_partitions, left_pixels, right_pixels)
 
     partition_map = get_partition_map_from_alignment_pixels(join_pixels)
     meta_df = generate_meta_df_for_joined_tables([left, right], suffixes)
@@ -225,24 +231,23 @@ def join_catalog_data_through(
 
     left_pixels, right_pixels = get_healpix_pixels_from_alignment(join_pixels)
 
-    joined_partitions = [
-        perform_join_through(
+    apply_join = np.vectorize(lambda left_df, right_df, assoc_df, left_pix, right_pix: perform_join_through(
             left_df,
             right_df,
-            association_df,
-            left_pixel,
-            right_pixel,
+            assoc_df,
+            left_pix,
+            right_pix,
             association.hc_structure.catalog_info,
             suffixes,
-        )
-        for left_df, right_df, association_df, left_pixel, right_pixel in zip(
-            left_aligned_partitions,
-            right_aligned_partitions,
-            association_aligned_to_join_partitions,
-            left_pixels,
-            right_pixels,
-        )
-    ]
+        ))
+
+    joined_partitions = apply_join(
+        left_aligned_partitions,
+        right_aligned_partitions,
+        association_aligned_to_join_partitions,
+        left_pixels,
+        right_pixels,
+    )
 
     partition_map = get_partition_map_from_alignment_pixels(alignment.pixel_mapping)
     association_join_columns = [

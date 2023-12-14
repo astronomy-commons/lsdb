@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Dict, List, Sequence, Tuple
 
+import numpy as np
 import pandas as pd
 from dask.delayed import Delayed
 from hipscat.pixel_math import HealpixPixel
@@ -43,17 +44,16 @@ def get_healpix_pixels_from_alignment(
     Returns:
         a tuple of (primary_pixels, join_pixels) with lists of HealpixPixel objects
     """
-    left_pixels = [
-        HealpixPixel(
-            row[PixelAlignment.PRIMARY_ORDER_COLUMN_NAME], row[PixelAlignment.PRIMARY_PIXEL_COLUMN_NAME]
-        )
-        for _, row in pixel_mapping.iterrows()
-    ]
-    right_pixels = [
-        HealpixPixel(row[PixelAlignment.JOIN_ORDER_COLUMN_NAME], row[PixelAlignment.JOIN_PIXEL_COLUMN_NAME])
-        for _, row in pixel_mapping.iterrows()
-    ]
-    return left_pixels, right_pixels
+    make_pixel = np.vectorize(lambda a, b: HealpixPixel(a, b))
+    left_pixels = make_pixel(
+                pixel_mapping[PixelAlignment.PRIMARY_ORDER_COLUMN_NAME],
+                pixel_mapping[PixelAlignment.PRIMARY_PIXEL_COLUMN_NAME]
+            )
+    right_pixels = make_pixel(
+                pixel_mapping[PixelAlignment.JOIN_ORDER_COLUMN_NAME],
+                pixel_mapping[PixelAlignment.JOIN_PIXEL_COLUMN_NAME]
+            )
+    return list(left_pixels), list(right_pixels)
 
 
 def generate_meta_df_for_joined_tables(
@@ -127,12 +127,9 @@ def align_catalog_to_partitions(
 
     """
     dfs = catalog.to_delayed()
-    partitions = pixels.apply(
-        lambda row: dfs[catalog.get_partition_index(row[order_col], row[pixel_col])],
-        axis=1,
-    )
-    partitions_list = partitions.to_list()
-    return partitions_list
+    get_partition = np.vectorize(lambda order, pix: dfs[catalog.get_partition_index(order, pix)])
+    partitions = get_partition(pixels[order_col], pixels[pixel_col])
+    return list(partitions)
 
 
 def align_catalogs_to_alignment_mapping(
