@@ -44,7 +44,7 @@ def get_healpix_pixels_from_alignment(
     Returns:
         a tuple of (primary_pixels, join_pixels) with lists of HealpixPixel objects
     """
-    make_pixel = np.vectorize(lambda a, b: HealpixPixel(a, b))
+    make_pixel = np.vectorize(HealpixPixel)
     left_pixels = make_pixel(
         pixel_mapping[PixelAlignment.PRIMARY_ORDER_COLUMN_NAME],
         pixel_mapping[PixelAlignment.PRIMARY_PIXEL_COLUMN_NAME],
