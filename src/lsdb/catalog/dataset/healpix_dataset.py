@@ -13,7 +13,7 @@ class HealpixDataset(Dataset):
     spatial operations.
 
     Attributes:
-        hc_structure: `hipscat.Catalog` object representing the structure
+        hc_structure: `hipscat.Dataset` object representing the structure
                       and metadata of the HiPSCat catalog
     """
 

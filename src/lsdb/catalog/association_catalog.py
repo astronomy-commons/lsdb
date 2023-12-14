@@ -6,11 +6,11 @@ from lsdb.types import DaskDFPixelMap
 
 
 class AssociationCatalog(HealpixDataset):
-    """LSDB Catalog DataFrame to perform analysis of sky catalogs and efficient
+    """LSDB Association Catalog DataFrame to perform join analysis of sky catalogs and efficient
     spatial operations.
 
     Attributes:
-        hc_structure: `hipscat.Catalog` object representing the structure
+        hc_structure: `hipscat.AssociationCatalog` object representing the structure
                       and metadata of the HiPSCat catalog
     """
 
