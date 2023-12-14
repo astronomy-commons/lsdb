@@ -69,7 +69,7 @@ class AbstractCatalogLoader(Generic[CatalogTypeVar]):
         return paths
 
     def _load_df_from_paths(
-        self, catalog: HCHealpixDataset, paths: List[hc.io.FilePointer], divisions: Tuple[int, ...]
+        self, catalog: HCHealpixDataset, paths: List[hc.io.FilePointer], divisions: Tuple[int, ...] | None
     ) -> dd.DataFrame:
         metadata_schema = self._load_parquet_metadata_schema(catalog)
         dask_meta_schema = metadata_schema.empty_table().to_pandas()
