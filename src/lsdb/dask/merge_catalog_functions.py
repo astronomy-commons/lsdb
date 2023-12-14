@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Dict, List, Sequence, Tuple
+from typing import TYPE_CHECKING, List, Sequence, Tuple
 
 import numpy as np
 import pandas as pd
@@ -46,13 +46,13 @@ def get_healpix_pixels_from_alignment(
     """
     make_pixel = np.vectorize(lambda a, b: HealpixPixel(a, b))
     left_pixels = make_pixel(
-                pixel_mapping[PixelAlignment.PRIMARY_ORDER_COLUMN_NAME],
-                pixel_mapping[PixelAlignment.PRIMARY_PIXEL_COLUMN_NAME]
-            )
+        pixel_mapping[PixelAlignment.PRIMARY_ORDER_COLUMN_NAME],
+        pixel_mapping[PixelAlignment.PRIMARY_PIXEL_COLUMN_NAME],
+    )
     right_pixels = make_pixel(
-                pixel_mapping[PixelAlignment.JOIN_ORDER_COLUMN_NAME],
-                pixel_mapping[PixelAlignment.JOIN_PIXEL_COLUMN_NAME]
-            )
+        pixel_mapping[PixelAlignment.JOIN_ORDER_COLUMN_NAME],
+        pixel_mapping[PixelAlignment.JOIN_PIXEL_COLUMN_NAME],
+    )
     return list(left_pixels), list(right_pixels)
 
 

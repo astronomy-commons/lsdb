@@ -164,7 +164,8 @@ def join_catalog_data_on(
 
     left_pixels, right_pixels = get_healpix_pixels_from_alignment(join_pixels)
 
-    apply_join = np.vectorize(lambda left_df, right_df, left_pix, right_pix: perform_join_on(
+    apply_join = np.vectorize(
+        lambda left_df, right_df, left_pix, right_pix: perform_join_on(
             left_df,
             right_df,
             left_on,
@@ -172,9 +173,12 @@ def join_catalog_data_on(
             left_pix,
             right_pix,
             suffixes,
-        ))
+        )
+    )
 
-    joined_partitions = apply_join(left_aligned_partitions, right_aligned_partitions, left_pixels, right_pixels)
+    joined_partitions = apply_join(
+        left_aligned_partitions, right_aligned_partitions, left_pixels, right_pixels
+    )
 
     partition_map = get_partition_map_from_alignment_pixels(join_pixels)
     meta_df = generate_meta_df_for_joined_tables([left, right], suffixes)
@@ -231,7 +235,8 @@ def join_catalog_data_through(
 
     left_pixels, right_pixels = get_healpix_pixels_from_alignment(join_pixels)
 
-    apply_join = np.vectorize(lambda left_df, right_df, assoc_df, left_pix, right_pix: perform_join_through(
+    apply_join = np.vectorize(
+        lambda left_df, right_df, assoc_df, left_pix, right_pix: perform_join_through(
             left_df,
             right_df,
             assoc_df,
@@ -239,7 +244,8 @@ def join_catalog_data_through(
             right_pix,
             association.hc_structure.catalog_info,
             suffixes,
-        ))
+        )
+    )
 
     joined_partitions = apply_join(
         left_aligned_partitions,

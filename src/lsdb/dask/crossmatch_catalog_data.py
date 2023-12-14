@@ -15,7 +15,8 @@ from lsdb.dask.merge_catalog_functions import (
     align_catalogs_to_alignment_mapping,
     filter_by_hipscat_index_to_pixel,
     generate_meta_df_for_joined_tables,
-    get_partition_map_from_alignment_pixels, get_healpix_pixels_from_alignment,
+    get_partition_map_from_alignment_pixels,
+    get_healpix_pixels_from_alignment,
 )
 from lsdb.types import DaskDFPixelMap
 
@@ -105,7 +106,8 @@ def crossmatch_catalog_data(
     left_pixels, right_pixels = get_healpix_pixels_from_alignment(join_pixels)
 
     # perform the crossmatch on each partition pairing using dask delayed for lazy computation
-    apply_crossmatch = np.vectorize(lambda left_df, right_df, left_pix, right_pix: perform_crossmatch(
+    apply_crossmatch = np.vectorize(
+        lambda left_df, right_df, left_pix, right_pix: perform_crossmatch(
             crossmatch_algorithm,
             left_df,
             right_df,
@@ -117,7 +119,8 @@ def crossmatch_catalog_data(
             right.hc_structure,
             suffixes,
             **kwargs,
-        ))
+        )
+    )
 
     joined_partitions = apply_crossmatch(
         left_aligned_partitions,
