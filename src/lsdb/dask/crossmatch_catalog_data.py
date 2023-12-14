@@ -4,12 +4,13 @@ from typing import TYPE_CHECKING, Tuple, Type, cast
 
 import dask
 import dask.dataframe as dd
-import pandas as pd
+import numpy as np
 from hipscat.pixel_tree import PixelAlignment, PixelAlignmentType, align_trees
 
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
 from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorithm
 from lsdb.core.crossmatch.kdtree_match import KdTreeCrossmatch
+from lsdb.dask.divisions import get_pixels_divisions
 from lsdb.dask.merge_catalog_functions import (
     align_catalogs_to_alignment_mapping,
     filter_by_hipscat_index_to_pixel,
@@ -134,63 +135,11 @@ def crossmatch_catalog_data(
     )
 
     # create dask df from delayed partitions
-    ddf = dd.from_delayed(joined_partitions, meta=meta_df)
+    divisions = get_pixels_divisions(list(partition_map.keys()))
+    ddf = dd.from_delayed(joined_partitions, meta=meta_df, divisions=divisions)
     ddf = cast(dd.DataFrame, ddf)
 
     return ddf, partition_map, alignment
-
-
-def generate_meta_df_for_joined_tables(
-    catalogs: Sequence[Catalog],
-    suffixes: Sequence[str],
-    extra_columns: pd.DataFrame | None = None,
-    index_name: str = HIPSCAT_ID_COLUMN,
-) -> pd.DataFrame:
-    """Generates a Dask meta DataFrame that would result from joining two catalogs
-
-    Creates an empty dataframe with the columns of each catalog appended with a suffix. Allows specifying
-    extra columns that should also be added, and the name of the index of the resulting dataframe.
-
-    Args:
-        catalogs (Sequence[Catalog]): The catalogs to merge together
-        suffixes (Sequence[Str]): The column suffixes to apply each catalog
-        extra_columns (pd.Dataframe): Any additional columns to the merged catalogs
-        index_name (str): The name of the index in the resulting DataFrame
-
-    Returns:
-    An empty dataframe with the columns of each catalog with their respective suffix, and any extra columns
-    specified, with the index name set.
-    """
-    meta = {}
-    # Construct meta for crossmatched catalog columns
-    for table, suffix in zip(catalogs, suffixes):
-        for name, col_type in table.dtypes.items():
-            meta[name + suffix] = pd.Series(dtype=col_type)
-    # Construct meta for crossmatch result columns
-    if extra_columns is not None:
-        meta.update(extra_columns)
-    meta_df = pd.DataFrame(meta)
-    meta_df.index.name = index_name
-    return meta_df
-
-
-def get_partition_map_from_alignment_pixels(join_pixels: pd.DataFrame) -> DaskDFPixelMap:
-    """Gets a dictionary mapping HEALPix pixel to index of pixel in the pixel_mapping of a `PixelAlignment`
-
-    Args:
-        join_pixels (pd.DataFrame): The pixel_mapping from a `PixelAlignment` object
-
-    Returns:
-        A dictionary mapping HEALPix pixel to the index that the pixel occurs in the pixel_mapping table
-    """
-    partition_map = {}
-    for i, (_, row) in enumerate(join_pixels.iterrows()):
-        pixel = HealpixPixel(
-            order=row[PixelAlignment.ALIGNED_ORDER_COLUMN_NAME],
-            pixel=row[PixelAlignment.ALIGNED_PIXEL_COLUMN_NAME],
-        )
-        partition_map[pixel] = i
-    return partition_map
 
 
 def get_crossmatch_algorithm(

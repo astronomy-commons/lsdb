@@ -59,7 +59,7 @@ def get_healpix_pixels_from_alignment(
 def generate_meta_df_for_joined_tables(
     catalogs: Sequence[Catalog],
     suffixes: Sequence[str],
-    extra_columns: Dict[str, pd.Series] | None = None,
+    extra_columns: pd.DataFrame | None = None,
     index_name: str = HIPSCAT_ID_COLUMN,
 ) -> pd.DataFrame:
     """Generates a Dask meta DataFrame that would result from joining two catalogs
@@ -70,17 +70,19 @@ def generate_meta_df_for_joined_tables(
     Args:
         catalogs (Sequence[Catalog]): The catalogs to merge together
         suffixes (Sequence[Str]): The column suffixes to apply each catalog
-        extra_columns (Dict[str, pd.Series]): Any additional columns to the merged catalogs
-        index_name: The name of the index in the resulting DataFrame
+        extra_columns (pd.Dataframe): Any additional columns to the merged catalogs
+        index_name (str): The name of the index in the resulting DataFrame
 
     Returns:
     An empty dataframe with the columns of each catalog with their respective suffix, and any extra columns
     specified, with the index name set.
     """
     meta = {}
+    # Construct meta for crossmatched catalog columns
     for table, suffix in zip(catalogs, suffixes):
         for name, col_type in table.dtypes.items():
             meta[name + suffix] = pd.Series(dtype=col_type)
+    # Construct meta for crossmatch result columns
     if extra_columns is not None:
         meta.update(extra_columns)
     meta_df = pd.DataFrame(meta)
