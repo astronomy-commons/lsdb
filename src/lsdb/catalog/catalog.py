@@ -18,8 +18,8 @@ from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorith
 from lsdb.core.search.cone_search import cone_filter
 from lsdb.core.search.polygon_search import polygon_filter
 from lsdb.dask.crossmatch_catalog_data import crossmatch_catalog_data
-from lsdb.dask.join_catalog_data import join_catalog_data_on, join_catalog_data_through
 from lsdb.dask.divisions import get_pixels_divisions
+from lsdb.dask.join_catalog_data import join_catalog_data_on, join_catalog_data_through
 from lsdb.types import DaskDFPixelMap
 
 
