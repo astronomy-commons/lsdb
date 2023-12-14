@@ -1,1 +1,1 @@
-[{"name": "benchmarks.time_kdtree_crossmatch", "idx": null, "pretty_name": "benchmarks.time_kdtree_crossmatch", "last_rev": 241, "last_value": 0.03440651250001281, "last_err": 0.0018727299347012585, "prev_value": null, "change_rev": null}]
+[{"name": "benchmarks.time_kdtree_crossmatch", "idx": null, "pretty_name": "benchmarks.time_kdtree_crossmatch", "last_rev": 243, "last_value": 0.03378821599999071, "last_err": 0.0017956102644391453, "prev_value": null, "change_rev": null}]
