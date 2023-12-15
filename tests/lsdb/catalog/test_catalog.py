@@ -121,3 +121,11 @@ def test_save_catalog(small_sky_catalog, tmp_path):
     assert expected_catalog.hc_structure.catalog_info == small_sky_catalog.hc_structure.catalog_info
     assert expected_catalog.get_healpix_pixels() == small_sky_catalog.get_healpix_pixels()
     pd.testing.assert_frame_equal(expected_catalog.compute(), small_sky_catalog._ddf.compute())
+
+
+def test_save_catalog_overwrite(small_sky_catalog, tmp_path):
+    base_catalog_path = os.path.join(tmp_path, "small_sky")
+    small_sky_catalog.to_hipscat(base_catalog_path)
+    with pytest.raises(FileExistsError):
+        small_sky_catalog.to_hipscat(base_catalog_path)
+    small_sky_catalog.to_hipscat(base_catalog_path, overwrite=True)
