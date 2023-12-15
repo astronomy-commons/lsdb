@@ -51,6 +51,7 @@ def to_hipscat(
     catalog: Catalog,
     base_catalog_path: str,
     catalog_name: Union[str, None] = None,
+    overwrite: bool = False,
     storage_options: Union[Dict[Any, Any], None] = None,
     **kwargs,
 ):
@@ -62,12 +63,13 @@ def to_hipscat(
         catalog (Catalog): A catalog to export
         base_catalog_path (str): Location where catalog is saved to
         catalog_name (str): The name of the output catalog
+        overwrite (bool): If True existing catalog is overwritten
         storage_options (dict): Dictionary that contains abstract filesystem credentials
         **kwargs: Arguments to pass to the parquet write operations
     """
     # Create base directory
     base_catalog_dir_fp = hc.io.get_file_pointer_from_path(base_catalog_path)
-    hc.io.file_io.make_directory(base_catalog_dir_fp)
+    hc.io.file_io.make_directory(base_catalog_dir_fp, overwrite, storage_options)
     # Save partition parquet files
     pixel_to_partition_size_map = write_partitions(catalog, base_catalog_dir_fp, storage_options, **kwargs)
     # Save parquet metadata
