@@ -19,11 +19,11 @@ if TYPE_CHECKING:
 
 @dask.delayed
 def perform_write(
-        df: pd.DataFrame,
-        hp_pixel: HealpixPixel,
-        base_catalog_dir: FilePointer,
-        storage_options: dict | None = None,
-        **kwargs
+    df: pd.DataFrame,
+    hp_pixel: HealpixPixel,
+    base_catalog_dir: FilePointer,
+    storage_options: dict | None = None,
+    **kwargs,
 ) -> int:
     """Performs a write of a pandas dataframe to a single parquet file, following the hipscat structure.
 
@@ -102,7 +102,7 @@ def write_partitions(
     catalog: Catalog,
     base_catalog_dir_fp: FilePointer,
     storage_options: Union[Dict[Any, Any], None] = None,
-    **kwargs
+    **kwargs,
 ) -> Dict[HealpixPixel, int]:
     """Saves catalog partitions as parquet to disk
 
@@ -119,11 +119,25 @@ def write_partitions(
     pixel_to_result_index = {}
 
     partitions = catalog._ddf.to_delayed()
+
+    # Get the indices of non-empty partitions
+    partition_sizes = catalog._ddf.map_partitions(len).compute()
+    non_empty_partitions = partition_sizes[partition_sizes > 0].index.tolist()
+    if len(non_empty_partitions) == 0:
+        raise AssertionError("The output catalog is empty")
+
     for index, (pixel, partition_index) in enumerate(catalog._ddf_pixel_map.items()):
-        results.append(
-            perform_write(partitions[partition_index], pixel, base_catalog_dir_fp, storage_options, **kwargs)
-        )
-        pixel_to_result_index[pixel] = index
+        if partition_index in non_empty_partitions:
+            results.append(
+                perform_write(
+                    partitions[partition_index],
+                    pixel,
+                    base_catalog_dir_fp,
+                    storage_options,
+                    **kwargs,
+                )
+            )
+            pixel_to_result_index[pixel] = index
 
     partition_sizes = dask.compute(*results)
 

@@ -358,6 +358,7 @@ class Catalog(Dataset):
         Args:
             base_catalog_path (str): Location where catalog is saved to
             catalog_name (str): The name of the catalog to be saved
+            overwrite (bool): If True existing catalog is overwritten
             storage_options (dict): Dictionary that contains abstract filesystem credentials
             **kwargs: Arguments to pass to the parquet write operations
         """
