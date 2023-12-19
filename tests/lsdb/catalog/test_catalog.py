@@ -2,14 +2,11 @@ import os
 
 import dask.array as da
 import dask.dataframe as dd
-import hipscat as hc
 import pandas as pd
 import pytest
-from hipscat.catalog.catalog_info import CatalogInfo
 from hipscat.pixel_math import HealpixPixel
 
 import lsdb
-from lsdb import Catalog
 
 
 def test_catalog_pixels_equals_hc_catalog_pixels(small_sky_order1_catalog, small_sky_order1_hipscat_catalog):
@@ -134,17 +131,22 @@ def test_save_catalog_overwrite(small_sky_catalog, tmp_path):
     small_sky_catalog.to_hipscat(base_catalog_path, overwrite=True)
 
 
-def test_save_catalog_when_catalog_is_empty(tmp_path):
+def test_save_catalog_when_catalog_is_empty(small_sky_order1_catalog, tmp_path):
     base_catalog_path = os.path.join(tmp_path, "small_sky")
-    # Create catalog of empty partitions
-    empty_ddf = dd.from_pandas(pd.DataFrame(columns=["id", "ra", "dec"]), npartitions=2)
-    healpix_pixels = [HealpixPixel(0, 0), HealpixPixel(0, 1)]
-    ddf_pixel_map = {pixel: i for i, pixel in enumerate(healpix_pixels)}
-    hc_structure = hc.catalog.Catalog(CatalogInfo(total_rows=0), healpix_pixels)
-    catalog = Catalog(empty_ddf, ddf_pixel_map, hc_structure)
+
+    # The result of this cone search is known to be empty
+    cone_search_catalog = small_sky_order1_catalog.cone_search(0, -80, 1)
+    assert cone_search_catalog._ddf.npartitions == 1
+
+    non_empty_pixels = []
+    for pixel, partition_index in cone_search_catalog._ddf_pixel_map.items():
+        if len(cone_search_catalog._ddf.partitions[partition_index]) > 0:
+            non_empty_pixels.append(pixel)
+    assert len(non_empty_pixels) == 0
+
     # The catalog is not written to disk
     with pytest.raises(AssertionError, match="The output catalog is empty"):
-        catalog.to_hipscat(base_catalog_path)
+        cone_search_catalog.to_hipscat(base_catalog_path)
 
 
 def test_save_catalog_with_some_empty_partitions(small_sky_order1_catalog, tmp_path):

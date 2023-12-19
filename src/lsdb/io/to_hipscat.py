@@ -39,6 +39,8 @@ def perform_write(
     Returns:
         number of rows written to disk
     """
+    if len(df) == 0:
+        return 0
     pixel_dir = hc.io.pixel_directory(base_catalog_dir, hp_pixel.order, hp_pixel.pixel)
     hc.io.file_io.make_directory(pixel_dir, exist_ok=True, storage_options=storage_options)
     pixel_path = hc.io.paths.pixel_catalog_file(base_catalog_dir, hp_pixel.order, hp_pixel.pixel)
@@ -120,29 +122,27 @@ def write_partitions(
 
     partitions = catalog._ddf.to_delayed()
 
-    # Get the indices of non-empty partitions
-    partition_sizes = catalog._ddf.map_partitions(len).compute()
-    non_empty_partitions = partition_sizes[partition_sizes > 0].index.tolist()
-    if len(non_empty_partitions) == 0:
-        raise AssertionError("The output catalog is empty")
-
     for index, (pixel, partition_index) in enumerate(catalog._ddf_pixel_map.items()):
-        if partition_index in non_empty_partitions:
-            results.append(
-                perform_write(
-                    partitions[partition_index],
-                    pixel,
-                    base_catalog_dir_fp,
-                    storage_options,
-                    **kwargs,
-                )
+        results.append(
+            perform_write(
+                partitions[partition_index],
+                pixel,
+                base_catalog_dir_fp,
+                storage_options,
+                **kwargs,
             )
-            pixel_to_result_index[pixel] = index
+        )
+        pixel_to_result_index[pixel] = index
 
     partition_sizes = dask.compute(*results)
 
+    if all(size == 0 for size in partition_sizes):
+        raise AssertionError("The output catalog is empty")
+
     pixel_to_partition_size_map = {
-        pixel: partition_sizes[index] for pixel, index in pixel_to_result_index.items()
+        pixel: partition_sizes[index]
+        for pixel, index in pixel_to_result_index.items()
+        if partition_sizes[index] > 0
     }
 
     return pixel_to_partition_size_map
