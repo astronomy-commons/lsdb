@@ -18,7 +18,7 @@ A framework to facilitate and enable spatial analysis for extremely large astron
 multiple HiPSCat partitioned surveys.
 
 Check out our [ReadTheDocs site](https://lsdb.readthedocs.io/en/latest/)
-for more information on partitioning, installation, and contributing.
+for more information on NONSWENSWE, installation, and contributing.
 
 See related projects:
 
