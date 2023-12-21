@@ -1,11 +1,12 @@
 from typing import List, Tuple
 
 import dask
+import healpy as hp
 import hipscat as hc
 import numpy as np
 import pandas as pd
-from hipscat.pixel_math.polygon_filter import CartesianCoordinates, SkyCoordinates
-from lsst.sphgeom import ConvexPolygon, LonLat, UnitVector3d
+from hipscat.pixel_math.polygon_filter import CartesianCoordinates, SphericalCoordinates
+from lsst.sphgeom import ConvexPolygon, UnitVector3d
 
 
 @dask.delayed
@@ -28,18 +29,20 @@ def polygon_filter(data_frame: pd.DataFrame, polygon: ConvexPolygon, metadata: h
     return data_frame
 
 
-def get_cartesian_polygon(vertices: List[SkyCoordinates]) -> Tuple[ConvexPolygon, List[CartesianCoordinates]]:
+def get_cartesian_polygon(
+    vertices: List[SphericalCoordinates],
+) -> Tuple[ConvexPolygon, List[CartesianCoordinates]]:
     """Creates the convex polygon to filter pixels with. It transforms the vertices, provided
     in sky coordinates of ra and dec, to their respective cartesian representation on the unit sphere.
 
     Arguments:
-        vertices (List[SkyCoordinates]): The pairs of ra and dec coordinates, in degrees
+        vertices (List[SphericalCoordinates]): The list of vertices of the polygon to
+            filter pixels with, as a list of (ra,dec) coordinates, in degrees.
 
     Returns:
         A tuple, where the first element is the convex polygon object and the second is the
         list of cartesian coordinates of its vertices.
     """
-    vertices_vectors = [UnitVector3d(LonLat.fromDegrees(ra, dec)) for ra, dec in vertices]
-    polygon = ConvexPolygon(vertices_vectors)
-    vertices_xyz = [(vector.x(), vector.y(), vector.z()) for vector in vertices_vectors]
-    return polygon, vertices_xyz
+    vertices_xyz = hp.ang2vec(*np.array(vertices).T, lonlat=True)
+    vertices_vectors = [UnitVector3d(x, y, z) for x, y, z in vertices_xyz]
+    return ConvexPolygon(vertices_vectors), vertices_xyz

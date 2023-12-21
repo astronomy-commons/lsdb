@@ -8,7 +8,7 @@ import hipscat as hc
 import numpy as np
 from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.healpix_pixel_function import get_pixel_argsort
-from hipscat.pixel_math.polygon_filter import SkyCoordinates
+from hipscat.pixel_math.polygon_filter import SphericalCoordinates
 
 from lsdb import io
 from lsdb.catalog.dataset.dataset import Dataset
@@ -265,15 +265,15 @@ class Catalog(Dataset):
         ddf_partition_map = {pixel: i for i, pixel in enumerate(pixels_in_cone)}
         return Catalog(cone_search_ddf, ddf_partition_map, filtered_hc_structure)
 
-    def polygon_search(self, vertices: List[SkyCoordinates]) -> Catalog:
+    def polygon_search(self, vertices: List[SphericalCoordinates]) -> Catalog:
         """Perform a polygonal search to filter the catalog.
 
         Filters to points within the polygonal region specified in ra and dec, in degrees.
         Filters partitions in the catalog to those that have some overlap with the region.
 
         Args:
-            vertices (List[SkyCoordinates]): The list of vertices of the polygon to filter
-                pixels with. They should be pairs of ra and dec coordinates, in degrees.
+            vertices (List[SphericalCoordinates]): The list of vertices of the polygon to
+                filter pixels with, as a list of (ra,dec) coordinates, in degrees.
 
         Returns:
             A new catalog containing the points filtered to those within the
