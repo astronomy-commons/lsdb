@@ -145,7 +145,7 @@ def test_save_catalog_when_catalog_is_empty(small_sky_order1_catalog, tmp_path):
     assert len(non_empty_pixels) == 0
 
     # The catalog is not written to disk
-    with pytest.raises(AssertionError, match="The output catalog is empty"):
+    with pytest.raises(RuntimeError, match="The output catalog is empty"):
         cone_search_catalog.to_hipscat(base_catalog_path)
 
 

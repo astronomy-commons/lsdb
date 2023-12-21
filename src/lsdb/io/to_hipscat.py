@@ -137,7 +137,7 @@ def write_partitions(
     partition_sizes = dask.compute(*results)
 
     if all(size == 0 for size in partition_sizes):
-        raise AssertionError("The output catalog is empty")
+        raise RuntimeError("The output catalog is empty")
 
     pixel_to_partition_size_map = {
         pixel: partition_sizes[index]
