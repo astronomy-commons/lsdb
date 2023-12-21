@@ -351,6 +351,7 @@ class Catalog(Dataset):
         self,
         base_catalog_path: str,
         catalog_name: Union[str, None] = None,
+        overwrite: bool = False,
         storage_options: Union[Dict[Any, Any], None] = None,
         **kwargs,
     ):
@@ -362,7 +363,7 @@ class Catalog(Dataset):
             storage_options (dict): Dictionary that contains abstract filesystem credentials
             **kwargs: Arguments to pass to the parquet write operations
         """
-        io.to_hipscat(self, base_catalog_path, catalog_name, storage_options, **kwargs)
+        io.to_hipscat(self, base_catalog_path, catalog_name, overwrite, storage_options, **kwargs)
 
     def join(
         self,
