@@ -43,6 +43,13 @@ def test_join_association(small_sky_catalog, small_sky_xmatch_catalog, small_sky
     joined_data = joined.compute()
     association_data = small_sky_to_xmatch_catalog.compute()
     assert len(joined_data) == len(association_data)
+
+    for col in small_sky_catalog._ddf.columns:
+        assert col + suffixes[0] in joined._ddf.columns
+
+    for col in small_sky_xmatch_catalog._ddf.columns:
+        assert col + suffixes[1] in joined._ddf.columns
+
     for _, row in association_data.iterrows():
         left_col = small_sky_to_xmatch_catalog.hc_structure.catalog_info.primary_column + suffixes[0]
         right_col = small_sky_to_xmatch_catalog.hc_structure.catalog_info.join_column + suffixes[1]
@@ -51,7 +58,16 @@ def test_join_association(small_sky_catalog, small_sky_xmatch_catalog, small_sky
         joined_row = joined_data.query(f"{left_col} == {left_id} & {right_col} == {right_id}")
         assert len(joined_row) == 1
         small_sky_col = small_sky_to_xmatch_catalog.hc_structure.catalog_info.primary_column
-        left_index = small_sky_catalog.compute().query(f"{small_sky_col}=={left_id}").index
+        left_row = small_sky_catalog.compute().query(f"{small_sky_col}=={left_id}")
+        for col in left_row.columns:
+            assert joined_row[col + suffixes[0]].values == left_row[col].values
+
+        small_sky_xmatch_col = small_sky_to_xmatch_catalog.hc_structure.catalog_info.join_column
+        right_row = small_sky_xmatch_catalog.compute().query(f"{small_sky_xmatch_col}=={right_id}")
+        for col in right_row.columns:
+            assert joined_row[col + suffixes[1]].values == right_row[col].values
+
+        left_index = left_row.index
         assert joined_row.index == left_index
 
 
