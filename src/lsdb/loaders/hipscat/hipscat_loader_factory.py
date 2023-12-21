@@ -1,24 +1,25 @@
-from typing import Any, Dict, Type, TypeVar, Union
+from typing import Any, Dict, Type, Union
 
+from lsdb.catalog.association_catalog import AssociationCatalog
 from lsdb.catalog.catalog import Catalog
 from lsdb.catalog.dataset.dataset import Dataset
+from lsdb.loaders.hipscat.abstract_catalog_loader import AbstractCatalogLoader
+from lsdb.loaders.hipscat.association_catalog_loader import AssociationCatalogLoader
 from lsdb.loaders.hipscat.hipscat_catalog_loader import HipscatCatalogLoader
 from lsdb.loaders.hipscat.hipscat_loading_config import HipscatLoadingConfig
 
-CatalogTypeVar = TypeVar("CatalogTypeVar", bound=Dataset)
-
-
-loader_class_for_catalog_type: Dict[Type[Dataset], Type[HipscatCatalogLoader]] = {
+loader_class_for_catalog_type: Dict[Type[Dataset], Type[AbstractCatalogLoader]] = {
     Catalog: HipscatCatalogLoader,
+    AssociationCatalog: AssociationCatalogLoader,
 }
 
 
 def get_loader_for_type(
-    catalog_type_to_use: Type[CatalogTypeVar],
+    catalog_type_to_use: Type[Dataset],
     path: str,
     config: HipscatLoadingConfig,
     storage_options: Union[Dict[Any, Any], None] = None,
-) -> HipscatCatalogLoader:
+) -> AbstractCatalogLoader:
     """Constructs a CatalogLoader that loads a Dataset of the specified type
 
     Args:
