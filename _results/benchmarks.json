@@ -14,5 +14,20 @@
         "version": "f723cec0bbf1a08bdb018e50f7c5095cdaed2a193d6eb25133c2600fd73fd2c5",
         "warmup_time": -1
     },
+    "benchmarks.time_polygon_search": {
+        "code": "def time_polygon_search():\n    \"\"\"Time polygonal search using spherical-geometry\"\"\"\n    small_sky_order1 = load_small_sky_order1().compute()\n    # Define search polygon\n    polygon_ra, polygon_dec = [300, 300, 272, 272], [-50, -55, -55, -50]\n    polygon = SingleSphericalPolygon.from_lonlat(polygon_ra, polygon_dec)\n    # Upsample test catalog to 10,000 points\n    num_points = 10_000\n    catalog_ra = upsample_array(small_sky_order1[\"ra\"].values, num_points)\n    catalog_dec = upsample_array(small_sky_order1[\"dec\"].values, num_points)\n    # Perform the check for each point on the catalog\n    for ra, dec in zip(catalog_ra, catalog_dec):\n        polygon.contains_lonlat(ra, dec)",
+        "min_run_count": 2,
+        "name": "benchmarks.time_polygon_search",
+        "number": 0,
+        "param_names": [],
+        "params": [],
+        "repeat": 0,
+        "rounds": 2,
+        "sample_time": 0.01,
+        "type": "time",
+        "unit": "seconds",
+        "version": "3e1d19e28e82b29ca7291de64b3cac28784942049fe86188cd370e8f98f920eb",
+        "warmup_time": -1
+    },
     "version": 2
 }
