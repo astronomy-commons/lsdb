@@ -11,19 +11,20 @@ from hipscat.pixel_math.healpix_pixel_function import get_pixel_argsort
 from hipscat.pixel_math.polygon_filter import SphericalCoordinates
 
 from lsdb import io
-from lsdb.catalog.dataset.dataset import Dataset
+from lsdb.catalog.association_catalog import AssociationCatalog
+from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
 from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorithm
 from lsdb.core.search.cone_search import cone_filter
 from lsdb.core.search.polygon_search import get_cartesian_polygon, polygon_filter
 from lsdb.dask.crossmatch_catalog_data import crossmatch_catalog_data
 from lsdb.dask.divisions import get_pixels_divisions
-from lsdb.dask.join_catalog_data import join_catalog_data_on
+from lsdb.dask.join_catalog_data import join_catalog_data_on, join_catalog_data_through
 from lsdb.types import DaskDFPixelMap
 
 
 # pylint: disable=R0903, W0212
-class Catalog(Dataset):
+class Catalog(HealpixDataset):
     """LSDB Catalog DataFrame to perform analysis of sky catalogs and efficient
     spatial operations.
 
@@ -50,16 +51,7 @@ class Catalog(Dataset):
             ddf_pixel_map: Dictionary mapping HEALPix order and pixel to partition index of ddf
             hc_structure: `hipscat.Catalog` object with hipscat metadata of the catalog
         """
-        super().__init__(ddf, hc_structure)
-        self._ddf_pixel_map = ddf_pixel_map
-
-    def get_healpix_pixels(self) -> List[HealpixPixel]:
-        """Get all HEALPix pixels that are contained in the catalog
-
-        Returns:
-            List of all Healpix pixels in the catalog
-        """
-        return self.hc_structure.get_healpix_pixels()
+        super().__init__(ddf, ddf_pixel_map, hc_structure)
 
     def get_ordered_healpix_pixels(self) -> List[HealpixPixel]:
         """Get all HEALPix pixels that are contained in the catalog,
@@ -70,42 +62,6 @@ class Catalog(Dataset):
         """
         pixels = self.get_healpix_pixels()
         return np.array(pixels)[get_pixel_argsort(pixels)]
-
-    def get_partition(self, order: int, pixel: int) -> dd.DataFrame:
-        """Get the dask partition for a given HEALPix pixel
-
-        Args:
-            order: Order of HEALPix pixel
-            pixel: HEALPix pixel number in NESTED ordering scheme
-        Returns:
-            Dask Dataframe with a single partition with data at that pixel
-        Raises:
-            Value error if no data exists for the specified pixel
-        """
-        partition_index = self.get_partition_index(order, pixel)
-        return self._ddf.partitions[partition_index]
-
-    def get_partition_index(self, order: int, pixel: int) -> int:
-        """Get the dask partition for a given HEALPix pixel
-
-        Args:
-            order: Order of HEALPix pixel
-            pixel: HEALPix pixel number in NESTED ordering scheme
-        Returns:
-            Dask Dataframe with a single partition with data at that pixel
-        Raises:
-            Value error if no data exists for the specified pixel
-        """
-        hp_pixel = HealpixPixel(order, pixel)
-        if not hp_pixel in self._ddf_pixel_map:
-            raise ValueError(f"Pixel at order {order} pixel {pixel} not in Catalog")
-        partition_index = self._ddf_pixel_map[hp_pixel]
-        return partition_index
-
-    @property
-    def name(self):
-        """The name of the catalog"""
-        return self.hc_structure.catalog_name
 
     def query(self, expr: str) -> Catalog:
         """Filters catalog using a complex query expression
@@ -368,8 +324,9 @@ class Catalog(Dataset):
     def join(
         self,
         other: Catalog,
-        left_on: str,
-        right_on: str,
+        left_on: str | None = None,
+        right_on: str | None = None,
+        through: AssociationCatalog | None = None,
         suffixes: Tuple[str, str] | None = None,
         output_catalog_name: str | None = None,
     ) -> Catalog:
@@ -396,6 +353,22 @@ class Catalog(Dataset):
         if len(suffixes) != 2:
             raise ValueError("`suffixes` must be a tuple with two strings")
 
+        if through is not None:
+            ddf, ddf_map, alignment = join_catalog_data_through(self, other, through, suffixes)
+
+            if output_catalog_name is None:
+                output_catalog_name = self.hc_structure.catalog_info.catalog_name
+
+            new_catalog_info = dataclasses.replace(
+                self.hc_structure.catalog_info,
+                catalog_name=output_catalog_name,
+                ra_column=self.hc_structure.catalog_info.ra_column + suffixes[0],
+                dec_column=self.hc_structure.catalog_info.dec_column + suffixes[0],
+            )
+            hc_catalog = hc.catalog.Catalog(new_catalog_info, alignment.pixel_tree)
+            return Catalog(ddf, ddf_map, hc_catalog)
+        if left_on is None or right_on is None:
+            raise ValueError("Either both of left_on and right_on, or through must be set")
         if left_on not in self._ddf.columns:
             raise ValueError("left_on must be a column in the left catalog")
 
