@@ -19,11 +19,11 @@ if TYPE_CHECKING:
 
 @dask.delayed
 def perform_write(
-        df: pd.DataFrame,
-        hp_pixel: HealpixPixel,
-        base_catalog_dir: FilePointer,
-        storage_options: dict | None = None,
-        **kwargs
+    df: pd.DataFrame,
+    hp_pixel: HealpixPixel,
+    base_catalog_dir: FilePointer,
+    storage_options: dict | None = None,
+    **kwargs,
 ) -> int:
     """Performs a write of a pandas dataframe to a single parquet file, following the hipscat structure.
 
@@ -102,7 +102,7 @@ def write_partitions(
     catalog: Catalog,
     base_catalog_dir_fp: FilePointer,
     storage_options: Union[Dict[Any, Any], None] = None,
-    **kwargs
+    **kwargs,
 ) -> Dict[HealpixPixel, int]:
     """Saves catalog partitions as parquet to disk
 

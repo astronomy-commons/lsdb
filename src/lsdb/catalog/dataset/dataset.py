@@ -51,6 +51,11 @@ class Dataset:
         return self._ddf.to_delayed(optimize_graph=optimize_graph)
 
     @property
+    def name(self):
+        """The name of the catalog"""
+        return self.hc_structure.catalog_name
+
+    @property
     def dtypes(self):
         """Returns the datatypes of the columns in the Dataset"""
         return self._ddf.dtypes
