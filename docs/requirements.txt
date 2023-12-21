@@ -8,4 +8,4 @@ jupyter
 matplotlib
 numpy
 spherical_geometry
-git+https://github.com/astronomy-commons/hipscat.git@main
+git+https://github.com/astronomy-commons/hipscat.git@issue/84/add-sphgeom

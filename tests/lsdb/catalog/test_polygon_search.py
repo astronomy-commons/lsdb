@@ -1,11 +1,10 @@
 import numpy as np
 import pytest
-from conftest import assert_divisions_are_correct
 
 from lsdb.core.search.polygon_search import get_cartesian_polygon
 
 
-def test_polygon_search_filters_correct_points(small_sky_order1_catalog):
+def test_polygon_search_filters_correct_points(small_sky_order1_catalog, assert_divisions_are_correct):
     vertices = [(300, -50), (300, -55), (272, -55), (272, -50)]
     polygon, _ = get_cartesian_polygon(vertices)
     polygon_search_catalog = small_sky_order1_catalog.polygon_search(vertices)
@@ -40,6 +39,6 @@ def test_polygon_search_empty(small_sky_order1_catalog):
 
 def test_polygon_search_invalid_shape(small_sky_order1_catalog):
     """The polygon is not convex, so the shape is invalid"""
-    vertices = [(0, 1), (1, 0), (1, 1), (0, 0)]
+    vertices = [(0, 1), (1, 0), (1, 1), (0, 0), (1,1)]
     with pytest.raises(RuntimeError):
         small_sky_order1_catalog.polygon_search(vertices)
