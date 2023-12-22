@@ -228,7 +228,7 @@ class Catalog(HealpixDataset):
         Filters partitions in the catalog to those that have some overlap with the region.
 
         Args:
-            vertices (List[SphericalCoordinates]): The list of vertices of the polygon to
+            vertices (List[Tuple[float, float]): The list of vertices of the polygon to
                 filter pixels with, as a list of (ra,dec) coordinates, in degrees.
 
         Returns:

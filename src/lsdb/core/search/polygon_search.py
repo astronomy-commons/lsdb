@@ -36,7 +36,7 @@ def get_cartesian_polygon(
     in sky coordinates of ra and dec, to their respective cartesian representation on the unit sphere.
 
     Arguments:
-        vertices (List[SphericalCoordinates]): The list of vertices of the polygon to
+        vertices (List[Tuple[float, float]): The list of vertices of the polygon to
             filter pixels with, as a list of (ra,dec) coordinates, in degrees.
 
     Returns:
