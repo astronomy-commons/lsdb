@@ -1,5 +1,5 @@
 # Changes here will be overwritten by Copier
-_commit: v1.4.4-6-g94ac891
+_commit: v1.4.6
 _src_path: gh:lincc-frameworks/python-project-template
 author_email: lincc-frameworks-team@lists.lsst.org
 author_name: LINCC Frameworks
@@ -14,5 +14,4 @@ preferred_linter: pylint
 project_license: BSD
 project_name: lsdb
 project_organization: astronomy-commons
-use_gitlfs: none
 use_isort: true

@@ -23,6 +23,9 @@ dependencies = [
     "scipy", # kdtree
 ]
 
+[project.urls]
+"Source Code" = "https://github.com/astronomy-commons/lsdb"
+
 # On a mac, install optional dependencies with `pip install '.[dev]'` (include the single quotes)
 [project.optional-dependencies]
 dev = [
@@ -40,14 +43,8 @@ dev = [
     "nbconvert", # Needed for pre-commit check to clear output from Python notebooks
     "nbsphinx", # Used to integrate Python notebooks into Sphinx documentation
     "ipython", # Also used in building notebooks into Sphinx
-    "matplotlib", # Used in sample notebook intro_notebook.ipynb
-    "numpy", # Used in sample notebook intro_notebook.ipynb
     "asv==0.6.1", # Used to compute performance benchmarks
 ]
-
-[metadata]
-long_description = { file = "README.md" }
-url = "https://github.com/astronomy-commons/lsdb"
 
 [build-system]
 requires = [

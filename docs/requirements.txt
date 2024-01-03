@@ -5,7 +5,5 @@ nbsphinx
 ipython
 jupytext
 jupyter
-matplotlib
-numpy
 spherical_geometry
 git+https://github.com/astronomy-commons/hipscat.git@main
