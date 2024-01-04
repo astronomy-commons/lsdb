@@ -129,3 +129,44 @@ def test_save_catalog_overwrite(small_sky_catalog, tmp_path):
     with pytest.raises(FileExistsError):
         small_sky_catalog.to_hipscat(base_catalog_path)
     small_sky_catalog.to_hipscat(base_catalog_path, overwrite=True)
+
+
+def test_save_catalog_when_catalog_is_empty(small_sky_order1_catalog, tmp_path):
+    base_catalog_path = os.path.join(tmp_path, "small_sky")
+
+    # The result of this cone search is known to be empty
+    cone_search_catalog = small_sky_order1_catalog.cone_search(0, -80, 1)
+    assert cone_search_catalog._ddf.npartitions == 1
+
+    non_empty_pixels = []
+    for pixel, partition_index in cone_search_catalog._ddf_pixel_map.items():
+        if len(cone_search_catalog._ddf.partitions[partition_index]) > 0:
+            non_empty_pixels.append(pixel)
+    assert len(non_empty_pixels) == 0
+
+    # The catalog is not written to disk
+    with pytest.raises(RuntimeError, match="The output catalog is empty"):
+        cone_search_catalog.to_hipscat(base_catalog_path)
+
+
+def test_save_catalog_with_some_empty_partitions(small_sky_order1_catalog, tmp_path):
+    base_catalog_path = os.path.join(tmp_path, "small_sky")
+
+    # The result of this cone search is known to have one empty partition
+    cone_search_catalog = small_sky_order1_catalog.cone_search(0, -80, 15)
+    assert cone_search_catalog._ddf.npartitions == 2
+
+    non_empty_pixels = []
+    for pixel, partition_index in cone_search_catalog._ddf_pixel_map.items():
+        if len(cone_search_catalog._ddf.partitions[partition_index]) > 0:
+            non_empty_pixels.append(pixel)
+    assert len(non_empty_pixels) == 1
+
+    cone_search_catalog.to_hipscat(base_catalog_path)
+
+    # Confirm that we can read the catalog from disk, and that it was
+    # written with no empty partitions
+    catalog = lsdb.read_hipscat(base_catalog_path)
+    assert catalog._ddf.npartitions == 1
+    assert len(catalog._ddf.partitions[0]) > 0
+    assert list(catalog._ddf_pixel_map.keys()) == non_empty_pixels
