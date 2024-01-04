@@ -15,7 +15,7 @@
         "warmup_time": -1
     },
     "benchmarks.time_polygon_search": {
-        "code": "def time_polygon_search():\n    \"\"\"Time polygonal search using spherical-geometry\"\"\"\n    small_sky_order1 = load_small_sky_order1().compute()\n    # Define search polygon\n    polygon_ra, polygon_dec = [300, 300, 272, 272], [-50, -55, -55, -50]\n    polygon = SingleSphericalPolygon.from_lonlat(polygon_ra, polygon_dec)\n    # Upsample test catalog to 10,000 points\n    num_points = 10_000\n    catalog_ra = upsample_array(small_sky_order1[\"ra\"].values, num_points)\n    catalog_dec = upsample_array(small_sky_order1[\"dec\"].values, num_points)\n    # Perform the check for each point on the catalog\n    for ra, dec in zip(catalog_ra, catalog_dec):\n        polygon.contains_lonlat(ra, dec)",
+        "code": "def time_polygon_search():\n    \"\"\"Time polygonal search using sphgeom\"\"\"\n    small_sky_order1 = load_small_sky_order1().compute()\n    # Upsample test catalog to 10,000 points\n    catalog_ra = upsample_array(small_sky_order1[\"ra\"].values, 10_000)\n    catalog_dec = upsample_array(small_sky_order1[\"dec\"].values, 10_000)\n    # Define sky polygon to use in search\n    vertices = [(300, -50), (300, -55), (272, -55), (272, -50)]\n    polygon, _ = get_cartesian_polygon(vertices)\n    # Apply vectorized filtering on the catalog points\n    polygon.contains(np.radians(catalog_ra), np.radians(catalog_dec))",
         "min_run_count": 2,
         "name": "benchmarks.time_polygon_search",
         "number": 0,
@@ -26,7 +26,7 @@
         "sample_time": 0.01,
         "type": "time",
         "unit": "seconds",
-        "version": "3e1d19e28e82b29ca7291de64b3cac28784942049fe86188cd370e8f98f920eb",
+        "version": "e6a330ca87dc744c12b49ade55f880ef0921ae8de5cdfffcb174d51e38b37943",
         "warmup_time": -1
     },
     "version": 2
