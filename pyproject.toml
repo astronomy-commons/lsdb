@@ -21,6 +21,7 @@ dependencies = [
     "deprecated",
     "ipykernel", # Support for Jupyter notebooks
     "scipy", # kdtree
+    "lsst-sphgeom", # To handle spherical sky polygons
 ]
 
 # On a mac, install optional dependencies with `pip install '.[dev]'` (include the single quotes)

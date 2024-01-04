@@ -1,9 +1,10 @@
 import pandas as pd
 import pytest
-from conftest import assert_divisions_are_correct
 
 
-def test_small_sky_join_small_sky_order1(small_sky_catalog, small_sky_order1_catalog):
+def test_small_sky_join_small_sky_order1(
+    small_sky_catalog, small_sky_order1_catalog, assert_divisions_are_correct
+):
     suffixes = ("_a", "_b")
     joined = small_sky_catalog.join(small_sky_order1_catalog, left_on="id", right_on="id", suffixes=suffixes)
     for col_name, dtype in small_sky_catalog.dtypes.items():

@@ -3,12 +3,11 @@ import numpy as np
 import numpy.testing as npt
 import pandas as pd
 import pytest
-from conftest import assert_divisions_are_correct  # pylint: disable=import-error
 
 import lsdb
 
 
-def test_read_hipscat(small_sky_order1_dir, small_sky_order1_hipscat_catalog):
+def test_read_hipscat(small_sky_order1_dir, small_sky_order1_hipscat_catalog, assert_divisions_are_correct):
     catalog = lsdb.read_hipscat(small_sky_order1_dir)
     assert isinstance(catalog, lsdb.Catalog)
     assert catalog.hc_structure.catalog_base_dir == small_sky_order1_hipscat_catalog.catalog_base_dir

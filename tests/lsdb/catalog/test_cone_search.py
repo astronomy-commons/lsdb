@@ -1,9 +1,8 @@
 import pytest
 from astropy.coordinates import SkyCoord
-from conftest import assert_divisions_are_correct
 
 
-def test_cone_search_filters_correct_points(small_sky_order1_catalog):
+def test_cone_search_filters_correct_points(small_sky_order1_catalog, assert_divisions_are_correct):
     ra = 0
     dec = -80
     radius = 20

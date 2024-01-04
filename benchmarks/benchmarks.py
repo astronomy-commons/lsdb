@@ -4,10 +4,11 @@ For more information on writing benchmarks:
 https://asv.readthedocs.io/en/stable/writing_benchmarks.html."""
 import os
 
-from spherical_geometry.polygon import SingleSphericalPolygon
+import numpy as np
 
 import lsdb
 from benchmarks.utils import upsample_array
+from lsdb.core.search.polygon_search import get_cartesian_polygon
 
 TEST_DIR = os.path.join(os.path.dirname(__file__), "..", "tests")
 DATA_DIR_NAME = "data"
@@ -39,15 +40,13 @@ def time_kdtree_crossmatch():
 
 
 def time_polygon_search():
-    """Time polygonal search using spherical-geometry"""
+    """Time polygonal search using sphgeom"""
     small_sky_order1 = load_small_sky_order1().compute()
-    # Define search polygon
-    polygon_ra, polygon_dec = [300, 300, 272, 272], [-50, -55, -55, -50]
-    polygon = SingleSphericalPolygon.from_lonlat(polygon_ra, polygon_dec)
     # Upsample test catalog to 10,000 points
-    num_points = 10_000
-    catalog_ra = upsample_array(small_sky_order1["ra"].values, num_points)
-    catalog_dec = upsample_array(small_sky_order1["dec"].values, num_points)
-    # Perform the check for each point on the catalog
-    for ra, dec in zip(catalog_ra, catalog_dec):
-        polygon.contains_lonlat(ra, dec)
+    catalog_ra = upsample_array(small_sky_order1["ra"].values, 10_000)
+    catalog_dec = upsample_array(small_sky_order1["dec"].values, 10_000)
+    # Define sky polygon to use in search
+    vertices = [(300, -50), (300, -55), (272, -55), (272, -50)]
+    polygon, _ = get_cartesian_polygon(vertices)
+    # Apply vectorized filtering on the catalog points
+    polygon.contains(np.radians(catalog_ra), np.radians(catalog_dec))

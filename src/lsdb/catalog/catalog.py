@@ -8,7 +8,7 @@ import hipscat as hc
 import numpy as np
 from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.healpix_pixel_function import get_pixel_argsort
-from spherical_geometry.polygon import SingleSphericalPolygon
+from hipscat.pixel_math.polygon_filter import SphericalCoordinates
 
 from lsdb import io
 from lsdb.catalog.association_catalog import AssociationCatalog
@@ -16,7 +16,7 @@ from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
 from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorithm
 from lsdb.core.search.cone_search import cone_filter
-from lsdb.core.search.polygon_search import polygon_filter
+from lsdb.core.search.polygon_search import get_cartesian_polygon, polygon_filter
 from lsdb.dask.crossmatch_catalog_data import crossmatch_catalog_data
 from lsdb.dask.divisions import get_pixels_divisions
 from lsdb.dask.join_catalog_data import join_catalog_data_on, join_catalog_data_through
@@ -221,20 +221,22 @@ class Catalog(HealpixDataset):
         ddf_partition_map = {pixel: i for i, pixel in enumerate(pixels_in_cone)}
         return Catalog(cone_search_ddf, ddf_partition_map, filtered_hc_structure)
 
-    def polygon_search(self, polygon: SingleSphericalPolygon) -> Catalog:
+    def polygon_search(self, vertices: List[SphericalCoordinates]) -> Catalog:
         """Perform a polygonal search to filter the catalog.
 
         Filters to points within the polygonal region specified in ra and dec, in degrees.
         Filters partitions in the catalog to those that have some overlap with the region.
 
         Args:
-            polygon (SingleSphericalPolygon): The polygon to filter pixels with.
+            vertices (List[Tuple[float, float]): The list of vertices of the polygon to
+                filter pixels with, as a list of (ra,dec) coordinates, in degrees.
 
         Returns:
             A new catalog containing the points filtered to those within the
             polygonal region, and the partitions that have some overlap with it.
         """
-        filtered_hc_structure = self.hc_structure.filter_by_polygon(polygon)
+        polygon, vertices_xyz = get_cartesian_polygon(vertices)
+        filtered_hc_structure = self.hc_structure.filter_by_polygon(vertices_xyz)
         pixels_in_polygon = filtered_hc_structure.get_healpix_pixels()
         partitions = self.to_delayed()
         partitions_in_polygon = [partitions[self._ddf_pixel_map[hp_pixel]] for hp_pixel in pixels_in_polygon]
