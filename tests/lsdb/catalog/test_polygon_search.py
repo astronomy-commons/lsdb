@@ -39,6 +39,6 @@ def test_polygon_search_empty(small_sky_order1_catalog):
 
 def test_polygon_search_invalid_shape(small_sky_order1_catalog):
     """The polygon is not convex, so the shape is invalid"""
-    vertices = [(0, 1), (1, 0), (1, 1), (0, 0), (1,1)]
+    vertices = [(0, 1), (1, 0), (1, 1), (0, 0), (1, 1)]
     with pytest.raises(RuntimeError):
         small_sky_order1_catalog.polygon_search(vertices)

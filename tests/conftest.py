@@ -111,6 +111,7 @@ def xmatch_correct_3n_2t_no_margin(small_sky_xmatch_dir):
 def xmatch_mock(small_sky_xmatch_dir):
     return pd.read_csv(os.path.join(small_sky_xmatch_dir, XMATCH_MOCK_FILE))
 
+
 @pytest.fixture
 def assert_divisions_are_correct():
     def assert_divisions_are_correct(catalog):
@@ -125,4 +126,5 @@ def assert_divisions_are_correct():
             assert hp_pixel.pixel == div_pixel
         # The last division corresponds to the HIPSCAT_ID_MAX
         assert catalog._ddf.divisions[-1] == HIPSCAT_ID_MAX
+
     return assert_divisions_are_correct

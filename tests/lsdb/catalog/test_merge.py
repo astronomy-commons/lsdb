@@ -5,12 +5,7 @@ import pytest
 
 @pytest.mark.parametrize("how", ["left", "right", "inner", "outer"])
 def test_catalog_merge_on_indices(small_sky_catalog, small_sky_order1_catalog, how):
-    kwargs = {
-        "how": how,
-        "left_index": True,
-        "right_index": True,
-        "suffixes": ("_left", "_right")
-    }
+    kwargs = {"how": how, "left_index": True, "right_index": True, "suffixes": ("_left", "_right")}
     # Setting the object "id" for index on both catalogs
     small_sky_catalog._ddf = small_sky_catalog._ddf.set_index("id")
     small_sky_order1_catalog._ddf = small_sky_order1_catalog._ddf.set_index("id")
@@ -23,11 +18,7 @@ def test_catalog_merge_on_indices(small_sky_catalog, small_sky_order1_catalog, h
 
 @pytest.mark.parametrize("how", ["left", "right", "inner", "outer"])
 def test_catalog_merge_on_columns(small_sky_catalog, small_sky_order1_catalog, how):
-    kwargs = {
-        "how": how,
-        "on": "id",
-        "suffixes": ("_left", "_right")
-    }
+    kwargs = {"how": how, "on": "id", "suffixes": ("_left", "_right")}
     # Make sure none of the test catalogs have "id" for index
     small_sky_catalog._ddf = small_sky_catalog._ddf.reset_index()
     small_sky_order1_catalog._ddf = small_sky_order1_catalog._ddf.reset_index()
@@ -40,12 +31,7 @@ def test_catalog_merge_on_columns(small_sky_catalog, small_sky_order1_catalog, h
 
 @pytest.mark.parametrize("how", ["left", "right", "inner", "outer"])
 def test_catalog_merge_on_index_and_column(small_sky_catalog, small_sky_order1_catalog, how):
-    kwargs = {
-        "how": how,
-        "left_index": True,
-        "right_on": "id",
-        "suffixes": ("_left", "_right")
-    }
+    kwargs = {"how": how, "left_index": True, "right_on": "id", "suffixes": ("_left", "_right")}
     # Setting the object "id" for index on the left catalog
     small_sky_catalog._ddf = small_sky_catalog._ddf.set_index("id")
     # Make sure the right catalog does not have "id" for index
