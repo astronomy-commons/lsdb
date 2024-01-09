@@ -8,9 +8,7 @@ from lsdb.catalog.association_catalog import AssociationCatalog
 def test_load_association(small_sky_to_xmatch_dir):
     small_sky_to_xmatch = lsdb.read_hipscat(small_sky_to_xmatch_dir)
     assert isinstance(small_sky_to_xmatch, AssociationCatalog)
-    assert (
-        small_sky_to_xmatch.get_healpix_pixels() == small_sky_to_xmatch.hc_structure.get_healpix_pixels()
-    )
+    assert small_sky_to_xmatch.get_healpix_pixels() == small_sky_to_xmatch.hc_structure.get_healpix_pixels()
     assert repr(small_sky_to_xmatch) == repr(small_sky_to_xmatch._ddf)
     for healpix_pixel in small_sky_to_xmatch.get_healpix_pixels():
         hp_order = healpix_pixel.order
