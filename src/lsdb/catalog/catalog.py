@@ -13,6 +13,7 @@ from hipscat.pixel_math.polygon_filter import SphericalCoordinates
 from lsdb import io
 from lsdb.catalog.association_catalog import AssociationCatalog
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
+from lsdb.catalog.validators import CoordinatesValidator
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
 from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorithm
 from lsdb.core.search.cone_search import cone_filter
@@ -183,13 +184,6 @@ class Catalog(HealpixDataset):
         hc_catalog = hc.catalog.Catalog(new_catalog_info, alignment.pixel_tree)
         return Catalog(ddf, ddf_map, hc_catalog)
 
-    @staticmethod
-    def _check_ra_dec_values_valid(ra: float, dec: float):
-        if ra < -180 or ra > 180:
-            raise ValueError("ra must be between -180 and 180")
-        if dec > 90 or dec < -90:
-            raise ValueError("dec must be between -90 and 90")
-
     def cone_search(self, ra: float, dec: float, radius: float):
         """Perform a cone search to filter the catalog
 
@@ -205,9 +199,7 @@ class Catalog(HealpixDataset):
             A new Catalog containing the points filtered to those within the cone, and the partitions that
             overlap the cone.
         """
-        if radius < 0:
-            raise ValueError("Cone radius must be non negative")
-        self._check_ra_dec_values_valid(ra, dec)
+        ra = CoordinatesValidator.validate_cone_search_params(ra, dec, radius)
         filtered_hc_structure = self.hc_structure.filter_by_cone(ra, dec, radius)
         pixels_in_cone = filtered_hc_structure.get_healpix_pixels()
         partitions = self._ddf.to_delayed()
@@ -235,6 +227,7 @@ class Catalog(HealpixDataset):
             A new catalog containing the points filtered to those within the
             polygonal region, and the partitions that have some overlap with it.
         """
+        vertices = CoordinatesValidator.validate_polygon_search_params(vertices)
         polygon, vertices_xyz = get_cartesian_polygon(vertices)
         filtered_hc_structure = self.hc_structure.filter_by_polygon(vertices_xyz)
         pixels_in_polygon = filtered_hc_structure.get_healpix_pixels()

@@ -42,3 +42,16 @@ def test_polygon_search_invalid_shape(small_sky_order1_catalog):
     vertices = [(0, 1), (1, 0), (1, 1), (0, 0), (1, 1)]
     with pytest.raises(RuntimeError):
         small_sky_order1_catalog.polygon_search(vertices)
+
+
+def test_polygon_search_wrapped_ra(small_sky_order1_catalog):
+    # Some right ascension values are out the [0,360] degree range, but they are wrapped
+    vertices = [(-20, 1), (-20, -1), (20, -1), (20, 1)]
+    small_sky_order1_catalog.polygon_search(vertices)
+
+
+def test_polygon_search_invalid_dec(small_sky_order1_catalog):
+    # Some declination values are out of the [-90,90] bounds
+    vertices = [(-20, 100), (-20, -1), (20, -1), (20, 100)]
+    with pytest.raises(ValueError, match="dec must be between -90 and 90"):
+        small_sky_order1_catalog.polygon_search(vertices)
