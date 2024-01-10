@@ -2,8 +2,8 @@ import numpy as np
 import numpy.testing as npt
 import pytest
 
-from lsdb.catalog.validators import CoordinatesValidator
 from lsdb.core.search.polygon_search import get_cartesian_polygon
+from lsdb.core.search.validators import CoordinatesValidator
 
 
 def test_wrap_right_ascension():
