@@ -15,8 +15,7 @@ from lsdb.catalog.association_catalog import AssociationCatalog
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
 from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorithm
-from lsdb.core.search.cone_search import cone_filter
-from lsdb.core.search.polygon_search import get_cartesian_polygon, polygon_filter
+from lsdb.core.search import ConeSearch, PolygonSearch
 from lsdb.dask.crossmatch_catalog_data import crossmatch_catalog_data
 from lsdb.dask.divisions import get_pixels_divisions
 from lsdb.dask.join_catalog_data import join_catalog_data_on, join_catalog_data_through
@@ -183,13 +182,6 @@ class Catalog(HealpixDataset):
         hc_catalog = hc.catalog.Catalog(new_catalog_info, alignment.pixel_tree)
         return Catalog(ddf, ddf_map, hc_catalog)
 
-    @staticmethod
-    def _check_ra_dec_values_valid(ra: float, dec: float):
-        if ra < -180 or ra > 180:
-            raise ValueError("ra must be between -180 and 180")
-        if dec > 90 or dec < -90:
-            raise ValueError("dec must be between -90 and 90")
-
     def cone_search(self, ra: float, dec: float, radius: float):
         """Perform a cone search to filter the catalog
 
@@ -205,21 +197,7 @@ class Catalog(HealpixDataset):
             A new Catalog containing the points filtered to those within the cone, and the partitions that
             overlap the cone.
         """
-        if radius < 0:
-            raise ValueError("Cone radius must be non negative")
-        self._check_ra_dec_values_valid(ra, dec)
-        filtered_hc_structure = self.hc_structure.filter_by_cone(ra, dec, radius)
-        pixels_in_cone = filtered_hc_structure.get_healpix_pixels()
-        partitions = self._ddf.to_delayed()
-        partitions_in_cone = [partitions[self._ddf_pixel_map[pixel]] for pixel in pixels_in_cone]
-        filtered_partitions = [
-            cone_filter(partition, ra, dec, radius, self.hc_structure) for partition in partitions_in_cone
-        ]
-        divisions = get_pixels_divisions(pixels_in_cone)
-        cone_search_ddf = dd.from_delayed(filtered_partitions, meta=self._ddf._meta, divisions=divisions)
-        cone_search_ddf = cast(dd.DataFrame, cone_search_ddf)
-        ddf_partition_map = {pixel: i for i, pixel in enumerate(pixels_in_cone)}
-        return Catalog(cone_search_ddf, ddf_partition_map, filtered_hc_structure)
+        return self._search(ConeSearch(ra, dec, radius, self.hc_structure))
 
     def polygon_search(self, vertices: List[SphericalCoordinates]) -> Catalog:
         """Perform a polygonal search to filter the catalog.
@@ -235,19 +213,30 @@ class Catalog(HealpixDataset):
             A new catalog containing the points filtered to those within the
             polygonal region, and the partitions that have some overlap with it.
         """
-        polygon, vertices_xyz = get_cartesian_polygon(vertices)
-        filtered_hc_structure = self.hc_structure.filter_by_polygon(vertices_xyz)
-        pixels_in_polygon = filtered_hc_structure.get_healpix_pixels()
-        partitions = self.to_delayed()
-        partitions_in_polygon = [partitions[self._ddf_pixel_map[hp_pixel]] for hp_pixel in pixels_in_polygon]
-        filtered_partitions = [
-            polygon_filter(partition, polygon, self.hc_structure) for partition in partitions_in_polygon
-        ]
-        divisions = get_pixels_divisions(pixels_in_polygon)
-        polygon_search_ddf = dd.from_delayed(filtered_partitions, meta=self._ddf._meta, divisions=divisions)
-        polygon_search_ddf = cast(dd.DataFrame, polygon_search_ddf)
-        ddf_partition_map = {pixel: i for i, pixel in enumerate(pixels_in_polygon)}
-        return Catalog(polygon_search_ddf, ddf_partition_map, filtered_hc_structure)
+        return self._search(PolygonSearch(vertices, self.hc_structure))
+
+    def _search(self, search):
+        """Find rows by reusable search algorithm.
+
+        Filters partitions in the catalog to those that match some rough criteria.
+        Filters to points that match some finer criteria.
+
+        Args:
+            search: instance of AbstractSearch
+
+        Returns:
+            A new Catalog containing the points filtered to those matching the search parameters.
+        """
+        filtered_pixels = search.search_partitions(self.hc_structure.get_healpix_pixels())
+        filtered_hc_structure = self.hc_structure.filter_from_pixel_list(filtered_pixels)
+        partitions = self._ddf.to_delayed()
+        targeted_partitions = [partitions[self._ddf_pixel_map[pixel]] for pixel in filtered_pixels]
+        filtered_partitions = [search.search_points(partition) for partition in targeted_partitions]
+        divisions = get_pixels_divisions(filtered_pixels)
+        search_ddf = dd.from_delayed(filtered_partitions, meta=self._ddf._meta, divisions=divisions)
+        search_ddf = cast(dd.DataFrame, search_ddf)
+        ddf_partition_map = {pixel: i for i, pixel in enumerate(filtered_pixels)}
+        return Catalog(search_ddf, ddf_partition_map, filtered_hc_structure)
 
     def merge(
         self,

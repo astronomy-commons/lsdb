@@ -5,8 +5,38 @@ import healpy as hp
 import hipscat as hc
 import numpy as np
 import pandas as pd
-from hipscat.pixel_math.polygon_filter import CartesianCoordinates, SphericalCoordinates
+from hipscat.pixel_math import HealpixPixel
+from hipscat.pixel_math.polygon_filter import (
+    CartesianCoordinates,
+    SphericalCoordinates,
+    filter_pixels_by_polygon,
+)
+from hipscat.pixel_tree.pixel_tree_builder import PixelTreeBuilder
 from lsst.sphgeom import ConvexPolygon, UnitVector3d
+
+from lsdb.core.search.abstract_search import AbstractSearch
+
+
+class PolygonSearch(AbstractSearch):
+    """Perform a polygonal search to filter the catalog.
+
+    Filters to points within the polygonal region specified in ra and dec, in degrees.
+    Filters partitions in the catalog to those that have some overlap with the region.
+    """
+
+    def __init__(self, vertices: List[SphericalCoordinates], metadata):
+        self.polygon, self.vertices_xyz = get_cartesian_polygon(vertices)
+        self.metadata = metadata
+
+    def search_partitions(self, pixels: List[HealpixPixel]) -> List[HealpixPixel]:
+        """Determine the target partitions for further filtering."""
+        pixel_tree = PixelTreeBuilder.from_healpix(pixels)
+        return filter_pixels_by_polygon(pixel_tree, self.vertices_xyz)
+
+    def search_points(self, frame: pd.DataFrame) -> pd.DataFrame:
+        """Determine the search results within a data frame"""
+
+        return polygon_filter(frame, self.polygon, self.metadata)
 
 
 @dask.delayed

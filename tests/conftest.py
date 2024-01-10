@@ -117,6 +117,10 @@ def assert_divisions_are_correct():
     def assert_divisions_are_correct(catalog):
         # Check that number of divisions == number of pixels + 1
         hp_pixels = catalog.get_ordered_healpix_pixels()
+        if len(hp_pixels) == 0:
+            # Special case if there are no partitions.
+            assert catalog._ddf.divisions == (None, None)
+            return
         assert len(catalog._ddf.divisions) == len(hp_pixels) + 1
         # Check that the divisions are not None
         assert None not in catalog._ddf.divisions

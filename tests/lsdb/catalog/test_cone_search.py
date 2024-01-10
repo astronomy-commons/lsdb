@@ -9,7 +9,6 @@ def test_cone_search_filters_correct_points(small_sky_order1_catalog, assert_div
     center_coord = SkyCoord(ra, dec, unit="deg")
     cone_search_catalog = small_sky_order1_catalog.cone_search(ra, dec, radius)
     cone_search_df = cone_search_catalog.compute()
-    print(len(cone_search_df))
     for _, row in small_sky_order1_catalog.compute().iterrows():
         row_ra = row[small_sky_order1_catalog.hc_structure.catalog_info.ra_column]
         row_dec = row[small_sky_order1_catalog.hc_structure.catalog_info.dec_column]
@@ -29,9 +28,28 @@ def test_cone_search_filters_partitions(small_sky_order1_catalog):
     consearch_catalog = small_sky_order1_catalog.cone_search(ra, dec, radius)
     assert len(hc_conesearch.get_healpix_pixels()) == len(consearch_catalog.get_healpix_pixels())
     assert len(hc_conesearch.get_healpix_pixels()) == consearch_catalog._ddf.npartitions
-    print(hc_conesearch.get_healpix_pixels())
     for pixel in hc_conesearch.get_healpix_pixels():
         assert pixel in consearch_catalog._ddf_pixel_map
+
+
+def test_cone_search_filters_no_matching_points(small_sky_order1_catalog, assert_divisions_are_correct):
+    ra = 0
+    dec = -80
+    radius = 0.2
+    cone_search_catalog = small_sky_order1_catalog.cone_search(ra, dec, radius)
+    cone_search_df = cone_search_catalog.compute()
+    assert len(cone_search_df) == 0
+    assert_divisions_are_correct(cone_search_catalog)
+
+
+def test_cone_search_filters_no_matching_partitions(small_sky_order1_catalog, assert_divisions_are_correct):
+    ra = 20
+    dec = 80
+    radius = 20
+    cone_search_catalog = small_sky_order1_catalog.cone_search(ra, dec, radius)
+    cone_search_df = cone_search_catalog.compute()
+    assert len(cone_search_df) == 0
+    assert_divisions_are_correct(cone_search_catalog)
 
 
 def test_negative_radius_errors(small_sky_order1_catalog):

@@ -1,7 +1,49 @@
+from typing import List
+
 import dask
 import hipscat as hc
 import pandas as pd
 from astropy.coordinates import SkyCoord
+from hipscat.pixel_math import HealpixPixel
+from hipscat.pixel_math.cone_filter import filter_pixels_by_cone
+from hipscat.pixel_tree.pixel_tree_builder import PixelTreeBuilder
+
+from lsdb.core.search.abstract_search import AbstractSearch
+
+
+class ConeSearch(AbstractSearch):
+    """Perform a cone search to filter the catalog
+
+    Filters to points within radius great circle distance to the point specified by ra and dec in degrees.
+    Filters partitions in the catalog to those that have some overlap with the cone.
+    """
+
+    def __init__(self, ra, dec, radius, metadata):
+        if radius < 0:
+            raise ValueError("Cone radius must be non negative")
+        self._check_ra_dec_values_valid(ra, dec)
+
+        self.ra = ra
+        self.dec = dec
+        self.radius = radius
+        self.metadata = metadata
+
+    def search_partitions(self, pixels: List[HealpixPixel]) -> List[HealpixPixel]:
+        """Determine the target partitions for further filtering."""
+        pixel_tree = PixelTreeBuilder.from_healpix(pixels)
+        return filter_pixels_by_cone(pixel_tree, self.ra, self.dec, self.radius)
+
+    def search_points(self, frame: pd.DataFrame) -> pd.DataFrame:
+        """Determine the search results within a data frame"""
+
+        return cone_filter(frame, self.ra, self.dec, self.radius, self.metadata)
+
+    @staticmethod
+    def _check_ra_dec_values_valid(ra: float, dec: float):
+        if ra < -180 or ra > 180:
+            raise ValueError("ra must be between -180 and 180")
+        if dec > 90 or dec < -90:
+            raise ValueError("dec must be between -90 and 90")
 
 
 @dask.delayed
