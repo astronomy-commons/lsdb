@@ -1,7 +1,10 @@
 import healpy as hp
+import numpy as np
+import numpy.testing as npt
 import pandas as pd
 import pytest
 from hipscat.catalog import CatalogType
+from hipscat.pixel_math.healpix_pixel_function import get_pixel_argsort
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
 from hipscat.pixel_tree.pixel_node_type import PixelNodeType
 
@@ -145,3 +148,22 @@ def test_partitions_obey_default_threshold_when_no_arguments_specified(
     # Calculate number of pixels per partition
     num_partition_pixels = [len(partition_df.compute().index) for partition_df in catalog._ddf.partitions]
     assert all(num_pixels <= default_threshold for num_pixels in num_partition_pixels)
+
+
+def test_catalog_pixels_nested_ordering(small_sky_source_df):
+    """Tests that the catalog's representation of partitions is ordered by
+    nested healpix ordering (breadth-first), instead of numeric by Norder/Npix."""
+    catalog = lsdb.from_dataframe(
+        small_sky_source_df,
+        catalog_name="small_sky_source",
+        catalog_type="source",
+        highest_order=2,
+        threshold=3_000,
+        ra_column="source_ra",
+        dec_column="source_dec",
+    )
+
+    assert len(catalog.get_healpix_pixels()) == 14
+
+    argsort = get_pixel_argsort(catalog.get_healpix_pixels())
+    npt.assert_array_equal(argsort, np.arange(0, 14))

@@ -33,8 +33,7 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
             A DataFrame from the left and right tables merged with one row for each pair of
             neighbors found from cross-matching. The resulting table contains the columns from the
             left table with the first suffix appended, the right columns with the second suffix, and
-            a column with the name {AbstractCrossmatchAlgorithm.DISTANCE_COLUMN_NAME} with the great
-            circle separation between the points.
+            a "_DIST" column with the great circle separation between the points.
         """
         # Distance in 3-D space for unit sphere
         d_chord = 2.0 * math.sin(math.radians(0.5 * d_thresh))
