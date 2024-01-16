@@ -1,5 +1,6 @@
 import pytest
 from astropy.coordinates import SkyCoord
+from hipscat.pixel_math.validators import ValidatorsErrors
 
 
 def test_cone_search_filters_correct_points(small_sky_order1_catalog, assert_divisions_are_correct):
@@ -43,9 +44,9 @@ def test_cone_search_wrapped_ra(small_sky_order1_catalog):
 
 
 def test_invalid_dec_and_negative_radius(small_sky_order1_catalog):
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=ValidatorsErrors.INVALID_DEC):
         small_sky_order1_catalog.cone_search(0, -100, 1)
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=ValidatorsErrors.INVALID_DEC):
         small_sky_order1_catalog.cone_search(0, 100, 1)
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=ValidatorsErrors.INVALID_RADIUS):
         small_sky_order1_catalog.cone_search(0, 0, -1)

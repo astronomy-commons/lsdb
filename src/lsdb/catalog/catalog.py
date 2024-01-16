@@ -9,6 +9,7 @@ import numpy as np
 from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.healpix_pixel_function import get_pixel_argsort
 from hipscat.pixel_math.polygon_filter import SphericalCoordinates
+from hipscat.pixel_math.validators import validate_declination_values, validate_radius
 
 from lsdb import io
 from lsdb.catalog.association_catalog import AssociationCatalog
@@ -17,7 +18,6 @@ from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatc
 from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorithm
 from lsdb.core.search.cone_search import cone_filter
 from lsdb.core.search.polygon_search import get_cartesian_polygon, polygon_filter
-from lsdb.core.search.validators import CoordinatesValidator
 from lsdb.dask.crossmatch_catalog_data import crossmatch_catalog_data
 from lsdb.dask.divisions import get_pixels_divisions
 from lsdb.dask.join_catalog_data import join_catalog_data_on, join_catalog_data_through
@@ -199,7 +199,8 @@ class Catalog(HealpixDataset):
             A new Catalog containing the points filtered to those within the cone, and the partitions that
             overlap the cone.
         """
-        ra = CoordinatesValidator.validate_cone_search_params(ra, dec, radius)
+        validate_radius(radius)
+        validate_declination_values(dec)
         filtered_hc_structure = self.hc_structure.filter_by_cone(ra, dec, radius)
         pixels_in_cone = filtered_hc_structure.get_healpix_pixels()
         partitions = self._ddf.to_delayed()
@@ -227,7 +228,8 @@ class Catalog(HealpixDataset):
             A new catalog containing the points filtered to those within the
             polygonal region, and the partitions that have some overlap with it.
         """
-        vertices = CoordinatesValidator.validate_polygon_search_params(vertices)
+        _, dec = np.array(vertices).T
+        validate_declination_values(dec)
         polygon, vertices_xyz = get_cartesian_polygon(vertices)
         filtered_hc_structure = self.hc_structure.filter_by_polygon(vertices_xyz)
         pixels_in_polygon = filtered_hc_structure.get_healpix_pixels()
