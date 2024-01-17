@@ -58,27 +58,29 @@ def test_polygon_search_wrapped_right_ascension():
     discontinuity of the RA [0,360] degrees range. For the same
     polygon we have several possible combination of coordinates
     (here with some float-fudging)."""
-    def get_vertex_combinations(vertex):
-        ra_combinations = (vertex[0], vertex[0] + 360, vertex[0] - 360)
-        return [(ra, vertex[1]) for ra in ra_combinations]
-
-    def calculate_polygon_combinations(vertices):
-        combinations = []
-        for i, vertex_1 in enumerate(vertices):
-            v_1 = vertices.copy()
-            for c_1 in get_vertex_combinations(vertex_1):
-                v_1[i] = c_1
-                for j in range(i + 1, len(v_1)):
-                    for c_2 in get_vertex_combinations(v_1[j]):
-                        v_2 = v_1.copy()
-                        v_2[j] = c_2
-                        if v_2 not in combinations:
-                            combinations.append(v_2)
-        return combinations
-
-    vertices = [(-20.1, 1), (-20.2, -1), (20.3, -1), (20.4, 1)]
+    vertices = [(-20.1, 1), (-20.2, -1), (20.3, -1)]
+    all_vertices_combinations = [
+        [(-20.1, 1), (-20.2, -1), (20.3, -1)],
+        [(-20.1, 1), (339.8, -1), (20.3, -1)],
+        [(-20.1, 1), (-380.2, -1), (20.3, -1)],
+        [(-20.1, 1), (-20.2, -1), (380.3, -1)],
+        [(-20.1, 1), (-20.2, -1), (-339.7, -1)],
+        [(339.9, 1), (-20.2, -1), (20.3, -1)],
+        [(339.9, 1), (339.8, -1), (20.3, -1)],
+        [(339.9, 1), (-380.2, -1), (20.3, -1)],
+        [(339.9, 1), (-20.2, -1), (380.3, -1)],
+        [(339.9, 1), (-20.2, -1), (-339.7, -1)],
+        [(-380.1, 1), (-20.2, -1), (20.3, -1)],
+        [(-380.1, 1), (339.8, -1), (20.3, -1)],
+        [(-380.1, 1), (-380.2, -1), (20.3, -1)],
+        [(-380.1, 1), (-20.2, -1), (380.3, -1)],
+        [(-380.1, 1), (-20.2, -1), (-339.7, -1)],
+        [(-20.1, 1), (339.8, -1), (380.3, -1)],
+        [(-20.1, 1), (339.8, -1), (-339.7, -1)],
+        [(-20.1, 1), (-380.2, -1), (380.3, -1)],
+        [(-20.1, 1), (-380.2, -1), (-339.7, -1)],
+    ]
     _, vertices_xyz = get_cartesian_polygon(vertices)
-
-    for v in calculate_polygon_combinations(vertices):
+    for v in all_vertices_combinations:
         _, wrapped_v_xyz = get_cartesian_polygon(v)
         npt.assert_allclose(vertices_xyz, wrapped_v_xyz, rtol=1e-7)
