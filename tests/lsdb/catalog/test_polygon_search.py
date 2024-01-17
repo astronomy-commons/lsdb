@@ -56,22 +56,23 @@ def test_polygon_search_invalid_shape(small_sky_order1_catalog):
 def test_polygon_search_wrapped_right_ascension():
     """Tests the scenario where the polygon edges intersect the
     discontinuity of the RA [0,360] degrees range. For the same
-    polygon we can have four possible combination of coordinates:
+    polygon we can have four possible combination of coordinates
+    (with some float-fudging):
         - [(-20, 1), (-20, -1), (20, -1), (20, 1)]
         - [(-20, 1), (-20, -1), (380, -1), (380, 1)]
         - [(340, 1), (340, -1), (20, -1), (20, 1)]
         - [(340, 1), (340, -1), (-340, -1), (-340, 1)]
     """
-    vertices = [(-20, 1), (-20, -1), (20, -1), (20, 1)]
+    vertices = [(-20.1, 1), (-20.2, -1), (20.3, -1), (20.4, 1)]
     _, vertices_xyz = get_cartesian_polygon(vertices)
 
     def assert_wrapped_polygon_is_the_same(v):
         _, wrapped_v_xyz = get_cartesian_polygon(v)
         npt.assert_allclose(vertices_xyz, wrapped_v_xyz, rtol=1e-7)
 
-    vertices_1 = [(-20, 1), (-20, -1), (380, -1), (380, 1)]
+    vertices_1 = [(-20.1, 1), (-20.2, -1), (380.3, -1), (380.4, 1)]
     assert_wrapped_polygon_is_the_same(vertices_1)
-    vertices_2 = [(340, 1), (340, -1), (20, -1), (20, 1)]
+    vertices_2 = [(339.9, 1), (339.8, -1), (20.3, -1), (20.4, 1)]
     assert_wrapped_polygon_is_the_same(vertices_2)
-    vertices_3 = [(340, 1), (340, -1), (-340, -1), (-340, 1)]
+    vertices_3 = [(339.9, 1), (339.8, -1), (-339.7, -1), (-339.6, 1)]
     assert_wrapped_polygon_is_the_same(vertices_3)
