@@ -11,6 +11,7 @@ from hipscat.pixel_math.polygon_filter import (
     SphericalCoordinates,
     filter_pixels_by_polygon,
 )
+from hipscat.pixel_math.validators import validate_declination_values
 from hipscat.pixel_tree.pixel_tree_builder import PixelTreeBuilder
 from lsst.sphgeom import ConvexPolygon, UnitVector3d
 
@@ -25,6 +26,9 @@ class PolygonSearch(AbstractSearch):
     """
 
     def __init__(self, vertices: List[SphericalCoordinates], metadata):
+        _, dec = np.array(vertices).T
+        validate_declination_values(dec)
+
         self.polygon, self.vertices_xyz = get_cartesian_polygon(vertices)
         self.metadata = metadata
 
@@ -35,7 +39,6 @@ class PolygonSearch(AbstractSearch):
 
     def search_points(self, frame: pd.DataFrame) -> pd.DataFrame:
         """Determine the search results within a data frame"""
-
         return polygon_filter(frame, self.polygon, self.metadata)
 
 

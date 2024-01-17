@@ -93,6 +93,11 @@ def small_sky_order1_df(small_sky_order1_dir):
 
 
 @pytest.fixture
+def small_sky_source_df(test_data_dir):
+    return pd.read_csv(os.path.join(test_data_dir, "small_sky_source", "small_sky_source.csv"))
+
+
+@pytest.fixture
 def xmatch_correct(small_sky_xmatch_dir):
     return pd.read_csv(os.path.join(small_sky_xmatch_dir, XMATCH_CORRECT_FILE))
 
