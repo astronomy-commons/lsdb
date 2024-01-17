@@ -16,9 +16,8 @@ classifiers = [
 ]
 dynamic = ["version"]
 dependencies = [
-    "dask",
-    "dask[dataframe]",
-    "dask[distributed]",
+    # dask distributed is included to ease creation of parallel dask clients.
+    "dask[dataframe,distributed]",
     "hipscat",
     "pyarrow",
     "deprecated",
