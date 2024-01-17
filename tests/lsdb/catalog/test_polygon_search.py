@@ -48,8 +48,25 @@ def test_polygon_search_invalid_dec(small_sky_order1_catalog):
 
 def test_polygon_search_invalid_shape(small_sky_order1_catalog):
     """The polygon is not convex, so the shape is invalid"""
-    vertices = [(0, 1), (1, 0), (1, 1), (0, 0), (1, 1)]
     with pytest.raises(RuntimeError):
+        vertices = [(45, 30), (60, 60), (90, 45), (60, 50)]
+        small_sky_order1_catalog.polygon_search(vertices)
+
+
+def test_polygon_search_invalid_polygon(small_sky_order1_catalog):
+    with pytest.raises(ValueError, match=ValidatorsErrors.INVALID_NUM_VERTICES):
+        vertices = [(100.1, -20.3), (100.1, 40.3)]
+        small_sky_order1_catalog.polygon_search(vertices[:2])
+    # The vertices should not have duplicates
+    with pytest.raises(ValueError, match=ValidatorsErrors.DUPLICATE_VERTICES):
+        vertices = [(100.1, -20.3), (100.1, -20.3), (280.1, -20.3), (280.1, 40.3)]
+        small_sky_order1_catalog.polygon_search(vertices)
+    # The polygons should not be on a great circle
+    with pytest.raises(ValueError, match=ValidatorsErrors.DEGENERATE_POLYGON):
+        vertices = [(100.1, 40.3), (100.1, -20.3), (280.1, -20.3), (280.1, 40.3)]
+        small_sky_order1_catalog.polygon_search(vertices)
+    with pytest.raises(ValueError, match=ValidatorsErrors.DEGENERATE_POLYGON):
+        vertices = [(50.1, 0), (100.1, 0), (150.1, 0), (200.1, 0)]
         small_sky_order1_catalog.polygon_search(vertices)
 
 

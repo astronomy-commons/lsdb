@@ -11,7 +11,7 @@ from hipscat.pixel_math.polygon_filter import (
     SphericalCoordinates,
     filter_pixels_by_polygon,
 )
-from hipscat.pixel_math.validators import validate_declination_values
+from hipscat.pixel_math.validators import validate_declination_values, validate_polygon
 from hipscat.pixel_tree.pixel_tree_builder import PixelTreeBuilder
 from lsst.sphgeom import ConvexPolygon, UnitVector3d
 
@@ -77,5 +77,6 @@ def get_cartesian_polygon(
         list of cartesian coordinates of its vertices.
     """
     vertices_xyz = hp.ang2vec(*np.array(vertices).T, lonlat=True)
-    vertices_vectors = [UnitVector3d(x, y, z) for x, y, z in vertices_xyz]
-    return ConvexPolygon(vertices_vectors), vertices_xyz
+    validate_polygon(vertices_xyz)
+    edge_vectors = [UnitVector3d(x, y, z) for x, y, z in vertices_xyz]
+    return ConvexPolygon(edge_vectors), vertices_xyz
