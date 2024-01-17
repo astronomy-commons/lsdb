@@ -15,7 +15,7 @@ from lsdb.catalog.association_catalog import AssociationCatalog
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
 from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorithm
-from lsdb.core.search import ConeSearch, PolygonSearch
+from lsdb.core.search import ConeSearch, IndexSearch, PolygonSearch
 from lsdb.dask.crossmatch_catalog_data import crossmatch_catalog_data
 from lsdb.dask.divisions import get_pixels_divisions
 from lsdb.dask.join_catalog_data import join_catalog_data_on, join_catalog_data_through
@@ -217,6 +217,23 @@ class Catalog(HealpixDataset):
             polygonal region, and the partitions that have some overlap with it.
         """
         return self._search(PolygonSearch(vertices, self.hc_structure))
+
+    def index_search(self, ids, catalog_index: hc.catalog.index.index_catalog.IndexCatalog):
+        """Find rows by ids (or other value indexed by a catalog index).
+
+        Filters partitions in the catalog to those that could contain the ids requested.
+        Filters to points that have matching values in the id field.
+
+        NB: This requires a previously-computed catalog index table.
+
+        Args:
+            ids: values to search for
+            catalog_index: a pre-computed hipscat catalog index
+
+        Returns:
+            A new Catalog containing the points filtered to those matching the ids.
+        """
+        return self._search(IndexSearch(ids, catalog_index))
 
     def _search(self, search):
         """Find rows by reusable search algorithm.

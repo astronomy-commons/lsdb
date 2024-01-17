@@ -1,0 +1,8 @@
+{
+    "catalog_name": "small_sky_order1_id_index",
+    "catalog_type": "index",
+    "total_rows": 131,
+    "primary_catalog": "/home/delucchi/git/hipscat/tests/data/small_sky_order1",
+    "indexing_column": "id",
+    "extra_columns": []
+}

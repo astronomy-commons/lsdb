@@ -58,6 +58,11 @@ def small_sky_hipscat_catalog(small_sky_dir):
 
 
 @pytest.fixture
+def small_sky_order1_id_index_dir(test_data_dir):
+    return os.path.join(test_data_dir, "small_sky_order1_id_index")
+
+
+@pytest.fixture
 def small_sky_catalog(small_sky_dir):
     return lsdb.read_hipscat(small_sky_dir, catalog_type=lsdb.catalog.Catalog)
 
