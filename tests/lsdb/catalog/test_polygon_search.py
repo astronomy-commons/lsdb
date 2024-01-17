@@ -1,5 +1,7 @@
 import numpy as np
+import numpy.testing as npt
 import pytest
+from hipscat.pixel_math.validators import ValidatorsErrors
 
 from lsdb.core.search.polygon_search import get_cartesian_polygon
 
@@ -37,8 +39,48 @@ def test_polygon_search_empty(small_sky_order1_catalog):
     assert len(polygon_search_catalog.hc_structure.pixel_tree) == 1
 
 
+def test_polygon_search_invalid_dec(small_sky_order1_catalog):
+    # Some declination values are out of the [-90,90] bounds
+    vertices = [(-20, 100), (-20, -1), (20, -1), (20, 100)]
+    with pytest.raises(ValueError, match=ValidatorsErrors.INVALID_DEC):
+        small_sky_order1_catalog.polygon_search(vertices)
+
+
 def test_polygon_search_invalid_shape(small_sky_order1_catalog):
     """The polygon is not convex, so the shape is invalid"""
     vertices = [(0, 1), (1, 0), (1, 1), (0, 0), (1, 1)]
     with pytest.raises(RuntimeError):
         small_sky_order1_catalog.polygon_search(vertices)
+
+
+def test_polygon_search_wrapped_right_ascension():
+    """Tests the scenario where the polygon edges intersect the
+    discontinuity of the RA [0,360] degrees range. For the same
+    polygon we have several possible combination of coordinates
+    (here with some float-fudging)."""
+    vertices = [(-20.1, 1), (-20.2, -1), (20.3, -1)]
+    all_vertices_combinations = [
+        [(-20.1, 1), (-20.2, -1), (20.3, -1)],
+        [(-20.1, 1), (339.8, -1), (20.3, -1)],
+        [(-20.1, 1), (-380.2, -1), (20.3, -1)],
+        [(-20.1, 1), (-20.2, -1), (380.3, -1)],
+        [(-20.1, 1), (-20.2, -1), (-339.7, -1)],
+        [(339.9, 1), (-20.2, -1), (20.3, -1)],
+        [(339.9, 1), (339.8, -1), (20.3, -1)],
+        [(339.9, 1), (-380.2, -1), (20.3, -1)],
+        [(339.9, 1), (-20.2, -1), (380.3, -1)],
+        [(339.9, 1), (-20.2, -1), (-339.7, -1)],
+        [(-380.1, 1), (-20.2, -1), (20.3, -1)],
+        [(-380.1, 1), (339.8, -1), (20.3, -1)],
+        [(-380.1, 1), (-380.2, -1), (20.3, -1)],
+        [(-380.1, 1), (-20.2, -1), (380.3, -1)],
+        [(-380.1, 1), (-20.2, -1), (-339.7, -1)],
+        [(-20.1, 1), (339.8, -1), (380.3, -1)],
+        [(-20.1, 1), (339.8, -1), (-339.7, -1)],
+        [(-20.1, 1), (-380.2, -1), (380.3, -1)],
+        [(-20.1, 1), (-380.2, -1), (-339.7, -1)],
+    ]
+    _, vertices_xyz = get_cartesian_polygon(vertices)
+    for v in all_vertices_combinations:
+        _, wrapped_v_xyz = get_cartesian_polygon(v)
+        npt.assert_allclose(vertices_xyz, wrapped_v_xyz, rtol=1e-7)
