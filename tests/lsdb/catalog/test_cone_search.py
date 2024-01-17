@@ -37,16 +37,16 @@ def test_cone_search_filters_partitions(small_sky_order1_catalog):
 
 def test_cone_search_wrapped_ra(small_sky_order1_catalog):
     # RA is inside the [0,360] degree range
-    small_sky_order1_catalog.cone_search(200, 0, 1)
+    small_sky_order1_catalog.cone_search(200.3, 0, 1.2)
     # RA is outside the [0,360] degree range, but they are wrapped
-    small_sky_order1_catalog.cone_search(400, 0, 1)
-    small_sky_order1_catalog.cone_search(-100, 0, 1)
+    small_sky_order1_catalog.cone_search(400.9, 0, 1.3)
+    small_sky_order1_catalog.cone_search(-100.1, 0, 1.5)
 
 
 def test_invalid_dec_and_negative_radius(small_sky_order1_catalog):
     with pytest.raises(ValueError, match=ValidatorsErrors.INVALID_DEC):
-        small_sky_order1_catalog.cone_search(0, -100, 1)
+        small_sky_order1_catalog.cone_search(0, -100.3, 1.2)
     with pytest.raises(ValueError, match=ValidatorsErrors.INVALID_DEC):
-        small_sky_order1_catalog.cone_search(0, 100, 1)
+        small_sky_order1_catalog.cone_search(0, 100.4, 1.3)
     with pytest.raises(ValueError, match=ValidatorsErrors.INVALID_RADIUS):
-        small_sky_order1_catalog.cone_search(0, 0, -1)
+        small_sky_order1_catalog.cone_search(0, 0, -1.5)
