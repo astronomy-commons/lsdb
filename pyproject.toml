@@ -2,6 +2,7 @@
 name = "lsdb"
 license = {file = "LICENSE"}
 readme = "README.md"
+description = "Spatial analysis for extremely large astronomical databases using dask"
 authors = [
     { name = "LINCC Frameworks", email = "lincc-frameworks-team@lists.lsst.org" }
 ]
@@ -16,16 +17,18 @@ classifiers = [
 dynamic = ["version"]
 dependencies = [
     "dask",
+    "dask[dataframe]",
+    "dask[distributed]",
     "hipscat",
     "pyarrow",
     "deprecated",
-    "ipykernel", # Support for Jupyter notebooks
     "scipy", # kdtree
     "lsst-sphgeom", # To handle spherical sky polygons
 ]
 
 [project.urls]
-"Source Code" = "https://github.com/astronomy-commons/lsdb"
+source = "https://github.com/astronomy-commons/lsdb"
+documentation = "https://lsdb.readthedocs.io/"
 
 # On a mac, install optional dependencies with `pip install '.[dev]'` (include the single quotes)
 [project.optional-dependencies]
@@ -38,11 +41,9 @@ dev = [
     "sphinx", # Used to automatically generate documentation
     "sphinx-rtd-theme", # Used to render documentation
     "sphinx-autoapi", # Used to automatically generate api documentation
-    # if you add dependencies here while experimenting in a notebook and you
-    # want that notebook to render in your documentation, please add the
-    # dependencies to ./docs/requirements.txt as well.
     "nbconvert", # Needed for pre-commit check to clear output from Python notebooks
     "nbsphinx", # Used to integrate Python notebooks into Sphinx documentation
+    "ipykernel", # Support for Jupyter notebooks
     "ipython", # Also used in building notebooks into Sphinx
     "asv==0.6.1", # Used to compute performance benchmarks
 ]
