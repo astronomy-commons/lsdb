@@ -1,0 +1,31 @@
+{
+    "catalog_name": "small_sky_order1_id_index",
+    "catalog_type": "index",
+    "total_rows": 131,
+    "primary_catalog": "/home/delucchi/git/hipscat/tests/data/small_sky_order1",
+    "indexing_column": "id",
+    "extra_columns": [],
+    "version": "0.2.1",
+    "generation_date": "2024.01.09",
+    "tool_args": {
+        "tool_name": "hipscat_import",
+        "version": "0.2.1",
+        "runtime_args": {
+            "catalog_name": "small_sky_order1_id_index",
+            "output_path": "/home/delucchi/git/hipscat/tests/data/",
+            "output_artifact_name": "small_sky_order1_id_index",
+            "tmp_dir": "",
+            "overwrite": true,
+            "dask_tmp": "",
+            "dask_n_workers": 1,
+            "dask_threads_per_worker": 1,
+            "catalog_path": "/home/delucchi/git/hipscat/tests/data/small_sky_order1_id_index",
+            "tmp_path": "/home/delucchi/git/hipscat/tests/data/small_sky_order1_id_index/intermediate",
+            "input_catalog_path": "/home/delucchi/git/hipscat/tests/data/small_sky_order1",
+            "indexing_column": "id",
+            "extra_columns": [],
+            "include_hipscat_index": "False",
+            "include_order_pixel": true
+        }
+    }
+}
