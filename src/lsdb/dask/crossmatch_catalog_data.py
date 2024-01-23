@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import warnings
 from typing import TYPE_CHECKING, Tuple, Type
 
 import dask
 import dask.dataframe as dd
-from hipscat.pixel_tree import PixelAlignment, PixelAlignmentType, align_trees
+from hipscat.pixel_tree import PixelAlignment
 
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
 from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorithm
@@ -15,6 +16,7 @@ from lsdb.dask.merge_catalog_functions import (
     filter_by_hipscat_index_to_pixel,
     generate_meta_df_for_joined_tables,
     get_healpix_pixels_from_alignment,
+    join_partition_and_margin, align_catalogs,
 )
 from lsdb.types import DaskDFPixelMap
 
@@ -29,12 +31,16 @@ builtin_crossmatch_algorithms = {BuiltInCrossmatchAlgorithm.KD_TREE: KdTreeCross
 def perform_crossmatch(
     left_df,
     right_df,
+    right_margin_df,
     left_pix,
     right_pix,
+    right_margin_pix,
     left_hc_structure,
     right_hc_structure,
+    right_margin_hc_structure,
     algorithm,
     suffixes,
+    right_columns,
     **kwargs,
 ):
     """Performs a crossmatch on data from a HEALPix pixel in each catalog
@@ -44,9 +50,12 @@ def perform_crossmatch(
     """
     if right_pix.order > left_pix.order:
         left_df = filter_by_hipscat_index_to_pixel(left_df, right_pix.order, right_pix.pixel)
+
+    right_joined_df = join_partition_and_margin(right_df, right_margin_df, right_columns)
+
     return algorithm(
         left_df,
-        right_df,
+        right_joined_df,
         left_pix.order,
         left_pix.pixel,
         right_pix.order,
@@ -85,12 +94,11 @@ def crossmatch_catalog_data(
     """
     crossmatch_algorithm = get_crossmatch_algorithm(algorithm)
 
+    if right.margin is None:
+        warnings.warn("Right catalog does not have a margin cache. Results may be inaccurate", RuntimeWarning)
+
     # perform alignment on the two catalogs
-    alignment = align_trees(
-        left.hc_structure.pixel_tree,
-        right.hc_structure.pixel_tree,
-        alignment_type=PixelAlignmentType.INNER,
-    )
+    alignment = align_catalogs(left, right)
 
     # get lists of HEALPix pixels from alignment to pass to cross-match
     left_pixels, right_pixels = get_healpix_pixels_from_alignment(alignment)
@@ -98,10 +106,11 @@ def crossmatch_catalog_data(
     # perform the crossmatch on each partition pairing using dask delayed for lazy computation
 
     joined_partitions = align_and_apply(
-        [(left, left_pixels), (right, right_pixels)],
+        [(left, left_pixels), (right, right_pixels), (right.margin, right_pixels)],
         perform_crossmatch,
         crossmatch_algorithm,
         suffixes,
+        right.columns,
         **kwargs,
     )
 

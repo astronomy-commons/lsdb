@@ -13,6 +13,7 @@ from hipscat.pixel_math.polygon_filter import SphericalCoordinates
 from lsdb import io
 from lsdb.catalog.association_catalog import AssociationCatalog
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
+from lsdb.catalog.margin_catalog import MarginCatalog
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
 from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorithm
 from lsdb.core.search import ConeSearch, IndexSearch, PolygonSearch
@@ -39,6 +40,7 @@ class Catalog(HealpixDataset):
         ddf: dd.DataFrame,
         ddf_pixel_map: DaskDFPixelMap,
         hc_structure: hc.catalog.Catalog,
+        margin: MarginCatalog | None = None,
     ):
         """Initialise a Catalog object.
 
@@ -51,6 +53,7 @@ class Catalog(HealpixDataset):
             hc_structure: `hipscat.Catalog` object with hipscat metadata of the catalog
         """
         super().__init__(ddf, ddf_pixel_map, hc_structure)
+        self.margin = margin
 
     def get_ordered_healpix_pixels(self) -> List[HealpixPixel]:
         """Get all HEALPix pixels that are contained in the catalog,

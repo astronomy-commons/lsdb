@@ -59,3 +59,8 @@ class Dataset:
     def dtypes(self):
         """Returns the datatypes of the columns in the Dataset"""
         return self._ddf.dtypes
+
+    @property
+    def columns(self):
+        """Returns the columns in the Dataset"""
+        return self._ddf.columns

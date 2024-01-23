@@ -3,6 +3,7 @@ import pandas as pd
 import pytest
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
 
+import lsdb
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
 from lsdb.core.crossmatch.kdtree_match import KdTreeCrossmatch
 
@@ -42,6 +43,25 @@ class TestCrossmatch:
         ).compute()
         assert len(xmatched) == len(xmatch_correct_3n_2t_no_margin)
         for _, correct_row in xmatch_correct_3n_2t_no_margin.iterrows():
+            assert correct_row["ss_id"] in xmatched["id_small_sky"].values
+            xmatch_row = xmatched[
+                (xmatched["id_small_sky"] == correct_row["ss_id"])
+                & (xmatched["id_small_sky_xmatch"] == correct_row["xmatch_id"])
+            ]
+            assert len(xmatch_row) == 1
+            assert xmatch_row["_DIST"].values == pytest.approx(correct_row["dist"])
+
+    @staticmethod
+    def test_kdtree_crossmatch_multiple_neighbors_margin(
+        algo, small_sky_catalog, small_sky_xmatch_dir, small_sky_xmatch_margin_dir,  xmatch_correct_3n_2t
+    ):
+        small_sky_xmatch_margin = lsdb.read_hipscat(small_sky_xmatch_margin_dir)
+        small_sky_xmatch_catalog = lsdb.read_hipscat(small_sky_xmatch_dir, margin_cache=small_sky_xmatch_margin)
+        xmatched = small_sky_catalog.crossmatch(
+            small_sky_xmatch_catalog, n_neighbors=3, radius_arcsec=2 * 3600, algorithm=algo
+        ).compute()
+        assert len(xmatched) == len(xmatch_correct_3n_2t)
+        for _, correct_row in xmatch_correct_3n_2t.iterrows():
             assert correct_row["ss_id"] in xmatched["id_small_sky"].values
             xmatch_row = xmatched[
                 (xmatched["id_small_sky"] == correct_row["ss_id"])
