@@ -11,7 +11,9 @@ from lsdb.core.crossmatch.kdtree_match import KdTreeCrossmatch
 class TestCrossmatch:
     @staticmethod
     def test_kdtree_crossmatch(algo, small_sky_catalog, small_sky_xmatch_catalog, xmatch_correct):
-        xmatched = small_sky_catalog.crossmatch(small_sky_xmatch_catalog, algorithm=algo).compute()
+        xmatched = small_sky_catalog.crossmatch(
+            small_sky_xmatch_catalog, algorithm=algo, d_thresh=0.01
+        ).compute()
         assert len(xmatched) == len(xmatch_correct)
         for _, correct_row in xmatch_correct.iterrows():
             assert correct_row["ss_id"] in xmatched["id_small_sky"].values
