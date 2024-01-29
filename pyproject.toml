@@ -16,8 +16,10 @@ classifiers = [
 ]
 dynamic = ["version"]
 dependencies = [
-    # dask distributed is included to ease creation of parallel dask clients.
-    "dask[dataframe,distributed]",
+    # Includes dask[array,dataframe,distributed,diagnostics].
+    # dask distributed eases the creation of parallel dask clients.
+    # dask diagnostics is required to spin up the dashboard for profiling.
+    "dask[complete]",
     "hipscat",
     "pyarrow",
     "deprecated",
