@@ -18,7 +18,7 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
     def crossmatch(
         self,
         n_neighbors: int = 1,
-        radius_arcsec: float = 1,  # 1 arcsecond
+        radius_arcsec: float = 1,
     ) -> pd.DataFrame:
         """Perform a cross-match between the data from two HEALPix pixels
 
