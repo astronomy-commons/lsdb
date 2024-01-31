@@ -1,4 +1,3 @@
-import dask.dataframe as dd
 import hipscat as hc
 
 from lsdb.catalog.margin_catalog import MarginCatalog
