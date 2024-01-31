@@ -18,7 +18,7 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
     def crossmatch(
         self,
         n_neighbors: int = 1,
-        d_thresh: float = 0.01,
+        radius_arcsec: float = 1,
     ) -> pd.DataFrame:
         """Perform a cross-match between the data from two HEALPix pixels
 
@@ -27,7 +27,7 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
 
         Args:
             n_neighbors (int): The number of neighbors to find within each point
-            d_thresh (float): The threshold distance in degrees beyond which neighbors are not added
+            radius_arcsec (float): The threshold distance in arcseconds beyond which neighbors are not added
 
         Returns:
             A DataFrame from the left and right tables merged with one row for each pair of
@@ -36,7 +36,8 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
             a "_DIST" column with the great circle separation between the points.
         """
         # Distance in 3-D space for unit sphere
-        d_chord = 2.0 * math.sin(math.radians(0.5 * d_thresh))
+        radius_degrees = radius_arcsec / 3600.0
+        d_chord = 2.0 * math.sin(math.radians(0.5 * radius_degrees))
 
         # get matching indices for cross-matched rows
         chord_distances, left_idx, right_idx = self._find_crossmatch_indices(
