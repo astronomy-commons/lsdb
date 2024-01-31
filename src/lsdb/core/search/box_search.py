@@ -77,8 +77,6 @@ def box_filter(
 def _create_ra_mask(ra: Tuple[float, float], values: np.ndarray) -> np.ndarray:
     """Creates the mask to filter right ascension values. If this range crosses
     the discontinuity line (0 degrees), we have a branched logical operation."""
-    if ra is None:
-        raise ValueError("No right ascension range defined")
     if ra[0] <= ra[1]:
         mask = np.logical_and(ra[0] <= values, values <= ra[1])
     else:
