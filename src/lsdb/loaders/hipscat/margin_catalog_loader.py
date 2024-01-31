@@ -6,7 +6,7 @@ from lsdb.loaders.hipscat.abstract_catalog_loader import AbstractCatalogLoader
 
 
 class MarginCatalogLoader(AbstractCatalogLoader[MarginCatalog]):
-    """Loads an HiPSCat AssociationCatalog"""
+    """Loads an HiPSCat MarginCatalog"""
 
     def load_catalog(self) -> MarginCatalog:
         """Load a catalog from the configuration specified when the loader was created
