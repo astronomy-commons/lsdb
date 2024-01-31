@@ -7,8 +7,10 @@ import dask.dataframe as dd
 import hipscat as hc
 import numpy as np
 from hipscat.pixel_math import HealpixPixel
+from hipscat.pixel_math.box_filter import form_polygon, transform_radec
 from hipscat.pixel_math.healpix_pixel_function import get_pixel_argsort
 from hipscat.pixel_math.polygon_filter import SphericalCoordinates
+from hipscat.pixel_math.validators import validate_box_search
 
 from lsdb import io
 from lsdb.catalog.association_catalog import AssociationCatalog
@@ -16,6 +18,7 @@ from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
 from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorithm
 from lsdb.core.search import ConeSearch, IndexSearch, PolygonSearch
+from lsdb.core.search.box_search import BoxSearch
 from lsdb.dask.crossmatch_catalog_data import crossmatch_catalog_data
 from lsdb.dask.divisions import get_pixels_divisions
 from lsdb.dask.join_catalog_data import join_catalog_data_on, join_catalog_data_through
@@ -201,6 +204,26 @@ class Catalog(HealpixDataset):
             overlap the cone.
         """
         return self._search(ConeSearch(ra, dec, radius, self.hc_structure))
+
+    def box(self, ra: Tuple[float, float] | None = None, dec: Tuple[float, float] | None = None) -> Catalog:
+        """Performs filtering according to right ascension and declination ranges.
+
+        Filters to points within the region specified in degrees.
+        Filters partitions in the catalog to those that have some overlap with the region.
+
+        Args:
+            ra (Tuple[float, float]): The right ascension minimum and maximum values
+            dec (Tuple[float, float]): The declination minimum and maximum values
+
+        Returns:
+            A new catalog containing the points filtered to those within the region, and the
+            partitions that have some overlap with it.
+        """
+        validate_box_search(ra, dec)
+        ra, dec = transform_radec(ra, dec)
+        if ra is not None and dec is not None:
+            return self.polygon_search(form_polygon(ra, dec))
+        return self._search(BoxSearch(self.hc_structure, ra=ra, dec=dec))
 
     def polygon_search(self, vertices: List[SphericalCoordinates]) -> Catalog:
         """Perform a polygonal search to filter the catalog.
