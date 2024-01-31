@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import List, Tuple
 
+import dask
 import hipscat as hc
 import numpy as np
 import pandas as pd
@@ -15,7 +16,7 @@ from lsdb.core.search.abstract_search import AbstractSearch
 
 class BoxSearch(AbstractSearch):
     """Perform a box search to filter the catalog. This type of search is used for a
-    range of ra or dec. If both, a polygonal search is the better option.
+    range of ra or dec (one or the other). If both, a polygonal search should be used.
 
     Filters to points within the ra / dec region, specified in degrees.
     Filters partitions in the catalog to those that have some overlap with the region.
@@ -32,25 +33,6 @@ class BoxSearch(AbstractSearch):
         self.ra, self.dec = transform_radec(ra, dec)
         self.metadata = metadata
 
-    def _create_ra_mask(self, values) -> np.ndarray:
-        """Creates the mask to filter right ascension values. If this range crosses
-        the discontinuity line (0 degrees), we have a branched logical operation.
-
-        Returns:
-            A numpy array of bool, where each True value indicates that the
-            point belongs to the right ascension range, False indicates otherwise.
-        """
-        if self.ra is None:
-            raise ValueError("No right ascension range defined")
-        if self.ra[0] <= self.ra[1]:
-            mask = np.logical_and(self.ra[0] <= values, values <= self.ra[1])
-        else:
-            mask = np.logical_or(
-                np.logical_and(self.ra[0] <= values, values <= 360),
-                np.logical_and(0 <= values, values <= self.ra[1]),
-            )
-        return mask
-
     def search_partitions(self, pixels: List[HealpixPixel]) -> List[HealpixPixel]:
         """Determine the target partitions for further filtering."""
         pixel_tree = PixelTreeBuilder.from_healpix(pixels)
@@ -58,16 +40,50 @@ class BoxSearch(AbstractSearch):
 
     def search_points(self, frame: pd.DataFrame) -> pd.DataFrame:
         """Determine the search results within a data frame"""
-        mask = None
-        if self.ra is not None:
-            ra_column = self.metadata.catalog_info.ra_column
-            wrapped_ra = wrap_angles(frame[ra_column].compute())
-            ra_values = np.array(wrapped_ra)
-            mask = self._create_ra_mask(ra_values)
-        elif self.dec is not None:
-            dec_column = self.metadata.catalog_info.dec_column
-            dec_values = np.array(frame[dec_column].compute())
-            mask = np.logical_and(self.dec[0] <= dec_values, dec_values <= self.dec[1])
-        if mask is not None:
-            frame = frame.iloc[mask]
-        return frame
+        return box_filter(frame, self.ra, self.dec, self.metadata)
+
+
+@dask.delayed
+def box_filter(
+    data_frame: pd.DataFrame,
+    ra: Tuple[float, float] | None,
+    dec: Tuple[float, float] | None,
+    metadata: hc.catalog.Catalog,
+):
+    """Filters a dataframe to only include points within the specified box region.
+
+    Args:
+        data_frame (pd.DataFrame): DataFrame containing points in the sky
+        ra (Tuple[float, float]): Right ascension range, in degrees
+        dec (Tuple[float, float]): Declination ascension range, in degrees
+        metadata (hipscat.Catalog): hipscat `Catalog` with catalog_info that matches `data_frame`
+
+    Returns:
+        A new DataFrame with the rows from `data_frame` filtered to only the points inside the box region.
+    """
+    mask = None
+    if ra is not None:
+        ra_values = data_frame[metadata.catalog_info.ra_column]
+        wrapped_ra = np.array(wrap_angles(ra_values))
+        mask = _create_ra_mask(ra, wrapped_ra)
+    elif dec is not None:
+        dec_values = data_frame[metadata.catalog_info.dec_column].values
+        mask = np.logical_and(dec[0] <= dec_values, dec_values <= dec[1])
+    if mask is not None:
+        data_frame = data_frame.iloc[mask]
+    return data_frame
+
+
+def _create_ra_mask(ra: Tuple[float, float], values: np.ndarray) -> np.ndarray:
+    """Creates the mask to filter right ascension values. If this range crosses
+    the discontinuity line (0 degrees), we have a branched logical operation."""
+    if ra is None:
+        raise ValueError("No right ascension range defined")
+    if ra[0] <= ra[1]:
+        mask = np.logical_and(ra[0] <= values, values <= ra[1])
+    else:
+        mask = np.logical_or(
+            np.logical_and(ra[0] <= values, values <= 360),
+            np.logical_and(0 <= values, values <= ra[1]),
+        )
+    return mask
