@@ -10,7 +10,7 @@ class MarginCatalog(HealpixDataset):
     spatial operations.
 
     Attributes:
-        hc_structure: `hipscat.Catalog` object representing the structure
+        hc_structure: `hipscat.MarginCatalog` object representing the structure
                       and metadata of the HiPSCat catalog
     """
 
