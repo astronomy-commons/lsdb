@@ -1,19 +1,51 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Sequence, Tuple
+from typing import TYPE_CHECKING, List, Sequence, Tuple, cast, Callable
 
 import numpy as np
 import pandas as pd
 from dask.delayed import Delayed
+import dask.dataframe as dd
 from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN, healpix_to_hipscat_id
 from hipscat.pixel_tree import PixelAlignment
 
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
+from lsdb.dask.divisions import get_pixels_divisions
 from lsdb.types import DaskDFPixelMap
 
 if TYPE_CHECKING:
     from lsdb.catalog.catalog import Catalog
+
+
+def align_and_apply(
+        catalog_mappings: List[Tuple[Catalog, List[HealpixPixel]]], func: Callable, *args, **kwargs
+) -> List[Delayed]:
+    """ Aligns catalogs to a given ordering of pixels and applies a function to the aligned catalogs
+
+    Args:
+        catalog_mappings (List[Tuple[Catalog, List[HealpixPixel]]]): The catalogs and their corresponding
+            order of pixels to align the partitions to. In the form of
+            [(catalog, pixels), (catalog2, pixels2), ...]
+        func (Callable): The function to apply to the aligned catalogs
+        *args: Additional arguments to pass to the function
+        **kwargs: Additional keyword arguments to pass to the function
+
+    Returns:
+        A list of delayed objects, each one representing the result of the function applied to the
+        aligned partitions of the catalogs
+    """
+    aligned_partitions = [
+        align_catalog_to_partitions(cat, pixels) for (cat, pixels) in catalog_mappings
+    ]
+    pixels = [pixels for (_, pixels) in catalog_mappings]
+    hc_structures = [cat.hc_structure for (cat, _) in catalog_mappings]
+
+    def apply_func(*partitions_and_pixels):
+        return func(*partitions_and_pixels, *hc_structures, *args, **kwargs)
+
+    resulting_partitions = np.vectorize(apply_func)(*aligned_partitions, *pixels)
+    return resulting_partitions
 
 
 def filter_by_hipscat_index_to_pixel(dataframe: pd.DataFrame, order: int, pixel: int) -> pd.DataFrame:
@@ -33,17 +65,41 @@ def filter_by_hipscat_index_to_pixel(dataframe: pd.DataFrame, order: int, pixel:
     return filtered_df
 
 
+def construct_catalog_args(
+        partitions: List[Delayed], meta_df: pd.DataFrame, alignment: PixelAlignment
+) -> Tuple[dd.core.DataFrame, DaskDFPixelMap, PixelAlignment]:
+    """Constructs the arguments needed to create a catalog from a list of delayed partitions
+
+    Args:
+        partitions (List[Delayed]): The list of delayed partitions to create the catalog from
+        meta_df (pd.DataFrame): The dask meta schema for the partitions
+        alignment (PixelAlignment): The alignment used to create the delayed partitions
+
+    Returns:
+        A tuple of (ddf, partition_map, alignment) with the dask dataframe, the partition map, and the alignment needed to create the catalog
+    """
+    # generate dask df partition map from alignment
+    partition_map = get_partition_map_from_alignment_pixels(alignment.pixel_mapping)
+
+    # create dask df from delayed partitions
+    divisions = get_pixels_divisions(list(partition_map.keys()))
+    ddf = dd.from_delayed(partitions, meta=meta_df, divisions=divisions)
+    ddf = cast(dd.DataFrame, ddf)
+    return ddf, partition_map, alignment
+
+
 def get_healpix_pixels_from_alignment(
-    pixel_mapping: pd.DataFrame,
+        alignment: PixelAlignment,
 ) -> Tuple[List[HealpixPixel], List[HealpixPixel]]:
     """Gets the list of primary and join pixels as the HealpixPixel class from a PixelAlignment
 
     Args:
-        pixel_mapping (pd.DataFrame): the pixel_mapping dataframe from a PixelAlignment
+        alignment (PixelAlignment): the PixelAlignment to get pixels from
 
     Returns:
         a tuple of (primary_pixels, join_pixels) with lists of HealpixPixel objects
     """
+    pixel_mapping = alignment.pixel_mapping
     make_pixel = np.vectorize(HealpixPixel)
     left_pixels = make_pixel(
         pixel_mapping[PixelAlignment.PRIMARY_ORDER_COLUMN_NAME],
@@ -57,10 +113,10 @@ def get_healpix_pixels_from_alignment(
 
 
 def generate_meta_df_for_joined_tables(
-    catalogs: Sequence[Catalog],
-    suffixes: Sequence[str],
-    extra_columns: pd.DataFrame | None = None,
-    index_name: str = HIPSCAT_ID_COLUMN,
+        catalogs: Sequence[Catalog],
+        suffixes: Sequence[str],
+        extra_columns: pd.DataFrame | None = None,
+        index_name: str = HIPSCAT_ID_COLUMN,
 ) -> pd.DataFrame:
     """Generates a Dask meta DataFrame that would result from joining two catalogs
 
@@ -110,18 +166,14 @@ def get_partition_map_from_alignment_pixels(join_pixels: pd.DataFrame) -> DaskDF
 
 
 def align_catalog_to_partitions(
-    catalog: HealpixDataset,
-    pixels: pd.DataFrame,
-    order_col: str = "Norder",
-    pixel_col: str = "Npix",
-) -> List[Delayed]:
+        catalog: HealpixDataset,
+        pixels: List[HealpixPixel]
+) -> List[Tuple[Delayed, HealpixPixel]]:
     """Aligns the partitions of a Catalog to a dataframe with HEALPix pixels in each row
 
     Args:
         catalog: the catalog to align
-        pixels: the dataframe specifying the order of partitions
-        order_col: the column name of the HEALPix order in the dataframe
-        pixel_col: the column name of the HEALPix pixel in the dataframe
+        pixels: the list of HealpixPixels specifying the order of partitions
 
     Returns:
         A list of dask delayed objects, each one representing the data in a HEALPix pixel in the
@@ -129,35 +181,6 @@ def align_catalog_to_partitions(
 
     """
     dfs = catalog.to_delayed()
-    get_partition = np.vectorize(lambda order, pix: dfs[catalog.get_partition_index(order, pix)])
-    partitions = get_partition(pixels[order_col], pixels[pixel_col])
+    get_partition = np.vectorize(lambda pix: dfs[catalog.get_partition_index(pix.order, pix.pixel)])
+    partitions = get_partition(pixels)
     return list(partitions)
-
-
-def align_catalogs_to_alignment_mapping(
-    pixel_mapping: pd.DataFrame, left: HealpixDataset, right: HealpixDataset
-) -> Tuple[List[Delayed], List[Delayed]]:
-    """Aligns a pair of catalogs to the primary and join pixels of a PixelAlignment
-
-    Args:
-        pixel_mapping (pd.DataFrame): the pixel_mapping dataframe from a PixelAlignment
-        left (HealpixDataset): the HealpixDataset to align to the primary pixels
-        right (HealpixDataset): the HealpixDataset to align to the join pixels
-
-    Returns:
-        a tuple of the left and right partitions from the catalogs as dask delayed objects aligned to the
-        primary and join pixels in the alignment
-    """
-    left_aligned_to_join_partitions = align_catalog_to_partitions(
-        left,
-        pixel_mapping,
-        order_col=PixelAlignment.PRIMARY_ORDER_COLUMN_NAME,
-        pixel_col=PixelAlignment.PRIMARY_PIXEL_COLUMN_NAME,
-    )
-    right_aligned_to_join_partitions = align_catalog_to_partitions(
-        right,
-        pixel_mapping,
-        order_col=PixelAlignment.JOIN_ORDER_COLUMN_NAME,
-        pixel_col=PixelAlignment.JOIN_PIXEL_COLUMN_NAME,
-    )
-    return left_aligned_to_join_partitions, right_aligned_to_join_partitions
