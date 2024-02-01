@@ -10,10 +10,11 @@ from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatc
 from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorithm
 from lsdb.core.crossmatch.kdtree_match import KdTreeCrossmatch
 from lsdb.dask.merge_catalog_functions import (
+    align_and_apply,
+    construct_catalog_args,
     filter_by_hipscat_index_to_pixel,
     generate_meta_df_for_joined_tables,
     get_healpix_pixels_from_alignment,
-    align_and_apply, construct_catalog_args,
 )
 from lsdb.types import DaskDFPixelMap
 
@@ -101,7 +102,7 @@ def crossmatch_catalog_data(
         perform_crossmatch,
         crossmatch_algorithm,
         suffixes,
-        **kwargs
+        **kwargs,
     )
 
     # generate meta table structure for dask df

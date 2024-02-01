@@ -14,10 +14,11 @@ from hipscat.pixel_tree import PixelAlignment, PixelAlignmentType, align_trees
 
 from lsdb.catalog.association_catalog import AssociationCatalog
 from lsdb.dask.merge_catalog_functions import (
+    align_and_apply,
+    construct_catalog_args,
     filter_by_hipscat_index_to_pixel,
     generate_meta_df_for_joined_tables,
     get_healpix_pixels_from_alignment,
-    align_and_apply, construct_catalog_args,
 )
 from lsdb.types import DaskDFPixelMap
 
@@ -168,11 +169,7 @@ def join_catalog_data_on(
     left_pixels, right_pixels = get_healpix_pixels_from_alignment(alignment)
 
     joined_partitions = align_and_apply(
-        [(left, left_pixels), (right, right_pixels)],
-        perform_join_on,
-        left_on,
-        right_on,
-        suffixes
+        [(left, left_pixels), (right, right_pixels)], perform_join_on, left_on, right_on, suffixes
     )
 
     meta_df = generate_meta_df_for_joined_tables([left, right], suffixes)
@@ -220,7 +217,7 @@ def join_catalog_data_through(
     joined_partitions = align_and_apply(
         [(left, left_pixels), (right, right_pixels), (association, left_pixels)],
         perform_join_through,
-        suffixes
+        suffixes,
     )
 
     association_join_columns = [

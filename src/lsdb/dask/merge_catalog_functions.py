@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Sequence, Tuple, cast, Callable
+from typing import TYPE_CHECKING, Callable, List, Sequence, Tuple, cast
 
+import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 from dask.delayed import Delayed
-import dask.dataframe as dd
 from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN, healpix_to_hipscat_id
 from hipscat.pixel_tree import PixelAlignment
@@ -19,9 +19,9 @@ if TYPE_CHECKING:
 
 
 def align_and_apply(
-        catalog_mappings: List[Tuple[Catalog, List[HealpixPixel]]], func: Callable, *args, **kwargs
+    catalog_mappings: List[Tuple[Catalog, List[HealpixPixel]]], func: Callable, *args, **kwargs
 ) -> List[Delayed]:
-    """ Aligns catalogs to a given ordering of pixels and applies a function to the aligned catalogs
+    """Aligns catalogs to a given ordering of pixels and applies a function to the aligned catalogs
 
     Args:
         catalog_mappings (List[Tuple[Catalog, List[HealpixPixel]]]): The catalogs and their corresponding
@@ -35,9 +35,7 @@ def align_and_apply(
         A list of delayed objects, each one representing the result of the function applied to the
         aligned partitions of the catalogs
     """
-    aligned_partitions = [
-        align_catalog_to_partitions(cat, pixels) for (cat, pixels) in catalog_mappings
-    ]
+    aligned_partitions = [align_catalog_to_partitions(cat, pixels) for (cat, pixels) in catalog_mappings]
     pixels = [pixels for (_, pixels) in catalog_mappings]
     hc_structures = [cat.hc_structure for (cat, _) in catalog_mappings]
 
@@ -66,7 +64,7 @@ def filter_by_hipscat_index_to_pixel(dataframe: pd.DataFrame, order: int, pixel:
 
 
 def construct_catalog_args(
-        partitions: List[Delayed], meta_df: pd.DataFrame, alignment: PixelAlignment
+    partitions: List[Delayed], meta_df: pd.DataFrame, alignment: PixelAlignment
 ) -> Tuple[dd.core.DataFrame, DaskDFPixelMap, PixelAlignment]:
     """Constructs the arguments needed to create a catalog from a list of delayed partitions
 
@@ -89,7 +87,7 @@ def construct_catalog_args(
 
 
 def get_healpix_pixels_from_alignment(
-        alignment: PixelAlignment,
+    alignment: PixelAlignment,
 ) -> Tuple[List[HealpixPixel], List[HealpixPixel]]:
     """Gets the list of primary and join pixels as the HealpixPixel class from a PixelAlignment
 
@@ -113,10 +111,10 @@ def get_healpix_pixels_from_alignment(
 
 
 def generate_meta_df_for_joined_tables(
-        catalogs: Sequence[Catalog],
-        suffixes: Sequence[str],
-        extra_columns: pd.DataFrame | None = None,
-        index_name: str = HIPSCAT_ID_COLUMN,
+    catalogs: Sequence[Catalog],
+    suffixes: Sequence[str],
+    extra_columns: pd.DataFrame | None = None,
+    index_name: str = HIPSCAT_ID_COLUMN,
 ) -> pd.DataFrame:
     """Generates a Dask meta DataFrame that would result from joining two catalogs
 
@@ -166,8 +164,7 @@ def get_partition_map_from_alignment_pixels(join_pixels: pd.DataFrame) -> DaskDF
 
 
 def align_catalog_to_partitions(
-        catalog: HealpixDataset,
-        pixels: List[HealpixPixel]
+    catalog: HealpixDataset, pixels: List[HealpixPixel]
 ) -> List[Tuple[Delayed, HealpixPixel]]:
     """Aligns the partitions of a Catalog to a dataframe with HEALPix pixels in each row
 
