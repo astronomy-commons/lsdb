@@ -1,0 +1,7 @@
+{
+    "catalog_name": "small_sky_xmatch_margin",
+    "catalog_type": "margin",
+    "total_rows": 26,
+    "primary_catalog": "data/small_sky_xmatch",
+    "margin_threshold": 7200
+}
