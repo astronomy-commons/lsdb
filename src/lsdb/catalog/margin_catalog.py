@@ -6,7 +6,7 @@ from lsdb.types import DaskDFPixelMap
 
 
 class MarginCatalog(HealpixDataset):
-    """LSDB Catalog DataFrame to perform analysis of sky catalogs and efficient
+    """LSDB Catalog DataFrame to contain the "margin" of another HiPSCat catalog.
     spatial operations.
 
     Attributes:
