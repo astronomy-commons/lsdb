@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Tuple, cast
+from typing import TYPE_CHECKING, Tuple
 
 import dask
 import dask.dataframe as dd
@@ -47,6 +47,7 @@ def rename_columns_with_suffixes(left: pd.DataFrame, right: pd.DataFrame, suffix
     return left, right
 
 
+# pylint: disable=unused-argument
 @dask.delayed
 def perform_join_on(
     left: pd.DataFrame,
@@ -83,6 +84,7 @@ def perform_join_on(
     return merged
 
 
+# pylint: disable=unused-argument
 @dask.delayed
 def perform_join_through(
     left: pd.DataFrame,

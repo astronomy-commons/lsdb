@@ -74,7 +74,8 @@ def construct_catalog_args(
         alignment (PixelAlignment): The alignment used to create the delayed partitions
 
     Returns:
-        A tuple of (ddf, partition_map, alignment) with the dask dataframe, the partition map, and the alignment needed to create the catalog
+        A tuple of (ddf, partition_map, alignment) with the dask dataframe, the partition map, and the
+        alignment needed to create the catalog
     """
     # generate dask df partition map from alignment
     partition_map = get_partition_map_from_alignment_pixels(alignment.pixel_mapping)

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Tuple, Type, cast
+from typing import TYPE_CHECKING, Tuple, Type
 
 import dask
 import dask.dataframe as dd
