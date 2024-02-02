@@ -2,26 +2,23 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Tuple, cast
+from typing import TYPE_CHECKING, Tuple
 
 import dask
 import dask.dataframe as dd
 import hipscat as hc
-import numpy as np
 import pandas as pd
 from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
 from hipscat.pixel_tree import PixelAlignment, PixelAlignmentType, align_trees
 
 from lsdb.catalog.association_catalog import AssociationCatalog
-from lsdb.dask.divisions import get_pixels_divisions
 from lsdb.dask.merge_catalog_functions import (
-    align_catalog_to_partitions,
-    align_catalogs_to_alignment_mapping,
+    align_and_apply,
+    construct_catalog_args,
     filter_by_hipscat_index_to_pixel,
     generate_meta_df_for_joined_tables,
     get_healpix_pixels_from_alignment,
-    get_partition_map_from_alignment_pixels,
 )
 from lsdb.types import DaskDFPixelMap
 
@@ -50,14 +47,17 @@ def rename_columns_with_suffixes(left: pd.DataFrame, right: pd.DataFrame, suffix
     return left, right
 
 
+# pylint: disable=unused-argument
 @dask.delayed
 def perform_join_on(
     left: pd.DataFrame,
     right: pd.DataFrame,
-    left_on: str,
-    right_on: str,
     left_pixel: HealpixPixel,
     right_pixel: HealpixPixel,
+    left_structure: hc.catalog.Catalog,
+    right_structure: hc.catalog.Catalog,
+    left_on: str,
+    right_on: str,
     suffixes: Tuple[str, str],
 ):
     """Performs a join on two catalog partitions
@@ -65,10 +65,12 @@ def perform_join_on(
     Args:
         left (pd.DataFrame): the left partition to merge
         right (pd.DataFrame): the right partition to merge
-        left_on (str): the column to join on from the left partition
-        right_on (str): the column to join on from the right partition
         left_pixel (HealpixPixel): the HEALPix pixel of the left partition
         right_pixel (HealpixPixel): the HEALPix pixel of the right partition
+        left_structure (hc.Catalog): the hipscat structure of the left catalog
+        right_structure (hc.Catalog): the hipscat structure of the right catalog
+        left_on (str): the column to join on from the left partition
+        right_on (str): the column to join on from the right partition
         suffixes (Tuple[str,str]): the suffixes to apply to each partition's column names
 
     Returns:
@@ -82,6 +84,7 @@ def perform_join_on(
     return merged
 
 
+# pylint: disable=unused-argument
 @dask.delayed
 def perform_join_through(
     left: pd.DataFrame,
@@ -89,7 +92,10 @@ def perform_join_through(
     through: pd.DataFrame,
     left_pixel: HealpixPixel,
     right_pixel: HealpixPixel,
-    catalog_info: hc.catalog.association_catalog.AssociationCatalogInfo,
+    through_pixel: HealpixPixel,
+    left_catalog: hc.catalog.Catalog,
+    right_catalog: hc.catalog.Catalog,
+    assoc_catalog: hc.catalog.AssociationCatalog,
     suffixes: Tuple[str, str],
 ):
     """Performs a join on two catalog partitions through an association catalog
@@ -100,12 +106,16 @@ def perform_join_through(
         through (pd.DataFrame): the association column partition to merge with
         left_pixel (HealpixPixel): the HEALPix pixel of the left partition
         right_pixel (HealpixPixel): the HEALPix pixel of the right partition
-        catalog_info (AssociationCatalogInfo): the catalog_info of the association catalog
+        through_pixel (HealpixPixel): the HEALPix pixel of the association partition
+        left_catalog (hc.Catalog): the hipscat structure of the left catalog
+        right_catalog (hc.Catalog): the hipscat structure of the right catalog
+        assoc_catalog (hc.AssociationCatalog): the hipscat structure of the association catalog
         suffixes (Tuple[str,str]): the suffixes to apply to each partition's column names
 
     Returns:
         A dataframe with the result of merging the left and right partitions on the specified columns
     """
+    catalog_info = assoc_catalog.catalog_info
     if catalog_info.primary_column is None or catalog_info.join_column is None:
         raise ValueError("Invalid catalog_info")
     if right_pixel.order > left_pixel.order:
@@ -157,35 +167,16 @@ def join_catalog_data_on(
     alignment = align_trees(
         left.hc_structure.pixel_tree, right.hc_structure.pixel_tree, alignment_type=PixelAlignmentType.INNER
     )
-    join_pixels = alignment.pixel_mapping
-    left_aligned_partitions, right_aligned_partitions = align_catalogs_to_alignment_mapping(
-        join_pixels, left, right
+
+    left_pixels, right_pixels = get_healpix_pixels_from_alignment(alignment)
+
+    joined_partitions = align_and_apply(
+        [(left, left_pixels), (right, right_pixels)], perform_join_on, left_on, right_on, suffixes
     )
 
-    left_pixels, right_pixels = get_healpix_pixels_from_alignment(join_pixels)
-
-    apply_join = np.vectorize(
-        lambda left_df, right_df, left_pix, right_pix: perform_join_on(
-            left_df,
-            right_df,
-            left_on,
-            right_on,
-            left_pix,
-            right_pix,
-            suffixes,
-        )
-    )
-
-    joined_partitions = apply_join(
-        left_aligned_partitions, right_aligned_partitions, left_pixels, right_pixels
-    )
-
-    partition_map = get_partition_map_from_alignment_pixels(join_pixels)
     meta_df = generate_meta_df_for_joined_tables([left, right], suffixes)
-    divisions = get_pixels_divisions(list(partition_map.keys()))
-    ddf = dd.from_delayed(joined_partitions, meta=meta_df, divisions=divisions)
-    ddf = cast(dd.DataFrame, ddf)
-    return ddf, partition_map, alignment
+
+    return construct_catalog_args(joined_partitions, meta_df, alignment)
 
 
 def join_catalog_data_through(
@@ -222,40 +213,15 @@ def join_catalog_data_through(
     alignment = align_trees(
         left.hc_structure.pixel_tree, right.hc_structure.pixel_tree, alignment_type=PixelAlignmentType.INNER
     )
-    join_pixels = alignment.pixel_mapping
-    left_aligned_partitions, right_aligned_partitions = align_catalogs_to_alignment_mapping(
-        join_pixels, left, right
-    )
-    association_aligned_to_join_partitions = align_catalog_to_partitions(
-        association,
-        join_pixels,
-        order_col=PixelAlignment.PRIMARY_ORDER_COLUMN_NAME,
-        pixel_col=PixelAlignment.PRIMARY_PIXEL_COLUMN_NAME,
+
+    left_pixels, right_pixels = get_healpix_pixels_from_alignment(alignment)
+
+    joined_partitions = align_and_apply(
+        [(left, left_pixels), (right, right_pixels), (association, left_pixels)],
+        perform_join_through,
+        suffixes,
     )
 
-    left_pixels, right_pixels = get_healpix_pixels_from_alignment(join_pixels)
-
-    apply_join = np.vectorize(
-        lambda left_df, right_df, assoc_df, left_pix, right_pix: perform_join_through(
-            left_df,
-            right_df,
-            assoc_df,
-            left_pix,
-            right_pix,
-            association.hc_structure.catalog_info,
-            suffixes,
-        )
-    )
-
-    joined_partitions = apply_join(
-        left_aligned_partitions,
-        right_aligned_partitions,
-        association_aligned_to_join_partitions,
-        left_pixels,
-        right_pixels,
-    )
-
-    partition_map = get_partition_map_from_alignment_pixels(alignment.pixel_mapping)
     association_join_columns = [
         association.hc_structure.catalog_info.primary_column_association,
         association.hc_structure.catalog_info.join_column_association,
@@ -263,7 +229,5 @@ def join_catalog_data_through(
     # pylint: disable=protected-access
     extra_df = association._ddf._meta.drop(NON_JOINING_ASSOCIATION_COLUMNS + association_join_columns, axis=1)
     meta_df = generate_meta_df_for_joined_tables([left, extra_df, right], [suffixes[0], "", suffixes[1]])
-    divisions = get_pixels_divisions(list(partition_map.keys()))
-    ddf = dd.from_delayed(joined_partitions, meta=meta_df, divisions=divisions)
-    ddf = cast(dd.DataFrame, ddf)
-    return ddf, partition_map, alignment
+
+    return construct_catalog_args(joined_partitions, meta_df, alignment)

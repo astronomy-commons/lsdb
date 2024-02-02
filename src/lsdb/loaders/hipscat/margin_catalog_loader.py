@@ -14,6 +14,4 @@ class MarginCatalogLoader(AbstractCatalogLoader[MarginCatalog]):
 
     def load_hipscat_catalog(self) -> hc.catalog.MarginCatalog:
         """Load `hipscat` library catalog object with catalog metadata and partition data"""
-        return hc.catalog.MarginCatalog.read_from_hipscat(
-            self.path, storage_options=self.storage_options
-        )
+        return hc.catalog.MarginCatalog.read_from_hipscat(self.path, storage_options=self.storage_options)
