@@ -21,13 +21,30 @@ if TYPE_CHECKING:
 def align_and_apply(
     catalog_mappings: List[Tuple[HealpixDataset, List[HealpixPixel]]], func: Callable, *args, **kwargs
 ) -> List[Delayed]:
-    """Aligns catalogs to a given ordering of pixels and applies a function to the aligned catalogs
+    """Aligns catalogs to a given ordering of pixels and applies a function each set of aligned partitions
 
     Args:
         catalog_mappings (List[Tuple[HealpixDataset, List[HealpixPixel]]]): The catalogs and their
-            corresponding order of pixels to align the partitions to. In the form of
+            corresponding ordering of pixels to align the partitions to. Each list of pixels should be the
+            same length. For example:
             [(catalog, pixels), (catalog2, pixels2), ...]
-        func (Callable): The function to apply to the aligned catalogs
+        func (Callable): The function to apply to the aligned catalogs. The function should take the
+            aligned partitions of the catalogs as dataframes as the first arguments, followed by the healpix
+            pixel of each partition, the hc_structures of the catalogs, and any additional arguments and
+            keyword arguments. For example:
+            ```
+            def func(
+                cat1_partition_df,
+                cat2_partition_df,
+                cat1_pixel,
+                cat2_pixel,
+                cat1_hc_structure,
+                cat2_hc_structure,
+                *args,
+                **kwargs
+            ):
+                ...
+            ```
         *args: Additional arguments to pass to the function
         **kwargs: Additional keyword arguments to pass to the function
 
@@ -35,10 +52,16 @@ def align_and_apply(
         A list of delayed objects, each one representing the result of the function applied to the
         aligned partitions of the catalogs
     """
+
+    # aligns the catalog's partitions to the given pixels for each catalog
     aligned_partitions = [align_catalog_to_partitions(cat, pixels) for (cat, pixels) in catalog_mappings]
+
+    # gets the pixels and hc_structures to pass to the function
     pixels = [pixels for (_, pixels) in catalog_mappings]
     hc_structures = [cat.hc_structure for (cat, _) in catalog_mappings]
 
+    # defines an inner function that can be vectorized to apply the given function to each of the partitions
+    # with the additional arguments including as the hc_structures and any specified additional arguments
     def apply_func(*partitions_and_pixels):
         return func(*partitions_and_pixels, *hc_structures, *args, **kwargs)
 
