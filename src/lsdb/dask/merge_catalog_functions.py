@@ -19,13 +19,13 @@ if TYPE_CHECKING:
 
 
 def align_and_apply(
-    catalog_mappings: List[Tuple[Catalog, List[HealpixPixel]]], func: Callable, *args, **kwargs
+    catalog_mappings: List[Tuple[HealpixDataset, List[HealpixPixel]]], func: Callable, *args, **kwargs
 ) -> List[Delayed]:
     """Aligns catalogs to a given ordering of pixels and applies a function to the aligned catalogs
 
     Args:
-        catalog_mappings (List[Tuple[Catalog, List[HealpixPixel]]]): The catalogs and their corresponding
-            order of pixels to align the partitions to. In the form of
+        catalog_mappings (List[Tuple[HealpixDataset, List[HealpixPixel]]]): The catalogs and their
+            corresponding order of pixels to align the partitions to. In the form of
             [(catalog, pixels), (catalog2, pixels2), ...]
         func (Callable): The function to apply to the aligned catalogs
         *args: Additional arguments to pass to the function
