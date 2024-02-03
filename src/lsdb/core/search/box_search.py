@@ -7,7 +7,7 @@ import hipscat as hc
 import numpy as np
 import pandas as pd
 from hipscat.pixel_math import HealpixPixel
-from hipscat.pixel_math.box_filter import filter_pixels_by_box, transform_radec, wrap_angles
+from hipscat.pixel_math.box_filter import filter_pixels_by_box, wrap_angles, wrap_ra_values
 from hipscat.pixel_math.validators import validate_box_search
 from hipscat.pixel_tree.pixel_tree_builder import PixelTreeBuilder
 
@@ -28,9 +28,10 @@ class BoxSearch(AbstractSearch):
         ra: Tuple[float, float] | None = None,
         dec: Tuple[float, float] | None = None,
     ):
+        ra = wrap_ra_values(ra)
         validate_box_search(ra, dec)
 
-        self.ra, self.dec = transform_radec(ra, dec)
+        self.ra, self.dec = ra, dec
         self.metadata = metadata
 
     def search_partitions(self, pixels: List[HealpixPixel]) -> List[HealpixPixel]:
@@ -61,16 +62,17 @@ def box_filter(
     Returns:
         A new DataFrame with the rows from `data_frame` filtered to only the points inside the box region.
     """
-    mask = None
+    mask = np.ones(len(data_frame))
     if ra is not None:
         ra_values = data_frame[metadata.catalog_info.ra_column]
         wrapped_ra = np.array(wrap_angles(ra_values))
-        mask = _create_ra_mask(ra, wrapped_ra)
-    elif dec is not None:
+        mask_ra = _create_ra_mask(ra, wrapped_ra)
+        mask = np.logical_and(mask, mask_ra)
+    if dec is not None:
         dec_values = data_frame[metadata.catalog_info.dec_column].values
-        mask = np.logical_and(dec[0] <= dec_values, dec_values <= dec[1])
-    if mask is not None:
-        data_frame = data_frame.iloc[mask]
+        mask_dec = np.logical_and(dec[0] <= dec_values, dec_values <= dec[1])
+        mask = np.logical_and(mask, mask_dec)
+    data_frame = data_frame.iloc[mask]
     return data_frame
 
 

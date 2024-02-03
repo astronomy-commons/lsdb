@@ -7,10 +7,8 @@ import dask.dataframe as dd
 import hipscat as hc
 import numpy as np
 from hipscat.pixel_math import HealpixPixel
-from hipscat.pixel_math.box_filter import form_polygon, transform_radec
 from hipscat.pixel_math.healpix_pixel_function import get_pixel_argsort
 from hipscat.pixel_math.polygon_filter import SphericalCoordinates
-from hipscat.pixel_math.validators import validate_box_search
 
 from lsdb import io
 from lsdb.catalog.association_catalog import AssociationCatalog
@@ -219,10 +217,6 @@ class Catalog(HealpixDataset):
             A new catalog containing the points filtered to those within the region, and the
             partitions that have some overlap with it.
         """
-        validate_box_search(ra, dec)
-        ra, dec = transform_radec(ra, dec)
-        if ra is not None and dec is not None:
-            return self.polygon_search(form_polygon(ra, dec))
         return self._search(BoxSearch(self.hc_structure, ra=ra, dec=dec))
 
     def polygon_search(self, vertices: List[SphericalCoordinates]) -> Catalog:
