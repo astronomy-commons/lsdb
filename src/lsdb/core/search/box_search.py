@@ -56,7 +56,7 @@ def box_filter(
     Args:
         data_frame (pd.DataFrame): DataFrame containing points in the sky
         ra (Tuple[float, float]): Right ascension range, in degrees
-        dec (Tuple[float, float]): Declination ascension range, in degrees
+        dec (Tuple[float, float]): Declination range, in degrees
         metadata (hipscat.Catalog): hipscat `Catalog` with catalog_info that matches `data_frame`
 
     Returns:
