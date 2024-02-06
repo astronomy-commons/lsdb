@@ -5,6 +5,20 @@
 Welcome to lsdb's documentation!
 ========================================================================================
 
+User Guide
+----------
+
+You can install LSDB with `conda` or `pip`:
+
+.. code-block:: bash
+
+   >> # Conda installation
+   >> conda install -c conda-forge install lsdb
+   >> # Pip installation
+   >> python3 -mpip install lsdb
+
+See `notebooks <notebooks>`_ for examples.
+
 Dev Guide - Getting Started
 ---------------------------
 
