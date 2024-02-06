@@ -21,7 +21,7 @@ XMATCH_CORRECT_FILE = "xmatch_correct.csv"
 XMATCH_CORRECT_005_FILE = "xmatch_correct_0_005.csv"
 XMATCH_CORRECT_3N_2T_FILE = "xmatch_correct_3n_2t.csv"
 XMATCH_CORRECT_3N_2T_NO_MARGIN_FILE = "xmatch_correct_3n_2t_no_margin.csv"
-XMATCH_CORRECT_3n_2T_NEGATIVE_FILE = "xmatch_correct_3n_2t_negative.csv"
+XMATCH_CORRECT_3N_2T_NEGATIVE_FILE = "xmatch_correct_3n_2t_negative.csv"
 XMATCH_MOCK_FILE = "xmatch_mock.csv"
 TEST_DIR = os.path.dirname(__file__)
 
@@ -148,7 +148,7 @@ def xmatch_correct_3n_2t_no_margin(small_sky_xmatch_dir):
 
 @pytest.fixture
 def xmatch_correct_3n_2t_negative(small_sky_xmatch_dir):
-    return pd.read_csv(os.path.join(small_sky_xmatch_dir, XMATCH_CORRECT_3n_2T_NEGATIVE_FILE))
+    return pd.read_csv(os.path.join(small_sky_xmatch_dir, XMATCH_CORRECT_3N_2T_NEGATIVE_FILE))
 
 
 @pytest.fixture
