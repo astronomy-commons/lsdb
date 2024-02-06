@@ -8,7 +8,7 @@ import pandas as pd
 from dask.delayed import Delayed
 from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN, healpix_to_hipscat_id
-from hipscat.pixel_tree import PixelAlignment, align_trees, PixelAlignmentType
+from hipscat.pixel_tree import PixelAlignment, PixelAlignmentType, align_trees
 
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
 from lsdb.dask.divisions import get_pixels_divisions

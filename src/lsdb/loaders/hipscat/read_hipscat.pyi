@@ -11,7 +11,7 @@ For more information on stub files, view here: https://mypy.readthedocs.io/en/st
 
 """
 
-from typing import Any, Dict, Type, Union, overload, List
+from typing import Any, Dict, List, Type, Union, overload
 
 from lsdb.catalog.dataset.dataset import Dataset
 from lsdb.catalog.margin_catalog import MarginCatalog

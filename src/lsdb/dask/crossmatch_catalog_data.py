@@ -12,12 +12,12 @@ from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorith
 from lsdb.core.crossmatch.kdtree_match import KdTreeCrossmatch
 from lsdb.dask.merge_catalog_functions import (
     align_and_apply,
+    align_catalogs,
     construct_catalog_args,
     filter_by_hipscat_index_to_pixel,
     generate_meta_df_for_joined_tables,
     get_healpix_pixels_from_alignment,
     join_partition_and_margin,
-    align_catalogs,
 )
 from lsdb.types import DaskDFPixelMap
 

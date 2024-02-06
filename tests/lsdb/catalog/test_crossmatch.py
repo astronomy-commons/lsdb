@@ -73,7 +73,11 @@ class TestCrossmatch:
 
     @staticmethod
     def test_crossmatch_negative_margin(
-            algo, small_sky_left_xmatch_catalog, small_sky_xmatch_dir, small_sky_xmatch_margin_catalog, xmatch_correct_3n_2t_negative
+        algo,
+        small_sky_left_xmatch_catalog,
+        small_sky_xmatch_dir,
+        small_sky_xmatch_margin_catalog,
+        xmatch_correct_3n_2t_negative,
     ):
         small_sky_xmatch_catalog = lsdb.read_hipscat(
             small_sky_xmatch_dir, margin_cache=small_sky_xmatch_margin_catalog
