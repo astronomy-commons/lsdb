@@ -16,7 +16,8 @@ from lsdb.dask.merge_catalog_functions import (
     filter_by_hipscat_index_to_pixel,
     generate_meta_df_for_joined_tables,
     get_healpix_pixels_from_alignment,
-    join_partition_and_margin, align_catalogs,
+    join_partition_and_margin,
+    align_catalogs,
 )
 from lsdb.types import DaskDFPixelMap
 

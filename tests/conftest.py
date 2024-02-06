@@ -80,6 +80,11 @@ def small_sky_xmatch_catalog(small_sky_xmatch_dir):
 
 
 @pytest.fixture
+def small_sky_xmatch_margin_catalog(small_sky_xmatch_margin_dir):
+    return lsdb.read_hipscat(small_sky_xmatch_margin_dir)
+
+
+@pytest.fixture
 def small_sky_to_xmatch_catalog(small_sky_to_xmatch_dir):
     return lsdb.read_hipscat(small_sky_to_xmatch_dir)
 

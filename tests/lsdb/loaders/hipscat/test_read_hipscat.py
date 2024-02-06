@@ -66,3 +66,15 @@ def test_read_hipscat_specify_catalog_type(small_sky_catalog, small_sky_dir):
 def test_read_hipscat_specify_wrong_catalog_type(small_sky_dir):
     with pytest.raises(ValueError):
         lsdb.read_hipscat(small_sky_dir, catalog_type=int)
+
+
+def test_catalog_with_margin(small_sky_xmatch_dir, small_sky_xmatch_margin_catalog):
+    catalog = lsdb.read_hipscat(small_sky_xmatch_dir, margin_cache=small_sky_xmatch_margin_catalog)
+    assert isinstance(catalog, lsdb.Catalog)
+    assert catalog.margin is small_sky_xmatch_margin_catalog
+
+
+def test_catalog_without_margin_is_none(small_sky_xmatch_dir):
+    catalog = lsdb.read_hipscat(small_sky_xmatch_dir)
+    assert isinstance(catalog, lsdb.Catalog)
+    assert catalog.margin is None

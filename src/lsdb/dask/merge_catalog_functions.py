@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 
 def align_catalogs(left: Catalog, right: Catalog) -> PixelAlignment:
-    """Aligns two catalogs, also using the right catalog's margin if it is not None
+    """Aligns two catalogs, also using the right catalog's margin if it exists
 
     Args:
         left (Catalog): The left catalog to align
@@ -29,7 +29,11 @@ def align_catalogs(left: Catalog, right: Catalog) -> PixelAlignment:
     """
 
     if right.margin is not None:
-        right_tree = align_trees(right.hc_structure.pixel_tree, right.margin.hc_structure.pixel_tree, alignment_type=PixelAlignmentType.OUTER).pixel_tree
+        right_tree = align_trees(
+            right.hc_structure.pixel_tree,
+            right.margin.hc_structure.pixel_tree,
+            alignment_type=PixelAlignmentType.OUTER,
+        ).pixel_tree
     else:
         right_tree = right.hc_structure.pixel_tree
     return align_trees(left.hc_structure.pixel_tree, right_tree, alignment_type=PixelAlignmentType.INNER)
@@ -227,6 +231,10 @@ def align_catalog_to_partitions(
     if catalog is None:
         return [None] * len(pixels)
     dfs = catalog.to_delayed()
-    get_partition = np.vectorize(lambda pix: dfs[catalog.get_partition_index(pix.order, pix.pixel)] if pix in catalog.hc_structure.pixel_tree else None)
+    get_partition = np.vectorize(
+        lambda pix: dfs[catalog.get_partition_index(pix.order, pix.pixel)]
+        if pix in catalog.hc_structure.pixel_tree
+        else None
+    )
     partitions = get_partition(pixels)
     return list(partitions)
