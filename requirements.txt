@@ -1,1 +1,1 @@
-git+https://github.com/astronomy-commons/hipscat.git@sandro/add-radec-filter
+git+https://github.com/astronomy-commons/hipscat.git@main
