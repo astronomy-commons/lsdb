@@ -40,6 +40,16 @@ def align_catalogs(left: Catalog, right: Catalog) -> PixelAlignment:
 
 
 def join_partition_and_margin(df: pd.DataFrame, margin_df: pd.DataFrame, columns: List[str]) -> pd.DataFrame:
+    """Joins a partition and a margin dataframe together, filtering the margin to the specified columns
+
+    Args:
+        df (pd.DataFrame): The partition dataframe
+        margin_df (pd.DataFrame): The margin dataframe
+        columns (List[str]): The columns to filter dataframes to
+
+    Returns:
+        The joined dataframe with the partition and margin rows
+    """
     margin_filtered = margin_df[columns] if margin_df is not None else None
     return pd.concat([df, margin_filtered])
 

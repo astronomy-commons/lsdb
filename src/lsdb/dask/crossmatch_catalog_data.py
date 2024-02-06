@@ -27,7 +27,7 @@ if TYPE_CHECKING:
 builtin_crossmatch_algorithms = {BuiltInCrossmatchAlgorithm.KD_TREE: KdTreeCrossmatch}
 
 
-# pylint: disable=too-many-arguments
+# pylint: disable=too-many-arguments, unused-argument
 @dask.delayed
 def perform_crossmatch(
     left_df,
