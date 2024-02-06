@@ -72,6 +72,26 @@ class TestCrossmatch:
             assert xmatch_row["_DIST"].values == pytest.approx(correct_row["dist"])
 
     @staticmethod
+    def test_crossmatch_negative_margin(
+            algo, small_sky_left_xmatch_catalog, small_sky_xmatch_dir, small_sky_xmatch_margin_catalog, xmatch_correct_3n_2t_negative
+    ):
+        small_sky_xmatch_catalog = lsdb.read_hipscat(
+            small_sky_xmatch_dir, margin_cache=small_sky_xmatch_margin_catalog
+        )
+        xmatched = small_sky_left_xmatch_catalog.crossmatch(
+            small_sky_xmatch_catalog, n_neighbors=3, radius_arcsec=2 * 3600, algorithm=algo
+        ).compute()
+        assert len(xmatched) == len(xmatch_correct_3n_2t_negative)
+        for _, correct_row in xmatch_correct_3n_2t_negative.iterrows():
+            assert correct_row["ss_id"] in xmatched["id_small_sky_left_xmatch"].values
+            xmatch_row = xmatched[
+                (xmatched["id_small_sky_left_xmatch"] == correct_row["ss_id"])
+                & (xmatched["id_small_sky_xmatch"] == correct_row["xmatch_id"])
+            ]
+            assert len(xmatch_row) == 1
+            assert xmatch_row["_DIST"].values == pytest.approx(correct_row["dist"])
+
+    @staticmethod
     def test_wrong_suffixes(algo, small_sky_catalog, small_sky_xmatch_catalog):
         with pytest.raises(ValueError):
             small_sky_catalog.crossmatch(small_sky_xmatch_catalog, suffixes=("wrong",), algorithm=algo)
