@@ -8,7 +8,7 @@ import pandas as pd
 from dask.delayed import Delayed
 from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN, healpix_to_hipscat_id
-from hipscat.pixel_tree import PixelAlignment
+from hipscat.pixel_tree import PixelAlignment, PixelAlignmentType, align_trees
 
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
 from lsdb.dask.divisions import get_pixels_divisions
@@ -18,15 +18,37 @@ if TYPE_CHECKING:
     from lsdb.catalog.catalog import Catalog
 
 
+def align_catalogs(left: Catalog, right: Catalog) -> PixelAlignment:
+    """Aligns two catalogs, also using the right catalog's margin if it exists
+
+    Args:
+        left (Catalog): The left catalog to align
+        right (Catalog): The right catalog to align
+    Returns:
+        The PixelAlignment object from aligning the catalogs
+    """
+
+    if right.margin is not None:
+        right_tree = align_trees(
+            right.hc_structure.pixel_tree,
+            right.margin.hc_structure.pixel_tree,
+            alignment_type=PixelAlignmentType.OUTER,
+        ).pixel_tree
+    else:
+        right_tree = right.hc_structure.pixel_tree
+    return align_trees(left.hc_structure.pixel_tree, right_tree, alignment_type=PixelAlignmentType.INNER)
+
+
 def align_and_apply(
-    catalog_mappings: List[Tuple[HealpixDataset, List[HealpixPixel]]], func: Callable, *args, **kwargs
+    catalog_mappings: List[Tuple[HealpixDataset | None, List[HealpixPixel]]], func: Callable, *args, **kwargs
 ) -> List[Delayed]:
     """Aligns catalogs to a given ordering of pixels and applies a function each set of aligned partitions
 
     Args:
         catalog_mappings (List[Tuple[HealpixDataset, List[HealpixPixel]]]): The catalogs and their
-            corresponding ordering of pixels to align the partitions to. Each list of pixels should be the
-            same length. For example:
+            corresponding ordering of pixels to align the partitions to. Catalog cane be None, in which case
+            None will be passed to the function for each partition. Each list of pixels should be the same
+            length. Example input:
             [(catalog, pixels), (catalog2, pixels2), ...]
         func (Callable): The function to apply to the aligned catalogs. The function should take the
             aligned partitions of the catalogs as dataframes as the first arguments, followed by the healpix
@@ -58,7 +80,7 @@ def align_and_apply(
 
     # gets the pixels and hc_structures to pass to the function
     pixels = [pixels for (_, pixels) in catalog_mappings]
-    hc_structures = [cat.hc_structure for (cat, _) in catalog_mappings]
+    hc_structures = [cat.hc_structure if cat is not None else None for (cat, _) in catalog_mappings]
 
     # defines an inner function that can be vectorized to apply the given function to each of the partitions
     # with the additional arguments including as the hc_structures and any specified additional arguments
@@ -188,8 +210,8 @@ def get_partition_map_from_alignment_pixels(join_pixels: pd.DataFrame) -> DaskDF
 
 
 def align_catalog_to_partitions(
-    catalog: HealpixDataset, pixels: List[HealpixPixel]
-) -> List[Tuple[Delayed, HealpixPixel]]:
+    catalog: HealpixDataset | None, pixels: List[HealpixPixel]
+) -> List[Delayed | None]:
     """Aligns the partitions of a Catalog to a dataframe with HEALPix pixels in each row
 
     Args:
@@ -201,7 +223,13 @@ def align_catalog_to_partitions(
         order they appear in the input dataframe
 
     """
+    if catalog is None:
+        return [None] * len(pixels)
     dfs = catalog.to_delayed()
-    get_partition = np.vectorize(lambda pix: dfs[catalog.get_partition_index(pix.order, pix.pixel)])
+    get_partition = np.vectorize(
+        lambda pix: dfs[catalog.get_partition_index(pix.order, pix.pixel)]
+        if pix in catalog.hc_structure.pixel_tree
+        else None
+    )
     partitions = get_partition(pixels)
     return list(partitions)

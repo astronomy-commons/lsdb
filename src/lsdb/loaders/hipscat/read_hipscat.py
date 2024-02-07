@@ -28,6 +28,7 @@ def read_hipscat(
     catalog_type: Type[Dataset] | None = None,
     storage_options: dict | None = None,
     columns: List[str] | None = None,
+    margin_cache: MarginCatalog | None = None,
     **kwargs,
 ) -> Dataset:
     """Load a catalog from a HiPSCat formatted catalog.

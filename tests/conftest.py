@@ -10,6 +10,7 @@ from lsdb.dask.divisions import HIPSCAT_ID_MAX
 
 DATA_DIR_NAME = "data"
 SMALL_SKY_DIR_NAME = "small_sky"
+SMALL_SKY_LEFT_XMATCH_NAME = "small_sky_left_xmatch"
 SMALL_SKY_XMATCH_NAME = "small_sky_xmatch"
 SMALL_SKY_XMATCH_MARGIN_NAME = "small_sky_xmatch_margin"
 SMALL_SKY_TO_XMATCH_NAME = "small_sky_to_xmatch"
@@ -20,6 +21,7 @@ XMATCH_CORRECT_FILE = "xmatch_correct.csv"
 XMATCH_CORRECT_005_FILE = "xmatch_correct_0_005.csv"
 XMATCH_CORRECT_3N_2T_FILE = "xmatch_correct_3n_2t.csv"
 XMATCH_CORRECT_3N_2T_NO_MARGIN_FILE = "xmatch_correct_3n_2t_no_margin.csv"
+XMATCH_CORRECT_3N_2T_NEGATIVE_FILE = "xmatch_correct_3n_2t_negative.csv"
 XMATCH_MOCK_FILE = "xmatch_mock.csv"
 TEST_DIR = os.path.dirname(__file__)
 
@@ -32,6 +34,11 @@ def test_data_dir():
 @pytest.fixture
 def small_sky_dir(test_data_dir):
     return os.path.join(test_data_dir, SMALL_SKY_DIR_NAME)
+
+
+@pytest.fixture
+def small_sky_left_xmatch_dir(test_data_dir):
+    return os.path.join(test_data_dir, SMALL_SKY_LEFT_XMATCH_NAME)
 
 
 @pytest.fixture
@@ -75,8 +82,18 @@ def small_sky_catalog(small_sky_dir):
 
 
 @pytest.fixture
+def small_sky_left_xmatch_catalog(small_sky_left_xmatch_dir):
+    return lsdb.read_hipscat(small_sky_left_xmatch_dir)
+
+
+@pytest.fixture
 def small_sky_xmatch_catalog(small_sky_xmatch_dir):
     return lsdb.read_hipscat(small_sky_xmatch_dir)
+
+
+@pytest.fixture
+def small_sky_xmatch_margin_catalog(small_sky_xmatch_margin_dir):
+    return lsdb.read_hipscat(small_sky_xmatch_margin_dir)
 
 
 @pytest.fixture
@@ -127,6 +144,11 @@ def xmatch_correct_3n_2t(small_sky_xmatch_dir):
 @pytest.fixture
 def xmatch_correct_3n_2t_no_margin(small_sky_xmatch_dir):
     return pd.read_csv(os.path.join(small_sky_xmatch_dir, XMATCH_CORRECT_3N_2T_NO_MARGIN_FILE))
+
+
+@pytest.fixture
+def xmatch_correct_3n_2t_negative(small_sky_xmatch_dir):
+    return pd.read_csv(os.path.join(small_sky_xmatch_dir, XMATCH_CORRECT_3N_2T_NEGATIVE_FILE))
 
 
 @pytest.fixture
