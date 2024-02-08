@@ -57,7 +57,5 @@ def cone_filter(data_frame: pd.DataFrame, ra, dec, radius, metadata: hc.catalog.
     df_coords = SkyCoord(df_ras, df_decs, unit="deg")
     center_coord = SkyCoord(ra, dec, unit="deg")
     df_separations = df_coords.separation(center_coord).value
-    data_frame["_CONE_SEP"] = df_separations
-    data_frame = data_frame.loc[data_frame["_CONE_SEP"] < radius]
-    data_frame = data_frame.drop(columns=["_CONE_SEP"])
+    data_frame = data_frame.iloc[df_separations < radius]
     return data_frame
