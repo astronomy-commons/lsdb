@@ -56,9 +56,8 @@ def polygon_filter(data_frame: pd.DataFrame, polygon: ConvexPolygon, metadata: h
     """
     ra_values = np.radians(data_frame[metadata.catalog_info.ra_column].values)
     dec_values = np.radians(data_frame[metadata.catalog_info.dec_column].values)
-    data_frame["_INSIDE_POLYGON"] = polygon.contains(ra_values, dec_values)
-    data_frame = data_frame.loc[data_frame["_INSIDE_POLYGON"]]
-    data_frame = data_frame.drop(columns=["_INSIDE_POLYGON"])
+    inside_polygon = polygon.contains(ra_values, dec_values)
+    data_frame = data_frame.iloc[inside_polygon]
     return data_frame
 
 
