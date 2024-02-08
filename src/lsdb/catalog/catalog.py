@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Tuple, Type, Union, cast
 import dask.dataframe as dd
 import hipscat as hc
 import numpy as np
+import pandas as pd
 from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.healpix_pixel_function import get_pixel_argsort
 from hipscat.pixel_math.polygon_filter import SphericalCoordinates
@@ -65,6 +66,17 @@ class Catalog(HealpixDataset):
         """
         pixels = self.get_healpix_pixels()
         return np.array(pixels)[get_pixel_argsort(pixels)]
+
+    def head(self, n: int = 5) -> pd.DataFrame:
+        """Returns a few rows of data for previewing purposes.
+
+        Args:
+            n (int): The number of desired rows.
+
+        Returns:
+            A pandas DataFrame with up to `n` of data.
+        """
+        return self._ddf.head(n, npartitions=-1)
 
     def query(self, expr: str) -> Catalog:
         """Filters catalog using a complex query expression

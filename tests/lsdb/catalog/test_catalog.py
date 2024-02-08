@@ -38,6 +38,52 @@ def test_get_catalog_partition_gets_correct_partition(small_sky_order1_catalog):
         dd.utils.assert_eq(partition, ddf_partition)
 
 
+def test_head(small_sky_order1_catalog):
+    # By default, head returns 5 rows
+    expected_df = small_sky_order1_catalog._ddf.partitions[0].compute()[:5]
+    head_df = small_sky_order1_catalog.head()
+    assert len(head_df) == 5
+    pd.testing.assert_frame_equal(expected_df, head_df)
+    # But we can also specify the number of rows we desire
+    expected_df = small_sky_order1_catalog._ddf.partitions[0].compute()[:10]
+    head_df = small_sky_order1_catalog.head(n=10)
+    assert len(head_df) == 10
+    pd.testing.assert_frame_equal(expected_df, head_df)
+
+
+def test_head_rows_less_than_requested(small_sky_order1_catalog):
+    schema = small_sky_order1_catalog.dtypes
+    two_rows = small_sky_order1_catalog._ddf.partitions[0].compute()[:2]
+    tiny_df = pd.DataFrame(data=two_rows, columns=schema.index, dtype=schema.values)
+    altered_ddf = dd.from_pandas(tiny_df, npartitions=1)
+    catalog = lsdb.Catalog(altered_ddf, {}, small_sky_order1_catalog.hc_structure)
+    # The head only contains two values
+    assert len(catalog.head()) == 2
+
+
+def test_head_first_partition_is_empty(small_sky_order1_catalog):
+    # The same catalog but now the first partition is empty
+    schema = small_sky_order1_catalog.dtypes
+    empty_df = pd.DataFrame(columns=schema.index, dtype=schema.values)
+    empty_ddf = dd.from_pandas(empty_df, npartitions=1)
+    altered_ddf = dd.concat([empty_ddf, small_sky_order1_catalog._ddf])
+    catalog = lsdb.Catalog(altered_ddf, {}, small_sky_order1_catalog.hc_structure)
+    # The first partition is empty
+    first_partition_df = catalog._ddf.partitions[0].compute()
+    assert len(first_partition_df) == 0
+    # We still get values from the second (non-empty) partition
+    assert len(catalog.head()) == 5
+
+
+def test_head_empty_catalog(small_sky_order1_catalog):
+    # Create an empty Pandas DataFrame with the same schema
+    schema = small_sky_order1_catalog.dtypes
+    empty_df = pd.DataFrame(columns=schema.index, dtype=schema.values)
+    empty_ddf = dd.from_pandas(empty_df, npartitions=1)
+    empty_catalog = lsdb.Catalog(empty_ddf, {}, small_sky_order1_catalog.hc_structure)
+    assert len(empty_catalog.head()) == 0
+
+
 def test_query(small_sky_order1_catalog):
     expected_ddf = small_sky_order1_catalog._ddf.copy()
     expected_ddf = expected_ddf[
