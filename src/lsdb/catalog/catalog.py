@@ -76,7 +76,15 @@ class Catalog(HealpixDataset):
         Returns:
             A pandas DataFrame with up to `n` of data.
         """
-        return self._ddf.head(n, npartitions=-1)
+        dfs = []
+        remaining_rows = n
+        for partition in self._ddf.partitions:
+            if remaining_rows == 0:
+                break
+            partition_head = partition.head(remaining_rows)
+            dfs.append(partition_head)
+            remaining_rows -= len(partition_head)
+        return pd.concat(dfs)
 
     def query(self, expr: str) -> Catalog:
         """Filters catalog using a complex query expression
