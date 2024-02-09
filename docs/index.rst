@@ -17,7 +17,7 @@ You can install LSDB with `conda` or `pip`:
    >> # Pip installation
    >> python3 -mpip install lsdb
 
-See `notebooks <notebooks>`_ for examples.
+See `notebooks <notebooks.html>`_ for examples.
 
 Dev Guide - Getting Started
 ---------------------------
