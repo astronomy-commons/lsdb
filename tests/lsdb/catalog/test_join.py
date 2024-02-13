@@ -1,5 +1,7 @@
+import numpy as np
 import pandas as pd
 import pytest
+from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
 
 
 def test_small_sky_join_small_sky_order1(
@@ -7,10 +9,14 @@ def test_small_sky_join_small_sky_order1(
 ):
     suffixes = ("_a", "_b")
     joined = small_sky_catalog.join(small_sky_order1_catalog, left_on="id", right_on="id", suffixes=suffixes)
+
     for col_name, dtype in small_sky_catalog.dtypes.items():
         assert (col_name + suffixes[0], dtype) in joined.dtypes.items()
     for col_name, dtype in small_sky_order1_catalog.dtypes.items():
         assert (col_name + suffixes[1], dtype) in joined.dtypes.items()
+    assert joined._ddf.index.name == HIPSCAT_ID_COLUMN
+    assert joined._ddf.index.dtype == np.uint64
+
     joined_compute = joined.compute()
     small_sky_compute = small_sky_catalog.compute()
     small_sky_order1_compute = small_sky_order1_catalog.compute()
@@ -47,9 +53,10 @@ def test_join_association(small_sky_catalog, small_sky_xmatch_catalog, small_sky
 
     for col in small_sky_catalog._ddf.columns:
         assert col + suffixes[0] in joined._ddf.columns
-
     for col in small_sky_xmatch_catalog._ddf.columns:
         assert col + suffixes[1] in joined._ddf.columns
+    assert joined._ddf.index.name == HIPSCAT_ID_COLUMN
+    assert joined._ddf.index.dtype == np.uint64
 
     for _, row in association_data.iterrows():
         left_col = small_sky_to_xmatch_catalog.hc_structure.catalog_info.primary_column + suffixes[0]
