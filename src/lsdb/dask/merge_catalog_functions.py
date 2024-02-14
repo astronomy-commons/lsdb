@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Callable, List, Sequence, Tuple, cast
 
 import dask.dataframe as dd
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 from dask.delayed import Delayed
 from hipscat.pixel_math import HealpixPixel
@@ -161,6 +162,7 @@ def generate_meta_df_for_joined_tables(
     suffixes: Sequence[str],
     extra_columns: pd.DataFrame | None = None,
     index_name: str = HIPSCAT_ID_COLUMN,
+    index_type: npt.DTypeLike = np.uint64,
 ) -> pd.DataFrame:
     """Generates a Dask meta DataFrame that would result from joining two catalogs
 
@@ -172,6 +174,7 @@ def generate_meta_df_for_joined_tables(
         suffixes (Sequence[Str]): The column suffixes to apply each catalog
         extra_columns (pd.Dataframe): Any additional columns to the merged catalogs
         index_name (str): The name of the index in the resulting DataFrame
+        index_type (npt.DTypeLike): The type of the index in the resulting DataFrame
 
     Returns:
     An empty dataframe with the columns of each catalog with their respective suffix, and any extra columns
@@ -185,8 +188,8 @@ def generate_meta_df_for_joined_tables(
     # Construct meta for crossmatch result columns
     if extra_columns is not None:
         meta.update(extra_columns)
-    meta_df = pd.DataFrame(meta)
-    meta_df.index.name = index_name
+    index = pd.Index(pd.Series(dtype=index_type), name=index_name)
+    meta_df = pd.DataFrame(meta, index)
     return meta_df
 
 
