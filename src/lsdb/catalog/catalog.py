@@ -121,8 +121,9 @@ class Catalog(HealpixDataset):
         self,
         other: Catalog,
         suffixes: Tuple[str, str] | None = None,
-        algorithm: Type[AbstractCrossmatchAlgorithm]
-        | BuiltInCrossmatchAlgorithm = BuiltInCrossmatchAlgorithm.KD_TREE,
+        algorithm: (
+            Type[AbstractCrossmatchAlgorithm] | BuiltInCrossmatchAlgorithm
+        ) = BuiltInCrossmatchAlgorithm.KD_TREE,
         output_catalog_name: str | None = None,
         **kwargs,
     ) -> Catalog:

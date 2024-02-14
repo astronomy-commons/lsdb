@@ -2,6 +2,7 @@
 
 For more information on writing benchmarks:
 https://asv.readthedocs.io/en/stable/writing_benchmarks.html."""
+
 import os
 
 import numpy as np

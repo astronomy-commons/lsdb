@@ -227,9 +227,11 @@ def align_catalog_to_partitions(
         return [None] * len(pixels)
     dfs = catalog.to_delayed()
     get_partition = np.vectorize(
-        lambda pix: dfs[catalog.get_partition_index(pix.order, pix.pixel)]
-        if pix in catalog.hc_structure.pixel_tree
-        else None
+        lambda pix: (
+            dfs[catalog.get_partition_index(pix.order, pix.pixel)]
+            if pix in catalog.hc_structure.pixel_tree
+            else None
+        )
     )
     partitions = get_partition(pixels)
     return list(partitions)

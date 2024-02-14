@@ -1,17 +1,25 @@
 # Changes here will be overwritten by Copier
-_commit: v1.4.6
+_commit: v1.5.2
 _src_path: gh:lincc-frameworks/python-project-template
 author_email: lincc-frameworks-team@lists.lsst.org
 author_name: LINCC Frameworks
 create_example_module: false
 custom_install: true
+enforce_style:
+- pylint
+- black
+- isort
+failure_notification:
+- slack
 include_benchmarks: true
 include_docs: true
 include_notebooks: true
 mypy_type_checking: basic
 package_name: lsdb
-preferred_linter: pylint
 project_license: BSD
 project_name: lsdb
 project_organization: astronomy-commons
-use_isort: true
+python_versions:
+- '3.9'
+- '3.10'
+- '3.11'
