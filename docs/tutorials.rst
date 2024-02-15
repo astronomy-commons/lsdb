@@ -9,4 +9,4 @@ functionality.
     Loading data into LSDB <tutorials/loading_data>
     Working with large catalogs <tutorials/working_with_large_catalogs>
     Margins <tutorials/margins>
-    Exporting results <tutorials/exporting_results >
+    Exporting results <tutorials/exporting_results>
