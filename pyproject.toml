@@ -46,7 +46,7 @@ dev = [
     "nbsphinx", # Used to integrate Python notebooks into Sphinx documentation
     "ipykernel", # Support for Jupyter notebooks
     "ipython", # Also used in building notebooks into Sphinx
-    "asv==0.6.1", # Used to compute performance benchmarks
+    "asv==0.6.2", # Used to compute performance benchmarks
 ]
 
 [build-system]
