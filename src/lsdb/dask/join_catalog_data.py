@@ -50,7 +50,7 @@ def rename_columns_with_suffixes(left: pd.DataFrame, right: pd.DataFrame, suffix
     return left, right
 
 
-# pylint: disable=unused-argument
+# pylint: disable=too-many-arguments, unused-argument
 @dask.delayed
 def perform_join_on(
     left: pd.DataFrame,
@@ -100,7 +100,7 @@ def perform_join_on(
     return merged
 
 
-# pylint: disable=unused-argument
+# pylint: disable=too-many-arguments, unused-argument
 @dask.delayed
 def perform_join_through(
     left: pd.DataFrame,
