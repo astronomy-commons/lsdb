@@ -21,7 +21,6 @@ class Dataset:
 
         Args:
             ddf: Dask DataFrame with the source data of the catalog
-            ddf_pixel_map: Dictionary mapping HEALPix order and pixel to partition index of ddf
             hc_structure: `hipscat.Catalog` object with hipscat metadata of the catalog
         """
         self._ddf = ddf

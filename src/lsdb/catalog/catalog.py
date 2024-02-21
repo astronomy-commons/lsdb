@@ -57,16 +57,6 @@ class Catalog(HealpixDataset):
         super().__init__(ddf, ddf_pixel_map, hc_structure)
         self.margin = margin
 
-    def get_ordered_healpix_pixels(self) -> List[HealpixPixel]:
-        """Get all HEALPix pixels that are contained in the catalog,
-        ordered by breadth-first nested ordering.
-
-        Returns:
-            List of all Healpix pixels in the catalog
-        """
-        pixels = self.get_healpix_pixels()
-        return np.array(pixels)[get_pixel_argsort(pixels)]
-
     def head(self, n: int = 5) -> pd.DataFrame:
         """Returns a few rows of data for previewing purposes.
 
@@ -87,21 +77,10 @@ class Catalog(HealpixDataset):
         return pd.concat(dfs)
 
     def query(self, expr: str) -> Catalog:
-        """Filters catalog using a complex query expression
-
-        Args:
-            expr (str): Query expression to evaluate. The column names that are not valid Python
-                variables names should be wrapped in backticks, and any variable values can be
-                injected using f-strings. The use of '@' to reference variables is not supported.
-                More information about pandas query strings is available
-                `here <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.query.html>`__.
-
-        Returns:
-            A catalog that contains the data from the original catalog that complies
-            with the query expression
-        """
-        ddf = self._ddf.query(expr)
-        return Catalog(ddf, self._ddf_pixel_map, self.hc_structure)
+        catalog = super().query(expr)
+        if self.margin is not None:
+            catalog.margin = self.margin.query(expr)
+        return catalog
 
     def assign(self, **kwargs) -> Catalog:
         """Assigns new columns to a catalog
