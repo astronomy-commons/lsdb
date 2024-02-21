@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING, Tuple, List
+from typing import TYPE_CHECKING, List, Tuple
 
 import dask
 import dask.dataframe as dd
@@ -11,17 +11,17 @@ import hipscat as hc
 import pandas as pd
 from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
-from hipscat.pixel_tree import PixelAlignment, PixelAlignmentType, align_trees
+from hipscat.pixel_tree import PixelAlignment
 
 from lsdb.catalog.association_catalog import AssociationCatalog
 from lsdb.dask.merge_catalog_functions import (
     align_and_apply,
+    align_catalogs,
+    concat_partition_and_margin,
     construct_catalog_args,
     filter_by_hipscat_index_to_pixel,
     generate_meta_df_for_joined_tables,
     get_healpix_pixels_from_alignment,
-    align_catalogs,
-    concat_partition_and_margin,
 )
 from lsdb.types import DaskDFPixelMap
 

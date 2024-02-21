@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING, Tuple, Type
 
 import dask
 import dask.dataframe as dd
-import pandas as pd
 from hipscat.pixel_tree import PixelAlignment
 
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
@@ -14,11 +13,11 @@ from lsdb.core.crossmatch.kdtree_match import KdTreeCrossmatch
 from lsdb.dask.merge_catalog_functions import (
     align_and_apply,
     align_catalogs,
+    concat_partition_and_margin,
     construct_catalog_args,
     filter_by_hipscat_index_to_pixel,
     generate_meta_df_for_joined_tables,
     get_healpix_pixels_from_alignment,
-    concat_partition_and_margin,
 )
 from lsdb.types import DaskDFPixelMap
 
