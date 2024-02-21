@@ -1,0 +1,12 @@
+{
+    "catalog_name": "small_sky_to_o1source_soft",
+    "catalog_type": "association",
+    "total_rows": 131,
+    "primary_catalog": "data/small_sky",
+    "primary_column": "id",
+    "primary_column_association": null,
+    "join_catalog": "data/small_sky_order1_source",
+    "join_column": "obj_id",
+    "join_column_association": null,
+    "contains_leaf_files": false
+}
