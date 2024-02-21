@@ -19,7 +19,9 @@ if TYPE_CHECKING:
     from lsdb.catalog.catalog import Catalog
 
 
-def concat_partition_and_margin(partition: pd.DataFrame, margin: pd.DataFrame | None) -> pd.DataFrame:
+def concat_partition_and_margin(
+    partition: pd.DataFrame, margin: pd.DataFrame | None, right_columns: List[str]
+) -> pd.DataFrame:
     """Concatenates a partition and margin dataframe together
 
     Args:
@@ -32,17 +34,19 @@ def concat_partition_and_margin(partition: pd.DataFrame, margin: pd.DataFrame | 
     hive_columns = [
         PartitionInfo.METADATA_ORDER_COLUMN_NAME,
         PartitionInfo.METADATA_DIR_COLUMN_NAME,
-        PartitionInfo.METADATA_PIXEL_COLUMN_NAME
+        PartitionInfo.METADATA_PIXEL_COLUMN_NAME,
     ]
     margin_filtered = None
     if margin is not None:
         margin_columns_no_hive = [col for col in margin.columns if col not in hive_columns]
-        margin_renamed = margin[margin_columns_no_hive].rename(columns={
-            f"margin_{PartitionInfo.METADATA_ORDER_COLUMN_NAME}": PartitionInfo.METADATA_ORDER_COLUMN_NAME,
-            f"margin_{PartitionInfo.METADATA_DIR_COLUMN_NAME}": PartitionInfo.METADATA_DIR_COLUMN_NAME,
-            f"margin_{PartitionInfo.METADATA_PIXEL_COLUMN_NAME}": PartitionInfo.METADATA_PIXEL_COLUMN_NAME,
-        })
-        margin_filtered = margin_renamed[partition.columns]
+        margin_renamed = margin[margin_columns_no_hive].rename(
+            columns={
+                f"margin_{PartitionInfo.METADATA_ORDER_COLUMN_NAME}": PartitionInfo.METADATA_ORDER_COLUMN_NAME,
+                f"margin_{PartitionInfo.METADATA_DIR_COLUMN_NAME}": PartitionInfo.METADATA_DIR_COLUMN_NAME,
+                f"margin_{PartitionInfo.METADATA_PIXEL_COLUMN_NAME}": PartitionInfo.METADATA_PIXEL_COLUMN_NAME,
+            }
+        )
+        margin_filtered = margin_renamed[right_columns]
     joined_df = pd.concat([partition, margin_filtered]) if margin_filtered is not None else partition
     return joined_df
 

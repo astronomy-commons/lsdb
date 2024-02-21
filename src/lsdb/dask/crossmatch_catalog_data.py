@@ -18,6 +18,7 @@ from lsdb.dask.merge_catalog_functions import (
     filter_by_hipscat_index_to_pixel,
     generate_meta_df_for_joined_tables,
     get_healpix_pixels_from_alignment,
+    concat_partition_and_margin,
 )
 from lsdb.types import DaskDFPixelMap
 
@@ -52,8 +53,7 @@ def perform_crossmatch(
     if right_pix.order > left_pix.order:
         left_df = filter_by_hipscat_index_to_pixel(left_df, right_pix.order, right_pix.pixel)
 
-    margin_filtered = right_margin_df[right_columns] if right_margin_df is not None else None
-    right_joined_df = pd.concat([right_df, margin_filtered])
+    right_joined_df = concat_partition_and_margin(right_df, right_margin_df, right_columns)
 
     return algorithm(
         left_df,

@@ -19,7 +19,9 @@ from lsdb.dask.merge_catalog_functions import (
     construct_catalog_args,
     filter_by_hipscat_index_to_pixel,
     generate_meta_df_for_joined_tables,
-    get_healpix_pixels_from_alignment, align_catalogs, concat_partition_and_margin,
+    get_healpix_pixels_from_alignment,
+    align_catalogs,
+    concat_partition_and_margin,
 )
 from lsdb.types import DaskDFPixelMap
 
@@ -63,6 +65,7 @@ def perform_join_on(
     left_on: str,
     right_on: str,
     suffixes: Tuple[str, str],
+    right_columns: List[str],
 ):
     """Performs a join on two catalog partitions
 
@@ -79,6 +82,7 @@ def perform_join_on(
         left_on (str): the column to join on from the left partition
         right_on (str): the column to join on from the right partition
         suffixes (Tuple[str,str]): the suffixes to apply to each partition's column names
+        right_columns (List[str]): the columns to include from the right margin partition
 
     Returns:
         A dataframe with the result of merging the left and right partitions on the specified columns
@@ -86,10 +90,12 @@ def perform_join_on(
     if right_pixel.order > left_pixel.order:
         left = filter_by_hipscat_index_to_pixel(left, right_pixel.order, right_pixel.pixel)
 
-    right_joined_df = concat_partition_and_margin(right, right_margin)
+    right_joined_df = concat_partition_and_margin(right, right_margin, right_columns)
 
     left, right_joined_df = rename_columns_with_suffixes(left, right_joined_df, suffixes)
-    merged = left.reset_index().merge(right_joined_df, left_on=left_on + suffixes[0], right_on=right_on + suffixes[1])
+    merged = left.reset_index().merge(
+        right_joined_df, left_on=left_on + suffixes[0], right_on=right_on + suffixes[1]
+    )
     merged.set_index(HIPSCAT_ID_COLUMN, inplace=True)
     return merged
 
@@ -109,7 +115,8 @@ def perform_join_through(
     right_catalog: hc.catalog.Catalog,
     right_margin_catalog: hc.catalog.Catalog,
     assoc_catalog: hc.catalog.AssociationCatalog,
-    suffixes: Tuple[str, str],\
+    suffixes: Tuple[str, str],
+    right_columns: List[str],
 ):
     """Performs a join on two catalog partitions through an association catalog
 
@@ -127,6 +134,7 @@ def perform_join_through(
         right_margin_catalog (hc.Catalog): the hipscat structure of the right margin catalog
         assoc_catalog (hc.AssociationCatalog): the hipscat structure of the association catalog
         suffixes (Tuple[str,str]): the suffixes to apply to each partition's column names
+        right_columns (List[str]): the columns to include from the right margin partition
 
     Returns:
         A dataframe with the result of merging the left and right partitions on the specified columns
@@ -137,7 +145,7 @@ def perform_join_through(
     if right_pixel.order > left_pixel.order:
         left = filter_by_hipscat_index_to_pixel(left, right_pixel.order, right_pixel.pixel)
 
-    right_joined_df = concat_partition_and_margin(right, right_margin)
+    right_joined_df = concat_partition_and_margin(right, right_margin, right_columns)
 
     left, right_joined_df = rename_columns_with_suffixes(left, right_joined_df, suffixes)
 
@@ -196,6 +204,7 @@ def join_catalog_data_on(
         left_on,
         right_on,
         suffixes,
+        right.columns,
     )
 
     meta_df = generate_meta_df_for_joined_tables([left, right], suffixes)
@@ -243,9 +252,15 @@ def join_catalog_data_through(
     left_pixels, right_pixels = get_healpix_pixels_from_alignment(alignment)
 
     joined_partitions = align_and_apply(
-        [(left, left_pixels), (right, right_pixels), (right.margin, right_pixels), (association, left_pixels)],
+        [
+            (left, left_pixels),
+            (right, right_pixels),
+            (right.margin, right_pixels),
+            (association, left_pixels),
+        ],
         perform_join_through,
         suffixes,
+        right.columns,
     )
 
     association_join_columns = [
