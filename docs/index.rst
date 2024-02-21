@@ -60,5 +60,8 @@ Notes:
    :hidden:
 
    Home page <self>
-   API Reference <autoapi/index>
+   Getting Started <gettingstarted>
+   Tutorials <tutorials>
    Notebooks <notebooks>
+   API Reference <autoapi/index>
+
