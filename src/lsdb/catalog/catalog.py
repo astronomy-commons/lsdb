@@ -5,10 +5,7 @@ from typing import Any, Dict, List, Tuple, Type, Union, cast
 
 import dask.dataframe as dd
 import hipscat as hc
-import numpy as np
 import pandas as pd
-from hipscat.pixel_math import HealpixPixel
-from hipscat.pixel_math.healpix_pixel_function import get_pixel_argsort
 from hipscat.pixel_math.polygon_filter import SphericalCoordinates
 
 from lsdb import io

@@ -97,6 +97,11 @@ def small_sky_xmatch_margin_catalog(small_sky_xmatch_margin_dir):
 
 
 @pytest.fixture
+def small_sky_xmatch_with_margin(small_sky_xmatch_dir, small_sky_xmatch_margin_catalog):
+    return lsdb.read_hipscat(small_sky_xmatch_dir, margin_cache=small_sky_xmatch_margin_catalog)
+
+
+@pytest.fixture
 def small_sky_to_xmatch_catalog(small_sky_to_xmatch_dir):
     return lsdb.read_hipscat(small_sky_to_xmatch_dir)
 
