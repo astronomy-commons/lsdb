@@ -99,7 +99,9 @@ def test_join_association(small_sky_catalog, small_sky_xmatch_catalog, small_sky
         assert joined_row.index == left_index
 
 
-def test_join_association_source_margin(small_sky_catalog, small_sky_order1_source_catalog, small_sky_to_o1source_catalog):
+def test_join_association_source_margin(
+    small_sky_catalog, small_sky_order1_source_catalog, small_sky_to_o1source_catalog
+):
     suffixes = ("_a", "_b")
     joined = small_sky_catalog.join(
         small_sky_order1_source_catalog, through=small_sky_to_o1source_catalog, suffixes=suffixes
@@ -152,12 +154,16 @@ def test_join_association_soft(small_sky_catalog, small_sky_xmatch_catalog, smal
     pd.testing.assert_frame_equal(joined.compute(), joined_on.compute())
 
 
-def test_join_source_margin_soft(small_sky_catalog, small_sky_order1_source_catalog, small_sky_to_o1source_soft_catalog):
+def test_join_source_margin_soft(
+    small_sky_catalog, small_sky_order1_source_catalog, small_sky_to_o1source_soft_catalog
+):
     suffixes = ("_a", "_b")
     joined = small_sky_catalog.join(
         small_sky_order1_source_catalog, through=small_sky_to_o1source_soft_catalog, suffixes=suffixes
     )
-    assert joined._ddf.npartitions == len(small_sky_to_o1source_soft_catalog.hc_structure.join_info.data_frame)
+    assert joined._ddf.npartitions == len(
+        small_sky_to_o1source_soft_catalog.hc_structure.join_info.data_frame
+    )
 
     joined_on = small_sky_catalog.join(
         small_sky_order1_source_catalog,
