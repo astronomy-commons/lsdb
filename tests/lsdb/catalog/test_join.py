@@ -43,7 +43,7 @@ def test_small_sky_join_small_sky_order1_source(
     joined_compute = joined.compute()
     small_sky_order1_compute = small_sky_order1_source_catalog.compute()
     assert len(joined_compute) == len(small_sky_order1_compute)
-    for index, row in small_sky_order1_compute.iterrows():
+    for _, row in small_sky_order1_compute.iterrows():
         joined_row = joined_compute.query(f"id{suffixes[1]} == {row['id']}")
         assert joined_row[f"id{suffixes[0]}"].values[0] == row["obj_id"]
     assert_divisions_are_correct(joined)
