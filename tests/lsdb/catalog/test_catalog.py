@@ -115,8 +115,8 @@ def test_query_margin(small_sky_xmatch_with_margin):
         (small_sky_xmatch_with_margin._ddf["ra"] > 300) & (small_sky_xmatch_with_margin._ddf["dec"] < -50)
     ]
     expected_margin_ddf = small_sky_xmatch_with_margin.margin._ddf.copy()[
-        (small_sky_xmatch_with_margin.margin._ddf["ra"] > 300) &
-        (small_sky_xmatch_with_margin.margin._ddf["dec"] < -50)
+        (small_sky_xmatch_with_margin.margin._ddf["ra"] > 300)
+        & (small_sky_xmatch_with_margin.margin._ddf["dec"] < -50)
     ]
     # Simple query, with no value injection or backticks
     result_catalog = small_sky_xmatch_with_margin.query("ra > 300 and dec < -50")
