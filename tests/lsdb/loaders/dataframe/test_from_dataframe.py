@@ -53,7 +53,8 @@ def test_from_dataframe_sky_source(small_sky_source_df, small_sky_source_margin_
         small_sky_source_df,
         ra_column="source_ra",
         dec_column="source_dec",
-        margin_threshold=5.0,
+        margin_order=8,
+        margin_threshold=180.0,
     )
     assert catalog.margin is not None
     assert isinstance(catalog.margin, MarginCatalog)
