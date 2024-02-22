@@ -68,7 +68,7 @@ class MarginGenerator(DataframeImporter):
             lonlat=True,
             nest=True,
         )
-        constrained_data = self.dataframe.merge(margin_pairs_df, on="margin_pixel")
+        constrained_data = self.dataframe.reset_index().merge(margin_pairs_df, on="margin_pixel")
 
         pixel_dfs = []
         ddf_pixel_map = {}
@@ -119,5 +119,4 @@ class MarginGenerator(DataframeImporter):
             pixel.pixel,
             self.margin_threshold,
         )
-        filtered_df = partition_df.loc[margin_mask]
-        return self._append_partition_information_to_dataframe(filtered_df, pixel)
+        return partition_df.loc[margin_mask]

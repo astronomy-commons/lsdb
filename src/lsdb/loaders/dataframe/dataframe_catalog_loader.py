@@ -110,7 +110,7 @@ class DataframeCatalogLoader(DataframeImporter):
         healpix_pixels = list(pixel_map.keys())
         hc_structure = hc.catalog.Catalog(self.catalog_info, healpix_pixels)
         margin_catalog = MarginGenerator(
-            self.dataframe, hc_structure, self.margin_order, self.margin_threshold
+            ddf.compute(), hc_structure, self.margin_order, self.margin_threshold
         ).create_margin_catalog()
         return Catalog(ddf, ddf_pixel_map, hc_structure, margin_catalog)
 

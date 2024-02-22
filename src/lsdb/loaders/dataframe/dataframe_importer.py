@@ -6,6 +6,7 @@ import pandas as pd
 from dask import delayed
 from hipscat.catalog import PartitionInfo
 from hipscat.pixel_math import HealpixPixel
+from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
 
 from lsdb.dask.divisions import get_pixels_divisions
 from lsdb.types import DaskDFPixelMap
@@ -76,6 +77,8 @@ class DataframeImporter:
                 PartitionInfo.METADATA_PIXEL_COLUMN_NAME: np.uint64,
             }
         )
+        dataframe = dataframe.set_index(HIPSCAT_ID_COLUMN).sort_index()
+
         # TODO: Improve this ordering of columns part
-        ordered_columns = ["margin_Norder", "margin_Npix", "margin_Dir", "Norder", "Npix", "Dir"]
+        ordered_columns = ["margin_Norder", "margin_Dir", "margin_Npix", "Norder", "Npix", "Dir"]
         return dataframe[[col for col in dataframe.columns if col not in ordered_columns] + ordered_columns]

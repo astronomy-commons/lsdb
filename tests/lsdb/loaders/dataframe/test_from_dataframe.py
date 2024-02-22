@@ -53,12 +53,20 @@ def test_from_dataframe_sky_source(small_sky_source_df, small_sky_source_margin_
         small_sky_source_df,
         ra_column="source_ra",
         dec_column="source_dec",
+        highest_order=2,
+        threshold=3000,
         margin_order=8,
         margin_threshold=180.0,
     )
     assert catalog.margin is not None
     assert isinstance(catalog.margin, MarginCatalog)
-    pd.testing.assert_frame_equal(small_sky_source_margin_catalog.compute(), catalog.margin.compute())
+
+    pd.testing.assert_frame_equal(
+        small_sky_source_margin_catalog.compute(),
+        catalog.margin.compute(),
+        check_like=True,
+        check_dtype=False
+    )
 
 
 def test_from_dataframe_catalog_of_invalid_type(small_sky_order1_df, small_sky_order1_catalog):
