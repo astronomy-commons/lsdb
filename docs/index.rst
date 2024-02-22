@@ -13,7 +13,7 @@ You can install LSDB with `conda` or `pip`:
 .. code-block:: bash
 
    >> # Conda installation
-   >> conda install -c conda-forge install lsdb
+   >> conda install -c conda-forge lsdb
    >> # Pip installation
    >> python3 -mpip install lsdb
 
@@ -29,7 +29,7 @@ create and activate a new environment.
 
 .. code-block:: console
 
-   >> conda create env -n <env_name> python=3.10
+   >> conda create -n <env_name> python=3.10
    >> conda activate <env_name>
 
 
