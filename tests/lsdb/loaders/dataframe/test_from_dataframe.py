@@ -9,6 +9,7 @@ from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
 from hipscat.pixel_tree.pixel_node_type import PixelNodeType
 
 import lsdb
+from lsdb.catalog.margin_catalog import MarginCatalog
 from lsdb.loaders.dataframe.dataframe_catalog_loader import DataframeCatalogLoader
 
 
@@ -47,6 +48,18 @@ def test_from_dataframe(small_sky_order1_df, small_sky_order1_catalog, assert_di
     assert_divisions_are_correct(catalog)
 
 
+def test_from_dataframe_sky_source(small_sky_source_df, small_sky_source_margin_catalog):
+    catalog = lsdb.from_dataframe(
+        small_sky_source_df,
+        ra_column="source_ra",
+        dec_column="source_dec",
+        margin_threshold=5.0,
+    )
+    assert catalog.margin is not None
+    assert isinstance(catalog.margin, MarginCatalog)
+    pd.testing.assert_frame_equal(small_sky_source_margin_catalog.compute(), catalog.margin.compute())
+
+
 def test_from_dataframe_catalog_of_invalid_type(small_sky_order1_df, small_sky_order1_catalog):
     """Tests that an exception is thrown if the catalog is not of type OBJECT or SOURCE"""
     valid_catalog_types = [CatalogType.OBJECT, CatalogType.SOURCE]
@@ -62,7 +75,7 @@ def test_from_dataframe_catalog_of_invalid_type(small_sky_order1_df, small_sky_o
 
 
 def test_from_dataframe_when_threshold_and_partition_size_specified(
-    small_sky_order1_df, small_sky_order1_catalog
+        small_sky_order1_df, small_sky_order1_catalog
 ):
     """Tests that specifying simultaneously threshold and partition_size is invalid"""
     kwargs = get_catalog_kwargs(small_sky_order1_catalog, partition_size=10, threshold=10_000)
@@ -78,7 +91,7 @@ def test_partitions_on_map_equal_partitions_in_df(small_sky_order1_df, small_sky
         partition_df = catalog._ddf.partitions[partition_index].compute()
         assert isinstance(partition_df, pd.DataFrame)
         for _, row in partition_df.iterrows():
-            ipix = hp.ang2pix(2**hp_pixel.order, row["ra"], row["dec"], nest=True, lonlat=True)
+            ipix = hp.ang2pix(2 ** hp_pixel.order, row["ra"], row["dec"], nest=True, lonlat=True)
             assert ipix == hp_pixel.pixel
 
 
@@ -137,7 +150,7 @@ def test_partitions_obey_threshold(small_sky_order1_df, small_sky_order1_catalog
 
 
 def test_partitions_obey_default_threshold_when_no_arguments_specified(
-    small_sky_order1_df, small_sky_order1_catalog
+        small_sky_order1_df, small_sky_order1_catalog
 ):
     """Tests that partitions are limited by the default threshold
     when no partition size or threshold is specified"""

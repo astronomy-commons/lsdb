@@ -1,0 +1,7 @@
+{
+    "catalog_name": "catalog_cache",
+    "catalog_type": "margin",
+    "total_rows": 395,
+    "primary_catalog": "/Users/scampos/hipscat-import/tests/hipscat_import/data/small_sky_source_catalog",
+    "margin_threshold": 180.0
+}

@@ -8,7 +8,6 @@ import dask.dataframe as dd
 import hipscat as hc
 import numpy as np
 import pandas as pd
-from dask import delayed
 from hipscat.catalog import CatalogType
 from hipscat.catalog.catalog_info import CatalogInfo
 from hipscat.pixel_math import HealpixPixel, generate_histogram
@@ -16,13 +15,14 @@ from hipscat.pixel_math.healpix_pixel_function import get_pixel_argsort
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN, compute_hipscat_id, healpix_to_hipscat_id
 
 from lsdb.catalog.catalog import Catalog
-from lsdb.dask.divisions import get_pixels_divisions
+from lsdb.loaders.dataframe.margin_catalog_generator import MarginGenerator
+from lsdb.loaders.dataframe.dataframe_importer import DataframeImporter
 from lsdb.types import DaskDFPixelMap, HealpixInfo
 
 pd.options.mode.chained_assignment = None  # default='warn'
 
 
-class DataframeCatalogLoader:
+class DataframeCatalogLoader(DataframeImporter):
     """Creates a HiPSCat formatted Catalog from a Pandas Dataframe"""
 
     DEFAULT_THRESHOLD = 100_000
@@ -34,6 +34,8 @@ class DataframeCatalogLoader:
         highest_order: int = 5,
         partition_size: int | None = None,
         threshold: int | None = None,
+        margin_order: int | None = -1,
+        margin_threshold: float = 5.0,
         **kwargs,
     ) -> None:
         """Initializes a DataframeCatalogLoader
@@ -44,12 +46,16 @@ class DataframeCatalogLoader:
             highest_order (int): The highest partition order
             partition_size (int): The desired partition size, in number of rows
             threshold (int): The maximum number of data points per pixel
+            margin_order (int): The order at which to generate the margin cache
+            margin_threshold (float): The size of the margin cache boundary, in arcseconds
             **kwargs: Arguments to pass to the creation of the catalog info
         """
         self.dataframe = dataframe
         self.lowest_order = lowest_order
         self.highest_order = highest_order
         self.threshold = self._calculate_threshold(partition_size, threshold)
+        self.margin_order = margin_order
+        self.margin_threshold = margin_threshold
         self.catalog_info = self._create_catalog_info(**kwargs)
 
     def _calculate_threshold(self, partition_size: int | None = None, threshold: int | None = None) -> int:
@@ -103,7 +109,10 @@ class DataframeCatalogLoader:
         self.catalog_info = dataclasses.replace(self.catalog_info, total_rows=total_rows)
         healpix_pixels = list(pixel_map.keys())
         hc_structure = hc.catalog.Catalog(self.catalog_info, healpix_pixels)
-        return Catalog(ddf, ddf_pixel_map, hc_structure)
+        margin_catalog = MarginGenerator(
+            self.dataframe, hc_structure, self.margin_order, self.margin_threshold
+        ).create_margin_catalog()
+        return Catalog(ddf, ddf_pixel_map, hc_structure, margin_catalog)
 
     def _set_hipscat_index(self):
         """Generates the hipscat indices for each data point and assigns
@@ -160,9 +169,6 @@ class DataframeCatalogLoader:
         # Mapping HEALPix pixels to the respective Dataframe indices
         ddf_pixel_map: Dict[HealpixPixel, int] = {}
 
-        # Dask Dataframe divisions
-        divisions = get_pixels_divisions(list(pixel_map.keys()))
-
         for hp_pixel_index, hp_pixel_info in enumerate(pixel_map.items()):
             hp_pixel, (_, pixels) = hp_pixel_info
             # Store HEALPix pixel in map
@@ -171,27 +177,8 @@ class DataframeCatalogLoader:
             pixel_dfs.append(self._get_dataframe_for_healpix(hp_pixel, pixels))
 
         # Generate Dask Dataframe with original schema
-        schema = pixel_dfs[0].iloc[:0, :].copy()
-        ddf, total_rows = self._generate_dask_dataframe(pixel_dfs, schema, divisions)
+        ddf, total_rows = self._generate_dask_dataframe(pixel_dfs, ddf_pixel_map)
         return ddf, ddf_pixel_map, total_rows
-
-    @staticmethod
-    def _generate_dask_dataframe(
-        pixel_dfs: List[pd.DataFrame], schema: pd.DataFrame, divisions: Tuple[int, ...] | None
-    ) -> Tuple[dd.DataFrame, int]:
-        """Create the Dask Dataframe from the list of HEALPix pixel Dataframes
-
-        Args:
-            pixel_dfs (List[pd.DataFrame]): The list of HEALPix pixel Dataframes
-            schema (pd.Dataframe): The original Dataframe schema
-            divisions (Tuple[int, ...]): The partitions divisions
-
-        Returns:
-            The catalog's Dask Dataframe and its total number of rows.
-        """
-        delayed_dfs = [delayed(df) for df in pixel_dfs]
-        ddf = dd.from_delayed(delayed_dfs, meta=schema, divisions=divisions)
-        return ddf if isinstance(ddf, dd.DataFrame) else ddf.to_frame(), len(ddf)
 
     def _get_dataframe_for_healpix(self, hp_pixel: HealpixPixel, pixels: List[int]) -> pd.DataFrame:
         """Computes the Pandas Dataframe containing the data points
@@ -216,25 +203,3 @@ class DataframeCatalogLoader:
             (self.dataframe.index >= left_bound) & (self.dataframe.index < right_bound)
         ]
         return self._append_partition_information_to_dataframe(pixel_df, hp_pixel)
-
-    def _append_partition_information_to_dataframe(
-        self, dataframe: pd.DataFrame, pixel: HealpixPixel
-    ) -> pd.DataFrame:
-        """Appends partitioning information to a HEALPix dataframe
-
-        Args:
-            dataframe (pd.Dataframe): A HEALPix's pandas dataframe
-            pixel (HealpixPixel): The HEALPix pixel for the current partition
-
-        Returns:
-            The dataframe for a HEALPix, with data points and respective partition information.
-        """
-        ordered_columns = ["Norder", "Dir", "Npix"]
-        # Generate partition information
-        dataframe["Norder"] = pixel.order
-        dataframe["Npix"] = pixel.pixel
-        dataframe["Dir"] = pixel.dir
-        # Force new column types to int
-        dataframe[ordered_columns] = dataframe[ordered_columns].astype(int)
-        # Reorder the columns to match full path
-        return dataframe[[col for col in dataframe.columns if col not in ordered_columns] + ordered_columns]
