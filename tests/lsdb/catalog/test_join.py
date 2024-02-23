@@ -149,12 +149,13 @@ def test_join_association_soft(small_sky_catalog, small_sky_xmatch_catalog, smal
         )
     assert joined._ddf.npartitions == len(small_sky_to_xmatch_soft_catalog.hc_structure.join_info.data_frame)
 
-    joined_on = small_sky_catalog.join(
-        small_sky_xmatch_catalog,
-        left_on=small_sky_to_xmatch_soft_catalog.hc_structure.catalog_info.primary_column,
-        right_on=small_sky_to_xmatch_soft_catalog.hc_structure.catalog_info.join_column,
-        suffixes=suffixes,
-    )
+    with pytest.warns(match="margin"):
+        joined_on = small_sky_catalog.join(
+            small_sky_xmatch_catalog,
+            left_on=small_sky_to_xmatch_soft_catalog.hc_structure.catalog_info.primary_column,
+            right_on=small_sky_to_xmatch_soft_catalog.hc_structure.catalog_info.join_column,
+            suffixes=suffixes,
+        )
     pd.testing.assert_frame_equal(joined.compute(), joined_on.compute())
 
 
