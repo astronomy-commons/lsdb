@@ -6,7 +6,8 @@ def test_small_sky_join_small_sky_order1(
     small_sky_catalog, small_sky_order1_catalog, assert_divisions_are_correct
 ):
     suffixes = ("_a", "_b")
-    joined = small_sky_catalog.join(small_sky_order1_catalog, left_on="id", right_on="id", suffixes=suffixes)
+    with pytest.warns(match="margin"):
+        joined = small_sky_catalog.join(small_sky_order1_catalog, left_on="id", right_on="id", suffixes=suffixes)
     for col_name, dtype in small_sky_catalog.dtypes.items():
         assert (col_name + suffixes[0], dtype) in joined.dtypes.items()
     for col_name, dtype in small_sky_order1_catalog.dtypes.items():
@@ -57,9 +58,10 @@ def test_join_wrong_suffixes(small_sky_catalog, small_sky_order1_catalog):
 
 def test_join_association(small_sky_catalog, small_sky_xmatch_catalog, small_sky_to_xmatch_catalog):
     suffixes = ("_a", "_b")
-    joined = small_sky_catalog.join(
-        small_sky_xmatch_catalog, through=small_sky_to_xmatch_catalog, suffixes=suffixes
-    )
+    with pytest.warns(match="margin"):
+        joined = small_sky_catalog.join(
+            small_sky_xmatch_catalog, through=small_sky_to_xmatch_catalog, suffixes=suffixes
+        )
     assert joined._ddf.npartitions == len(small_sky_to_xmatch_catalog.hc_structure.join_info.data_frame)
     joined_data = joined.compute()
     association_data = small_sky_to_xmatch_catalog.compute()
@@ -133,9 +135,10 @@ def test_join_association_source_margin(
 
 def test_join_association_soft(small_sky_catalog, small_sky_xmatch_catalog, small_sky_to_xmatch_soft_catalog):
     suffixes = ("_a", "_b")
-    joined = small_sky_catalog.join(
-        small_sky_xmatch_catalog, through=small_sky_to_xmatch_soft_catalog, suffixes=suffixes
-    )
+    with pytest.warns(match="margin"):
+        joined = small_sky_catalog.join(
+            small_sky_xmatch_catalog, through=small_sky_to_xmatch_soft_catalog, suffixes=suffixes
+        )
     assert joined._ddf.npartitions == len(small_sky_to_xmatch_soft_catalog.hc_structure.join_info.data_frame)
 
     joined_on = small_sky_catalog.join(
