@@ -30,18 +30,18 @@ def test_small_sky_join_small_sky_order1(
 
 
 def test_small_sky_join_small_sky_order1_source(
-    small_sky_catalog, small_sky_order1_source_catalog, assert_divisions_are_correct
+    small_sky_catalog, small_sky_order1_source_with_margin, assert_divisions_are_correct
 ):
     suffixes = ("_a", "_b")
     joined = small_sky_catalog.join(
-        small_sky_order1_source_catalog, left_on="id", right_on="obj_id", suffixes=suffixes
+        small_sky_order1_source_with_margin, left_on="id", right_on="obj_id", suffixes=suffixes
     )
     for col_name, dtype in small_sky_catalog.dtypes.items():
         assert (col_name + suffixes[0], dtype) in joined.dtypes.items()
-    for col_name, dtype in small_sky_order1_source_catalog.dtypes.items():
+    for col_name, dtype in small_sky_order1_source_with_margin.dtypes.items():
         assert (col_name + suffixes[1], dtype) in joined.dtypes.items()
     joined_compute = joined.compute()
-    small_sky_order1_compute = small_sky_order1_source_catalog.compute()
+    small_sky_order1_compute = small_sky_order1_source_with_margin.compute()
     assert len(joined_compute) == len(small_sky_order1_compute)
     for _, row in small_sky_order1_compute.iterrows():
         joined_row = joined_compute.query(f"id{suffixes[1]} == {row['id']}")
@@ -100,11 +100,11 @@ def test_join_association(small_sky_catalog, small_sky_xmatch_catalog, small_sky
 
 
 def test_join_association_source_margin(
-    small_sky_catalog, small_sky_order1_source_catalog, small_sky_to_o1source_catalog
+    small_sky_catalog, small_sky_order1_source_with_margin, small_sky_to_o1source_catalog
 ):
     suffixes = ("_a", "_b")
     joined = small_sky_catalog.join(
-        small_sky_order1_source_catalog, through=small_sky_to_o1source_catalog, suffixes=suffixes
+        small_sky_order1_source_with_margin, through=small_sky_to_o1source_catalog, suffixes=suffixes
     )
     assert joined._ddf.npartitions == len(small_sky_to_o1source_catalog.hc_structure.join_info.data_frame)
     joined_data = joined.compute()
@@ -114,7 +114,7 @@ def test_join_association_source_margin(
     for col in small_sky_catalog._ddf.columns:
         assert col + suffixes[0] in joined._ddf.columns
 
-    for col in small_sky_order1_source_catalog._ddf.columns:
+    for col in small_sky_order1_source_with_margin._ddf.columns:
         assert col + suffixes[1] in joined._ddf.columns
 
     for _, row in association_data.iterrows():
@@ -130,7 +130,7 @@ def test_join_association_source_margin(
             assert joined_row[col + suffixes[0]].values == left_row[col].values
 
         small_sky_xmatch_col = small_sky_to_o1source_catalog.hc_structure.catalog_info.join_column
-        right_row = small_sky_order1_source_catalog.compute().query(f"{small_sky_xmatch_col}=={right_id}")
+        right_row = small_sky_order1_source_with_margin.compute().query(f"{small_sky_xmatch_col}=={right_id}")
         for col in right_row.columns:
             assert (joined_row[col + suffixes[1]].values == right_row[col].values).all()
 
@@ -155,18 +155,18 @@ def test_join_association_soft(small_sky_catalog, small_sky_xmatch_catalog, smal
 
 
 def test_join_source_margin_soft(
-    small_sky_catalog, small_sky_order1_source_catalog, small_sky_to_o1source_soft_catalog
+    small_sky_catalog, small_sky_order1_source_with_margin, small_sky_to_o1source_soft_catalog
 ):
     suffixes = ("_a", "_b")
     joined = small_sky_catalog.join(
-        small_sky_order1_source_catalog, through=small_sky_to_o1source_soft_catalog, suffixes=suffixes
+        small_sky_order1_source_with_margin, through=small_sky_to_o1source_soft_catalog, suffixes=suffixes
     )
     assert joined._ddf.npartitions == len(
         small_sky_to_o1source_soft_catalog.hc_structure.join_info.data_frame
     )
 
     joined_on = small_sky_catalog.join(
-        small_sky_order1_source_catalog,
+        small_sky_order1_source_with_margin,
         left_on=small_sky_to_o1source_soft_catalog.hc_structure.catalog_info.primary_column,
         right_on=small_sky_to_o1source_soft_catalog.hc_structure.catalog_info.join_column,
         suffixes=suffixes,
