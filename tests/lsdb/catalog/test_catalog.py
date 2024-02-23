@@ -110,8 +110,7 @@ def test_query_no_arguments(small_sky_order1_catalog):
 
 
 def test_query_margin(small_sky_xmatch_with_margin):
-    expected_ddf = small_sky_xmatch_with_margin._ddf.copy()
-    expected_ddf = expected_ddf[
+    expected_ddf = small_sky_xmatch_with_margin._ddf.copy()[
         (small_sky_xmatch_with_margin._ddf["ra"] > 300) & (small_sky_xmatch_with_margin._ddf["dec"] < -50)
     ]
     expected_margin_ddf = small_sky_xmatch_with_margin.margin._ddf.copy()[
