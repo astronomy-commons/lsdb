@@ -7,7 +7,9 @@ def test_small_sky_join_small_sky_order1(
 ):
     suffixes = ("_a", "_b")
     with pytest.warns(match="margin"):
-        joined = small_sky_catalog.join(small_sky_order1_catalog, left_on="id", right_on="id", suffixes=suffixes)
+        joined = small_sky_catalog.join(
+            small_sky_order1_catalog, left_on="id", right_on="id", suffixes=suffixes
+        )
     for col_name, dtype in small_sky_catalog.dtypes.items():
         assert (col_name + suffixes[0], dtype) in joined.dtypes.items()
     for col_name, dtype in small_sky_order1_catalog.dtypes.items():
