@@ -38,6 +38,8 @@ def concat_partition_and_margin(
     ]
     margin_filtered = None
     if margin is not None:
+      # Remove the Norder/Dir/Npix columns (used only for partitioning the margin itself), 
+      # and rename the margin_Norder/Dir/Npix to take their place.
         margin_columns_no_hive = [col for col in margin.columns if col not in hive_columns]
         rename_columns = {
             f"margin_{PartitionInfo.METADATA_ORDER_COLUMN_NAME}": PartitionInfo.METADATA_ORDER_COLUMN_NAME,
