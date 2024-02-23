@@ -32,23 +32,24 @@ def concat_partition_and_margin(
     Returns:
         The concatenated dataframe with the partition on top and the margin on the bottom
     """
+    if margin is None:
+        return partition
+
     hive_columns = [
         PartitionInfo.METADATA_ORDER_COLUMN_NAME,
         PartitionInfo.METADATA_DIR_COLUMN_NAME,
         PartitionInfo.METADATA_PIXEL_COLUMN_NAME,
     ]
-    margin_filtered = None
-    if margin is not None:
-      # Remove the Norder/Dir/Npix columns (used only for partitioning the margin itself), 
-      # and rename the margin_Norder/Dir/Npix to take their place.
-        margin_columns_no_hive = [col for col in margin.columns if col not in hive_columns]
-        rename_columns = {
-            f"margin_{PartitionInfo.METADATA_ORDER_COLUMN_NAME}": PartitionInfo.METADATA_ORDER_COLUMN_NAME,
-            f"margin_{PartitionInfo.METADATA_DIR_COLUMN_NAME}": PartitionInfo.METADATA_DIR_COLUMN_NAME,
-            f"margin_{PartitionInfo.METADATA_PIXEL_COLUMN_NAME}": PartitionInfo.METADATA_PIXEL_COLUMN_NAME,
-        }
-        margin_renamed = margin[margin_columns_no_hive].rename(columns=rename_columns)
-        margin_filtered = margin_renamed[right_columns]
+    # Remove the Norder/Dir/Npix columns (used only for partitioning the margin itself),
+    # and rename the margin_Norder/Dir/Npix to take their place.
+    margin_columns_no_hive = [col for col in margin.columns if col not in hive_columns]
+    rename_columns = {
+        f"margin_{PartitionInfo.METADATA_ORDER_COLUMN_NAME}": PartitionInfo.METADATA_ORDER_COLUMN_NAME,
+        f"margin_{PartitionInfo.METADATA_DIR_COLUMN_NAME}": PartitionInfo.METADATA_DIR_COLUMN_NAME,
+        f"margin_{PartitionInfo.METADATA_PIXEL_COLUMN_NAME}": PartitionInfo.METADATA_PIXEL_COLUMN_NAME,
+    }
+    margin_renamed = margin[margin_columns_no_hive].rename(columns=rename_columns)
+    margin_filtered = margin_renamed[right_columns]
     joined_df = pd.concat([partition, margin_filtered]) if margin_filtered is not None else partition
     return joined_df
 
