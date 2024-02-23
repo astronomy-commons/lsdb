@@ -141,7 +141,7 @@ def small_sky_order1_catalog(small_sky_order1_dir):
 
 
 @pytest.fixture
-def small_sky_order1_source_catalog(small_sky_order1_source_dir, small_sky_order1_source_margin_catalog):
+def small_sky_order1_source_with_margin(small_sky_order1_source_dir, small_sky_order1_source_margin_catalog):
     return lsdb.read_hipscat(small_sky_order1_source_dir, margin_cache=small_sky_order1_source_margin_catalog)
 
 
