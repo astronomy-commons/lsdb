@@ -177,23 +177,3 @@ def test_join_source_margin_soft(
         suffixes=suffixes,
     )
     pd.testing.assert_frame_equal(joined.compute(), joined_on.compute())
-
-
-def test_join_source_margin_soft(
-    small_sky_catalog, small_sky_order1_source_with_margin, small_sky_to_o1source_soft_catalog
-):
-    suffixes = ("_a", "_b")
-    joined = small_sky_catalog.join(
-        small_sky_order1_source_with_margin, through=small_sky_to_o1source_soft_catalog, suffixes=suffixes
-    )
-    assert joined._ddf.npartitions == len(
-        small_sky_to_o1source_soft_catalog.hc_structure.join_info.data_frame
-    )
-
-    joined_on = small_sky_catalog.join(
-        small_sky_order1_source_with_margin,
-        left_on=small_sky_to_o1source_soft_catalog.hc_structure.catalog_info.primary_column,
-        right_on=small_sky_to_o1source_soft_catalog.hc_structure.catalog_info.join_column,
-        suffixes=suffixes,
-    )
-    pd.testing.assert_frame_equal(joined.compute(), joined_on.compute())
