@@ -4,6 +4,7 @@ import pandas as pd
 
 from lsdb.catalog import Catalog
 from lsdb.loaders.dataframe.dataframe_catalog_loader import DataframeCatalogLoader
+from lsdb.loaders.dataframe.margin_catalog_generator import MarginCatalogGenerator
 
 
 def from_dataframe(
@@ -31,14 +32,17 @@ def from_dataframe(
     Returns:
         Catalog object loaded from the given parameters
     """
-    loader = DataframeCatalogLoader(
+    catalog = DataframeCatalogLoader(
         dataframe,
         lowest_order,
         highest_order,
         partition_size,
         threshold,
+        **kwargs,
+    ).load_catalog()
+    catalog.margin = MarginCatalogGenerator(
+        catalog,
         margin_order,
         margin_threshold,
-        **kwargs,
-    )
-    return loader.load_catalog()
+    ).create_catalog()
+    return catalog

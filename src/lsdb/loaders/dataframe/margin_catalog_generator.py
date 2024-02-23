@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import List
 
 import healpy as hp
@@ -8,9 +10,11 @@ from hipscat.catalog import CatalogType
 from hipscat.catalog.margin_cache import MarginCacheCatalogInfo
 from hipscat.pixel_math import HealpixPixel
 
+from lsdb import Catalog
 from lsdb.catalog.margin_catalog import MarginCatalog
 from lsdb.loaders.dataframe.from_dataframe_utils import (
-    _generate_dask_dataframe, _format_margin_partition_dataframe,
+    _format_margin_partition_dataframe,
+    _generate_dask_dataframe,
 )
 
 
@@ -19,21 +23,19 @@ class MarginCatalogGenerator:
 
     def __init__(
         self,
-        dataframe: pd.DataFrame,
-        hc_structure: hc.catalog.Catalog,
+        catalog: Catalog,
         margin_order: int | None = -1,
         margin_threshold: float = 5.0,
     ) -> None:
         """Initializes a MarginCatalogGenerator
 
         Args:
-            dataframe (pd.DataFrame): Catalog Pandas Dataframe
-            hc_structure (hc.catalog.Catalog): The HiPSCat structure catalog
+            catalog (Catalog): The LSDB catalog to generate margins for
             margin_order (int): The order at which to generate the margin cache
             margin_threshold (float): The size of the margin cache boundary, in arcseconds
         """
-        self.dataframe = dataframe
-        self.hc_structure = hc_structure
+        self.dataframe = catalog.compute().copy()
+        self.hc_structure = catalog.hc_structure
         self.margin_threshold = margin_threshold
         self.margin_order = self._set_margin_order(margin_order)
 
@@ -47,23 +49,23 @@ class MarginCatalogGenerator:
             margin_order = margin_pixel_k
         elif margin_order < margin_pixel_k:
             raise ValueError(
-                "margin_order must be of a higher order " "than the highest order catalog partition pixel."
+                "margin_order must be of a higher order than the highest order catalog partition pixel."
             )
         return margin_order
 
-    def create_margin_catalog(self) -> MarginCatalog:
+    def create_catalog(self) -> MarginCatalog:
         """Create a margin catalog for another pre-computed catalog
 
         Returns:
             Margin catalog object for the provided catalog
         """
-        ddf, ddf_pixel_map, total_rows = self._generate_margin_dask_df_and_map()
+        ddf, ddf_pixel_map, total_rows = self._generate_dask_df_and_map()
         margin_catalog_info = self._create_catalog_info(total_rows)
         margin_pixels = list(ddf_pixel_map.keys())
         margin_structure = hc.catalog.MarginCatalog(margin_catalog_info, margin_pixels)
         return MarginCatalog(ddf, ddf_pixel_map, margin_structure)
 
-    def _generate_margin_dask_df_and_map(self):
+    def _generate_dask_df_and_map(self):
         """Create the Dask Dataframe containing the data points in the margins
         for the catalog, as well as the mapping of those HEALPix pixels to
         HEALPix Dataframes.
@@ -103,8 +105,8 @@ class MarginCatalogGenerator:
             ddf_pixel_map[pixel] = i
 
         # Generate Dask Dataframe with original schema
-        pixels = list(ddf_pixel_map.keys())
-        ddf, total_rows = _generate_dask_dataframe(pixel_dfs, pixels)
+        pixel_list = list(ddf_pixel_map.keys())
+        ddf, total_rows = _generate_dask_dataframe(pixel_dfs, pixel_list)
         return ddf, ddf_pixel_map, total_rows
 
     def _find_margin_pixel_pairs(self, pixels: List[HealpixPixel]) -> pd.DataFrame:

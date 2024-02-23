@@ -19,7 +19,6 @@ from lsdb.loaders.dataframe.from_dataframe_utils import (
     _append_partition_information_to_dataframe,
     _generate_dask_dataframe,
 )
-from lsdb.loaders.dataframe.margin_catalog_generator import MarginCatalogGenerator
 from lsdb.types import DaskDFPixelMap, HealpixInfo
 
 pd.options.mode.chained_assignment = None  # default='warn'
@@ -37,8 +36,6 @@ class DataframeCatalogLoader:
         highest_order: int = 5,
         partition_size: int | None = None,
         threshold: int | None = None,
-        margin_order: int | None = -1,
-        margin_threshold: float = 5.0,
         **kwargs,
     ) -> None:
         """Initializes a DataframeCatalogLoader
@@ -49,16 +46,12 @@ class DataframeCatalogLoader:
             highest_order (int): The highest partition order
             partition_size (int): The desired partition size, in number of rows
             threshold (int): The maximum number of data points per pixel
-            margin_order (int): The order at which to generate the margin cache
-            margin_threshold (float): The size of the margin cache boundary, in arcseconds
             **kwargs: Arguments to pass to the creation of the catalog info
         """
         self.dataframe = dataframe
         self.lowest_order = lowest_order
         self.highest_order = highest_order
         self.threshold = self._calculate_threshold(partition_size, threshold)
-        self.margin_order = margin_order
-        self.margin_threshold = margin_threshold
         self.catalog_info = self._create_catalog_info(**kwargs)
 
     def _calculate_threshold(self, partition_size: int | None = None, threshold: int | None = None) -> int:
@@ -112,10 +105,7 @@ class DataframeCatalogLoader:
         self.catalog_info = dataclasses.replace(self.catalog_info, total_rows=total_rows)
         healpix_pixels = list(pixel_map.keys())
         hc_structure = hc.catalog.Catalog(self.catalog_info, healpix_pixels)
-        margin_catalog = MarginCatalogGenerator(
-            ddf.compute(), hc_structure, self.margin_order, self.margin_threshold
-        ).create_margin_catalog()
-        return Catalog(ddf, ddf_pixel_map, hc_structure, margin_catalog)
+        return Catalog(ddf, ddf_pixel_map, hc_structure)
 
     def _set_hipscat_index(self):
         """Generates the hipscat indices for each data point and assigns
@@ -180,8 +170,8 @@ class DataframeCatalogLoader:
             pixel_dfs.append(self._get_dataframe_for_healpix(hp_pixel, pixels))
 
         # Generate Dask Dataframe with original schema
-        pixels = list(ddf_pixel_map.keys())
-        ddf, total_rows = _generate_dask_dataframe(pixel_dfs, pixels)
+        pixel_list = list(ddf_pixel_map.keys())
+        ddf, total_rows = _generate_dask_dataframe(pixel_dfs, pixel_list)
         return ddf, ddf_pixel_map, total_rows
 
     def _get_dataframe_for_healpix(self, hp_pixel: HealpixPixel, pixels: List[int]) -> pd.DataFrame:
