@@ -60,7 +60,6 @@ def test_from_dataframe_sky_source(small_sky_source_df, small_sky_source_margin_
     )
     assert catalog.margin is not None
     assert isinstance(catalog.margin, MarginCatalog)
-
     pd.testing.assert_frame_equal(
         small_sky_source_margin_catalog.compute(),
         catalog.margin.compute(),

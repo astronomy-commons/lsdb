@@ -15,14 +15,17 @@ from hipscat.pixel_math.healpix_pixel_function import get_pixel_argsort
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN, compute_hipscat_id, healpix_to_hipscat_id
 
 from lsdb.catalog.catalog import Catalog
-from lsdb.loaders.dataframe.margin_catalog_generator import MarginGenerator
-from lsdb.loaders.dataframe.dataframe_importer import DataframeImporter
+from lsdb.loaders.dataframe.from_dataframe_utils import (
+    _append_partition_information_to_dataframe,
+    _generate_dask_dataframe,
+)
+from lsdb.loaders.dataframe.margin_catalog_generator import MarginCatalogGenerator
 from lsdb.types import DaskDFPixelMap, HealpixInfo
 
 pd.options.mode.chained_assignment = None  # default='warn'
 
 
-class DataframeCatalogLoader(DataframeImporter):
+class DataframeCatalogLoader:
     """Creates a HiPSCat formatted Catalog from a Pandas Dataframe"""
 
     DEFAULT_THRESHOLD = 100_000
@@ -109,7 +112,7 @@ class DataframeCatalogLoader(DataframeImporter):
         self.catalog_info = dataclasses.replace(self.catalog_info, total_rows=total_rows)
         healpix_pixels = list(pixel_map.keys())
         hc_structure = hc.catalog.Catalog(self.catalog_info, healpix_pixels)
-        margin_catalog = MarginGenerator(
+        margin_catalog = MarginCatalogGenerator(
             ddf.compute(), hc_structure, self.margin_order, self.margin_threshold
         ).create_margin_catalog()
         return Catalog(ddf, ddf_pixel_map, hc_structure, margin_catalog)
@@ -177,7 +180,8 @@ class DataframeCatalogLoader(DataframeImporter):
             pixel_dfs.append(self._get_dataframe_for_healpix(hp_pixel, pixels))
 
         # Generate Dask Dataframe with original schema
-        ddf, total_rows = self._generate_dask_dataframe(pixel_dfs, ddf_pixel_map)
+        pixels = list(ddf_pixel_map.keys())
+        ddf, total_rows = _generate_dask_dataframe(pixel_dfs, pixels)
         return ddf, ddf_pixel_map, total_rows
 
     def _get_dataframe_for_healpix(self, hp_pixel: HealpixPixel, pixels: List[int]) -> pd.DataFrame:
@@ -202,4 +206,4 @@ class DataframeCatalogLoader(DataframeImporter):
         pixel_df = self.dataframe.loc[
             (self.dataframe.index >= left_bound) & (self.dataframe.index < right_bound)
         ]
-        return self._append_partition_information_to_dataframe(pixel_df, hp_pixel)
+        return _append_partition_information_to_dataframe(pixel_df, hp_pixel)
