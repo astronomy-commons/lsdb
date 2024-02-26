@@ -40,16 +40,17 @@ def _append_partition_information_to_dataframe(dataframe: pd.DataFrame, pixel: H
     Returns:
         The dataframe for a HEALPix, with data points and respective partition information.
     """
-    dataframe["Norder"] = pixel.order
-    dataframe["Dir"] = pixel.dir
-    dataframe["Npix"] = pixel.pixel
-    dataframe = dataframe.astype(
-        {
-            PartitionInfo.METADATA_ORDER_COLUMN_NAME: np.uint8,
-            PartitionInfo.METADATA_DIR_COLUMN_NAME: np.uint64,
-            PartitionInfo.METADATA_PIXEL_COLUMN_NAME: np.uint64,
-        }
-    )
+    columns_to_assign = {
+        PartitionInfo.METADATA_ORDER_COLUMN_NAME: pixel.order,
+        PartitionInfo.METADATA_DIR_COLUMN_NAME: pixel.dir,
+        PartitionInfo.METADATA_PIXEL_COLUMN_NAME: pixel.pixel,
+    }
+    column_types = {
+        PartitionInfo.METADATA_ORDER_COLUMN_NAME: np.uint8,
+        PartitionInfo.METADATA_DIR_COLUMN_NAME: np.uint64,
+        PartitionInfo.METADATA_PIXEL_COLUMN_NAME: np.uint64,
+    }
+    dataframe = dataframe.assign(**columns_to_assign).astype(column_types)
     return _order_partition_dataframe_columns(dataframe)
 
 
@@ -95,7 +96,14 @@ def _order_partition_dataframe_columns(dataframe: pd.DataFrame) -> pd.DataFrame:
     Returns:
         The partition dataframe with the columns in the correct order.
     """
-    order_of_columns = ["margin_Norder", "margin_Dir", "margin_Npix", "Norder", "Dir", "Npix"]
+    order_of_columns = [
+        f"margin_{PartitionInfo.METADATA_ORDER_COLUMN_NAME}",
+        f"margin_{PartitionInfo.METADATA_DIR_COLUMN_NAME}",
+        f"margin_{PartitionInfo.METADATA_PIXEL_COLUMN_NAME}",
+        PartitionInfo.METADATA_ORDER_COLUMN_NAME,
+        PartitionInfo.METADATA_DIR_COLUMN_NAME,
+        PartitionInfo.METADATA_PIXEL_COLUMN_NAME,
+    ]
     unordered_columns = [col for col in dataframe.columns if col not in order_of_columns]
     ordered_columns = [col for col in order_of_columns if col in dataframe.columns]
     return dataframe[unordered_columns + ordered_columns]
