@@ -116,7 +116,7 @@ def test_query_margin(small_sky_xmatch_with_margin):
         (small_sky_xmatch_with_margin.margin._ddf["ra"] > 300)
         & (small_sky_xmatch_with_margin.margin._ddf["dec"] < -50)
     ]
-    # Simple query, with no value injection or backticks
+
     result_catalog = small_sky_xmatch_with_margin.query("ra > 300 and dec < -50")
     assert result_catalog.margin is not None
     pd.testing.assert_frame_equal(result_catalog.compute(), expected_ddf.compute())
