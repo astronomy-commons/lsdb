@@ -219,7 +219,7 @@ class Catalog(HealpixDataset):
         Args:
             ra (float): Right Ascension of the center of the cone in degrees
             dec (float): Declination of the center of the cone in degrees
-            radius (float): Radius of the cone in arcseconds
+            radius_arcsec (float): Radius of the cone in arcseconds
 
         Returns:
             A new Catalog containing the points filtered to those within the cone, and the partitions that
