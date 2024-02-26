@@ -1,8 +1,11 @@
 from typing import List
 
 import dask.dataframe as dd
+import numpy as np
 from hipscat.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
 from hipscat.pixel_math import HealpixPixel
+from hipscat.pixel_math.healpix_pixel_function import get_pixel_argsort
+from typing_extensions import Self
 
 from lsdb.catalog.dataset.dataset import Dataset
 from lsdb.types import DaskDFPixelMap
@@ -46,6 +49,16 @@ class HealpixDataset(Dataset):
         """
         return self.hc_structure.get_healpix_pixels()
 
+    def get_ordered_healpix_pixels(self) -> List[HealpixPixel]:
+        """Get all HEALPix pixels that are contained in the catalog,
+        ordered by breadth-first nested ordering.
+
+        Returns:
+            List of all Healpix pixels in the catalog
+        """
+        pixels = self.get_healpix_pixels()
+        return np.array(pixels)[get_pixel_argsort(pixels)]
+
     def get_partition(self, order: int, pixel: int) -> dd.DataFrame:
         """Get the dask partition for a given HEALPix pixel
 
@@ -76,3 +89,20 @@ class HealpixDataset(Dataset):
             raise ValueError(f"Pixel at order {order} pixel {pixel} not in Catalog")
         partition_index = self._ddf_pixel_map[hp_pixel]
         return partition_index
+
+    def query(self, expr: str) -> Self:
+        """Filters catalog using a complex query expression
+
+        Args:
+            expr (str): Query expression to evaluate. The column names that are not valid Python
+                variables names should be wrapped in backticks, and any variable values can be
+                injected using f-strings. The use of '@' to reference variables is not supported.
+                More information about pandas query strings is available
+                `here <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.query.html>`__.
+
+        Returns:
+            A catalog that contains the data from the original catalog that complies
+            with the query expression
+        """
+        ddf = self._ddf.query(expr)
+        return self.__class__(ddf, self._ddf_pixel_map, self.hc_structure)
