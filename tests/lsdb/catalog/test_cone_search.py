@@ -6,7 +6,8 @@ from hipscat.pixel_math.validators import ValidatorsErrors
 def test_cone_search_filters_correct_points(small_sky_order1_catalog, assert_divisions_are_correct):
     ra = 0
     dec = -80
-    radius = 20
+    radius_degrees = 20
+    radius = radius_degrees * 3600
     center_coord = SkyCoord(ra, dec, unit="deg")
     cone_search_catalog = small_sky_order1_catalog.cone_search(ra, dec, radius)
     cone_search_df = cone_search_catalog.compute()
@@ -14,7 +15,7 @@ def test_cone_search_filters_correct_points(small_sky_order1_catalog, assert_div
         row_ra = row[small_sky_order1_catalog.hc_structure.catalog_info.ra_column]
         row_dec = row[small_sky_order1_catalog.hc_structure.catalog_info.dec_column]
         sep = SkyCoord(row_ra, row_dec, unit="deg").separation(center_coord)
-        if sep.degree <= radius:
+        if sep.degree <= radius_degrees:
             assert len(cone_search_df.loc[cone_search_df["id"] == row["id"]]) == 1
         else:
             assert len(cone_search_df.loc[cone_search_df["id"] == row["id"]]) == 0
@@ -24,7 +25,7 @@ def test_cone_search_filters_correct_points(small_sky_order1_catalog, assert_div
 def test_cone_search_filters_partitions(small_sky_order1_catalog):
     ra = 0
     dec = -80
-    radius = 20
+    radius = 20 * 3600
     hc_conesearch = small_sky_order1_catalog.hc_structure.filter_by_cone(ra, dec, radius)
     consearch_catalog = small_sky_order1_catalog.cone_search(ra, dec, radius)
     assert len(hc_conesearch.get_healpix_pixels()) == len(consearch_catalog.get_healpix_pixels())
@@ -36,7 +37,7 @@ def test_cone_search_filters_partitions(small_sky_order1_catalog):
 def test_cone_search_filters_no_matching_points(small_sky_order1_catalog, assert_divisions_are_correct):
     ra = 0
     dec = -80
-    radius = 0.2
+    radius = 0.2 * 3600
     cone_search_catalog = small_sky_order1_catalog.cone_search(ra, dec, radius)
     cone_search_df = cone_search_catalog.compute()
     assert len(cone_search_df) == 0
@@ -46,7 +47,7 @@ def test_cone_search_filters_no_matching_points(small_sky_order1_catalog, assert
 def test_cone_search_filters_no_matching_partitions(small_sky_order1_catalog, assert_divisions_are_correct):
     ra = 20
     dec = 80
-    radius = 20
+    radius = 20 * 3600
     cone_search_catalog = small_sky_order1_catalog.cone_search(ra, dec, radius)
     cone_search_df = cone_search_catalog.compute()
     assert len(cone_search_df) == 0

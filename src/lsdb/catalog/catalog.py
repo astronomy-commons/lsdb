@@ -210,7 +210,7 @@ class Catalog(HealpixDataset):
         hc_catalog = hc.catalog.Catalog(new_catalog_info, alignment.pixel_tree)
         return Catalog(ddf, ddf_map, hc_catalog)
 
-    def cone_search(self, ra: float, dec: float, radius: float):
+    def cone_search(self, ra: float, dec: float, radius_arcsec: float):
         """Perform a cone search to filter the catalog
 
         Filters to points within radius great circle distance to the point specified by ra and dec in degrees.
@@ -219,13 +219,13 @@ class Catalog(HealpixDataset):
         Args:
             ra (float): Right Ascension of the center of the cone in degrees
             dec (float): Declination of the center of the cone in degrees
-            radius (float): Radius of the cone in degrees
+            radius (float): Radius of the cone in arcseconds
 
         Returns:
             A new Catalog containing the points filtered to those within the cone, and the partitions that
             overlap the cone.
         """
-        return self._search(ConeSearch(ra, dec, radius, self.hc_structure))
+        return self._search(ConeSearch(ra, dec, radius_arcsec, self.hc_structure))
 
     def box(self, ra: Tuple[float, float] | None = None, dec: Tuple[float, float] | None = None) -> Catalog:
         """Performs filtering according to right ascension and declination ranges.
