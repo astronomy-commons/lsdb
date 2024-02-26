@@ -1,0 +1,24 @@
+{
+    "catalog_name": "",
+    "catalog_type": "object",
+    "total_rows": 131,
+    "epoch": "J2000",
+    "ra_column": "ra",
+    "dec_column": "dec",
+    "version": "0.2.4.dev10+gfb575dd",
+    "generation_date": "2024.02.09",
+    "tool_args": {
+        "tool_name": "lsdb",
+        "version": "0.1.2.dev22+gffb3922.d20240206",
+        "runtime_args": {
+            "catalog_name": "",
+            "output_path": "data/small_sky_order1_source",
+            "output_catalog_name": "",
+            "catalog_path": "data/small_sky_order1_source",
+            "epoch": "J2000",
+            "catalog_type": "object",
+            "ra_column": "ra",
+            "dec_column": "dec"
+        }
+    }
+}

@@ -7,6 +7,7 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 from dask.delayed import Delayed
+from hipscat.catalog import PartitionInfo
 from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN, healpix_to_hipscat_id
 from hipscat.pixel_tree import PixelAlignment, PixelAlignmentType, align_trees
@@ -17,6 +18,40 @@ from lsdb.types import DaskDFPixelMap
 
 if TYPE_CHECKING:
     from lsdb.catalog.catalog import Catalog
+
+
+def concat_partition_and_margin(
+    partition: pd.DataFrame, margin: pd.DataFrame | None, right_columns: List[str]
+) -> pd.DataFrame:
+    """Concatenates a partition and margin dataframe together
+
+    Args:
+        partition (pd.DataFrame): The partition dataframe
+        margin (pd.DataFrame): The margin dataframe
+
+    Returns:
+        The concatenated dataframe with the partition on top and the margin on the bottom
+    """
+    if margin is None:
+        return partition
+
+    hive_columns = [
+        PartitionInfo.METADATA_ORDER_COLUMN_NAME,
+        PartitionInfo.METADATA_DIR_COLUMN_NAME,
+        PartitionInfo.METADATA_PIXEL_COLUMN_NAME,
+    ]
+    # Remove the Norder/Dir/Npix columns (used only for partitioning the margin itself),
+    # and rename the margin_Norder/Dir/Npix to take their place.
+    margin_columns_no_hive = [col for col in margin.columns if col not in hive_columns]
+    rename_columns = {
+        f"margin_{PartitionInfo.METADATA_ORDER_COLUMN_NAME}": PartitionInfo.METADATA_ORDER_COLUMN_NAME,
+        f"margin_{PartitionInfo.METADATA_DIR_COLUMN_NAME}": PartitionInfo.METADATA_DIR_COLUMN_NAME,
+        f"margin_{PartitionInfo.METADATA_PIXEL_COLUMN_NAME}": PartitionInfo.METADATA_PIXEL_COLUMN_NAME,
+    }
+    margin_renamed = margin[margin_columns_no_hive].rename(columns=rename_columns)
+    margin_filtered = margin_renamed[right_columns]
+    joined_df = pd.concat([partition, margin_filtered]) if margin_filtered is not None else partition
+    return joined_df
 
 
 def align_catalogs(left: Catalog, right: Catalog) -> PixelAlignment:

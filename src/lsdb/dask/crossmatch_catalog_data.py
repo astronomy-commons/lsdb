@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING, Tuple, Type
 
 import dask
 import dask.dataframe as dd
-import pandas as pd
 from hipscat.pixel_tree import PixelAlignment
 
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
@@ -14,6 +13,7 @@ from lsdb.core.crossmatch.kdtree_match import KdTreeCrossmatch
 from lsdb.dask.merge_catalog_functions import (
     align_and_apply,
     align_catalogs,
+    concat_partition_and_margin,
     construct_catalog_args,
     filter_by_hipscat_index_to_pixel,
     generate_meta_df_for_joined_tables,
@@ -52,8 +52,7 @@ def perform_crossmatch(
     if right_pix.order > left_pix.order:
         left_df = filter_by_hipscat_index_to_pixel(left_df, right_pix.order, right_pix.pixel)
 
-    margin_filtered = right_margin_df[right_columns] if right_margin_df is not None else None
-    right_joined_df = pd.concat([right_df, margin_filtered])
+    right_joined_df = concat_partition_and_margin(right_df, right_margin_df, right_columns)
 
     return algorithm(
         left_df,
