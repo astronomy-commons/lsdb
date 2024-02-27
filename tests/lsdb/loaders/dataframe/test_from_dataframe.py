@@ -9,6 +9,7 @@ from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
 from hipscat.pixel_tree.pixel_node_type import PixelNodeType
 
 import lsdb
+from lsdb.catalog.margin_catalog import MarginCatalog
 from lsdb.loaders.dataframe.dataframe_catalog_loader import DataframeCatalogLoader
 
 
@@ -167,3 +168,33 @@ def test_catalog_pixels_nested_ordering(small_sky_source_df):
 
     argsort = get_pixel_argsort(catalog.get_healpix_pixels())
     npt.assert_array_equal(argsort, np.arange(0, 14))
+
+
+def test_from_dataframe_sky_source_with_margins(small_sky_source_df, small_sky_source_margin_catalog):
+    catalog = lsdb.from_dataframe(
+        small_sky_source_df,
+        ra_column="source_ra",
+        dec_column="source_dec",
+        highest_order=2,
+        threshold=3000,
+        margin_order=8,
+        margin_threshold=180.0,
+    )
+    assert catalog.margin is not None
+    assert isinstance(catalog.margin, MarginCatalog)
+    pd.testing.assert_frame_equal(
+        small_sky_source_margin_catalog.compute(),
+        catalog.margin.compute(),
+        check_like=True,
+    )
+
+
+def test_from_dataframe_invalid_margin_order(small_sky_source_df):
+    with pytest.raises(ValueError, match="margin_order"):
+        lsdb.from_dataframe(
+            small_sky_source_df,
+            ra_column="source_ra",
+            dec_column="source_dec",
+            lowest_order=2,
+            margin_order=1,
+        )
