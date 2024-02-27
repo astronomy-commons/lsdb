@@ -24,6 +24,7 @@ class AbstractCrossmatchAlgorithm(ABC):
         right_pixel: int,
         left_metadata: hc.catalog.Catalog,
         right_metadata: hc.catalog.Catalog,
+        right_margin_hc_structure: hc.catalog.MarginCatalog | None,
         suffixes: Tuple[str, str],
     ):
         """Initializes a crossmatch algorithm
@@ -39,6 +40,8 @@ class AbstractCrossmatchAlgorithm(ABC):
                 left catalog
             right_metadata (hipscat.Catalog): The hipscat Catalog object with the metadata of the
                 right catalog
+            right_margin_hc_structure (hipscat.MarginCatalog): The hipscat MarginCatalog objects
+                with the metadata of the right **margin** catalog
             suffixes (Tuple[str,str]): A pair of suffixes to be appended to the end of each column
                 name, with the first appended to the left columns and the second to the right
                 columns
@@ -51,11 +54,21 @@ class AbstractCrossmatchAlgorithm(ABC):
         self.right_pixel = right_pixel
         self.left_metadata = left_metadata
         self.right_metadata = right_metadata
+        self.right_margin_hc_structure = right_margin_hc_structure
         self.suffixes = suffixes
 
     @abstractmethod
     def crossmatch(self) -> pd.DataFrame:
         """Perform a crossmatch"""
+
+    @abstractmethod
+    def validate(self):
+        """Validate the metadata and arguments.
+
+        This method will be called **once**, after the algorithm object has
+        been initialized, during the lazy construction of the execution graph.
+        This can be used to catch simple errors without waiting for an
+        expensive ``.compute()`` call."""
 
     @staticmethod
     def _rename_columns_with_suffix(dataframe, suffix):

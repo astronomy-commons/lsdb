@@ -14,7 +14,10 @@ class TestCrossmatch:
     def test_kdtree_crossmatch(algo, small_sky_catalog, small_sky_xmatch_catalog, xmatch_correct):
         with pytest.warns(RuntimeWarning, match="Results may be inaccurate"):
             xmatched = small_sky_catalog.crossmatch(
-                small_sky_xmatch_catalog, algorithm=algo, radius_arcsec=0.01 * 3600
+                small_sky_xmatch_catalog,
+                algorithm=algo,
+                radius_arcsec=0.01 * 3600,
+                require_right_margin=False,
             ).compute()
         assert len(xmatched) == len(xmatch_correct)
         for _, correct_row in xmatch_correct.iterrows():
@@ -27,7 +30,10 @@ class TestCrossmatch:
     def test_kdtree_crossmatch_thresh(algo, small_sky_catalog, small_sky_xmatch_catalog, xmatch_correct_005):
         with pytest.warns(RuntimeWarning, match="Results may be inaccurate"):
             xmatched = small_sky_catalog.crossmatch(
-                small_sky_xmatch_catalog, radius_arcsec=0.005 * 3600, algorithm=algo
+                small_sky_xmatch_catalog,
+                radius_arcsec=0.005 * 3600,
+                algorithm=algo,
+                require_right_margin=False,
             ).compute()
         assert len(xmatched) == len(xmatch_correct_005)
         for _, correct_row in xmatch_correct_005.iterrows():
@@ -42,7 +48,11 @@ class TestCrossmatch:
     ):
         with pytest.warns(RuntimeWarning, match="Results may be inaccurate"):
             xmatched = small_sky_catalog.crossmatch(
-                small_sky_xmatch_catalog, n_neighbors=3, radius_arcsec=2 * 3600, algorithm=algo
+                small_sky_xmatch_catalog,
+                n_neighbors=3,
+                radius_arcsec=2 * 3600,
+                algorithm=algo,
+                require_right_margin=False,
             ).compute()
         assert len(xmatched) == len(xmatch_correct_3n_2t_no_margin)
         for _, correct_row in xmatch_correct_3n_2t_no_margin.iterrows():
@@ -150,6 +160,9 @@ class MockCrossmatchAlgorithm(AbstractCrossmatchAlgorithm):
     """Mock class used to test a crossmatch algorithm"""
 
     extra_columns = pd.DataFrame({"_DIST": pd.Series(dtype=np.dtype("float64"))})
+
+    def validate(self, mock_results: pd.DataFrame = None):
+        pass
 
     def crossmatch(self, mock_results: pd.DataFrame = None):
         left_reset = self.left.reset_index(drop=True)
