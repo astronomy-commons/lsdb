@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 import dask.array as da
 import dask.dataframe as dd
@@ -174,7 +175,7 @@ def test_assign_with_invalid_arguments(small_sky_order1_catalog):
 
 def test_save_catalog(small_sky_catalog, tmp_path):
     new_catalog_name = "small_sky"
-    base_catalog_path = os.path.join(tmp_path, new_catalog_name)
+    base_catalog_path = Path(tmp_path) / new_catalog_name
     small_sky_catalog.to_hipscat(base_catalog_path, catalog_name=new_catalog_name)
     expected_catalog = lsdb.read_hipscat(base_catalog_path)
     assert expected_catalog.hc_structure.catalog_name == new_catalog_name
