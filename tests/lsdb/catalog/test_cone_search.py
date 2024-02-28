@@ -22,10 +22,12 @@ def test_cone_search_filters_correct_points(small_sky_order1_catalog, assert_div
     assert_divisions_are_correct(cone_search_catalog)
 
 
-def test_cone_search_filters_correct_points_margin(small_sky_order1_source_with_margin, assert_divisions_are_correct):
-    ra = 0
-    dec = -80
-    radius_degrees = 20
+def test_cone_search_filters_correct_points_margin(
+    small_sky_order1_source_with_margin, assert_divisions_are_correct
+):
+    ra = -35
+    dec = -55
+    radius_degrees = 2
     radius = radius_degrees * 3600
     center_coord = SkyCoord(ra, dec, unit="deg")
     cone_search_catalog = small_sky_order1_source_with_margin.cone_search(ra, dec, radius)
@@ -50,6 +52,12 @@ def test_cone_search_filters_correct_points_margin(small_sky_order1_source_with_
             assert len(cone_search_margin_df.loc[cone_search_margin_df["id"] == row["id"]]) == 0
     assert_divisions_are_correct(cone_search_catalog)
     assert_divisions_are_correct(cone_search_catalog.margin)
+
+
+def test_cone_search_big_margin(small_sky_order1_source_with_margin):
+    small_sky_order1_source_with_margin.margin.hc_structure.catalog_info.margin_threshold = 600000
+    with pytest.raises(ValueError, match="Margin size"):
+        small_sky_order1_source_with_margin.cone_search(0, 0, 1)
 
 
 def test_cone_search_filters_partitions(small_sky_order1_catalog):
