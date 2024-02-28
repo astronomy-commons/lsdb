@@ -1,11 +1,11 @@
 import os
+from pathlib import Path
 
 import dask.array as da
 import dask.dataframe as dd
 import pandas as pd
 import pytest
 from hipscat.pixel_math import HealpixPixel
-from pathlib import Path
 
 import lsdb
 
