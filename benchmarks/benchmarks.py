@@ -59,7 +59,7 @@ def time_box_filter_on_partition():
     """Time box search on a single partition"""
     metadata = load_small_sky_order1().hc_structure
     mock_partition_df = pd.DataFrame(
-        np.linspace(-1000, 1000, 1_000_000),
+        np.linspace(-1000, 1000, 100_000),
         columns=[metadata.catalog_info.ra_column],
     )
     box_filter(
