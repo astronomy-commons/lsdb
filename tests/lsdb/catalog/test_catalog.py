@@ -85,8 +85,7 @@ def test_head_empty_catalog(small_sky_order1_catalog):
 
 
 def test_query(small_sky_order1_catalog):
-    expected_ddf = small_sky_order1_catalog._ddf.copy()
-    expected_ddf = expected_ddf[
+    expected_ddf = small_sky_order1_catalog._ddf.copy()[
         (small_sky_order1_catalog._ddf["ra"] > 300) & (small_sky_order1_catalog._ddf["dec"] < -50)
     ]
     # Simple query, with no value injection or backticks
@@ -107,6 +106,21 @@ def test_query(small_sky_order1_catalog):
 def test_query_no_arguments(small_sky_order1_catalog):
     with pytest.raises(ValueError):
         small_sky_order1_catalog.query(None)
+
+
+def test_query_margin(small_sky_xmatch_with_margin):
+    expected_ddf = small_sky_xmatch_with_margin._ddf.copy()[
+        (small_sky_xmatch_with_margin._ddf["ra"] > 300) & (small_sky_xmatch_with_margin._ddf["dec"] < -50)
+    ]
+    expected_margin_ddf = small_sky_xmatch_with_margin.margin._ddf.copy()[
+        (small_sky_xmatch_with_margin.margin._ddf["ra"] > 300)
+        & (small_sky_xmatch_with_margin.margin._ddf["dec"] < -50)
+    ]
+
+    result_catalog = small_sky_xmatch_with_margin.query("ra > 300 and dec < -50")
+    assert result_catalog.margin is not None
+    pd.testing.assert_frame_equal(result_catalog.compute(), expected_ddf.compute())
+    pd.testing.assert_frame_equal(result_catalog.margin.compute(), expected_margin_ddf.compute())
 
 
 def test_assign_no_arguments(small_sky_order1_catalog):
