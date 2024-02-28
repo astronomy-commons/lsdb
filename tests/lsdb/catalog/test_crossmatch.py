@@ -161,9 +161,6 @@ class MockCrossmatchAlgorithm(AbstractCrossmatchAlgorithm):
 
     extra_columns = pd.DataFrame({"_DIST": pd.Series(dtype=np.dtype("float64"))})
 
-    def validate(self, mock_results: pd.DataFrame = None):
-        pass
-
     def crossmatch(self, mock_results: pd.DataFrame = None):
         left_reset = self.left.reset_index(drop=True)
         right_reset = self.right.reset_index(drop=True)

@@ -5,6 +5,7 @@ from typing import Tuple
 
 import hipscat as hc
 import pandas as pd
+from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
 
 
 # pylint: disable=too-many-instance-attributes, too-many-arguments
@@ -61,14 +62,30 @@ class AbstractCrossmatchAlgorithm(ABC):
     def crossmatch(self) -> pd.DataFrame:
         """Perform a crossmatch"""
 
-    @abstractmethod
-    def validate(self):
+    # pylint: disable=unused-argument
+    def validate(self, *args, **kwargs):
         """Validate the metadata and arguments.
 
         This method will be called **once**, after the algorithm object has
         been initialized, during the lazy construction of the execution graph.
         This can be used to catch simple errors without waiting for an
         expensive ``.compute()`` call."""
+        # Check that we have the appropriate columns in our dataset.
+        if self.left.index.name != HIPSCAT_ID_COLUMN:
+            raise ValueError(f"index of left table must be {HIPSCAT_ID_COLUMN}")
+        if self.right.index.name != HIPSCAT_ID_COLUMN:
+            raise ValueError(f"index of right table must be {HIPSCAT_ID_COLUMN}")
+        column_names = self.left.columns
+        if self.left_metadata.catalog_info.ra_column not in column_names:
+            raise ValueError(f"left table must have column {self.left_metadata.catalog_info.ra_column}")
+        if self.left_metadata.catalog_info.dec_column not in column_names:
+            raise ValueError(f"left table must have column {self.left_metadata.catalog_info.dec_column}")
+
+        column_names = self.right.columns
+        if self.right_metadata.catalog_info.ra_column not in column_names:
+            raise ValueError(f"right table must have column {self.right_metadata.catalog_info.ra_column}")
+        if self.right_metadata.catalog_info.dec_column not in column_names:
+            raise ValueError(f"right table must have column {self.right_metadata.catalog_info.dec_column}")
 
     @staticmethod
     def _rename_columns_with_suffix(dataframe, suffix):
