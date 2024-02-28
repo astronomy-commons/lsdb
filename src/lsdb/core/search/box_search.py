@@ -62,10 +62,10 @@ def box_filter(
     Returns:
         A new DataFrame with the rows from `data_frame` filtered to only the points inside the box region.
     """
-    mask = np.ones(len(data_frame))
+    mask = np.ones(len(data_frame), dtype=bool)
     if ra is not None:
         ra_values = data_frame[metadata.catalog_info.ra_column]
-        wrapped_ra = np.array(wrap_ra_angles(ra_values))
+        wrapped_ra = np.asarray(wrap_ra_angles(ra_values))
         mask_ra = _create_ra_mask(ra, wrapped_ra)
         mask = np.logical_and(mask, mask_ra)
     if dec is not None:
