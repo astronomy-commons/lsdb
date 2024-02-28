@@ -7,7 +7,7 @@ import hipscat as hc
 import numpy as np
 import pandas as pd
 from hipscat.pixel_math import HealpixPixel
-from hipscat.pixel_math.box_filter import filter_pixels_by_box, wrap_angles, wrap_ra_values
+from hipscat.pixel_math.box_filter import filter_pixels_by_box, wrap_ra_angles
 from hipscat.pixel_math.validators import validate_box_search
 from hipscat.pixel_tree.pixel_tree_builder import PixelTreeBuilder
 
@@ -28,7 +28,7 @@ class BoxSearch(AbstractSearch):
         ra: Tuple[float, float] | None = None,
         dec: Tuple[float, float] | None = None,
     ):
-        ra = wrap_ra_values(ra)
+        ra = tuple(wrap_ra_angles(ra)) if ra else None
         validate_box_search(ra, dec)
 
         self.ra, self.dec = ra, dec
@@ -65,7 +65,7 @@ def box_filter(
     mask = np.ones(len(data_frame))
     if ra is not None:
         ra_values = data_frame[metadata.catalog_info.ra_column]
-        wrapped_ra = np.array(wrap_angles(ra_values))
+        wrapped_ra = np.array(wrap_ra_angles(ra_values))
         mask_ra = _create_ra_mask(ra, wrapped_ra)
         mask = np.logical_and(mask, mask_ra)
     if dec is not None:

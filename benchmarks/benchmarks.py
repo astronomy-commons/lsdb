@@ -6,9 +6,11 @@ https://asv.readthedocs.io/en/stable/writing_benchmarks.html."""
 import os
 
 import numpy as np
+import pandas as pd
 
 import lsdb
 from benchmarks.utils import upsample_array
+from lsdb.core.search.box_search import box_filter
 from lsdb.core.search.polygon_search import get_cartesian_polygon
 
 TEST_DIR = os.path.join(os.path.dirname(__file__), "..", "tests")
@@ -51,3 +53,18 @@ def time_polygon_search():
     polygon, _ = get_cartesian_polygon(vertices)
     # Apply vectorized filtering on the catalog points
     polygon.contains(np.radians(catalog_ra), np.radians(catalog_dec))
+
+
+def time_box_filter_on_partition():
+    """Time box search on a single partition"""
+    metadata = load_small_sky_order1().hc_structure
+    mock_partition_df = pd.DataFrame(
+        np.linspace(-1000, 1000, 1_000_000),
+        columns=[metadata.catalog_info.ra_column],
+    )
+    box_filter(
+        mock_partition_df,
+        ra=(-20, 40),
+        dec=(-30, 60),
+        metadata=metadata,
+    )
