@@ -273,7 +273,8 @@ class Catalog(HealpixDataset):
         search_ddf = dd.from_delayed(filtered_partitions, meta=self._ddf._meta, divisions=divisions)
         search_ddf = cast(dd.DataFrame, search_ddf)
         ddf_partition_map = {pixel: i for i, pixel in enumerate(filtered_pixels)}
-        return Catalog(search_ddf, ddf_partition_map, filtered_hc_structure)
+        margin = self.margin._search(search) if self.margin is not None else None
+        return Catalog(search_ddf, ddf_partition_map, filtered_hc_structure, margin=margin)
 
     def merge(
         self,
