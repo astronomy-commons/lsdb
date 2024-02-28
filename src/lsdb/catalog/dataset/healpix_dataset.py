@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, cast
 
 import dask.dataframe as dd
 import numpy as np
@@ -8,6 +8,8 @@ from hipscat.pixel_math.healpix_pixel_function import get_pixel_argsort
 from typing_extensions import Self
 
 from lsdb.catalog.dataset.dataset import Dataset
+from lsdb.core.search.abstract_search import AbstractSearch
+from lsdb.dask.divisions import get_pixels_divisions
 from lsdb.types import DaskDFPixelMap
 
 
@@ -106,3 +108,23 @@ class HealpixDataset(Dataset):
         """
         ddf = self._ddf.query(expr)
         return self.__class__(ddf, self._ddf_pixel_map, self.hc_structure)
+
+    def _perform_search(self, filtered_pixels: List[HealpixPixel], search: AbstractSearch):
+        """Performs a search on the catalog from a list of pixels to search in
+
+        Args:
+            filtered_pixels (List[HealpixPixel]): List of pixels in the catalog to be searched
+            search (AbstractSearch): The search object to perform the search with
+
+        Returns:
+            A tuple containing a dictionary mapping pixel to partition index and a dask dataframe
+            containing the search results
+        """
+        partitions = self._ddf.to_delayed()
+        targeted_partitions = [partitions[self._ddf_pixel_map[pixel]] for pixel in filtered_pixels]
+        filtered_partitions = [search.search_points(partition) for partition in targeted_partitions]
+        divisions = get_pixels_divisions(filtered_pixels)
+        search_ddf = dd.from_delayed(filtered_partitions, meta=self._ddf._meta, divisions=divisions)
+        search_ddf = cast(dd.DataFrame, search_ddf)
+        ddf_partition_map = {pixel: i for i, pixel in enumerate(filtered_pixels)}
+        return ddf_partition_map, search_ddf

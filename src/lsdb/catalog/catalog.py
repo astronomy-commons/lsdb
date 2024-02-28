@@ -266,13 +266,7 @@ class Catalog(HealpixDataset):
         """
         filtered_pixels = search.search_partitions(self.hc_structure.get_healpix_pixels())
         filtered_hc_structure = self.hc_structure.filter_from_pixel_list(filtered_pixels)
-        partitions = self._ddf.to_delayed()
-        targeted_partitions = [partitions[self._ddf_pixel_map[pixel]] for pixel in filtered_pixels]
-        filtered_partitions = [search.search_points(partition) for partition in targeted_partitions]
-        divisions = get_pixels_divisions(filtered_pixels)
-        search_ddf = dd.from_delayed(filtered_partitions, meta=self._ddf._meta, divisions=divisions)
-        search_ddf = cast(dd.DataFrame, search_ddf)
-        ddf_partition_map = {pixel: i for i, pixel in enumerate(filtered_pixels)}
+        ddf_partition_map, search_ddf = self._perform_search(filtered_pixels, search)
         margin = self.margin._search(search) if self.margin is not None else None
         return Catalog(search_ddf, ddf_partition_map, filtered_hc_structure, margin=margin)
 

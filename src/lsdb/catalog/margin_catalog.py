@@ -1,5 +1,3 @@
-from typing import cast
-
 import dask.dataframe as dd
 import hipscat as hc
 import numpy as np
@@ -8,7 +6,6 @@ from hipscat.pixel_math.filter import get_filtered_pixel_list
 from hipscat.pixel_tree.pixel_tree_builder import PixelTreeBuilder
 
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
-from lsdb.dask.divisions import get_pixels_divisions
 from lsdb.types import DaskDFPixelMap
 
 
@@ -52,11 +49,5 @@ class MarginCatalog(HealpixDataset):
         filtered_margin_pixels = get_filtered_pixel_list(self.hc_structure.pixel_tree, margin_pixel_tree)
         filtered_pixels = list(set(filtered_search_pixels + filtered_margin_pixels))
         filtered_hc_structure = self.hc_structure.filter_from_pixel_list(filtered_pixels)
-        partitions = self._ddf.to_delayed()
-        targeted_partitions = [partitions[self._ddf_pixel_map[pixel]] for pixel in filtered_pixels]
-        filtered_partitions = [search.search_points(partition) for partition in targeted_partitions]
-        divisions = get_pixels_divisions(filtered_pixels)
-        search_ddf = dd.from_delayed(filtered_partitions, meta=self._ddf._meta, divisions=divisions)
-        search_ddf = cast(dd.DataFrame, search_ddf)
-        ddf_partition_map = {pixel: i for i, pixel in enumerate(filtered_pixels)}
+        ddf_partition_map, search_ddf = self._perform_search(filtered_pixels, search)
         return self.__class__(search_ddf, ddf_partition_map, filtered_hc_structure)
