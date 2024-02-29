@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import Any, Dict, List, Tuple, Type, Union, cast
+from typing import Any, Dict, List, Tuple, Type, Union
 
 import dask.dataframe as dd
 import hipscat as hc
@@ -17,7 +17,6 @@ from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorith
 from lsdb.core.search import ConeSearch, IndexSearch, PolygonSearch
 from lsdb.core.search.box_search import BoxSearch
 from lsdb.dask.crossmatch_catalog_data import crossmatch_catalog_data
-from lsdb.dask.divisions import get_pixels_divisions
 from lsdb.dask.join_catalog_data import join_catalog_data_on, join_catalog_data_through
 from lsdb.types import DaskDFPixelMap
 
@@ -266,14 +265,9 @@ class Catalog(HealpixDataset):
         """
         filtered_pixels = search.search_partitions(self.hc_structure.get_healpix_pixels())
         filtered_hc_structure = self.hc_structure.filter_from_pixel_list(filtered_pixels)
-        partitions = self._ddf.to_delayed()
-        targeted_partitions = [partitions[self._ddf_pixel_map[pixel]] for pixel in filtered_pixels]
-        filtered_partitions = [search.search_points(partition) for partition in targeted_partitions]
-        divisions = get_pixels_divisions(filtered_pixels)
-        search_ddf = dd.from_delayed(filtered_partitions, meta=self._ddf._meta, divisions=divisions)
-        search_ddf = cast(dd.DataFrame, search_ddf)
-        ddf_partition_map = {pixel: i for i, pixel in enumerate(filtered_pixels)}
-        return Catalog(search_ddf, ddf_partition_map, filtered_hc_structure)
+        ddf_partition_map, search_ddf = self._perform_search(filtered_pixels, search)
+        margin = self.margin._search(search) if self.margin is not None else None
+        return Catalog(search_ddf, ddf_partition_map, filtered_hc_structure, margin=margin)
 
     def merge(
         self,
