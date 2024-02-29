@@ -1,6 +1,6 @@
 import dask.dataframe as dd
+import healpy as hp
 import hipscat as hc
-import hpgeom.healpy_compat
 import numpy as np
 from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.filter import get_filtered_pixel_list
@@ -44,7 +44,7 @@ class MarginCatalog(HealpixDataset):
 
         # if the margin size is greater than the size of a pixel, this is an invalid search
         max_order = self.hc_structure.pixel_tree.get_max_depth()
-        max_order_size = hpgeom.healpy_compat.nside2resol(2**max_order, arcmin=True)
+        max_order_size = hp.nside2resol(2**max_order, arcmin=True)
         if self.hc_structure.catalog_info.margin_threshold > max_order_size * 60:
             raise ValueError(
                 f"Margin size {self.hc_structure.catalog_info.margin_threshold} is greater than the size of "
