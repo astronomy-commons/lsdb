@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import Any, Dict, List, Tuple, Type, Union, cast
+from typing import Any, Dict, List, Tuple, Type, Union
 
 import dask.dataframe as dd
 import hipscat as hc
@@ -17,7 +17,6 @@ from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorith
 from lsdb.core.search import ConeSearch, IndexSearch, PolygonSearch
 from lsdb.core.search.box_search import BoxSearch
 from lsdb.dask.crossmatch_catalog_data import crossmatch_catalog_data
-from lsdb.dask.divisions import get_pixels_divisions
 from lsdb.dask.join_catalog_data import join_catalog_data_on, join_catalog_data_through
 from lsdb.types import DaskDFPixelMap
 
