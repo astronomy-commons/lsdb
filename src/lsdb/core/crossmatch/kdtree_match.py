@@ -5,6 +5,7 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
+from hipscat.pixel_math.validators import validate_radius
 from scipy.spatial import KDTree
 
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
@@ -15,10 +16,27 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
 
     extra_columns = pd.DataFrame({"_DIST": pd.Series(dtype=np.dtype("float64"))})
 
+    # pylint: disable=unused-argument,arguments-differ
+    def validate(self, n_neighbors: int = 1, radius_arcsec: float = 1, require_right_margin=True, **kwargs):
+        super().validate()
+        validate_radius(radius_arcsec)
+        if n_neighbors < 1:
+            raise ValueError("n_neighbors must be greater than 1")
+
+        # Check that the margin exists and has a compatible radius.
+        if self.right_margin_hc_structure is None:
+            if require_right_margin:
+                raise ValueError("Right margin is required for cross-match")
+        else:
+            if self.right_margin_hc_structure.catalog_info.margin_threshold < radius_arcsec:
+                raise ValueError("Cross match radius is greater than margin threshold")
+
+    # pylint: disable=unused-argument
     def crossmatch(
         self,
         n_neighbors: int = 1,
         radius_arcsec: float = 1,
+        **kwargs,
     ) -> pd.DataFrame:
         """Perform a cross-match between the data from two HEALPix pixels
 

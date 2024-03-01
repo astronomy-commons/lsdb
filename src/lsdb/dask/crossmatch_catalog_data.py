@@ -63,6 +63,7 @@ def perform_crossmatch(
         right_pix.pixel,
         left_hc_structure,
         right_hc_structure,
+        right_margin_hc_structure,
         suffixes,
     ).crossmatch(**kwargs)
 
@@ -95,6 +96,22 @@ def crossmatch_catalog_data(
         catalogs.
     """
     crossmatch_algorithm = get_crossmatch_algorithm(algorithm)
+    # Create an instance of the crossmatch algorithm, using the metadata dataframes
+    # and the provided kwargs.
+    meta_df_crossmatch = crossmatch_algorithm(
+        # pylint: disable=protected-access
+        left._ddf,
+        right._ddf,
+        0,
+        0,
+        0,
+        0,
+        left.hc_structure,
+        right.hc_structure,
+        right.margin.hc_structure if right.margin is not None else None,
+        suffixes,
+    )
+    meta_df_crossmatch.validate(**kwargs)
 
     if right.margin is None:
         warnings.warn("Right catalog does not have a margin cache. Results may be inaccurate", RuntimeWarning)

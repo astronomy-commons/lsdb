@@ -150,6 +150,7 @@ class Catalog(HealpixDataset):
                         - right_pixel: int,
                         - left_metadata: hc.catalog.Catalog,
                         - right_metadata: hc.catalog.Catalog,
+                        - right_margin_hc_structure: hc.margin.MarginCatalog,
                         - suffixes: Tuple[str, str]
 
                     You may add any additional keyword argument parameters to the crossmatch
