@@ -236,7 +236,9 @@ def test_save_catalog_with_some_empty_partitions(small_sky_order1_catalog, tmp_p
 
 
 def test_skymap_data(small_sky_order1_catalog):
-    func = lambda df, healpix: len(df) / hp.nside2pixarea(hp.order2nside(healpix.order), degrees=True)
+    def func(df, healpix):
+        return len(df) / hp.nside2pixarea(hp.order2nside(healpix.order), degrees=True)
+
     skymap = small_sky_order1_catalog.skymap_data(func)
     for pixel in skymap.keys():
         partition = small_sky_order1_catalog.get_partition(pixel.order, pixel.pixel)
@@ -244,10 +246,14 @@ def test_skymap_data(small_sky_order1_catalog):
         assert skymap[pixel].compute() == expected_value
 
 
+#pylint: disable=no-member
 def test_skymap_plot(small_sky_order1_catalog, mocker):
     mocker.patch("healpy.mollview")
-    func = lambda df, _: len(df)
-    skymap = small_sky_order1_catalog.skymap(func)
+
+    def func(df, healpix):
+        return len(df) / hp.nside2pixarea(hp.order2nside(healpix.order), degrees=True)
+
+    small_sky_order1_catalog.skymap(func)
     pixel_map = small_sky_order1_catalog.skymap_data(func)
     pixel_map = {pixel: value.compute() for pixel, value in pixel_map.items()}
     max_order = max(pixel_map.keys(), key=lambda x: x.order).order
