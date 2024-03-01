@@ -3,11 +3,11 @@ from pathlib import Path
 
 import dask.array as da
 import dask.dataframe as dd
+import healpy as hp
 import numpy as np
 import pandas as pd
 import pytest
 from hipscat.pixel_math import HealpixPixel
-import healpy as hp
 
 import lsdb
 
@@ -245,7 +245,7 @@ def test_skymap_data(small_sky_order1_catalog):
 
 
 def test_skymap_plot(small_sky_order1_catalog, mocker):
-    mocker.patch('healpy.mollview')
+    mocker.patch("healpy.mollview")
     func = lambda df, _: len(df)
     skymap = small_sky_order1_catalog.skymap(func)
     pixel_map = small_sky_order1_catalog.skymap_data(func)
@@ -254,8 +254,8 @@ def test_skymap_plot(small_sky_order1_catalog, mocker):
     img = np.zeros(hp.nside2npix(hp.order2nside(max_order)))
     for pixel, value in pixel_map.items():
         dorder = max_order - pixel.order
-        start = pixel.pixel * (4 ** dorder)
-        end = (pixel.pixel + 1) * (4 ** dorder)
+        start = pixel.pixel * (4**dorder)
+        end = (pixel.pixel + 1) * (4**dorder)
         img_order_pixels = np.arange(start, end)
         img[img_order_pixels] = value
     hp.mollview.assert_called_once()

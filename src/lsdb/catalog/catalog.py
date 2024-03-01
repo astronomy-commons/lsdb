@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import Any, Dict, List, Tuple, Type, Union, Callable
+from typing import Any, Callable, Dict, List, Tuple, Type, Union
 
 import dask
 import dask.dataframe as dd
@@ -415,7 +415,9 @@ class Catalog(HealpixDataset):
         hc_catalog = hc.catalog.Catalog(new_catalog_info, alignment.pixel_tree)
         return Catalog(ddf, ddf_map, hc_catalog)
 
-    def skymap_data(self, func: Callable[[pd.DataFrame, HealpixPixel], Any], **kwargs) -> Dict[HealpixPixel, Delayed]:
+    def skymap_data(
+        self, func: Callable[[pd.DataFrame, HealpixPixel], Any], **kwargs
+    ) -> Dict[HealpixPixel, Delayed]:
         """Perform a function on each partition of the catalog, returning a dict of values for each pixel.
 
         Args:
@@ -429,7 +431,10 @@ class Catalog(HealpixDataset):
         """
 
         partitions = self.to_delayed()
-        results = {pixel: delayed(func)(partitions[index], pixel, **kwargs) for pixel, index in self._ddf_pixel_map.items()}
+        results = {
+            pixel: delayed(func)(partitions[index], pixel, **kwargs)
+            for pixel, index in self._ddf_pixel_map.items()
+        }
         return results
 
     def skymap(self, func: Callable[[pd.DataFrame, HealpixPixel], Any], **kwargs):

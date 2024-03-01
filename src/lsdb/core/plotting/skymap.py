@@ -1,8 +1,7 @@
-from typing import Dict, Any
+from typing import Any, Dict
 
 import healpy as hp
 import numpy as np
-
 from hipscat.pixel_math import HealpixPixel
 
 
@@ -22,8 +21,8 @@ def plot_skymap(pixel_map: Dict[HealpixPixel, Any], **kwargs):
     img = np.zeros(npix)
     dorders = max_order - hp_orders
     values = np.vectorize(lambda x: pixel_map[x])(pixels)
-    starts = hp_pixels * (4 ** dorders)
-    ends = (hp_pixels + 1) * (4 ** dorders)
+    starts = hp_pixels * (4**dorders)
+    ends = (hp_pixels + 1) * (4**dorders)
 
     def set_values(start, end, value):
         img[np.arange(start, end)] = value
