@@ -40,9 +40,10 @@ def from_dataframe(
         threshold,
         **kwargs,
     ).load_catalog()
-    catalog.margin = MarginCatalogGenerator(
-        catalog,
-        margin_order,
-        margin_threshold,
-    ).create_catalog()
+    if margin_threshold:
+        catalog.margin = MarginCatalogGenerator(
+            catalog,
+            margin_order,
+            margin_threshold,
+        ).create_catalog()
     return catalog
