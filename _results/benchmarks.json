@@ -15,7 +15,7 @@
         "warmup_time": -1
     },
     "benchmarks.time_kdtree_crossmatch": {
-        "code": "def time_kdtree_crossmatch():\n    \"\"\"Time computations are prefixed with 'time'.\"\"\"\n    small_sky = load_small_sky()\n    small_sky_xmatch = load_small_sky_xmatch()\n    small_sky.crossmatch(small_sky_xmatch).compute()",
+        "code": "def time_kdtree_crossmatch():\n    \"\"\"Time computations are prefixed with 'time'.\"\"\"\n    small_sky = load_small_sky()\n    small_sky_xmatch = load_small_sky_xmatch()\n    small_sky.crossmatch(small_sky_xmatch, require_right_margin=False).compute()",
         "min_run_count": 2,
         "name": "benchmarks.time_kdtree_crossmatch",
         "number": 0,
@@ -26,7 +26,7 @@
         "sample_time": 0.01,
         "type": "time",
         "unit": "seconds",
-        "version": "f723cec0bbf1a08bdb018e50f7c5095cdaed2a193d6eb25133c2600fd73fd2c5",
+        "version": "331530da4eac25967595fcb3d58955d2f5f4c35ba05b97c36a13f66d0cb0c800",
         "warmup_time": -1
     },
     "benchmarks.time_polygon_search": {
