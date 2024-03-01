@@ -246,7 +246,7 @@ def test_skymap_data(small_sky_order1_catalog):
         assert skymap[pixel].compute() == expected_value
 
 
-#pylint: disable=no-member
+# pylint: disable=no-member
 def test_skymap_plot(small_sky_order1_catalog, mocker):
     mocker.patch("healpy.mollview")
 
