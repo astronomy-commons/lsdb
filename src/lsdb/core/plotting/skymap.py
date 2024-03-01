@@ -7,13 +7,27 @@ from hipscat.pixel_math import HealpixPixel
 
 
 def plot_skymap(pixel_map: Dict[HealpixPixel, Any], **kwargs):
-    max_order = max(pixel_map.keys(), key=lambda x: x.order).order
+    """Plot a map of healpix_pixels with values on a mollweide projection.
+
+    Args:
+        pixel_map(Dict[HealpixPixel, Any]): A dictionary of healpix pixels and their values
+        kwargs: Additional keyword arguments to pass to `healpy.mollview`
+    """
+
+    pixels = list(pixel_map.keys())
+    hp_orders = np.vectorize(lambda x: x.order)(pixels)
+    hp_pixels = np.vectorize(lambda x: x.pixel)(pixels)
+    max_order = np.max(hp_orders)
     npix = hp.order2npix(max_order)
     img = np.zeros(npix)
-    for pixel, value in pixel_map.items():
-        dorder = max_order - pixel.order
-        start = pixel.pixel * (4 ** dorder)
-        end = (pixel.pixel + 1) * (4 ** dorder)
-        img_order_pixels = np.arange(start, end)
-        img[img_order_pixels] = value
+    dorders = max_order - hp_orders
+    values = np.vectorize(lambda x: pixel_map[x])(pixels)
+    starts = hp_pixels * (4 ** dorders)
+    ends = (hp_pixels + 1) * (4 ** dorders)
+
+    def set_values(start, end, value):
+        img[np.arange(start, end)] = value
+
+    np.vectorize(set_values)(starts, ends, values)
+
     hp.mollview(img, nest=True, **kwargs)

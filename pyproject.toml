@@ -39,6 +39,7 @@ dev = [
     "pylint", # Used for static linting of files
     "pytest",
     "pytest-cov", # Used to report total code coverage
+    "pytest-mock", # Used to mock objects in tests
     "sphinx", # Used to automatically generate documentation
     "sphinx-rtd-theme", # Used to render documentation
     "sphinx-autoapi", # Used to automatically generate api documentation

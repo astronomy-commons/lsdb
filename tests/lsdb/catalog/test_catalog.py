@@ -3,9 +3,11 @@ from pathlib import Path
 
 import dask.array as da
 import dask.dataframe as dd
+import numpy as np
 import pandas as pd
 import pytest
 from hipscat.pixel_math import HealpixPixel
+import healpy as hp
 
 import lsdb
 
@@ -231,3 +233,30 @@ def test_save_catalog_with_some_empty_partitions(small_sky_order1_catalog, tmp_p
     assert catalog._ddf.npartitions == 1
     assert len(catalog._ddf.partitions[0]) > 0
     assert list(catalog._ddf_pixel_map.keys()) == non_empty_pixels
+
+
+def test_skymap_data(small_sky_order1_catalog):
+    func = lambda df, healpix: len(df) / hp.nside2pixarea(hp.order2nside(healpix.order), degrees=True)
+    skymap = small_sky_order1_catalog.skymap_data(func)
+    for pixel in skymap.keys():
+        partition = small_sky_order1_catalog.get_partition(pixel.order, pixel.pixel)
+        expected_value = func(partition, pixel)
+        assert skymap[pixel].compute() == expected_value
+
+
+def test_skymap_plot(small_sky_order1_catalog, mocker):
+    mocker.patch('healpy.mollview')
+    func = lambda df, _: len(df)
+    skymap = small_sky_order1_catalog.skymap(func)
+    pixel_map = small_sky_order1_catalog.skymap_data(func)
+    pixel_map = {pixel: value.compute() for pixel, value in pixel_map.items()}
+    max_order = max(pixel_map.keys(), key=lambda x: x.order).order
+    img = np.zeros(hp.nside2npix(hp.order2nside(max_order)))
+    for pixel, value in pixel_map.items():
+        dorder = max_order - pixel.order
+        start = pixel.pixel * (4 ** dorder)
+        end = (pixel.pixel + 1) * (4 ** dorder)
+        img_order_pixels = np.arange(start, end)
+        img[img_order_pixels] = value
+    hp.mollview.assert_called_once()
+    assert (hp.mollview.call_args[0][0] == img).all()
