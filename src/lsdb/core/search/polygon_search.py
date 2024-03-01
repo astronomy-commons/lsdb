@@ -67,7 +67,7 @@ def get_cartesian_polygon(
     """Creates the convex polygon to filter pixels with. It transforms the vertices, provided
     in sky coordinates of ra and dec, to their respective cartesian representation on the unit sphere.
 
-    Arguments:
+    Args:
         vertices (List[Tuple[float, float]): The list of vertices of the polygon to
             filter pixels with, as a list of (ra,dec) coordinates, in degrees.
 
