@@ -1,13 +1,17 @@
-from typing import List, cast
+from typing import List, cast, Callable, Any, Dict
 
+import dask
 import dask.dataframe as dd
 import numpy as np
+import pandas as pd
+from dask.delayed import Delayed, delayed
 from hipscat.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
 from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.healpix_pixel_function import get_pixel_argsort
 from typing_extensions import Self
 
 from lsdb.catalog.dataset.dataset import Dataset
+from lsdb.core.plotting.skymap import plot_skymap
 from lsdb.core.search.abstract_search import AbstractSearch
 from lsdb.dask.divisions import get_pixels_divisions
 from lsdb.types import DaskDFPixelMap
@@ -129,3 +133,40 @@ class HealpixDataset(Dataset):
         search_ddf = cast(dd.DataFrame, search_ddf)
         ddf_partition_map = {pixel: i for i, pixel in enumerate(filtered_pixels)}
         return ddf_partition_map, search_ddf
+
+    def skymap_data(
+        self, func: Callable[[pd.DataFrame, HealpixPixel], Any], **kwargs
+    ) -> Dict[HealpixPixel, Delayed]:
+        """Perform a function on each partition of the catalog, returning a dict of values for each pixel.
+
+        Args:
+            func (Callable[[pd.DataFrame, HealpixPixel], Any]): A function that takes a pandas
+                DataFrame with the data in a partition, the HealpixPixel of the partition, and any other
+                keyword arguments and returns an aggregated value
+            **kwargs: Arguments to pass to the function
+
+        Returns:
+            A dict of Delayed values, one for the function applied to each partition of the catalog
+        """
+
+        partitions = self.to_delayed()
+        results = {
+            pixel: delayed(func)(partitions[index], pixel, **kwargs)
+            for pixel, index in self._ddf_pixel_map.items()
+        }
+        return results
+
+    def skymap(self, func: Callable[[pd.DataFrame, HealpixPixel], Any], **kwargs):
+        """Plot a skymap of an aggregate function applied over each partition with a Mollweide projection.
+
+        Args:
+            func (Callable[[pd.DataFrame], HealpixPixel, Any]): A function that takes a pandas DataFrame and
+                the HealpixPixel the partition is from and returns a value
+            **kwargs: Arguments to pass to healpy.mollview function
+        """
+
+        smdata = self.skymap_data(func, **kwargs)
+        pixels = list(smdata.keys())
+        results = dask.compute(*[smdata[pixel] for pixel in pixels])
+        result_dict = {pixels[i]: results[i] for i in range(len(pixels))}
+        plot_skymap(result_dict)
