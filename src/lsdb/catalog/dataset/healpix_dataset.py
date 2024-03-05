@@ -128,8 +128,18 @@ class HealpixDataset(Dataset):
         filtered_partitions = [search.search_points(partition) for partition in targeted_partitions]
         return self._construct_search_ddf(filtered_pixels, filtered_partitions)
 
-    def _construct_search_ddf(self, filtered_pixels, filtered_partitions):
-        """Constructs the search Dask DataFrame and the respective pixel map"""
+    def _construct_search_ddf(
+        self, filtered_pixels: List[HealpixPixel], filtered_partitions: List[Delayed]
+    ) -> Tuple[dict, dd.DataFrame]:
+        """Constructs a search catalog pixel map and respective Dask Dataframe
+
+        Args:
+            filtered_pixels (List[HealpixPixel]): The list of pixels in the search
+            filtered_partitions (List[Delayed]): The list of delayed partitions
+
+        Returns:
+            The catalog pixel map and the respective Dask DataFrame
+        """
         divisions = get_pixels_divisions(filtered_pixels)
         search_ddf = dd.from_delayed(filtered_partitions, meta=self._ddf._meta, divisions=divisions)
         search_ddf = cast(dd.DataFrame, search_ddf)
@@ -137,10 +147,10 @@ class HealpixDataset(Dataset):
         return ddf_partition_map, search_ddf
 
     def prune_empty_partitions(self) -> Self:
-        """Removes empty partitions from a catalog
+        """Prunes the catalog of its empty partitions
 
         Returns:
-            A new catalog containing only the non-empty partitions
+            A new catalog containing only its non-empty partitions
         """
         warnings.warn("Pruning empty partitions is expensive. It may run slow!", RuntimeWarning)
         non_empty_pixels, non_empty_partitions = self._get_non_empty_partitions()
@@ -149,15 +159,22 @@ class HealpixDataset(Dataset):
         return self.__class__(search_ddf, ddf_partition_map, filtered_hc_structure)
 
     def _get_non_empty_partitions(self) -> Tuple[List[HealpixPixel], List[Delayed]]:
-        """Computes the partition lengths and returns the indices of those that are empty"""
+        """Determines which pixels and partitions of a catalog are not empty
+
+        Returns:
+            A tuple with the non-empty pixels and respective partitions
+        """
         partitions = self._ddf.to_delayed()
+
         # Compute partition lengths (expensive operation)
         partition_sizes = self._ddf.map_partitions(len).compute()
         empty_partition_indices = np.argwhere(partition_sizes == 0).flatten()
+
         # Extract the non-empty pixels and respective partitions
         non_empty_pixels, non_empty_partitions = [], []
         for pixel, partition_index in self._ddf_pixel_map.items():
             if partition_index not in empty_partition_indices:
                 non_empty_pixels.append(pixel)
                 non_empty_partitions.append(partitions[partition_index])
+
         return non_empty_pixels, non_empty_partitions
