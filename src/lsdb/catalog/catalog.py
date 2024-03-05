@@ -423,7 +423,7 @@ class Catalog(HealpixDataset):
         Args:
             func (Callable[[pd.DataFrame, HealpixPixel, float], Any]): A function that takes a pandas
                 DataFrame with the data in a partition, the HealpixPixel of the partition, and any other
-                keyword arguments and returns a aggregated value
+                keyword arguments and returns an aggregated value
             **kwargs: Arguments to pass to the function
 
         Returns:
