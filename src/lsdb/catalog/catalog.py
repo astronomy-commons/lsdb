@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import Any, Dict, List, Tuple, Type, Union
+from typing import List, Tuple, Type
 
 import dask.dataframe as dd
 import hipscat as hc
 import pandas as pd
 from hipscat.pixel_math.polygon_filter import SphericalCoordinates
 
-from lsdb import io
 from lsdb.catalog.association_catalog import AssociationCatalog
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
 from lsdb.catalog.margin_catalog import MarginCatalog
@@ -323,25 +322,6 @@ class Catalog(HealpixDataset):
             right_index=right_index,
             suffixes=suffixes,
         )
-
-    def to_hipscat(
-        self,
-        base_catalog_path: str,
-        catalog_name: Union[str, None] = None,
-        overwrite: bool = False,
-        storage_options: Union[Dict[Any, Any], None] = None,
-        **kwargs,
-    ):
-        """Saves the catalog to disk in HiPSCat format
-
-        Args:
-            base_catalog_path (str): Location where catalog is saved to
-            catalog_name (str): The name of the catalog to be saved
-            overwrite (bool): If True existing catalog is overwritten
-            storage_options (dict): Dictionary that contains abstract filesystem credentials
-            **kwargs: Arguments to pass to the parquet write operations
-        """
-        io.to_hipscat(self, base_catalog_path, catalog_name, overwrite, storage_options, **kwargs)
 
     def join(
         self,

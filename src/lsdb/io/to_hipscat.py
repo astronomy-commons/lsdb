@@ -8,13 +8,14 @@ from typing import TYPE_CHECKING, Any, Dict, Union
 import dask
 import hipscat as hc
 import pandas as pd
+from hipscat.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
 from hipscat.io import FilePointer
 from hipscat.pixel_math import HealpixPixel
 
 from lsdb.types import HealpixInfo
 
 if TYPE_CHECKING:
-    from lsdb.catalog.catalog import Catalog
+    from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
 
 
 @dask.delayed
@@ -50,11 +51,11 @@ def perform_write(
 
 # pylint: disable=W0212
 def to_hipscat(
-    catalog: Catalog,
+    catalog: HealpixDataset,
     base_catalog_path: str,
     catalog_name: Union[str, None] = None,
     overwrite: bool = False,
-    storage_options: Union[Dict[Any, Any], None] = None,
+    storage_options: dict | None = None,
     **kwargs,
 ):
     """Writes a catalog to disk, in HiPSCat format. The output catalog comprises
@@ -62,7 +63,7 @@ def to_hipscat(
     partition, catalog and provenance info.
 
     Args:
-        catalog (Catalog): A catalog to export
+        catalog (HealpixDataset): A catalog to export
         base_catalog_path (str): Location where catalog is saved to
         catalog_name (str): The name of the output catalog
         overwrite (bool): If True existing catalog is overwritten
@@ -101,7 +102,7 @@ def to_hipscat(
 
 
 def write_partitions(
-    catalog: Catalog,
+    catalog: HealpixDataset,
     base_catalog_dir_fp: FilePointer,
     storage_options: Union[Dict[Any, Any], None] = None,
     **kwargs,
@@ -109,7 +110,7 @@ def write_partitions(
     """Saves catalog partitions as parquet to disk
 
     Args:
-        catalog (Catalog): A catalog to export
+        catalog (HealpixDataset): A catalog to export
         base_catalog_dir_fp (FilePointer): Path to the base directory of the catalog
         storage_options (dict): Dictionary that contains abstract filesystem credentials
         **kwargs: Arguments to pass to the parquet write operations
@@ -164,8 +165,8 @@ def _get_partition_info_dict(ddf_points_map: Dict[HealpixPixel, int]) -> Dict[He
 
 
 def create_modified_catalog_structure(
-    catalog_structure: hc.catalog.Catalog, catalog_base_dir: str, catalog_name: str, **kwargs
-) -> hc.catalog.Catalog:
+    catalog_structure: HCHealpixDataset, catalog_base_dir: str, catalog_name: str, **kwargs
+) -> HCHealpixDataset:
     """Creates a modified version of the HiPSCat catalog structure
 
     Args:
@@ -188,22 +189,24 @@ def create_modified_catalog_structure(
     return new_hc_structure
 
 
-def _get_provenance_info(catalog_structure: hc.catalog.Catalog) -> dict:
+def _get_provenance_info(catalog_structure: HCHealpixDataset) -> dict:
     """Fill all known information in a dictionary for provenance tracking.
+
+    Args:
+        catalog_structure (HCHealpixDataset): The catalog structure
 
     Returns:
         dictionary with all argument_name -> argument_value as key -> value pairs.
     """
-    catalog_info = catalog_structure.catalog_info
-    args = {
+    structure_args = {
         "catalog_name": catalog_structure.catalog_name,
         "output_path": catalog_structure.catalog_path,
         "output_catalog_name": catalog_structure.catalog_name,
         "catalog_path": catalog_structure.catalog_path,
-        "epoch": catalog_info.epoch,
-        "catalog_type": catalog_info.catalog_type,
-        "ra_column": catalog_info.ra_column,
-        "dec_column": catalog_info.dec_column,
+    }
+    args = {
+        **structure_args,
+        **dataclasses.asdict(catalog_structure.catalog_info),
     }
     provenance_info = {
         "tool_name": "lsdb",
