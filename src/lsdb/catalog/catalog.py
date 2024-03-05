@@ -427,7 +427,7 @@ class Catalog(HealpixDataset):
             **kwargs: Arguments to pass to the function
 
         Returns:
-            An dict of Delayed values, one for the function applied to each partition of the catalog
+            A dict of Delayed values, one for the function applied to each partition of the catalog
         """
 
         partitions = self.to_delayed()
