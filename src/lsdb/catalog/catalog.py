@@ -3,12 +3,9 @@ from __future__ import annotations
 import dataclasses
 from typing import Any, Callable, Dict, List, Tuple, Type, Union
 
-import dask
 import dask.dataframe as dd
 import hipscat as hc
 import pandas as pd
-from dask.delayed import Delayed, delayed
-from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.polygon_filter import SphericalCoordinates
 
 from lsdb import io
@@ -17,7 +14,6 @@ from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
 from lsdb.catalog.margin_catalog import MarginCatalog
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
 from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorithm
-from lsdb.core.plotting.skymap import plot_skymap
 from lsdb.core.search import ConeSearch, IndexSearch, PolygonSearch
 from lsdb.core.search.box_search import BoxSearch
 from lsdb.dask.crossmatch_catalog_data import crossmatch_catalog_data
