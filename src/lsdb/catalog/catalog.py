@@ -421,7 +421,7 @@ class Catalog(HealpixDataset):
         """Perform a function on each partition of the catalog, returning a dict of values for each pixel.
 
         Args:
-            func (Callable[[pd.DataFrame, HealpixPixel, float], Any]): A function that takes a pandas
+            func (Callable[[pd.DataFrame, HealpixPixel], Any]): A function that takes a pandas
                 DataFrame with the data in a partition, the HealpixPixel of the partition, and any other
                 keyword arguments and returns an aggregated value
             **kwargs: Arguments to pass to the function
