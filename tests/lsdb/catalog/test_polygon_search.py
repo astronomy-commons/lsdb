@@ -67,6 +67,15 @@ def test_polygon_search_empty(small_sky_order1_catalog):
     assert len(polygon_search_catalog.hc_structure.pixel_tree) == 1
 
 
+def test_polygon_search_coarse_versus_fine(small_sky_order1_catalog):
+    vertices = [(300, -50), (300, -55), (272, -55), (272, -50)]
+    coarse_polygon_search = small_sky_order1_catalog.polygon_search(vertices)
+    fine_polygon_search = small_sky_order1_catalog.polygon_search(vertices, fine=True)
+    assert coarse_polygon_search.get_healpix_pixels() == fine_polygon_search.get_healpix_pixels()
+    assert coarse_polygon_search._ddf.npartitions == fine_polygon_search._ddf.npartitions
+    assert len(coarse_polygon_search.compute()) > len(fine_polygon_search.compute())
+
+
 def test_polygon_search_invalid_dec(small_sky_order1_catalog):
     # Some declination values are out of the [-90,90] bounds
     vertices = [(-20, 100), (-20, -1), (20, -1), (20, 100)]
@@ -129,11 +138,3 @@ def test_polygon_search_wrapped_right_ascension():
     for v in all_vertices_combinations:
         _, wrapped_v_xyz = get_cartesian_polygon(v)
         npt.assert_allclose(vertices_xyz, wrapped_v_xyz, rtol=1e-7)
-
-
-def test_polygon_search_coarse_versus_fine(small_sky_order1_catalog):
-    vertices = [(300, -50), (300, -55), (272, -55), (272, -50)]
-    coarse_polygon_search = small_sky_order1_catalog.polygon_search(vertices)
-    fine_polygon_search = small_sky_order1_catalog.polygon_search(vertices, fine=True)
-    assert coarse_polygon_search._ddf.npartitions == fine_polygon_search._ddf.npartitions
-    assert len(coarse_polygon_search.compute()) > len(fine_polygon_search.compute())

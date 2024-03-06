@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Tuple, Type, Union
 import dask.dataframe as dd
 import hipscat as hc
 import pandas as pd
+from hipscat.catalog.index.index_catalog import IndexCatalog as HCIndexCatalog
 from hipscat.pixel_math.polygon_filter import SphericalCoordinates
 
 from lsdb import io
@@ -187,7 +188,7 @@ class Catalog(HealpixDataset):
         hc_catalog = hc.catalog.Catalog(new_catalog_info, alignment.pixel_tree)
         return Catalog(ddf, ddf_map, hc_catalog)
 
-    def cone_search(self, ra: float, dec: float, radius_arcsec: float, fine: bool = False):
+    def cone_search(self, ra: float, dec: float, radius_arcsec: float, fine: bool = False) -> Catalog:
         """Perform a cone search to filter the catalog
 
         Filters to points within radius great circle distance to the point specified by ra and dec in degrees.
@@ -244,9 +245,7 @@ class Catalog(HealpixDataset):
         """
         return self._search(PolygonSearch(vertices, self.hc_structure), fine)
 
-    def index_search(
-        self, ids, catalog_index: hc.catalog.index.index_catalog.IndexCatalog, fine: bool = True
-    ):
+    def index_search(self, ids, catalog_index: HCIndexCatalog, fine: bool = True) -> Catalog:
         """Find rows by ids (or other value indexed by a catalog index).
 
         Filters partitions in the catalog to those that could contain the ids requested.
@@ -256,7 +255,7 @@ class Catalog(HealpixDataset):
 
         Args:
             ids: Values to search for.
-            catalog_index (IndexCatalog): A pre-computed hipscat catalog index.
+            catalog_index (HCIndexCatalog): A pre-computed hipscat index catalog.
             fine (bool): True if points are to be filtered, False if not. Defaults to False.
 
         Returns:
