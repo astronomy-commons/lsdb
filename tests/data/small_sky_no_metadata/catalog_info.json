@@ -1,8 +1,0 @@
-{
-    "catalog_name": "small_sky",
-    "catalog_type": "object",
-    "total_rows": 131,
-    "epoch": "J2000",
-    "ra_column": "ra",
-    "dec_column": "dec"
-}
