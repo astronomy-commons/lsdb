@@ -198,7 +198,7 @@ def test_save_catalog_when_catalog_is_empty(small_sky_order1_catalog, tmp_path):
     base_catalog_path = os.path.join(tmp_path, "small_sky")
 
     # The result of this cone search is known to be empty
-    cone_search_catalog = small_sky_order1_catalog.cone_search(0, -80, 1)
+    cone_search_catalog = small_sky_order1_catalog.cone_search(0, -80, 1, fine=True)
     assert cone_search_catalog._ddf.npartitions == 1
 
     non_empty_pixels = []
@@ -216,7 +216,7 @@ def test_save_catalog_with_some_empty_partitions(small_sky_order1_catalog, tmp_p
     base_catalog_path = os.path.join(tmp_path, "small_sky")
 
     # The result of this cone search is known to have one empty partition
-    cone_search_catalog = small_sky_order1_catalog.cone_search(0, -80, 15 * 3600)
+    cone_search_catalog = small_sky_order1_catalog.cone_search(0, -80, 15 * 3600, fine=True)
     assert cone_search_catalog._ddf.npartitions == 2
 
     non_empty_pixels = []
