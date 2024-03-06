@@ -146,13 +146,18 @@ class HealpixDataset(Dataset):
         ddf_partition_map = {pixel: i for i, pixel in enumerate(filtered_pixels)}
         return ddf_partition_map, search_ddf
 
-    def prune_empty_partitions(self) -> Self:
+    def prune_empty_partitions(self, persist: bool = False) -> Self:
         """Prunes the catalog of its empty partitions
+
+        Args:
+            persist (bool): If True previous computations are saved. Defaults to False.
 
         Returns:
             A new catalog containing only its non-empty partitions
         """
         warnings.warn("Pruning empty partitions is expensive. It may run slow!", RuntimeWarning)
+        if persist:
+            self._ddf.persist()
         non_empty_pixels, non_empty_partitions = self._get_non_empty_partitions()
         ddf_partition_map, search_ddf = self._construct_search_ddf(non_empty_pixels, non_empty_partitions)
         filtered_hc_structure = self.hc_structure.filter_from_pixel_list(non_empty_pixels)
