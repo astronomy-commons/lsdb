@@ -173,7 +173,7 @@ def small_sky_order1_df(small_sky_order1_dir):
 
 @pytest.fixture
 def small_sky_source_df(test_data_dir):
-    return pd.read_csv(os.path.join(test_data_dir, "small_sky_source", "small_sky_source.csv"))
+    return pd.read_csv(os.path.join(test_data_dir, "raw", "small_sky_source", "small_sky_source.csv"))
 
 
 @pytest.fixture
@@ -182,33 +182,38 @@ def small_sky_source_margin_catalog(test_data_dir):
 
 
 @pytest.fixture
-def xmatch_correct(small_sky_xmatch_dir):
-    return pd.read_csv(os.path.join(small_sky_xmatch_dir, XMATCH_CORRECT_FILE))
+def xmatch_expected_dir(test_data_dir):
+    return os.path.join(test_data_dir, "raw", "xmatch_expected")
 
 
 @pytest.fixture
-def xmatch_correct_005(small_sky_xmatch_dir):
-    return pd.read_csv(os.path.join(small_sky_xmatch_dir, XMATCH_CORRECT_005_FILE))
+def xmatch_correct(xmatch_expected_dir):
+    return pd.read_csv(os.path.join(xmatch_expected_dir, XMATCH_CORRECT_FILE))
 
 
 @pytest.fixture
-def xmatch_correct_3n_2t(small_sky_xmatch_dir):
-    return pd.read_csv(os.path.join(small_sky_xmatch_dir, XMATCH_CORRECT_3N_2T_FILE))
+def xmatch_correct_005(xmatch_expected_dir):
+    return pd.read_csv(os.path.join(xmatch_expected_dir, XMATCH_CORRECT_005_FILE))
 
 
 @pytest.fixture
-def xmatch_correct_3n_2t_no_margin(small_sky_xmatch_dir):
-    return pd.read_csv(os.path.join(small_sky_xmatch_dir, XMATCH_CORRECT_3N_2T_NO_MARGIN_FILE))
+def xmatch_correct_3n_2t(xmatch_expected_dir):
+    return pd.read_csv(os.path.join(xmatch_expected_dir, XMATCH_CORRECT_3N_2T_FILE))
 
 
 @pytest.fixture
-def xmatch_correct_3n_2t_negative(small_sky_xmatch_dir):
-    return pd.read_csv(os.path.join(small_sky_xmatch_dir, XMATCH_CORRECT_3N_2T_NEGATIVE_FILE))
+def xmatch_correct_3n_2t_no_margin(xmatch_expected_dir):
+    return pd.read_csv(os.path.join(xmatch_expected_dir, XMATCH_CORRECT_3N_2T_NO_MARGIN_FILE))
 
 
 @pytest.fixture
-def xmatch_mock(small_sky_xmatch_dir):
-    return pd.read_csv(os.path.join(small_sky_xmatch_dir, XMATCH_MOCK_FILE))
+def xmatch_correct_3n_2t_negative(xmatch_expected_dir):
+    return pd.read_csv(os.path.join(xmatch_expected_dir, XMATCH_CORRECT_3N_2T_NEGATIVE_FILE))
+
+
+@pytest.fixture
+def xmatch_mock(xmatch_expected_dir):
+    return pd.read_csv(os.path.join(xmatch_expected_dir, XMATCH_MOCK_FILE))
 
 
 @pytest.fixture

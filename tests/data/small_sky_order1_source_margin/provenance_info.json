@@ -1,28 +1,28 @@
 {
     "catalog_name": "small_sky_order1_source_margin",
     "catalog_type": "margin",
-    "total_rows": 28,
-    "primary_catalog": "data/small_sky_order1_source",
+    "total_rows": 3668,
+    "primary_catalog": "small_sky_order1_source",
     "margin_threshold": 7200,
-    "version": "0.2.4.dev10+gfb575dd",
-    "generation_date": "2024.02.09",
+    "version": "0.2.7.dev15+g85ec4a0",
+    "generation_date": "2024.03.06",
     "tool_args": {
         "tool_name": "hipscat_import",
-        "version": "0.2.2",
+        "version": "0.2.5.dev5+g0733afb",
         "runtime_args": {
             "catalog_name": "small_sky_order1_source_margin",
-            "output_path": "data/",
+            "output_path": ".",
             "output_artifact_name": "small_sky_order1_source_margin",
-            "tmp_dir": "data/tmp",
-            "overwrite": false,
+            "tmp_dir": "/tmp/user/11115/tmphywoxno9",
+            "overwrite": true,
             "dask_tmp": "",
             "dask_n_workers": 1,
             "dask_threads_per_worker": 1,
-            "catalog_path": "data/small_sky_order1_source_margin",
-            "tmp_path": "data/tmp/small_sky_order1_source_margin/intermediate",
-            "input_catalog_path": "data/small_sky_order1_source",
+            "catalog_path": "./small_sky_order1_source_margin",
+            "tmp_path": "/tmp/user/11115/tmphywoxno9/small_sky_order1_source_margin/intermediate",
+            "input_catalog_path": "small_sky_order1_source",
             "margin_threshold": 7200,
-            "margin_order": 2
+            "margin_order": 4
         }
     }
 }

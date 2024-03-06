@@ -2,6 +2,6 @@
     "catalog_name": "small_sky_source_margin",
     "catalog_type": "margin",
     "total_rows": 395,
-    "primary_catalog": "data/small_sky_source_catalog",
-    "margin_threshold": 180.0
+    "primary_catalog": "../../../hipscat-import/tests/hipscat_import/data/small_sky_source_catalog",
+    "margin_threshold": 180
 }
