@@ -39,6 +39,7 @@ dev = [
     "pylint", # Used for static linting of files
     "pytest",
     "pytest-cov", # Used to report total code coverage
+    "pytest-mock", # Used to mock objects in tests
     "sphinx", # Used to automatically generate documentation
     "sphinx-rtd-theme", # Used to render documentation
     "sphinx-autoapi", # Used to automatically generate api documentation
@@ -46,7 +47,7 @@ dev = [
     "nbsphinx", # Used to integrate Python notebooks into Sphinx documentation
     "ipykernel", # Support for Jupyter notebooks
     "ipython", # Also used in building notebooks into Sphinx
-    "asv==0.6.2", # Used to compute performance benchmarks
+    "asv==0.6.3", # Used to compute performance benchmarks
 ]
 
 [build-system]
