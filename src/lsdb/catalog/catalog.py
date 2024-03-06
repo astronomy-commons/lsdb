@@ -245,7 +245,7 @@ class Catalog(HealpixDataset):
         """
         return self._search(PolygonSearch(vertices, self.hc_structure), fine)
 
-    def index_search(self, ids, catalog_index: HCIndexCatalog, fine: bool = True) -> Catalog:
+    def index_search(self, ids, catalog_index: HCIndexCatalog, fine: bool = False) -> Catalog:
         """Find rows by ids (or other value indexed by a catalog index).
 
         Filters partitions in the catalog to those that could contain the ids requested.
