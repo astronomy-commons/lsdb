@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
+import dask.dataframe as dd
 import healpy as hp
 import hipscat as hc
 import numpy as np
@@ -63,19 +64,21 @@ class MarginCatalogGenerator:
             )
         return margin_order
 
-    def create_catalog(self) -> MarginCatalog:
+    def create_catalog(self) -> MarginCatalog | None:
         """Create a margin catalog for another pre-computed catalog
 
         Returns:
-            Margin catalog object for the provided catalog
+            Margin catalog object, or None if the margin is empty.
         """
         ddf, ddf_pixel_map, total_rows = self._generate_dask_df_and_map()
-        margin_catalog_info = self._create_catalog_info(total_rows)
         margin_pixels = list(ddf_pixel_map.keys())
+        if len(margin_pixels) == 0:
+            return None
+        margin_catalog_info = self._create_catalog_info(total_rows)
         margin_structure = hc.catalog.MarginCatalog(margin_catalog_info, margin_pixels)
         return MarginCatalog(ddf, ddf_pixel_map, margin_structure)
 
-    def _generate_dask_df_and_map(self):
+    def _generate_dask_df_and_map(self) -> Tuple[dd.DataFrame, Dict[HealpixPixel, int], int]:
         """Create the Dask Dataframe containing the data points in the margins
         for the catalog, as well as the mapping of those HEALPix pixels to
         HEALPix Dataframes
