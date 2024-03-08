@@ -1,9 +1,11 @@
-sphinx
-sphinx-rtd-theme
-sphinx-autoapi
-sphinx-copybutton
-nbsphinx
+
+ipykernel
 ipython
 jupytext
-jupyter
+nbconvert
+nbsphinx
+sphinx
+sphinx-autoapi
+sphinx-copybutton
+sphinx-rtd-theme
 git+https://github.com/astronomy-commons/hipscat.git@main
