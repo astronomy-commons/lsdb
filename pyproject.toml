@@ -34,20 +34,13 @@ documentation = "https://lsdb.readthedocs.io/"
 # On a mac, install optional dependencies with `pip install '.[dev]'` (include the single quotes)
 [project.optional-dependencies]
 dev = [
+    "asv==0.6.3", # Used to compute performance benchmarks
     "mypy", # Used for static type checking of files
     "pre-commit", # Used to run checks before finalizing a git commit
     "pylint", # Used for static linting of files
     "pytest",
     "pytest-cov", # Used to report total code coverage
     "pytest-mock", # Used to mock objects in tests
-    "sphinx", # Used to automatically generate documentation
-    "sphinx-rtd-theme", # Used to render documentation
-    "sphinx-autoapi", # Used to automatically generate api documentation
-    "nbconvert", # Needed for pre-commit check to clear output from Python notebooks
-    "nbsphinx", # Used to integrate Python notebooks into Sphinx documentation
-    "ipykernel", # Support for Jupyter notebooks
-    "ipython", # Also used in building notebooks into Sphinx
-    "asv==0.6.3", # Used to compute performance benchmarks
 ]
 
 [build-system]
