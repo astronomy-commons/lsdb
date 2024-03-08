@@ -72,7 +72,7 @@ class MarginCatalogGenerator:
         """
         ddf, ddf_pixel_map, total_rows = self._generate_dask_df_and_map()
         margin_pixels = list(ddf_pixel_map.keys())
-        if len(margin_pixels) == 0:
+        if total_rows == 0:
             return None
         margin_catalog_info = self._create_catalog_info(total_rows)
         margin_structure = hc.catalog.MarginCatalog(margin_catalog_info, margin_pixels)
@@ -80,85 +80,40 @@ class MarginCatalogGenerator:
 
     def _generate_dask_df_and_map(self) -> Tuple[dd.DataFrame, Dict[HealpixPixel, int], int]:
         """Create the Dask Dataframe containing the data points in the margins
-        for the catalog, as well as the mapping of those HEALPix pixels to
-        HEALPix Dataframes
+        for the catalog as well as the mapping of those HEALPix to Dataframes
 
         Returns:
-            Tuple containing the Dask Dataframe, the mapping of HEALPix pixels
-            to the respective Pandas Dataframes and the total number of rows.
+            Tuple containing the Dask Dataframe, the mapping of margin HEALPix
+            to the respective partitions and the total number of rows.
         """
         healpix_pixels = self.hc_structure.get_healpix_pixels()
         negative_pixels = self.hc_structure.generate_negative_tree_pixels()
         combined_pixels = healpix_pixels + negative_pixels
         margin_pairs_df = self._find_margin_pixel_pairs(combined_pixels)
+
         # Compute points for each margin pixels
         margins_pixel_df = self._create_margins(margin_pairs_df)
         pixels, partitions = list(margins_pixel_df.keys()), list(margins_pixel_df.values())
+
         # Generate pixel map ordered by _hipscat_index
         pixel_order = get_pixel_argsort(pixels)
         ordered_pixels = np.asarray(pixels)[pixel_order]
         ordered_partitions = [partitions[i] for i in pixel_order]
         ddf_pixel_map = {pixel: index for index, pixel in enumerate(ordered_pixels)}
+
         # Generate the dask dataframe with the pixels and partitions
         ddf, total_rows = _generate_dask_dataframe(ordered_partitions, ordered_pixels)
         return ddf, ddf_pixel_map, total_rows
-
-    def _create_margins(self, margin_pairs_df: pd.DataFrame) -> Dict[HealpixPixel, pd.DataFrame]:
-        """Compute the margins for all the pixels in the catalog
-
-        Args:
-            margin_pairs_df (pd.DataFrame): A DataFrame containing all the combinations
-                of catalog pixels and respective margin pixels
-
-        Returns:
-            A dictionary that maps each margin pixel to the respective DataFrame shards
-            that have points for each catalog partition.
-        """
-        margin_shards: Dict[HealpixPixel, List[pd.DataFrame]] = {}
-        self.dataframe["margin_pixel"] = hp.ang2pix(
-            2**self.margin_order,
-            self.dataframe[self.hc_structure.catalog_info.ra_column].values,
-            self.dataframe[self.hc_structure.catalog_info.dec_column].values,
-            lonlat=True,
-            nest=True,
-        )
-        constrained_data = self.dataframe.reset_index().merge(margin_pairs_df, on="margin_pixel")
-        if len(constrained_data):
-            constrained_data.groupby(["partition_order", "partition_pixel"]).apply(
-                self._to_margin_shard, margin_shards
-            )
-        reduced_margin_shards = {
-            pixel: pd.concat(shard_dfs, axis=0) for pixel, shard_dfs in margin_shards.items()
-        }
-        return reduced_margin_shards
-
-    def _to_margin_shard(
-        self, partition: pd.DataFrame, margin_shards: Dict[HealpixPixel, List[pd.DataFrame]]
-    ):
-        """Get the points of a margin pixel which are inside a catalog partition
-
-        Args:
-            partition (pd.DataFrame): Catalog partition DataFrame
-            margin_shards (dict): A dictionary that maps each margin pixel and the
-                respective DataFrame shards
-        """
-        partition_order = partition["partition_order"].iloc[0]
-        partition_pixel = partition["partition_pixel"].iloc[0]
-        margin_pixel = HealpixPixel(partition_order, partition_pixel)
-        df = self._get_data_in_margin(partition, margin_pixel)
-        if len(df):
-            df = _format_margin_partition_dataframe(df)
-            margin_shards.setdefault(margin_pixel, []).append(df)
 
     def _find_margin_pixel_pairs(self, pixels: List[HealpixPixel]) -> pd.DataFrame:
         """Calculate the pairs of catalog pixels and their margin pixels
 
         Args:
-            pixels (List[HealpixPixel]): The HEALPix to compute margin pixels for.
+            pixels (List[HealpixPixel]): The list of HEALPix to compute margin pixels for.
                 These include the catalog pixels as well as the negative pixels.
 
         Returns:
-            A Pandas Dataframe with the many-to-many mapping between the partitions
+            A Pandas Dataframe with the many-to-many mapping between each catalog HEALPix
             and the respective margin pixels.
         """
         n_orders = []
@@ -180,23 +135,67 @@ class MarginCatalogGenerator:
             columns=["partition_order", "partition_pixel", "margin_pixel"],
         )
 
-    def _get_data_in_margin(self, partition_df: pd.DataFrame, pixel: HealpixPixel) -> pd.DataFrame:
-        """Calculate the margin boundaries for the HEALPix and include the points
-        on the margins according to the specified threshold
+    def _create_margins(self, margin_pairs_df: pd.DataFrame) -> Dict[HealpixPixel, pd.DataFrame]:
+        """Compute the margins for all the pixels in the catalog
 
         Args:
-            partition_df (pd.DataFrame): The partition dataframe
-            pixel (HealpixPixel): The HEALPix pixel to get the margin points for
+            margin_pairs_df (pd.DataFrame): A DataFrame containing all the combinations
+                of catalog pixels and respective margin pixels
+
+        Returns:
+            A dictionary mapping each margin pixel to the respective DataFrame.
+        """
+        margin_pixel_df_map: Dict[HealpixPixel, pd.DataFrame] = {}
+        self.dataframe["margin_pixel"] = hp.ang2pix(
+            2**self.margin_order,
+            self.dataframe[self.hc_structure.catalog_info.ra_column].values,
+            self.dataframe[self.hc_structure.catalog_info.dec_column].values,
+            lonlat=True,
+            nest=True,
+        )
+        constrained_data = self.dataframe.reset_index().merge(margin_pairs_df, on="margin_pixel")
+        if len(constrained_data):
+            constrained_data.groupby(["partition_order", "partition_pixel"]).apply(
+                self._append_margin_df, margin_pixel_df_map
+            )
+        return margin_pixel_df_map
+
+    def _append_margin_df(
+        self, partition_df: pd.DataFrame, margin_pixel_df_map: Dict[HealpixPixel, pd.DataFrame]
+    ):
+        """Filter margin data points and create the partition final Dataframe
+
+        Args:
+            partition_df (pd.DataFrame): Catalog data points for the margin pixel
+            margin_pixel_df_map (Dict[HealpixPixel, pd.DataFrame]): A dictionary mapping
+                each margin pixel to the respective DataFrame. This dictionary is updated
+                on each call to this method.
+        """
+        partition_order = partition_df["partition_order"].iloc[0]
+        partition_pixel = partition_df["partition_pixel"].iloc[0]
+        margin_pixel = HealpixPixel(partition_order, partition_pixel)
+        df = self._get_data_in_margin(partition_df, margin_pixel)
+        if len(df):
+            df = _format_margin_partition_dataframe(df)
+            margin_pixel_df_map[margin_pixel] = df
+
+    def _get_data_in_margin(self, partition_df: pd.DataFrame, margin_pixel: HealpixPixel) -> pd.DataFrame:
+        """Calculate the margin boundaries for the HEALPix and include the points
+        on the margin according to the specified threshold
+
+        Args:
+            partition_df (pd.DataFrame): The margin pixel data
+            margin_pixel (HealpixPixel): The margin HEALPix
 
         Returns:
             A Pandas Dataframe with the points of the partition that are within
-            the specified margin.
+            the specified threshold in the margin.
         """
         margin_mask = pixel_math.check_margin_bounds(
             partition_df[self.hc_structure.catalog_info.ra_column].values,
             partition_df[self.hc_structure.catalog_info.dec_column].values,
-            pixel.order,
-            pixel.pixel,
+            margin_pixel.order,
+            margin_pixel.pixel,
             self.margin_threshold,
         )
         return partition_df.iloc[margin_mask]
