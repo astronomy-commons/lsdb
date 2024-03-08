@@ -14,7 +14,7 @@ from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatc
 class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
     """Nearest neighbor crossmatch using a 3D k-D tree"""
 
-    extra_columns = pd.DataFrame({"_DIST": pd.Series(dtype=np.dtype("float64"))})
+    extra_columns = pd.DataFrame({"_dist_arcsec": pd.Series(dtype=np.dtype("float64"))})
 
     # pylint: disable=unused-argument,arguments-differ
     def validate(self, n_neighbors: int = 1, radius_arcsec: float = 1, require_right_margin=True, **kwargs):
@@ -51,7 +51,7 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
             A DataFrame from the left and right tables merged with one row for each pair of
             neighbors found from cross-matching. The resulting table contains the columns from the
             left table with the first suffix appended, the right columns with the second suffix, and
-            a "_DIST" column with the great circle separation between the points.
+            a "_dist_arcsec" column with the great circle separation between the points.
         """
         # Distance in 3-D space for unit sphere
         radius_degrees = radius_arcsec / 3600.0
@@ -61,7 +61,7 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
         chord_distances, left_idx, right_idx = self._find_crossmatch_indices(
             n_neighbors=n_neighbors, max_distance=d_chord
         )
-        arc_distances = np.degrees(2.0 * np.arcsin(0.5 * chord_distances))
+        arc_distances = np.degrees(2.0 * np.arcsin(0.5 * chord_distances)) * 3600
 
         # rename columns so no same names during merging
         self._rename_columns_with_suffix(self.left, self.suffixes[0])
@@ -79,7 +79,7 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
             axis=1,
         )
         out.set_index(HIPSCAT_ID_COLUMN, inplace=True)
-        extra_columns = pd.DataFrame({"_DIST": pd.Series(arc_distances, index=out.index)})
+        extra_columns = pd.DataFrame({"_dist_arcsec": pd.Series(arc_distances, index=out.index)})
         self._append_extra_columns(out, extra_columns)
 
         return out

@@ -1,4 +1,7 @@
-from typing import Any, Callable, Dict, List, cast
+from __future__ import annotations
+
+import warnings
+from typing import Any, Callable, Dict, List, Tuple, cast
 
 import dask
 import dask.dataframe as dd
@@ -10,6 +13,7 @@ from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.healpix_pixel_function import get_pixel_argsort
 from typing_extensions import Self
 
+from lsdb import io
 from lsdb.catalog.dataset.dataset import Dataset
 from lsdb.core.plotting.skymap import plot_skymap
 from lsdb.core.search.abstract_search import AbstractSearch
@@ -133,11 +137,63 @@ class HealpixDataset(Dataset):
             if fine
             else targeted_partitions
         )
+        return self._construct_search_ddf(filtered_pixels, filtered_partitions)
+
+    def _construct_search_ddf(
+        self, filtered_pixels: List[HealpixPixel], filtered_partitions: List[Delayed]
+    ) -> Tuple[dict, dd.DataFrame]:
+        """Constructs a search catalog pixel map and respective Dask Dataframe
+
+        Args:
+            filtered_pixels (List[HealpixPixel]): The list of pixels in the search
+            filtered_partitions (List[Delayed]): The list of delayed partitions
+
+        Returns:
+            The catalog pixel map and the respective Dask DataFrame
+        """
         divisions = get_pixels_divisions(filtered_pixels)
         search_ddf = dd.from_delayed(filtered_partitions, meta=self._ddf._meta, divisions=divisions)
         search_ddf = cast(dd.DataFrame, search_ddf)
         ddf_partition_map = {pixel: i for i, pixel in enumerate(filtered_pixels)}
         return ddf_partition_map, search_ddf
+
+    def prune_empty_partitions(self, persist: bool = False) -> Self:
+        """Prunes the catalog of its empty partitions
+
+        Args:
+            persist (bool): If True previous computations are saved. Defaults to False.
+
+        Returns:
+            A new catalog containing only its non-empty partitions
+        """
+        warnings.warn("Pruning empty partitions is expensive. It may run slow!", RuntimeWarning)
+        if persist:
+            self._ddf.persist()
+        non_empty_pixels, non_empty_partitions = self._get_non_empty_partitions()
+        ddf_partition_map, search_ddf = self._construct_search_ddf(non_empty_pixels, non_empty_partitions)
+        filtered_hc_structure = self.hc_structure.filter_from_pixel_list(non_empty_pixels)
+        return self.__class__(search_ddf, ddf_partition_map, filtered_hc_structure)
+
+    def _get_non_empty_partitions(self) -> Tuple[List[HealpixPixel], List[Delayed]]:
+        """Determines which pixels and partitions of a catalog are not empty
+
+        Returns:
+            A tuple with the non-empty pixels and respective partitions
+        """
+        partitions = self._ddf.to_delayed()
+
+        # Compute partition lengths (expensive operation)
+        partition_sizes = self._ddf.map_partitions(len).compute()
+        empty_partition_indices = np.argwhere(partition_sizes == 0).flatten()
+
+        # Extract the non-empty pixels and respective partitions
+        non_empty_pixels, non_empty_partitions = [], []
+        for pixel, partition_index in self._ddf_pixel_map.items():
+            if partition_index not in empty_partition_indices:
+                non_empty_pixels.append(pixel)
+                non_empty_partitions.append(partitions[partition_index])
+
+        return non_empty_pixels, non_empty_partitions
 
     def skymap_data(
         self, func: Callable[[pd.DataFrame, HealpixPixel], Any], **kwargs
@@ -175,3 +231,22 @@ class HealpixDataset(Dataset):
         results = dask.compute(*[smdata[pixel] for pixel in pixels])
         result_dict = {pixels[i]: results[i] for i in range(len(pixels))}
         plot_skymap(result_dict)
+
+    def to_hipscat(
+        self,
+        base_catalog_path: str,
+        catalog_name: str | None = None,
+        overwrite: bool = False,
+        storage_options: dict | None = None,
+        **kwargs,
+    ):
+        """Saves the catalog to disk in HiPSCat format
+
+        Args:
+            base_catalog_path (str): Location where catalog is saved to
+            catalog_name (str): The name of the catalog to be saved
+            overwrite (bool): If True existing catalog is overwritten
+            storage_options (dict): Dictionary that contains abstract filesystem credentials
+            **kwargs: Arguments to pass to the parquet write operations
+        """
+        io.to_hipscat(self, base_catalog_path, catalog_name, overwrite, storage_options, **kwargs)

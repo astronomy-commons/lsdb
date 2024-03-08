@@ -38,18 +38,18 @@ def test_cone_search_filters_correct_points_margin(
         row_dec = row[small_sky_order1_source_with_margin.hc_structure.catalog_info.dec_column]
         sep = SkyCoord(row_ra, row_dec, unit="deg").separation(center_coord)
         if sep.degree <= radius_degrees:
-            assert len(cone_search_df.loc[cone_search_df["id"] == row["id"]]) == 1
+            assert len(cone_search_df.loc[cone_search_df["source_id"] == row["source_id"]]) == 1
         else:
-            assert len(cone_search_df.loc[cone_search_df["id"] == row["id"]]) == 0
+            assert len(cone_search_df.loc[cone_search_df["source_id"] == row["source_id"]]) == 0
     cone_search_margin_df = cone_search_catalog.margin.compute()
     for _, row in small_sky_order1_source_with_margin.margin.compute().iterrows():
         row_ra = row[small_sky_order1_source_with_margin.hc_structure.catalog_info.ra_column]
         row_dec = row[small_sky_order1_source_with_margin.hc_structure.catalog_info.dec_column]
         sep = SkyCoord(row_ra, row_dec, unit="deg").separation(center_coord)
         if sep.degree <= radius_degrees:
-            assert len(cone_search_margin_df.loc[cone_search_margin_df["id"] == row["id"]]) == 1
+            assert len(cone_search_margin_df.loc[cone_search_margin_df["source_id"] == row["source_id"]]) == 1
         else:
-            assert len(cone_search_margin_df.loc[cone_search_margin_df["id"] == row["id"]]) == 0
+            assert len(cone_search_margin_df.loc[cone_search_margin_df["source_id"] == row["source_id"]]) == 0
     assert_divisions_are_correct(cone_search_catalog)
     assert_divisions_are_correct(cone_search_catalog.margin)
 

@@ -235,6 +235,49 @@ def test_save_catalog_with_some_empty_partitions(small_sky_order1_catalog, tmp_p
     assert list(catalog._ddf_pixel_map.keys()) == non_empty_pixels
 
 
+def test_prune_empty_partitions(small_sky_order1_catalog):
+    # Perform a query that forces the existence of some empty partitions
+    catalog = small_sky_order1_catalog.query("ra > 350 and dec < -50")
+    _, non_empty_partitions = catalog._get_non_empty_partitions()
+    assert catalog._ddf.npartitions - len(non_empty_partitions) > 0
+
+    with pytest.warns(RuntimeWarning, match="slow"):
+        pruned_catalog = catalog.prune_empty_partitions()
+
+    # The empty partitions were removed and the computed content is the same
+    _, non_empty_partitions = pruned_catalog._get_non_empty_partitions()
+    assert pruned_catalog._ddf.npartitions - len(non_empty_partitions) == 0
+    pd.testing.assert_frame_equal(catalog.compute(), pruned_catalog.compute())
+
+
+def test_prune_empty_partitions_with_none_to_remove(small_sky_order1_catalog):
+    # The catalog has no empty partitions to be removed
+    _, non_empty_partitions = small_sky_order1_catalog._get_non_empty_partitions()
+    assert small_sky_order1_catalog._ddf.npartitions == len(non_empty_partitions)
+
+    with pytest.warns(RuntimeWarning, match="slow"):
+        pruned_catalog = small_sky_order1_catalog.prune_empty_partitions()
+
+    # The number of partitions and the computed content are the same
+    _, non_empty_partitions = pruned_catalog._get_non_empty_partitions()
+    assert small_sky_order1_catalog._ddf.npartitions == pruned_catalog._ddf.npartitions
+    pd.testing.assert_frame_equal(small_sky_order1_catalog.compute(), pruned_catalog.compute())
+
+
+def test_prune_empty_partitions_all_are_removed(small_sky_order1_catalog):
+    # Perform a query that forces the existence of an empty catalog
+    catalog = small_sky_order1_catalog.query("ra > 350 and ra < 350")
+    _, non_empty_partitions = catalog._get_non_empty_partitions()
+    assert len(non_empty_partitions) == 0
+
+    with pytest.warns(RuntimeWarning, match="slow"):
+        pruned_catalog = catalog.prune_empty_partitions()
+
+    # The pruned catalog is also empty
+    _, non_empty_partitions = pruned_catalog._get_non_empty_partitions()
+    assert len(non_empty_partitions) == 0
+
+
 def test_skymap_data(small_sky_order1_catalog):
     def func(df, healpix):
         return len(df) / hp.nside2pixarea(hp.order2nside(healpix.order), degrees=True)
