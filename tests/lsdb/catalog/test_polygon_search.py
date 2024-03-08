@@ -53,7 +53,7 @@ def test_polygon_search_filters_partitions(small_sky_order1_catalog):
     vertices = [(300, -50), (300, -55), (272, -55), (272, -50)]
     _, vertices_xyz = get_cartesian_polygon(vertices)
     hc_polygon_search = small_sky_order1_catalog.hc_structure.filter_by_polygon(vertices_xyz)
-    polygon_search_catalog = small_sky_order1_catalog.polygon_search(vertices)
+    polygon_search_catalog = small_sky_order1_catalog.polygon_search(vertices, fine=False)
     assert len(hc_polygon_search.get_healpix_pixels()) == len(polygon_search_catalog.get_healpix_pixels())
     assert len(hc_polygon_search.get_healpix_pixels()) == polygon_search_catalog._ddf.npartitions
     for pixel in hc_polygon_search.get_healpix_pixels():
@@ -65,6 +65,15 @@ def test_polygon_search_empty(small_sky_order1_catalog):
     polygon_search_catalog = small_sky_order1_catalog.polygon_search(vertices)
     assert len(polygon_search_catalog.get_healpix_pixels()) == 0
     assert len(polygon_search_catalog.hc_structure.pixel_tree) == 1
+
+
+def test_polygon_search_coarse_versus_fine(small_sky_order1_catalog):
+    vertices = [(300, -50), (300, -55), (272, -55), (272, -50)]
+    coarse_polygon_search = small_sky_order1_catalog.polygon_search(vertices, fine=False)
+    fine_polygon_search = small_sky_order1_catalog.polygon_search(vertices)
+    assert coarse_polygon_search.get_healpix_pixels() == fine_polygon_search.get_healpix_pixels()
+    assert coarse_polygon_search._ddf.npartitions == fine_polygon_search._ddf.npartitions
+    assert len(coarse_polygon_search.compute()) > len(fine_polygon_search.compute())
 
 
 def test_polygon_search_invalid_dec(small_sky_order1_catalog):

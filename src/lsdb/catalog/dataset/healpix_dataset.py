@@ -118,12 +118,13 @@ class HealpixDataset(Dataset):
         ddf = self._ddf.query(expr)
         return self.__class__(ddf, self._ddf_pixel_map, self.hc_structure)
 
-    def _perform_search(self, filtered_pixels: List[HealpixPixel], search: AbstractSearch):
+    def _perform_search(self, filtered_pixels: List[HealpixPixel], search: AbstractSearch, fine: bool = True):
         """Performs a search on the catalog from a list of pixels to search in
 
         Args:
-            filtered_pixels (List[HealpixPixel]): List of pixels in the catalog to be searched
-            search (AbstractSearch): The search object to perform the search with
+            filtered_pixels (List[HealpixPixel]): List of pixels in the catalog to be searched.
+            search (AbstractSearch): Instance of AbstractSearch.
+            fine (bool): True if points are to be filtered, False if not. Defaults to True.
 
         Returns:
             A tuple containing a dictionary mapping pixel to partition index and a dask dataframe
@@ -131,7 +132,11 @@ class HealpixDataset(Dataset):
         """
         partitions = self._ddf.to_delayed()
         targeted_partitions = [partitions[self._ddf_pixel_map[pixel]] for pixel in filtered_pixels]
-        filtered_partitions = [search.search_points(partition) for partition in targeted_partitions]
+        filtered_partitions = (
+            [search.search_points(partition) for partition in targeted_partitions]
+            if fine
+            else targeted_partitions
+        )
         return self._construct_search_ddf(filtered_pixels, filtered_partitions)
 
     def _construct_search_ddf(

@@ -65,7 +65,7 @@ def test_cone_search_filters_partitions(small_sky_order1_catalog):
     dec = -80
     radius = 20 * 3600
     hc_conesearch = small_sky_order1_catalog.hc_structure.filter_by_cone(ra, dec, radius)
-    consearch_catalog = small_sky_order1_catalog.cone_search(ra, dec, radius)
+    consearch_catalog = small_sky_order1_catalog.cone_search(ra, dec, radius, fine=False)
     assert len(hc_conesearch.get_healpix_pixels()) == len(consearch_catalog.get_healpix_pixels())
     assert len(hc_conesearch.get_healpix_pixels()) == consearch_catalog._ddf.npartitions
     for pixel in hc_conesearch.get_healpix_pixels():
@@ -98,6 +98,17 @@ def test_cone_search_wrapped_ra(small_sky_order1_catalog):
     # RA is outside the [0,360] degree range, but they are wrapped
     small_sky_order1_catalog.cone_search(400.9, 0, 1.3)
     small_sky_order1_catalog.cone_search(-100.1, 0, 1.5)
+
+
+def test_cone_search_coarse_versus_fine(small_sky_order1_catalog):
+    ra = 0
+    dec = -80
+    radius = 20 * 3600  # 20 degrees
+    coarse_cone_search = small_sky_order1_catalog.cone_search(ra, dec, radius, fine=False)
+    fine_cone_search = small_sky_order1_catalog.cone_search(ra, dec, radius)
+    assert coarse_cone_search.get_healpix_pixels() == fine_cone_search.get_healpix_pixels()
+    assert coarse_cone_search._ddf.npartitions == fine_cone_search._ddf.npartitions
+    assert len(coarse_cone_search.compute()) > len(fine_cone_search.compute())
 
 
 def test_invalid_dec_and_negative_radius(small_sky_order1_catalog):

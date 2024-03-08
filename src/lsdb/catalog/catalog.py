@@ -6,6 +6,7 @@ from typing import List, Tuple, Type
 import dask.dataframe as dd
 import hipscat as hc
 import pandas as pd
+from hipscat.catalog.index.index_catalog import IndexCatalog as HCIndexCatalog
 from hipscat.pixel_math.polygon_filter import SphericalCoordinates
 
 from lsdb.catalog.association_catalog import AssociationCatalog
@@ -14,6 +15,7 @@ from lsdb.catalog.margin_catalog import MarginCatalog
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
 from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorithm
 from lsdb.core.search import ConeSearch, IndexSearch, PolygonSearch
+from lsdb.core.search.abstract_search import AbstractSearch
 from lsdb.core.search.box_search import BoxSearch
 from lsdb.dask.crossmatch_catalog_data import crossmatch_catalog_data
 from lsdb.dask.join_catalog_data import join_catalog_data_on, join_catalog_data_through
@@ -185,7 +187,7 @@ class Catalog(HealpixDataset):
         hc_catalog = hc.catalog.Catalog(new_catalog_info, alignment.pixel_tree)
         return Catalog(ddf, ddf_map, hc_catalog)
 
-    def cone_search(self, ra: float, dec: float, radius_arcsec: float):
+    def cone_search(self, ra: float, dec: float, radius_arcsec: float, fine: bool = True) -> Catalog:
         """Perform a cone search to filter the catalog
 
         Filters to points within radius great circle distance to the point specified by ra and dec in degrees.
@@ -195,30 +197,37 @@ class Catalog(HealpixDataset):
             ra (float): Right Ascension of the center of the cone in degrees
             dec (float): Declination of the center of the cone in degrees
             radius_arcsec (float): Radius of the cone in arcseconds
+            fine (bool): True if points are to be filtered, False if not. Defaults to True.
 
         Returns:
             A new Catalog containing the points filtered to those within the cone, and the partitions that
             overlap the cone.
         """
-        return self._search(ConeSearch(ra, dec, radius_arcsec, self.hc_structure))
+        return self._search(ConeSearch(ra, dec, radius_arcsec, self.hc_structure), fine)
 
-    def box(self, ra: Tuple[float, float] | None = None, dec: Tuple[float, float] | None = None) -> Catalog:
+    def box(
+        self,
+        ra: Tuple[float, float] | None = None,
+        dec: Tuple[float, float] | None = None,
+        fine: bool = True,
+    ) -> Catalog:
         """Performs filtering according to right ascension and declination ranges.
 
         Filters to points within the region specified in degrees.
         Filters partitions in the catalog to those that have some overlap with the region.
 
         Args:
-            ra (Tuple[float, float]): The right ascension minimum and maximum values
-            dec (Tuple[float, float]): The declination minimum and maximum values
+            ra (Tuple[float, float]): The right ascension minimum and maximum values.
+            dec (Tuple[float, float]): The declination minimum and maximum values.
+            fine (bool): True if points are to be filtered, False if not. Defaults to True.
 
         Returns:
             A new catalog containing the points filtered to those within the region, and the
             partitions that have some overlap with it.
         """
-        return self._search(BoxSearch(self.hc_structure, ra=ra, dec=dec))
+        return self._search(BoxSearch(self.hc_structure, ra=ra, dec=dec), fine)
 
-    def polygon_search(self, vertices: List[SphericalCoordinates]) -> Catalog:
+    def polygon_search(self, vertices: List[SphericalCoordinates], fine: bool = True) -> Catalog:
         """Perform a polygonal search to filter the catalog.
 
         Filters to points within the polygonal region specified in ra and dec, in degrees.
@@ -227,14 +236,15 @@ class Catalog(HealpixDataset):
         Args:
             vertices (List[Tuple[float, float]): The list of vertices of the polygon to
                 filter pixels with, as a list of (ra,dec) coordinates, in degrees.
+            fine (bool): True if points are to be filtered, False if not. Defaults to True.
 
         Returns:
             A new catalog containing the points filtered to those within the
             polygonal region, and the partitions that have some overlap with it.
         """
-        return self._search(PolygonSearch(vertices, self.hc_structure))
+        return self._search(PolygonSearch(vertices, self.hc_structure), fine)
 
-    def index_search(self, ids, catalog_index: hc.catalog.index.index_catalog.IndexCatalog):
+    def index_search(self, ids, catalog_index: HCIndexCatalog, fine: bool = True) -> Catalog:
         """Find rows by ids (or other value indexed by a catalog index).
 
         Filters partitions in the catalog to those that could contain the ids requested.
@@ -243,30 +253,32 @@ class Catalog(HealpixDataset):
         NB: This requires a previously-computed catalog index table.
 
         Args:
-            ids: values to search for
-            catalog_index: a pre-computed hipscat catalog index
+            ids: Values to search for.
+            catalog_index (HCIndexCatalog): A pre-computed hipscat index catalog.
+            fine (bool): True if points are to be filtered, False if not. Defaults to True.
 
         Returns:
             A new Catalog containing the points filtered to those matching the ids.
         """
-        return self._search(IndexSearch(ids, catalog_index))
+        return self._search(IndexSearch(ids, catalog_index), fine)
 
-    def _search(self, search):
+    def _search(self, search: AbstractSearch, fine: bool = True):
         """Find rows by reusable search algorithm.
 
         Filters partitions in the catalog to those that match some rough criteria.
         Filters to points that match some finer criteria.
 
         Args:
-            search: instance of AbstractSearch
+            search (AbstractSearch): Instance of AbstractSearch.
+            fine (bool): True if points are to be filtered, False if not. Defaults to True.
 
         Returns:
             A new Catalog containing the points filtered to those matching the search parameters.
         """
         filtered_pixels = search.search_partitions(self.hc_structure.get_healpix_pixels())
         filtered_hc_structure = self.hc_structure.filter_from_pixel_list(filtered_pixels)
-        ddf_partition_map, search_ddf = self._perform_search(filtered_pixels, search)
-        margin = self.margin._search(search) if self.margin is not None else None
+        ddf_partition_map, search_ddf = self._perform_search(filtered_pixels, search, fine)
+        margin = self.margin._search(search, fine) if self.margin is not None else None
         return Catalog(search_ddf, ddf_partition_map, filtered_hc_structure, margin=margin)
 
     def merge(

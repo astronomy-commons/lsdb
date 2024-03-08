@@ -7,6 +7,7 @@ from hipscat.pixel_math.filter import get_filtered_pixel_list
 from hipscat.pixel_tree.pixel_tree_builder import PixelTreeBuilder
 
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
+from lsdb.core.search.abstract_search import AbstractSearch
 from lsdb.types import DaskDFPixelMap
 
 
@@ -29,14 +30,15 @@ class MarginCatalog(HealpixDataset):
     ):
         super().__init__(ddf, ddf_pixel_map, hc_structure)
 
-    def _search(self, search):
+    def _search(self, search: AbstractSearch, fine: bool = True):
         """Find rows by reusable search algorithm.
 
         Filters partitions in the catalog to those that match some rough criteria and their neighbors.
         Filters to points that match some finer criteria.
 
         Args:
-            search: instance of AbstractSearch
+            search (AbstractSearch): Instance of AbstractSearch.
+            fine (bool): True if points are to be filtered, False if not. Defaults to True.
 
         Returns:
             A new Catalog containing the points filtered to those matching the search parameters.
@@ -72,5 +74,5 @@ class MarginCatalog(HealpixDataset):
         filtered_pixels = list(set(filtered_search_pixels + filtered_margin_pixels))
 
         filtered_hc_structure = self.hc_structure.filter_from_pixel_list(filtered_pixels)
-        ddf_partition_map, search_ddf = self._perform_search(filtered_pixels, search)
+        ddf_partition_map, search_ddf = self._perform_search(filtered_pixels, search, fine)
         return self.__class__(search_ddf, ddf_partition_map, filtered_hc_structure)
