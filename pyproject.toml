@@ -35,6 +35,7 @@ documentation = "https://lsdb.readthedocs.io/"
 [project.optional-dependencies]
 dev = [
     "asv==0.6.3", # Used to compute performance benchmarks
+    "jupyter", # Clear notebook output
     "mypy", # Used for static type checking of files
     "pre-commit", # Used to run checks before finalizing a git commit
     "pylint", # Used for static linting of files

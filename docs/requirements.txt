@@ -1,7 +1,6 @@
 
 ipykernel
 ipython
-jupyter
 jupytext
 nbconvert
 nbsphinx
