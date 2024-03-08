@@ -231,3 +231,14 @@ def test_from_dataframe_invalid_margin_order(small_sky_source_df):
             lowest_order=2,
             margin_order=1,
         )
+
+
+def test_from_dataframe_margin_is_empty(small_sky_order1_df):
+    catalog = lsdb.from_dataframe(
+        small_sky_order1_df,
+        catalog_name="small_sky_order1",
+        catalog_type="object",
+        highest_order=5,
+        threshold=100,
+    )
+    assert catalog.margin is None
