@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Any, Callable, Dict, List, cast
 
 import dask
@@ -10,6 +12,7 @@ from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.healpix_pixel_function import get_pixel_argsort
 from typing_extensions import Self
 
+from lsdb import io
 from lsdb.catalog.dataset.dataset import Dataset
 from lsdb.core.plotting.skymap import plot_skymap
 from lsdb.core.search.abstract_search import AbstractSearch
@@ -170,3 +173,22 @@ class HealpixDataset(Dataset):
         results = dask.compute(*[smdata[pixel] for pixel in pixels])
         result_dict = {pixels[i]: results[i] for i in range(len(pixels))}
         plot_skymap(result_dict)
+
+    def to_hipscat(
+        self,
+        base_catalog_path: str,
+        catalog_name: str | None = None,
+        overwrite: bool = False,
+        storage_options: dict | None = None,
+        **kwargs,
+    ):
+        """Saves the catalog to disk in HiPSCat format
+
+        Args:
+            base_catalog_path (str): Location where catalog is saved to
+            catalog_name (str): The name of the catalog to be saved
+            overwrite (bool): If True existing catalog is overwritten
+            storage_options (dict): Dictionary that contains abstract filesystem credentials
+            **kwargs: Arguments to pass to the parquet write operations
+        """
+        io.to_hipscat(self, base_catalog_path, catalog_name, overwrite, storage_options, **kwargs)

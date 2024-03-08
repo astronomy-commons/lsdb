@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import hipscat as hc
 import pandas as pd
 
@@ -30,3 +32,17 @@ def test_margin_catalog_partitions_correct(small_sky_xmatch_margin_dir):
         partition = margin.get_partition(hp_order, hp_pixel)
         data = pd.read_parquet(path)
         pd.testing.assert_frame_equal(partition.compute(), data)
+
+
+def test_save_margin_catalog(small_sky_xmatch_margin_catalog, tmp_path):
+    new_catalog_name = "small_sky_xmatch_margin"
+    base_catalog_path = Path(tmp_path) / new_catalog_name
+    small_sky_xmatch_margin_catalog.to_hipscat(base_catalog_path, catalog_name=new_catalog_name)
+    expected_catalog = lsdb.read_hipscat(base_catalog_path)
+    assert expected_catalog.hc_structure.catalog_name == new_catalog_name
+    assert (
+        expected_catalog.hc_structure.catalog_info
+        == small_sky_xmatch_margin_catalog.hc_structure.catalog_info
+    )
+    assert expected_catalog.get_healpix_pixels() == small_sky_xmatch_margin_catalog.get_healpix_pixels()
+    pd.testing.assert_frame_equal(expected_catalog.compute(), small_sky_xmatch_margin_catalog._ddf.compute())
