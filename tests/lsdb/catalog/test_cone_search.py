@@ -9,7 +9,7 @@ def test_cone_search_filters_correct_points(small_sky_order1_catalog, assert_div
     radius_degrees = 20
     radius = radius_degrees * 3600
     center_coord = SkyCoord(ra, dec, unit="deg")
-    cone_search_catalog = small_sky_order1_catalog.cone_search(ra, dec, radius, fine=True)
+    cone_search_catalog = small_sky_order1_catalog.cone_search(ra, dec, radius)
     cone_search_df = cone_search_catalog.compute()
     for _, row in small_sky_order1_catalog.compute().iterrows():
         row_ra = row[small_sky_order1_catalog.hc_structure.catalog_info.ra_column]
@@ -30,7 +30,7 @@ def test_cone_search_filters_correct_points_margin(
     radius_degrees = 2
     radius = radius_degrees * 3600
     center_coord = SkyCoord(ra, dec, unit="deg")
-    cone_search_catalog = small_sky_order1_source_with_margin.cone_search(ra, dec, radius, fine=True)
+    cone_search_catalog = small_sky_order1_source_with_margin.cone_search(ra, dec, radius)
     assert cone_search_catalog.margin is not None
     cone_search_df = cone_search_catalog.compute()
     for _, row in small_sky_order1_source_with_margin.compute().iterrows():
@@ -65,7 +65,7 @@ def test_cone_search_filters_partitions(small_sky_order1_catalog):
     dec = -80
     radius = 20 * 3600
     hc_conesearch = small_sky_order1_catalog.hc_structure.filter_by_cone(ra, dec, radius)
-    consearch_catalog = small_sky_order1_catalog.cone_search(ra, dec, radius)
+    consearch_catalog = small_sky_order1_catalog.cone_search(ra, dec, radius, fine=False)
     assert len(hc_conesearch.get_healpix_pixels()) == len(consearch_catalog.get_healpix_pixels())
     assert len(hc_conesearch.get_healpix_pixels()) == consearch_catalog._ddf.npartitions
     for pixel in hc_conesearch.get_healpix_pixels():
@@ -76,7 +76,7 @@ def test_cone_search_filters_no_matching_points(small_sky_order1_catalog, assert
     ra = 0
     dec = -80
     radius = 0.2 * 3600
-    cone_search_catalog = small_sky_order1_catalog.cone_search(ra, dec, radius, fine=True)
+    cone_search_catalog = small_sky_order1_catalog.cone_search(ra, dec, radius)
     cone_search_df = cone_search_catalog.compute()
     assert len(cone_search_df) == 0
     assert_divisions_are_correct(cone_search_catalog)
@@ -104,8 +104,8 @@ def test_cone_search_coarse_versus_fine(small_sky_order1_catalog):
     ra = 0
     dec = -80
     radius = 20 * 3600  # 20 degrees
-    coarse_cone_search = small_sky_order1_catalog.cone_search(ra, dec, radius)
-    fine_cone_search = small_sky_order1_catalog.cone_search(ra, dec, radius, fine=True)
+    coarse_cone_search = small_sky_order1_catalog.cone_search(ra, dec, radius, fine=False)
+    fine_cone_search = small_sky_order1_catalog.cone_search(ra, dec, radius)
     assert coarse_cone_search.get_healpix_pixels() == fine_cone_search.get_healpix_pixels()
     assert coarse_cone_search._ddf.npartitions == fine_cone_search._ddf.npartitions
     assert len(coarse_cone_search.compute()) > len(fine_cone_search.compute())

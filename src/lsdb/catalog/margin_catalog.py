@@ -30,7 +30,7 @@ class MarginCatalog(HealpixDataset):
     ):
         super().__init__(ddf, ddf_pixel_map, hc_structure)
 
-    def _search(self, search: AbstractSearch, fine: bool = False):
+    def _search(self, search: AbstractSearch, fine: bool = True):
         """Find rows by reusable search algorithm.
 
         Filters partitions in the catalog to those that match some rough criteria and their neighbors.
@@ -38,7 +38,7 @@ class MarginCatalog(HealpixDataset):
 
         Args:
             search (AbstractSearch): Instance of AbstractSearch.
-            fine (bool): True if points are to be filtered, False if not. Defaults to False.
+            fine (bool): True if points are to be filtered, False if not. Defaults to True.
 
         Returns:
             A new Catalog containing the points filtered to those matching the search parameters.

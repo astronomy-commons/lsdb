@@ -188,7 +188,7 @@ class Catalog(HealpixDataset):
         hc_catalog = hc.catalog.Catalog(new_catalog_info, alignment.pixel_tree)
         return Catalog(ddf, ddf_map, hc_catalog)
 
-    def cone_search(self, ra: float, dec: float, radius_arcsec: float, fine: bool = False) -> Catalog:
+    def cone_search(self, ra: float, dec: float, radius_arcsec: float, fine: bool = True) -> Catalog:
         """Perform a cone search to filter the catalog
 
         Filters to points within radius great circle distance to the point specified by ra and dec in degrees.
@@ -198,7 +198,7 @@ class Catalog(HealpixDataset):
             ra (float): Right Ascension of the center of the cone in degrees
             dec (float): Declination of the center of the cone in degrees
             radius_arcsec (float): Radius of the cone in arcseconds
-            fine (bool): True if points are to be filtered, False if not. Defaults to False.
+            fine (bool): True if points are to be filtered, False if not. Defaults to True.
 
         Returns:
             A new Catalog containing the points filtered to those within the cone, and the partitions that
@@ -210,7 +210,7 @@ class Catalog(HealpixDataset):
         self,
         ra: Tuple[float, float] | None = None,
         dec: Tuple[float, float] | None = None,
-        fine: bool = False,
+        fine: bool = True,
     ) -> Catalog:
         """Performs filtering according to right ascension and declination ranges.
 
@@ -220,7 +220,7 @@ class Catalog(HealpixDataset):
         Args:
             ra (Tuple[float, float]): The right ascension minimum and maximum values.
             dec (Tuple[float, float]): The declination minimum and maximum values.
-            fine (bool): True if points are to be filtered, False if not. Defaults to False.
+            fine (bool): True if points are to be filtered, False if not. Defaults to True.
 
         Returns:
             A new catalog containing the points filtered to those within the region, and the
@@ -228,7 +228,7 @@ class Catalog(HealpixDataset):
         """
         return self._search(BoxSearch(self.hc_structure, ra=ra, dec=dec), fine)
 
-    def polygon_search(self, vertices: List[SphericalCoordinates], fine: bool = False) -> Catalog:
+    def polygon_search(self, vertices: List[SphericalCoordinates], fine: bool = True) -> Catalog:
         """Perform a polygonal search to filter the catalog.
 
         Filters to points within the polygonal region specified in ra and dec, in degrees.
@@ -237,7 +237,7 @@ class Catalog(HealpixDataset):
         Args:
             vertices (List[Tuple[float, float]): The list of vertices of the polygon to
                 filter pixels with, as a list of (ra,dec) coordinates, in degrees.
-            fine (bool): True if points are to be filtered, False if not. Defaults to False.
+            fine (bool): True if points are to be filtered, False if not. Defaults to True.
 
         Returns:
             A new catalog containing the points filtered to those within the
@@ -245,7 +245,7 @@ class Catalog(HealpixDataset):
         """
         return self._search(PolygonSearch(vertices, self.hc_structure), fine)
 
-    def index_search(self, ids, catalog_index: HCIndexCatalog, fine: bool = False) -> Catalog:
+    def index_search(self, ids, catalog_index: HCIndexCatalog, fine: bool = True) -> Catalog:
         """Find rows by ids (or other value indexed by a catalog index).
 
         Filters partitions in the catalog to those that could contain the ids requested.
@@ -256,14 +256,14 @@ class Catalog(HealpixDataset):
         Args:
             ids: Values to search for.
             catalog_index (HCIndexCatalog): A pre-computed hipscat index catalog.
-            fine (bool): True if points are to be filtered, False if not. Defaults to False.
+            fine (bool): True if points are to be filtered, False if not. Defaults to True.
 
         Returns:
             A new Catalog containing the points filtered to those matching the ids.
         """
         return self._search(IndexSearch(ids, catalog_index), fine)
 
-    def _search(self, search: AbstractSearch, fine: bool = False):
+    def _search(self, search: AbstractSearch, fine: bool = True):
         """Find rows by reusable search algorithm.
 
         Filters partitions in the catalog to those that match some rough criteria.
@@ -271,7 +271,7 @@ class Catalog(HealpixDataset):
 
         Args:
             search (AbstractSearch): Instance of AbstractSearch.
-            fine (bool): True if points are to be filtered, False if not. Defaults to False.
+            fine (bool): True if points are to be filtered, False if not. Defaults to True.
 
         Returns:
             A new Catalog containing the points filtered to those matching the search parameters.
