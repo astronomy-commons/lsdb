@@ -5,6 +5,7 @@ import pandas as pd
 import pytest
 
 import lsdb
+from lsdb.core.search import ConeSearch
 
 
 def test_read_hipscat(small_sky_order1_dir, small_sky_order1_hipscat_catalog, assert_divisions_are_correct):
@@ -78,3 +79,27 @@ def test_catalog_without_margin_is_none(small_sky_xmatch_dir):
     catalog = lsdb.read_hipscat(small_sky_xmatch_dir)
     assert isinstance(catalog, lsdb.Catalog)
     assert catalog.margin is None
+
+
+def test_read_hipscat_subset(
+    small_sky_order1_dir, small_sky_order1_hipscat_catalog, assert_divisions_are_correct
+):
+    catalog = lsdb.read_hipscat_subset(small_sky_order1_dir, n_files=2, order=1)
+    assert isinstance(catalog, lsdb.Catalog)
+    assert catalog.hc_structure.catalog_base_dir == small_sky_order1_hipscat_catalog.catalog_base_dir
+    assert len(catalog.get_healpix_pixels()) == 2
+    assert catalog.hc_structure.catalog_info.total_rows is None
+    assert_divisions_are_correct(catalog)
+
+
+def test_read_hipscat_subset_with_cone_search(
+    small_sky_order1_dir, small_sky_order1_hipscat_catalog, assert_divisions_are_correct
+):
+    # TODO: Instead of creating filter like this, allow user to pass the params directly to function
+    cone_search = ConeSearch(ra=0, dec=-80, radius_arcsec=20 * 3600, metadata=None)
+    catalog = lsdb.read_hipscat_subset(small_sky_order1_dir, search_filter=cone_search)
+    assert isinstance(catalog, lsdb.Catalog)
+    assert catalog.hc_structure.catalog_base_dir == small_sky_order1_hipscat_catalog.catalog_base_dir
+    assert len(catalog.get_healpix_pixels()) == 2
+    assert catalog.hc_structure.catalog_info.total_rows is None
+    assert_divisions_are_correct(catalog)

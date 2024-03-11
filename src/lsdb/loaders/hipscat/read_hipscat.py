@@ -6,11 +6,14 @@ from typing import Any, Dict, List, Type, Union
 import hipscat as hc
 from hipscat.catalog import CatalogType
 from hipscat.catalog.dataset import BaseCatalogInfo
+from hipscat.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
+from hipscat.pixel_math import HealpixPixel
 
 from lsdb.catalog.association_catalog import AssociationCatalog
 from lsdb.catalog.catalog import Catalog
 from lsdb.catalog.dataset.dataset import Dataset
 from lsdb.catalog.margin_catalog import MarginCatalog
+from lsdb.core.search.abstract_search import AbstractSearch
 from lsdb.loaders.hipscat.hipscat_loader_factory import get_loader_for_type
 from lsdb.loaders.hipscat.hipscat_loading_config import HipscatLoadingConfig
 
@@ -26,6 +29,7 @@ dataset_class_for_catalog_type: Dict[CatalogType, Type[Dataset]] = {
 def read_hipscat(
     path: str,
     catalog_type: Type[Dataset] | None = None,
+    pixels_to_load: List[HealpixPixel] | None = None,
     storage_options: dict | None = None,
     columns: List[str] | None = None,
     margin_cache: MarginCatalog | None = None,
@@ -43,8 +47,10 @@ def read_hipscat(
             cannot allow a return type specified by a loaded value, so to use the correct return
             type for type checking, the type of the catalog can be specified here. Use by specifying
             the lsdb class for that catalog.
+        pixels_to_load (List[HealpixPixel]): The subset of catalog HEALPix to load for the main catalog
         storage_options (dict): Dictionary that contains abstract filesystem credentials
         columns (List[str]): Default `None`. The set of columns to filter the catalog on.
+        margin_cache (MarginCatalog): The margin cache for the main catalog
         **kwargs: Arguments to pass to the pandas parquet file reader
 
     Returns:
@@ -63,6 +69,66 @@ def read_hipscat(
 
     loader = get_loader_for_type(catalog_type_to_use, path, config, storage_options=storage_options)
     return loader.load_catalog()
+
+
+def read_hipscat_subset(
+    path: str,
+    catalog_type: Type[Dataset] | None = None,
+    storage_options: dict | None = None,
+    search_filter: AbstractSearch | None = None,
+    n_files: int | None = None,
+    order: int | None = None,
+    **kwargs,
+):
+    """Load a catalog subset from a HiPSCat formatted catalog.
+
+    Typical usage example, where we load a catalog from a cone search:
+        lsdb.read_hipscat_subset(
+            path="./my_catalog_dir",
+            catalog_type=lsdb.Catalog,
+            columns=["ra","dec"],
+            filter=lsdb.core.search.ConeSearch(ra, dec, radius_arcsec),
+        )
+
+    Args:
+        path (str): The path that locates the root of the HiPSCat catalog
+        catalog_type (Type[Dataset]): Default `None`. By default, the type of the catalog is loaded
+            from the catalog info and the corresponding object type is returned. Python's type hints
+            cannot allow a return type specified by a loaded value, so to use the correct return
+            type for type checking, the type of the catalog can be specified here. Use by specifying
+            the lsdb class for that catalog.
+        storage_options (dict): Dictionary that contains abstract filesystem credentials
+        search_filter (Type[AbstractSearch]): The filter method to be applied to the catalog.
+            By default, all files are considered.
+        n_files (int): The number of files to read, in case no filter was specified.
+            By default, all files are considered.
+        order (int): The order of the files to read, in case n_files was specified.
+            By default, the largest catalog order is used.
+        **kwargs: Arguments to pass to the read hipscat call
+
+    Returns:
+        Catalog object loaded from the given parameters
+    """
+    pixels_to_load = None
+
+    hc_structure = HCHealpixDataset.read_from_hipscat(path, storage_options)
+    catalog_pixels = hc_structure.get_healpix_pixels()
+
+    if isinstance(search_filter, AbstractSearch):
+        pixels_to_load = search_filter.search_partitions(catalog_pixels)
+
+    if n_files is not None:
+        files_order = order if order is not None else hc_structure.partition_info.get_highest_order()
+        pixels_of_order = [pixel for pixel in catalog_pixels if pixel.order == files_order]
+        pixels_to_load = pixels_of_order[:n_files]
+
+    return read_hipscat(
+        path=path,
+        catalog_type=catalog_type,
+        pixels_to_load=pixels_to_load,
+        storage_options=storage_options,
+        **kwargs,
+    )
 
 
 def _get_dataset_class_from_catalog_info(

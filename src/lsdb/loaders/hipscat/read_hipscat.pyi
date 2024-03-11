@@ -11,16 +11,20 @@ For more information on stub files, view here: https://mypy.readthedocs.io/en/st
 
 """
 
-from typing import Any, Dict, List, Type, Union, overload
+from typing import List, Type, overload
+
+from hipscat.pixel_math import HealpixPixel
 
 from lsdb.catalog.dataset.dataset import Dataset
 from lsdb.catalog.margin_catalog import MarginCatalog
+from lsdb.core.search.abstract_search import AbstractSearch
 from lsdb.loaders.hipscat.abstract_catalog_loader import CatalogTypeVar
 
 @overload
 def read_hipscat(
     path: str,
-    storage_options: Union[Dict[Any, Any], None] = None,
+    pixels_to_load: List[HealpixPixel] | None = None,
+    storage_options: dict | None = None,
     columns: List[str] | None = None,
     margin_cache: MarginCatalog | None = None,
 ) -> Dataset: ...
@@ -28,7 +32,25 @@ def read_hipscat(
 def read_hipscat(
     path: str,
     catalog_type: Type[CatalogTypeVar],
-    storage_options: Union[Dict[Any, Any], None] = None,
+    pixels_to_load: List[HealpixPixel] | None = None,
+    storage_options: dict | None = None,
     columns: List[str] | None = None,
     margin_cache: MarginCatalog | None = None,
+) -> CatalogTypeVar: ...
+@overload
+def read_hipscat_subset(
+    path: str,
+    storage_options: dict | None = None,
+    search_filter: AbstractSearch | None = None,
+    n_files: int | None = None,
+    order: int | None = None,
+) -> Dataset: ...
+@overload
+def read_hipscat_subset(
+    path: str,
+    catalog_type: Type[CatalogTypeVar],
+    storage_options: dict | None = None,
+    search_filter: AbstractSearch | None = None,
+    n_files: int | None = None,
+    order: int | None = None,
 ) -> CatalogTypeVar: ...
