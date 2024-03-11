@@ -171,7 +171,7 @@ def test_catalog_pixels_nested_ordering(small_sky_source_df):
     npt.assert_array_equal(argsort, np.arange(0, 14))
 
 
-def test_from_dataframe_sky_source_with_margins(small_sky_source_df, small_sky_source_margin_catalog):
+def test_from_dataframe_small_sky_source_with_margins(small_sky_source_df, small_sky_source_margin_catalog):
     catalog = lsdb.from_dataframe(
         small_sky_source_df,
         ra_column="source_ra",
@@ -179,15 +179,47 @@ def test_from_dataframe_sky_source_with_margins(small_sky_source_df, small_sky_s
         highest_order=2,
         threshold=3000,
         margin_order=8,
-        margin_threshold=180.0,
+        margin_threshold=180,
     )
+
     assert catalog.margin is not None
     assert isinstance(catalog.margin, MarginCatalog)
+    assert catalog.margin.get_healpix_pixels() == small_sky_source_margin_catalog.get_healpix_pixels()
+
+    # The points of this margin catalog are present in one partition only
+    # so we are able to perform the comparison between the computed results
     pd.testing.assert_frame_equal(
-        small_sky_source_margin_catalog.compute(),
-        catalog.margin.compute(),
+        catalog.margin.compute().sort_index(),
+        small_sky_source_margin_catalog.compute().sort_index(),
         check_like=True,
     )
+
+
+def test_from_dataframe_small_sky_order3_source_with_margins(
+    small_sky_source_df, small_sky_order3_source_margin_catalog
+):
+    catalog = lsdb.from_dataframe(
+        small_sky_source_df,
+        ra_column="source_ra",
+        dec_column="source_dec",
+        lowest_order=3,
+        highest_order=3,
+        margin_order=7,
+        margin_threshold=300,
+    )
+
+    assert catalog.margin is not None
+    assert isinstance(catalog.margin, MarginCatalog)
+    assert catalog.margin.get_healpix_pixels() == small_sky_order3_source_margin_catalog.get_healpix_pixels()
+
+    # There are points in the catalog which are present in several margin pixel partitions,
+    # so we need to compare each pixel-partition pair
+    for pixel in small_sky_order3_source_margin_catalog.get_healpix_pixels():
+        partition_1 = small_sky_order3_source_margin_catalog.get_partition(pixel.order, pixel.pixel)
+        partition_2 = catalog.margin.get_partition(pixel.order, pixel.pixel)
+        pd.testing.assert_frame_equal(
+            partition_1.compute().sort_index(), partition_2.compute().sort_index(), check_like=True
+        )
 
 
 def test_from_dataframe_invalid_margin_order(small_sky_source_df):
@@ -199,3 +231,14 @@ def test_from_dataframe_invalid_margin_order(small_sky_source_df):
             lowest_order=2,
             margin_order=1,
         )
+
+
+def test_from_dataframe_margin_is_empty(small_sky_order1_df):
+    catalog = lsdb.from_dataframe(
+        small_sky_order1_df,
+        catalog_name="small_sky_order1",
+        catalog_type="object",
+        highest_order=5,
+        threshold=100,
+    )
+    assert catalog.margin is None
