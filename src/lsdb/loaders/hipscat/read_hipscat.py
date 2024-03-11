@@ -72,7 +72,6 @@ def read_hipscat(
     return loader.load_catalog()
 
 
-# TODO: How to support index search
 def read_hipscat_subset(
     path: str,
     catalog_type: Type[Dataset] | None = None,
@@ -125,11 +124,13 @@ def read_hipscat_subset(
     pixels_to_load = None
     hc_structure = HCHealpixDataset.read_from_hipscat(path, storage_options)
     pixels = hc_structure.get_healpix_pixels()
-    if isinstance(search_filter, AbstractSearch):
+    if search_filter is not None and n_pixels is not None:
+        raise ValueError("Use only one of `search_filter` or `n_pixels`")
+    if search_filter is not None:
         pixels_to_load = search_filter.search_partitions(pixels)
     elif n_pixels is not None:
         order = order if order is not None else hc_structure.partition_info.get_highest_order()
-        pixels_to_load = _find_pixels_of_order(pixels, order, n_pixels)
+        pixels_to_load = _find_first_pixels_of_order(pixels, order, n_pixels)
     return read_hipscat(
         path=path,
         catalog_type=catalog_type,
@@ -151,7 +152,7 @@ def _get_dataset_class_from_catalog_info(
     return dataset_class_for_catalog_type[catalog_type]
 
 
-def _find_pixels_of_order(pixels: List[HealpixPixel], order: int, n_pixels: int) -> List[HealpixPixel]:
+def _find_first_pixels_of_order(pixels: List[HealpixPixel], order: int, n_pixels: int) -> List[HealpixPixel]:
     """Retrieves the first `n_pixels` of the catalog at the specified `order`"""
     pixels_of_order = [pixel for pixel in pixels if pixel.order == order]
     if n_pixels > len(pixels_of_order):

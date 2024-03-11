@@ -3,9 +3,11 @@ import numpy as np
 import numpy.testing as npt
 import pandas as pd
 import pytest
+from hipscat.catalog.index.index_catalog import IndexCatalog
 
 import lsdb
-from lsdb.core.search import ConeSearch
+from lsdb.core.search import ConeSearch, IndexSearch, PolygonSearch
+from lsdb.core.search.box_search import BoxSearch
 
 
 def test_read_hipscat(small_sky_order1_dir, small_sky_order1_hipscat_catalog, assert_divisions_are_correct):
@@ -92,16 +94,54 @@ def test_read_hipscat_subset(
     assert_divisions_are_correct(catalog)
 
 
-def test_read_hipscat_subset_with_cone_search(
-    small_sky_order1_dir, small_sky_order1_hipscat_catalog, assert_divisions_are_correct
-):
+def test_read_hipscat_subset_with_cone_search(small_sky_order1_dir, small_sky_order1_catalog):
     cone_search = ConeSearch(ra=0, dec=-80, radius_arcsec=20 * 3600)
-    catalog = lsdb.read_hipscat_subset(small_sky_order1_dir, search_filter=cone_search)
-    assert isinstance(catalog, lsdb.Catalog)
-    assert catalog.hc_structure.catalog_base_dir == small_sky_order1_hipscat_catalog.catalog_base_dir
-    assert len(catalog.get_healpix_pixels()) == 2
-    assert catalog.hc_structure.catalog_info.total_rows is None
-    assert_divisions_are_correct(catalog)
+    # Filtering using catalog's cone_search
+    cone_search_catalog = small_sky_order1_catalog.cone_search(ra=0, dec=-80, radius_arcsec=20 * 3600)
+    # Filtering when calling `read_hipscat`
+    cone_search_catalog_2 = lsdb.read_hipscat_subset(small_sky_order1_dir, search_filter=cone_search)
+    assert isinstance(cone_search_catalog_2, lsdb.Catalog)
+    # The partitions of the catalogs are equivalent
+    assert cone_search_catalog.get_healpix_pixels() == cone_search_catalog_2.get_healpix_pixels()
+
+
+def test_read_hipscat_subset_with_box_search(small_sky_order1_dir, small_sky_order1_catalog):
+    box_search = BoxSearch(ra=(0, 10), dec=(-20, 10))
+    # Filtering using catalog's box_search
+    box_search_catalog = small_sky_order1_catalog.box(ra=(0, 10), dec=(-20, 10))
+    # Filtering when calling `read_hipscat`
+    box_search_catalog_2 = lsdb.read_hipscat_subset(small_sky_order1_dir, search_filter=box_search)
+    assert isinstance(box_search_catalog_2, lsdb.Catalog)
+    # The partitions of the catalogs are equivalent
+    assert box_search_catalog.get_healpix_pixels() == box_search_catalog_2.get_healpix_pixels()
+
+
+def test_read_hipscat_subset_with_polygon_search(small_sky_order1_dir, small_sky_order1_catalog):
+    vertices = [(300, -50), (300, -55), (272, -55), (272, -50)]
+    polygon_search = PolygonSearch(vertices)
+    # Filtering using catalog's polygon_search
+    polygon_search_catalog = small_sky_order1_catalog.polygon_search(vertices)
+    # Filtering when calling `read_hipscat`
+    polygon_search_catalog_2 = lsdb.read_hipscat_subset(small_sky_order1_dir, search_filter=polygon_search)
+    assert isinstance(polygon_search_catalog_2, lsdb.Catalog)
+    # The partitions of the catalogs are equivalent
+    assert polygon_search_catalog.get_healpix_pixels() == polygon_search_catalog_2.get_healpix_pixels()
+
+
+def test_read_hipscat_subset_with_index_search(
+    small_sky_order1_dir,
+    small_sky_order1_catalog,
+    small_sky_order1_id_index_dir,
+):
+    catalog_index = IndexCatalog.read_from_hipscat(small_sky_order1_id_index_dir)
+    # Filtering using catalog's index_search
+    index_search_catalog = small_sky_order1_catalog.index_search([700], catalog_index)
+    # Filtering when calling `read_hipscat`
+    index_search = IndexSearch([700], catalog_index)
+    index_search_catalog_2 = lsdb.read_hipscat_subset(small_sky_order1_dir, search_filter=index_search)
+    assert isinstance(index_search_catalog_2, lsdb.Catalog)
+    # The partitions of the catalogs are equivalent
+    assert index_search_catalog.get_healpix_pixels() == index_search_catalog_2.get_healpix_pixels()
 
 
 def test_read_hipscat_subset_warns_few_pixels_at_order(small_sky_order1_dir, assert_divisions_are_correct):
@@ -110,3 +150,9 @@ def test_read_hipscat_subset_warns_few_pixels_at_order(small_sky_order1_dir, ass
     assert isinstance(catalog, lsdb.Catalog)
     assert len(catalog.get_healpix_pixels()) == 4
     assert_divisions_are_correct(catalog)
+
+
+def test_read_hipscat_subset_invalid_arguments(small_sky_order1_dir):
+    box_search = BoxSearch(ra=(0, 10), dec=(-20, 10))
+    with pytest.raises(ValueError, match="only one of"):
+        lsdb.read_hipscat_subset(small_sky_order1_dir, search_filter=box_search, order=1, n_pixels=3)
