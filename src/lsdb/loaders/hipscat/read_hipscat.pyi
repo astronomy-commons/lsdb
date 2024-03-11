@@ -36,6 +36,7 @@ def read_hipscat(
     storage_options: dict | None = None,
     columns: List[str] | None = None,
     margin_cache: MarginCatalog | None = None,
+    **kwargs,
 ) -> CatalogTypeVar: ...
 @overload
 def read_hipscat_subset(
@@ -53,4 +54,5 @@ def read_hipscat_subset(
     search_filter: AbstractSearch | None = None,
     n_pixels: int | None = None,
     order: int | None = None,
+    **kwargs,
 ) -> CatalogTypeVar: ...

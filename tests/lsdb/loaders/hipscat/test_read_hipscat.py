@@ -95,8 +95,7 @@ def test_read_hipscat_subset(
 def test_read_hipscat_subset_with_cone_search(
     small_sky_order1_dir, small_sky_order1_hipscat_catalog, assert_divisions_are_correct
 ):
-    # TODO: Instead of creating filter like this, allow user to pass the params directly to function
-    cone_search = ConeSearch(ra=0, dec=-80, radius_arcsec=20 * 3600, metadata=None)
+    cone_search = ConeSearch(ra=0, dec=-80, radius_arcsec=20 * 3600)
     catalog = lsdb.read_hipscat_subset(small_sky_order1_dir, search_filter=cone_search)
     assert isinstance(catalog, lsdb.Catalog)
     assert catalog.hc_structure.catalog_base_dir == small_sky_order1_hipscat_catalog.catalog_base_dir

@@ -72,6 +72,7 @@ def read_hipscat(
     return loader.load_catalog()
 
 
+# TODO: How to support index search
 def read_hipscat_subset(
     path: str,
     catalog_type: Type[Dataset] | None = None,
