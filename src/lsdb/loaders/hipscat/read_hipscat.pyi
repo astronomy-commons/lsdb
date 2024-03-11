@@ -42,7 +42,7 @@ def read_hipscat_subset(
     path: str,
     storage_options: dict | None = None,
     search_filter: AbstractSearch | None = None,
-    n_files: int | None = None,
+    n_pixels: int | None = None,
     order: int | None = None,
 ) -> Dataset: ...
 @overload
@@ -51,6 +51,6 @@ def read_hipscat_subset(
     catalog_type: Type[CatalogTypeVar],
     storage_options: dict | None = None,
     search_filter: AbstractSearch | None = None,
-    n_files: int | None = None,
+    n_pixels: int | None = None,
     order: int | None = None,
 ) -> CatalogTypeVar: ...

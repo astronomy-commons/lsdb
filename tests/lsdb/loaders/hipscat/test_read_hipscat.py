@@ -84,7 +84,7 @@ def test_catalog_without_margin_is_none(small_sky_xmatch_dir):
 def test_read_hipscat_subset(
     small_sky_order1_dir, small_sky_order1_hipscat_catalog, assert_divisions_are_correct
 ):
-    catalog = lsdb.read_hipscat_subset(small_sky_order1_dir, n_files=2, order=1)
+    catalog = lsdb.read_hipscat_subset(small_sky_order1_dir, order=1, n_pixels=2)
     assert isinstance(catalog, lsdb.Catalog)
     assert catalog.hc_structure.catalog_base_dir == small_sky_order1_hipscat_catalog.catalog_base_dir
     assert len(catalog.get_healpix_pixels()) == 2
@@ -102,4 +102,12 @@ def test_read_hipscat_subset_with_cone_search(
     assert catalog.hc_structure.catalog_base_dir == small_sky_order1_hipscat_catalog.catalog_base_dir
     assert len(catalog.get_healpix_pixels()) == 2
     assert catalog.hc_structure.catalog_info.total_rows is None
+    assert_divisions_are_correct(catalog)
+
+
+def test_read_hipscat_subset_warns_few_pixels_at_order(small_sky_order1_dir, assert_divisions_are_correct):
+    with pytest.warns(RuntimeWarning, match="less than"):
+        catalog = lsdb.read_hipscat_subset(small_sky_order1_dir, order=1, n_pixels=10)
+    assert isinstance(catalog, lsdb.Catalog)
+    assert len(catalog.get_healpix_pixels()) == 4
     assert_divisions_are_correct(catalog)

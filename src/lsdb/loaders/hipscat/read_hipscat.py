@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
+import warnings
 from typing import Any, Dict, List, Type, Union
 
 import hipscat as hc
@@ -76,11 +77,13 @@ def read_hipscat_subset(
     catalog_type: Type[Dataset] | None = None,
     storage_options: dict | None = None,
     search_filter: AbstractSearch | None = None,
-    n_files: int | None = None,
     order: int | None = None,
+    n_pixels: int | None = None,
     **kwargs,
-):
+) -> Dataset:
     """Load a catalog subset from a HiPSCat formatted catalog.
+
+    To be used with a filter or (order, n_files), but not both.
 
     Typical usage example, where we load a catalog from a cone search:
         lsdb.read_hipscat_subset(
@@ -88,6 +91,15 @@ def read_hipscat_subset(
             catalog_type=lsdb.Catalog,
             columns=["ra","dec"],
             filter=lsdb.core.search.ConeSearch(ra, dec, radius_arcsec),
+        )
+
+    Typical usage example, where we load a catalog from a pre-defined number of files:
+         lsdb.read_hipscat_subset(
+            path="./my_catalog_dir",
+            catalog_type=lsdb.Catalog,
+            columns=["ra","dec"],
+            order=5,
+            n_pixels=10,
         )
 
     Args:
@@ -100,7 +112,7 @@ def read_hipscat_subset(
         storage_options (dict): Dictionary that contains abstract filesystem credentials
         search_filter (Type[AbstractSearch]): The filter method to be applied to the catalog.
             By default, all files are considered.
-        n_files (int): The number of files to read, in case no filter was specified.
+        n_pixels (int): The number of files to read, in case no filter was specified.
             By default, all files are considered.
         order (int): The order of the files to read, in case n_files was specified.
             By default, the largest catalog order is used.
@@ -110,18 +122,13 @@ def read_hipscat_subset(
         Catalog object loaded from the given parameters
     """
     pixels_to_load = None
-
     hc_structure = HCHealpixDataset.read_from_hipscat(path, storage_options)
-    catalog_pixels = hc_structure.get_healpix_pixels()
-
+    pixels = hc_structure.get_healpix_pixels()
     if isinstance(search_filter, AbstractSearch):
-        pixels_to_load = search_filter.search_partitions(catalog_pixels)
-
-    if n_files is not None:
-        files_order = order if order is not None else hc_structure.partition_info.get_highest_order()
-        pixels_of_order = [pixel for pixel in catalog_pixels if pixel.order == files_order]
-        pixels_to_load = pixels_of_order[:n_files]
-
+        pixels_to_load = search_filter.search_partitions(pixels)
+    elif n_pixels is not None:
+        order = order if order is not None else hc_structure.partition_info.get_highest_order()
+        pixels_to_load = _find_pixels_of_order(pixels, order, n_pixels)
     return read_hipscat(
         path=path,
         catalog_type=catalog_type,
@@ -141,3 +148,11 @@ def _get_dataset_class_from_catalog_info(
     if catalog_type not in dataset_class_for_catalog_type:
         raise NotImplementedError(f"Cannot load catalog of type {catalog_type}")
     return dataset_class_for_catalog_type[catalog_type]
+
+
+def _find_pixels_of_order(pixels: List[HealpixPixel], order: int, n_pixels: int) -> List[HealpixPixel]:
+    """Retrieves the first `n_pixels` of the catalog at the specified `order`"""
+    pixels_of_order = [pixel for pixel in pixels if pixel.order == order]
+    if n_pixels > len(pixels_of_order):
+        warnings.warn(f"There are less than {n_pixels} at order {order}. Loading all pixels.", RuntimeWarning)
+    return pixels_of_order[:n_pixels]
