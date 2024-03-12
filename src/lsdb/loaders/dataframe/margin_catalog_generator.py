@@ -53,7 +53,7 @@ class MarginCatalogGenerator:
             The validated order of the margin catalog.
 
         Raises:
-            ValueError, if the provided margin order is lower than that of the catalog.
+            ValueError: if the provided margin order is lower than that of the catalog.
         """
         margin_pixel_k = self.hc_structure.partition_info.get_highest_order() + 1
         if margin_order is None or margin_order == -1:
