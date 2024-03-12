@@ -81,8 +81,8 @@ def crossmatch_catalog_data(
     """Cross-matches the data from two catalogs
 
     Args:
-        left (Catalog): the left catalog to perform the cross-match on
-        right (Catalog): the right catalog to perform the cross-match on
+        left (lsdb.Catalog): the left catalog to perform the cross-match on
+        right (lsdb.Catalog): the right catalog to perform the cross-match on
         suffixes (Tuple[str,str]): the suffixes to append to the column names from the left and
             right catalogs respectively
         algorithm (BuiltInCrossmatchAlgorithm | Callable): The algorithm to use to perform the

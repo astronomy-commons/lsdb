@@ -127,7 +127,7 @@ class Catalog(HealpixDataset):
                 AbstractCrossmatchAlgorithm.
 
                 Built-in methods:
-                    -`kd_tree`: find the k-nearest neighbors using a kd_tree
+                    - `kd_tree`: find the k-nearest neighbors using a kd_tree
 
                 Custom function:
                     To specify a custom function, write a class that subclasses the
@@ -140,8 +140,9 @@ class Catalog(HealpixDataset):
                     These columns are specified in {AbstractCrossmatchAlgorithm.extra_columns}, with
                     their respective data types, by means of an empty pandas dataframe. As an example,
                     the KdTreeCrossmatch algorithm outputs a "_dist_arcsec" column with the distance between
-                    data points. Its extra_columns attribute is specified as follows:
-                    `pd.DataFrame({"_dist_arcsec": pd.Series(dtype=np.dtype("float64"))})`.
+                    data points. Its extra_columns attribute is specified as follows::
+
+                        pd.DataFrame({"_dist_arcsec": pd.Series(dtype=np.dtype("float64"))})
 
                     The class will have been initialized with the following parameters, which the
                     crossmatch function should use:

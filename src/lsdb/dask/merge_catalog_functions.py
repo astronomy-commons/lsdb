@@ -58,8 +58,8 @@ def align_catalogs(left: Catalog, right: Catalog) -> PixelAlignment:
     """Aligns two catalogs, also using the right catalog's margin if it exists
 
     Args:
-        left (Catalog): The left catalog to align
-        right (Catalog): The right catalog to align
+        left (lsdb.Catalog): The left catalog to align
+        right (lsdb.Catalog): The right catalog to align
     Returns:
         The PixelAlignment object from aligning the catalogs
     """
@@ -89,20 +89,20 @@ def align_and_apply(
         func (Callable): The function to apply to the aligned catalogs. The function should take the
             aligned partitions of the catalogs as dataframes as the first arguments, followed by the healpix
             pixel of each partition, the hc_structures of the catalogs, and any additional arguments and
-            keyword arguments. For example:
-            ```
-            def func(
-                cat1_partition_df,
-                cat2_partition_df,
-                cat1_pixel,
-                cat2_pixel,
-                cat1_hc_structure,
-                cat2_hc_structure,
-                *args,
-                **kwargs
-            ):
-                ...
-            ```
+            keyword arguments. For example::
+
+                def func(
+                    cat1_partition_df,
+                    cat2_partition_df,
+                    cat1_pixel,
+                    cat2_pixel,
+                    cat1_hc_structure,
+                    cat2_hc_structure,
+                    *args,
+                    **kwargs
+                ):
+                    ...
+
         *args: Additional arguments to pass to the function
         **kwargs: Additional keyword arguments to pass to the function
 
@@ -205,7 +205,7 @@ def generate_meta_df_for_joined_tables(
     extra columns that should also be added, and the name of the index of the resulting dataframe.
 
     Args:
-        catalogs (Sequence[Catalog]): The catalogs to merge together
+        catalogs (Sequence[lsdb.Catalog]): The catalogs to merge together
         suffixes (Sequence[Str]): The column suffixes to apply each catalog
         extra_columns (pd.Dataframe): Any additional columns to the merged catalogs
         index_name (str): The name of the index in the resulting DataFrame

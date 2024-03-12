@@ -180,8 +180,8 @@ def join_catalog_data_on(
     """Joins two catalogs spatially on a specified column
 
     Args:
-        left (Catalog): the left catalog to join
-        right (Catalog): the right catalog to join
+        left (lsdb.Catalog): the left catalog to join
+        right (lsdb.Catalog): the right catalog to join
         left_on (str): the column to join on from the left partition
         right_on (str): the column to join on from the right partition
         suffixes (Tuple[str,str]): the suffixes to apply to each partition's column names
@@ -218,8 +218,8 @@ def join_catalog_data_through(
     """Joins two catalogs with an association table
 
     Args:
-        left (Catalog): the left catalog to join
-        right (Catalog): the right catalog to join
+        left (lsdb.Catalog): the left catalog to join
+        right (lsdb.Catalog): the right catalog to join
         association (AssociationCatalog): the association catalog to join the catalogs with
         suffixes (Tuple[str,str]): the suffixes to apply to each partition's column names
 
