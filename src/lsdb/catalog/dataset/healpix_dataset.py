@@ -80,7 +80,7 @@ class HealpixDataset(Dataset):
         Returns:
             Dask Dataframe with a single partition with data at that pixel
         Raises:
-            Value error if no data exists for the specified pixel
+            ValueError: if no data exists for the specified pixel
         """
         partition_index = self.get_partition_index(order, pixel)
         return self._ddf.partitions[partition_index]
@@ -94,7 +94,7 @@ class HealpixDataset(Dataset):
         Returns:
             Dask Dataframe with a single partition with data at that pixel
         Raises:
-            Value error if no data exists for the specified pixel
+            ValueError: if no data exists for the specified pixel
         """
         hp_pixel = HealpixPixel(order, pixel)
         if not hp_pixel in self._ddf_pixel_map:

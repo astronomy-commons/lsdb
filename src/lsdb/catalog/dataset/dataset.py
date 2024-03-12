@@ -45,7 +45,7 @@ class Dataset:
 
         Args:
             optimize_graph (bool): If True [default], the graph is optimized before converting into
-            ``dask.delayed`` objects.
+                ``dask.delayed`` objects.
         """
         return self._ddf.to_delayed(optimize_graph=optimize_graph)
 
