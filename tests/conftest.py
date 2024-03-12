@@ -12,6 +12,7 @@ DATA_DIR_NAME = "data"
 SMALL_SKY_DIR_NAME = "small_sky"
 SMALL_SKY_LEFT_XMATCH_NAME = "small_sky_left_xmatch"
 SMALL_SKY_SOURCE_MARGIN_NAME = "small_sky_source_margin"
+SMALL_SKY_ORDER3_SOURCE_MARGIN_NAME = "small_sky_order3_source_margin"
 SMALL_SKY_XMATCH_NAME = "small_sky_xmatch"
 SMALL_SKY_XMATCH_MARGIN_NAME = "small_sky_xmatch_margin"
 SMALL_SKY_TO_XMATCH_NAME = "small_sky_to_xmatch"
@@ -179,6 +180,11 @@ def small_sky_source_df(test_data_dir):
 @pytest.fixture
 def small_sky_source_margin_catalog(test_data_dir):
     return lsdb.read_hipscat(os.path.join(test_data_dir, SMALL_SKY_SOURCE_MARGIN_NAME))
+
+
+@pytest.fixture
+def small_sky_order3_source_margin_catalog(test_data_dir):
+    return lsdb.read_hipscat(os.path.join(test_data_dir, SMALL_SKY_ORDER3_SOURCE_MARGIN_NAME))
 
 
 @pytest.fixture
