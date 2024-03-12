@@ -69,9 +69,12 @@ class Catalog(HealpixDataset):
             if remaining_rows == 0:
                 break
             partition_head = partition.head(remaining_rows)
-            dfs.append(partition_head)
-            remaining_rows -= len(partition_head)
-        return pd.concat(dfs)
+            if len(partition_head) > 0:
+                dfs.append(partition_head)
+                remaining_rows -= len(partition_head)
+        if len(dfs) > 0:
+            return pd.concat(dfs)
+        return self._ddf._meta
 
     def query(self, expr: str) -> Catalog:
         catalog = super().query(expr)
