@@ -309,3 +309,17 @@ def test_skymap_plot(small_sky_order1_catalog, mocker):
         img[img_order_pixels] = value
     hp.mollview.assert_called_once()
     assert (hp.mollview.call_args[0][0] == img).all()
+
+
+# pylint: disable=no-member
+def test_plot_pixels(small_sky_order1_catalog, mocker):
+    mocker.patch("healpy.mollview")
+
+    small_sky_order1_catalog.plot_pixels()
+
+    # Everything will be empty, except the four pixels at order 1.
+    img = np.full(48, hp.pixelfunc.UNSEEN)
+    img[[44, 45, 46, 47]] = 1
+
+    hp.mollview.assert_called_once()
+    assert (hp.mollview.call_args[0][0] == img).all()
