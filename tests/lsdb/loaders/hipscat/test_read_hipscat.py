@@ -152,6 +152,15 @@ def test_read_hipscat_subset_warns_few_pixels_at_order(small_sky_order1_dir, ass
     assert_divisions_are_correct(catalog)
 
 
+def test_read_hipscat_subset_no_partitions(small_sky_order1_dir, small_sky_order1_id_index_dir):
+    with pytest.raises(ValueError, match="no partitions"):
+        lsdb.read_hipscat_subset(small_sky_order1_dir, order=3, n_pixels=1)
+    with pytest.raises(ValueError, match="no partitions"):
+        catalog_index = IndexCatalog.read_from_hipscat(small_sky_order1_id_index_dir)
+        index_search = IndexSearch([900], catalog_index)
+        lsdb.read_hipscat_subset(small_sky_order1_dir, search_filter=index_search)
+
+
 def test_read_hipscat_subset_invalid_arguments(small_sky_order1_dir):
     box_search = BoxSearch(ra=(0, 10), dec=(-20, 10))
     with pytest.raises(ValueError, match="only one of"):
