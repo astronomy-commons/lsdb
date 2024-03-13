@@ -155,29 +155,15 @@ class MarginCatalogGenerator:
         )
         constrained_data = self.dataframe.reset_index().merge(margin_pairs_df, on="margin_pixel")
         if len(constrained_data):
-            constrained_data.groupby(["partition_order", "partition_pixel"]).apply(
-                self._append_margin_df, margin_pixel_df_map
-            )
+            for partition_group, partition_df in constrained_data.groupby(
+                ["partition_order", "partition_pixel"]
+            ):
+                margin_pixel = HealpixPixel(partition_group[0], partition_group[1])
+                df = self._get_data_in_margin(partition_df, margin_pixel)
+                if len(df):
+                    df = _format_margin_partition_dataframe(df)
+                    margin_pixel_df_map[margin_pixel] = df
         return margin_pixel_df_map
-
-    def _append_margin_df(
-        self, partition_df: pd.DataFrame, margin_pixel_df_map: Dict[HealpixPixel, pd.DataFrame]
-    ):
-        """Filter margin data points and create the partition final Dataframe
-
-        Args:
-            partition_df (pd.DataFrame): Catalog data points for the margin pixel
-            margin_pixel_df_map (Dict[HealpixPixel, pd.DataFrame]): A dictionary mapping
-                each margin pixel to the respective DataFrame. This dictionary is updated
-                on each call to this method.
-        """
-        partition_order = partition_df["partition_order"].iloc[0]
-        partition_pixel = partition_df["partition_pixel"].iloc[0]
-        margin_pixel = HealpixPixel(partition_order, partition_pixel)
-        df = self._get_data_in_margin(partition_df, margin_pixel)
-        if len(df):
-            df = _format_margin_partition_dataframe(df)
-            margin_pixel_df_map[margin_pixel] = df
 
     def _get_data_in_margin(self, partition_df: pd.DataFrame, margin_pixel: HealpixPixel) -> pd.DataFrame:
         """Calculate the margin boundaries for the HEALPix and include the points
