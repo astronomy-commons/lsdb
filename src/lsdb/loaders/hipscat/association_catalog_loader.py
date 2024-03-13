@@ -14,7 +14,7 @@ class AssociationCatalogLoader(AbstractCatalogLoader[AssociationCatalog]):
         Returns:
             Catalog object with data from the source given at loader initialization
         """
-        hc_catalog: hc.catalog.AssociationCatalog = self._load_hipscat_catalog(hc.catalog.AssociationCatalog)
+        hc_catalog = self._load_hipscat_catalog(hc.catalog.AssociationCatalog)
         if hc_catalog.catalog_info.contains_leaf_files:
             dask_df, dask_df_pixel_map = self._load_dask_df_and_map(hc_catalog)
         else:
