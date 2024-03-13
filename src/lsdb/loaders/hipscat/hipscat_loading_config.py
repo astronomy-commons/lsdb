@@ -3,9 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import List
 
-from hipscat.pixel_math import HealpixPixel
-
 from lsdb.catalog.margin_catalog import MarginCatalog
+from lsdb.core.search.abstract_search import AbstractSearch
 
 
 @dataclass
@@ -15,8 +14,8 @@ class HipscatLoadingConfig:
     Contains all parameters needed for a user to specify how to correctly read a hipscat catalog.
     """
 
-    pixels_to_load: List[HealpixPixel] | None = None
-    """List of pixels to load. If not specified, all pixels are considered"""
+    search_filter: AbstractSearch | None = None
+    """The spatial filter to apply to the catalog"""
 
     columns: List[str] | None = None
     """Columns to load from the catalog. If not specified, all columns are loaded"""

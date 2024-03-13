@@ -23,7 +23,7 @@ from lsdb.loaders.hipscat.abstract_catalog_loader import CatalogTypeVar
 @overload
 def read_hipscat(
     path: str,
-    pixels_to_load: List[HealpixPixel] | None = None,
+    search_filter: AbstractSearch | None = None,
     storage_options: dict | None = None,
     columns: List[str] | None = None,
     margin_cache: MarginCatalog | None = None,
@@ -32,27 +32,9 @@ def read_hipscat(
 def read_hipscat(
     path: str,
     catalog_type: Type[CatalogTypeVar],
-    pixels_to_load: List[HealpixPixel] | None = None,
+    search_filter: AbstractSearch | None = None,
     storage_options: dict | None = None,
     columns: List[str] | None = None,
     margin_cache: MarginCatalog | None = None,
-    **kwargs,
-) -> CatalogTypeVar: ...
-@overload
-def read_hipscat_subset(
-    path: str,
-    storage_options: dict | None = None,
-    search_filter: AbstractSearch | None = None,
-    n_pixels: int | None = None,
-    order: int | None = None,
-) -> Dataset: ...
-@overload
-def read_hipscat_subset(
-    path: str,
-    catalog_type: Type[CatalogTypeVar],
-    storage_options: dict | None = None,
-    search_filter: AbstractSearch | None = None,
-    n_pixels: int | None = None,
-    order: int | None = None,
     **kwargs,
 ) -> CatalogTypeVar: ...

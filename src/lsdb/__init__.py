@@ -1,3 +1,3 @@
 from ._version import __version__
 from .catalog import Catalog
-from .loaders import from_dataframe, read_hipscat, read_hipscat_subset
+from .loaders import from_dataframe, read_hipscat
