@@ -97,6 +97,6 @@ class AbstractCatalogLoader(Generic[CatalogTypeVar]):
         return ddf
 
     def _load_parquet_metadata_schema(self, catalog: HCHealpixDataset) -> pyarrow.Schema:
-        metadata_pointer = hc.io.paths.get_parquet_metadata_pointer(catalog.catalog_base_dir)
+        metadata_pointer = hc.io.paths.get_common_metadata_pointer(catalog.catalog_base_dir)
         metadata = file_io.read_parquet_metadata(metadata_pointer, storage_options=self.storage_options)
         return metadata.schema.to_arrow_schema()

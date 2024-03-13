@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 from dask.delayed import Delayed, delayed
 from hipscat.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
+from hipscat.inspection import plot_pixel_list
 from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.healpix_pixel_function import get_pixel_argsort
 from typing_extensions import Self
@@ -80,7 +81,7 @@ class HealpixDataset(Dataset):
         Returns:
             Dask Dataframe with a single partition with data at that pixel
         Raises:
-            Value error if no data exists for the specified pixel
+            ValueError: if no data exists for the specified pixel
         """
         partition_index = self.get_partition_index(order, pixel)
         return self._ddf.partitions[partition_index]
@@ -94,7 +95,7 @@ class HealpixDataset(Dataset):
         Returns:
             Dask Dataframe with a single partition with data at that pixel
         Raises:
-            Value error if no data exists for the specified pixel
+            ValueError: if no data exists for the specified pixel
         """
         hp_pixel = HealpixPixel(order, pixel)
         if not hp_pixel in self._ddf_pixel_map:
@@ -239,6 +240,19 @@ class HealpixDataset(Dataset):
         results = dask.compute(*[smdata[pixel] for pixel in pixels])
         result_dict = {pixels[i]: results[i] for i in range(len(pixels))}
         plot_skymap(result_dict)
+
+    def plot_pixels(self, projection: str = "moll", **kwargs):
+        """Create a visual map of the pixel density of the catalog.
+
+        Args:
+            projection (str) The map projection to use. Valid values include:
+                - moll - Molleweide projection (default)
+                - gnom - Gnomonic projection
+                - cart - Cartesian projection
+                - orth - Orthographic projection
+            kwargs (dict): additional keyword arguments to pass to plotting call.
+        """
+        plot_pixel_list(self.get_healpix_pixels(), projection, **kwargs)
 
     def to_hipscat(
         self,

@@ -12,7 +12,8 @@ from hipscat.pixel_math import HealpixPixel
 class AbstractSearch(ABC):
     """Abstract class used to write a reusable search query.
 
-    These consist of two parts::
+    These consist of two parts:
+
         - partition search - a (usually) coarse method of restricting
           the search space to just the partitions(/pixels) of interest
         - point search - a (usally) finer grained method to find
