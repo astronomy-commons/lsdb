@@ -31,9 +31,7 @@ class Dataset:
 
     def _repr_html_(self):
         # pylint: disable=protected-access
-        data = self._ddf._repr_data().to_html(
-            max_rows=5, show_dimensions=False, notebook=True
-        )
+        data = self._ddf._repr_data().to_html(max_rows=5, show_dimensions=False, notebook=True)
         return f"<div><strong>lsdb Catalog {self.name}:</strong></div>{data}"
 
     def compute(self) -> pd.DataFrame:
