@@ -22,26 +22,19 @@ class BoxSearch(AbstractSearch):
     Filters partitions in the catalog to those that have some overlap with the region.
     """
 
-    def __init__(
-        self,
-        metadata: hc.catalog.Catalog,
-        ra: Tuple[float, float] | None = None,
-        dec: Tuple[float, float] | None = None,
-    ):
+    def __init__(self, ra: Tuple[float, float] | None = None, dec: Tuple[float, float] | None = None):
         ra = tuple(wrap_ra_angles(ra)) if ra else None
         validate_box_search(ra, dec)
-
         self.ra, self.dec = ra, dec
-        self.metadata = metadata
 
     def search_partitions(self, pixels: List[HealpixPixel]) -> List[HealpixPixel]:
         """Determine the target partitions for further filtering."""
         pixel_tree = PixelTreeBuilder.from_healpix(pixels)
         return filter_pixels_by_box(pixel_tree, self.ra, self.dec)
 
-    def search_points(self, frame: pd.DataFrame) -> pd.DataFrame:
+    def search_points(self, frame: pd.DataFrame, metadata: hc.catalog.Catalog) -> pd.DataFrame:
         """Determine the search results within a data frame"""
-        return box_filter(frame, self.ra, self.dec, self.metadata)
+        return box_filter(frame, self.ra, self.dec, metadata)
 
 
 @dask.delayed
@@ -57,7 +50,7 @@ def box_filter(
         data_frame (pd.DataFrame): DataFrame containing points in the sky
         ra (Tuple[float, float]): Right ascension range, in degrees
         dec (Tuple[float, float]): Declination range, in degrees
-        metadata (hipscat.Catalog): hipscat `Catalog` with catalog_info that matches `data_frame`
+        metadata (hc.catalog.Catalog): hipscat `Catalog` with catalog_info that matches `data_frame`
 
     Returns:
         A new DataFrame with the rows from `data_frame` filtered to only the points inside the box region.

@@ -13,10 +13,6 @@ class HipscatCatalogLoader(AbstractCatalogLoader[Catalog]):
         Returns:
             Catalog object with data from the source given at loader initialization
         """
-        hc_catalog = self.load_hipscat_catalog()
+        hc_catalog = self._load_hipscat_catalog(hc.catalog.Catalog)
         dask_df, dask_df_pixel_map = self._load_dask_df_and_map(hc_catalog)
         return Catalog(dask_df, dask_df_pixel_map, hc_catalog, self.config.margin_cache)
-
-    def load_hipscat_catalog(self) -> hc.catalog.Catalog:
-        """Load `hipscat` library catalog object with catalog metadata and partition data"""
-        return hc.catalog.Catalog.read_from_hipscat(self.path, storage_options=self.storage_options)

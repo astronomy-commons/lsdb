@@ -24,7 +24,6 @@ class IndexSearch(AbstractSearch):
         """Determine the target partitions for further filtering."""
         return self.catalog_index.loc_partitions(self.ids)
 
-    def search_points(self, frame: pd.DataFrame) -> pd.DataFrame:
+    def search_points(self, frame: pd.DataFrame, _) -> pd.DataFrame:
         """Determine the search results within a data frame"""
-
         return frame[frame[self.catalog_index.catalog_info.indexing_column].isin(self.ids)]

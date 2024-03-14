@@ -30,7 +30,7 @@ class MarginCatalog(HealpixDataset):
     ):
         super().__init__(ddf, ddf_pixel_map, hc_structure)
 
-    def _search(self, search: AbstractSearch, fine: bool = True):
+    def _search(self, metadata: hc.catalog.Catalog, search: AbstractSearch, fine: bool = True):
         """Find rows by reusable search algorithm.
 
         Filters partitions in the catalog to those that match some rough criteria and their neighbors.
@@ -74,5 +74,5 @@ class MarginCatalog(HealpixDataset):
         filtered_pixels = list(set(filtered_search_pixels + filtered_margin_pixels))
 
         filtered_hc_structure = self.hc_structure.filter_from_pixel_list(filtered_pixels)
-        ddf_partition_map, search_ddf = self._perform_search(filtered_pixels, search, fine)
+        ddf_partition_map, search_ddf = self._perform_search(metadata, filtered_pixels, search, fine)
         return self.__class__(search_ddf, ddf_partition_map, filtered_hc_structure)

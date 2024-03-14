@@ -5,6 +5,7 @@ from typing import Any, Callable, Dict, List, Tuple, cast
 
 import dask
 import dask.dataframe as dd
+import hipscat as hc
 import numpy as np
 import pandas as pd
 from dask.delayed import Delayed, delayed
@@ -119,10 +120,17 @@ class HealpixDataset(Dataset):
         ddf = self._ddf.query(expr)
         return self.__class__(ddf, self._ddf_pixel_map, self.hc_structure)
 
-    def _perform_search(self, filtered_pixels: List[HealpixPixel], search: AbstractSearch, fine: bool = True):
+    def _perform_search(
+        self,
+        metadata: hc.catalog.Catalog,
+        filtered_pixels: List[HealpixPixel],
+        search: AbstractSearch,
+        fine: bool = True,
+    ):
         """Performs a search on the catalog from a list of pixels to search in
 
         Args:
+            metadata (hc.catalog.Catalog): The metadata of the hipscat catalog.
             filtered_pixels (List[HealpixPixel]): List of pixels in the catalog to be searched.
             search (AbstractSearch): Instance of AbstractSearch.
             fine (bool): True if points are to be filtered, False if not. Defaults to True.
@@ -134,7 +142,7 @@ class HealpixDataset(Dataset):
         partitions = self._ddf.to_delayed()
         targeted_partitions = [partitions[self._ddf_pixel_map[pixel]] for pixel in filtered_pixels]
         filtered_partitions = (
-            [search.search_points(partition) for partition in targeted_partitions]
+            [search.search_points(partition, metadata) for partition in targeted_partitions]
             if fine
             else targeted_partitions
         )
