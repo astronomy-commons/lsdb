@@ -20,7 +20,7 @@ dependencies = [
     # dask distributed eases the creation of parallel dask clients.
     # dask diagnostics is required to spin up the dashboard for profiling.
     "dask[complete]<=2024.2.1",
-    "hipscat>=0.2.6",
+    "hipscat>=0.2.8",
     "pyarrow",
     "deprecated",
     "scipy", # kdtree
