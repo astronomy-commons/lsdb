@@ -55,4 +55,4 @@ autoapi_ignore = ["*/__main__.py", "*/_version.py"]
 autoapi_add_toc_tree_entry = False
 autoapi_member_order = "bysource"
 
-html_theme = "sphinx_rtd_theme"
+html_theme = "sphinx_book_theme"
