@@ -7,7 +7,6 @@ nbconvert
 nbsphinx
 sphinx
 sphinx-autoapi
-sphinx-copybutton
-sphinx-rtd-theme
+sphinx-copybuttons
 sphinx-book-theme
 git+https://github.com/astronomy-commons/hipscat.git@main
