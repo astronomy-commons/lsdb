@@ -207,7 +207,7 @@ class Catalog(HealpixDataset):
             A new Catalog containing the points filtered to those within the cone, and the partitions that
             overlap the cone.
         """
-        return self._search(ConeSearch(ra, dec, radius_arcsec, self.hc_structure), fine)
+        return self._search(ConeSearch(ra, dec, radius_arcsec), fine)
 
     def box(
         self,
@@ -229,7 +229,7 @@ class Catalog(HealpixDataset):
             A new catalog containing the points filtered to those within the region, and the
             partitions that have some overlap with it.
         """
-        return self._search(BoxSearch(self.hc_structure, ra=ra, dec=dec), fine)
+        return self._search(BoxSearch(ra=ra, dec=dec), fine)
 
     def polygon_search(self, vertices: List[SphericalCoordinates], fine: bool = True) -> Catalog:
         """Perform a polygonal search to filter the catalog.
@@ -246,7 +246,7 @@ class Catalog(HealpixDataset):
             A new catalog containing the points filtered to those within the
             polygonal region, and the partitions that have some overlap with it.
         """
-        return self._search(PolygonSearch(vertices, self.hc_structure), fine)
+        return self._search(PolygonSearch(vertices), fine)
 
     def index_search(self, ids, catalog_index: HCIndexCatalog, fine: bool = True) -> Catalog:
         """Find rows by ids (or other value indexed by a catalog index).
@@ -281,8 +281,10 @@ class Catalog(HealpixDataset):
         """
         filtered_pixels = search.search_partitions(self.hc_structure.get_healpix_pixels())
         filtered_hc_structure = self.hc_structure.filter_from_pixel_list(filtered_pixels)
-        ddf_partition_map, search_ddf = self._perform_search(filtered_pixels, search, fine)
-        margin = self.margin._search(search, fine) if self.margin is not None else None
+        ddf_partition_map, search_ddf = self._perform_search(
+            filtered_hc_structure, filtered_pixels, search, fine
+        )
+        margin = self.margin._search(filtered_hc_structure, search, fine) if self.margin is not None else None
         return Catalog(search_ddf, ddf_partition_map, filtered_hc_structure, margin=margin)
 
     def merge(

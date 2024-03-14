@@ -3,6 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import List
 
+import hipscat as hc
 import pandas as pd
 from hipscat.pixel_math import HealpixPixel
 
@@ -24,5 +25,5 @@ class AbstractSearch(ABC):
         """Determine the target partitions for further filtering."""
 
     @abstractmethod
-    def search_points(self, frame: pd.DataFrame) -> pd.DataFrame:
+    def search_points(self, frame: pd.DataFrame, metadata: hc.catalog.Catalog) -> pd.DataFrame:
         """Determine the search results within a data frame"""

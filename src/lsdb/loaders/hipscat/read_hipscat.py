@@ -11,6 +11,7 @@ from lsdb.catalog.association_catalog import AssociationCatalog
 from lsdb.catalog.catalog import Catalog
 from lsdb.catalog.dataset.dataset import Dataset
 from lsdb.catalog.margin_catalog import MarginCatalog
+from lsdb.core.search.abstract_search import AbstractSearch
 from lsdb.loaders.hipscat.hipscat_loader_factory import get_loader_for_type
 from lsdb.loaders.hipscat.hipscat_loading_config import HipscatLoadingConfig
 
@@ -26,6 +27,7 @@ dataset_class_for_catalog_type: Dict[CatalogType, Type[Dataset]] = {
 def read_hipscat(
     path: str,
     catalog_type: Type[Dataset] | None = None,
+    search_filter: AbstractSearch | None = None,
     storage_options: dict | None = None,
     columns: List[str] | None = None,
     margin_cache: MarginCatalog | None = None,
@@ -33,9 +35,17 @@ def read_hipscat(
 ) -> Dataset:
     """Load a catalog from a HiPSCat formatted catalog.
 
-    Typical usage example, where we load a catalog with a subset of columns::
+    Typical usage example, where we load a catalog with a subset of columns:
 
         lsdb.read_hipscat(path="./my_catalog_dir", columns=["ra","dec"])
+
+    Typical usage example, where we load a catalog from a cone search:
+        lsdb.read_hipscat_subset(
+            path="./my_catalog_dir",
+            catalog_type=lsdb.Catalog,
+            columns=["ra","dec"],
+            filter=lsdb.core.search.ConeSearch(ra, dec, radius_arcsec),
+        )
 
     Args:
         path (str): The path that locates the root of the HiPSCat catalog
@@ -44,8 +54,10 @@ def read_hipscat(
             cannot allow a return type specified by a loaded value, so to use the correct return
             type for type checking, the type of the catalog can be specified here. Use by specifying
             the lsdb class for that catalog.
+        search_filter (Type[AbstractSearch]): Default `None`. The filter method to be applied.
         storage_options (dict): Dictionary that contains abstract filesystem credentials
         columns (List[str]): Default `None`. The set of columns to filter the catalog on.
+        margin_cache (MarginCatalog): The margin cache for the main catalog
         **kwargs: Arguments to pass to the pandas parquet file reader
 
     Returns:

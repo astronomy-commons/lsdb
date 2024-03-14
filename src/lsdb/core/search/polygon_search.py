@@ -25,21 +25,19 @@ class PolygonSearch(AbstractSearch):
     Filters partitions in the catalog to those that have some overlap with the region.
     """
 
-    def __init__(self, vertices: List[SphericalCoordinates], metadata):
+    def __init__(self, vertices: List[SphericalCoordinates]):
         _, dec = np.array(vertices).T
         validate_declination_values(dec)
-
         self.polygon, self.vertices_xyz = get_cartesian_polygon(vertices)
-        self.metadata = metadata
 
     def search_partitions(self, pixels: List[HealpixPixel]) -> List[HealpixPixel]:
         """Determine the target partitions for further filtering."""
         pixel_tree = PixelTreeBuilder.from_healpix(pixels)
         return filter_pixels_by_polygon(pixel_tree, self.vertices_xyz)
 
-    def search_points(self, frame: pd.DataFrame) -> pd.DataFrame:
+    def search_points(self, frame: pd.DataFrame, metadata: hc.catalog.Catalog) -> pd.DataFrame:
         """Determine the search results within a data frame"""
-        return polygon_filter(frame, self.polygon, self.metadata)
+        return polygon_filter(frame, self.polygon, metadata)
 
 
 @dask.delayed
