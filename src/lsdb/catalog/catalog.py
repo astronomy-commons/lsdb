@@ -277,10 +277,6 @@ class Catalog(HealpixDataset):
         Returns:
             A new Catalog containing only the pixels of orders specified (inclusive)
         """
-        if max_order is None:
-            pixels = self.hc_structure.get_healpix_pixels()
-            max_order = max(pixel.order for pixel in pixels)
-
         return self._search(OrderSearch(min_order, max_order), fine=False)
 
     def _search(self, search: AbstractSearch, fine: bool = True):
