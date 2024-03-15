@@ -19,6 +19,7 @@ SMALL_SKY_TO_XMATCH_NAME = "small_sky_to_xmatch"
 SMALL_SKY_TO_XMATCH_SOFT_NAME = "small_sky_to_xmatch_soft"
 SMALL_SKY_ORDER1_DIR_NAME = "small_sky_order1"
 SMALL_SKY_ORDER1_SOURCE_NAME = "small_sky_order1_source"
+SMALL_SKY_SOURCE_NAME = "small_sky_source"
 SMALL_SKY_ORDER1_SOURCE_MARGIN_NAME = "small_sky_order1_source_margin"
 SMALL_SKY_TO_ORDER1_SOURCE_NAME = "small_sky_to_o1source"
 SMALL_SKY_TO_ORDER1_SOURCE_SOFT_NAME = "small_sky_to_o1source_soft"
@@ -75,6 +76,11 @@ def small_sky_order1_dir(test_data_dir):
 @pytest.fixture
 def small_sky_order1_source_dir(test_data_dir):
     return os.path.join(test_data_dir, SMALL_SKY_ORDER1_SOURCE_NAME)
+
+
+@pytest.fixture
+def small_sky_source_catalog(test_data_dir):
+    return lsdb.read_hipscat(os.path.join(test_data_dir, SMALL_SKY_SOURCE_NAME))
 
 
 @pytest.fixture
