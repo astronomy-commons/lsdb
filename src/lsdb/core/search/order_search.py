@@ -15,7 +15,7 @@ class OrderSearch(AbstractSearch):
 
     def __init__(self, min_order: int, max_order: int):
         if min_order > max_order:
-            raise ValueError("The minimum order should be less than or equal to maximum order")
+            raise ValueError("The minimum order should be less than or equal to maximum order.")
 
         self.min_order = min_order
         self.max_order = max_order
