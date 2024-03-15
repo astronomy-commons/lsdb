@@ -1,1 +1,1 @@
-{"regressions": [["benchmarks.time_polygon_search", "graphs/Cython/branch-HEAD/build/machine-gh-runner/packaging/python-3.10/benchmarks.time_polygon_search.json", {}, null, 0.013958590499996149, 0.012646659500006763, [[null, 323, 0.012646659500006763, 0.013958590499996149]]]]}
+{"regressions": [["benchmarks.time_polygon_search", "graphs/Cython/branch-HEAD/build/machine-gh-runner/packaging/python-3.10/benchmarks.time_polygon_search.json", {}, null, 0.01395437300001845, 0.012646659500006763, [[null, 323, 0.012646659500006763, 0.01395437300001845]]]]}
