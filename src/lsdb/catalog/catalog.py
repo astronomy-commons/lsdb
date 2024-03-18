@@ -14,9 +14,8 @@ from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
 from lsdb.catalog.margin_catalog import MarginCatalog
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
 from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorithm
-from lsdb.core.search import ConeSearch, IndexSearch, OrderSearch, PolygonSearch
+from lsdb.core.search import BoxSearch, ConeSearch, IndexSearch, OrderSearch, PolygonSearch
 from lsdb.core.search.abstract_search import AbstractSearch
-from lsdb.core.search.box_search import BoxSearch
 from lsdb.dask.crossmatch_catalog_data import crossmatch_catalog_data
 from lsdb.dask.join_catalog_data import join_catalog_data_on, join_catalog_data_through
 from lsdb.types import DaskDFPixelMap

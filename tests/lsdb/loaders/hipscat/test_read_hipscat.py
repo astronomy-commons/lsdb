@@ -6,8 +6,7 @@ import pytest
 from hipscat.catalog.index.index_catalog import IndexCatalog
 
 import lsdb
-from lsdb.core.search import ConeSearch, IndexSearch, OrderSearch, PolygonSearch
-from lsdb.core.search.box_search import BoxSearch
+from lsdb.core.search import BoxSearch, ConeSearch, IndexSearch, OrderSearch, PolygonSearch
 
 
 def test_read_hipscat(small_sky_order1_dir, small_sky_order1_hipscat_catalog, assert_divisions_are_correct):
