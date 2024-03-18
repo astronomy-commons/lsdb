@@ -15,7 +15,7 @@ The lastest release version of LSDB is available to install with `pip <https://p
 
     We recommend installing the package inside a virtual environment.
     
-    To create a fresh environment called `lsdb_env` with conda, type:
+    To create and activate a fresh environment called `lsdb_env` with conda, type:
 
     .. code-block:: bash
 
@@ -36,7 +36,8 @@ With your virtual environment activated, type in your terminal:
 
     git clone https://github.com/astronomy-commons/lsdb
     cd lsdb/
-    ./setup_dev.sh
+    chmod +x .setup_dev.sh
+    ./.setup_dev.sh
 
 The `setup_dev` script installs additional requirements to setup a development environment,
 enabling us to run unit tests and build documentation. 
@@ -45,7 +46,7 @@ To check that your package has been correctly installed, run the package unit te
 
 .. code-block:: bash
 
-    pytest
+    python -m pytest
 
 
 Creation of Jupyter Kernel
