@@ -14,7 +14,7 @@ from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
 from lsdb.catalog.margin_catalog import MarginCatalog
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
 from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorithm
-from lsdb.core.search import ConeSearch, IndexSearch, PolygonSearch
+from lsdb.core.search import ConeSearch, IndexSearch, OrderSearch, PolygonSearch
 from lsdb.core.search.abstract_search import AbstractSearch
 from lsdb.core.search.box_search import BoxSearch
 from lsdb.dask.crossmatch_catalog_data import crossmatch_catalog_data
@@ -265,6 +265,19 @@ class Catalog(HealpixDataset):
             A new Catalog containing the points filtered to those matching the ids.
         """
         return self._search(IndexSearch(ids, catalog_index), fine)
+
+    def order_search(self, min_order: int = 0, max_order: int | None = None) -> Catalog:
+        """
+        Filter catalog by order of HEALPix
+
+        Args:
+            min_order (int): Minimum HEALPix order to select. Defaults to 0.
+            max_order (int): Maximum HEALPix order to select. Defaults to maximum catalog order.
+
+        Returns:
+            A new Catalog containing only the pixels of orders specified (inclusive)
+        """
+        return self._search(OrderSearch(min_order, max_order), fine=False)
 
     def _search(self, search: AbstractSearch, fine: bool = True):
         """Find rows by reusable search algorithm.

@@ -30,7 +30,9 @@ class Dataset:
         return self._ddf.__repr__()
 
     def _repr_html_(self):
-        return self._ddf._repr_html_()  # pylint: disable=protected-access
+        # pylint: disable=protected-access
+        data = self._ddf._repr_data().to_html(max_rows=5, show_dimensions=False, notebook=True)
+        return f"<div><strong>lsdb Catalog {self.name}:</strong></div>{data}"
 
     def compute(self) -> pd.DataFrame:
         """Compute dask distributed dataframe to pandas dataframe"""
