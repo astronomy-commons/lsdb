@@ -24,13 +24,15 @@ def test_cone_search_filters_correct_points(small_sky_order1_catalog, assert_div
 
 
 def test_cone_search_filters_correct_points_margin(
-    small_sky_order1_source_with_margin, assert_divisions_are_correct, cone_search_expected, cone_search_margin_expected
+    small_sky_order1_source_with_margin,
+    assert_divisions_are_correct,
+    cone_search_expected,
+    cone_search_margin_expected,
 ):
     ra = -35
     dec = -55
     radius_degrees = 2
     radius = radius_degrees * 3600
-    center_coord = SkyCoord(ra, dec, unit="deg")
     cone_search_catalog = small_sky_order1_source_with_margin.cone_search(ra, dec, radius)
     assert cone_search_catalog.margin is not None
     cone_search_df = cone_search_catalog.compute()

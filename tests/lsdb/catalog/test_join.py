@@ -119,8 +119,22 @@ def test_join_association_source_margin(
     assert len(joined_data) == 17161
     assert len(association_data) == 17161
 
-    assert (np.sort(joined_data["id_a"].values) == np.sort(association_data[small_sky_to_o1source_catalog.hc_structure.catalog_info.primary_column_association].values)).all()
-    assert (np.sort(joined_data["source_id_b"].values) == np.sort(association_data[small_sky_to_o1source_catalog.hc_structure.catalog_info.join_column_association].values)).all()
+    assert (
+        np.sort(joined_data["id_a"].values)
+        == np.sort(
+            association_data[
+                small_sky_to_o1source_catalog.hc_structure.catalog_info.primary_column_association
+            ].values
+        )
+    ).all()
+    assert (
+        np.sort(joined_data["source_id_b"].values)
+        == np.sort(
+            association_data[
+                small_sky_to_o1source_catalog.hc_structure.catalog_info.join_column_association
+            ].values
+        )
+    ).all()
 
     for col in small_sky_catalog._ddf.columns:
         assert col + suffixes[0] in joined._ddf.columns
