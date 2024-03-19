@@ -23,7 +23,10 @@ def test_catalog_repr_equals_ddf_repr(small_sky_order1_catalog):
 
 
 def test_catalog_html_repr_equals_ddf_html_repr(small_sky_order1_catalog):
-    assert small_sky_order1_catalog._repr_html_() == small_sky_order1_catalog._ddf._repr_html_()
+    full_html = small_sky_order1_catalog._repr_html_()
+    assert small_sky_order1_catalog.name in full_html
+    # this is a _hipscat_index that's in the data
+    assert "12682136550675316736" in full_html
 
 
 def test_catalog_compute_equals_ddf_compute(small_sky_order1_catalog):

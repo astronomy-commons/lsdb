@@ -6,8 +6,7 @@ import pytest
 from hipscat.catalog.index.index_catalog import IndexCatalog
 
 import lsdb
-from lsdb.core.search import ConeSearch, IndexSearch, PolygonSearch
-from lsdb.core.search.box_search import BoxSearch
+from lsdb.core.search import BoxSearch, ConeSearch, IndexSearch, OrderSearch, PolygonSearch
 
 
 def test_read_hipscat(small_sky_order1_dir, small_sky_order1_hipscat_catalog, assert_divisions_are_correct):
@@ -131,6 +130,17 @@ def test_read_hipscat_subset_with_index_search(
     assert isinstance(index_search_catalog_2, lsdb.Catalog)
     # The partitions of the catalogs are equivalent
     assert index_search_catalog.get_healpix_pixels() == index_search_catalog_2.get_healpix_pixels()
+
+
+def test_read_hipscat_subset_with_order_search(small_sky_source_catalog, small_sky_source_dir):
+    order_search = OrderSearch(min_order=1, max_order=2)
+    # Filtering using catalog's order_search
+    order_search_catalog = small_sky_source_catalog.order_search(min_order=1, max_order=2)
+    # Filtering when calling `read_hipscat`
+    order_search_catalog_2 = lsdb.read_hipscat(small_sky_source_dir, search_filter=order_search)
+    assert isinstance(order_search_catalog_2, lsdb.Catalog)
+    # The partitions of the catalogs are equivalent
+    assert order_search_catalog.get_healpix_pixels() == order_search_catalog_2.get_healpix_pixels()
 
 
 def test_read_hipscat_subset_no_partitions(small_sky_order1_dir, small_sky_order1_id_index_dir):
