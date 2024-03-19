@@ -128,7 +128,7 @@ def test_join_association_source_margin(
         left_id = row[small_sky_to_o1source_catalog.hc_structure.catalog_info.primary_column_association]
         right_id = row[small_sky_to_o1source_catalog.hc_structure.catalog_info.join_column_association]
         joined_row = joined_data.query(f"{left_col} == {left_id} & {right_col} == {right_id}")
-        assert len(joined_row) == 131
+        assert len(joined_row) == 1
         small_sky_col = small_sky_to_o1source_catalog.hc_structure.catalog_info.primary_column
         left_row = small_sky_catalog.compute().query(f"{small_sky_col}=={left_id}")
         for col in left_row.columns:
