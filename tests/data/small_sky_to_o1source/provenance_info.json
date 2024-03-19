@@ -1,7 +1,7 @@
 {
     "catalog_name": "small_sky_to_o1source",
     "catalog_type": "association",
-    "total_rows": 131,
+    "total_rows": 17161,
     "primary_catalog": "small_sky",
     "primary_column": "id",
     "primary_column_association": "object_id",
@@ -9,11 +9,11 @@
     "join_column": "object_id",
     "join_column_association": "source_id",
     "contains_leaf_files": true,
-    "version": "0.2.7.dev15+g85ec4a0",
-    "generation_date": "2024.03.06",
+    "version": "0.2.9.dev2+g014342d",
+    "generation_date": "2024.03.19",
     "tool_args": {
         "tool_name": "hipscat_import",
-        "version": "0.2.5.dev7+gea60042",
+        "version": "0.2.6.dev6+gf95440a.d20240318",
         "runtime_args": {
             "catalog_name": "small_sky_to_o1source",
             "output_path": ".",
@@ -29,7 +29,7 @@
             "object_id_column": "id",
             "source_catalog_dir": "small_sky_order1_source",
             "source_object_id_column": "object_id",
-            "source_id_column": "object_id",
+            "source_id_column": "source_id",
             "compute_partition_size": 1000000000,
             "write_leaf_files": true
         }
