@@ -234,6 +234,21 @@ def xmatch_mock(xmatch_expected_dir):
 
 
 @pytest.fixture
+def cone_search_expected_dir(test_data_dir):
+    return os.path.join(test_data_dir, "raw", "cone_search_expected")
+
+
+@pytest.fixture
+def cone_search_expected(cone_search_expected_dir):
+    return pd.read_parquet(os.path.join(cone_search_expected_dir, "catalog.parquet"))
+
+
+@pytest.fixture
+def cone_search_margin_expected(cone_search_expected_dir):
+    return pd.read_parquet(os.path.join(cone_search_expected_dir, "margin.parquet"))
+
+
+@pytest.fixture
 def assert_divisions_are_correct():
     def assert_divisions_are_correct(catalog):
         # Check that number of divisions == number of pixels + 1
