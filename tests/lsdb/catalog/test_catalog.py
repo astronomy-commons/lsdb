@@ -322,7 +322,7 @@ def test_skymap_data_wrong_order(small_sky_order1_catalog):
     order = 0
 
     with pytest.raises(ValueError):
-        skymap = small_sky_order1_catalog.skymap_data(func, order)
+        small_sky_order1_catalog.skymap_data(func, order)
 
 
 # pylint: disable=no-member
