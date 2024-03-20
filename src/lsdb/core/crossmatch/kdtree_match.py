@@ -27,8 +27,8 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
     ):
         super().validate()
         validate_radius(radius_arcsec)
-        if min_radius_arcsec > 0:
-            validate_radius(radius_arcsec)
+        if min_radius_arcsec < 0:
+            validate_radius(min_radius_arcsec)
         if n_neighbors < 1:
             raise ValueError("n_neighbors must be greater than 1")
         # Check that the margin exists and has a compatible radius.
@@ -170,5 +170,4 @@ def _get_chord_distance(radius_arcsec: float) -> float:
         The chord distance between the two points on the unit sphere.
     """
     radius_degrees = radius_arcsec / 3600.0
-    d_chord = 2.0 * math.sin(math.radians(0.5 * radius_degrees))
-    return d_chord
+    return 2.0 * math.sin(math.radians(0.5 * radius_degrees))
