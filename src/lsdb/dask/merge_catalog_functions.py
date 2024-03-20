@@ -12,11 +12,11 @@ from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN, healpix_to_hipscat_id
 from hipscat.pixel_tree import PixelAlignment, PixelAlignmentType, align_trees
 
-from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
 from lsdb.dask.divisions import get_pixels_divisions
 from lsdb.types import DaskDFPixelMap
 
 if TYPE_CHECKING:
+    from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
     from lsdb.catalog.catalog import Catalog
 
 
