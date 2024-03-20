@@ -16,8 +16,8 @@ from lsdb.dask.divisions import get_pixels_divisions
 from lsdb.types import DaskDFPixelMap
 
 if TYPE_CHECKING:
-    from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
     from lsdb.catalog.catalog import Catalog
+    from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
 
 
 def concat_partition_and_margin(

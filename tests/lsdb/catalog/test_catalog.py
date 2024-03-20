@@ -299,7 +299,7 @@ def test_skymap_data_order(small_sky_order1_catalog):
 
     order = 3
 
-    skymap = small_sky_order1_catalog.skymap_data(func, order=3)
+    skymap = small_sky_order1_catalog.skymap_data(func, order=order)
     for pixel in skymap.keys():
         partition = small_sky_order1_catalog.get_partition(pixel.order, pixel.pixel).compute()
         value = skymap[pixel].compute()
@@ -313,6 +313,16 @@ def test_skymap_data_order(small_sky_order1_catalog):
                 filter_by_hipscat_index_to_pixel(partition, order, p), HealpixPixel(order, p)
             )
             assert value[i] == expected_value
+
+
+def test_skymap_data_wrong_order(small_sky_order1_catalog):
+    def func(df, healpix):
+        return len(df) / hp.nside2pixarea(hp.order2nside(healpix.order), degrees=True)
+
+    order = 0
+
+    with pytest.raises(ValueError):
+        skymap = small_sky_order1_catalog.skymap_data(func, order)
 
 
 # pylint: disable=no-member

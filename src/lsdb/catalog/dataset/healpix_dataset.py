@@ -301,7 +301,9 @@ class HealpixDataset(Dataset):
 
         img = self.skymap_histogram(func, order, default_value, **kwargs)
         projection_method = get_projection_method(projection)
-        projection_method(img, nest=True, **kwargs)
+        if plotting_args is None:
+            plotting_args = {}
+        projection_method(img, nest=True, **plotting_args)
 
     def plot_pixels(self, projection: str = "moll", **kwargs):
         """Create a visual map of the pixel density of the catalog.
