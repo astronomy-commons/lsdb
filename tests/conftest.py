@@ -4,6 +4,7 @@ import hipscat as hc
 import pandas as pd
 import pytest
 from hipscat.pixel_math import hipscat_id_to_healpix
+from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
 
 import lsdb
 from lsdb.dask.divisions import HIPSCAT_ID_MAX
@@ -240,12 +241,12 @@ def cone_search_expected_dir(test_data_dir):
 
 @pytest.fixture
 def cone_search_expected(cone_search_expected_dir):
-    return pd.read_parquet(os.path.join(cone_search_expected_dir, "catalog.parquet"))
+    return pd.read_csv(os.path.join(cone_search_expected_dir, "catalog.csv"), index_col=HIPSCAT_ID_COLUMN)
 
 
 @pytest.fixture
 def cone_search_margin_expected(cone_search_expected_dir):
-    return pd.read_parquet(os.path.join(cone_search_expected_dir, "margin.parquet"))
+    return pd.read_csv(os.path.join(cone_search_expected_dir, "margin.csv"), index_col=HIPSCAT_ID_COLUMN)
 
 
 @pytest.fixture
