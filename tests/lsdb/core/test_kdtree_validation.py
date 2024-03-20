@@ -61,10 +61,10 @@ def test_kdtree_right_columns(kdtree_crossmatch):
     with pytest.raises(ValueError, match="index of right table must be _hipscat_index"):
         kdtree_crossmatch.validate()
 
-    kdtree_crossmatch.right = original_df.drop(columns=["object_ra"])
-    with pytest.raises(ValueError, match="right table must have column object_ra"):
+    kdtree_crossmatch.right = original_df.drop(columns=["source_ra"])
+    with pytest.raises(ValueError, match="right table must have column source_ra"):
         kdtree_crossmatch.validate()
 
-    kdtree_crossmatch.right = original_df.drop(columns=["object_dec"])
-    with pytest.raises(ValueError, match="right table must have column object_dec"):
+    kdtree_crossmatch.right = original_df.drop(columns=["source_dec"])
+    with pytest.raises(ValueError, match="right table must have column source_dec"):
         kdtree_crossmatch.validate()

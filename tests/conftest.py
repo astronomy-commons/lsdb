@@ -4,6 +4,7 @@ import hipscat as hc
 import pandas as pd
 import pytest
 from hipscat.pixel_math import hipscat_id_to_healpix
+from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
 
 import lsdb
 from lsdb.dask.divisions import HIPSCAT_ID_MAX
@@ -231,6 +232,21 @@ def xmatch_correct_3n_2t_negative(xmatch_expected_dir):
 @pytest.fixture
 def xmatch_mock(xmatch_expected_dir):
     return pd.read_csv(os.path.join(xmatch_expected_dir, XMATCH_MOCK_FILE))
+
+
+@pytest.fixture
+def cone_search_expected_dir(test_data_dir):
+    return os.path.join(test_data_dir, "raw", "cone_search_expected")
+
+
+@pytest.fixture
+def cone_search_expected(cone_search_expected_dir):
+    return pd.read_csv(os.path.join(cone_search_expected_dir, "catalog.csv"), index_col=HIPSCAT_ID_COLUMN)
+
+
+@pytest.fixture
+def cone_search_margin_expected(cone_search_expected_dir):
+    return pd.read_csv(os.path.join(cone_search_expected_dir, "margin.csv"), index_col=HIPSCAT_ID_COLUMN)
 
 
 @pytest.fixture

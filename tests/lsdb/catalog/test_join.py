@@ -45,9 +45,8 @@ def test_small_sky_join_small_sky_order1_source(
     joined_compute = joined.compute()
     small_sky_order1_compute = small_sky_order1_source_with_margin.compute()
     assert len(joined_compute) == len(small_sky_order1_compute)
-    for _, row in small_sky_order1_compute.iterrows():
-        joined_row = joined_compute.query(f"object_id_b == {row['object_id']}")
-        assert joined_row["id_a"].values[0] == row["object_id"]
+    joined_test = small_sky_order1_compute.merge(joined_compute, left_on="object_id", right_on="object_id_b")
+    assert (joined_test["id_a"].values == joined_test["object_id"].values).all()
     assert_divisions_are_correct(joined)
 
 
@@ -81,6 +80,9 @@ def test_join_association(small_sky_catalog, small_sky_xmatch_catalog, small_sky
     assert joined._ddf.index.name == HIPSCAT_ID_COLUMN
     assert joined._ddf.index.dtype == np.uint64
 
+    small_sky_compute = small_sky_catalog.compute()
+    small_sky_xmatch_compute = small_sky_xmatch_catalog.compute()
+
     for _, row in association_data.iterrows():
         left_col = small_sky_to_xmatch_catalog.hc_structure.catalog_info.primary_column + suffixes[0]
         right_col = small_sky_to_xmatch_catalog.hc_structure.catalog_info.join_column + suffixes[1]
@@ -89,12 +91,12 @@ def test_join_association(small_sky_catalog, small_sky_xmatch_catalog, small_sky
         joined_row = joined_data.query(f"{left_col} == {left_id} & {right_col} == {right_id}")
         assert len(joined_row) == 1
         small_sky_col = small_sky_to_xmatch_catalog.hc_structure.catalog_info.primary_column
-        left_row = small_sky_catalog.compute().query(f"{small_sky_col}=={left_id}")
+        left_row = small_sky_compute.query(f"{small_sky_col}=={left_id}")
         for col in left_row.columns:
             assert joined_row[col + suffixes[0]].values == left_row[col].values
 
         small_sky_xmatch_col = small_sky_to_xmatch_catalog.hc_structure.catalog_info.join_column
-        right_row = small_sky_xmatch_catalog.compute().query(f"{small_sky_xmatch_col}=={right_id}")
+        right_row = small_sky_xmatch_compute.query(f"{small_sky_xmatch_col}=={right_id}")
         for col in right_row.columns:
             assert joined_row[col + suffixes[1]].values == right_row[col].values
 
@@ -115,29 +117,30 @@ def test_join_association_source_margin(
     joined_data = joined.compute()
     association_data = small_sky_to_o1source_catalog.compute()
     assert len(joined_data) == 17161
+    assert len(association_data) == 17161
+
+    assert (
+        np.sort(joined_data["id_a"].values)
+        == np.sort(
+            association_data[
+                small_sky_to_o1source_catalog.hc_structure.catalog_info.primary_column_association
+            ].values
+        )
+    ).all()
+    assert (
+        np.sort(joined_data["source_id_b"].values)
+        == np.sort(
+            association_data[
+                small_sky_to_o1source_catalog.hc_structure.catalog_info.join_column_association
+            ].values
+        )
+    ).all()
 
     for col in small_sky_catalog._ddf.columns:
         assert col + suffixes[0] in joined._ddf.columns
 
     for col in small_sky_order1_source_with_margin._ddf.columns:
         assert col + suffixes[1] in joined._ddf.columns
-
-    for _, row in association_data.iterrows():
-        left_col = small_sky_to_o1source_catalog.hc_structure.catalog_info.primary_column + suffixes[0]
-        right_col = small_sky_to_o1source_catalog.hc_structure.catalog_info.join_column + suffixes[1]
-        left_id = row[small_sky_to_o1source_catalog.hc_structure.catalog_info.primary_column_association]
-        right_id = row[small_sky_to_o1source_catalog.hc_structure.catalog_info.join_column_association]
-        joined_row = joined_data.query(f"{left_col} == {left_id} & {right_col} == {right_id}")
-        assert len(joined_row) == 131
-        small_sky_col = small_sky_to_o1source_catalog.hc_structure.catalog_info.primary_column
-        left_row = small_sky_catalog.compute().query(f"{small_sky_col}=={left_id}")
-        for col in left_row.columns:
-            assert (joined_row[col + suffixes[0]].values == left_row[col].values).all()
-
-        small_sky_xmatch_col = small_sky_to_o1source_catalog.hc_structure.catalog_info.join_column
-        right_row = small_sky_order1_source_with_margin.compute().query(f"{small_sky_xmatch_col}=={right_id}")
-        for col in right_row.columns:
-            assert (joined_row[col + suffixes[1]].values == right_row[col].values).all()
 
 
 def test_join_association_soft(small_sky_catalog, small_sky_xmatch_catalog, small_sky_to_xmatch_soft_catalog):

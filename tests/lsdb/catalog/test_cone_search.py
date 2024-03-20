@@ -1,3 +1,4 @@
+import pandas as pd
 import pytest
 from astropy.coordinates import SkyCoord
 from hipscat.pixel_math.validators import ValidatorsErrors
@@ -23,33 +24,21 @@ def test_cone_search_filters_correct_points(small_sky_order1_catalog, assert_div
 
 
 def test_cone_search_filters_correct_points_margin(
-    small_sky_order1_source_with_margin, assert_divisions_are_correct
+    small_sky_order1_source_with_margin,
+    assert_divisions_are_correct,
+    cone_search_expected,
+    cone_search_margin_expected,
 ):
     ra = -35
     dec = -55
     radius_degrees = 2
     radius = radius_degrees * 3600
-    center_coord = SkyCoord(ra, dec, unit="deg")
     cone_search_catalog = small_sky_order1_source_with_margin.cone_search(ra, dec, radius)
     assert cone_search_catalog.margin is not None
     cone_search_df = cone_search_catalog.compute()
-    for _, row in small_sky_order1_source_with_margin.compute().iterrows():
-        row_ra = row[small_sky_order1_source_with_margin.hc_structure.catalog_info.ra_column]
-        row_dec = row[small_sky_order1_source_with_margin.hc_structure.catalog_info.dec_column]
-        sep = SkyCoord(row_ra, row_dec, unit="deg").separation(center_coord)
-        if sep.degree <= radius_degrees:
-            assert len(cone_search_df.loc[cone_search_df["source_id"] == row["source_id"]]) == 1
-        else:
-            assert len(cone_search_df.loc[cone_search_df["source_id"] == row["source_id"]]) == 0
+    pd.testing.assert_frame_equal(cone_search_df, cone_search_expected, check_dtype=False)
     cone_search_margin_df = cone_search_catalog.margin.compute()
-    for _, row in small_sky_order1_source_with_margin.margin.compute().iterrows():
-        row_ra = row[small_sky_order1_source_with_margin.hc_structure.catalog_info.ra_column]
-        row_dec = row[small_sky_order1_source_with_margin.hc_structure.catalog_info.dec_column]
-        sep = SkyCoord(row_ra, row_dec, unit="deg").separation(center_coord)
-        if sep.degree <= radius_degrees:
-            assert len(cone_search_margin_df.loc[cone_search_margin_df["source_id"] == row["source_id"]]) == 1
-        else:
-            assert len(cone_search_margin_df.loc[cone_search_margin_df["source_id"] == row["source_id"]]) == 0
+    pd.testing.assert_frame_equal(cone_search_margin_df, cone_search_margin_expected, check_dtype=False)
     assert_divisions_are_correct(cone_search_catalog)
     assert_divisions_are_correct(cone_search_catalog.margin)
 
