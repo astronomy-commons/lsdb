@@ -99,8 +99,7 @@ def test_partitions_on_map_match_pixel_tree(small_sky_order1_df, small_sky_order
     kwargs = get_catalog_kwargs(small_sky_order1_catalog)
     catalog = lsdb.from_dataframe(small_sky_order1_df, margin_threshold=None, **kwargs)
     for hp_pixel, _ in catalog._ddf_pixel_map.items():
-        if hp_pixel in catalog.hc_structure.pixel_tree:
-            assert catalog.hc_structure.pixel_tree[hp_pixel].node_type == PixelNodeType.LEAF
+        assert hp_pixel in catalog.hc_structure.pixel_tree
 
 
 def test_from_dataframe_with_non_default_ra_dec_columns(small_sky_order1_df, small_sky_order1_catalog):
