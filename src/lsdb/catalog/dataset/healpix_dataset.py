@@ -255,7 +255,7 @@ class HealpixDataset(Dataset):
                 the HealpixPixel the partition is from and returns a value
             order (int | None): The HEALPix order to compute the skymap at. If None (default), will compute
                 for each partition in the catalog at their own orders
-            default_value (int | None): The value to use at pixels that aren't covered by the catalog
+            default_value (Any): The value to use at pixels that aren't covered by the catalog (default 0)
             **kwargs: Arguments to pass to the given function
 
         Returns:
@@ -289,7 +289,7 @@ class HealpixDataset(Dataset):
                 the HealpixPixel the partition is from and returns a value
             order (int | None): The HEALPix order to compute the skymap at. If None (default), will compute
                 for each partition in the catalog at their own orders
-            default_value (int | None): The value to use at pixels that aren't covered by the catalog
+            default_value (Any): The value to use at pixels that aren't covered by the catalog (default 0)
             projection (str): The map projection to use. Valid values include:
                 - moll - Molleweide projection (default)
                 - gnom - Gnomonic projection

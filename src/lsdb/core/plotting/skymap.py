@@ -31,13 +31,15 @@ def perform_inner_skymap(
     )(pixels)
 
 
-def compute_skymap(pixel_map: Dict[HealpixPixel, Any], order: int | None = None, default_value: Any = 0.0):
+def compute_skymap(
+    pixel_map: Dict[HealpixPixel, Any], order: int | None = None, default_value: Any = 0.0
+) -> np.ndarray:
     """Returns a histogram map of healpix_pixels to values.
 
     Args:
         pixel_map(Dict[HealpixPixel, Any]): A dictionary of healpix pixels and their values
-        order (int): The order to make the histogram at
-        default_value: The value to use at pixels that aren't covered by the pixel_map
+        order (int): The order to make the histogram at (default None, uses max order in pixel_map)
+        default_value: The value to use at pixels that aren't covered by the pixel_map (default 0)
     """
 
     pixels = list(pixel_map.keys())
