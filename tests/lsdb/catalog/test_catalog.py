@@ -10,6 +10,7 @@ import pytest
 from hipscat.pixel_math import HealpixPixel
 
 import lsdb
+from lsdb.dask.merge_catalog_functions import filter_by_hipscat_index_to_pixel
 
 
 def test_catalog_pixels_equals_hc_catalog_pixels(small_sky_order1_catalog, small_sky_order1_hipscat_catalog):
@@ -290,6 +291,80 @@ def test_skymap_data(small_sky_order1_catalog):
         partition = small_sky_order1_catalog.get_partition(pixel.order, pixel.pixel)
         expected_value = func(partition, pixel)
         assert skymap[pixel].compute() == expected_value
+
+
+def test_skymap_data_order(small_sky_order1_catalog):
+    def func(df, healpix):
+        return len(df) / hp.nside2pixarea(hp.order2nside(healpix.order), degrees=True)
+
+    order = 3
+
+    skymap = small_sky_order1_catalog.skymap_data(func, order=order)
+    for pixel in skymap.keys():
+        partition = small_sky_order1_catalog.get_partition(pixel.order, pixel.pixel).compute()
+        value = skymap[pixel].compute()
+        delta_order = order - pixel.order
+        expected_array_length = 1 << 2 * delta_order
+        assert len(value) == expected_array_length
+        pixels = np.arange(pixel.pixel << (2 * delta_order), (pixel.pixel + 1) << (2 * delta_order))
+        for i in range(expected_array_length):
+            p = pixels[i]
+            expected_value = func(
+                filter_by_hipscat_index_to_pixel(partition, order, p), HealpixPixel(order, p)
+            )
+            assert value[i] == expected_value
+
+
+def test_skymap_data_wrong_order(small_sky_order1_catalog):
+    def func(df, healpix):
+        return len(df) / hp.nside2pixarea(hp.order2nside(healpix.order), degrees=True)
+
+    order = 0
+
+    with pytest.raises(ValueError):
+        small_sky_order1_catalog.skymap_data(func, order)
+
+
+# pylint: disable=no-member
+def test_skymap_histogram(small_sky_order1_catalog, mocker):
+    mocker.patch("healpy.mollview")
+
+    def func(df, healpix):
+        return len(df) / hp.nside2pixarea(hp.order2nside(healpix.order), degrees=True)
+
+    pixel_map = small_sky_order1_catalog.skymap_data(func)
+    pixel_map = {pixel: value.compute() for pixel, value in pixel_map.items()}
+    max_order = max(pixel_map.keys(), key=lambda x: x.order).order
+    img = np.zeros(hp.nside2npix(hp.order2nside(max_order)))
+    for pixel, value in pixel_map.items():
+        dorder = max_order - pixel.order
+        start = pixel.pixel * (4**dorder)
+        end = (pixel.pixel + 1) * (4**dorder)
+        img_order_pixels = np.arange(start, end)
+        img[img_order_pixels] = value
+    assert (small_sky_order1_catalog.skymap_histogram(func) == img).all()
+
+
+# pylint: disable=no-member
+def test_skymap_histogram_order_default(small_sky_order1_catalog, mocker):
+    mocker.patch("healpy.mollview")
+
+    def func(df, healpix):
+        return len(df) / hp.nside2pixarea(hp.order2nside(healpix.order), degrees=True)
+
+    order = 3
+    default = -1.0
+
+    pixel_map = small_sky_order1_catalog.skymap_data(func, order)
+    pixel_map = {pixel: value.compute() for pixel, value in pixel_map.items()}
+    img = np.full(hp.nside2npix(hp.order2nside(order)), default)
+    for pixel, value in pixel_map.items():
+        dorder = order - pixel.order
+        start = pixel.pixel * (4**dorder)
+        end = (pixel.pixel + 1) * (4**dorder)
+        img_order_pixels = np.arange(start, end)
+        img[img_order_pixels] = value
+    assert (small_sky_order1_catalog.skymap_histogram(func, order, default) == img).all()
 
 
 # pylint: disable=no-member
