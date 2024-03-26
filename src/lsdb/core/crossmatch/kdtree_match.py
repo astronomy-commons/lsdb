@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import math
 from typing import Tuple
 
@@ -44,7 +46,7 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
     # pylint: disable=unused-argument
     def crossmatch(
         self,
-        n_neighbors: int = 1,
+        n_neighbors: int | None = None,
         radius_arcsec: float = 1,
         min_radius_arcsec: float = 0,
         **kwargs,
@@ -55,7 +57,8 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
         are within a threshold distance by using a K-D Tree.
 
         Args:
-            n_neighbors (int): The number of neighbors to find within each point
+            n_neighbors (int): The number of neighbors to find within each point.
+                By default, returns all the possible neighbors.
             radius_arcsec (float): The threshold distance in arcseconds beyond which neighbors are not added
             min_radius_arcsec (float): The minimum distance from which neighbors are added
 
@@ -97,7 +100,7 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
         return out
 
     def _find_crossmatch_indices(
-        self, n_neighbors: int, min_distance: float, max_distance: float
+        self, n_neighbors: int | None, min_distance: float, max_distance: float
     ) -> Tuple[npt.NDArray[np.float64], npt.NDArray[np.int64], npt.NDArray[np.int64]]:
         # calculate the cartesian coordinates of the points
         left_xyz = _lon_lat_to_xyz(
@@ -110,15 +113,11 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
         )
 
         # Make sure we don't ask for more neighbors than there are points
-        n_neighbors = min(n_neighbors, len(right_xyz))
+        n_neighbors = len(right_xyz) if n_neighbors is None else min(n_neighbors, len(right_xyz))
 
         # construct the KDTree from the right catalog
         tree = KDTree(
-            right_xyz,
-            leafsize=n_neighbors,
-            compact_nodes=True,
-            balanced_tree=True,
-            copy_data=False,
+            right_xyz, leafsize=n_neighbors, compact_nodes=True, balanced_tree=True, copy_data=False
         )
 
         # find the indices for the nearest neighbors
@@ -131,12 +130,14 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
 
         # index of the corresponding row in the left table [[0, 0, 0], [1, 1, 1], [2, 2, 2], ...]
         left_index = np.arange(left_xyz.shape[0])
+
         # We need make the shape the same as for right_index
-        if n_neighbors > 1:
-            left_index = np.stack([left_index] * n_neighbors, axis=1)
+        if n_neighbors > 1 or min_distance > 0:
+            left_index = np.stack([left_index] * right_index.shape[1], axis=1)
 
         # Infinite distance means no match
         match_mask = np.isfinite(distances)
+
         return distances[match_mask], left_index[match_mask], right_index[match_mask]
 
 
@@ -195,14 +196,10 @@ def _query_min_max_neighbors(
     # Create mask to filter neighbors that are too close
     mask = np.zeros((len(left_xyz), n_neighbors_to_request), dtype=bool)
     for i, how_many_close in enumerate(len_too_close_neighbors):
-        remaining = n_neighbors_to_request - how_many_close - n_neighbors
-        mask[i] = [False] * how_many_close + [True] * n_neighbors + [False] * remaining
+        mask[i, :how_many_close] = False
+        mask[i, how_many_close : how_many_close + n_neighbors] = True
 
-    # Filter points with mask
-    final_shape = (len(distances), n_neighbors)
-    distances = distances[mask].reshape(final_shape)
-    indices = right_index[mask].reshape(final_shape)
-
-    if n_neighbors == 1:
-        return distances.flat, indices.flat
+    # Apply mask to filter points
+    distances = np.where(mask, distances, np.inf)
+    indices = np.where(mask, right_index, -1)
     return distances, indices

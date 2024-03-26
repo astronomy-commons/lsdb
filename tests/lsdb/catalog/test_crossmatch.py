@@ -15,6 +15,7 @@ class TestCrossmatch:
         with pytest.warns(RuntimeWarning, match="Results may be inaccurate"):
             xmatched = small_sky_catalog.crossmatch(
                 small_sky_xmatch_catalog,
+                n_neighbors=1,
                 algorithm=algo,
                 radius_arcsec=0.01 * 3600,
                 require_right_margin=False,
@@ -31,6 +32,7 @@ class TestCrossmatch:
         with pytest.warns(RuntimeWarning, match="Results may be inaccurate"):
             xmatched = small_sky_catalog.crossmatch(
                 small_sky_xmatch_catalog,
+                n_neighbors=1,
                 radius_arcsec=0.005 * 3600,
                 algorithm=algo,
                 require_right_margin=False,
@@ -71,6 +73,7 @@ class TestCrossmatch:
         with pytest.warns(RuntimeWarning, match="Results may be inaccurate"):
             xmatched = small_sky_catalog.crossmatch(
                 small_sky_xmatch_catalog,
+                n_neighbors=1,
                 radius_arcsec=0.005 * 3600,
                 min_radius_arcsec=0.002 * 3600,
                 algorithm=algo,
@@ -149,6 +152,27 @@ class TestCrossmatch:
             ]
             assert len(xmatch_row) == 1
             assert xmatch_row["_dist_arcsec"].values == pytest.approx(correct_row["dist"] * 3600)
+
+    @staticmethod
+    def test_kdtree_crossmatch_all_neighbors(
+        algo, small_sky_catalog, small_sky_xmatch_catalog, xmatch_correct_2t_all_neighbors
+    ):
+        with pytest.warns(RuntimeWarning, match="Results may be inaccurate"):
+            xmatched = small_sky_catalog.crossmatch(
+                small_sky_xmatch_catalog,
+                algorithm=algo,
+                radius_arcsec=2 * 3600,
+                require_right_margin=False,
+            ).compute()
+        assert len(xmatched) == len(xmatch_correct_2t_all_neighbors)
+        for _, correct_row in xmatch_correct_2t_all_neighbors.iterrows():
+            assert correct_row["ss_id"] in xmatched["id_small_sky"].values
+            xmatch_row = xmatched[
+                (xmatched["id_small_sky"] == correct_row["ss_id"])
+                & (xmatched["id_small_sky_xmatch"] == correct_row["xmatch_id"])
+            ]
+            assert len(xmatch_row) == 1
+            assert xmatch_row["_dist_arcsec"].values == pytest.approx(correct_row["dist_arcsec"])
 
     @staticmethod
     def test_wrong_suffixes(algo, small_sky_catalog, small_sky_xmatch_catalog):
