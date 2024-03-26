@@ -11,13 +11,14 @@ import pandas as pd
 from dask.delayed import Delayed, delayed
 from hipscat.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
 from hipscat.inspection import plot_pixel_list
+from hipscat.inspection.visualize_catalog import get_projection_method
 from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.healpix_pixel_function import get_pixel_argsort
 from typing_extensions import Self
 
 from lsdb import io
 from lsdb.catalog.dataset.dataset import Dataset
-from lsdb.core.plotting.skymap import plot_skymap
+from lsdb.core.plotting.skymap import compute_skymap, perform_inner_skymap
 from lsdb.core.search.abstract_search import AbstractSearch
 from lsdb.dask.divisions import get_pixels_divisions
 from lsdb.types import DaskDFPixelMap
@@ -205,7 +206,7 @@ class HealpixDataset(Dataset):
         return non_empty_pixels, non_empty_partitions
 
     def skymap_data(
-        self, func: Callable[[pd.DataFrame, HealpixPixel], Any], **kwargs
+        self, func: Callable[[pd.DataFrame, HealpixPixel], Any], order: int | None = None, **kwargs
     ) -> Dict[HealpixPixel, Delayed]:
         """Perform a function on each partition of the catalog, returning a dict of values for each pixel.
 
@@ -213,6 +214,8 @@ class HealpixDataset(Dataset):
             func (Callable[[pd.DataFrame, HealpixPixel], Any]): A function that takes a pandas
                 DataFrame with the data in a partition, the HealpixPixel of the partition, and any other
                 keyword arguments and returns an aggregated value
+            order (int | None): The HEALPix order to compute the skymap at. If None (default), will compute
+                for each partition in the catalog at their own orders
             **kwargs: Arguments to pass to the function
 
         Returns:
@@ -220,26 +223,87 @@ class HealpixDataset(Dataset):
         """
 
         partitions = self.to_delayed()
-        results = {
-            pixel: delayed(func)(partitions[index], pixel, **kwargs)
-            for pixel, index in self._ddf_pixel_map.items()
-        }
+        if order is None:
+            results = {
+                pixel: delayed(func)(partitions[index], pixel, **kwargs)
+                for pixel, index in self._ddf_pixel_map.items()
+            }
+        else:
+            if order < self.hc_structure.pixel_tree.get_max_depth():
+                raise ValueError(
+                    f"order must be greater than or equal to max order in catalog "
+                    f"({self.hc_structure.pixel_tree.get_max_depth()})"
+                )
+            results = {
+                pixel: perform_inner_skymap(partitions[index], func, pixel, order, **kwargs)
+                for pixel, index in self._ddf_pixel_map.items()
+            }
         return results
 
-    def skymap(self, func: Callable[[pd.DataFrame, HealpixPixel], Any], **kwargs):
-        """Plot a skymap of an aggregate function applied over each partition with a Mollweide projection.
+    def skymap_histogram(
+        self,
+        func: Callable[[pd.DataFrame, HealpixPixel], Any],
+        order: int | None = None,
+        default_value: Any = 0.0,
+        **kwargs,
+    ) -> np.ndarray:
+        """Get a histogram with the result of a given function applied to the points in each HEALPix pixel of
+            a given order
 
         Args:
             func (Callable[[pd.DataFrame], HealpixPixel, Any]): A function that takes a pandas DataFrame and
                 the HealpixPixel the partition is from and returns a value
-            **kwargs: Arguments to pass to healpy.mollview function
+            order (int | None): The HEALPix order to compute the skymap at. If None (default), will compute
+                for each partition in the catalog at their own orders
+            default_value (Any): The value to use at pixels that aren't covered by the catalog (default 0)
+            **kwargs: Arguments to pass to the given function
+
+        Returns:
+            A 1-dimensional numpy array where each index i is equal to the value of the function applied to
+            the points within the HEALPix pixel with pixel number i in NESTED ordering at a specified order.
+            If no order is supplied, the order of the resulting histogram will be the highest order partition
+            in the catalog, and the function will be applied to the partitions of the catalog with the result
+            copied to all pixels if the catalog partition is at a lower order than the histogram order.
         """
 
-        smdata = self.skymap_data(func, **kwargs)
+        smdata = self.skymap_data(func, order, **kwargs)
         pixels = list(smdata.keys())
         results = dask.compute(*[smdata[pixel] for pixel in pixels])
         result_dict = {pixels[i]: results[i] for i in range(len(pixels))}
-        plot_skymap(result_dict)
+
+        return compute_skymap(result_dict, order, default_value)
+
+    def skymap(
+        self,
+        func: Callable[[pd.DataFrame, HealpixPixel], Any],
+        order: int | None = None,
+        default_value: Any = 0.0,
+        projection="moll",
+        plotting_args: Dict | None = None,
+        **kwargs,
+    ):
+        """Plot a skymap of an aggregate function applied over each partition
+
+        Args:
+            func (Callable[[pd.DataFrame], HealpixPixel, Any]): A function that takes a pandas DataFrame and
+                the HealpixPixel the partition is from and returns a value
+            order (int | None): The HEALPix order to compute the skymap at. If None (default), will compute
+                for each partition in the catalog at their own orders
+            default_value (Any): The value to use at pixels that aren't covered by the catalog (default 0)
+            projection (str): The map projection to use. Valid values include:
+                - moll - Molleweide projection (default)
+                - gnom - Gnomonic projection
+                - cart - Cartesian projection
+                - orth - Orthographic projection
+            plotting_args (dict): A dictionary of additional arguments to pass to the plotting function
+            **kwargs: Arguments to pass to the given function
+        """
+
+        img = self.skymap_histogram(func, order, default_value, **kwargs)
+        projection_method = get_projection_method(projection)
+        if plotting_args is None:
+            plotting_args = {}
+        projection_method(img, nest=True, **plotting_args)
 
     def plot_pixels(self, projection: str = "moll", **kwargs):
         """Create a visual map of the pixel density of the catalog.
