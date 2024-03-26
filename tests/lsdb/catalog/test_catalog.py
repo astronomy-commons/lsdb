@@ -378,7 +378,7 @@ def test_skymap_plot(small_sky_order1_catalog, mocker):
     pixel_map = small_sky_order1_catalog.skymap_data(func)
     pixel_map = {pixel: value.compute() for pixel, value in pixel_map.items()}
     max_order = max(pixel_map.keys(), key=lambda x: x.order).order
-    img = np.zeros(hp.nside2npix(hp.order2nside(max_order)))
+    img = np.full(hp.nside2npix(hp.order2nside(max_order)), hp.pixelfunc.UNSEEN)
     for pixel, value in pixel_map.items():
         dorder = max_order - pixel.order
         start = pixel.pixel * (4**dorder)
