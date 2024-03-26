@@ -123,15 +123,11 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
 
         # find the indices for the nearest neighbors
         # this is the cross-match calculation
-        distances, right_index = tree.query(left_xyz, k=n_neighbors, distance_upper_bound=max_distance)
-
-        # Infinite distance means no match
-        match_mask = np.isfinite(distances)
-
-        # Create a boolean mask to filter out neighbors that are too close
-        if min_distance > 0:
-            min_thresh_mask = np.asarray(distances >= min_distance, dtype=bool)
-            match_mask = match_mask & min_thresh_mask
+        distances, right_index = (
+            _query_min_max_neighbors(tree, left_xyz, right_xyz, n_neighbors, min_distance, max_distance)
+            if min_distance > 0
+            else tree.query(left_xyz, k=n_neighbors, distance_upper_bound=max_distance)
+        )
 
         # index of the corresponding row in the left table [[0, 0, 0], [1, 1, 1], [2, 2, 2], ...]
         left_index = np.arange(left_xyz.shape[0])
@@ -139,6 +135,8 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
         if n_neighbors > 1:
             left_index = np.stack([left_index] * n_neighbors, axis=1)
 
+        # Infinite distance means no match
+        match_mask = np.isfinite(distances)
         return distances[match_mask], left_index[match_mask], right_index[match_mask]
 
 
@@ -171,3 +169,40 @@ def _get_chord_distance(radius_arcsec: float) -> float:
     """
     radius_degrees = radius_arcsec / 3600.0
     return 2.0 * math.sin(math.radians(0.5 * radius_degrees))
+
+
+def _query_min_max_neighbors(
+    tree: KDTree,
+    left_xyz: npt.NDArray[np.float64],
+    right_xyz: npt.NDArray[np.float64],
+    n_neighbors: int,
+    min_distance: float,
+    max_distance: float,
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Finds `n_neighbors` within a distance range for all points in a pair of partitions"""
+    left_tree = KDTree(
+        left_xyz, leafsize=n_neighbors, compact_nodes=True, balanced_tree=True, copy_data=False
+    )
+
+    # Find the number of neighbors within the minimum distance threshold
+    too_close_neighbors = left_tree.query_ball_tree(tree, r=min_distance)
+    len_too_close_neighbors = np.asarray([len(neighbors) for neighbors in too_close_neighbors])
+
+    # Make sure we don't ask for more neighbors than there are points
+    n_neighbors_to_request = min(n_neighbors + max(len_too_close_neighbors), len(right_xyz))
+    distances, right_index = tree.query(left_xyz, k=n_neighbors_to_request, distance_upper_bound=max_distance)
+
+    # Create mask to filter neighbors that are too close
+    mask = np.zeros((len(left_xyz), n_neighbors_to_request), dtype=bool)
+    for i, how_many_close in enumerate(len_too_close_neighbors):
+        remaining = n_neighbors_to_request - how_many_close - n_neighbors
+        mask[i] = [False] * how_many_close + [True] * n_neighbors + [False] * remaining
+
+    # Filter points with mask
+    final_shape = (len(distances), n_neighbors)
+    distances = distances[mask].reshape(final_shape)
+    indices = right_index[mask].reshape(final_shape)
+
+    if n_neighbors == 1:
+        return distances.flat, indices.flat
+    return distances, indices
