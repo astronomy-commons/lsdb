@@ -46,7 +46,7 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
     # pylint: disable=unused-argument
     def crossmatch(
         self,
-        n_neighbors: int | None = None,
+        n_neighbors: int = 1,
         radius_arcsec: float = 1,
         min_radius_arcsec: float = 0,
         **kwargs,
@@ -58,7 +58,6 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
 
         Args:
             n_neighbors (int): The number of neighbors to find within each point.
-                By default, returns all the possible neighbors.
             radius_arcsec (float): The threshold distance in arcseconds beyond which neighbors are not added
             min_radius_arcsec (float): The minimum distance from which neighbors are added
 
@@ -100,7 +99,7 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
         return out
 
     def _find_crossmatch_indices(
-        self, n_neighbors: int | None, min_distance: float, max_distance: float
+        self, n_neighbors: int, min_distance: float, max_distance: float
     ) -> Tuple[npt.NDArray[np.float64], npt.NDArray[np.int64], npt.NDArray[np.int64]]:
         # calculate the cartesian coordinates of the points
         left_xyz = _lon_lat_to_xyz(
@@ -113,12 +112,10 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
         )
 
         # Make sure we don't ask for more neighbors than there are points
-        n_neighbors = len(right_xyz) if n_neighbors is None else min(n_neighbors, len(right_xyz))
+        n_neighbors = min(n_neighbors, len(right_xyz))
 
         # construct the KDTree from the right catalog
-        tree = KDTree(
-            right_xyz, leafsize=n_neighbors, compact_nodes=True, balanced_tree=True, copy_data=False
-        )
+        tree = KDTree(right_xyz, compact_nodes=True, balanced_tree=True, copy_data=False)
 
         # find the indices for the nearest neighbors
         # this is the cross-match calculation
@@ -181,23 +178,38 @@ def _query_min_max_neighbors(
     max_distance: float,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Finds `n_neighbors` within a distance range for all points in a pair of partitions"""
-    left_tree = KDTree(
-        left_xyz, leafsize=n_neighbors, compact_nodes=True, balanced_tree=True, copy_data=False
-    )
+    left_tree = KDTree(left_xyz, compact_nodes=True, balanced_tree=True, copy_data=False)
 
     # Find the number of neighbors within the minimum distance threshold
-    too_close_neighbors = left_tree.query_ball_tree(tree, r=min_distance)
-    len_too_close_neighbors = np.asarray([len(neighbors) for neighbors in too_close_neighbors])
+    len_too_close_neighbors = np.zeros(left_xyz.shape[0], dtype=np.int64)
+    left_indices_too_close = left_tree.sparse_distance_matrix(
+        tree, max_distance=min_distance, output_type="ndarray"
+    )["i"]
+    unique, counts = np.unique(left_indices_too_close, return_counts=True)
+    len_too_close_neighbors[unique] = counts
 
     # Make sure we don't ask for more neighbors than there are points
     n_neighbors_to_request = min(n_neighbors + max(len_too_close_neighbors), len(right_xyz))
     distances, right_index = tree.query(left_xyz, k=n_neighbors_to_request, distance_upper_bound=max_distance)
 
-    # Create mask to filter neighbors that are too close
+    # Create mask to filter neighbors that are too close. First we start with all false
     mask = np.zeros((len(left_xyz), n_neighbors_to_request), dtype=bool)
-    for i, how_many_close in enumerate(len_too_close_neighbors):
-        mask[i, :how_many_close] = False
-        mask[i, how_many_close : how_many_close + n_neighbors] = True
+
+    # Compute the indices of the mask that should be true e.g. for the mask [[0,0,1,1], [0,1,1,0], [1,1,0,0]]
+    # The indices of the 1s are [[0,2],[0,3],[1,1],[1,2],[2,0],[2,1]]
+    # Except numpy uses the transverse of these indices, so we want [[0,0,1,1,2,2], [2,3,1,2,0,1]]
+
+    # The first array for the indices is [0 * n_neighbors, 1 * n_neighbors, ..., len(left) * n_neighbors]
+    mask_ones_0 = np.repeat(np.arange(len_too_close_neighbors.shape[0]), n_neighbors)
+
+    # The second array of the indices is [len_too_close[0], len_too_close[0] + 1, ... len_too_close[0] + n_neighbors,
+    # repeated for each len_too_close]
+    mask_ones_1 = np.tile(np.arange(n_neighbors), len_too_close_neighbors.shape[0]) + np.repeat(
+        len_too_close_neighbors, n_neighbors
+    )
+
+    # Set the mask to one for the indices it should be one
+    mask[mask_ones_0, mask_ones_1] = True
 
     # Apply mask to filter points
     distances = np.where(mask, distances, np.inf)
