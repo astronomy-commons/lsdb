@@ -31,7 +31,7 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
         # Validate radii
         validate_radius(radius_arcsec)
         if min_radius_arcsec < 0:
-            validate_radius(min_radius_arcsec)
+            raise ValueError("The minimum radius must be non-negative")
         if radius_arcsec <= min_radius_arcsec:
             raise ValueError("Cross match maximum radius must be greater than cross match minimum radius")
         # Validate number of neighbors

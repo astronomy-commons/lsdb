@@ -25,7 +25,7 @@ def kdtree_crossmatch(small_sky_catalog, small_sky_order1_source_with_margin):
 def test_kdtree_radius_invalid(kdtree_crossmatch):
     with pytest.raises(ValueError, match="radius must be positive"):
         kdtree_crossmatch.validate(radius_arcsec=-36)
-    with pytest.raises(ValueError, match="radius must be positive"):
+    with pytest.raises(ValueError, match="radius must be non-negative"):
         kdtree_crossmatch.validate(min_radius_arcsec=-36)
 
     with pytest.raises(ValueError, match="n_neighbors"):
