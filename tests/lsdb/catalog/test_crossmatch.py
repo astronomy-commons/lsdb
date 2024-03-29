@@ -15,7 +15,6 @@ class TestCrossmatch:
         with pytest.warns(RuntimeWarning, match="Results may be inaccurate"):
             xmatched = small_sky_catalog.crossmatch(
                 small_sky_xmatch_catalog,
-                n_neighbors=1,
                 algorithm=algo,
                 radius_arcsec=0.01 * 3600,
                 require_right_margin=False,
@@ -32,7 +31,6 @@ class TestCrossmatch:
         with pytest.warns(RuntimeWarning, match="Results may be inaccurate"):
             xmatched = small_sky_catalog.crossmatch(
                 small_sky_xmatch_catalog,
-                n_neighbors=1,
                 radius_arcsec=0.005 * 3600,
                 algorithm=algo,
                 require_right_margin=False,
@@ -73,7 +71,6 @@ class TestCrossmatch:
         with pytest.warns(RuntimeWarning, match="Results may be inaccurate"):
             xmatched = small_sky_catalog.crossmatch(
                 small_sky_xmatch_catalog,
-                n_neighbors=1,
                 radius_arcsec=0.005 * 3600,
                 min_radius_arcsec=0.002 * 3600,
                 algorithm=algo,
@@ -161,7 +158,7 @@ class TestCrossmatch:
 
     @staticmethod
     def test_self_crossmatch(algo, small_sky_catalog, small_sky_dir):
-        # Duplicate catalog, otherwise we will have duplicate labels
+        # Read a second small sky catalog to not have duplicate labels
         small_sky_catalog_2 = lsdb.read_hipscat(small_sky_dir)
         small_sky_catalog_2.hc_structure.catalog_name = "small_sky_2"
         xmatched = small_sky_catalog.crossmatch(
@@ -173,6 +170,24 @@ class TestCrossmatch:
         ).compute()
         assert len(xmatched) == len(small_sky_catalog.compute())
         assert all(xmatched["_dist_arcsec"] == 0)
+
+    @staticmethod
+    def test_crossmatch_more_neighbors_than_points_available(
+        algo, small_sky_catalog, small_sky_xmatch_catalog
+    ):
+        # The small_sky_xmatch catalog has 3 partitions (2 of length 41 and 1 of length 29).
+        # Let's use n_neighbors above that to request more neighbors than there are points available.
+        with pytest.warns(RuntimeWarning, match="Results may be inaccurate"):
+            xmatched = small_sky_catalog.crossmatch(
+                small_sky_xmatch_catalog,
+                n_neighbors=50,
+                min_radius_arcsec=0.5 * 3600,
+                radius_arcsec=2 * 3600,
+                algorithm=algo,
+                require_right_margin=False,
+            ).compute()
+        assert len(xmatched) == 72
+        assert all(xmatched.groupby("id_small_sky").size()) <= 50
 
     @staticmethod
     def test_wrong_suffixes(algo, small_sky_catalog, small_sky_xmatch_catalog):

@@ -214,6 +214,9 @@ def _query_min_max_neighbors(
     mask_ones_1 = np.tile(np.arange(n_neighbors), len_too_close_neighbors.shape[0]) + np.repeat(
         len_too_close_neighbors, n_neighbors
     )
+    # If there are fewer points than those requested, clip indices
+    if n_neighbors + max(len_too_close_neighbors) > len(right_xyz):
+        mask_ones_1 = np.clip(mask_ones_1, None, len(right_xyz) - 1)
 
     # Set the mask to one for the indices it should be one
     mask[mask_ones_0, mask_ones_1] = True
@@ -221,4 +224,5 @@ def _query_min_max_neighbors(
     # Apply mask to filter points
     distances = np.where(mask, distances, np.inf)
     indices = np.where(mask, right_index, -1)
+
     return distances, indices
