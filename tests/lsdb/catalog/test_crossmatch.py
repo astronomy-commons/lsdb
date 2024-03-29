@@ -160,6 +160,21 @@ class TestCrossmatch:
             assert xmatch_row["_dist_arcsec"].values == pytest.approx(correct_row["dist"] * 3600)
 
     @staticmethod
+    def test_self_crossmatch(algo, small_sky_catalog, small_sky_dir):
+        # Duplicate catalog, otherwise we will have duplicate labels
+        small_sky_catalog_2 = lsdb.read_hipscat(small_sky_dir)
+        small_sky_catalog_2.hc_structure.catalog_name = "small_sky_2"
+        xmatched = small_sky_catalog.crossmatch(
+            small_sky_catalog_2,
+            min_radius_arcsec=0,
+            radius_arcsec=0.005 * 3600,
+            algorithm=algo,
+            require_right_margin=False,
+        ).compute()
+        assert len(xmatched) == len(small_sky_catalog.compute())
+        assert all(xmatched["_dist_arcsec"] == 0)
+
+    @staticmethod
     def test_wrong_suffixes(algo, small_sky_catalog, small_sky_xmatch_catalog):
         with pytest.raises(ValueError):
             small_sky_catalog.crossmatch(small_sky_xmatch_catalog, suffixes=("wrong",), algorithm=algo)
