@@ -84,30 +84,7 @@ class TestCrossmatch:
             assert correct_row["ss_id"] in xmatched["id_small_sky"].values
             xmatch_row = xmatched[xmatched["id_small_sky"] == correct_row["ss_id"]]
             assert xmatch_row["id_small_sky_xmatch"].values == correct_row["xmatch_id"]
-            assert xmatch_row["_dist_arcsec"].values == pytest.approx(correct_row["dist_arcsec"])
-
-    @staticmethod
-    def test_kdtree_crossmatch_min_thresh_multiple_neighbors(
-        algo, small_sky_catalog, small_sky_xmatch_catalog, xmatch_correct_05_2_3n
-    ):
-        with pytest.warns(RuntimeWarning, match="Results may be inaccurate"):
-            xmatched = small_sky_catalog.crossmatch(
-                small_sky_xmatch_catalog,
-                n_neighbors=3,
-                radius_arcsec=2 * 3600,
-                min_radius_arcsec=0.5 * 3600,
-                algorithm=algo,
-                require_right_margin=False,
-            ).compute()
-        assert len(xmatched) == len(xmatch_correct_05_2_3n)
-        for _, correct_row in xmatch_correct_05_2_3n.iterrows():
-            assert correct_row["ss_id"] in xmatched["id_small_sky"].values
-            xmatch_row = xmatched[
-                (xmatched["id_small_sky"] == correct_row["ss_id"])
-                & (xmatched["id_small_sky_xmatch"] == correct_row["xmatch_id"])
-            ]
-            assert len(xmatch_row) == 1
-            assert xmatch_row["_dist_arcsec"].values == pytest.approx(correct_row["dist_arcsec"])
+            assert xmatch_row["_dist_arcsec"].values == pytest.approx(correct_row["dist"] * 3600)
 
     @staticmethod
     def test_kdtree_crossmatch_multiple_neighbors_margin(
@@ -121,6 +98,35 @@ class TestCrossmatch:
         ).compute()
         assert len(xmatched) == len(xmatch_correct_3n_2t)
         for _, correct_row in xmatch_correct_3n_2t.iterrows():
+            assert correct_row["ss_id"] in xmatched["id_small_sky"].values
+            xmatch_row = xmatched[
+                (xmatched["id_small_sky"] == correct_row["ss_id"])
+                & (xmatched["id_small_sky_xmatch"] == correct_row["xmatch_id"])
+            ]
+            assert len(xmatch_row) == 1
+            assert xmatch_row["_dist_arcsec"].values == pytest.approx(correct_row["dist"] * 3600)
+
+    @staticmethod
+    def test_kdtree_crossmatch_min_thresh_multiple_neighbors_margin(
+        algo,
+        small_sky_catalog,
+        small_sky_xmatch_dir,
+        small_sky_xmatch_margin_catalog,
+        xmatch_correct_05_2_3n_margin,
+    ):
+        small_sky_xmatch_catalog = lsdb.read_hipscat(
+            small_sky_xmatch_dir, margin_cache=small_sky_xmatch_margin_catalog
+        )
+        xmatched = small_sky_catalog.crossmatch(
+            small_sky_xmatch_catalog,
+            n_neighbors=3,
+            radius_arcsec=2 * 3600,
+            min_radius_arcsec=0.5 * 3600,
+            algorithm=algo,
+            require_right_margin=False,
+        ).compute()
+        assert len(xmatched) == len(xmatch_correct_05_2_3n_margin)
+        for _, correct_row in xmatch_correct_05_2_3n_margin.iterrows():
             assert correct_row["ss_id"] in xmatched["id_small_sky"].values
             xmatch_row = xmatched[
                 (xmatched["id_small_sky"] == correct_row["ss_id"])

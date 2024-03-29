@@ -28,7 +28,7 @@ SMALL_SKY_ORDER1_CSV = "small_sky_order1.csv"
 XMATCH_CORRECT_FILE = "xmatch_correct.csv"
 XMATCH_CORRECT_005_FILE = "xmatch_correct_0_005.csv"
 XMATCH_CORRECT_002_005_FILE = "xmatch_correct_002_005.csv"
-XMATCH_CORRECT_05_2_3N_FILE = "xmatch_correct_05_2_3n.csv"
+XMATCH_CORRECT_05_2_3N_MARGIN_FILE = "xmatch_correct_05_2_3n_margin.csv"
 XMATCH_CORRECT_2T_ALL_NEIGHBORS_FILE = "xmatch_correct_2t_all_neighbors.csv"
 XMATCH_CORRECT_3N_2T_FILE = "xmatch_correct_3n_2t.csv"
 XMATCH_CORRECT_3N_2T_NO_MARGIN_FILE = "xmatch_correct_3n_2t_no_margin.csv"
@@ -223,8 +223,8 @@ def xmatch_correct_002_005(xmatch_expected_dir):
 
 
 @pytest.fixture
-def xmatch_correct_05_2_3n(xmatch_expected_dir):
-    return pd.read_csv(os.path.join(xmatch_expected_dir, XMATCH_CORRECT_05_2_3N_FILE))
+def xmatch_correct_05_2_3n_margin(xmatch_expected_dir):
+    return pd.read_csv(os.path.join(xmatch_expected_dir, XMATCH_CORRECT_05_2_3N_MARGIN_FILE))
 
 
 @pytest.fixture
