@@ -9,3 +9,4 @@ we encourage you to open an issue on the
 
     Installing LSDB <gettingstarted/installation>
     Quickstart Guide <gettingstarted/quickstart>
+    Contribution Guide <gettingstarted/contributing>
