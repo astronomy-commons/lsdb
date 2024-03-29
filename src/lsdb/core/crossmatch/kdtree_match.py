@@ -28,9 +28,13 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
         **kwargs,
     ):
         super().validate()
+        # Validate radii
         validate_radius(radius_arcsec)
         if min_radius_arcsec < 0:
             validate_radius(min_radius_arcsec)
+        if radius_arcsec <= min_radius_arcsec:
+            raise ValueError("Cross match maximum radius must be greater than cross match minimum radius")
+        # Validate number of neighbors
         if n_neighbors < 1:
             raise ValueError("n_neighbors must be greater than 1")
         # Check that the margin exists and has a compatible radius.
@@ -40,8 +44,6 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
         else:
             if self.right_margin_hc_structure.catalog_info.margin_threshold < radius_arcsec:
                 raise ValueError("Cross match radius is greater than margin threshold")
-            if self.right_margin_hc_structure.catalog_info.margin_threshold < min_radius_arcsec:
-                raise ValueError("Cross match minimum radius is greater than margin threshold")
 
     # pylint: disable=unused-argument
     def crossmatch(
@@ -182,6 +184,11 @@ def _query_min_max_neighbors(
 
     # Find the number of neighbors within the minimum distance threshold
     len_too_close_neighbors = np.zeros(left_xyz.shape[0], dtype=np.int64)
+    # The sparse distance matrix is a dictionary of keys. It contains the pairs of neighbors
+    # and their respective distances, in the form of [i,j,distance], i and j being the indices
+    # of the left and right partitions, respectively. Accessing "i" we obtain all the indices
+    # of the points in the left partition with a match in the right partition, for the specified
+    # minimum distance. These are the neighbors that are too close.
     left_indices_too_close = left_tree.sparse_distance_matrix(
         tree, max_distance=min_distance, output_type="ndarray"
     )["i"]
@@ -202,8 +209,8 @@ def _query_min_max_neighbors(
     # The first array for the indices is [0 * n_neighbors, 1 * n_neighbors, ..., len(left) * n_neighbors]
     mask_ones_0 = np.repeat(np.arange(len_too_close_neighbors.shape[0]), n_neighbors)
 
-    # The second array of the indices is [len_too_close[0], len_too_close[0] + 1, ... len_too_close[0] + n_neighbors,
-    # repeated for each len_too_close]
+    # The second array of the indices is [len_too_close[0], len_too_close[0] + 1, ... len_too_close[0]
+    # + n_neighbors, repeated for each len_too_close]
     mask_ones_1 = np.tile(np.arange(n_neighbors), len_too_close_neighbors.shape[0]) + np.repeat(
         len_too_close_neighbors, n_neighbors
     )

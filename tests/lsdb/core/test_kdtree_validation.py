@@ -31,10 +31,10 @@ def test_kdtree_radius_invalid(kdtree_crossmatch):
     with pytest.raises(ValueError, match="n_neighbors"):
         kdtree_crossmatch.validate(n_neighbors=0)
 
+    with pytest.raises(ValueError, match="maximum radius must be greater than"):
+        kdtree_crossmatch.validate(min_radius_arcsec=2, radius_arcsec=1)
     with pytest.raises(ValueError, match="Cross match radius is greater"):
-        kdtree_crossmatch.validate(radius_arcsec=10 * 3600)
-    with pytest.raises(ValueError, match="Cross match minimum radius is greater"):
-        kdtree_crossmatch.validate(min_radius_arcsec=10 * 3600)
+        kdtree_crossmatch.validate(radius_arcsec=3 * 3600)
 
 
 def test_kdtree_no_margin(kdtree_crossmatch):
