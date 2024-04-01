@@ -41,7 +41,7 @@ To install the package and a minimum number of dependencies you can run:
     python -m pip install pytest # to validate package installation
 
 In alternative, you can execute the `setup_dev` script which installs all the additional requirements
-to setup a development environment. Read more about contributing to LSDB in our :doc:`Quickstart Guide <quickstart>`.
+to setup a development environment. Read more about contributing to LSDB in our :doc:`Contribution Guide <contributing>`.
 
 .. code-block:: bash
 
