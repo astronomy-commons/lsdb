@@ -149,8 +149,12 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
         match_mask = np.isfinite(distances)
 
         if keep_non_matches:
-            neighbors_match_mask = np.ones(match_mask.shape[0], dtype=bool)
-            match_mask = match_mask | neighbors_match_mask
+            if n_neighbors > 1:
+                first_match_mask = np.array([1] + [0] * (right_index.shape[1] - 1), dtype=bool)
+                first_match_mask = np.tile(first_match_mask, (right_index.shape[0], 1))
+            else:
+                first_match_mask = np.ones(match_mask.shape[0], dtype=bool)
+            match_mask = match_mask | first_match_mask
 
         return distances[match_mask], left_index[match_mask], right_index[match_mask]
 
