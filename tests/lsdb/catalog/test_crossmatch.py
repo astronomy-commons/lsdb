@@ -65,6 +65,25 @@ class TestCrossmatch:
             assert xmatch_row["_dist_arcsec"].values == pytest.approx(correct_row["dist"] * 3600)
 
     @staticmethod
+    def test_kdtree_crossmatch_min_thresh(
+        algo, small_sky_catalog, small_sky_xmatch_catalog, xmatch_correct_002_005
+    ):
+        with pytest.warns(RuntimeWarning, match="Results may be inaccurate"):
+            xmatched = small_sky_catalog.crossmatch(
+                small_sky_xmatch_catalog,
+                radius_arcsec=0.005 * 3600,
+                min_radius_arcsec=0.002 * 3600,
+                algorithm=algo,
+                require_right_margin=False,
+            ).compute()
+        assert len(xmatched) == len(xmatch_correct_002_005)
+        for _, correct_row in xmatch_correct_002_005.iterrows():
+            assert correct_row["ss_id"] in xmatched["id_small_sky"].values
+            xmatch_row = xmatched[xmatched["id_small_sky"] == correct_row["ss_id"]]
+            assert xmatch_row["id_small_sky_xmatch"].values == correct_row["xmatch_id"]
+            assert xmatch_row["_dist_arcsec"].values == pytest.approx(correct_row["dist"] * 3600)
+
+    @staticmethod
     def test_kdtree_crossmatch_multiple_neighbors_margin(
         algo, small_sky_catalog, small_sky_xmatch_dir, small_sky_xmatch_margin_catalog, xmatch_correct_3n_2t
     ):
@@ -76,6 +95,35 @@ class TestCrossmatch:
         ).compute()
         assert len(xmatched) == len(xmatch_correct_3n_2t)
         for _, correct_row in xmatch_correct_3n_2t.iterrows():
+            assert correct_row["ss_id"] in xmatched["id_small_sky"].values
+            xmatch_row = xmatched[
+                (xmatched["id_small_sky"] == correct_row["ss_id"])
+                & (xmatched["id_small_sky_xmatch"] == correct_row["xmatch_id"])
+            ]
+            assert len(xmatch_row) == 1
+            assert xmatch_row["_dist_arcsec"].values == pytest.approx(correct_row["dist"] * 3600)
+
+    @staticmethod
+    def test_kdtree_crossmatch_min_thresh_multiple_neighbors_margin(
+        algo,
+        small_sky_catalog,
+        small_sky_xmatch_dir,
+        small_sky_xmatch_margin_catalog,
+        xmatch_correct_05_2_3n_margin,
+    ):
+        small_sky_xmatch_catalog = lsdb.read_hipscat(
+            small_sky_xmatch_dir, margin_cache=small_sky_xmatch_margin_catalog
+        )
+        xmatched = small_sky_catalog.crossmatch(
+            small_sky_xmatch_catalog,
+            n_neighbors=3,
+            radius_arcsec=2 * 3600,
+            min_radius_arcsec=0.5 * 3600,
+            algorithm=algo,
+            require_right_margin=False,
+        ).compute()
+        assert len(xmatched) == len(xmatch_correct_05_2_3n_margin)
+        for _, correct_row in xmatch_correct_05_2_3n_margin.iterrows():
             assert correct_row["ss_id"] in xmatched["id_small_sky"].values
             xmatch_row = xmatched[
                 (xmatched["id_small_sky"] == correct_row["ss_id"])
@@ -107,6 +155,58 @@ class TestCrossmatch:
             ]
             assert len(xmatch_row) == 1
             assert xmatch_row["_dist_arcsec"].values == pytest.approx(correct_row["dist"] * 3600)
+
+    @staticmethod
+    def test_crossmatch_keep_non_matches(
+        algo, small_sky_catalog, small_sky_xmatch_dir, small_sky_xmatch_catalog
+    ):
+
+
+        # with pytest.warns(RuntimeWarning, match="Results may be inaccurate"):
+        xmatched = small_sky_catalog.crossmatch(
+            small_sky_xmatch_catalog,
+            algorithm=algo,
+            n_neighbors=3,
+            min_radius_arcsec=0.5 * 3600,
+            radius_arcsec=2 * 3600,
+            require_right_margin=False,
+            keep_non_matches=True,
+        ).compute()
+        a = xmatched.sort_values("id_small_sky")
+        assert xmatched != None
+
+    @staticmethod
+    def test_self_crossmatch(algo, small_sky_catalog, small_sky_dir):
+        # Read a second small sky catalog to not have duplicate labels
+        small_sky_catalog_2 = lsdb.read_hipscat(small_sky_dir)
+        small_sky_catalog_2.hc_structure.catalog_name = "small_sky_2"
+        xmatched = small_sky_catalog.crossmatch(
+            small_sky_catalog_2,
+            min_radius_arcsec=0,
+            radius_arcsec=0.005 * 3600,
+            algorithm=algo,
+            require_right_margin=False,
+        ).compute()
+        assert len(xmatched) == len(small_sky_catalog.compute())
+        assert all(xmatched["_dist_arcsec"] == 0)
+
+    @staticmethod
+    def test_crossmatch_more_neighbors_than_points_available(
+        algo, small_sky_catalog, small_sky_xmatch_catalog
+    ):
+        # The small_sky_xmatch catalog has 3 partitions (2 of length 41 and 1 of length 29).
+        # Let's use n_neighbors above that to request more neighbors than there are points available.
+        with pytest.warns(RuntimeWarning, match="Results may be inaccurate"):
+            xmatched = small_sky_catalog.crossmatch(
+                small_sky_xmatch_catalog,
+                n_neighbors=50,
+                min_radius_arcsec=0.5 * 3600,
+                radius_arcsec=2 * 3600,
+                algorithm=algo,
+                require_right_margin=False,
+            ).compute()
+        assert len(xmatched) == 72
+        assert all(xmatched.groupby("id_small_sky").size()) <= 50
 
     @staticmethod
     def test_wrong_suffixes(algo, small_sky_catalog, small_sky_xmatch_catalog):
