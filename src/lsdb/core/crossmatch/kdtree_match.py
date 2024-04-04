@@ -229,6 +229,9 @@ def _query_min_max_neighbors(
     # Make sure we don't ask for more neighbors than there are points
     n_neighbors_to_request = min(n_neighbors + max(len_too_close_neighbors), len(right_xyz))
     distances, right_index = tree.query(left_xyz, k=n_neighbors_to_request, distance_upper_bound=max_distance)
+    if n_neighbors_to_request == 1:
+        distances = np.array([distances,]).T
+        right_index = np.array([right_index,]).T
 
     out_distances = np.full((len(left_xyz), n_neighbors), fill_value=np.inf)
     out_indexes = np.full((len(left_xyz), n_neighbors), fill_value=len(right_xyz), dtype=np.int64)
