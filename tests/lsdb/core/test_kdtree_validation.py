@@ -1,13 +1,13 @@
 """Tests on dataframe and argument validation on the default KD Tree crossmatch."""
-
 import pytest
 
+from lsdb.core.crossmatch.bounded_kdtree_match import BoundedKdTreeCrossmatch
 from lsdb.core.crossmatch.kdtree_match import KdTreeCrossmatch
 
 
 @pytest.fixture
-def kdtree_crossmatch(small_sky_catalog, small_sky_order1_source_with_margin):
-    algo = KdTreeCrossmatch(
+def kdtree_args(small_sky_catalog, small_sky_order1_source_with_margin):
+    return (
         small_sky_catalog._ddf,
         small_sky_order1_source_with_margin._ddf,
         0,
@@ -19,22 +19,32 @@ def kdtree_crossmatch(small_sky_catalog, small_sky_order1_source_with_margin):
         small_sky_order1_source_with_margin.margin.hc_structure,
         ("_a", "_b"),
     )
-    return algo
+
+
+@pytest.fixture
+def kdtree_crossmatch(kdtree_args):
+    return KdTreeCrossmatch(*kdtree_args)
+
+
+@pytest.fixture
+def bounded_kdtree_crossmatch(kdtree_args):
+    return BoundedKdTreeCrossmatch(*kdtree_args)
 
 
 def test_kdtree_radius_invalid(kdtree_crossmatch):
     with pytest.raises(ValueError, match="radius must be positive"):
         kdtree_crossmatch.validate(radius_arcsec=-36)
-    with pytest.raises(ValueError, match="radius must be non-negative"):
-        kdtree_crossmatch.validate(min_radius_arcsec=-36)
-
     with pytest.raises(ValueError, match="n_neighbors"):
         kdtree_crossmatch.validate(n_neighbors=0)
-
-    with pytest.raises(ValueError, match="maximum radius must be greater than"):
-        kdtree_crossmatch.validate(min_radius_arcsec=2, radius_arcsec=1)
     with pytest.raises(ValueError, match="Cross match radius is greater"):
         kdtree_crossmatch.validate(radius_arcsec=3 * 3600)
+
+
+def test_bounded_kdtree_radius_invalid(bounded_kdtree_crossmatch):
+    with pytest.raises(ValueError, match="radius must be non-negative"):
+        bounded_kdtree_crossmatch.validate(min_radius_arcsec=-36)
+    with pytest.raises(ValueError, match="maximum radius must be greater than"):
+        bounded_kdtree_crossmatch.validate(min_radius_arcsec=2, radius_arcsec=1)
 
 
 def test_kdtree_no_margin(kdtree_crossmatch):
