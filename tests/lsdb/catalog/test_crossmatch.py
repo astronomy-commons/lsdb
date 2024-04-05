@@ -110,6 +110,33 @@ class TestCrossmatch:
             assert xmatch_row["_dist_arcsec"].values == pytest.approx(correct_row["dist"] * 3600)
 
     @staticmethod
+    def test_crossmatch_how_left(
+        algo, small_sky_catalog, small_sky_xmatch_dir, small_sky_xmatch_margin_catalog, xmatch_correct_005
+    ):
+        small_sky_xmatch_catalog = lsdb.read_hipscat(
+            small_sky_xmatch_dir, margin_cache=small_sky_xmatch_margin_catalog
+        )
+        xmatched = small_sky_catalog.crossmatch(
+            small_sky_xmatch_catalog,
+            n_neighbors=1,
+            radius_arcsec=0.005 * 3600,
+            how="left",
+            algorithm=algo,
+            require_right_margin=False,
+        ).compute()
+        # The catalog resulting from the left join has the same size of the left catalog
+        assert small_sky_catalog.hc_structure.catalog_info.total_rows == len(xmatched)
+        # Matches are equivalent
+        non_match_cond = xmatched["_dist_arcsec"].isna()
+        matches = xmatched[~non_match_cond]
+        assert np.array_equal(np.sort(xmatch_correct_005["ss_id"]), np.sort(matches["id_small_sky"]))
+        # All matches are within the specified distance
+        assert np.all(matches["_dist_arcsec"] <= 0.005 * 3600)
+        # There is only one row per non-match object
+        non_matches = xmatched[non_match_cond]
+        assert not np.any(non_matches["id_small_sky"].duplicated())
+
+    @staticmethod
     def test_wrong_suffixes(algo, small_sky_catalog, small_sky_xmatch_catalog):
         with pytest.raises(ValueError):
             small_sky_catalog.crossmatch(small_sky_xmatch_catalog, suffixes=("wrong",), algorithm=algo)
@@ -218,6 +245,45 @@ class TestBoundedCrossmatch:
         ).compute()
         assert len(xmatched) == len(small_sky_catalog.compute())
         assert all(xmatched["_dist_arcsec"] == 0)
+
+    @staticmethod
+    def test_crossmatch_min_thresh_multiple_neighbors_left_strategy(
+        algo,
+        small_sky_catalog,
+        small_sky_xmatch_dir,
+        small_sky_xmatch_margin_catalog,
+        xmatch_correct_05_2_3n_margin,
+    ):
+        small_sky_xmatch_catalog = lsdb.read_hipscat(
+            small_sky_xmatch_dir, margin_cache=small_sky_xmatch_margin_catalog
+        )
+        xmatched = small_sky_catalog.crossmatch(
+            small_sky_xmatch_catalog,
+            n_neighbors=3,
+            min_radius_arcsec=0.5 * 3600,
+            radius_arcsec=2 * 3600,
+            how="left",
+            require_right_margin=False,
+            algorithm=algo,
+        ).compute()
+        # Matches are equivalent
+        non_match_cond = xmatched["_dist_arcsec"].isna()
+        matches = xmatched[~non_match_cond]
+        assert np.array_equal(
+            np.sort(xmatch_correct_05_2_3n_margin["ss_id"]), np.sort(matches["id_small_sky"])
+        )
+        # All matches are within the specified distance
+        assert np.all(matches["_dist_arcsec"] >= 0.5 * 3600)
+        assert np.all(matches["_dist_arcsec"] <= 2 * 3600)
+        # There is only one row per non-match object
+        non_matches = xmatched[non_match_cond]
+        assert not np.any(non_matches["id_small_sky"].duplicated())
+        # The length of the resulting catalog corresponds to the number of
+        # unique match IDs plus the number of non matches
+        unique_matches = np.unique(matches["id_small_sky"])
+        assert small_sky_catalog.hc_structure.catalog_info.total_rows == len(unique_matches) + len(
+            non_matches
+        )
 
 
 # pylint: disable=too-few-public-methods
