@@ -22,7 +22,8 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
         self,
         n_neighbors: int = 1,
         radius_arcsec: float = 1,
-        require_right_margin=True,
+        require_right_margin: bool = True,
+        how: str = "inner",
         **kwargs,
     ):
         super().validate()
@@ -38,12 +39,15 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
         else:
             if self.right_margin_hc_structure.catalog_info.margin_threshold < radius_arcsec:
                 raise ValueError("Cross match radius is greater than margin threshold")
+        if how not in ["inner", "left"]:
+            raise ValueError("The cross match strategy must be 'inner' or 'left'")
 
     # pylint: disable=unused-argument
     def crossmatch(
         self,
         n_neighbors: int = 1,
         radius_arcsec: float = 1,
+        how: str = "inner",
         **kwargs,
     ) -> pd.DataFrame:
         """Perform a cross-match between the data from two HEALPix pixels
@@ -54,6 +58,9 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
         Args:
             n_neighbors (int): The number of neighbors to find within each point.
             radius_arcsec (float): The threshold distance in arcseconds beyond which neighbors are not added
+            how (bool): The merge strategy. If "inner", only the points from the left catalog that have
+                matches are kept. If "left", points with matches and non-matches are kept.
+                Defaults to "inner".
 
         Returns:
             A DataFrame from the left and right tables merged with one row for each pair of
@@ -67,10 +74,10 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
         left_xyz, right_xyz = self._get_point_coordinates()
         # get matching indices for cross-matched rows
         chord_distances, left_idx, right_idx = _find_crossmatch_indices(
-            left_xyz, right_xyz, n_neighbors=n_neighbors, max_distance=max_d_chord
+            left_xyz, right_xyz, n_neighbors=n_neighbors, max_distance=max_d_chord, how=how
         )
         arc_distances = np.degrees(2.0 * np.arcsin(0.5 * chord_distances)) * 3600
-        return self._create_crossmatch_df(left_idx, right_idx, arc_distances)
+        return self._create_crossmatch_df(left_idx, right_idx, arc_distances, how)
 
     def _get_point_coordinates(self) -> Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
         left_xyz = _lon_lat_to_xyz(
@@ -88,22 +95,39 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
         left_idx: npt.NDArray[np.int64],
         right_idx: npt.NDArray[np.int64],
         arc_distances: npt.NDArray[np.float64],
+        how: str,
     ) -> pd.DataFrame:
         # rename columns so no same names during merging
         self._rename_columns_with_suffix(self.left, self.suffixes[0])
         self._rename_columns_with_suffix(self.right, self.suffixes[1])
-        # concat dataframes together
+
+        # Get the indices for the left part of the cross-match
         self.left.index.name = HIPSCAT_ID_COLUMN
         left_join_part = self.left.iloc[left_idx].reset_index()
-        right_join_part = self.right.iloc[right_idx].reset_index(drop=True)
-        out = pd.concat(
-            [
-                left_join_part,
-                right_join_part,
-            ],
-            axis=1,
-        )
+
+        # For the right part we need to decide if we keep the non-matches.
+        # If we do, first we get the rows for the valid matches and set their
+        # cross-match distance column. Then we fill out the remaining rows for
+        # the non-matches with empty (nan) data.
+
+        # First, get the points from the right that are matches. They are matches
+        # if the index to the right partition is smaller than the length of the
+        # partition and if it is greater than -1.
+        match_cond = np.where(np.logical_and(right_idx < len(self.right), right_idx > -1))
+        right_join_part = self.right.iloc[right_idx[match_cond]].reset_index(drop=True)
+
+        # For the valid rows, add the extra distance column.
+        arc_distances = arc_distances[~np.isnan(arc_distances)]
+        extra_columns = pd.DataFrame({"_dist_arcsec": pd.Series(arc_distances)})
+        self._append_extra_columns(right_join_part, extra_columns)
+
+        if how == "left":
+            full_df = pd.DataFrame(np.nan, index=np.arange(len(right_idx)), columns=right_join_part.columns)
+            full_df.iloc[match_cond] = right_join_part.values
+            right_join_part = full_df.reset_index(drop=True)
+
+        # Concatenate the left and right parts, and set the index.
+        out = pd.concat([left_join_part, right_join_part], axis=1)
         out.set_index(HIPSCAT_ID_COLUMN, inplace=True)
-        extra_columns = pd.DataFrame({"_dist_arcsec": pd.Series(arc_distances, index=out.index)})
-        self._append_extra_columns(out, extra_columns)
+
         return out

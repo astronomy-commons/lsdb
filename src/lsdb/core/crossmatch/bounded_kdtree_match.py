@@ -15,10 +15,11 @@ class BoundedKdTreeCrossmatch(KdTreeCrossmatch):
         n_neighbors: int = 1,
         radius_arcsec: float = 1,
         require_right_margin: bool = True,
+        how: str = "inner",
         min_radius_arcsec: float = 0,
         **kwargs,
     ):
-        super().validate(n_neighbors, radius_arcsec, require_right_margin)
+        super().validate(n_neighbors, radius_arcsec, require_right_margin, how, **kwargs)
         if min_radius_arcsec < 0:
             raise ValueError("The minimum radius must be non-negative")
         if radius_arcsec <= min_radius_arcsec:
@@ -28,6 +29,7 @@ class BoundedKdTreeCrossmatch(KdTreeCrossmatch):
         self,
         n_neighbors: int = 1,
         radius_arcsec: float = 1,
+        how: str = "inner",
         min_radius_arcsec: float = 0,
         **kwargs,
     ) -> pd.DataFrame:
@@ -40,6 +42,8 @@ class BoundedKdTreeCrossmatch(KdTreeCrossmatch):
             n_neighbors (int): The number of neighbors to find within each point.
             radius_arcsec (float): The threshold distance in arcseconds beyond which neighbors are not added
             min_radius_arcsec (float): The minimum distance from which neighbors are added
+            how (bool): The merge strategy. If "inner", only the points from the left catalog that have
+                matches are kept. If "left", points with non-matches are also kept. Defaults to "inner".
 
         Returns:
             A DataFrame from the left and right tables merged with one row for each pair of
@@ -54,7 +58,12 @@ class BoundedKdTreeCrossmatch(KdTreeCrossmatch):
         left_xyz, right_xyz = self._get_point_coordinates()
         # get matching indices for cross-matched rows
         chord_distances, left_idx, right_idx = _find_crossmatch_indices(
-            left_xyz, right_xyz, n_neighbors=n_neighbors, min_distance=min_d_chord, max_distance=max_d_chord
+            left_xyz,
+            right_xyz,
+            n_neighbors=n_neighbors,
+            min_distance=min_d_chord,
+            max_distance=max_d_chord,
+            how=how,
         )
         arc_distances = np.degrees(2.0 * np.arcsin(0.5 * chord_distances)) * 3600
-        return self._create_crossmatch_df(left_idx, right_idx, arc_distances)
+        return self._create_crossmatch_df(left_idx, right_idx, arc_distances, how)

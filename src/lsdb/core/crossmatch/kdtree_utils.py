@@ -12,6 +12,7 @@ def _find_crossmatch_indices(
     n_neighbors: int,
     max_distance: float,
     min_distance: float = 0,
+    how: str = "inner",
 ) -> Tuple[npt.NDArray[np.float64], npt.NDArray[np.int64], npt.NDArray[np.int64]]:
     # Make sure we don't ask for more neighbors than there are points
     n_neighbors = min(n_neighbors, len(right_xyz))
@@ -34,9 +35,25 @@ def _find_crossmatch_indices(
     if n_neighbors > 1 or min_distance > 0:
         left_index = np.stack([left_index] * n_neighbors, axis=1)
 
-    # Infinite distance means no match
-    match_mask = np.isfinite(distances)
+    # Create mask to only keep the matches
+    match_mask = _generate_match_mask(distances, how)
     return distances[match_mask], left_index[match_mask], right_index[match_mask]
+
+
+def _generate_match_mask(distances: npt.NDArray[np.float64], how: str) -> npt.NDArray[np.bool_]:
+    # Generates the boolean mask to filter the points. If the cross-matching
+    # strategy is "inner", the mask will select the points with finite distances.
+    # If the strategy is "left", the mask will select the points with either finite
+    # distances or the first non-match.
+    match_mask = np.isfinite(distances)
+    if how == "left":
+        if match_mask.ndim > 1:
+            first_match_mask = np.array([1] + [0] * (match_mask.shape[1] - 1), dtype=bool)
+            first_match_mask = np.tile(first_match_mask, (match_mask.shape[0], 1))
+        else:
+            first_match_mask = np.ones(match_mask.shape[0], dtype=bool)
+        match_mask |= first_match_mask
+    return match_mask
 
 
 # pylint: disable=too-many-locals
@@ -47,7 +64,7 @@ def _query_min_max_neighbors(
     n_neighbors: int,
     min_distance: float,
     max_distance: float,
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> Tuple[npt.NDArray[np.float64], npt.NDArray[np.int64]]:
     """Finds `n_neighbors` within a distance range for all points in a pair of partitions"""
     left_tree = KDTree(left_xyz, compact_nodes=True, balanced_tree=True, copy_data=False)
 
