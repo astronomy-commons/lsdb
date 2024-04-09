@@ -72,14 +72,7 @@ class AbstractCatalogLoader(Generic[CatalogTypeVar]):
     def _get_paths_from_pixels(
         self, catalog: HCHealpixDataset, ordered_pixels: List[HealpixPixel]
     ) -> List[hc.io.FilePointer]:
-        paths = [
-            hc.io.paths.pixel_catalog_file(
-                catalog_base_dir=catalog.catalog_base_dir,
-                pixel_order=pixel.order,
-                pixel_number=pixel.pixel,
-            )
-            for pixel in ordered_pixels
-        ]
+        paths = hc.io.paths.pixel_catalog_files(catalog.catalog_base_dir, ordered_pixels, self.storage_options)
         return paths
 
     def _load_df_from_paths(
