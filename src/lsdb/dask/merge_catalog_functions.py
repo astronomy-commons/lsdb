@@ -54,12 +54,16 @@ def concat_partition_and_margin(
     return joined_df
 
 
-def align_catalogs(left: Catalog, right: Catalog) -> PixelAlignment:
+def align_catalogs(
+    left: Catalog, right: Catalog, alignment_type: PixelAlignmentType = PixelAlignmentType.INNER
+) -> PixelAlignment:
     """Aligns two catalogs, also using the right catalog's margin if it exists
 
     Args:
         left (lsdb.Catalog): The left catalog to align
         right (lsdb.Catalog): The right catalog to align
+        alignment_type (PixelAlignmentType): The alignment type
+
     Returns:
         The PixelAlignment object from aligning the catalogs
     """
@@ -72,7 +76,7 @@ def align_catalogs(left: Catalog, right: Catalog) -> PixelAlignment:
         ).pixel_tree
     else:
         right_tree = right.hc_structure.pixel_tree
-    return align_trees(left.hc_structure.pixel_tree, right_tree, alignment_type=PixelAlignmentType.INNER)
+    return align_trees(left.hc_structure.pixel_tree, right_tree, alignment_type)
 
 
 def align_and_apply(
@@ -180,15 +184,25 @@ def get_healpix_pixels_from_alignment(
         a tuple of (primary_pixels, join_pixels) with lists of HealpixPixel objects
     """
     pixel_mapping = alignment.pixel_mapping
+
     make_pixel = np.vectorize(HealpixPixel)
+
     left_pixels = make_pixel(
         pixel_mapping[PixelAlignment.PRIMARY_ORDER_COLUMN_NAME],
         pixel_mapping[PixelAlignment.PRIMARY_PIXEL_COLUMN_NAME],
     )
-    right_pixels = make_pixel(
-        pixel_mapping[PixelAlignment.JOIN_ORDER_COLUMN_NAME],
-        pixel_mapping[PixelAlignment.JOIN_PIXEL_COLUMN_NAME],
-    )
+
+    if alignment.alignment_type == PixelAlignmentType.LEFT:
+        right_pixels = make_pixel(
+            pixel_mapping[PixelAlignment.ALIGNED_ORDER_COLUMN_NAME],
+            pixel_mapping[PixelAlignment.ALIGNED_PIXEL_COLUMN_NAME],
+        )
+    else:
+        right_pixels = make_pixel(
+            pixel_mapping[PixelAlignment.JOIN_ORDER_COLUMN_NAME],
+            pixel_mapping[PixelAlignment.JOIN_PIXEL_COLUMN_NAME],
+        )
+
     return list(left_pixels), list(right_pixels)
 
 

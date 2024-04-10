@@ -137,9 +137,40 @@ class TestCrossmatch:
         assert not np.any(non_matches["id_small_sky"].duplicated())
 
     @staticmethod
+    def test_crossmatch_left_with_smaller_right_coverage(
+        algo, small_sky_catalog, small_sky_xmatch_catalog, xmatch_correct_005
+    ):
+        # The small_sky_xmatch catalog does not have coverage on order 1 pixel 47,
+        # but the small_sky catalog does, on order 0 pixel 11
+        xmatched = small_sky_catalog.crossmatch(
+            small_sky_xmatch_catalog,
+            n_neighbors=1,
+            radius_arcsec=0.005 * 3600,
+            how="left",
+            algorithm=algo,
+            require_right_margin=False,
+        ).compute()
+        assert len(small_sky_catalog.compute()) == len(xmatched)
+        non_match_cond = xmatched["_dist_arcsec"].isna()
+        non_match_ids = xmatched[non_match_cond]["id_small_sky"].values
+        for _, correct_row in xmatch_correct_005.iterrows():
+            assert correct_row["ss_id"] not in non_match_ids
+        assert len(xmatched) == len(xmatch_correct_005) + len(non_match_ids)
+
+    @staticmethod
     def test_wrong_suffixes(algo, small_sky_catalog, small_sky_xmatch_catalog):
         with pytest.raises(ValueError):
             small_sky_catalog.crossmatch(small_sky_xmatch_catalog, suffixes=("wrong",), algorithm=algo)
+
+    @staticmethod
+    def test_wrong_crossmatch_how(algo, small_sky_catalog, small_sky_xmatch_catalog):
+        with pytest.raises(NotImplementedError):
+            small_sky_catalog.crossmatch(
+                small_sky_xmatch_catalog,
+                algorithm=algo,
+                how="outer",
+                require_right_margin=False,
+            )
 
 
 @pytest.mark.parametrize("algo", [BoundedKdTreeCrossmatch])
@@ -180,7 +211,6 @@ class TestBoundedCrossmatch:
             radius_arcsec=2 * 3600,
             min_radius_arcsec=0.5 * 3600,
             algorithm=algo,
-            require_right_margin=False,
         ).compute()
         assert len(xmatched) == len(xmatch_correct_05_2_3n_margin)
         for _, correct_row in xmatch_correct_05_2_3n_margin.iterrows():
@@ -263,7 +293,6 @@ class TestBoundedCrossmatch:
             min_radius_arcsec=0.5 * 3600,
             radius_arcsec=2 * 3600,
             how="left",
-            require_right_margin=False,
             algorithm=algo,
         ).compute()
         # Matches are equivalent
@@ -292,7 +321,7 @@ class MockCrossmatchAlgorithm(AbstractCrossmatchAlgorithm):
 
     extra_columns = pd.DataFrame({"_DIST": pd.Series(dtype=np.dtype("float64"))})
 
-    def crossmatch(self, mock_results: pd.DataFrame = None):
+    def crossmatch(self, mock_results: pd.DataFrame = None, **kwargs):
         left_reset = self.left.reset_index(drop=True)
         right_reset = self.right.reset_index(drop=True)
         self._rename_columns_with_suffix(self.left, self.suffixes[0])

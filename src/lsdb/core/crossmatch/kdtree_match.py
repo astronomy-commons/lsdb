@@ -7,6 +7,7 @@ import numpy.typing as npt
 import pandas as pd
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
 from hipscat.pixel_math.validators import validate_radius
+from hipscat.pixel_tree import PixelAlignmentType
 
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
 from lsdb.core.crossmatch.kdtree_utils import _find_crossmatch_indices, _get_chord_distance, _lon_lat_to_xyz
@@ -23,7 +24,7 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
         n_neighbors: int = 1,
         radius_arcsec: float = 1,
         require_right_margin: bool = True,
-        how: str = "inner",
+        how: PixelAlignmentType = PixelAlignmentType.INNER,
         **kwargs,
     ):
         super().validate()
@@ -39,15 +40,15 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
         else:
             if self.right_margin_hc_structure.catalog_info.margin_threshold < radius_arcsec:
                 raise ValueError("Cross match radius is greater than margin threshold")
-        if how not in ["inner", "left"]:
-            raise ValueError("The cross match strategy must be 'inner' or 'left'")
+        if how not in [PixelAlignmentType.INNER, PixelAlignmentType.LEFT]:
+            raise NotImplementedError("The cross match strategy must be 'inner' or 'left'")
 
     # pylint: disable=unused-argument
     def crossmatch(
         self,
         n_neighbors: int = 1,
         radius_arcsec: float = 1,
-        how: str = "inner",
+        how: PixelAlignmentType = PixelAlignmentType.INNER,
         **kwargs,
     ) -> pd.DataFrame:
         """Perform a cross-match between the data from two HEALPix pixels
@@ -95,7 +96,7 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
         left_idx: npt.NDArray[np.int64],
         right_idx: npt.NDArray[np.int64],
         arc_distances: npt.NDArray[np.float64],
-        how: str,
+        how: PixelAlignmentType,
     ) -> pd.DataFrame:
         # rename columns so no same names during merging
         self._rename_columns_with_suffix(self.left, self.suffixes[0])
@@ -121,7 +122,7 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
         extra_columns = pd.DataFrame({"_dist_arcsec": pd.Series(arc_distances)})
         self._append_extra_columns(right_join_part, extra_columns)
 
-        if how == "left":
+        if how == PixelAlignmentType.LEFT:
             full_df = pd.DataFrame(np.nan, index=np.arange(len(right_idx)), columns=right_join_part.columns)
             full_df.iloc[match_cond] = right_join_part.values
             right_join_part = full_df.reset_index(drop=True)
