@@ -3,6 +3,7 @@ import pandas as pd
 import pyarrow as pa
 import pytest
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
+from hipscat.pixel_tree import PixelAlignmentType
 
 import lsdb
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
@@ -106,9 +107,68 @@ class TestCrossmatch:
             assert xmatch_row["_dist_arcsec"].to_numpy() == pytest.approx(correct_row["dist"] * 3600)
 
     @staticmethod
+    def test_crossmatch_how_left(
+        algo, small_sky_catalog, small_sky_xmatch_dir, small_sky_xmatch_margin_catalog, xmatch_correct_005
+    ):
+        small_sky_xmatch_catalog = lsdb.read_hipscat(
+            small_sky_xmatch_dir, margin_cache=small_sky_xmatch_margin_catalog
+        )
+        xmatched = small_sky_catalog.crossmatch(
+            small_sky_xmatch_catalog,
+            n_neighbors=1,
+            radius_arcsec=0.005 * 3600,
+            how="left",
+            algorithm=algo,
+            require_right_margin=False,
+        ).compute()
+        # The catalog resulting from the left join has the same size of the left catalog
+        assert small_sky_catalog.hc_structure.catalog_info.total_rows == len(xmatched)
+        # Matches are equivalent
+        non_match_cond = xmatched["_dist_arcsec"].isna()
+        matches = xmatched[~non_match_cond]
+        assert np.array_equal(np.sort(xmatch_correct_005["ss_id"]), np.sort(matches["id_small_sky"]))
+        # All matches are within the specified distance
+        assert np.all(matches["_dist_arcsec"] <= 0.005 * 3600)
+        # There is only one row per non-match object
+        non_matches = xmatched[non_match_cond]
+        assert not np.any(non_matches["id_small_sky"].duplicated())
+
+    @staticmethod
+    def test_crossmatch_left_with_smaller_right_coverage(
+        algo, small_sky_catalog, small_sky_xmatch_catalog, xmatch_correct_005
+    ):
+        # The small_sky_xmatch catalog does not have coverage on order 1 pixel 47,
+        # but the small_sky catalog does, on order 0 pixel 11
+        with pytest.warns(RuntimeWarning, match="Results may be incomplete and/or inaccurate"):
+            xmatched = small_sky_catalog.crossmatch(
+                small_sky_xmatch_catalog,
+                n_neighbors=1,
+                radius_arcsec=0.005 * 3600,
+                how="left",
+                algorithm=algo,
+                require_right_margin=False,
+            ).compute()
+        assert len(small_sky_catalog.compute()) == len(xmatched)
+        non_match_cond = xmatched["_dist_arcsec"].isna()
+        non_match_ids = xmatched[non_match_cond]["id_small_sky"].to_numpy()
+        for _, correct_row in xmatch_correct_005.iterrows():
+            assert correct_row["ss_id"] not in non_match_ids
+        assert len(xmatched) == len(xmatch_correct_005) + len(non_match_ids)
+
+    @staticmethod
     def test_wrong_suffixes(algo, small_sky_catalog, small_sky_xmatch_catalog):
         with pytest.raises(ValueError):
             small_sky_catalog.crossmatch(small_sky_xmatch_catalog, suffixes=("wrong",), algorithm=algo)
+
+    @staticmethod
+    def test_wrong_crossmatch_how(algo, small_sky_catalog, small_sky_xmatch_catalog):
+        with pytest.raises(NotImplementedError):
+            small_sky_catalog.crossmatch(
+                small_sky_xmatch_catalog,
+                algorithm=algo,
+                how="outer",
+                require_right_margin=False,
+            )
 
 
 @pytest.mark.parametrize("algo", [BoundedKdTreeCrossmatch])
@@ -211,6 +271,44 @@ class TestBoundedCrossmatch:
         assert len(xmatched) == len(small_sky_catalog.compute())
         assert all(xmatched["_dist_arcsec"] == 0)
 
+    @staticmethod
+    def test_crossmatch_min_thresh_multiple_neighbors_left_strategy(
+        algo,
+        small_sky_catalog,
+        small_sky_xmatch_dir,
+        small_sky_xmatch_margin_catalog,
+        xmatch_correct_05_2_3n_margin,
+    ):
+        small_sky_xmatch_catalog = lsdb.read_hipscat(
+            small_sky_xmatch_dir, margin_cache=small_sky_xmatch_margin_catalog
+        )
+        xmatched = small_sky_catalog.crossmatch(
+            small_sky_xmatch_catalog,
+            n_neighbors=3,
+            min_radius_arcsec=0.5 * 3600,
+            radius_arcsec=2 * 3600,
+            how="left",
+            algorithm=algo,
+        ).compute()
+        # Matches are equivalent
+        non_match_cond = xmatched["_dist_arcsec"].isna()
+        matches = xmatched[~non_match_cond]
+        assert np.array_equal(
+            np.sort(xmatch_correct_05_2_3n_margin["ss_id"]), np.sort(matches["id_small_sky"])
+        )
+        # All matches are within the specified distance
+        assert np.all(matches["_dist_arcsec"] >= 0.5 * 3600)
+        assert np.all(matches["_dist_arcsec"] <= 2 * 3600)
+        # There is only one row per non-match object
+        non_matches = xmatched[non_match_cond]
+        assert not np.any(non_matches["id_small_sky"].duplicated())
+        # The length of the resulting catalog corresponds to the number of
+        # unique match IDs plus the number of non matches
+        unique_matches = np.unique(matches["id_small_sky"])
+        assert small_sky_catalog.hc_structure.catalog_info.total_rows == len(unique_matches) + len(
+            non_matches
+        )
+
 
 # pylint: disable=too-few-public-methods
 class MockCrossmatchAlgorithm(AbstractCrossmatchAlgorithm):
@@ -219,10 +317,12 @@ class MockCrossmatchAlgorithm(AbstractCrossmatchAlgorithm):
     extra_columns = pd.DataFrame({"_DIST": pd.Series(dtype=np.float64)})
 
     # We must have the same signature as the crossmatch method
-    def validate(self, mock_results: pd.DataFrame = None):  # pylint: disable=unused-argument
+    def validate(
+        self, how: PixelAlignmentType, mock_results: pd.DataFrame = None
+    ):  # pylint: disable=unused-argument
         super().validate()
 
-    def crossmatch(self, mock_results: pd.DataFrame = None):
+    def crossmatch(self, how: PixelAlignmentType, mock_results: pd.DataFrame = None):
         left_reset = self.left.reset_index(drop=True)
         right_reset = self.right.reset_index(drop=True)
         self._rename_columns_with_suffix(self.left, self.suffixes[0])

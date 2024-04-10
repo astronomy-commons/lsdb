@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import numpy as np
 import pandas as pd
+from hipscat.pixel_tree import PixelAlignmentType
 
 from lsdb.core.crossmatch.kdtree_match import KdTreeCrossmatch
 from lsdb.core.crossmatch.kdtree_utils import _find_crossmatch_indices, _get_chord_distance
@@ -12,12 +12,13 @@ class BoundedKdTreeCrossmatch(KdTreeCrossmatch):
 
     def validate(
         self,
+        how: PixelAlignmentType = PixelAlignmentType.INNER,
         n_neighbors: int = 1,
         radius_arcsec: float = 1,
         require_right_margin: bool = False,
         min_radius_arcsec: float = 0,
     ):
-        super().validate(n_neighbors, radius_arcsec, require_right_margin)
+        super().validate(how, n_neighbors, radius_arcsec, require_right_margin)
         if min_radius_arcsec < 0:
             raise ValueError("The minimum radius must be non-negative")
         if radius_arcsec <= min_radius_arcsec:
@@ -25,6 +26,7 @@ class BoundedKdTreeCrossmatch(KdTreeCrossmatch):
 
     def crossmatch(
         self,
+        how: PixelAlignmentType = PixelAlignmentType.INNER,
         n_neighbors: int = 1,
         radius_arcsec: float = 1,
         # We need it here because the signature is shared with .validate()
@@ -37,6 +39,8 @@ class BoundedKdTreeCrossmatch(KdTreeCrossmatch):
         are within a threshold distance by using a K-D Tree.
 
         Args:
+            how (str): The merge strategy. If "inner", only the points from the left catalog that have
+                matches are kept. If "left", points with non-matches are also kept. Defaults to "inner".
             n_neighbors (int): The number of neighbors to find within each point.
             radius_arcsec (float): The threshold distance in arcseconds beyond which neighbors are not added
             min_radius_arcsec (float): The minimum distance from which neighbors are added
@@ -54,7 +58,6 @@ class BoundedKdTreeCrossmatch(KdTreeCrossmatch):
         left_xyz, right_xyz = self._get_point_coordinates()
         # get matching indices for cross-matched rows
         chord_distances, left_idx, right_idx = _find_crossmatch_indices(
-            left_xyz, right_xyz, n_neighbors=n_neighbors, min_distance=min_d_chord, max_distance=max_d_chord
+            left_xyz, right_xyz, how, n_neighbors, max_d_chord, min_d_chord
         )
-        arc_distances = np.degrees(2.0 * np.arcsin(0.5 * chord_distances)) * 3600
-        return self._create_crossmatch_df(left_idx, right_idx, arc_distances)
+        return self._create_crossmatch_df(left_idx, right_idx, chord_distances, how)

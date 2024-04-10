@@ -5,7 +5,8 @@ from typing import TYPE_CHECKING, Tuple, Type
 
 import dask
 import dask.dataframe as dd
-from hipscat.pixel_tree import PixelAlignment
+import pandas as pd
+from hipscat.pixel_tree import PixelAlignment, PixelAlignmentType
 
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
 from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorithm
@@ -42,6 +43,8 @@ def perform_crossmatch(
     algorithm,
     suffixes,
     right_columns,
+    meta_df,
+    how,
     **kwargs,
 ):
     """Performs a crossmatch on data from a HEALPix pixel in each catalog
@@ -51,6 +54,11 @@ def perform_crossmatch(
     """
     if right_pix.order > left_pix.order:
         left_df = filter_by_hipscat_index_to_pixel(left_df, right_pix.order, right_pix.pixel)
+
+    # The left partition has no coverage in the right catalog and the pixel alignment is "left",
+    # so we want to keep all the left partition points (they will have no matches)
+    if right_df is None and how == PixelAlignmentType.LEFT:
+        return _create_no_coverage_crossmatch_df(left_df, suffixes[0], meta_df)
 
     right_joined_df = concat_partition_and_margin(right_df, right_margin_df, right_columns)
 
@@ -65,7 +73,7 @@ def perform_crossmatch(
         right_hc_structure,
         right_margin_hc_structure,
         suffixes,
-    ).crossmatch(**kwargs)
+    ).crossmatch(how, **kwargs)
 
 
 # pylint: disable=too-many-locals
@@ -76,6 +84,7 @@ def crossmatch_catalog_data(
     algorithm: (
         Type[AbstractCrossmatchAlgorithm] | BuiltInCrossmatchAlgorithm
     ) = BuiltInCrossmatchAlgorithm.KD_TREE,
+    how: PixelAlignmentType = PixelAlignmentType.INNER,
     **kwargs,
 ) -> Tuple[dd.core.DataFrame, DaskDFPixelMap, PixelAlignment]:
     """Cross-matches the data from two catalogs
@@ -88,6 +97,7 @@ def crossmatch_catalog_data(
         algorithm (BuiltInCrossmatchAlgorithm | Callable): The algorithm to use to perform the
             crossmatch. Can be specified using a string for a built-in algorithm, or a custom
             method. For more details, see `crossmatch` method in the `Catalog` class.
+        how (PixelAlignmentType): The crossmatch strategy. Defaults to "inner".
         **kwargs: Additional arguments to pass to the cross-match algorithm
 
     Returns:
@@ -111,7 +121,7 @@ def crossmatch_catalog_data(
         right.margin.hc_structure if right.margin is not None else None,
         suffixes,
     )
-    meta_df_crossmatch.validate(**kwargs)
+    meta_df_crossmatch.validate(how, **kwargs)
 
     if right.margin is None:
         warnings.warn(
@@ -120,25 +130,26 @@ def crossmatch_catalog_data(
         )
 
     # perform alignment on the two catalogs
-    alignment = align_catalogs(left, right)
+    alignment = align_catalogs(left, right, how)
 
     # get lists of HEALPix pixels from alignment to pass to cross-match
     left_pixels, right_pixels = get_healpix_pixels_from_alignment(alignment)
 
-    # perform the crossmatch on each partition pairing using dask delayed for lazy computation
+    # generate meta table structure for dask df
+    meta_df = generate_meta_df_for_joined_tables(
+        [left, right], suffixes, extra_columns=crossmatch_algorithm.extra_columns
+    )
 
+    # perform the crossmatch on each partition pairing using dask delayed for lazy computation
     joined_partitions = align_and_apply(
         [(left, left_pixels), (right, right_pixels), (right.margin, right_pixels)],
         perform_crossmatch,
         crossmatch_algorithm,
         suffixes,
         right.columns,
+        meta_df,
+        how,
         **kwargs,
-    )
-
-    # generate meta table structure for dask df
-    meta_df = generate_meta_df_for_joined_tables(
-        [left, right], suffixes, extra_columns=crossmatch_algorithm.extra_columns
     )
 
     return construct_catalog_args(joined_partitions, meta_df, alignment)
@@ -162,3 +173,14 @@ def get_crossmatch_algorithm(
     if issubclass(algorithm, AbstractCrossmatchAlgorithm):
         return algorithm
     raise TypeError("algorithm must be either callable or a string for a builtin algorithm")
+
+
+def _create_no_coverage_crossmatch_df(
+    left_df: pd.DataFrame, suffix: str, meta_df: pd.DataFrame
+) -> pd.DataFrame:
+    """Creates the crossmatch DataFrame for partitions in the left catalog that have no coverage
+    in the right catalog."""
+    no_coverage_df = meta_df.copy(deep=False)
+    for name, _ in left_df.dtypes.items():
+        no_coverage_df[name + suffix] = left_df[name]
+    return no_coverage_df

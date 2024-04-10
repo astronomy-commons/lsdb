@@ -6,6 +6,7 @@ from typing import Tuple
 import hipscat as hc
 import pandas as pd
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
+from hipscat.pixel_tree import PixelAlignmentType
 
 
 # pylint: disable=too-many-instance-attributes, too-many-arguments
@@ -59,7 +60,7 @@ class AbstractCrossmatchAlgorithm(ABC):
         self.suffixes = suffixes
 
     @abstractmethod
-    def crossmatch(self) -> pd.DataFrame:
+    def crossmatch(self, how: PixelAlignmentType) -> pd.DataFrame:
         """Perform a crossmatch"""
 
     # pylint: disable=unused-argument
