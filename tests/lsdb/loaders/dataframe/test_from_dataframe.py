@@ -6,7 +6,6 @@ import pytest
 from hipscat.catalog import CatalogType
 from hipscat.pixel_math.healpix_pixel_function import get_pixel_argsort
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
-from hipscat.pixel_tree.pixel_node_type import PixelNodeType
 
 import lsdb
 from lsdb.catalog.margin_catalog import MarginCatalog
