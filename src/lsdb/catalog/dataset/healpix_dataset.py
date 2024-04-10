@@ -5,6 +5,7 @@ from typing import Any, Callable, Dict, List, Tuple, cast
 
 import dask
 import dask.dataframe as dd
+import healpy as hp
 import hipscat as hc
 import numpy as np
 import pandas as pd
@@ -277,7 +278,7 @@ class HealpixDataset(Dataset):
         self,
         func: Callable[[pd.DataFrame, HealpixPixel], Any],
         order: int | None = None,
-        default_value: Any = 0.0,
+        default_value: Any = hp.pixelfunc.UNSEEN,
         projection="moll",
         plotting_args: Dict | None = None,
         **kwargs,
