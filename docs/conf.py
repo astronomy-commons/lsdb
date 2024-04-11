@@ -61,8 +61,8 @@ html_css_files = ["custom.css"]
 
 nbsphinx_allow_errors = True
 
-# Cross-link hipscat documentation
+# Cross-link hipscat documentation from the API reference:
+ # https://docs.readthedocs.io/en/stable/guides/intersphinx.html
 intersphinx_mapping = {
     "hipscat": ("http://hipscat.readthedocs.io/en/stable/", None),
 }
-intersphinx_disabled_reftypes = ["*"]
