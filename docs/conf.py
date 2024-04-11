@@ -63,6 +63,6 @@ nbsphinx_allow_errors = True
 
 # Cross-link hipscat documentation
 intersphinx_mapping = {
-    "hipscat": ("http://hipscat.readthedocs.io/en/latest/", None),
+    "hipscat": ("http://hipscat.readthedocs.io/en/stable/", None),
 }
 intersphinx_disabled_reftypes = ["*"]
