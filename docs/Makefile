@@ -4,7 +4,7 @@
 # You can set these variables from the command line, and also
 # from the environment for the first two.
 SPHINXOPTS    ?= -T -E -d _build/doctrees -D language=en
-EXCLUDENB     ?= -D exclude_patterns="notebooks/*","_build","**.ipynb_checkpoints"
+EXCLUDENB     ?= -D exclude_patterns="tutorials/*","_build","**.ipynb_checkpoints"
 SPHINXBUILD   ?= sphinx-build
 SOURCEDIR     = .
 BUILDDIR      = ../_readthedocs/

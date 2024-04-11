@@ -130,7 +130,7 @@ repos:
             "-d", # Flag for cached environment and doctrees
             "./docs/_build/doctrees", # Directory
             "-D", # Flag to override settings in conf.py
-            "exclude_patterns=notebooks/*", # Exclude our notebooks from pre-commit
+            "exclude_patterns=tutorials/*", # Exclude our notebooks from pre-commit
           ]
     # Run unit tests, verify that they pass. Note that coverage is run against
     # the ./src directory here because that is what will be committed. In the

@@ -13,20 +13,38 @@ Built on top of Dask to efficiently scale and parallelize operations across mult
 the `HiPSCat <https://hipscat.readthedocs.io/en/stable/>`_ data format for surveys in a partitioned HEALPix
 (Hierarchical Equal Area isoLatitude Pixelization) structure.
 
+.. figure:: _static/gaia.png
+   :class: no-scaled-link
+   :scale: 80 %
+   :align: center
+   :alt: A possible HEALPix distribution for Gaia DR3
+
+   A possible HEALPix distribution for Gaia DR3.
+
 In this website you will find:
 
-- :doc:`Getting Started <gettingstarted>` guides on how to install and run an example workflow
-- :doc:`Tutorials <tutorials>`, and :doc:`Notebooks <notebooks>` with more advanced usage examples
+- Getting Started guides on how to :doc:`install <installation>` and run an :doc:`example workflow <tutorials/quickstart>`
+- :doc:`Tutorials <tutorials>` with more advanced usage examples
 - The detailed :doc:`API Reference <autoapi/index>` documentation
 
-Learn more about contributing to this repository in our :doc:`Contribution Guide <gettingstarted/contributing>`.
+Learn more about contributing to this repository in our :doc:`Contribution Guide <developer/contributing>`.
 
 .. toctree::
    :hidden:
 
    Home page <self>
-   Getting Started <gettingstarted>
+   Installation <installation>
+   Getting Started <tutorials/quickstart>
    Tutorials <tutorials>
-   Notebooks <notebooks>
-   API Reference <autoapi/index>
 
+.. toctree::
+   :hidden:
+   :caption: Developer
+
+   API Reference <autoapi/index>
+   Contribution Guide <developer/contributing>
+
+.. toctree::
+   :hidden:
+
+   Contact us <contact>
