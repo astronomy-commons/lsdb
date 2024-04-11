@@ -1,7 +1,7 @@
 # This workflow will run daily at 06:45.
 # It will install Python dependencies and run tests with a variety of Python versions.
 # See documentation for help debugging smoke test issues:
-#    https://lincc-ppt.readthedocs.io/en/latest/practices/ci_testing.html#version-culprit
+#    https://lincc-ppt.readthedocs.io/en/stable/practices/ci_testing.html#version-culprit
 
 name: Unit test smoke test
 
