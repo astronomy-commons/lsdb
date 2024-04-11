@@ -8,8 +8,6 @@ import pandas as pd
 from dask import delayed
 from hipscat.pixel_math import HealpixPixel, hipscat_id_to_healpix
 
-from lsdb.dask.merge_catalog_functions import filter_by_hipscat_index_to_pixel
-
 
 @delayed
 def perform_inner_skymap(
