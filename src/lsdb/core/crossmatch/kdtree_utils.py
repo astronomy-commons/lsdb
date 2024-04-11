@@ -172,13 +172,13 @@ def _get_chord_distance(radius_arcsec: float) -> float:
     return 2.0 * math.sin(math.radians(0.5 * radius_degrees))
 
 
-def _get_arc_separation(chord_distance: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
+def _get_arc_separation(chord_distances: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
     """Calculates the angle separation, in arcseconds, for distances on the surface of the unit sphere.
 
     Args:
-        chord_distance (float): The distances on the surface of the unit sphere.
+        chord_distances (npt.NDArray[np.float64]): Distances on the surface of the unit sphere.
 
     Returns:
-        The angle separation, in arcseconds, between points on the unit sphere.
+        The angle separation, in arcseconds, for distances on the unit sphere.
     """
-    return np.degrees(2.0 * np.arcsin(0.5 * chord_distance)) * 3600
+    return np.degrees(2.0 * np.arcsin(0.5 * chord_distances)) * 3600

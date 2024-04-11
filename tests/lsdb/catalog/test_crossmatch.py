@@ -119,7 +119,6 @@ class TestCrossmatch:
             radius_arcsec=0.005 * 3600,
             how="left",
             algorithm=algo,
-            require_right_margin=False,
         ).compute()
         # The catalog resulting from the left join has the same size of the left catalog
         assert small_sky_catalog.hc_structure.catalog_info.total_rows == len(xmatched)

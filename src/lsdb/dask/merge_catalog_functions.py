@@ -189,16 +189,10 @@ def get_healpix_pixels_from_alignment(
         pixel_mapping[PixelAlignment.PRIMARY_ORDER_COLUMN_NAME],
         pixel_mapping[PixelAlignment.PRIMARY_PIXEL_COLUMN_NAME],
     )
-    if alignment.alignment_type == PixelAlignmentType.LEFT:
-        right_pixels = make_pixel(
-            pixel_mapping[PixelAlignment.ALIGNED_ORDER_COLUMN_NAME],
-            pixel_mapping[PixelAlignment.ALIGNED_PIXEL_COLUMN_NAME],
-        )
-    else:
-        right_pixels = make_pixel(
-            pixel_mapping[PixelAlignment.JOIN_ORDER_COLUMN_NAME],
-            pixel_mapping[PixelAlignment.JOIN_PIXEL_COLUMN_NAME],
-        )
+    right_pixels = make_pixel(
+        pixel_mapping[PixelAlignment.JOIN_ORDER_COLUMN_NAME],
+        pixel_mapping[PixelAlignment.JOIN_PIXEL_COLUMN_NAME],
+    )
     return list(left_pixels), list(right_pixels)
 
 
@@ -283,3 +277,38 @@ def align_catalog_to_partitions(
     )
     partitions = get_partition(pixels)
     return list(partitions)
+
+
+def create_no_coverage_crossmatch_df(
+    left_df: pd.DataFrame, suffix: str, meta_df: pd.DataFrame
+) -> pd.DataFrame:
+    """Creates the crossmatch DataFrame for partitions in the left catalog that have no coverage
+    in the right catalog."""
+    no_coverage_df = meta_df.copy(deep=False)
+    for name, _ in left_df.dtypes.items():
+        no_coverage_df[name + suffix] = left_df[name]
+    return no_coverage_df
+
+
+def adjust_left_alignment(alignment: PixelAlignment) -> PixelAlignment:
+    """Gets the pixel alignment for the "left" strategy.
+
+    If the pixel alignment is of type "inner", we will always have a valid value
+    for the joined pixel. If it is of type "left", however, we may have joined pixels
+    set to Nan (e.g. if the left pixel has no corresponding pixel on the right catalog).
+    In this case we alter the mapping to have the joined pixel pointing to the aligned
+    pixel of the right catalog.
+
+    Args:
+        alignment (PixelAlignment): The pixel left-alignment
+
+    Returns:
+        A new left-alignment with the mappings adjusted.
+    """
+    pixel_mapping = alignment.pixel_mapping
+    join_cols = [PixelAlignment.JOIN_ORDER_COLUMN_NAME, PixelAlignment.JOIN_PIXEL_COLUMN_NAME]
+    aligned_cols = [PixelAlignment.ALIGNED_ORDER_COLUMN_NAME, PixelAlignment.ALIGNED_PIXEL_COLUMN_NAME]
+    na_rows = pixel_mapping.index[pixel_mapping[join_cols].isna().any(axis=1)]
+    pixel_mapping.loc[na_rows, join_cols] = pixel_mapping.loc[na_rows, aligned_cols].values
+    alignment.pixel_mapping = pixel_mapping
+    return alignment

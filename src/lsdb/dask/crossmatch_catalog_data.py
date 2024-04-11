@@ -5,17 +5,18 @@ from typing import TYPE_CHECKING, Tuple, Type
 
 import dask
 import dask.dataframe as dd
-import pandas as pd
 from hipscat.pixel_tree import PixelAlignment, PixelAlignmentType
 
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
 from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorithm
 from lsdb.core.crossmatch.kdtree_match import KdTreeCrossmatch
 from lsdb.dask.merge_catalog_functions import (
+    adjust_left_alignment,
     align_and_apply,
     align_catalogs,
     concat_partition_and_margin,
     construct_catalog_args,
+    create_no_coverage_crossmatch_df,
     filter_by_hipscat_index_to_pixel,
     generate_meta_df_for_joined_tables,
     get_healpix_pixels_from_alignment,
@@ -58,7 +59,7 @@ def perform_crossmatch(
     # The left partition has no coverage in the right catalog and the pixel alignment is "left",
     # so we want to keep all the left partition points (they will have no matches)
     if right_df is None and how == PixelAlignmentType.LEFT:
-        return _create_no_coverage_crossmatch_df(left_df, suffixes[0], meta_df)
+        return create_no_coverage_crossmatch_df(left_df, suffixes[0], meta_df)
 
     right_joined_df = concat_partition_and_margin(right_df, right_margin_df, right_columns)
 
@@ -73,7 +74,7 @@ def perform_crossmatch(
         right_hc_structure,
         right_margin_hc_structure,
         suffixes,
-    ).crossmatch(how, **kwargs)
+    ).crossmatch(how=how, **kwargs)
 
 
 # pylint: disable=too-many-locals
@@ -121,7 +122,7 @@ def crossmatch_catalog_data(
         right.margin.hc_structure if right.margin is not None else None,
         suffixes,
     )
-    meta_df_crossmatch.validate(how, **kwargs)
+    meta_df_crossmatch.validate(how=how, **kwargs)
 
     if right.margin is None:
         warnings.warn(
@@ -131,6 +132,8 @@ def crossmatch_catalog_data(
 
     # perform alignment on the two catalogs
     alignment = align_catalogs(left, right, how)
+    if how == PixelAlignmentType.LEFT:
+        alignment = adjust_left_alignment(alignment)
 
     # get lists of HEALPix pixels from alignment to pass to cross-match
     left_pixels, right_pixels = get_healpix_pixels_from_alignment(alignment)
@@ -173,14 +176,3 @@ def get_crossmatch_algorithm(
     if issubclass(algorithm, AbstractCrossmatchAlgorithm):
         return algorithm
     raise TypeError("algorithm must be either callable or a string for a builtin algorithm")
-
-
-def _create_no_coverage_crossmatch_df(
-    left_df: pd.DataFrame, suffix: str, meta_df: pd.DataFrame
-) -> pd.DataFrame:
-    """Creates the crossmatch DataFrame for partitions in the left catalog that have no coverage
-    in the right catalog."""
-    no_coverage_df = meta_df.copy(deep=False)
-    for name, _ in left_df.dtypes.items():
-        no_coverage_df[name + suffix] = left_df[name]
-    return no_coverage_df
