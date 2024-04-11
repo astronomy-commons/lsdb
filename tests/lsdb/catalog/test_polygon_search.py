@@ -64,7 +64,7 @@ def test_polygon_search_empty(small_sky_order1_catalog):
     vertices = [(0, 0), (1, 1), (0, 2)]
     polygon_search_catalog = small_sky_order1_catalog.polygon_search(vertices)
     assert len(polygon_search_catalog.get_healpix_pixels()) == 0
-    assert len(polygon_search_catalog.hc_structure.pixel_tree) == 1
+    assert len(polygon_search_catalog.hc_structure.pixel_tree) == 0
 
 
 def test_polygon_search_coarse_versus_fine(small_sky_order1_catalog):
