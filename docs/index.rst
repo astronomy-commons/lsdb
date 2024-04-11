@@ -10,7 +10,7 @@ LSDB is a framework that facilitates and enables fast spatial analysis for extre
 particular those brought up by `LSST <https://www.lsst.org/about>`_.
 
 Built on top of Dask to efficiently scale and parallelize operations across multiple workers, it leverages
-the `HiPSCat <https://hipscat.readthedocs.io/en/latest/>`_ data format for surveys in a partitioned HEALPix
+the `HiPSCat <https://hipscat.readthedocs.io/en/stable/>`_ data format for surveys in a partitioned HEALPix
 (Hierarchical Equal Area isoLatitude Pixelization) structure.
 
 In this website you will find:
