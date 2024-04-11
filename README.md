@@ -33,7 +33,7 @@ See related projects:
 
 [![GitHub issue custom search in repo](https://img.shields.io/github/issues-search/astronomy-commons/lsdb?color=purple&label=Good%20first%20issues&query=is%3Aopen%20label%3A%22good%20first%20issue%22)](https://github.com/astronomy-commons/lsdb/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
 
-See the [contribution guide](https://lsdb.readthedocs.io/en/latest/gettingstarted/contributing.html)
+See the [contribution guide](https://lsdb.readthedocs.io/en/latest/developer/contributing.html)
 for complete installation instructions and contribution best practices.
 
 ## Acknowledgements
