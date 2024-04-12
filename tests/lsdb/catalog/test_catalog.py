@@ -325,9 +325,7 @@ def test_skymap_data_wrong_order(small_sky_order1_catalog):
         small_sky_order1_catalog.skymap_data(func, order)
 
 
-# pylint: disable=no-member
-def test_skymap_histogram(small_sky_order1_catalog, mocker):
-    mocker.patch("healpy.mollview")
+def test_skymap_histogram(small_sky_order1_catalog):
 
     def func(df, healpix):
         return len(df) / hp.nside2pixarea(hp.order2nside(healpix.order), degrees=True)
@@ -345,10 +343,16 @@ def test_skymap_histogram(small_sky_order1_catalog, mocker):
     assert (small_sky_order1_catalog.skymap_histogram(func) == img).all()
 
 
-# pylint: disable=no-member
-def test_skymap_histogram_order_default(small_sky_order1_catalog, mocker):
-    mocker.patch("healpy.mollview")
+def test_skymap_histogram_empty(small_sky_order1_catalog):
+    def func(df, healpix):
+        return len(df) / hp.nside2pixarea(hp.order2nside(healpix.order), degrees=True)
 
+    expected_img = np.full(12, 1)
+    img = small_sky_order1_catalog.cone_search(0, 0, 1).skymap_histogram(func, default_value=1)
+    assert (img == expected_img).all()
+
+
+def test_skymap_histogram_order_default(small_sky_order1_catalog):
     def func(df, healpix):
         return len(df) / hp.nside2pixarea(hp.order2nside(healpix.order), degrees=True)
 

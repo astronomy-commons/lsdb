@@ -15,6 +15,7 @@ def perform_inner_skymap(
     func: Callable[[pd.DataFrame, HealpixPixel], Any],
     pixel: HealpixPixel,
     target_order: int,
+    default_value: Any = 0,
     **kwargs,
 ) -> np.ndarray:
     """Splits a partition into pixels at a target order and performs a given function on the new pixels"""
@@ -22,12 +23,13 @@ def perform_inner_skymap(
     order_pixels = hipscat_id_to_healpix(hipscat_index, target_order=target_order)
 
     def apply_func(df):
+        # gets the healpix pixel of the partition using the hipscat_id
         p = hipscat_id_to_healpix([df.index.values[0]], target_order=target_order)[0]
         return func(df, HealpixPixel(target_order, p), **kwargs)
 
     gb = partition.groupby(order_pixels, sort=False).apply(apply_func)
     delta_order = target_order - pixel.order
-    img = np.zeros(1 << 2 * delta_order)
+    img = np.full(1 << 2 * delta_order, fill_value=default_value)
     min_pixel_value = pixel.pixel << 2 * delta_order
     img[gb.index.values - min_pixel_value] = gb.values
     return img

@@ -207,7 +207,11 @@ class HealpixDataset(Dataset):
         return non_empty_pixels, non_empty_partitions
 
     def skymap_data(
-        self, func: Callable[[pd.DataFrame, HealpixPixel], Any], order: int | None = None, **kwargs
+        self,
+        func: Callable[[pd.DataFrame, HealpixPixel], Any],
+        order: int | None = None,
+        default_value: Any = 0.0,
+        **kwargs,
     ) -> Dict[HealpixPixel, Delayed]:
         """Perform a function on each partition of the catalog, returning a dict of values for each pixel.
 
@@ -217,6 +221,7 @@ class HealpixDataset(Dataset):
                 keyword arguments and returns an aggregated value
             order (int | None): The HEALPix order to compute the skymap at. If None (default), will compute
                 for each partition in the catalog at their own orders
+            default_value (Any): The value to use at pixels that aren't covered by the catalog (default 0)
             **kwargs: Arguments to pass to the function
 
         Returns:
@@ -236,7 +241,7 @@ class HealpixDataset(Dataset):
                     f"({self.hc_structure.pixel_tree.get_max_depth()})"
                 )
             results = {
-                pixel: perform_inner_skymap(partitions[index], func, pixel, order, **kwargs)
+                pixel: perform_inner_skymap(partitions[index], func, pixel, order, default_value, **kwargs)
                 for pixel, index in self._ddf_pixel_map.items()
             }
         return results
@@ -267,7 +272,7 @@ class HealpixDataset(Dataset):
             copied to all pixels if the catalog partition is at a lower order than the histogram order.
         """
 
-        smdata = self.skymap_data(func, order, **kwargs)
+        smdata = self.skymap_data(func, order, default_value, **kwargs)
         pixels = list(smdata.keys())
         results = dask.compute(*[smdata[pixel] for pixel in pixels])
         result_dict = {pixels[i]: results[i] for i in range(len(pixels))}
