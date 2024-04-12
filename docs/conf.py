@@ -24,7 +24,7 @@ version = ".".join(release.split(".")[:2])
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-extensions = ["sphinx.ext.mathjax", "sphinx.ext.napoleon", "sphinx.ext.viewcode"]
+extensions = ["sphinx.ext.mathjax", "sphinx.ext.napoleon", "sphinx.ext.viewcode", "sphinx.ext.intersphinx"]
 
 extensions.append("autoapi.extension")
 extensions.append("nbsphinx")
@@ -60,3 +60,9 @@ html_static_path = ["_static"]
 html_css_files = ["custom.css"]
 
 nbsphinx_allow_errors = True
+
+# Cross-link hipscat documentation from the API reference:
+# https://docs.readthedocs.io/en/stable/guides/intersphinx.html
+intersphinx_mapping = {
+    "hipscat": ("http://hipscat.readthedocs.io/en/stable/", None),
+}
