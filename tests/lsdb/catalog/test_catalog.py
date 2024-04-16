@@ -326,7 +326,6 @@ def test_skymap_data_wrong_order(small_sky_order1_catalog):
 
 
 def test_skymap_histogram(small_sky_order1_catalog):
-
     def func(df, healpix):
         return len(df) / hp.nside2pixarea(hp.order2nside(healpix.order), degrees=True)
 
