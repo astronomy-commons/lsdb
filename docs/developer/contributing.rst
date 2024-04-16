@@ -111,19 +111,16 @@ you can build the documentation locally with a command like:
 Create your PR
 -------------------------------------------------------------------------------
 
-Please use PR best practices, and get someone to review your code. We have a suite
-of continuous integration tests that run on PR creation. Please follow the 
-recommendations of the linter.
+Please use PR best practices, and get someone to review your code. Feel free to
+assign any of the active developers of LSDB (https://github.com/camposandro,
+https://github.com/delucchi-cmu, or https://github.com/smcguire-cmu).
+
+We have a suite of continuous integration checks that run on PR creation. Please
+follow the code quality recommendations of the linter and formatter, and make sure
+every pipeline passes before submitting it for review.
 
 Merge your PR
 -------------------------------------------------------------------------------
 
-The author of the PR is welcome to merge their own PR into the repository.
-
-Optional - Release a new version
--------------------------------------------------------------------------------
-
-Once your PR is merged you can create a new release to make your changes available.
-GitHub's `instructions <https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository>`_
-for doing so are here.
-Use your best judgement when incrementing the version. i.e. is this a major, minor, or patch fix.
+When all the continuous integration checks have passed and upon receiving an
+approving review, the author of the PR is welcome to merge it into the repository.
