@@ -1,4 +1,5 @@
 """Tests on dataframe and argument validation on the default KD Tree crossmatch."""
+
 import pytest
 
 from lsdb.core.crossmatch.bounded_kdtree_match import BoundedKdTreeCrossmatch

@@ -6,9 +6,7 @@ import healpy as hp
 import numpy as np
 import pandas as pd
 from dask import delayed
-from hipscat.pixel_math import HealpixPixel
-
-from lsdb.dask.merge_catalog_functions import filter_by_hipscat_index_to_pixel
+from hipscat.pixel_math import HealpixPixel, hipscat_id_to_healpix
 
 
 @delayed
@@ -17,18 +15,24 @@ def perform_inner_skymap(
     func: Callable[[pd.DataFrame, HealpixPixel], Any],
     pixel: HealpixPixel,
     target_order: int,
+    default_value: Any = 0,
     **kwargs,
 ) -> np.ndarray:
     """Splits a partition into pixels at a target order and performs a given function on the new pixels"""
+    hipscat_index = partition.index.values
+    order_pixels = hipscat_id_to_healpix(hipscat_index, target_order=target_order)
+
+    def apply_func(df):
+        # gets the healpix pixel of the partition using the hipscat_id
+        p = hipscat_id_to_healpix([df.index.values[0]], target_order=target_order)[0]
+        return func(df, HealpixPixel(target_order, p), **kwargs)
+
+    gb = partition.groupby(order_pixels, sort=False).apply(apply_func)
     delta_order = target_order - pixel.order
-    pixels = np.arange(pixel.pixel << (2 * delta_order), (pixel.pixel + 1) << (2 * delta_order))
-    return np.vectorize(
-        lambda p: func(
-            filter_by_hipscat_index_to_pixel(partition, target_order, p),
-            HealpixPixel(target_order, p),
-            **kwargs,
-        )
-    )(pixels)
+    img = np.full(1 << 2 * delta_order, fill_value=default_value)
+    min_pixel_value = pixel.pixel << 2 * delta_order
+    img[gb.index.values - min_pixel_value] = gb.values
+    return img
 
 
 def compute_skymap(
@@ -43,6 +47,9 @@ def compute_skymap(
     """
 
     pixels = list(pixel_map.keys())
+    if len(pixels) == 0:
+        npix = hp.order2npix(order) if order is not None else hp.order2npix(0)
+        return np.full(npix, default_value)
     hp_orders = np.vectorize(lambda x: x.order)(pixels)
     hp_pixels = np.vectorize(lambda x: x.pixel)(pixels)
     if order is None:
