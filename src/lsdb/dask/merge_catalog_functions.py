@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable, List, Sequence, Tuple, cast
+from typing import TYPE_CHECKING, Any, Callable, List, Sequence, Tuple, cast
 
 import dask.dataframe as dd
 import numpy as np
@@ -9,6 +9,7 @@ import pandas as pd
 from dask.delayed import Delayed
 from hipscat.catalog import PartitionInfo
 from hipscat.pixel_math import HealpixPixel
+from hipscat.pixel_math.healpix_pixel import INVALID_PIXEL
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN, healpix_to_hipscat_id
 from hipscat.pixel_tree import PixelAlignment, PixelAlignmentType, align_trees
 
@@ -80,7 +81,11 @@ def align_catalogs(
 
 
 def align_and_apply(
-    catalog_mappings: List[Tuple[HealpixDataset | None, List[HealpixPixel]]], func: Callable, *args, **kwargs
+    catalog_mappings: List[Tuple[HealpixDataset | None, List[HealpixPixel]]],
+    func: Callable,
+    *args,
+    aligned_args: List[Any] | None = None,
+    **kwargs,
 ) -> List[Delayed]:
     """Aligns catalogs to a given ordering of pixels and applies a function each set of aligned partitions
 
@@ -108,12 +113,15 @@ def align_and_apply(
                     ...
 
         *args: Additional arguments to pass to the function
+        aligned_args: Any additional lists of arguments to align and pass to the function
         **kwargs: Additional keyword arguments to pass to the function
 
     Returns:
         A list of delayed objects, each one representing the result of the function applied to the
         aligned partitions of the catalogs
     """
+
+    aligned_args = [] if aligned_args is None else aligned_args
 
     # aligns the catalog's partitions to the given pixels for each catalog
     aligned_partitions = [align_catalog_to_partitions(cat, pixels) for (cat, pixels) in catalog_mappings]
@@ -124,10 +132,10 @@ def align_and_apply(
 
     # defines an inner function that can be vectorized to apply the given function to each of the partitions
     # with the additional arguments including as the hc_structures and any specified additional arguments
-    def apply_func(*partitions_and_pixels):
-        return func(*partitions_and_pixels, *hc_structures, *args, **kwargs)
+    def apply_func(*all_aligned_args):
+        return func(*all_aligned_args, *hc_structures, *args, **kwargs)
 
-    resulting_partitions = np.vectorize(apply_func)(*aligned_partitions, *pixels)
+    resulting_partitions = np.vectorize(apply_func)(*aligned_partitions, *pixels, *aligned_args)
     return resulting_partitions
 
 
@@ -174,17 +182,19 @@ def construct_catalog_args(
 
 def get_healpix_pixels_from_alignment(
     alignment: PixelAlignment,
-) -> Tuple[List[HealpixPixel], List[HealpixPixel]]:
-    """Gets the list of primary and join pixels as the HealpixPixel class from a PixelAlignment
+) -> Tuple[List[HealpixPixel], List[HealpixPixel], List[HealpixPixel]]:
+    """Gets the list of primary, join and aligned pixels as the HealpixPixel class from a PixelAlignment
 
     Args:
         alignment (PixelAlignment): the PixelAlignment to get pixels from
 
     Returns:
-        a tuple of (primary_pixels, join_pixels) with lists of HealpixPixel objects
+        a tuple of (primary_pixels, join_pixels, aligned_pixels) with lists of HealpixPixel objects
     """
     pixel_mapping = alignment.pixel_mapping
-    make_pixel = np.vectorize(HealpixPixel)
+    make_pixel = np.vectorize(
+        lambda o, p: HealpixPixel(o, p) if o is not None and p is not None else INVALID_PIXEL
+    )
     left_pixels = make_pixel(
         pixel_mapping[PixelAlignment.PRIMARY_ORDER_COLUMN_NAME],
         pixel_mapping[PixelAlignment.PRIMARY_PIXEL_COLUMN_NAME],
@@ -193,7 +203,11 @@ def get_healpix_pixels_from_alignment(
         pixel_mapping[PixelAlignment.JOIN_ORDER_COLUMN_NAME],
         pixel_mapping[PixelAlignment.JOIN_PIXEL_COLUMN_NAME],
     )
-    return list(left_pixels), list(right_pixels)
+    aligned_pixels = make_pixel(
+        pixel_mapping[PixelAlignment.ALIGNED_ORDER_COLUMN_NAME],
+        pixel_mapping[PixelAlignment.ALIGNED_PIXEL_COLUMN_NAME],
+    )
+    return list(left_pixels), list(right_pixels), list(aligned_pixels)
 
 
 def generate_meta_df_for_joined_tables(
@@ -288,27 +302,3 @@ def create_no_coverage_crossmatch_df(
     for name, _ in left_df.dtypes.items():
         no_coverage_df[name + suffix] = left_df[name]
     return no_coverage_df
-
-
-def adjust_left_alignment(alignment: PixelAlignment) -> PixelAlignment:
-    """Gets the pixel alignment for the "left" strategy.
-
-    If the pixel alignment is of type "inner", we will always have a valid value
-    for the joined pixel. If it is of type "left", however, we may have joined pixels
-    set to Nan (e.g. if the left pixel has no corresponding pixel on the right catalog).
-    In this case we alter the mapping to have the joined pixel pointing to the aligned
-    pixel of the right catalog.
-
-    Args:
-        alignment (PixelAlignment): The pixel left-alignment
-
-    Returns:
-        A new left-alignment with the mappings adjusted.
-    """
-    pixel_mapping = alignment.pixel_mapping
-    join_cols = [PixelAlignment.JOIN_ORDER_COLUMN_NAME, PixelAlignment.JOIN_PIXEL_COLUMN_NAME]
-    aligned_cols = [PixelAlignment.ALIGNED_ORDER_COLUMN_NAME, PixelAlignment.ALIGNED_PIXEL_COLUMN_NAME]
-    na_rows = pixel_mapping.index[pixel_mapping[join_cols].isna().any(axis=1)]
-    pixel_mapping.loc[na_rows, join_cols] = pixel_mapping.loc[na_rows, aligned_cols].values
-    alignment.pixel_mapping = pixel_mapping
-    return alignment

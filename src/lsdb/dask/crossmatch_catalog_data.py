@@ -11,7 +11,6 @@ from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatc
 from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorithm
 from lsdb.core.crossmatch.kdtree_match import KdTreeCrossmatch
 from lsdb.dask.merge_catalog_functions import (
-    adjust_left_alignment,
     align_and_apply,
     align_catalogs,
     concat_partition_and_margin,
@@ -38,6 +37,7 @@ def perform_crossmatch(
     left_pix,
     right_pix,
     right_margin_pix,
+    aligned_pix,
     left_hc_structure,
     right_hc_structure,
     right_margin_hc_structure,
@@ -53,8 +53,8 @@ def perform_crossmatch(
     Filters the left catalog before performing the cross-match to stop duplicate points appearing in
     the result.
     """
-    if right_pix.order > left_pix.order:
-        left_df = filter_by_hipscat_index_to_pixel(left_df, right_pix.order, right_pix.pixel)
+    if aligned_pix.order > left_pix.order:
+        left_df = filter_by_hipscat_index_to_pixel(left_df, aligned_pix.order, aligned_pix.pixel)
 
     # The left partition has no coverage in the right catalog and the pixel alignment is "left",
     # so we want to keep all the left partition points (they will have no matches)
@@ -132,11 +132,9 @@ def crossmatch_catalog_data(
 
     # perform alignment on the two catalogs
     alignment = align_catalogs(left, right, how)
-    if how == PixelAlignmentType.LEFT:
-        alignment = adjust_left_alignment(alignment)
 
     # get lists of HEALPix pixels from alignment to pass to cross-match
-    left_pixels, right_pixels = get_healpix_pixels_from_alignment(alignment)
+    left_pixels, right_pixels, aligned_pixels = get_healpix_pixels_from_alignment(alignment)
 
     # generate meta table structure for dask df
     meta_df = generate_meta_df_for_joined_tables(
@@ -152,6 +150,7 @@ def crossmatch_catalog_data(
         right.columns,
         meta_df,
         how,
+        aligned_args=[aligned_pixels],
         **kwargs,
     )
 

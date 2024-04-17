@@ -160,7 +160,7 @@ class TestCrossmatch:
             small_sky_catalog.crossmatch(small_sky_xmatch_catalog, suffixes=("wrong",), algorithm=algo)
 
     @staticmethod
-    def test_wrong_crossmatch_how(algo, small_sky_catalog, small_sky_xmatch_catalog):
+    def test_wrong_how(algo, small_sky_catalog, small_sky_xmatch_catalog):
         with pytest.raises(NotImplementedError):
             small_sky_catalog.crossmatch(
                 small_sky_xmatch_catalog,
@@ -271,7 +271,7 @@ class TestBoundedCrossmatch:
         assert all(xmatched["_dist_arcsec"] == 0)
 
     @staticmethod
-    def test_crossmatch_min_thresh_multiple_neighbors_left_strategy(
+    def test_crossmatch_min_thresh_multiple_neighbors_how_left(
         algo,
         small_sky_catalog,
         small_sky_xmatch_dir,

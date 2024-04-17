@@ -199,7 +199,7 @@ def join_catalog_data_on(
 
     alignment = align_catalogs(left, right)
 
-    left_pixels, right_pixels = get_healpix_pixels_from_alignment(alignment)
+    left_pixels, right_pixels, _ = get_healpix_pixels_from_alignment(alignment)
 
     joined_partitions = align_and_apply(
         [(left, left_pixels), (right, right_pixels), (right.margin, right_pixels)],
@@ -255,7 +255,7 @@ def join_catalog_data_through(
 
     alignment = align_catalogs(left, right)
 
-    left_pixels, right_pixels = get_healpix_pixels_from_alignment(alignment)
+    left_pixels, right_pixels, _ = get_healpix_pixels_from_alignment(alignment)
 
     joined_partitions = align_and_apply(
         [
