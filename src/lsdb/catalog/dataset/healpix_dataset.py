@@ -56,6 +56,13 @@ class HealpixDataset(Dataset):
         super().__init__(ddf, hc_structure)
         self._ddf_pixel_map = ddf_pixel_map
 
+    def __getitem__(self, item):
+        result = self._ddf.__getitem__(item)
+        if isinstance(result, dd.core.DataFrame):
+            return self.__class__(result, self._ddf_pixel_map, self.hc_structure)
+        else:
+            return result
+
     def get_healpix_pixels(self) -> List[HealpixPixel]:
         """Get all HEALPix pixels that are contained in the catalog
 

@@ -10,6 +10,7 @@ import pytest
 from hipscat.pixel_math import HealpixPixel, hipscat_id_to_healpix
 
 import lsdb
+from lsdb import Catalog
 from lsdb.dask.merge_catalog_functions import filter_by_hipscat_index_to_pixel
 
 
@@ -402,3 +403,28 @@ def test_plot_pixels(small_sky_order1_catalog, mocker):
 
     hp.mollview.assert_called_once()
     assert (hp.mollview.call_args[0][0] == img).all()
+
+
+def test_square_bracket_columns(small_sky_order1_catalog):
+    columns = ["ra", "dec", "id"]
+    column_subset = small_sky_order1_catalog[columns]
+    assert all(column_subset.columns == columns)
+    assert isinstance(column_subset, Catalog)
+    pd.testing.assert_frame_equal(column_subset.compute(), small_sky_order1_catalog.compute()[columns])
+    assert np.all(column_subset.compute().index.values == small_sky_order1_catalog.compute().index.values)
+
+
+def test_square_bracket_column(small_sky_order1_catalog):
+    column_name = "ra"
+    column = small_sky_order1_catalog[column_name]
+    pd.testing.assert_series_equal(column.compute(), small_sky_order1_catalog.compute()[column_name])
+    assert np.all(column.compute().index.values == small_sky_order1_catalog.compute().index.values)
+    assert isinstance(column, dd.Series)
+
+
+def test_square_bracket_filter(small_sky_order1_catalog):
+    filtered_id = small_sky_order1_catalog[small_sky_order1_catalog["id"] > 750]
+    assert isinstance(filtered_id, Catalog)
+    ss_computed = small_sky_order1_catalog.compute()
+    pd.testing.assert_frame_equal(filtered_id.compute(), ss_computed[ss_computed["id"] > 750])
+    assert np.all(filtered_id.compute().index.values == ss_computed[ss_computed["id"] > 750].index.values)
