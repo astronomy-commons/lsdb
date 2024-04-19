@@ -73,15 +73,27 @@ class MarginCatalogGenerator:
         Returns:
             Margin catalog object, or None if the margin is empty.
         """
-        ddf, ddf_pixel_map, total_rows = self._generate_dask_df_and_map()
-        margin_pixels = list(ddf_pixel_map.keys())
-        if total_rows == 0:
+        pixels, partitions = self._get_margins()
+        if len(pixels) == 0:
             return None
+        ddf, ddf_pixel_map, total_rows = self._generate_dask_df_and_map(pixels, partitions)
+        margin_pixels = list(ddf_pixel_map.keys())
         margin_catalog_info = self._create_catalog_info(total_rows)
         margin_structure = hc.catalog.MarginCatalog(margin_catalog_info, margin_pixels)
         return MarginCatalog(ddf, ddf_pixel_map, margin_structure)
 
-    def _generate_dask_df_and_map(self) -> Tuple[dd.DataFrame, Dict[HealpixPixel, int], int]:
+    def _get_margins(self):
+        combined_pixels = (
+            self.hc_structure.get_healpix_pixels() + self.hc_structure.generate_negative_tree_pixels()
+        )
+        margin_pairs_df = self._find_margin_pixel_pairs(combined_pixels)
+        margins_pixel_df = self._create_margins(margin_pairs_df)
+        pixels, partitions = list(margins_pixel_df.keys()), list(margins_pixel_df.values())
+        return pixels, partitions
+
+    def _generate_dask_df_and_map(
+        self, pixels, partitions
+    ) -> Tuple[dd.DataFrame, Dict[HealpixPixel, int], int]:
         """Create the Dask Dataframe containing the data points in the margins
         for the catalog as well as the mapping of those HEALPix to Dataframes
 
@@ -89,21 +101,11 @@ class MarginCatalogGenerator:
             Tuple containing the Dask Dataframe, the mapping of margin HEALPix
             to the respective partitions and the total number of rows.
         """
-        healpix_pixels = self.hc_structure.get_healpix_pixels()
-        negative_pixels = self.hc_structure.generate_negative_tree_pixels()
-        combined_pixels = healpix_pixels + negative_pixels
-        margin_pairs_df = self._find_margin_pixel_pairs(combined_pixels)
-
-        # Compute points for each margin pixels
-        margins_pixel_df = self._create_margins(margin_pairs_df)
-        pixels, partitions = list(margins_pixel_df.keys()), list(margins_pixel_df.values())
-
         # Generate pixel map ordered by _hipscat_index
         pixel_order = get_pixel_argsort(pixels)
         ordered_pixels = np.asarray(pixels)[pixel_order]
         ordered_partitions = [partitions[i] for i in pixel_order]
         ddf_pixel_map = {pixel: index for index, pixel in enumerate(ordered_pixels)}
-
         # Generate the dask dataframe with the pixels and partitions
         ddf, total_rows = _generate_dask_dataframe(ordered_partitions, ordered_pixels, self.use_pyarrow_types)
         return ddf, ddf_pixel_map, total_rows
