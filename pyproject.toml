@@ -19,7 +19,7 @@ dependencies = [
     # Includes dask[array,dataframe,distributed,diagnostics].
     # dask distributed eases the creation of parallel dask clients.
     # dask diagnostics is required to spin up the dashboard for profiling.
-    "dask[complete]",
+    "dask[complete]>=2024.3.0", # Includes dask expressions.
     "hipscat>=0.2.8",
     "pyarrow",
     "deprecated",
