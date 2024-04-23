@@ -176,7 +176,7 @@ def perform_join_through(
 
 def join_catalog_data_on(
     left: Catalog, right: Catalog, left_on: str, right_on: str, suffixes: Tuple[str, str]
-) -> Tuple[dd.core.DataFrame, DaskDFPixelMap, PixelAlignment]:
+) -> Tuple[dd.DataFrame, DaskDFPixelMap, PixelAlignment]:
     """Joins two catalogs spatially on a specified column
 
     Args:
@@ -214,7 +214,7 @@ def join_catalog_data_on(
 
 def join_catalog_data_through(
     left: Catalog, right: Catalog, association: AssociationCatalog, suffixes: Tuple[str, str]
-) -> Tuple[dd.core.DataFrame, DaskDFPixelMap, PixelAlignment]:
+) -> Tuple[dd.DataFrame, DaskDFPixelMap, PixelAlignment]:
     """Joins two catalogs with an association table
 
     Args:
