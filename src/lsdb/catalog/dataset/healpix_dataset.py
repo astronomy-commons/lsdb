@@ -224,7 +224,9 @@ class HealpixDataset(Dataset):
                 meta = func(self._ddf._meta.copy())
             if meta is None:
                 raise ValueError(
-                    "func returned None for empty DataFrame input. The function must return a value, changing the partitions in place will not work. If the function does not work for empty inputs, please specify a `meta` argument."
+                    "func returned None for empty DataFrame input. The function must return a value, changing"
+                    " the partitions in place will not work. If the function does not work for empty inputs, "
+                    "please specify a `meta` argument."
                 )
         if include_pixel:
             pixels = self.get_ordered_healpix_pixels()

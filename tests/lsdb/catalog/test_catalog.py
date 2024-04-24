@@ -471,3 +471,14 @@ def test_map_partitions_specify_meta(small_sky_order1_catalog):
     assert mapped.dtypes["a"] == mapped.dtypes["ra"]
     mapcomp = mapped.compute()
     assert np.all(mapcomp["a"] == mapcomp["ra"] + 1)
+
+
+def test_non_working_empty_raises(small_sky_order1_catalog):
+    def add_col(df):
+        if len(df) == 0:
+            return None
+        df["a"] = df["ra"] + 1
+        return df
+    with pytest.raises(ValueError):
+        small_sky_order1_catalog.map_partitions(add_col)
+
