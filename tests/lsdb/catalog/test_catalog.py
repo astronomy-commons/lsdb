@@ -479,6 +479,6 @@ def test_non_working_empty_raises(small_sky_order1_catalog):
             return None
         df["a"] = df["ra"] + 1
         return df
+
     with pytest.raises(ValueError):
         small_sky_order1_catalog.map_partitions(add_col)
-
