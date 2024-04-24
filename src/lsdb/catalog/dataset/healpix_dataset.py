@@ -58,7 +58,7 @@ class HealpixDataset(Dataset):
 
     def __getitem__(self, item):
         result = self._ddf.__getitem__(item)
-        if isinstance(result, dd.DataFrame):
+        if isinstance(result, dd.core.DataFrame):
             return self.__class__(result, self._ddf_pixel_map, self.hc_structure)
         return result
 
