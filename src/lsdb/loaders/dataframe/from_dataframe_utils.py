@@ -23,9 +23,7 @@ def _generate_dask_dataframe(
     Returns:
         The catalog's Dask Dataframe and its total number of rows.
     """
-    # Get one partition to find how the df schema
-    one_partition = pixel_dfs[0] if len(pixel_dfs) > 0 else pd.DataFrame([])
-    schema = one_partition.iloc[:0, :].copy()
+    schema = pixel_dfs[0].iloc[:0, :].copy() if len(pixels) > 0 else []
     divisions = get_pixels_divisions(pixels)
     delayed_dfs = [delayed(df) for df in pixel_dfs]
     ddf = dd.from_delayed(delayed_dfs, meta=schema, divisions=divisions)
