@@ -77,7 +77,7 @@ def crossmatch_catalog_data(
         Type[AbstractCrossmatchAlgorithm] | BuiltInCrossmatchAlgorithm
     ) = BuiltInCrossmatchAlgorithm.KD_TREE,
     **kwargs,
-) -> Tuple[dd.core.DataFrame, DaskDFPixelMap, PixelAlignment]:
+) -> Tuple[dd.DataFrame, DaskDFPixelMap, PixelAlignment]:
     """Cross-matches the data from two catalogs
 
     Args:
