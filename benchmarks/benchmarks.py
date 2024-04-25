@@ -18,6 +18,7 @@ DATA_DIR_NAME = "data"
 SMALL_SKY_DIR_NAME = "small_sky"
 SMALL_SKY_ORDER1 = "small_sky_order1"
 SMALL_SKY_XMATCH_NAME = "small_sky_xmatch"
+BENCH_DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 
 
 def load_small_sky():
@@ -62,3 +63,13 @@ def time_box_filter_on_partition():
         np.linspace(-1000, 1000, 100_000), columns=[metadata.catalog_info.ra_column]
     )
     box_filter(mock_partition_df, ra=(-20, 40), dec=None, metadata=metadata).compute()
+
+
+def time_create_midsize_catalog():
+    path = os.path.join(BENCH_DATA_DIR, "midsize_catalog")
+    return lsdb.read_hipscat(path)
+
+
+def time_create_large_catalog():
+    path = os.path.join(BENCH_DATA_DIR, "large_catalog")
+    return lsdb.read_hipscat(path)
