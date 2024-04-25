@@ -428,3 +428,57 @@ def test_square_bracket_filter(small_sky_order1_catalog):
     ss_computed = small_sky_order1_catalog.compute()
     pd.testing.assert_frame_equal(filtered_id.compute(), ss_computed[ss_computed["id"] > 750])
     assert np.all(filtered_id.compute().index.values == ss_computed[ss_computed["id"] > 750].index.values)
+
+
+def test_map_partitions(small_sky_order1_catalog):
+    def add_col(df):
+        df["a"] = df["ra"] + 1
+        return df
+
+    mapped = small_sky_order1_catalog.map_partitions(add_col)
+    assert isinstance(mapped, Catalog)
+    assert "a" in mapped.columns
+    assert mapped.dtypes["a"] == mapped.dtypes["ra"]
+    mapcomp = mapped.compute()
+    assert np.all(mapcomp["a"] == mapcomp["ra"] + 1)
+
+
+def test_map_partitions_include_pixel(small_sky_order1_catalog):
+    def add_col(df, pixel):
+        df["pix"] = pixel.pixel
+        return df
+
+    mapped = small_sky_order1_catalog.map_partitions(add_col, include_pixel=True)
+    assert isinstance(mapped, Catalog)
+    assert "pix" in mapped.columns
+    mapcomp = mapped.compute()
+    pix_col = hp.ang2pix(
+        hp.order2nside(1), mapcomp["ra"].to_numpy(), mapcomp["dec"].to_numpy(), lonlat=True, nest=True
+    )
+    assert np.all(mapcomp["pix"] == pix_col)
+
+
+def test_map_partitions_specify_meta(small_sky_order1_catalog):
+    def add_col(df):
+        df["a"] = df["ra"] + 1
+        return df
+
+    new_meta = small_sky_order1_catalog.dtypes.to_dict()
+    new_meta["a"] = small_sky_order1_catalog.dtypes["ra"]
+    mapped = small_sky_order1_catalog.map_partitions(add_col, meta=new_meta)
+    assert isinstance(mapped, Catalog)
+    assert "a" in mapped.columns
+    assert mapped.dtypes["a"] == mapped.dtypes["ra"]
+    mapcomp = mapped.compute()
+    assert np.all(mapcomp["a"] == mapcomp["ra"] + 1)
+
+
+def test_non_working_empty_raises(small_sky_order1_catalog):
+    def add_col(df):
+        if len(df) == 0:
+            return None
+        df["a"] = df["ra"] + 1
+        return df
+
+    with pytest.raises(ValueError):
+        small_sky_order1_catalog.map_partitions(add_col)

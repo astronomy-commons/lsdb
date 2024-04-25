@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import warnings
-from typing import Any, Callable, Dict, List, Tuple, cast
+from typing import Any, Callable, Dict, Iterable, List, Tuple, cast
 
 import dask
 import dask.dataframe as dd
@@ -173,6 +173,70 @@ class HealpixDataset(Dataset):
         search_ddf = cast(dd.DataFrame, search_ddf)
         ddf_partition_map = {pixel: i for i, pixel in enumerate(filtered_pixels)}
         return ddf_partition_map, search_ddf
+
+    def map_partitions(
+        self,
+        func: Callable[..., pd.DataFrame],
+        *args,
+        meta: pd.DataFrame | pd.Series | Dict | Iterable | Tuple | None = None,
+        include_pixel: bool = False,
+        **kwargs,
+    ) -> Self:
+        """Applies a function to each partition in the catalog.
+
+        The ra and dec of each row is assumed to remain unchanged.
+
+        Args:
+            func (Callable): The function applied to each partition, which will be called with:
+                `func(partition: pd.DataFrame, *args, **kwargs)` with the additional args and kwargs passed to
+                the `map_partitions` function. If the `include_pixel` parameter is set, the function will be
+                called with the `healpix_pixel` as the second positional argument set to the healpix pixel
+                of the partition as
+                `func(partition: pd.DataFrame, healpix_pixel: HealpixPixel, *args, **kwargs)`
+            *args: Additional positional arguments to call `func` with.
+            meta (pd.DataFrame | pd.Series | Dict | Iterable | Tuple | None): An empty pandas DataFrame that
+                has columns matching the output of the function applied to a partition. Other types are
+                accepted to describe the output dataframe format, for full details see the dask documentation
+                https://blog.dask.org/2022/08/09/understanding-meta-keyword-argument
+                If meta is None (default), LSDB will try to work out the output schema of the function by
+                calling the function with an empty DataFrame. If the function does not work with an empty
+                DataFrame, this will raise an error and meta must be set. Note that some operations in LSDB
+                will generate empty partitions, though these can be removed by calling the
+                `Catalog.prune_empty_partitions` method.
+            include_pixel (bool): Whether to pass the Healpix Pixel of the partition as a `HealpixPixel`
+                object to the second positional argument of the function
+            **kwargs: Additional keyword args to pass to the function. These are passed to the Dask DataFrame
+                `dask.dataframe.map_partitions` function, so any of the dask function's keyword args such as
+                `transform_divisions` will be passed through and work as described in the dask documentation
+                https://docs.dask.org/en/stable/generated/dask.dataframe.DataFrame.map_partitions.html
+
+        Returns:
+            A new catalog with each partition replaced with the output of the function applied to the original
+            partition.
+        """
+        if meta is None:
+            if include_pixel:
+                meta = func(self._ddf._meta.copy(), HealpixPixel(0, 0))
+            else:
+                meta = func(self._ddf._meta.copy())
+            if meta is None:
+                raise ValueError(
+                    "func returned None for empty DataFrame input. The function must return a value, changing"
+                    " the partitions in place will not work. If the function does not work for empty inputs, "
+                    "please specify a `meta` argument."
+                )
+        if include_pixel:
+            pixels = self.get_ordered_healpix_pixels()
+
+            def apply_func(df, *args, partition_info=None, **kwargs):
+                """Uses `partition_info` passed by dask `map_partitions` to get healpix pixel to pass to
+                ufunc"""
+                return func(df, pixels[partition_info["number"]], *args, **kwargs)
+
+            output_ddf = self._ddf.map_partitions(apply_func, *args, meta=meta, **kwargs)
+        else:
+            output_ddf = self._ddf.map_partitions(func, *args, meta=meta, **kwargs)
+        return self.__class__(output_ddf, self._ddf_pixel_map, self.hc_structure)
 
     def prune_empty_partitions(self, persist: bool = False) -> Self:
         """Prunes the catalog of its empty partitions
