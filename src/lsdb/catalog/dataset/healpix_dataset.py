@@ -58,7 +58,7 @@ class HealpixDataset(Dataset):
 
     def __getitem__(self, item):
         result = self._ddf.__getitem__(item)
-        if isinstance(result, dd.DataFrame):
+        if isinstance(result, dd.core.DataFrame):
             return self.__class__(result, self._ddf_pixel_map, self.hc_structure)
         return result
 
@@ -168,9 +168,6 @@ class HealpixDataset(Dataset):
         Returns:
             The catalog pixel map and the respective Dask DataFrame
         """
-        filtered_partitions = (
-            filtered_partitions if len(filtered_partitions) > 0 else [delayed(self._ddf._meta)]
-        )
         divisions = get_pixels_divisions(filtered_pixels)
         search_ddf = dd.from_delayed(filtered_partitions, meta=self._ddf._meta, divisions=divisions)
         search_ddf = cast(dd.DataFrame, search_ddf)

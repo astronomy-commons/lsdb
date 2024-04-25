@@ -11,7 +11,7 @@ class Dataset:
 
     def __init__(
         self,
-        ddf: dd.DataFrame,
+        ddf: dd.core.DataFrame,
         hc_structure: hc.catalog.Dataset,
     ):
         """Initialise a Catalog object.
