@@ -213,7 +213,7 @@ class HealpixDataset(Dataset):
                 `transform_divisions` will be passed through and work as described in the dask documentation
                 https://docs.dask.org/en/stable/generated/dask.dataframe.DataFrame.map_partitions.html
 
-        Returns (Catalog):
+        Returns:
             A new catalog with each partition replaced with the output of the function applied to the original
             partition.
         """
