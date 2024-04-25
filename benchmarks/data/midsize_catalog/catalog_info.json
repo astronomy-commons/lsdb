@@ -1,0 +1,15 @@
+{
+    "catalog_name": {
+        "catalog_name": "midsize_catalog",
+        "catalog_type": "object",
+        "total_rows": 300000000,
+        "epoch": "J2000",
+        "ra_column": "ra",
+        "dec_column": "dec"
+    },
+    "catalog_type": "object",
+    "total_rows": null,
+    "epoch": "J2000",
+    "ra_column": "ra",
+    "dec_column": "dec"
+}
