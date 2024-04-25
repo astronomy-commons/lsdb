@@ -14,6 +14,36 @@
         "version": "5d69dfcb0f3773acd43c4c38ee79e487d83f96f0ab4b8d6e544f10a40daa94a8",
         "warmup_time": -1
     },
+    "benchmarks.time_create_large_catalog": {
+        "code": "def time_create_large_catalog():\n    path = os.path.join(BENCH_DATA_DIR, \"large_catalog\")\n    return lsdb.read_hipscat(path)",
+        "min_run_count": 2,
+        "name": "benchmarks.time_create_large_catalog",
+        "number": 0,
+        "param_names": [],
+        "params": [],
+        "repeat": 0,
+        "rounds": 2,
+        "sample_time": 0.01,
+        "type": "time",
+        "unit": "seconds",
+        "version": "7e8b42473c80fc7d59c8e4722d3ab10b5d12c28796038e26179a39bc9c7cbe06",
+        "warmup_time": -1
+    },
+    "benchmarks.time_create_midsize_catalog": {
+        "code": "def time_create_midsize_catalog():\n    path = os.path.join(BENCH_DATA_DIR, \"midsize_catalog\")\n    return lsdb.read_hipscat(path)",
+        "min_run_count": 2,
+        "name": "benchmarks.time_create_midsize_catalog",
+        "number": 0,
+        "param_names": [],
+        "params": [],
+        "repeat": 0,
+        "rounds": 2,
+        "sample_time": 0.01,
+        "type": "time",
+        "unit": "seconds",
+        "version": "b7c05eccad45a3cac84aba33651625f6b264577b74e5b8aa2a096433ca598d6d",
+        "warmup_time": -1
+    },
     "benchmarks.time_kdtree_crossmatch": {
         "code": "def time_kdtree_crossmatch():\n    \"\"\"Time computations are prefixed with 'time'.\"\"\"\n    small_sky = load_small_sky()\n    small_sky_xmatch = load_small_sky_xmatch()\n    small_sky.crossmatch(small_sky_xmatch, require_right_margin=False).compute()",
         "min_run_count": 2,
