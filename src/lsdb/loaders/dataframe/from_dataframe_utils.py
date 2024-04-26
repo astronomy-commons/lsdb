@@ -13,7 +13,7 @@ from lsdb.dask.divisions import get_pixels_divisions
 
 def _generate_dask_dataframe(
     pixel_dfs: List[pd.DataFrame], pixels: List[HealpixPixel]
-) -> Tuple[dd.DataFrame, int]:
+) -> Tuple[dd.core.DataFrame, int]:
     """Create the Dask Dataframe from the list of HEALPix pixel Dataframes
 
     Args:
@@ -26,8 +26,8 @@ def _generate_dask_dataframe(
     schema = pixel_dfs[0].iloc[:0, :].copy() if len(pixels) > 0 else []
     divisions = get_pixels_divisions(pixels)
     delayed_dfs = [delayed(df) for df in pixel_dfs]
-    ddf = dd.from_delayed(delayed_dfs, meta=schema, divisions=divisions)
-    return ddf if isinstance(ddf, dd.DataFrame) else ddf.to_frame(), len(ddf)
+    ddf = dd.io.from_delayed(delayed_dfs, meta=schema, divisions=divisions)
+    return ddf if isinstance(ddf, dd.core.DataFrame) else ddf.to_frame(), len(ddf)
 
 
 def _append_partition_information_to_dataframe(dataframe: pd.DataFrame, pixel: HealpixPixel) -> pd.DataFrame:
