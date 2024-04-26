@@ -19,7 +19,7 @@ class MarginCatalog(HealpixDataset):
 
     def __init__(
         self,
-        ddf: dd.core.DataFrame,
+        ddf: dd.DataFrame,
         ddf_pixel_map: DaskDFPixelMap,
         hc_structure: hc.catalog.MarginCatalog,
     ):

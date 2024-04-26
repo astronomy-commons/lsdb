@@ -156,7 +156,7 @@ class DataframeCatalogLoader:
 
     def _generate_dask_df_and_map(
         self, pixel_map: Dict[HealpixPixel, HealpixInfo]
-    ) -> Tuple[dd.core.DataFrame, DaskDFPixelMap, int]:
+    ) -> Tuple[dd.DataFrame, DaskDFPixelMap, int]:
         """Load Dask DataFrame from HEALPix pixel Dataframes and
         generate a mapping of HEALPix pixels to HEALPix Dataframes
 
