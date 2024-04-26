@@ -39,7 +39,7 @@ class HealpixDataset(Dataset):
 
     def __init__(
         self,
-        ddf: dd.DataFrame,
+        ddf: dd.core.DataFrame,
         ddf_pixel_map: DaskDFPixelMap,
         hc_structure: HCHealpixDataset,
     ):
@@ -80,7 +80,7 @@ class HealpixDataset(Dataset):
         pixels = self.get_healpix_pixels()
         return np.array(pixels)[get_pixel_argsort(pixels)]
 
-    def get_partition(self, order: int, pixel: int) -> dd.DataFrame:
+    def get_partition(self, order: int, pixel: int) -> dd.core.DataFrame:
         """Get the dask partition for a given HEALPix pixel
 
         Args:
@@ -158,7 +158,7 @@ class HealpixDataset(Dataset):
 
     def _construct_search_ddf(
         self, filtered_pixels: List[HealpixPixel], filtered_partitions: List[Delayed]
-    ) -> Tuple[dict, dd.DataFrame]:
+    ) -> Tuple[dict, dd.core.DataFrame]:
         """Constructs a search catalog pixel map and respective Dask Dataframe
 
         Args:
@@ -169,8 +169,8 @@ class HealpixDataset(Dataset):
             The catalog pixel map and the respective Dask DataFrame
         """
         divisions = get_pixels_divisions(filtered_pixels)
-        search_ddf = dd.from_delayed(filtered_partitions, meta=self._ddf._meta, divisions=divisions)
-        search_ddf = cast(dd.DataFrame, search_ddf)
+        search_ddf = dd.io.from_delayed(filtered_partitions, meta=self._ddf._meta, divisions=divisions)
+        search_ddf = cast(dd.core.DataFrame, search_ddf)
         ddf_partition_map = {pixel: i for i, pixel in enumerate(filtered_pixels)}
         return ddf_partition_map, search_ddf
 

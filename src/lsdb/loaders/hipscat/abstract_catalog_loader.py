@@ -59,7 +59,7 @@ class AbstractCatalogLoader(Generic[CatalogTypeVar]):
         catalog_info = dataclasses.replace(hc_structure.catalog_info, total_rows=None)
         return catalog_type(catalog_info, pixels_to_load, self.path, self.storage_options)
 
-    def _load_dask_df_and_map(self, catalog: HCHealpixDataset) -> Tuple[dd.DataFrame, DaskDFPixelMap]:
+    def _load_dask_df_and_map(self, catalog: HCHealpixDataset) -> Tuple[dd.core.DataFrame, DaskDFPixelMap]:
         """Load Dask DF from parquet files and make dict of HEALPix pixel to partition index"""
         pixels = catalog.get_healpix_pixels()
         ordered_pixels = np.array(pixels)[get_pixel_argsort(pixels)]
@@ -79,12 +79,12 @@ class AbstractCatalogLoader(Generic[CatalogTypeVar]):
 
     def _load_df_from_paths(
         self, catalog: HCHealpixDataset, paths: List[hc.io.FilePointer], divisions: Tuple[int, ...] | None
-    ) -> dd.DataFrame:
+    ) -> dd.core.DataFrame:
         metadata_schema = self._load_parquet_metadata_schema(catalog)
         dask_meta_schema = metadata_schema.empty_table().to_pandas()
         if self.config.columns:
             dask_meta_schema = dask_meta_schema[self.config.columns]
-        ddf = dd.from_map(
+        ddf = dd.io.from_map(
             file_io.read_parquet_file_to_pandas,
             paths,
             divisions=divisions,

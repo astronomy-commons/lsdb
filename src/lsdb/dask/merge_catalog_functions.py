@@ -163,8 +163,8 @@ def construct_catalog_args(
 
     # create dask df from delayed partitions
     divisions = get_pixels_divisions(list(partition_map.keys()))
-    ddf = dd.from_delayed(partitions, meta=meta_df, divisions=divisions)
-    ddf = cast(dd.DataFrame, ddf)
+    ddf = dd.io.from_delayed(partitions, meta=meta_df, divisions=divisions)
+    ddf = cast(dd.core.DataFrame, ddf)
     return ddf, partition_map, alignment
 
 
