@@ -32,7 +32,6 @@ class ConeSearch(AbstractSearch):
         return cone_filter(frame, self.ra, self.dec, self.radius_arcsec, metadata)
 
 
-@dask.delayed
 def cone_filter(data_frame: pd.DataFrame, ra, dec, radius_arcsec, metadata: CatalogInfo):
     """Filters a dataframe to only include points within the specified cone
 

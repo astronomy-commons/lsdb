@@ -132,7 +132,7 @@ class HealpixDataset(Dataset):
         self,
         metadata: hc.catalog.Catalog | hc.catalog.MarginCatalog,
         search: AbstractSearch,
-    ) -> Tuple[dict, dd.core.DataFrame]:
+    ) -> Tuple[DaskDFPixelMap, dd.DataFrame]:
         """Performs a search on the catalog from a list of pixels to search in
 
         Args:
@@ -145,15 +145,17 @@ class HealpixDataset(Dataset):
             A tuple containing a dictionary mapping pixel to partition index and a dask dataframe
             containing the search results
         """
-        partitions = self._ddf.to_delayed()
         filtered_pixels = metadata.get_healpix_pixels()
-        targeted_partitions = [partitions[self._ddf_pixel_map[pixel]] for pixel in filtered_pixels]
-        filtered_partitions = (
-            [search.search_points(partition, metadata.catalog_info) for partition in targeted_partitions]
-            if search.fine
-            else targeted_partitions
-        )
-        return self._construct_search_ddf(filtered_pixels, filtered_partitions)
+        if len(filtered_pixels) == 0:
+            return {}, dd.from_pandas(self._ddf._meta)
+        target_partitions_indices = [self._ddf_pixel_map[pixel] for pixel in filtered_pixels]
+        filtered_partitions_ddf = self._ddf.partitions[target_partitions_indices]
+        if search.fine:
+            filtered_partitions_ddf = filtered_partitions_ddf.map_partitions(
+                search.search_points, metadata, meta=filtered_partitions_ddf, transform_divisions=False
+            )
+        ddf_partition_map = {pixel: i for i, pixel in enumerate(filtered_pixels)}
+        return ddf_partition_map, filtered_partitions_ddf
 
     def _construct_search_ddf(
         self, filtered_pixels: List[HealpixPixel], filtered_partitions: List[Delayed]

@@ -40,7 +40,6 @@ class BoxSearch(AbstractSearch):
         return box_filter(frame, self.ra, self.dec, metadata)
 
 
-@dask.delayed
 def box_filter(
     data_frame: pd.DataFrame,
     ra: Tuple[float, float] | None,
