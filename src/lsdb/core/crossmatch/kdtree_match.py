@@ -17,13 +17,11 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
 
     extra_columns = pd.DataFrame({"_dist_arcsec": pd.Series(dtype=np.dtype("float64"))})
 
-    # pylint: disable=unused-argument,arguments-differ
     def validate(
         self,
         n_neighbors: int = 1,
         radius_arcsec: float = 1,
         require_right_margin=True,
-        **kwargs,
     ):
         super().validate()
         # Validate radius
@@ -39,12 +37,12 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
             if self.right_margin_hc_structure.catalog_info.margin_threshold < radius_arcsec:
                 raise ValueError("Cross match radius is greater than margin threshold")
 
-    # pylint: disable=unused-argument
     def crossmatch(
         self,
         n_neighbors: int = 1,
         radius_arcsec: float = 1,
-        **kwargs,
+        # We need it here because the signature is shared with .validate()
+        require_right_margin=True,  # pylint: disable=unused-argument
     ) -> pd.DataFrame:
         """Perform a cross-match between the data from two HEALPix pixels
 

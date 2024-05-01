@@ -226,6 +226,10 @@ class MockCrossmatchAlgorithm(AbstractCrossmatchAlgorithm):
 
     extra_columns = pd.DataFrame({"_DIST": pd.Series(dtype=np.dtype("float64"))})
 
+    # We must have the same signature as the crossmatch method
+    def validate(self, mock_results: pd.DataFrame = None):  # pylint: disable=unused-argument
+        super().validate()
+
     def crossmatch(self, mock_results: pd.DataFrame = None):
         left_reset = self.left.reset_index(drop=True)
         right_reset = self.right.reset_index(drop=True)
@@ -293,3 +297,8 @@ def test_append_extra_columns(small_sky_xmatch_catalog):
     algo.extra_columns = None
     algo._append_extra_columns(xmatch_df, pd.DataFrame(extra_columns))
     assert "_DIST" not in xmatch_df.columns
+
+
+def test_raise_for_unknown_kwargs(small_sky_catalog):
+    with pytest.raises(TypeError, match="unexpected keyword argument"):
+        small_sky_catalog.crossmatch(small_sky_catalog, unknown_kwarg="value")

@@ -63,7 +63,7 @@ class AbstractCrossmatchAlgorithm(ABC):
         """Perform a crossmatch"""
 
     # pylint: disable=unused-argument
-    def validate(self, *args, **kwargs):
+    def validate(self):
         """Validate the metadata and arguments.
 
         This method will be called **once**, after the algorithm object has
