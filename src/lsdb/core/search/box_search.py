@@ -62,7 +62,7 @@ def box_filter(
         mask_ra = _create_ra_mask(ra, wrapped_ra)
         mask = np.logical_and(mask, mask_ra)
     if dec is not None:
-        dec_values = data_frame[metadata.catalog_info.dec_column].values
+        dec_values = data_frame[metadata.catalog_info.dec_column].to_numpy()
         mask_dec = np.logical_and(dec[0] <= dec_values, dec_values <= dec[1])
         mask = np.logical_and(mask, mask_dec)
     data_frame = data_frame.iloc[mask]

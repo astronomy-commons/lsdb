@@ -72,12 +72,12 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
 
     def _get_point_coordinates(self) -> Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
         left_xyz = _lon_lat_to_xyz(
-            lon=self.left[self.left_metadata.catalog_info.ra_column].values,
-            lat=self.left[self.left_metadata.catalog_info.dec_column].values,
+            lon=self.left[self.left_metadata.catalog_info.ra_column].to_numpy(),
+            lat=self.left[self.left_metadata.catalog_info.dec_column].to_numpy(),
         )
         right_xyz = _lon_lat_to_xyz(
-            lon=self.right[self.right_metadata.catalog_info.ra_column].values,
-            lat=self.right[self.right_metadata.catalog_info.dec_column].values,
+            lon=self.right[self.right_metadata.catalog_info.ra_column].to_numpy(),
+            lat=self.right[self.right_metadata.catalog_info.dec_column].to_numpy(),
         )
         return left_xyz, right_xyz
 

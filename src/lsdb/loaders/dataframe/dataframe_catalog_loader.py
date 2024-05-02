@@ -111,8 +111,8 @@ class DataframeCatalogLoader:
         """Generates the hipscat indices for each data point and assigns
         the hipscat index column as the Dataframe index."""
         self.dataframe[HIPSCAT_ID_COLUMN] = compute_hipscat_id(
-            ra_values=self.dataframe[self.catalog_info.ra_column].values,
-            dec_values=self.dataframe[self.catalog_info.dec_column].values,
+            ra_values=self.dataframe[self.catalog_info.ra_column].to_numpy(),
+            dec_values=self.dataframe[self.catalog_info.dec_column].to_numpy(),
         )
         self.dataframe.set_index(HIPSCAT_ID_COLUMN, inplace=True)
 

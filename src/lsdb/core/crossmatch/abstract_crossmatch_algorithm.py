@@ -112,4 +112,6 @@ class AbstractCrossmatchAlgorithm(ABC):
                 raise ValueError(f"Invalid type '{col_type}' for extra column '{col}'")
             columns_to_update.append(col)
         for col in columns_to_update:
-            dataframe[col] = extra_columns[col].values
+            new_col = extra_columns[col]
+            new_col.index = dataframe.index
+            dataframe[col] = new_col
