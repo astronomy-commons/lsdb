@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import pyarrow as pa
 import pytest
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
 
@@ -271,7 +272,21 @@ def test_custom_crossmatch_algorithm(small_sky_catalog, small_sky_xmatch_catalog
         assert xmatch_row["_DIST"].to_numpy() == pytest.approx(correct_row["dist"])
 
 
-def test_append_extra_columns(small_sky_xmatch_catalog):
+def test_append_extra_columns_have_correct_type(small_sky_xmatch_catalog):
+    algo = MockCrossmatchAlgorithm
+    # Set a pyarrow type for the extra column
+    pa_float64_dtype = pd.ArrowDtype(pa.float64())
+    algo.extra_columns = pd.DataFrame({"_DIST": pd.Series(dtype=pa_float64_dtype)})
+    # Create mock values for extra_columns
+    xmatch_df = small_sky_xmatch_catalog.compute()
+    dist_values = np.arange(len(xmatch_df))
+    # Check that the extra column keeps its type
+    extra_columns = {"_DIST": pd.Series(dist_values, dtype=pa_float64_dtype)}
+    algo._append_extra_columns(xmatch_df, pd.DataFrame(extra_columns))
+    assert "_DIST" in xmatch_df and xmatch_df["_DIST"].dtype == pa_float64_dtype
+
+
+def test_append_extra_columns_raises_value_error(small_sky_xmatch_catalog):
     algo = MockCrossmatchAlgorithm
     # Create mock values for extra_columns
     xmatch_df = small_sky_xmatch_catalog.compute()
@@ -293,6 +308,14 @@ def test_append_extra_columns(small_sky_xmatch_catalog):
     # No extra_columns were specified
     with pytest.raises(ValueError, match="No extra column values"):
         algo._append_extra_columns(xmatch_df, extra_columns=None)
+
+
+def test_algorithm_has_no_extra_columns_specified(small_sky_xmatch_catalog):
+    algo = MockCrossmatchAlgorithm
+    # Create mock values for extra_columns
+    xmatch_df = small_sky_xmatch_catalog.compute()
+    dist_values = np.arange(len(xmatch_df))
+    extra_columns = {"_DIST": pd.Series(dist_values, dtype=np.dtype("float64"))}
     # The crossmatch algorithm has no extra_columns specified
     algo.extra_columns = None
     algo._append_extra_columns(xmatch_df, pd.DataFrame(extra_columns))
