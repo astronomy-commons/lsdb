@@ -7,7 +7,7 @@ from astropy.coordinates import SkyCoord
 from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.cone_filter import filter_pixels_by_cone
 from hipscat.pixel_math.validators import validate_declination_values, validate_radius
-from hipscat.pixel_tree.pixel_tree_builder import PixelTreeBuilder
+from hipscat.pixel_tree.pixel_tree import PixelTree
 
 from lsdb.core.search.abstract_search import AbstractSearch
 
@@ -29,7 +29,7 @@ class ConeSearch(AbstractSearch):
 
     def search_partitions(self, pixels: List[HealpixPixel]) -> List[HealpixPixel]:
         """Determine the target partitions for further filtering."""
-        pixel_tree = PixelTreeBuilder.from_healpix(pixels)
+        pixel_tree = PixelTree.from_healpix(pixels)
         return filter_pixels_by_cone(pixel_tree, self.ra, self.dec, self.radius_arcsec)
 
     def search_points(self, frame: pd.DataFrame, metadata: hc.catalog.Catalog) -> pd.DataFrame:

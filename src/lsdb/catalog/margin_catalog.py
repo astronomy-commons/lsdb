@@ -4,7 +4,7 @@ import hipscat as hc
 import numpy as np
 from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.filter import get_filtered_pixel_list
-from hipscat.pixel_tree.pixel_tree_builder import PixelTreeBuilder
+from hipscat.pixel_tree.pixel_tree import PixelTree
 
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
 from lsdb.core.search.abstract_search import AbstractSearch
@@ -69,7 +69,7 @@ class MarginCatalog(HealpixDataset):
         margin_pixels = [HealpixPixel(margin_order, pixel) for pixel in margin_pixels]
 
         # Align the margin pixels with the catalog pixels and combine with the search pixels
-        margin_pixel_tree = PixelTreeBuilder.from_healpix(margin_pixels)
+        margin_pixel_tree = PixelTree.from_healpix(margin_pixels)
         filtered_margin_pixels = get_filtered_pixel_list(self.hc_structure.pixel_tree, margin_pixel_tree)
         filtered_pixels = list(set(filtered_search_pixels + filtered_margin_pixels))
 

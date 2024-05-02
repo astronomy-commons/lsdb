@@ -12,7 +12,7 @@ from hipscat.pixel_math.polygon_filter import (
     filter_pixels_by_polygon,
 )
 from hipscat.pixel_math.validators import validate_declination_values, validate_polygon
-from hipscat.pixel_tree.pixel_tree_builder import PixelTreeBuilder
+from hipscat.pixel_tree.pixel_tree import PixelTree
 from lsst.sphgeom import ConvexPolygon, UnitVector3d
 
 from lsdb.core.search.abstract_search import AbstractSearch
@@ -32,7 +32,7 @@ class PolygonSearch(AbstractSearch):
 
     def search_partitions(self, pixels: List[HealpixPixel]) -> List[HealpixPixel]:
         """Determine the target partitions for further filtering."""
-        pixel_tree = PixelTreeBuilder.from_healpix(pixels)
+        pixel_tree = PixelTree.from_healpix(pixels)
         return filter_pixels_by_polygon(pixel_tree, self.vertices_xyz)
 
     def search_points(self, frame: pd.DataFrame, metadata: hc.catalog.Catalog) -> pd.DataFrame:

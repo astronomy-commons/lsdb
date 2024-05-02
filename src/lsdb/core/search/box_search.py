@@ -9,7 +9,7 @@ import pandas as pd
 from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.box_filter import filter_pixels_by_box, wrap_ra_angles
 from hipscat.pixel_math.validators import validate_box_search
-from hipscat.pixel_tree.pixel_tree_builder import PixelTreeBuilder
+from hipscat.pixel_tree.pixel_tree import PixelTree
 
 from lsdb.core.search.abstract_search import AbstractSearch
 
@@ -29,7 +29,7 @@ class BoxSearch(AbstractSearch):
 
     def search_partitions(self, pixels: List[HealpixPixel]) -> List[HealpixPixel]:
         """Determine the target partitions for further filtering."""
-        pixel_tree = PixelTreeBuilder.from_healpix(pixels)
+        pixel_tree = PixelTree.from_healpix(pixels)
         return filter_pixels_by_box(pixel_tree, self.ra, self.dec)
 
     def search_points(self, frame: pd.DataFrame, metadata: hc.catalog.Catalog) -> pd.DataFrame:
