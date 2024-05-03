@@ -28,9 +28,10 @@ def read_hipscat(
     path: str,
     catalog_type: Type[Dataset] | None = None,
     search_filter: AbstractSearch | None = None,
-    storage_options: dict | None = None,
     columns: List[str] | None = None,
     margin_cache: MarginCatalog | None = None,
+    dtype_backend: str = "pyarrow",
+    storage_options: dict | None = None,
     **kwargs,
 ) -> Dataset:
     """Load a catalog from a HiPSCat formatted catalog.
@@ -58,6 +59,8 @@ def read_hipscat(
         storage_options (dict): Dictionary that contains abstract filesystem credentials
         columns (List[str]): Default `None`. The set of columns to filter the catalog on.
         margin_cache (MarginCatalog): The margin cache for the main catalog
+        dtype_backend (str): Whether the data should be backed by numpy or pyarrow. It is either
+            "numpy_nullable" or "pyarrow". Defaults to "pyarrow".
         **kwargs: Arguments to pass to the pandas parquet file reader
 
     Returns:

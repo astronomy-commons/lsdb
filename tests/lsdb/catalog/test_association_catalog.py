@@ -19,7 +19,7 @@ def test_load_association(small_sky_to_xmatch_dir):
             pixel_number=hp_pixel,
         )
         partition = small_sky_to_xmatch.get_partition(hp_order, hp_pixel)
-        data = pd.read_parquet(path)
+        data = pd.read_parquet(path, dtype_backend="pyarrow")
         pd.testing.assert_frame_equal(partition.compute(), data)
 
 

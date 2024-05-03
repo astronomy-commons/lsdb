@@ -23,6 +23,9 @@ class HipscatLoadingConfig:
     margin_cache: MarginCatalog | None = None
     """Margin cache for the catalog. By default, it is None"""
 
+    dtype_backend: str = "pyarrow"
+    """Whether the data should be backed by numpy or pyarrow. It is either 'numpy_nullable' or 'pyarrow'"""
+
     kwargs: dict | None = None
     """Extra kwargs"""
 

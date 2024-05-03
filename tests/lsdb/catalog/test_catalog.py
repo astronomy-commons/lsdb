@@ -411,14 +411,14 @@ def test_square_bracket_columns(small_sky_order1_catalog):
     assert all(column_subset.columns == columns)
     assert isinstance(column_subset, Catalog)
     pd.testing.assert_frame_equal(column_subset.compute(), small_sky_order1_catalog.compute()[columns])
-    assert np.all(column_subset.compute().index.values == small_sky_order1_catalog.compute().index.values)
+    assert column_subset.compute().index.values.equals(small_sky_order1_catalog.compute().index.values)
 
 
 def test_square_bracket_column(small_sky_order1_catalog):
     column_name = "ra"
     column = small_sky_order1_catalog[column_name]
     pd.testing.assert_series_equal(column.compute(), small_sky_order1_catalog.compute()[column_name])
-    assert np.all(column.compute().index.values == small_sky_order1_catalog.compute().index.values)
+    assert column.compute().index.values.equals(small_sky_order1_catalog.compute().index.values)
     assert isinstance(column, dd.core.Series)
 
 
@@ -427,7 +427,7 @@ def test_square_bracket_filter(small_sky_order1_catalog):
     assert isinstance(filtered_id, Catalog)
     ss_computed = small_sky_order1_catalog.compute()
     pd.testing.assert_frame_equal(filtered_id.compute(), ss_computed[ss_computed["id"] > 750])
-    assert np.all(filtered_id.compute().index.values == ss_computed[ss_computed["id"] > 750].index.values)
+    assert filtered_id.compute().index.values.equals(ss_computed[ss_computed["id"] > 750].index.values)
 
 
 def test_map_partitions(small_sky_order1_catalog):

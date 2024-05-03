@@ -7,7 +7,7 @@ from typing import Generic, List, Tuple, Type, TypeVar
 import dask.dataframe as dd
 import hipscat as hc
 import numpy as np
-import pyarrow
+import pandas as pd
 from hipscat.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
 from hipscat.io.file_io import file_io
 from hipscat.pixel_math import HealpixPixel
@@ -80,8 +80,7 @@ class AbstractCatalogLoader(Generic[CatalogTypeVar]):
     def _load_df_from_paths(
         self, catalog: HCHealpixDataset, paths: List[hc.io.FilePointer], divisions: Tuple[int, ...] | None
     ) -> dd.core.DataFrame:
-        metadata_schema = self._load_parquet_metadata_schema(catalog)
-        dask_meta_schema = metadata_schema.empty_table().to_pandas()
+        dask_meta_schema = self._load_metadata_schema(catalog)
         if self.config.columns:
             dask_meta_schema = dask_meta_schema[self.config.columns]
         ddf = dd.io.from_map(
@@ -91,11 +90,13 @@ class AbstractCatalogLoader(Generic[CatalogTypeVar]):
             storage_options=self.storage_options,
             meta=dask_meta_schema,
             columns=self.config.columns,
+            dtype_backend=self.config.dtype_backend,
             **self.config.get_kwargs_dict(),
         )
         return ddf
 
-    def _load_parquet_metadata_schema(self, catalog: HCHealpixDataset) -> pyarrow.Schema:
+    def _load_metadata_schema(self, catalog: HCHealpixDataset) -> pd.DataFrame:
         metadata_pointer = hc.io.paths.get_common_metadata_pointer(catalog.catalog_base_dir)
         metadata = file_io.read_parquet_metadata(metadata_pointer, storage_options=self.storage_options)
-        return metadata.schema.to_arrow_schema()
+        types_mapper = pd.ArrowDtype if self.config.dtype_backend == "pyarrow" else None
+        return metadata.schema.to_arrow_schema().empty_table().to_pandas(types_mapper=types_mapper)
