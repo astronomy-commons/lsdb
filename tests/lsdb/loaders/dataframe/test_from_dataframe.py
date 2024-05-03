@@ -39,9 +39,7 @@ def test_from_dataframe(small_sky_order1_df, small_sky_order1_catalog, assert_di
     assert catalog._ddf.index.name == HIPSCAT_ID_COLUMN
     # Dataframes have the same data (column data types may differ)
     pd.testing.assert_frame_equal(
-        catalog.compute().sort_index(),
-        small_sky_order1_catalog.compute().sort_index(),
-        check_dtype=False,
+        catalog.compute().sort_index(), small_sky_order1_catalog.compute().sort_index()
     )
     # Divisions belong to the respective HEALPix pixels
     assert_divisions_are_correct(catalog)

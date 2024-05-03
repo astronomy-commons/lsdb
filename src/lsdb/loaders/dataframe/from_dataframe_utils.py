@@ -3,6 +3,7 @@ from typing import List, Tuple
 import dask.dataframe as dd
 import numpy as np
 import pandas as pd
+import pyarrow as pa
 from dask import delayed
 from hipscat.catalog import PartitionInfo
 from hipscat.pixel_math import HealpixPixel
@@ -12,22 +13,50 @@ from lsdb.dask.divisions import get_pixels_divisions
 
 
 def _generate_dask_dataframe(
-    pixel_dfs: List[pd.DataFrame], pixels: List[HealpixPixel]
+    pixel_dfs: List[pd.DataFrame], pixels: List[HealpixPixel], dtype_backend: str = "pyarrow"
 ) -> Tuple[dd.core.DataFrame, int]:
     """Create the Dask Dataframe from the list of HEALPix pixel Dataframes
 
     Args:
         pixel_dfs (List[pd.DataFrame]): The list of HEALPix pixel Dataframes
         pixels (List[HealpixPixel]): The list of HEALPix pixels in the catalog
+        dtype_backend (str): The backend that handles data types
 
     Returns:
         The catalog's Dask Dataframe and its total number of rows.
     """
     schema = pixel_dfs[0].iloc[:0, :].copy() if len(pixels) > 0 else []
-    divisions = get_pixels_divisions(pixels)
     delayed_dfs = [delayed(df) for df in pixel_dfs]
+    divisions = get_pixels_divisions(pixels)
     ddf = dd.io.from_delayed(delayed_dfs, meta=schema, divisions=divisions)
-    return ddf if isinstance(ddf, dd.core.DataFrame) else ddf.to_frame(), len(ddf)
+    ddf = ddf if isinstance(ddf, dd.core.DataFrame) else ddf.to_frame()
+    ddf = _convert_ddf_types_to_pyarrow(ddf) if dtype_backend == "pyarrow" else ddf
+    return ddf, len(ddf)
+
+
+# pylint: disable=protected-access
+def _convert_ddf_types_to_pyarrow(ddf: dd.DataFrame) -> dd.DataFrame:
+    # Convert schema types according to the backend
+    pyarrow_meta = _convert_dtypes_to_pyarrow(ddf._meta)
+    # Apply the new schema to the dask dataframe
+    ddf = ddf.astype(pyarrow_meta.dtypes)
+    # Update index data type as well, which is not handled automatically
+    ddf.index = ddf.index.astype(pd.ArrowDtype(pa.uint64()))
+    # Finally, set the new schema as the dataframe meta
+    ddf._meta = pyarrow_meta
+    return ddf
+
+
+def _convert_dtypes_to_pyarrow(df: pd.DataFrame) -> pd.DataFrame:
+    new_series = {}
+    for column in df.columns:
+        try:
+            pa_array = pa.array(df[column], from_pandas=True)
+        except Exception as exc:
+            raise ValueError(f"Could not convert column {column} to a pyarrow type") from exc
+        series = pd.Series(pa_array, dtype=pd.ArrowDtype(pa_array.type), copy=False, index=df.index)
+        new_series[column] = series
+    return pd.DataFrame(new_series, index=df.index, copy=False)
 
 
 def _append_partition_information_to_dataframe(dataframe: pd.DataFrame, pixel: HealpixPixel) -> pd.DataFrame:

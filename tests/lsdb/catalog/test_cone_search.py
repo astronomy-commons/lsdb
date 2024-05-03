@@ -36,9 +36,13 @@ def test_cone_search_filters_correct_points_margin(
     cone_search_catalog = small_sky_order1_source_with_margin.cone_search(ra, dec, radius)
     assert cone_search_catalog.margin is not None
     cone_search_df = cone_search_catalog.compute()
-    pd.testing.assert_frame_equal(cone_search_df, cone_search_expected, check_dtype=False)
+    pd.testing.assert_frame_equal(
+        cone_search_df, cone_search_expected, check_index_type=False, check_dtype=False
+    )
     cone_search_margin_df = cone_search_catalog.margin.compute()
-    pd.testing.assert_frame_equal(cone_search_margin_df, cone_search_margin_expected, check_dtype=False)
+    pd.testing.assert_frame_equal(
+        cone_search_margin_df, cone_search_margin_expected, check_index_type=False, check_dtype=False
+    )
     assert_divisions_are_correct(cone_search_catalog)
     assert_divisions_are_correct(cone_search_catalog.margin)
 

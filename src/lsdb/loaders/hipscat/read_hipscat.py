@@ -56,11 +56,11 @@ def read_hipscat(
             type for type checking, the type of the catalog can be specified here. Use by specifying
             the lsdb class for that catalog.
         search_filter (Type[AbstractSearch]): Default `None`. The filter method to be applied.
-        storage_options (dict): Dictionary that contains abstract filesystem credentials
         columns (List[str]): Default `None`. The set of columns to filter the catalog on.
         margin_cache (MarginCatalog): The margin cache for the main catalog
         dtype_backend (str): Whether the data should be backed by numpy or pyarrow. It is either
             "numpy_nullable" or "pyarrow". Defaults to "pyarrow".
+        storage_options (dict): Dictionary that contains abstract filesystem credentials
         **kwargs: Arguments to pass to the pandas parquet file reader
 
     Returns:
