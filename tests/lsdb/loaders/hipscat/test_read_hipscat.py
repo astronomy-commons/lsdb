@@ -158,5 +158,5 @@ def test_read_hipscat_with_backend(small_sky_dir):
     catalog = lsdb.read_hipscat(small_sky_dir, dtype_backend="pyarrow")
     assert catalog.dtypes.equals(default_catalog.dtypes)
     # The other option is to use numpy-backed data types
-    catalog = lsdb.read_hipscat(small_sky_dir, dtype_backend="numpy_nullable")
+    catalog = lsdb.read_hipscat(small_sky_dir, dtype_backend="numpy")
     assert all(isinstance(col_type, np.dtype) for col_type in catalog.dtypes)

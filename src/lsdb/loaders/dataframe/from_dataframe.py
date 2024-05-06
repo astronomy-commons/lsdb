@@ -28,8 +28,8 @@ def from_dataframe(
         threshold (int): The maximum number of data points per pixel
         margin_order (int): The order at which to generate the margin cache
         margin_threshold (float): The size of the margin cache boundary, in arcseconds
-        dtype_backend (str): Whether the data should be backed by numpy or pyarrow.
-            It is either "numpy_nullable" or "pyarrow". Defaults to "pyarrow".
+        dtype_backend (str): Whether the data should be backed by pyarrow or numpy.
+            It is either "pyarrow" or "numpy". Defaults to "pyarrow".
         **kwargs: Arguments to pass to the creation of the catalog info
 
     Returns:

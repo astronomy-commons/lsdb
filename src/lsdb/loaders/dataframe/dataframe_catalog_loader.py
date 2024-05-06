@@ -47,15 +47,15 @@ class DataframeCatalogLoader:
             highest_order (int): The highest partition order
             partition_size (int): The desired partition size, in number of rows
             threshold (int): The maximum number of data points per pixel
-            dtype_backend (str): Whether the data should be backed by numpy or pyarrow.
-                It is either "numpy_nullable" or "pyarrow". Defaults to "pyarrow".
+            dtype_backend (str): Whether the data should be backed by pyarrow or numpy.
+                It is either "pyarrow" or "numpy". Defaults to "pyarrow".
             **kwargs: Arguments to pass to the creation of the catalog info
         """
         self.dataframe = dataframe
         self.lowest_order = lowest_order
         self.highest_order = highest_order
         self.threshold = self._calculate_threshold(partition_size, threshold)
-        self.dtype_backend = dtype_backend
+        self.use_pyarrow_types = dtype_backend == "pyarrow"
         self.catalog_info = self._create_catalog_info(**kwargs)
 
     def _calculate_threshold(self, partition_size: int | None = None, threshold: int | None = None) -> int:
@@ -175,7 +175,7 @@ class DataframeCatalogLoader:
 
         # Generate Dask Dataframe with the original schema and desired backend
         pixel_list = list(ddf_pixel_map.keys())
-        ddf, total_rows = _generate_dask_dataframe(pixel_dfs, pixel_list, dtype_backend=self.dtype_backend)
+        ddf, total_rows = _generate_dask_dataframe(pixel_dfs, pixel_list, self.use_pyarrow_types)
         return ddf, ddf_pixel_map, total_rows
 
     def _get_dataframe_for_healpix(self, hp_pixel: HealpixPixel, pixels: List[int]) -> pd.DataFrame:

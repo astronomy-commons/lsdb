@@ -58,8 +58,8 @@ def read_hipscat(
         search_filter (Type[AbstractSearch]): Default `None`. The filter method to be applied.
         columns (List[str]): Default `None`. The set of columns to filter the catalog on.
         margin_cache (MarginCatalog): The margin cache for the main catalog
-        dtype_backend (str): Whether the data should be backed by numpy or pyarrow. It is either
-            "numpy_nullable" or "pyarrow". Defaults to "pyarrow".
+        dtype_backend (str): Whether the data should be backed by pyarrow or numpy.
+            It is either "pyarrow" or "numpy". Defaults to "pyarrow".
         storage_options (dict): Dictionary that contains abstract filesystem credentials
         **kwargs: Arguments to pass to the pandas parquet file reader
 

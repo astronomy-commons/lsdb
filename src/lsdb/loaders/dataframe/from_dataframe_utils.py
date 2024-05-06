@@ -13,14 +13,14 @@ from lsdb.dask.divisions import get_pixels_divisions
 
 
 def _generate_dask_dataframe(
-    pixel_dfs: List[pd.DataFrame], pixels: List[HealpixPixel], dtype_backend: str = "pyarrow"
+    pixel_dfs: List[pd.DataFrame], pixels: List[HealpixPixel], use_pyarrow_types: bool = True
 ) -> Tuple[dd.core.DataFrame, int]:
     """Create the Dask Dataframe from the list of HEALPix pixel Dataframes
 
     Args:
         pixel_dfs (List[pd.DataFrame]): The list of HEALPix pixel Dataframes
         pixels (List[HealpixPixel]): The list of HEALPix pixels in the catalog
-        dtype_backend (str): The backend that handles data types
+        use_pyarrow_types (bool): If True, use pyarrow types. Defaults to "True".
 
     Returns:
         The catalog's Dask Dataframe and its total number of rows.
@@ -30,17 +30,26 @@ def _generate_dask_dataframe(
     divisions = get_pixels_divisions(pixels)
     ddf = dd.io.from_delayed(delayed_dfs, meta=schema, divisions=divisions)
     ddf = ddf if isinstance(ddf, dd.core.DataFrame) else ddf.to_frame()
-    ddf = _convert_ddf_types_to_pyarrow(ddf) if dtype_backend == "pyarrow" else ddf
+    ddf = _convert_ddf_types_to_pyarrow(ddf) if use_pyarrow_types else ddf
     return ddf, len(ddf)
 
 
 # pylint: disable=protected-access
 def _convert_ddf_types_to_pyarrow(ddf: dd.DataFrame) -> dd.DataFrame:
+    """Convert a Dask DataFrame to pyarrow types.
+
+    Args:
+        ddf (dd.DataFrame): A Dask DataFrame
+
+    Returns:
+        A new dask DataFrame, where columns, index and schema have been
+        converted to use pyarrow types.
+    """
     # Convert schema types according to the backend
     pyarrow_meta = _convert_dtypes_to_pyarrow(ddf._meta)
     # Apply the new schema to the dask dataframe
     ddf = ddf.astype(pyarrow_meta.dtypes)
-    # Update index data type as well, which is not handled automatically
+    # Update the hipscat index data type, which is not handled automatically
     ddf.index = ddf.index.astype(pd.ArrowDtype(pa.uint64()))
     # Finally, set the new schema as the dataframe meta
     ddf._meta = pyarrow_meta
@@ -48,6 +57,16 @@ def _convert_ddf_types_to_pyarrow(ddf: dd.DataFrame) -> dd.DataFrame:
 
 
 def _convert_dtypes_to_pyarrow(df: pd.DataFrame) -> pd.DataFrame:
+    """Transform the columns of a Pandas DataFrame to pyarrow types. It
+    does not update the type of the DataFrame index.
+
+    Args:
+        df (pd.DataFrame): A Pandas DataFrame
+
+    Returns:
+        A new DataFrame, with columns of pyarrow types. The return value is a
+        shallow copy of the initial DataFrame to avoid copying the data.
+    """
     new_series = {}
     for column in df.columns:
         try:

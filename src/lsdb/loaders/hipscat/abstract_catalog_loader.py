@@ -90,7 +90,7 @@ class AbstractCatalogLoader(Generic[CatalogTypeVar]):
             storage_options=self.storage_options,
             meta=dask_meta_schema,
             columns=self.config.columns,
-            dtype_backend=self.config.dtype_backend,
+            dtype_backend=self.config.get_dtype_backend(),
             **self.config.get_kwargs_dict(),
         )
         return ddf
@@ -98,5 +98,8 @@ class AbstractCatalogLoader(Generic[CatalogTypeVar]):
     def _load_metadata_schema(self, catalog: HCHealpixDataset) -> pd.DataFrame:
         metadata_pointer = hc.io.paths.get_common_metadata_pointer(catalog.catalog_base_dir)
         metadata = file_io.read_parquet_metadata(metadata_pointer, storage_options=self.storage_options)
-        types_mapper = pd.ArrowDtype if self.config.dtype_backend == "pyarrow" else None
-        return metadata.schema.to_arrow_schema().empty_table().to_pandas(types_mapper=types_mapper)
+        return (
+            metadata.schema.to_arrow_schema()
+            .empty_table()
+            .to_pandas(types_mapper=self.config.get_pyarrow_dtype_mapper())
+        )
