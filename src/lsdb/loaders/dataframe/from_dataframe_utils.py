@@ -73,7 +73,9 @@ def _convert_dtypes_to_pyarrow(df: pd.DataFrame) -> pd.DataFrame:
             pa_array = pa.array(df[column], from_pandas=True)
         except Exception as exc:
             raise ValueError(f"Could not convert column {column} to a pyarrow type") from exc
-        series = pd.Series(pa_array, dtype=pd.ArrowDtype(pa_array.type), copy=False, index=df.index)
+        # The LargeString type is not recommended. Prevent any strings from being cast to this type.
+        pyarrow_dtype = pa.string() if isinstance(pa_array, pa.LargeStringArray) else pa_array.type
+        series = pd.Series(pa_array, dtype=pd.ArrowDtype(pyarrow_dtype), copy=False, index=df.index)
         new_series[column] = series
     return pd.DataFrame(new_series, index=df.index, copy=False)
 

@@ -49,5 +49,6 @@ def from_dataframe(
             catalog,
             margin_order,
             margin_threshold,
+            use_pyarrow_types,
         ).create_catalog()
     return catalog
