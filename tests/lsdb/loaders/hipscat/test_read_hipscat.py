@@ -155,13 +155,8 @@ def test_read_hipscat_with_backend(small_sky_dir):
     default_catalog = lsdb.read_hipscat(small_sky_dir)
     assert all(isinstance(col_type, pd.ArrowDtype) for col_type in default_catalog.dtypes)
     # We can also pass it explicitly as an argument
-    catalog = lsdb.read_hipscat(small_sky_dir, dtype_backend="pyarrow")
+    catalog = lsdb.read_hipscat(small_sky_dir, use_pyarrow_types=True)
     assert catalog.dtypes.equals(default_catalog.dtypes)
-    # The other option is to use numpy-backed data types
-    catalog = lsdb.read_hipscat(small_sky_dir, dtype_backend="numpy")
+    # The other option is to keep the original types. In this case they are numpy-backed.
+    catalog = lsdb.read_hipscat(small_sky_dir, use_pyarrow_types=False)
     assert all(isinstance(col_type, np.dtype) for col_type in catalog.dtypes)
-
-
-def test_read_hipscat_with_invalid_backend(small_sky_dir):
-    with pytest.raises(ValueError, match="data type backend must be either"):
-        lsdb.read_hipscat(small_sky_dir, dtype_backend="abc")

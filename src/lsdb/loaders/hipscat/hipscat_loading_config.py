@@ -26,15 +26,11 @@ class HipscatLoadingConfig:
     margin_cache: MarginCatalog | None = None
     """Margin cache for the catalog. By default, it is None"""
 
-    dtype_backend: str = "pyarrow"
-    """Whether the data should be backed by pyarrow or numpy. It is either 'pyarrow' or 'numpy'"""
+    use_pyarrow_types: bool = True
+    """Whether the data should be backed by pyarrow or not. Defaults to "pyarrow"."""
 
     kwargs: dict | None = None
     """Extra kwargs"""
-
-    def __post_init__(self):
-        if self.dtype_backend not in ["pyarrow", "numpy"]:
-            raise ValueError("The data type backend must be either 'pyarrow' or 'numpy'")
 
     def get_kwargs_dict(self) -> dict:
         """Returns a dictionary with the extra kwargs"""
@@ -42,9 +38,9 @@ class HipscatLoadingConfig:
 
     def get_dtype_backend(self) -> str:
         """Returns the data type backend. It is either "pyarrow" or <no_default>,
-        in case we want to keep numpy-backed types."""
-        return self.dtype_backend if self.dtype_backend == "pyarrow" else lib.no_default
+        in case we want to keep the original types."""
+        return "pyarrow" if self.use_pyarrow_types else lib.no_default
 
     def get_pyarrow_dtype_mapper(self) -> pd.ArrowDtype | None:
-        """Returns a types mapper for pyarrow"""
-        return pd.ArrowDtype if self.dtype_backend == "pyarrow" else None
+        """Returns a mapper for pyarrow types"""
+        return pd.ArrowDtype if self.use_pyarrow_types else None

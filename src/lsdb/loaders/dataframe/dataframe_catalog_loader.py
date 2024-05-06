@@ -36,7 +36,7 @@ class DataframeCatalogLoader:
         highest_order: int = 5,
         partition_size: int | None = None,
         threshold: int | None = None,
-        dtype_backend: str = "pyarrow",
+        use_pyarrow_types: bool = True,
         **kwargs,
     ) -> None:
         """Initializes a DataframeCatalogLoader
@@ -47,8 +47,8 @@ class DataframeCatalogLoader:
             highest_order (int): The highest partition order
             partition_size (int): The desired partition size, in number of rows
             threshold (int): The maximum number of data points per pixel
-            dtype_backend (str): Whether the data should be backed by pyarrow or numpy.
-                It is either "pyarrow" or "numpy". Defaults to "pyarrow".
+            use_pyarrow_types (bool): If True, the data is backed by pyarrow, otherwise we keep the
+                original data types. Defaults to "pyarrow".
             **kwargs: Arguments to pass to the creation of the catalog info
         """
         self.dataframe = dataframe
@@ -56,11 +56,7 @@ class DataframeCatalogLoader:
         self.highest_order = highest_order
         self.threshold = self._calculate_threshold(partition_size, threshold)
         self.catalog_info = self._create_catalog_info(**kwargs)
-
-        if dtype_backend not in ["pyarrow", "numpy"]:
-            raise ValueError("The data type backend must be either 'pyarrow' or 'numpy'")
-
-        self.use_pyarrow_types = dtype_backend == "pyarrow"
+        self.use_pyarrow_types = use_pyarrow_types
 
     def _calculate_threshold(self, partition_size: int | None = None, threshold: int | None = None) -> int:
         """Calculates the number of pixels per HEALPix pixel (threshold) for the

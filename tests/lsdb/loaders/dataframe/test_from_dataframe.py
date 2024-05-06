@@ -217,9 +217,9 @@ def test_from_dataframe_with_backend(small_sky_order1_df, small_sky_order1_dir):
     """Tests that we can initialize a catalog from a Pandas Dataframe with the desired backend"""
     # Read the catalog from hipscat format using pyarrow, import it from a CSV using
     # the same backend and assert that we obtain the same catalog
-    expected_catalog = lsdb.read_hipscat(small_sky_order1_dir, dtype_backend="pyarrow")
+    expected_catalog = lsdb.read_hipscat(small_sky_order1_dir, use_pyarrow_types=True)
     kwargs = get_catalog_kwargs(expected_catalog)
-    catalog = lsdb.from_dataframe(small_sky_order1_df, **kwargs, dtype_backend="pyarrow")
+    catalog = lsdb.from_dataframe(small_sky_order1_df, **kwargs, use_pyarrow_types=True)
     assert all(isinstance(col_type, pd.ArrowDtype) for col_type in catalog.dtypes)
     pd.testing.assert_frame_equal(catalog.compute().sort_index(), expected_catalog.compute().sort_index())
 
@@ -228,13 +228,8 @@ def test_from_dataframe_with_backend(small_sky_order1_df, small_sky_order1_dir):
     pd.testing.assert_frame_equal(catalog.compute().sort_index(), default_catalog.compute().sort_index())
 
     # Test that we can also specify a numpy backend
-    expected_catalog = lsdb.read_hipscat(small_sky_order1_dir, dtype_backend="numpy")
+    expected_catalog = lsdb.read_hipscat(small_sky_order1_dir, use_pyarrow_types=False)
     kwargs = get_catalog_kwargs(expected_catalog)
-    catalog = lsdb.from_dataframe(small_sky_order1_df, dtype_backend="numpy", **kwargs)
+    catalog = lsdb.from_dataframe(small_sky_order1_df, use_pyarrow_types=False, **kwargs)
     assert all(isinstance(col_type, np.dtype) for col_type in catalog.dtypes)
     pd.testing.assert_frame_equal(catalog.compute().sort_index(), expected_catalog.compute().sort_index())
-
-
-def test_from_dataframe_with_invalid_backend(small_sky_order1_dir):
-    with pytest.raises(ValueError, match="data type backend must be either"):
-        lsdb.from_dataframe(small_sky_order1_dir, dtype_backend="abc")

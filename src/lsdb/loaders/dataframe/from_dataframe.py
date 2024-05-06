@@ -15,7 +15,7 @@ def from_dataframe(
     threshold: int | None = None,
     margin_order: int | None = -1,
     margin_threshold: float = 5.0,
-    dtype_backend: str = "pyarrow",
+    use_pyarrow_types: bool = True,
     **kwargs,
 ) -> Catalog:
     """Load a catalog from a Pandas Dataframe in CSV format.
@@ -28,8 +28,8 @@ def from_dataframe(
         threshold (int): The maximum number of data points per pixel
         margin_order (int): The order at which to generate the margin cache
         margin_threshold (float): The size of the margin cache boundary, in arcseconds
-        dtype_backend (str): Whether the data should be backed by pyarrow or numpy.
-            It is either "pyarrow" or "numpy". Defaults to "pyarrow".
+        use_pyarrow_types (bool): If True, the data is backed by pyarrow, otherwise we keep the
+            original data types. Defaults to "pyarrow".
         **kwargs: Arguments to pass to the creation of the catalog info
 
     Returns:
@@ -41,7 +41,7 @@ def from_dataframe(
         highest_order,
         partition_size,
         threshold,
-        dtype_backend,
+        use_pyarrow_types,
         **kwargs,
     ).load_catalog()
     if margin_threshold:
