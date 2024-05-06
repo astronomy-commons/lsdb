@@ -34,7 +34,7 @@ class HipscatLoadingConfig:
 
     def __post_init__(self):
         if self.dtype_backend not in ["pyarrow", "numpy"]:
-            raise ValueError("The data type must be either 'pyarrow' or 'numpy'")
+            raise ValueError("The data type backend must be either 'pyarrow' or 'numpy'")
 
     def get_kwargs_dict(self) -> dict:
         """Returns a dictionary with the extra kwargs"""

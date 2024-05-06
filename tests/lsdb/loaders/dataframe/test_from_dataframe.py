@@ -233,3 +233,8 @@ def test_from_dataframe_with_backend(small_sky_order1_df, small_sky_order1_dir):
     catalog = lsdb.from_dataframe(small_sky_order1_df, dtype_backend="numpy", **kwargs)
     assert all(isinstance(col_type, np.dtype) for col_type in catalog.dtypes)
     pd.testing.assert_frame_equal(catalog.compute().sort_index(), expected_catalog.compute().sort_index())
+
+
+def test_from_dataframe_with_invalid_backend(small_sky_order1_dir):
+    with pytest.raises(ValueError, match="data type backend must be either"):
+        lsdb.from_dataframe(small_sky_order1_dir, dtype_backend="abc")
