@@ -15,10 +15,7 @@ class TestCrossmatch:
     def test_kdtree_crossmatch(algo, small_sky_catalog, small_sky_xmatch_catalog, xmatch_correct):
         with pytest.warns(RuntimeWarning, match="Results may be inaccurate"):
             xmatched = small_sky_catalog.crossmatch(
-                small_sky_xmatch_catalog,
-                algorithm=algo,
-                radius_arcsec=0.01 * 3600,
-                require_right_margin=False,
+                small_sky_xmatch_catalog, algorithm=algo, radius_arcsec=0.01 * 3600
             ).compute()
         assert len(xmatched) == len(xmatch_correct)
         for _, correct_row in xmatch_correct.iterrows():
@@ -34,7 +31,6 @@ class TestCrossmatch:
                 small_sky_xmatch_catalog,
                 radius_arcsec=0.005 * 3600,
                 algorithm=algo,
-                require_right_margin=False,
             ).compute()
         assert len(xmatched) == len(xmatch_correct_005)
         for _, correct_row in xmatch_correct_005.iterrows():
@@ -53,7 +49,6 @@ class TestCrossmatch:
                 n_neighbors=3,
                 radius_arcsec=2 * 3600,
                 algorithm=algo,
-                require_right_margin=False,
             ).compute()
         assert len(xmatched) == len(xmatch_correct_3n_2t_no_margin)
         for _, correct_row in xmatch_correct_3n_2t_no_margin.iterrows():
@@ -127,7 +122,6 @@ class TestBoundedCrossmatch:
                 radius_arcsec=0.005 * 3600,
                 min_radius_arcsec=0.002 * 3600,
                 algorithm=algo,
-                require_right_margin=False,
             ).compute()
         assert len(xmatched) == len(xmatch_correct_002_005)
         for _, correct_row in xmatch_correct_002_005.iterrows():
@@ -153,7 +147,6 @@ class TestBoundedCrossmatch:
             radius_arcsec=2 * 3600,
             min_radius_arcsec=0.5 * 3600,
             algorithm=algo,
-            require_right_margin=False,
         ).compute()
         assert len(xmatched) == len(xmatch_correct_05_2_3n_margin)
         for _, correct_row in xmatch_correct_05_2_3n_margin.iterrows():
@@ -177,7 +170,6 @@ class TestBoundedCrossmatch:
                 radius_arcsec=0.005 * 3600,
                 min_radius_arcsec=1,
                 algorithm=algo,
-                require_right_margin=False,
             ).compute()
         assert len(xmatched) == len(xmatch_correct_005)
         for _, correct_row in xmatch_correct_005.iterrows():
@@ -199,7 +191,6 @@ class TestBoundedCrossmatch:
                 radius_arcsec=2 * 3600,
                 min_radius_arcsec=0.5 * 3600,
                 algorithm=algo,
-                require_right_margin=False,
             ).compute()
         assert len(xmatched) == 72
         assert all(xmatched.groupby("id_small_sky").size()) <= 50
@@ -209,13 +200,13 @@ class TestBoundedCrossmatch:
         # Read a second small sky catalog to not have duplicate labels
         small_sky_catalog_2 = lsdb.read_hipscat(small_sky_dir)
         small_sky_catalog_2.hc_structure.catalog_name = "small_sky_2"
-        xmatched = small_sky_catalog.crossmatch(
-            small_sky_catalog_2,
-            min_radius_arcsec=0,
-            radius_arcsec=0.005 * 3600,
-            algorithm=algo,
-            require_right_margin=False,
-        ).compute()
+        with pytest.warns(RuntimeWarning, match="Results may be inaccurate"):
+            xmatched = small_sky_catalog.crossmatch(
+                small_sky_catalog_2,
+                min_radius_arcsec=0,
+                radius_arcsec=0.005 * 3600,
+                algorithm=algo,
+            ).compute()
         assert len(xmatched) == len(small_sky_catalog.compute())
         assert all(xmatched["_dist_arcsec"] == 0)
 

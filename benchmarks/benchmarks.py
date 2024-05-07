@@ -40,7 +40,7 @@ def time_kdtree_crossmatch():
     """Time computations are prefixed with 'time'."""
     small_sky = load_small_sky()
     small_sky_xmatch = load_small_sky_xmatch()
-    small_sky.crossmatch(small_sky_xmatch, require_right_margin=False).compute()
+    small_sky.crossmatch(small_sky_xmatch).compute()
 
 
 def time_polygon_search():
