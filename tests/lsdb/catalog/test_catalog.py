@@ -369,6 +369,56 @@ def test_skymap_histogram_order_default(small_sky_order1_catalog):
     assert (small_sky_order1_catalog.skymap_histogram(func, order, default) == img).all()
 
 
+def test_skymap_histogram_null_values_order_default(small_sky_order1_catalog):
+    default = -1.0
+
+    def func(df, healpix):
+        density = len(df) / hp.nside2pixarea(hp.order2nside(healpix.order), degrees=True)
+        return density if healpix.pixel % 2 == 0 else None
+
+    pixels = list(small_sky_order1_catalog._ddf_pixel_map.keys())
+    max_order = max(pixels, key=lambda x: x.order).order
+    hp_orders = np.vectorize(lambda x: x.order)(pixels)
+    hp_pixels = np.vectorize(lambda x: x.pixel)(pixels)
+
+    dorders = max_order - hp_orders
+    starts = hp_pixels << (2 * dorders)
+    ends = (hp_pixels + 1) << (2 * dorders)
+
+    histogram = small_sky_order1_catalog.skymap_histogram(func, default_value=default)
+
+    for start, end in zip(starts, ends):
+        pixels = np.arange(start, end)
+        arr = histogram[pixels[pixels % 2 != 0]]
+        expected_arr = np.full(arr.shape, fill_value=default)
+        assert np.array_equal(expected_arr, arr)
+
+
+def test_skymap_histogram_null_values_order(small_sky_order1_catalog):
+    order = 3
+    default = -1.0
+
+    def func(df, healpix):
+        density = len(df) / hp.nside2pixarea(hp.order2nside(healpix.order), degrees=True)
+        return density if healpix.pixel % 2 == 0 else None
+
+    pixels = list(small_sky_order1_catalog._ddf_pixel_map.keys())
+    hp_orders = np.vectorize(lambda x: x.order)(pixels)
+    hp_pixels = np.vectorize(lambda x: x.pixel)(pixels)
+
+    dorders = order - hp_orders
+    starts = hp_pixels << (2 * dorders)
+    ends = (hp_pixels + 1) << (2 * dorders)
+
+    histogram = small_sky_order1_catalog.skymap_histogram(func, order, default)
+
+    for start, end in zip(starts, ends):
+        pixels = np.arange(start, end)
+        arr = histogram[pixels[pixels % 2 != 0]]
+        expected_arr = np.full(arr.shape, fill_value=default)
+        assert np.array_equal(expected_arr, arr)
+
+
 # pylint: disable=no-member
 def test_skymap_plot(small_sky_order1_catalog, mocker):
     mocker.patch("healpy.mollview")

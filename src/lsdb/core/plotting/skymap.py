@@ -31,7 +31,7 @@ def perform_inner_skymap(
     delta_order = target_order - pixel.order
     img = np.full(1 << 2 * delta_order, fill_value=default_value)
     min_pixel_value = pixel.pixel << 2 * delta_order
-    img[gb.index.to_numpy() - min_pixel_value] = gb.to_numpy()
+    img[gb.index.to_numpy() - min_pixel_value] = gb.to_numpy(na_value=default_value)
     return img
 
 

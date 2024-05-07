@@ -298,10 +298,16 @@ class HealpixDataset(Dataset):
             A dict of Delayed values, one for the function applied to each partition of the catalog
         """
 
+        @delayed
+        def func_wrapper(*_args, **_kwargs):
+            result = func(*_args, **_kwargs)
+            return result if result is not None else default_value
+
         partitions = self.to_delayed()
+
         if order is None:
             results = {
-                pixel: delayed(func)(partitions[index], pixel, **kwargs)
+                pixel: func_wrapper(partitions[index], pixel, **kwargs)
                 for pixel, index in self._ddf_pixel_map.items()
             }
         else:
@@ -346,7 +352,6 @@ class HealpixDataset(Dataset):
         pixels = list(smdata.keys())
         results = dask.compute(*[smdata[pixel] for pixel in pixels])
         result_dict = {pixels[i]: results[i] for i in range(len(pixels))}
-
         return compute_skymap(result_dict, order, default_value)
 
     def skymap(
