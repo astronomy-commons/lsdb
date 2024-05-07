@@ -13,7 +13,7 @@ from lsdb.core.crossmatch.kdtree_match import KdTreeCrossmatch
 class TestCrossmatch:
     @staticmethod
     def test_kdtree_crossmatch(algo, small_sky_catalog, small_sky_xmatch_catalog, xmatch_correct):
-        with pytest.warns(RuntimeWarning, match="Results may be inaccurate"):
+        with pytest.warns(RuntimeWarning, match="Results may be incomplete or inaccurate"):
             xmatched = small_sky_catalog.crossmatch(
                 small_sky_xmatch_catalog, algorithm=algo, radius_arcsec=0.01 * 3600
             ).compute()
@@ -26,7 +26,7 @@ class TestCrossmatch:
 
     @staticmethod
     def test_kdtree_crossmatch_thresh(algo, small_sky_catalog, small_sky_xmatch_catalog, xmatch_correct_005):
-        with pytest.warns(RuntimeWarning, match="Results may be inaccurate"):
+        with pytest.warns(RuntimeWarning, match="Results may be incomplete or inaccurate"):
             xmatched = small_sky_catalog.crossmatch(
                 small_sky_xmatch_catalog,
                 radius_arcsec=0.005 * 3600,
@@ -43,7 +43,7 @@ class TestCrossmatch:
     def test_kdtree_crossmatch_multiple_neighbors(
         algo, small_sky_catalog, small_sky_xmatch_catalog, xmatch_correct_3n_2t_no_margin
     ):
-        with pytest.warns(RuntimeWarning, match="Results may be inaccurate"):
+        with pytest.warns(RuntimeWarning, match="Results may be incomplete or inaccurate"):
             xmatched = small_sky_catalog.crossmatch(
                 small_sky_xmatch_catalog,
                 n_neighbors=3,
@@ -116,7 +116,7 @@ class TestBoundedCrossmatch:
     def test_kdtree_crossmatch_min_thresh(
         algo, small_sky_catalog, small_sky_xmatch_catalog, xmatch_correct_002_005
     ):
-        with pytest.warns(RuntimeWarning, match="Results may be inaccurate"):
+        with pytest.warns(RuntimeWarning, match="Results may be incomplete or inaccurate"):
             xmatched = small_sky_catalog.crossmatch(
                 small_sky_xmatch_catalog,
                 radius_arcsec=0.005 * 3600,
@@ -164,7 +164,7 @@ class TestBoundedCrossmatch:
     ):
         # Set a very small minimum radius so that there is not a single point
         # with a very close neighbor
-        with pytest.warns(RuntimeWarning, match="Results may be inaccurate"):
+        with pytest.warns(RuntimeWarning, match="Results may be incomplete or inaccurate"):
             xmatched = small_sky_catalog.crossmatch(
                 small_sky_xmatch_catalog,
                 radius_arcsec=0.005 * 3600,
@@ -184,7 +184,7 @@ class TestBoundedCrossmatch:
     ):
         # The small_sky_xmatch catalog has 3 partitions (2 of length 41 and 1 of length 29).
         # Let's use n_neighbors above that to request more neighbors than there are points available.
-        with pytest.warns(RuntimeWarning, match="Results may be inaccurate"):
+        with pytest.warns(RuntimeWarning, match="Results may be incomplete or inaccurate"):
             xmatched = small_sky_catalog.crossmatch(
                 small_sky_xmatch_catalog,
                 n_neighbors=50,
@@ -200,7 +200,7 @@ class TestBoundedCrossmatch:
         # Read a second small sky catalog to not have duplicate labels
         small_sky_catalog_2 = lsdb.read_hipscat(small_sky_dir)
         small_sky_catalog_2.hc_structure.catalog_name = "small_sky_2"
-        with pytest.warns(RuntimeWarning, match="Results may be inaccurate"):
+        with pytest.warns(RuntimeWarning, match="Results may be incomplete or inaccurate"):
             xmatched = small_sky_catalog.crossmatch(
                 small_sky_catalog_2,
                 min_radius_arcsec=0,
@@ -250,7 +250,7 @@ class MockCrossmatchAlgorithm(AbstractCrossmatchAlgorithm):
 
 
 def test_custom_crossmatch_algorithm(small_sky_catalog, small_sky_xmatch_catalog, xmatch_mock):
-    with pytest.warns(RuntimeWarning, match="Results may be inaccurate"):
+    with pytest.warns(RuntimeWarning, match="Results may be incomplete or inaccurate"):
         xmatched = small_sky_catalog.crossmatch(
             small_sky_xmatch_catalog, algorithm=MockCrossmatchAlgorithm, mock_results=xmatch_mock
         ).compute()

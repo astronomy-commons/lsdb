@@ -192,7 +192,10 @@ def join_catalog_data_on(
         catalogs.
     """
     if right.margin is None:
-        warnings.warn("Right catalog does not have a margin cache. Results may be inaccurate", RuntimeWarning)
+        warnings.warn(
+            "Right catalog does not have a margin cache. Results may be incomplete or inaccurate.",
+            RuntimeWarning,
+        )
 
     alignment = align_catalogs(left, right)
 
@@ -245,7 +248,10 @@ def join_catalog_data_through(
         )
 
     if right.margin is None:
-        warnings.warn("Right catalog does not have a margin cache. Results may be inaccurate", RuntimeWarning)
+        warnings.warn(
+            "Right catalog does not have a margin cache. Results may be incomplete or inaccurate.",
+            RuntimeWarning,
+        )
 
     alignment = align_catalogs(left, right)
 

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import warnings
 from typing import Tuple
 
 import numpy as np
@@ -33,8 +32,7 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
         # Check that the margin exists and has a compatible radius.
         if self.right_margin_hc_structure is None:
             if require_right_margin:
-                raise ValueError("Right catalog margin is required for cross-match")
-            warnings.warn("Right catalog does not have a margin cache. Results may be inaccurate")
+                raise ValueError("Right catalog margin cache is required for cross-match.")
         else:
             if self.right_margin_hc_structure.catalog_info.margin_threshold < radius_arcsec:
                 raise ValueError("Cross match radius is greater than margin threshold")
