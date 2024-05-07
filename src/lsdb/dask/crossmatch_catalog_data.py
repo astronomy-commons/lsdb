@@ -115,7 +115,7 @@ def crossmatch_catalog_data(
 
     if right.margin is None:
         warnings.warn(
-            "Right catalog does not have a margin cache. Results may be incomplete or inaccurate.",
+            "Right catalog does not have a margin cache. Results may be incomplete and/or inaccurate.",
             RuntimeWarning,
         )
 
