@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Callable, List, Sequence, Tuple, cast
 
 import dask.dataframe as dd
+import healpy as hp
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
@@ -11,6 +12,7 @@ from hipscat.catalog import PartitionInfo
 from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN, healpix_to_hipscat_id
 from hipscat.pixel_tree import PixelAlignment, PixelAlignmentType, align_trees
+from hipscat.pixel_tree.pixel_alignment import align_with_mocs
 
 from lsdb.dask.divisions import get_pixels_divisions
 from lsdb.types import DaskDFPixelMap
@@ -54,12 +56,14 @@ def concat_partition_and_margin(
     return joined_df
 
 
-def align_catalogs(left: Catalog, right: Catalog) -> PixelAlignment:
+def align_catalogs(left: Catalog, right: Catalog, right_added_radius_arcsec: float = None) -> PixelAlignment:
     """Aligns two catalogs, also using the right catalog's margin if it exists
 
     Args:
         left (lsdb.Catalog): The left catalog to align
         right (lsdb.Catalog): The right catalog to align
+        right_added_radius_arcsec (float): When using MOCs to align catalogs, add an additional radius to the
+            right catalog's moc to include some overlap
     Returns:
         The PixelAlignment object from aligning the catalogs
     """
@@ -70,9 +74,27 @@ def align_catalogs(left: Catalog, right: Catalog) -> PixelAlignment:
             right.margin.hc_structure.pixel_tree,
             alignment_type=PixelAlignmentType.OUTER,
         ).pixel_tree
+        if right_added_radius_arcsec is None:
+            right_added_radius_arcsec = right.margin.hc_structure.catalog_info.margin_threshold
     else:
         right_tree = right.hc_structure.pixel_tree
-    return align_trees(left.hc_structure.pixel_tree, right_tree, alignment_type=PixelAlignmentType.INNER)
+
+    right_moc = right.hc_structure.moc
+    if right_moc is not None and right_added_radius_arcsec is not None:
+        right_moc_depth_resol = hp.nside2resol(hp.order2nside(right_moc.max_order), arcmin=True) * 60
+        if right_added_radius_arcsec < right_moc_depth_resol:
+            right_moc = right_moc.add_neighbours()
+        else:
+            delta_order = int(np.ceil(np.log2(right_added_radius_arcsec / right_moc_depth_resol)))
+            right_moc = right_moc.degrade_to_order(right_moc.max_order - delta_order).add_neighbours()
+
+    return align_with_mocs(
+        left.hc_structure.pixel_tree,
+        right_tree,
+        left.hc_structure.moc,
+        right_moc,
+        alignment_type=PixelAlignmentType.INNER,
+    )
 
 
 def align_and_apply(

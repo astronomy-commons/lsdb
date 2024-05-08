@@ -123,8 +123,10 @@ def crossmatch_catalog_data(
             RuntimeWarning,
         )
 
+    xmatch_radius = kwargs["radius_arcsec"] if "radius_arcsec" in kwargs else None
+
     # perform alignment on the two catalogs
-    alignment = align_catalogs(left, right)
+    alignment = align_catalogs(left, right, right_added_radius_arcsec=xmatch_radius)
 
     # get lists of HEALPix pixels from alignment to pass to cross-match
     left_pixels, right_pixels = get_healpix_pixels_from_alignment(alignment)
