@@ -296,11 +296,7 @@ class Catalog(HealpixDataset):
         ddf_partition_map, search_ddf = self._perform_search(
             filtered_hc_structure, filtered_pixels, search, fine
         )
-        margin = (
-            self.margin._search(filtered_hc_structure, search, fine)
-            if self.margin is not None and len(filtered_pixels) > 0
-            else None
-        )
+        margin = self.margin._search(filtered_hc_structure, search, fine) if self.margin is not None else None
         return Catalog(search_ddf, ddf_partition_map, filtered_hc_structure, margin=margin)
 
     def merge(

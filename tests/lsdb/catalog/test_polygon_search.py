@@ -137,4 +137,4 @@ def test_empty_polygon_search_with_margin(small_sky_order1_source_with_margin):
     vertices = [(80, 0), (100, 30), (120, 0)]
     polygon = small_sky_order1_source_with_margin.polygon_search(vertices)
     assert len(polygon._ddf_pixel_map) == 0
-    assert polygon.margin is None
+    assert len(polygon.margin._ddf_pixel_map) == 0

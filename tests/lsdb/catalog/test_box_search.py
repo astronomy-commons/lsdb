@@ -130,4 +130,4 @@ def test_empty_box_search_with_margin(small_sky_order1_source_with_margin):
     box = small_sky_order1_source_with_margin.box(ra, dec, fine=False)
     small_sky_order1_source_with_margin.plot_pixels()
     assert len(box._ddf_pixel_map) == 0
-    assert box.margin is None
+    assert len(box.margin._ddf_pixel_map) == 0

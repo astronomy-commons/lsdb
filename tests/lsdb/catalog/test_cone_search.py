@@ -115,4 +115,4 @@ def test_empty_cone_search_with_margin(small_sky_order1_source_with_margin):
     radius = 60
     cone = small_sky_order1_source_with_margin.cone_search(ra, dec, radius, fine=False)
     assert len(cone._ddf_pixel_map) == 0
-    assert cone.margin is None
+    assert len(cone.margin._ddf_pixel_map) == 0
