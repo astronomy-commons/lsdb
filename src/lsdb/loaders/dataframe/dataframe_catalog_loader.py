@@ -13,6 +13,7 @@ from hipscat.catalog.catalog_info import CatalogInfo
 from hipscat.pixel_math import HealpixPixel, generate_histogram
 from hipscat.pixel_math.healpix_pixel_function import get_pixel_argsort
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN, compute_hipscat_id, healpix_to_hipscat_id
+from mocpy import MOC
 
 from lsdb.catalog.catalog import Catalog
 from lsdb.loaders.dataframe.from_dataframe_utils import (
@@ -20,6 +21,7 @@ from lsdb.loaders.dataframe.from_dataframe_utils import (
     _generate_dask_dataframe,
 )
 from lsdb.types import DaskDFPixelMap, HealpixInfo
+import astropy.units as u
 
 pd.options.mode.chained_assignment = None  # default='warn'
 
@@ -36,6 +38,8 @@ class DataframeCatalogLoader:
         highest_order: int = 5,
         partition_size: int | None = None,
         threshold: int | None = None,
+        should_generate_moc: bool = True,
+        moc_max_order: int = 10,
         use_pyarrow_types: bool = True,
         **kwargs,
     ) -> None:
@@ -56,6 +60,8 @@ class DataframeCatalogLoader:
         self.highest_order = highest_order
         self.threshold = self._calculate_threshold(partition_size, threshold)
         self.catalog_info = self._create_catalog_info(**kwargs)
+        self.should_generate_moc = should_generate_moc
+        self.moc_max_order = moc_max_order
         self.use_pyarrow_types = use_pyarrow_types
 
     def _calculate_threshold(self, partition_size: int | None = None, threshold: int | None = None) -> int:
@@ -108,7 +114,8 @@ class DataframeCatalogLoader:
         ddf, ddf_pixel_map, total_rows = self._generate_dask_df_and_map(pixel_map)
         self.catalog_info = dataclasses.replace(self.catalog_info, total_rows=total_rows)
         healpix_pixels = list(pixel_map.keys())
-        hc_structure = hc.catalog.Catalog(self.catalog_info, healpix_pixels)
+        moc = self._generate_moc() if self.should_generate_moc else None
+        hc_structure = hc.catalog.Catalog(self.catalog_info, healpix_pixels, moc=moc)
         return Catalog(ddf, ddf_pixel_map, hc_structure)
 
     def _set_hipscat_index(self):
@@ -201,3 +208,8 @@ class DataframeCatalogLoader:
             (self.dataframe.index >= left_bound) & (self.dataframe.index < right_bound)
         ]
         return _append_partition_information_to_dataframe(pixel_df, hp_pixel)
+
+    def _generate_moc(self):
+        lon = self.dataframe[self.catalog_info.ra_column].to_numpy() * u.deg
+        lat = self.dataframe[self.catalog_info.dec_column].to_numpy() * u.deg
+        return MOC.from_lonlat(lon=lon, lat=lat, max_norder=self.moc_max_order)
