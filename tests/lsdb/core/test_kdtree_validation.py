@@ -50,10 +50,8 @@ def test_bounded_kdtree_radius_invalid(bounded_kdtree_crossmatch):
 
 def test_kdtree_no_margin(kdtree_crossmatch):
     kdtree_crossmatch.right_margin_hc_structure = None
-    with pytest.raises(ValueError, match="Right margin is required"):
-        kdtree_crossmatch.validate()
-
-    kdtree_crossmatch.validate(require_right_margin=False)
+    with pytest.raises(ValueError, match="Right catalog margin cache is required for cross-match"):
+        kdtree_crossmatch.validate(require_right_margin=True)
 
 
 def test_kdtree_left_columns(kdtree_crossmatch):

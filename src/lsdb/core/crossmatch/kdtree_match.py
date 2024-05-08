@@ -21,7 +21,7 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
         self,
         n_neighbors: int = 1,
         radius_arcsec: float = 1,
-        require_right_margin=True,
+        require_right_margin: bool = False,
     ):
         super().validate()
         # Validate radius
@@ -32,7 +32,7 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
         # Check that the margin exists and has a compatible radius.
         if self.right_margin_hc_structure is None:
             if require_right_margin:
-                raise ValueError("Right margin is required for cross-match")
+                raise ValueError("Right catalog margin cache is required for cross-match.")
         else:
             if self.right_margin_hc_structure.catalog_info.margin_threshold < radius_arcsec:
                 raise ValueError("Cross match radius is greater than margin threshold")
@@ -42,7 +42,7 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
         n_neighbors: int = 1,
         radius_arcsec: float = 1,
         # We need it here because the signature is shared with .validate()
-        require_right_margin=True,  # pylint: disable=unused-argument
+        require_right_margin: bool = False,  # pylint: disable=unused-argument
     ) -> pd.DataFrame:
         """Perform a cross-match between the data from two HEALPix pixels
 
