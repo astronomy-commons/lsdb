@@ -120,7 +120,9 @@ def _format_margin_partition_dataframe(dataframe: pd.DataFrame) -> pd.DataFrame:
         "partition_pixel": PartitionInfo.METADATA_PIXEL_COLUMN_NAME,
     }
     dataframe.rename(columns=rename_columns, inplace=True)
-    dir_column = np.floor_divide(dataframe[PartitionInfo.METADATA_PIXEL_COLUMN_NAME].values, 10000) * 10000
+    dir_column = (
+        np.floor_divide(dataframe[PartitionInfo.METADATA_PIXEL_COLUMN_NAME].to_numpy(), 10000) * 10000
+    )
     dataframe[PartitionInfo.METADATA_DIR_COLUMN_NAME] = dir_column
     dataframe = dataframe.astype(
         {

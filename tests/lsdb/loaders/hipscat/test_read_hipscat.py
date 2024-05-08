@@ -23,13 +23,13 @@ def test_read_hipscat_with_columns(small_sky_order1_dir):
     filter_columns = ["ra", "dec"]
     catalog = lsdb.read_hipscat(small_sky_order1_dir, columns=filter_columns)
     assert isinstance(catalog, lsdb.Catalog)
-    npt.assert_array_equal(catalog.compute().columns.values, filter_columns)
+    npt.assert_array_equal(catalog.compute().columns.to_numpy(), filter_columns)
 
 
 def test_read_hipscat_with_extra_kwargs(small_sky_order1_dir):
     catalog = lsdb.read_hipscat(small_sky_order1_dir, filters=[("ra", ">", 300)], engine="pyarrow")
     assert isinstance(catalog, lsdb.Catalog)
-    assert np.greater(catalog.compute()["ra"].values, 300).all()
+    assert np.greater(catalog.compute()["ra"].to_numpy(), 300).all()
 
 
 def test_pixels_in_map_equal_catalog_pixels(small_sky_order1_dir, small_sky_order1_hipscat_catalog):

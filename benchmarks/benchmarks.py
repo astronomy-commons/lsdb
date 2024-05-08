@@ -47,8 +47,8 @@ def time_polygon_search():
     """Time polygonal search using sphgeom"""
     small_sky_order1 = load_small_sky_order1().compute()
     # Upsample test catalog to 10,000 points
-    catalog_ra = upsample_array(small_sky_order1["ra"].values, 10_000)
-    catalog_dec = upsample_array(small_sky_order1["dec"].values, 10_000)
+    catalog_ra = upsample_array(small_sky_order1["ra"].to_numpy(), 10_000)
+    catalog_dec = upsample_array(small_sky_order1["dec"].to_numpy(), 10_000)
     # Define sky polygon to use in search
     vertices = [(300, -50), (300, -55), (272, -55), (272, -50)]
     polygon, _ = get_cartesian_polygon(vertices)

@@ -51,8 +51,8 @@ def cone_filter(data_frame: pd.DataFrame, ra, dec, radius_arcsec, metadata: hc.c
     Returns:
         A new DataFrame with the rows from `data_frame` filtered to only the points inside the cone
     """
-    df_ras = data_frame[metadata.catalog_info.ra_column].values
-    df_decs = data_frame[metadata.catalog_info.dec_column].values
+    df_ras = data_frame[metadata.catalog_info.ra_column].to_numpy()
+    df_decs = data_frame[metadata.catalog_info.dec_column].to_numpy()
     df_coords = SkyCoord(df_ras, df_decs, unit="deg")
     center_coord = SkyCoord(ra, dec, unit="deg")
     df_separations_deg = df_coords.separation(center_coord).value
