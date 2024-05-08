@@ -4,6 +4,7 @@ import numpy.testing as npt
 import pandas as pd
 import pytest
 from hipscat.catalog.index.index_catalog import IndexCatalog
+from pandas.core.dtypes.base import ExtensionDtype
 
 import lsdb
 from lsdb.core.search import BoxSearch, ConeSearch, IndexSearch, OrderSearch, PolygonSearch
@@ -155,8 +156,11 @@ def test_read_hipscat_with_backend(small_sky_dir):
     default_catalog = lsdb.read_hipscat(small_sky_dir)
     assert all(isinstance(col_type, pd.ArrowDtype) for col_type in default_catalog.dtypes)
     # We can also pass it explicitly as an argument
-    catalog = lsdb.read_hipscat(small_sky_dir, use_pyarrow_types=True)
+    catalog = lsdb.read_hipscat(small_sky_dir)
     assert catalog.dtypes.equals(default_catalog.dtypes)
+    # Load data using a numpy-nullable types.
+    catalog = lsdb.read_hipscat(small_sky_dir, dtype_backend="numpy_nullable")
+    assert all(isinstance(col_type, ExtensionDtype) for col_type in catalog.dtypes)
     # The other option is to keep the original types. In this case they are numpy-backed.
-    catalog = lsdb.read_hipscat(small_sky_dir, use_pyarrow_types=False)
+    catalog = lsdb.read_hipscat(small_sky_dir, dtype_backend=None)
     assert all(isinstance(col_type, np.dtype) for col_type in catalog.dtypes)

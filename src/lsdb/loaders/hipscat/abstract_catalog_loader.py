@@ -101,5 +101,5 @@ class AbstractCatalogLoader(Generic[CatalogTypeVar]):
         return (
             metadata.schema.to_arrow_schema()
             .empty_table()
-            .to_pandas(types_mapper=self.config.get_pyarrow_dtype_mapper())
+            .to_pandas(types_mapper=self.config.get_dtype_mapper())
         )
