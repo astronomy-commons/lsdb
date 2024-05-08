@@ -62,7 +62,8 @@ def compute_skymap(
     ends = (hp_pixels + 1) << (2 * dorders)
 
     def set_values(start, end, value):
-        img[np.arange(start, end)] = value
+        if value is not None:
+            img[np.arange(start, end)] = value
 
     for s, e, v in zip(starts, ends, values):
         set_values(s, e, v)

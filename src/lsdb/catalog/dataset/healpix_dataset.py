@@ -289,25 +289,24 @@ class HealpixDataset(Dataset):
             func (Callable[[pd.DataFrame, HealpixPixel], Any]): A function that takes a pandas
                 DataFrame with the data in a partition, the HealpixPixel of the partition, and any other
                 keyword arguments and returns an aggregated value
-            order (int | None): The HEALPix order to compute the skymap at. If None (default), will compute
-                for each partition in the catalog at their own orders
+            order (int | None): The HEALPix order to compute the skymap at. If None (default),
+                will compute for each partition in the catalog at their own orders. If a value
+                other than None, each partition will be grouped by pixel number at the order
+                specified and the function will be applied to each group.
             default_value (Any): The value to use at pixels that aren't covered by the catalog (default 0)
             **kwargs: Arguments to pass to the function
 
         Returns:
-            A dict of Delayed values, one for the function applied to each partition of the catalog
+            A dict of Delayed values, one for the function applied to each partition of the catalog.
+            If order is not None, the Delayed objects will be numpy arrays with all pixels within the
+            partition at the specified order. Any pixels within a partition that have no coverage will
+            have the default_value as its result, as well as any pixels for which the aggregate
+            function returns None.
         """
-
-        @delayed
-        def func_wrapper(*_args, **_kwargs):
-            result = func(*_args, **_kwargs)
-            return result if result is not None else default_value
-
         partitions = self.to_delayed()
-
         if order is None:
             results = {
-                pixel: func_wrapper(partitions[index], pixel, **kwargs)
+                pixel: delayed(func)(partitions[index], pixel, **kwargs)
                 for pixel, index in self._ddf_pixel_map.items()
             }
         else:
@@ -335,8 +334,10 @@ class HealpixDataset(Dataset):
         Args:
             func (Callable[[pd.DataFrame], HealpixPixel, Any]): A function that takes a pandas DataFrame and
                 the HealpixPixel the partition is from and returns a value
-            order (int | None): The HEALPix order to compute the skymap at. If None (default), will compute
-                for each partition in the catalog at their own orders
+            order (int | None): The HEALPix order to compute the skymap at. If None (default),
+                will compute for each partition in the catalog at their own orders. If a value
+                other than None, each partition will be grouped by pixel number at the order
+                specified and the function will be applied to each group.
             default_value (Any): The value to use at pixels that aren't covered by the catalog (default 0)
             **kwargs: Arguments to pass to the given function
 
@@ -346,8 +347,10 @@ class HealpixDataset(Dataset):
             If no order is supplied, the order of the resulting histogram will be the highest order partition
             in the catalog, and the function will be applied to the partitions of the catalog with the result
             copied to all pixels if the catalog partition is at a lower order than the histogram order.
-        """
 
+            If order is specified, any pixels at the specified order not covered by the catalog or any pixels
+            that the function returns None will use the default_value.
+        """
         smdata = self.skymap_data(func, order, default_value, **kwargs)
         pixels = list(smdata.keys())
         results = dask.compute(*[smdata[pixel] for pixel in pixels])
@@ -368,8 +371,10 @@ class HealpixDataset(Dataset):
         Args:
             func (Callable[[pd.DataFrame], HealpixPixel, Any]): A function that takes a pandas DataFrame and
                 the HealpixPixel the partition is from and returns a value
-            order (int | None): The HEALPix order to compute the skymap at. If None (default), will compute
-                for each partition in the catalog at their own orders
+            order (int | None): The HEALPix order to compute the skymap at. If None (default),
+                will compute for each partition in the catalog at their own orders. If a value
+                other than None, each partition will be grouped by pixel number at the order
+                specified and the function will be applied to each group.
             default_value (Any): The value to use at pixels that aren't covered by the catalog (default 0)
             projection (str): The map projection to use. Valid values include:
                 - moll - Molleweide projection (default)
