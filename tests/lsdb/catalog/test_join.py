@@ -26,8 +26,8 @@ def test_small_sky_join_small_sky_order1(
     assert len(joined_compute) == len(small_sky_order1_compute)
     for index, row in small_sky_compute.iterrows():
         joined_row = joined_compute.query(f"id{suffixes[0]} == {row['id']}")
-        assert joined_row.index.values[0] == index
-        assert joined_row[f"id{suffixes[1]}"].values[0] == row["id"]
+        assert joined_row.index.to_numpy()[0] == index
+        assert joined_row[f"id{suffixes[1]}"].to_numpy()[0] == row["id"]
     assert_divisions_are_correct(joined)
 
 
@@ -46,7 +46,7 @@ def test_small_sky_join_small_sky_order1_source(
     small_sky_order1_compute = small_sky_order1_source_with_margin.compute()
     assert len(joined_compute) == len(small_sky_order1_compute)
     joined_test = small_sky_order1_compute.merge(joined_compute, left_on="object_id", right_on="object_id_b")
-    assert (joined_test["id_a"].values == joined_test["object_id"].values).all()
+    assert (joined_test["id_a"].to_numpy() == joined_test["object_id"].to_numpy()).all()
     assert_divisions_are_correct(joined)
 
 
@@ -93,12 +93,12 @@ def test_join_association(small_sky_catalog, small_sky_xmatch_catalog, small_sky
         small_sky_col = small_sky_to_xmatch_catalog.hc_structure.catalog_info.primary_column
         left_row = small_sky_compute.query(f"{small_sky_col}=={left_id}")
         for col in left_row.columns:
-            assert joined_row[col + suffixes[0]].values == left_row[col].values
+            assert joined_row[col + suffixes[0]].to_numpy() == left_row[col].to_numpy()
 
         small_sky_xmatch_col = small_sky_to_xmatch_catalog.hc_structure.catalog_info.join_column
         right_row = small_sky_xmatch_compute.query(f"{small_sky_xmatch_col}=={right_id}")
         for col in right_row.columns:
-            assert joined_row[col + suffixes[1]].values == right_row[col].values
+            assert joined_row[col + suffixes[1]].to_numpy() == right_row[col].to_numpy()
 
         left_index = left_row.index
         assert joined_row.index == left_index
@@ -120,19 +120,19 @@ def test_join_association_source_margin(
     assert len(association_data) == 17161
 
     assert (
-        np.sort(joined_data["id_a"].values)
+        np.sort(joined_data["id_a"].to_numpy())
         == np.sort(
             association_data[
                 small_sky_to_o1source_catalog.hc_structure.catalog_info.primary_column_association
-            ].values
+            ].to_numpy()
         )
     ).all()
     assert (
-        np.sort(joined_data["source_id_b"].values)
+        np.sort(joined_data["source_id_b"].to_numpy())
         == np.sort(
             association_data[
                 small_sky_to_o1source_catalog.hc_structure.catalog_info.join_column_association
-            ].values
+            ].to_numpy()
         )
     ).all()
 

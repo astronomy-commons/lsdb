@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import pyarrow as pa
 import pytest
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
 
@@ -19,10 +20,10 @@ class TestCrossmatch:
             ).compute()
         assert len(xmatched) == len(xmatch_correct)
         for _, correct_row in xmatch_correct.iterrows():
-            assert correct_row["ss_id"] in xmatched["id_small_sky"].values
+            assert correct_row["ss_id"] in xmatched["id_small_sky"].to_numpy()
             xmatch_row = xmatched[xmatched["id_small_sky"] == correct_row["ss_id"]]
-            assert xmatch_row["id_small_sky_xmatch"].values == correct_row["xmatch_id"]
-            assert xmatch_row["_dist_arcsec"].values == pytest.approx(correct_row["dist"] * 3600)
+            assert xmatch_row["id_small_sky_xmatch"].to_numpy() == correct_row["xmatch_id"]
+            assert xmatch_row["_dist_arcsec"].to_numpy() == pytest.approx(correct_row["dist"] * 3600)
 
     @staticmethod
     def test_kdtree_crossmatch_thresh(algo, small_sky_catalog, small_sky_xmatch_catalog, xmatch_correct_005):
@@ -34,10 +35,10 @@ class TestCrossmatch:
             ).compute()
         assert len(xmatched) == len(xmatch_correct_005)
         for _, correct_row in xmatch_correct_005.iterrows():
-            assert correct_row["ss_id"] in xmatched["id_small_sky"].values
+            assert correct_row["ss_id"] in xmatched["id_small_sky"].to_numpy()
             xmatch_row = xmatched[xmatched["id_small_sky"] == correct_row["ss_id"]]
-            assert xmatch_row["id_small_sky_xmatch"].values == correct_row["xmatch_id"]
-            assert xmatch_row["_dist_arcsec"].values == pytest.approx(correct_row["dist"] * 3600)
+            assert xmatch_row["id_small_sky_xmatch"].to_numpy() == correct_row["xmatch_id"]
+            assert xmatch_row["_dist_arcsec"].to_numpy() == pytest.approx(correct_row["dist"] * 3600)
 
     @staticmethod
     def test_kdtree_crossmatch_multiple_neighbors(
@@ -52,13 +53,13 @@ class TestCrossmatch:
             ).compute()
         assert len(xmatched) == len(xmatch_correct_3n_2t_no_margin)
         for _, correct_row in xmatch_correct_3n_2t_no_margin.iterrows():
-            assert correct_row["ss_id"] in xmatched["id_small_sky"].values
+            assert correct_row["ss_id"] in xmatched["id_small_sky"].to_numpy()
             xmatch_row = xmatched[
                 (xmatched["id_small_sky"] == correct_row["ss_id"])
                 & (xmatched["id_small_sky_xmatch"] == correct_row["xmatch_id"])
             ]
             assert len(xmatch_row) == 1
-            assert xmatch_row["_dist_arcsec"].values == pytest.approx(correct_row["dist"] * 3600)
+            assert xmatch_row["_dist_arcsec"].to_numpy() == pytest.approx(correct_row["dist"] * 3600)
 
     @staticmethod
     def test_kdtree_crossmatch_multiple_neighbors_margin(
@@ -72,13 +73,13 @@ class TestCrossmatch:
         ).compute()
         assert len(xmatched) == len(xmatch_correct_3n_2t)
         for _, correct_row in xmatch_correct_3n_2t.iterrows():
-            assert correct_row["ss_id"] in xmatched["id_small_sky"].values
+            assert correct_row["ss_id"] in xmatched["id_small_sky"].to_numpy()
             xmatch_row = xmatched[
                 (xmatched["id_small_sky"] == correct_row["ss_id"])
                 & (xmatched["id_small_sky_xmatch"] == correct_row["xmatch_id"])
             ]
             assert len(xmatch_row) == 1
-            assert xmatch_row["_dist_arcsec"].values == pytest.approx(correct_row["dist"] * 3600)
+            assert xmatch_row["_dist_arcsec"].to_numpy() == pytest.approx(correct_row["dist"] * 3600)
 
     @staticmethod
     def test_crossmatch_negative_margin(
@@ -96,13 +97,13 @@ class TestCrossmatch:
         ).compute()
         assert len(xmatched) == len(xmatch_correct_3n_2t_negative)
         for _, correct_row in xmatch_correct_3n_2t_negative.iterrows():
-            assert correct_row["ss_id"] in xmatched["id_small_sky_left_xmatch"].values
+            assert correct_row["ss_id"] in xmatched["id_small_sky_left_xmatch"].to_numpy()
             xmatch_row = xmatched[
                 (xmatched["id_small_sky_left_xmatch"] == correct_row["ss_id"])
                 & (xmatched["id_small_sky_xmatch"] == correct_row["xmatch_id"])
             ]
             assert len(xmatch_row) == 1
-            assert xmatch_row["_dist_arcsec"].values == pytest.approx(correct_row["dist"] * 3600)
+            assert xmatch_row["_dist_arcsec"].to_numpy() == pytest.approx(correct_row["dist"] * 3600)
 
     @staticmethod
     def test_wrong_suffixes(algo, small_sky_catalog, small_sky_xmatch_catalog):
@@ -125,10 +126,10 @@ class TestBoundedCrossmatch:
             ).compute()
         assert len(xmatched) == len(xmatch_correct_002_005)
         for _, correct_row in xmatch_correct_002_005.iterrows():
-            assert correct_row["ss_id"] in xmatched["id_small_sky"].values
+            assert correct_row["ss_id"] in xmatched["id_small_sky"].to_numpy()
             xmatch_row = xmatched[xmatched["id_small_sky"] == correct_row["ss_id"]]
-            assert xmatch_row["id_small_sky_xmatch"].values == correct_row["xmatch_id"]
-            assert xmatch_row["_dist_arcsec"].values == pytest.approx(correct_row["dist"] * 3600)
+            assert xmatch_row["id_small_sky_xmatch"].to_numpy() == correct_row["xmatch_id"]
+            assert xmatch_row["_dist_arcsec"].to_numpy() == pytest.approx(correct_row["dist"] * 3600)
 
     @staticmethod
     def test_kdtree_crossmatch_min_thresh_multiple_neighbors_margin(
@@ -150,13 +151,13 @@ class TestBoundedCrossmatch:
         ).compute()
         assert len(xmatched) == len(xmatch_correct_05_2_3n_margin)
         for _, correct_row in xmatch_correct_05_2_3n_margin.iterrows():
-            assert correct_row["ss_id"] in xmatched["id_small_sky"].values
+            assert correct_row["ss_id"] in xmatched["id_small_sky"].to_numpy()
             xmatch_row = xmatched[
                 (xmatched["id_small_sky"] == correct_row["ss_id"])
                 & (xmatched["id_small_sky_xmatch"] == correct_row["xmatch_id"])
             ]
             assert len(xmatch_row) == 1
-            assert xmatch_row["_dist_arcsec"].values == pytest.approx(correct_row["dist"] * 3600)
+            assert xmatch_row["_dist_arcsec"].to_numpy() == pytest.approx(correct_row["dist"] * 3600)
 
     @staticmethod
     def test_kdtree_crossmatch_no_close_neighbors(
@@ -173,10 +174,10 @@ class TestBoundedCrossmatch:
             ).compute()
         assert len(xmatched) == len(xmatch_correct_005)
         for _, correct_row in xmatch_correct_005.iterrows():
-            assert correct_row["ss_id"] in xmatched["id_small_sky"].values
+            assert correct_row["ss_id"] in xmatched["id_small_sky"].to_numpy()
             xmatch_row = xmatched[xmatched["id_small_sky"] == correct_row["ss_id"]]
-            assert xmatch_row["id_small_sky_xmatch"].values == correct_row["xmatch_id"]
-            assert xmatch_row["_dist_arcsec"].values == pytest.approx(correct_row["dist"] * 3600)
+            assert xmatch_row["id_small_sky_xmatch"].to_numpy() == correct_row["xmatch_id"]
+            assert xmatch_row["_dist_arcsec"].to_numpy() == pytest.approx(correct_row["dist"] * 3600)
 
     @staticmethod
     def test_crossmatch_more_neighbors_than_points_available(
@@ -226,15 +227,15 @@ class MockCrossmatchAlgorithm(AbstractCrossmatchAlgorithm):
         right_reset = self.right.reset_index(drop=True)
         self._rename_columns_with_suffix(self.left, self.suffixes[0])
         self._rename_columns_with_suffix(self.right, self.suffixes[1])
-        mock_results = mock_results[mock_results["ss_id"].isin(left_reset["id"].values)]
+        mock_results = mock_results[mock_results["ss_id"].isin(left_reset["id"].to_numpy())]
         left_indexes = mock_results.apply(
             lambda row: left_reset[left_reset["id"] == row["ss_id"]].index[0], axis=1
         )
         right_indexes = mock_results.apply(
             lambda row: right_reset[right_reset["id"] == row["xmatch_id"]].index[0], axis=1
         )
-        left_join_part = self.left.iloc[left_indexes.values].reset_index()
-        right_join_part = self.right.iloc[right_indexes.values].reset_index(drop=True)
+        left_join_part = self.left.iloc[left_indexes.to_numpy()].reset_index()
+        right_join_part = self.right.iloc[right_indexes.to_numpy()].reset_index(drop=True)
         out = pd.concat(
             [
                 left_join_part,  # select the rows of the left table
@@ -256,13 +257,27 @@ def test_custom_crossmatch_algorithm(small_sky_catalog, small_sky_xmatch_catalog
         ).compute()
     assert len(xmatched) == len(xmatch_mock)
     for _, correct_row in xmatch_mock.iterrows():
-        assert correct_row["ss_id"] in xmatched["id_small_sky"].values
+        assert correct_row["ss_id"] in xmatched["id_small_sky"].to_numpy()
         xmatch_row = xmatched[xmatched["id_small_sky"] == correct_row["ss_id"]]
-        assert xmatch_row["id_small_sky_xmatch"].values == correct_row["xmatch_id"]
-        assert xmatch_row["_DIST"].values == pytest.approx(correct_row["dist"])
+        assert xmatch_row["id_small_sky_xmatch"].to_numpy() == correct_row["xmatch_id"]
+        assert xmatch_row["_DIST"].to_numpy() == pytest.approx(correct_row["dist"])
 
 
-def test_append_extra_columns(small_sky_xmatch_catalog):
+def test_append_extra_columns_have_correct_type(small_sky_xmatch_catalog):
+    algo = MockCrossmatchAlgorithm
+    # Set a pyarrow type for the extra column
+    pa_float64_dtype = pd.ArrowDtype(pa.float64())
+    algo.extra_columns = pd.DataFrame({"_DIST": pd.Series(dtype=pa_float64_dtype)})
+    # Create mock values for extra_columns
+    xmatch_df = small_sky_xmatch_catalog.compute()
+    dist_values = np.arange(len(xmatch_df))
+    # Check that the extra column keeps its type
+    extra_columns = {"_DIST": pd.Series(dist_values, dtype=pa_float64_dtype)}
+    algo._append_extra_columns(xmatch_df, pd.DataFrame(extra_columns))
+    assert "_DIST" in xmatch_df and xmatch_df["_DIST"].dtype == pa_float64_dtype
+
+
+def test_append_extra_columns_raises_value_error(small_sky_xmatch_catalog):
     algo = MockCrossmatchAlgorithm
     # Create mock values for extra_columns
     xmatch_df = small_sky_xmatch_catalog.compute()
@@ -284,6 +299,14 @@ def test_append_extra_columns(small_sky_xmatch_catalog):
     # No extra_columns were specified
     with pytest.raises(ValueError, match="No extra column values"):
         algo._append_extra_columns(xmatch_df, extra_columns=None)
+
+
+def test_algorithm_has_no_extra_columns_specified(small_sky_xmatch_catalog):
+    algo = MockCrossmatchAlgorithm
+    # Create mock values for extra_columns
+    xmatch_df = small_sky_xmatch_catalog.compute()
+    dist_values = np.arange(len(xmatch_df))
+    extra_columns = {"_DIST": pd.Series(dist_values, dtype=np.dtype("float64"))}
     # The crossmatch algorithm has no extra_columns specified
     algo.extra_columns = None
     algo._append_extra_columns(xmatch_df, pd.DataFrame(extra_columns))

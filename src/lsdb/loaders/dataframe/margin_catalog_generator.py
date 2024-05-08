@@ -148,8 +148,8 @@ class MarginCatalogGenerator:
         margin_pixel_df_map: Dict[HealpixPixel, pd.DataFrame] = {}
         self.dataframe["margin_pixel"] = hp.ang2pix(
             2**self.margin_order,
-            self.dataframe[self.hc_structure.catalog_info.ra_column].values,
-            self.dataframe[self.hc_structure.catalog_info.dec_column].values,
+            self.dataframe[self.hc_structure.catalog_info.ra_column].to_numpy(),
+            self.dataframe[self.hc_structure.catalog_info.dec_column].to_numpy(),
             lonlat=True,
             nest=True,
         )
@@ -178,8 +178,8 @@ class MarginCatalogGenerator:
             the specified threshold in the margin.
         """
         margin_mask = pixel_math.check_margin_bounds(
-            partition_df[self.hc_structure.catalog_info.ra_column].values,
-            partition_df[self.hc_structure.catalog_info.dec_column].values,
+            partition_df[self.hc_structure.catalog_info.ra_column].to_numpy(),
+            partition_df[self.hc_structure.catalog_info.dec_column].to_numpy(),
             margin_pixel.order,
             margin_pixel.pixel,
             self.margin_threshold,

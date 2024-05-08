@@ -62,7 +62,7 @@ def test_head(small_sky_order1_catalog):
 def test_head_rows_less_than_requested(small_sky_order1_catalog):
     schema = small_sky_order1_catalog.dtypes
     two_rows = small_sky_order1_catalog._ddf.partitions[0].compute()[:2]
-    tiny_df = pd.DataFrame(data=two_rows, columns=schema.index, dtype=schema.values)
+    tiny_df = pd.DataFrame(data=two_rows, columns=schema.index, dtype=schema.to_numpy())
     altered_ddf = dd.io.from_pandas(tiny_df, npartitions=1)
     catalog = lsdb.Catalog(altered_ddf, {}, small_sky_order1_catalog.hc_structure)
     # The head only contains two values
@@ -72,7 +72,7 @@ def test_head_rows_less_than_requested(small_sky_order1_catalog):
 def test_head_first_partition_is_empty(small_sky_order1_catalog):
     # The same catalog but now the first partition is empty
     schema = small_sky_order1_catalog.dtypes
-    empty_df = pd.DataFrame(columns=schema.index, dtype=schema.values)
+    empty_df = pd.DataFrame(columns=schema.index, dtype=schema.to_numpy())
     empty_ddf = dd.io.from_pandas(empty_df, npartitions=1)
     altered_ddf = dd.multi.concat([empty_ddf, small_sky_order1_catalog._ddf])
     catalog = lsdb.Catalog(altered_ddf, {}, small_sky_order1_catalog.hc_structure)
@@ -86,7 +86,7 @@ def test_head_first_partition_is_empty(small_sky_order1_catalog):
 def test_head_empty_catalog(small_sky_order1_catalog):
     # Create an empty Pandas DataFrame with the same schema
     schema = small_sky_order1_catalog.dtypes
-    empty_df = pd.DataFrame(columns=schema.index, dtype=schema.values)
+    empty_df = pd.DataFrame(columns=schema.index, dtype=schema.to_numpy())
     empty_ddf = dd.io.from_pandas(empty_df, npartitions=1)
     empty_catalog = lsdb.Catalog(empty_ddf, {}, small_sky_order1_catalog.hc_structure)
     assert len(empty_catalog.head()) == 0
@@ -360,13 +360,63 @@ def test_skymap_histogram_order_default(small_sky_order1_catalog):
         return len(df) / hp.nside2pixarea(hp.order2nside(order), degrees=True)
 
     computed_catalog = small_sky_order1_catalog.compute()
-    order_3_pixels = hipscat_id_to_healpix(computed_catalog.index.values, order)
+    order_3_pixels = hipscat_id_to_healpix(computed_catalog.index.to_numpy(), order)
     pixel_map = computed_catalog.groupby(order_3_pixels).apply(lambda x: func(x, None))
 
     img = np.full(hp.nside2npix(hp.order2nside(order)), default)
     for pixel_num, row in pixel_map.items():
         img[pixel_num] = row
     assert (small_sky_order1_catalog.skymap_histogram(func, order, default) == img).all()
+
+
+def test_skymap_histogram_null_values_order_default(small_sky_order1_catalog):
+    default = -1.0
+
+    def func(df, healpix):
+        density = len(df) / hp.nside2pixarea(hp.order2nside(healpix.order), degrees=True)
+        return density if healpix.pixel % 2 == 0 else None
+
+    pixels = list(small_sky_order1_catalog._ddf_pixel_map.keys())
+    max_order = max(pixels, key=lambda x: x.order).order
+    hp_orders = np.vectorize(lambda x: x.order)(pixels)
+    hp_pixels = np.vectorize(lambda x: x.pixel)(pixels)
+
+    dorders = max_order - hp_orders
+    starts = hp_pixels << (2 * dorders)
+    ends = (hp_pixels + 1) << (2 * dorders)
+
+    histogram = small_sky_order1_catalog.skymap_histogram(func, default_value=default)
+
+    for start, end in zip(starts, ends):
+        pixels = np.arange(start, end)
+        arr = histogram[pixels[pixels % 2 != 0]]
+        expected_arr = np.full(arr.shape, fill_value=default)
+        assert np.array_equal(expected_arr, arr)
+
+
+def test_skymap_histogram_null_values_order(small_sky_order1_catalog):
+    order = 3
+    default = -1.0
+
+    def func(df, healpix):
+        density = len(df) / hp.nside2pixarea(hp.order2nside(healpix.order), degrees=True)
+        return density if healpix.pixel % 2 == 0 else None
+
+    pixels = list(small_sky_order1_catalog._ddf_pixel_map.keys())
+    hp_orders = np.vectorize(lambda x: x.order)(pixels)
+    hp_pixels = np.vectorize(lambda x: x.pixel)(pixels)
+
+    dorders = order - hp_orders
+    starts = hp_pixels << (2 * dorders)
+    ends = (hp_pixels + 1) << (2 * dorders)
+
+    histogram = small_sky_order1_catalog.skymap_histogram(func, order, default)
+
+    for start, end in zip(starts, ends):
+        pixels = np.arange(start, end)
+        arr = histogram[pixels[pixels % 2 != 0]]
+        expected_arr = np.full(arr.shape, fill_value=default)
+        assert np.array_equal(expected_arr, arr)
 
 
 # pylint: disable=no-member
@@ -411,14 +461,16 @@ def test_square_bracket_columns(small_sky_order1_catalog):
     assert all(column_subset.columns == columns)
     assert isinstance(column_subset, Catalog)
     pd.testing.assert_frame_equal(column_subset.compute(), small_sky_order1_catalog.compute()[columns])
-    assert np.all(column_subset.compute().index.values == small_sky_order1_catalog.compute().index.values)
+    assert np.all(
+        column_subset.compute().index.to_numpy() == small_sky_order1_catalog.compute().index.to_numpy()
+    )
 
 
 def test_square_bracket_column(small_sky_order1_catalog):
     column_name = "ra"
     column = small_sky_order1_catalog[column_name]
     pd.testing.assert_series_equal(column.compute(), small_sky_order1_catalog.compute()[column_name])
-    assert np.all(column.compute().index.values == small_sky_order1_catalog.compute().index.values)
+    assert np.all(column.compute().index.to_numpy() == small_sky_order1_catalog.compute().index.to_numpy())
     assert isinstance(column, dd.core.Series)
 
 
@@ -427,7 +479,9 @@ def test_square_bracket_filter(small_sky_order1_catalog):
     assert isinstance(filtered_id, Catalog)
     ss_computed = small_sky_order1_catalog.compute()
     pd.testing.assert_frame_equal(filtered_id.compute(), ss_computed[ss_computed["id"] > 750])
-    assert np.all(filtered_id.compute().index.values == ss_computed[ss_computed["id"] > 750].index.values)
+    assert np.all(
+        filtered_id.compute().index.to_numpy() == ss_computed[ss_computed["id"] > 750].index.to_numpy()
+    )
 
 
 def test_map_partitions(small_sky_order1_catalog):

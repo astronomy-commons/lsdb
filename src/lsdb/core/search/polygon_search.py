@@ -52,8 +52,8 @@ def polygon_filter(data_frame: pd.DataFrame, polygon: ConvexPolygon, metadata: h
     Returns:
         A new DataFrame with the rows from `dataframe` filtered to only the pixels inside the polygon.
     """
-    ra_values = np.radians(data_frame[metadata.catalog_info.ra_column].values)
-    dec_values = np.radians(data_frame[metadata.catalog_info.dec_column].values)
+    ra_values = np.radians(data_frame[metadata.catalog_info.ra_column].to_numpy())
+    dec_values = np.radians(data_frame[metadata.catalog_info.dec_column].to_numpy())
     inside_polygon = polygon.contains(ra_values, dec_values)
     data_frame = data_frame.iloc[inside_polygon]
     return data_frame

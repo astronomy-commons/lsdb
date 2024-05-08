@@ -43,7 +43,7 @@ def test_box_search_ra_complement(small_sky_order1_catalog):
     assert len(complement_search_ra_values) == 97
 
     joined_values = np.concatenate([filtered_ra_values, complement_search_ra_values])
-    all_catalog_values = small_sky_order1_catalog.compute()[ra_column].values
+    all_catalog_values = small_sky_order1_catalog.compute()[ra_column].to_numpy()
     assert np.array_equal(np.sort(joined_values), np.sort(all_catalog_values))
 
 
