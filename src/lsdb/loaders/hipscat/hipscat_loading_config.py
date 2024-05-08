@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List
+from typing import Callable, List
 
 import pandas as pd
 from pandas._libs import lib
@@ -44,11 +44,11 @@ class HipscatLoadingConfig:
 
     def get_dtype_backend(self) -> str:
         """Returns the data type backend. It is either "pyarrow", "numpy_nullable",
-        or <no_default>, in case we want to keep the original types."""
+        or "<no_default>", which allows us to keep the original data types."""
         return lib.no_default if self.dtype_backend is None else self.dtype_backend
 
-    def get_dtype_mapper(self) -> pd.ArrowDtype | None:
-        """Returns a mapper for pyarrow or numpy extension types"""
+    def get_dtype_mapper(self) -> Callable | None:
+        """Returns a mapper for pyarrow or numpy types, mirroring Pandas behaviour."""
         mapper = None
         if self.dtype_backend == "pyarrow":
             mapper = pd.ArrowDtype
