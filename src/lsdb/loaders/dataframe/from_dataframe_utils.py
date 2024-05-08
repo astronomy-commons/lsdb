@@ -25,35 +25,13 @@ def _generate_dask_dataframe(
     Returns:
         The catalog's Dask Dataframe and its total number of rows.
     """
+    pixel_dfs = [_convert_dtypes_to_pyarrow(df) for df in pixel_dfs] if use_pyarrow_types else pixel_dfs
     schema = pixel_dfs[0].iloc[:0, :].copy() if len(pixels) > 0 else []
     delayed_dfs = [delayed(df) for df in pixel_dfs]
     divisions = get_pixels_divisions(pixels)
     ddf = dd.io.from_delayed(delayed_dfs, meta=schema, divisions=divisions)
     ddf = ddf if isinstance(ddf, dd.core.DataFrame) else ddf.to_frame()
-    ddf = _convert_ddf_types_to_pyarrow(ddf) if use_pyarrow_types else ddf
     return ddf, len(ddf)
-
-
-# pylint: disable=protected-access
-def _convert_ddf_types_to_pyarrow(ddf: dd.DataFrame) -> dd.DataFrame:
-    """Convert a Dask DataFrame to pyarrow types.
-
-    Args:
-        ddf (dd.DataFrame): A Dask DataFrame
-
-    Returns:
-        A new dask DataFrame, where columns, index and schema have been
-        converted to use pyarrow types.
-    """
-    # Convert schema types according to the backend
-    pyarrow_meta = _convert_dtypes_to_pyarrow(ddf._meta)
-    # Apply the new schema to the dask dataframe
-    ddf = ddf.astype(pyarrow_meta.dtypes)
-    # Update the hipscat index data type, which is not handled automatically
-    ddf.index = ddf.index.astype(pd.ArrowDtype(pa.uint64()))
-    # Finally, set the new schema as the dataframe meta
-    ddf._meta = pyarrow_meta
-    return ddf
 
 
 def _convert_dtypes_to_pyarrow(df: pd.DataFrame) -> pd.DataFrame:
@@ -68,13 +46,12 @@ def _convert_dtypes_to_pyarrow(df: pd.DataFrame) -> pd.DataFrame:
         shallow copy of the initial DataFrame to avoid copying the data.
     """
     new_series = {}
+    df_index = df.index.astype(pd.ArrowDtype(pa.uint64()))
     for column in df.columns:
         pa_array = pa.array(df[column], from_pandas=True)
-        # The LargeString type is not recommended. Prevent any strings from being cast to this type.
-        pyarrow_dtype = pa.string() if isinstance(pa_array, pa.LargeStringArray) else pa_array.type
-        series = pd.Series(pa_array, dtype=pd.ArrowDtype(pyarrow_dtype), copy=False, index=df.index)
+        series = pd.Series(pa_array, dtype=pd.ArrowDtype(pa_array.type), copy=False, index=df_index)
         new_series[column] = series
-    return pd.DataFrame(new_series, index=df.index, copy=False)
+    return pd.DataFrame(new_series, index=df_index, copy=False)
 
 
 def _append_partition_information_to_dataframe(dataframe: pd.DataFrame, pixel: HealpixPixel) -> pd.DataFrame:
