@@ -35,8 +35,7 @@ def _generate_dask_dataframe(
 
 
 def _convert_dtypes_to_pyarrow(df: pd.DataFrame) -> pd.DataFrame:
-    """Transform the columns of a Pandas DataFrame to pyarrow types. It
-    does not update the type of the DataFrame index.
+    """Transform the columns (and index) of a Pandas DataFrame to pyarrow types.
 
     Args:
         df (pd.DataFrame): A Pandas DataFrame
