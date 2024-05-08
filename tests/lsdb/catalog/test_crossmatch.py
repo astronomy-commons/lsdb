@@ -14,12 +14,9 @@ from lsdb.core.crossmatch.kdtree_match import KdTreeCrossmatch
 class TestCrossmatch:
     @staticmethod
     def test_kdtree_crossmatch(algo, small_sky_catalog, small_sky_xmatch_catalog, xmatch_correct):
-        with pytest.warns(RuntimeWarning, match="Results may be inaccurate"):
+        with pytest.warns(RuntimeWarning, match="Results may be incomplete and/or inaccurate"):
             xmatched = small_sky_catalog.crossmatch(
-                small_sky_xmatch_catalog,
-                algorithm=algo,
-                radius_arcsec=0.01 * 3600,
-                require_right_margin=False,
+                small_sky_xmatch_catalog, algorithm=algo, radius_arcsec=0.01 * 3600
             ).compute()
         assert len(xmatched) == len(xmatch_correct)
         for _, correct_row in xmatch_correct.iterrows():
@@ -30,12 +27,11 @@ class TestCrossmatch:
 
     @staticmethod
     def test_kdtree_crossmatch_thresh(algo, small_sky_catalog, small_sky_xmatch_catalog, xmatch_correct_005):
-        with pytest.warns(RuntimeWarning, match="Results may be inaccurate"):
+        with pytest.warns(RuntimeWarning, match="Results may be incomplete and/or inaccurate"):
             xmatched = small_sky_catalog.crossmatch(
                 small_sky_xmatch_catalog,
                 radius_arcsec=0.005 * 3600,
                 algorithm=algo,
-                require_right_margin=False,
             ).compute()
         assert len(xmatched) == len(xmatch_correct_005)
         for _, correct_row in xmatch_correct_005.iterrows():
@@ -48,13 +44,12 @@ class TestCrossmatch:
     def test_kdtree_crossmatch_multiple_neighbors(
         algo, small_sky_catalog, small_sky_xmatch_catalog, xmatch_correct_3n_2t_no_margin
     ):
-        with pytest.warns(RuntimeWarning, match="Results may be inaccurate"):
+        with pytest.warns(RuntimeWarning, match="Results may be incomplete and/or inaccurate"):
             xmatched = small_sky_catalog.crossmatch(
                 small_sky_xmatch_catalog,
                 n_neighbors=3,
                 radius_arcsec=2 * 3600,
                 algorithm=algo,
-                require_right_margin=False,
             ).compute()
         assert len(xmatched) == len(xmatch_correct_3n_2t_no_margin)
         for _, correct_row in xmatch_correct_3n_2t_no_margin.iterrows():
@@ -122,13 +117,12 @@ class TestBoundedCrossmatch:
     def test_kdtree_crossmatch_min_thresh(
         algo, small_sky_catalog, small_sky_xmatch_catalog, xmatch_correct_002_005
     ):
-        with pytest.warns(RuntimeWarning, match="Results may be inaccurate"):
+        with pytest.warns(RuntimeWarning, match="Results may be incomplete and/or inaccurate"):
             xmatched = small_sky_catalog.crossmatch(
                 small_sky_xmatch_catalog,
                 radius_arcsec=0.005 * 3600,
                 min_radius_arcsec=0.002 * 3600,
                 algorithm=algo,
-                require_right_margin=False,
             ).compute()
         assert len(xmatched) == len(xmatch_correct_002_005)
         for _, correct_row in xmatch_correct_002_005.iterrows():
@@ -154,7 +148,6 @@ class TestBoundedCrossmatch:
             radius_arcsec=2 * 3600,
             min_radius_arcsec=0.5 * 3600,
             algorithm=algo,
-            require_right_margin=False,
         ).compute()
         assert len(xmatched) == len(xmatch_correct_05_2_3n_margin)
         for _, correct_row in xmatch_correct_05_2_3n_margin.iterrows():
@@ -172,13 +165,12 @@ class TestBoundedCrossmatch:
     ):
         # Set a very small minimum radius so that there is not a single point
         # with a very close neighbor
-        with pytest.warns(RuntimeWarning, match="Results may be inaccurate"):
+        with pytest.warns(RuntimeWarning, match="Results may be incomplete and/or inaccurate"):
             xmatched = small_sky_catalog.crossmatch(
                 small_sky_xmatch_catalog,
                 radius_arcsec=0.005 * 3600,
                 min_radius_arcsec=1,
                 algorithm=algo,
-                require_right_margin=False,
             ).compute()
         assert len(xmatched) == len(xmatch_correct_005)
         for _, correct_row in xmatch_correct_005.iterrows():
@@ -193,14 +185,13 @@ class TestBoundedCrossmatch:
     ):
         # The small_sky_xmatch catalog has 3 partitions (2 of length 41 and 1 of length 29).
         # Let's use n_neighbors above that to request more neighbors than there are points available.
-        with pytest.warns(RuntimeWarning, match="Results may be inaccurate"):
+        with pytest.warns(RuntimeWarning, match="Results may be incomplete and/or inaccurate"):
             xmatched = small_sky_catalog.crossmatch(
                 small_sky_xmatch_catalog,
                 n_neighbors=50,
                 radius_arcsec=2 * 3600,
                 min_radius_arcsec=0.5 * 3600,
                 algorithm=algo,
-                require_right_margin=False,
             ).compute()
         assert len(xmatched) == 72
         assert all(xmatched.groupby("id_small_sky").size()) <= 50
@@ -210,13 +201,13 @@ class TestBoundedCrossmatch:
         # Read a second small sky catalog to not have duplicate labels
         small_sky_catalog_2 = lsdb.read_hipscat(small_sky_dir)
         small_sky_catalog_2.hc_structure.catalog_name = "small_sky_2"
-        xmatched = small_sky_catalog.crossmatch(
-            small_sky_catalog_2,
-            min_radius_arcsec=0,
-            radius_arcsec=0.005 * 3600,
-            algorithm=algo,
-            require_right_margin=False,
-        ).compute()
+        with pytest.warns(RuntimeWarning, match="Results may be incomplete and/or inaccurate"):
+            xmatched = small_sky_catalog.crossmatch(
+                small_sky_catalog_2,
+                min_radius_arcsec=0,
+                radius_arcsec=0.005 * 3600,
+                algorithm=algo,
+            ).compute()
         assert len(xmatched) == len(small_sky_catalog.compute())
         assert all(xmatched["_dist_arcsec"] == 0)
 
@@ -260,7 +251,7 @@ class MockCrossmatchAlgorithm(AbstractCrossmatchAlgorithm):
 
 
 def test_custom_crossmatch_algorithm(small_sky_catalog, small_sky_xmatch_catalog, xmatch_mock):
-    with pytest.warns(RuntimeWarning, match="Results may be inaccurate"):
+    with pytest.warns(RuntimeWarning, match="Results may be incomplete and/or inaccurate"):
         xmatched = small_sky_catalog.crossmatch(
             small_sky_xmatch_catalog, algorithm=MockCrossmatchAlgorithm, mock_results=xmatch_mock
         ).compute()

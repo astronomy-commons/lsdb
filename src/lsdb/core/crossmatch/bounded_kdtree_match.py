@@ -14,7 +14,7 @@ class BoundedKdTreeCrossmatch(KdTreeCrossmatch):
         self,
         n_neighbors: int = 1,
         radius_arcsec: float = 1,
-        require_right_margin: bool = True,
+        require_right_margin: bool = False,
         min_radius_arcsec: float = 0,
     ):
         super().validate(n_neighbors, radius_arcsec, require_right_margin)
@@ -28,7 +28,7 @@ class BoundedKdTreeCrossmatch(KdTreeCrossmatch):
         n_neighbors: int = 1,
         radius_arcsec: float = 1,
         # We need it here because the signature is shared with .validate()
-        require_right_margin: bool = True,  # pylint: disable=unused-argument
+        require_right_margin: bool = False,  # pylint: disable=unused-argument
         min_radius_arcsec: float = 0,
     ) -> pd.DataFrame:
         """Perform a cross-match between the data from two HEALPix pixels

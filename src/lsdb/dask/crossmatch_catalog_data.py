@@ -114,7 +114,10 @@ def crossmatch_catalog_data(
     meta_df_crossmatch.validate(**kwargs)
 
     if right.margin is None:
-        warnings.warn("Right catalog does not have a margin cache. Results may be inaccurate", RuntimeWarning)
+        warnings.warn(
+            "Right catalog does not have a margin cache. Results may be incomplete and/or inaccurate.",
+            RuntimeWarning,
+        )
 
     # perform alignment on the two catalogs
     alignment = align_catalogs(left, right)
