@@ -29,7 +29,7 @@ def from_dataframe(
         margin_order (int): The order at which to generate the margin cache
         margin_threshold (float): The size of the margin cache boundary, in arcseconds
         use_pyarrow_types (bool): If True, the data is backed by pyarrow, otherwise we keep the
-            original data types. Defaults to "pyarrow".
+            original data types. Defaults to True.
         **kwargs: Arguments to pass to the creation of the catalog info
 
     Returns:
