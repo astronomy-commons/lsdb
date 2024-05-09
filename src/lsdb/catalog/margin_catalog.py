@@ -2,10 +2,7 @@ import dask.dataframe as dd
 import healpy as hp
 import hipscat as hc
 import numpy as np
-from hipscat.pixel_math import HealpixPixel
-from hipscat.pixel_math.filter import get_filtered_pixel_list
 from hipscat.pixel_tree.moc_filter import filter_by_moc
-from hipscat.pixel_tree.pixel_tree import PixelTree
 from mocpy import MOC
 
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
