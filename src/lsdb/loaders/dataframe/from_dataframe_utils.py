@@ -3,6 +3,7 @@ from typing import List, Tuple
 import dask.dataframe as dd
 import numpy as np
 import pandas as pd
+import pyarrow as pa
 from dask import delayed
 from hipscat.catalog import PartitionInfo
 from hipscat.pixel_math import HealpixPixel
@@ -12,22 +13,44 @@ from lsdb.dask.divisions import get_pixels_divisions
 
 
 def _generate_dask_dataframe(
-    pixel_dfs: List[pd.DataFrame], pixels: List[HealpixPixel]
+    pixel_dfs: List[pd.DataFrame], pixels: List[HealpixPixel], use_pyarrow_types: bool = True
 ) -> Tuple[dd.core.DataFrame, int]:
     """Create the Dask Dataframe from the list of HEALPix pixel Dataframes
 
     Args:
         pixel_dfs (List[pd.DataFrame]): The list of HEALPix pixel Dataframes
         pixels (List[HealpixPixel]): The list of HEALPix pixels in the catalog
+        use_pyarrow_types (bool): If True, use pyarrow types. Defaults to True.
 
     Returns:
         The catalog's Dask Dataframe and its total number of rows.
     """
+    pixel_dfs = [_convert_dtypes_to_pyarrow(df) for df in pixel_dfs] if use_pyarrow_types else pixel_dfs
     schema = pixel_dfs[0].iloc[:0, :].copy() if len(pixels) > 0 else []
-    divisions = get_pixels_divisions(pixels)
     delayed_dfs = [delayed(df) for df in pixel_dfs]
+    divisions = get_pixels_divisions(pixels)
     ddf = dd.io.from_delayed(delayed_dfs, meta=schema, divisions=divisions)
-    return ddf if isinstance(ddf, dd.core.DataFrame) else ddf.to_frame(), len(ddf)
+    ddf = ddf if isinstance(ddf, dd.core.DataFrame) else ddf.to_frame()
+    return ddf, len(ddf)
+
+
+def _convert_dtypes_to_pyarrow(df: pd.DataFrame) -> pd.DataFrame:
+    """Transform the columns (and index) of a Pandas DataFrame to pyarrow types.
+
+    Args:
+        df (pd.DataFrame): A Pandas DataFrame
+
+    Returns:
+        A new DataFrame, with columns of pyarrow types. The return value is a
+        shallow copy of the initial DataFrame to avoid copying the data.
+    """
+    new_series = {}
+    df_index = df.index.astype(pd.ArrowDtype(pa.uint64()))
+    for column in df.columns:
+        pa_array = pa.array(df[column], from_pandas=True)
+        series = pd.Series(pa_array, dtype=pd.ArrowDtype(pa_array.type), copy=False, index=df_index)
+        new_series[column] = series
+    return pd.DataFrame(new_series, index=df_index, copy=False)
 
 
 def _append_partition_information_to_dataframe(dataframe: pd.DataFrame, pixel: HealpixPixel) -> pd.DataFrame:

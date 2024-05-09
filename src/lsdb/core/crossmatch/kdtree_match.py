@@ -5,6 +5,7 @@ from typing import Tuple
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
+import pyarrow as pa
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
 from hipscat.pixel_math.validators import validate_radius
 
@@ -15,7 +16,7 @@ from lsdb.core.crossmatch.kdtree_utils import _find_crossmatch_indices, _get_cho
 class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
     """Nearest neighbor crossmatch using a 3D k-D tree"""
 
-    extra_columns = pd.DataFrame({"_dist_arcsec": pd.Series(dtype=np.dtype("float64"))})
+    extra_columns = pd.DataFrame({"_dist_arcsec": pd.Series(dtype=pd.ArrowDtype(pa.float64()))})
 
     def validate(
         self,
@@ -102,6 +103,8 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
             axis=1,
         )
         out.set_index(HIPSCAT_ID_COLUMN, inplace=True)
-        extra_columns = pd.DataFrame({"_dist_arcsec": pd.Series(arc_distances, index=out.index)})
+        extra_columns = pd.DataFrame(
+            {"_dist_arcsec": pd.Series(arc_distances, dtype=pd.ArrowDtype(pa.float64()), index=out.index)}
+        )
         self._append_extra_columns(out, extra_columns)
         return out

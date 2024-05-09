@@ -29,6 +29,7 @@ class MarginCatalogGenerator:
         catalog: Catalog,
         margin_order: int | None = -1,
         margin_threshold: float = 5.0,
+        use_pyarrow_types: bool = True,
     ) -> None:
         """Initialize a MarginCatalogGenerator
 
@@ -36,11 +37,13 @@ class MarginCatalogGenerator:
             catalog (Catalog): The LSDB catalog to generate margins for
             margin_order (int): The order at which to generate the margin cache
             margin_threshold (float): The size of the margin cache boundary, in arcseconds
+            use_pyarrow_types (bool): If True, use pyarrow types. Defaults to True.
         """
         self.dataframe = catalog.compute().copy()
         self.hc_structure = catalog.hc_structure
         self.margin_threshold = margin_threshold
         self.margin_order = self._set_margin_order(margin_order)
+        self.use_pyarrow_types = use_pyarrow_types
 
     def _set_margin_order(self, margin_order: int | None) -> int:
         """Calculate the order of the margin cache to be generated. If not provided
@@ -102,7 +105,7 @@ class MarginCatalogGenerator:
         ddf_pixel_map = {pixel: index for index, pixel in enumerate(ordered_pixels)}
 
         # Generate the dask dataframe with the pixels and partitions
-        ddf, total_rows = _generate_dask_dataframe(ordered_partitions, ordered_pixels)
+        ddf, total_rows = _generate_dask_dataframe(ordered_partitions, ordered_pixels, self.use_pyarrow_types)
         return ddf, ddf_pixel_map, total_rows
 
     def _find_margin_pixel_pairs(self, pixels: List[HealpixPixel]) -> pd.DataFrame:

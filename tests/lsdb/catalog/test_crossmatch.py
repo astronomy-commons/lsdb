@@ -216,7 +216,7 @@ class TestBoundedCrossmatch:
 class MockCrossmatchAlgorithm(AbstractCrossmatchAlgorithm):
     """Mock class used to test a crossmatch algorithm"""
 
-    extra_columns = pd.DataFrame({"_DIST": pd.Series(dtype=np.dtype("float64"))})
+    extra_columns = pd.DataFrame({"_DIST": pd.Series(dtype=np.float64)})
 
     # We must have the same signature as the crossmatch method
     def validate(self, mock_results: pd.DataFrame = None):  # pylint: disable=unused-argument

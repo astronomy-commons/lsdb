@@ -4,6 +4,7 @@ import numpy.testing as npt
 import pandas as pd
 import pytest
 from hipscat.catalog.index.index_catalog import IndexCatalog
+from pandas.core.dtypes.base import ExtensionDtype
 
 import lsdb
 from lsdb.core.search import BoxSearch, ConeSearch, IndexSearch, OrderSearch, PolygonSearch
@@ -53,7 +54,7 @@ def test_parquet_data_in_partitions_match_files(small_sky_order1_dir, small_sky_
         parquet_path = hc.io.paths.pixel_catalog_file(
             small_sky_order1_hipscat_catalog.catalog_base_dir, hp_order, hp_pixel
         )
-        loaded_df = pd.read_parquet(parquet_path)
+        loaded_df = pd.read_parquet(parquet_path, dtype_backend="pyarrow")
         pd.testing.assert_frame_equal(partition_df, loaded_df)
 
 
@@ -148,3 +149,23 @@ def test_read_hipscat_subset_no_partitions(small_sky_order1_dir, small_sky_order
         catalog_index = IndexCatalog.read_from_hipscat(small_sky_order1_id_index_dir)
         index_search = IndexSearch([900], catalog_index)
         lsdb.read_hipscat(small_sky_order1_dir, search_filter=index_search)
+
+
+def test_read_hipscat_with_backend(small_sky_dir):
+    # By default, the schema is backed by pyarrow
+    default_catalog = lsdb.read_hipscat(small_sky_dir)
+    assert all(isinstance(col_type, pd.ArrowDtype) for col_type in default_catalog.dtypes)
+    # We can also pass it explicitly as an argument
+    catalog = lsdb.read_hipscat(small_sky_dir, dtype_backend="pyarrow")
+    assert catalog.dtypes.equals(default_catalog.dtypes)
+    # Load data using a numpy-nullable types.
+    catalog = lsdb.read_hipscat(small_sky_dir, dtype_backend="numpy_nullable")
+    assert all(isinstance(col_type, ExtensionDtype) for col_type in catalog.dtypes)
+    # The other option is to keep the original types. In this case they are numpy-backed.
+    catalog = lsdb.read_hipscat(small_sky_dir, dtype_backend=None)
+    assert all(isinstance(col_type, np.dtype) for col_type in catalog.dtypes)
+
+
+def test_read_hipscat_with_invalid_backend(small_sky_dir):
+    with pytest.raises(ValueError, match="data type backend must be either"):
+        lsdb.read_hipscat(small_sky_dir, dtype_backend="abc")

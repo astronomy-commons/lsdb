@@ -1,7 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List
+from typing import Callable, List
+
+import pandas as pd
+from pandas._libs import lib
+from pandas.io._util import _arrow_dtype_mapping
 
 from lsdb.catalog.margin_catalog import MarginCatalog
 from lsdb.core.search.abstract_search import AbstractSearch
@@ -23,9 +27,31 @@ class HipscatLoadingConfig:
     margin_cache: MarginCatalog | None = None
     """Margin cache for the catalog. By default, it is None"""
 
+    dtype_backend: str | None = "pyarrow"
+    """The backend data type to apply to the catalog. It defaults to "pyarrow" and 
+    if it is None no type conversion is performed."""
+
     kwargs: dict | None = None
     """Extra kwargs"""
+
+    def __post_init__(self):
+        if self.dtype_backend not in ["pyarrow", "numpy_nullable", None]:
+            raise ValueError("The data type backend must be either 'pyarrow' or 'numpy_nullable'")
 
     def get_kwargs_dict(self) -> dict:
         """Returns a dictionary with the extra kwargs"""
         return self.kwargs if self.kwargs is not None else {}
+
+    def get_dtype_backend(self) -> str:
+        """Returns the data type backend. It is either "pyarrow", "numpy_nullable",
+        or "<no_default>", which allows us to keep the original data types."""
+        return lib.no_default if self.dtype_backend is None else self.dtype_backend
+
+    def get_dtype_mapper(self) -> Callable | None:
+        """Returns a mapper for pyarrow or numpy types, mirroring Pandas behaviour."""
+        mapper = None
+        if self.dtype_backend == "pyarrow":
+            mapper = pd.ArrowDtype
+        elif self.dtype_backend == "numpy_nullable":
+            mapper = _arrow_dtype_mapping().get
+        return mapper
