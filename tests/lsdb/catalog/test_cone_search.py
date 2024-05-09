@@ -111,3 +111,12 @@ def test_invalid_dec_and_negative_radius(small_sky_order1_catalog):
         small_sky_order1_catalog.cone_search(0, 100.4, 1.3)
     with pytest.raises(ValueError, match=ValidatorsErrors.INVALID_RADIUS):
         small_sky_order1_catalog.cone_search(0, 0, -1.5)
+
+
+def test_empty_cone_search_with_margin(small_sky_order1_source_with_margin):
+    ra = 100
+    dec = -80
+    radius = 60
+    cone = small_sky_order1_source_with_margin.cone_search(ra, dec, radius, fine=False)
+    assert len(cone._ddf_pixel_map) == 0
+    assert len(cone.margin._ddf_pixel_map) == 0
