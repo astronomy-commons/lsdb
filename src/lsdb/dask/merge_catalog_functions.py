@@ -79,8 +79,12 @@ def align_catalogs(left: Catalog, right: Catalog, right_added_radius_arcsec: flo
     else:
         right_tree = right.hc_structure.pixel_tree
 
-    right_moc = right.hc_structure.moc
-    if right_moc is not None and right_added_radius_arcsec is not None:
+    right_moc = (
+        right.hc_structure.moc
+        if right.hc_structure.moc is not None
+        else right.hc_structure.pixel_tree.to_moc()
+    )
+    if right_added_radius_arcsec is not None:
         right_moc_depth_resol = hp.nside2resol(hp.order2nside(right_moc.max_order), arcmin=True) * 60
         if right_added_radius_arcsec < right_moc_depth_resol:
             right_moc = right_moc.add_neighbours()
