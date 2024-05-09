@@ -61,7 +61,6 @@ class MarginCatalog(HealpixDataset):
         filtered_pixels = []
 
         if len(filtered_search_pixels) > 0:
-
             # Get the margin pixels at the max order from the search pixels
             orders = np.array([p.order for p in filtered_search_pixels])
             pixels = np.array([p.pixel for p in filtered_search_pixels])
