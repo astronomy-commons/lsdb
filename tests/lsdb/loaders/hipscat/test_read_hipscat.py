@@ -156,7 +156,7 @@ def test_read_hipscat_with_backend(small_sky_dir):
     default_catalog = lsdb.read_hipscat(small_sky_dir)
     assert all(isinstance(col_type, pd.ArrowDtype) for col_type in default_catalog.dtypes)
     # We can also pass it explicitly as an argument
-    catalog = lsdb.read_hipscat(small_sky_dir)
+    catalog = lsdb.read_hipscat(small_sky_dir, dtype_backend="pyarrow")
     assert catalog.dtypes.equals(default_catalog.dtypes)
     # Load data using a numpy-nullable types.
     catalog = lsdb.read_hipscat(small_sky_dir, dtype_backend="numpy_nullable")

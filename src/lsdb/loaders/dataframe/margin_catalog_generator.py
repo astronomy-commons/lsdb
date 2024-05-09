@@ -37,7 +37,7 @@ class MarginCatalogGenerator:
             catalog (Catalog): The LSDB catalog to generate margins for
             margin_order (int): The order at which to generate the margin cache
             margin_threshold (float): The size of the margin cache boundary, in arcseconds
-            use_pyarrow_types (bool): If True, use pyarrow types. Defaults to "True".
+            use_pyarrow_types (bool): If True, use pyarrow types. Defaults to True.
         """
         self.dataframe = catalog.compute().copy()
         self.hc_structure = catalog.hc_structure

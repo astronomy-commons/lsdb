@@ -20,7 +20,7 @@ def _generate_dask_dataframe(
     Args:
         pixel_dfs (List[pd.DataFrame]): The list of HEALPix pixel Dataframes
         pixels (List[HealpixPixel]): The list of HEALPix pixels in the catalog
-        use_pyarrow_types (bool): If True, use pyarrow types. Defaults to "True".
+        use_pyarrow_types (bool): If True, use pyarrow types. Defaults to True.
 
     Returns:
         The catalog's Dask Dataframe and its total number of rows.
