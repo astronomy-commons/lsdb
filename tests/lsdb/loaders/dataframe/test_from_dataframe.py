@@ -4,8 +4,10 @@ import numpy.testing as npt
 import pandas as pd
 import pytest
 from hipscat.catalog import CatalogType
+import astropy.units as u
 from hipscat.pixel_math.healpix_pixel_function import get_pixel_argsort
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
+from mocpy import MOC
 
 import lsdb
 from lsdb.catalog.margin_catalog import MarginCatalog
@@ -211,6 +213,46 @@ def test_from_dataframe_margin_is_empty(small_sky_order1_df):
         threshold=100,
     )
     assert catalog.margin is None
+
+
+def test_from_dataframe_moc(small_sky_order1_catalog):
+    order = 1
+    pixels = [44, 45, 46]
+    partitions = [small_sky_order1_catalog.get_partition(order, p).compute() for p in pixels]
+    df = pd.concat(partitions)
+    subset_catalog = lsdb.from_dataframe(df)
+    assert subset_catalog.hc_structure.moc is not None
+    assert np.all(subset_catalog.hc_structure.moc.degrade_to_order(1).flatten() == pixels)
+    correct_moc = MOC.from_lonlat(
+        lon=df["ra"].to_numpy() * u.deg, lat=df["dec"].to_numpy() * u.deg, max_norder=10
+    )
+    assert correct_moc == subset_catalog.hc_structure.moc
+
+
+def test_from_dataframe_moc_params(small_sky_order1_catalog):
+    order = 1
+    pixels = [44, 45, 46]
+    max_order = 5
+    partitions = [small_sky_order1_catalog.get_partition(order, p).compute() for p in pixels]
+    df = pd.concat(partitions)
+    subset_catalog = lsdb.from_dataframe(df, moc_max_order=max_order)
+    assert subset_catalog.hc_structure.moc is not None
+    assert subset_catalog.hc_structure.moc.max_order == max_order
+    assert np.all(subset_catalog.hc_structure.moc.degrade_to_order(1).flatten() == pixels)
+    correct_moc = MOC.from_lonlat(
+        lon=df["ra"].to_numpy() * u.deg, lat=df["dec"].to_numpy() * u.deg, max_norder=max_order
+    )
+    assert correct_moc == subset_catalog.hc_structure.moc
+
+
+def test_from_dataframe_without_moc(small_sky_order1_catalog):
+    order = 1
+    pixels = [44, 45, 46]
+    max_order = 5
+    partitions = [small_sky_order1_catalog.get_partition(order, p).compute() for p in pixels]
+    df = pd.concat(partitions)
+    subset_catalog = lsdb.from_dataframe(df, moc_max_order=max_order, should_generate_moc=False)
+    assert subset_catalog.hc_structure.moc is None
 
 
 def test_from_dataframe_with_backend(small_sky_order1_df, small_sky_order1_dir):
