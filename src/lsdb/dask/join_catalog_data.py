@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING, List, Tuple
 
 import dask
 import dask.dataframe as dd
-import hipscat as hc
 import pandas as pd
 from hipscat.catalog.association_catalog import AssociationCatalogInfo
 from hipscat.catalog.catalog_info import CatalogInfo

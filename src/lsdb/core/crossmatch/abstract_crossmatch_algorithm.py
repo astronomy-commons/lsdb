@@ -3,7 +3,6 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Tuple
 
-import hipscat as hc
 import pandas as pd
 from hipscat.catalog.catalog_info import CatalogInfo
 from hipscat.catalog.margin_cache import MarginCacheCatalogInfo

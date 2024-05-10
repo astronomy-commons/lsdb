@@ -3,7 +3,6 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import List
 
-import hipscat as hc
 import pandas as pd
 from hipscat.catalog.catalog_info import CatalogInfo
 from hipscat.pixel_math import HealpixPixel

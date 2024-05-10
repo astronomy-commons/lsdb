@@ -2,7 +2,6 @@ from typing import List, Tuple
 
 import dask
 import healpy as hp
-import hipscat as hc
 import numpy as np
 import pandas as pd
 from hipscat.catalog.catalog_info import CatalogInfo

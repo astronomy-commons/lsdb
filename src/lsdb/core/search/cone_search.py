@@ -1,7 +1,6 @@
 from typing import List
 
 import dask
-import hipscat as hc
 import pandas as pd
 from astropy.coordinates import SkyCoord
 from hipscat.catalog.catalog_info import CatalogInfo
