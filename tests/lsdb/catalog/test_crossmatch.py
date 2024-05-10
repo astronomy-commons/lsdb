@@ -211,6 +211,22 @@ class TestBoundedCrossmatch:
         assert len(xmatched) == len(small_sky_catalog.compute())
         assert all(xmatched["_dist_arcsec"] == 0)
 
+    @staticmethod
+    def test_crossmatch_empty_left_partition(algo, small_sky_order1_catalog, small_sky_xmatch_catalog):
+        ra = 300
+        dec = -60
+        radius_arcsec = 1 * 3600
+        cone = small_sky_order1_catalog.cone_search(ra, dec, radius_arcsec)
+        assert len(cone.get_healpix_pixels()) == 2
+        assert len(cone.get_partition(1, 44)) == 2
+        # There is an empty partition in the left catalog
+        assert len(cone.get_partition(1, 46)) == 0
+        xmatched = cone.crossmatch(
+            small_sky_xmatch_catalog, radius_arcsec=0.01 * 3600, algorithm=algo
+        ).compute()
+        assert len(xmatched) == 2
+        assert all(xmatched["_dist_arcsec"] <= 0.01 * 3600)
+
 
 # pylint: disable=too-few-public-methods
 class MockCrossmatchAlgorithm(AbstractCrossmatchAlgorithm):

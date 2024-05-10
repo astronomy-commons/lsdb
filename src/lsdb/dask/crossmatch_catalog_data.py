@@ -42,6 +42,7 @@ def perform_crossmatch(
     algorithm,
     suffixes,
     right_columns,
+    meta_df,
     **kwargs,
 ):
     """Performs a crossmatch on data from a HEALPix pixel in each catalog
@@ -51,6 +52,9 @@ def perform_crossmatch(
     """
     if right_pix.order > left_pix.order:
         left_df = filter_by_hipscat_index_to_pixel(left_df, right_pix.order, right_pix.pixel)
+
+    if len(left_df) == 0:
+        return meta_df
 
     right_joined_df = concat_partition_and_margin(right_df, right_margin_df, right_columns)
 
@@ -125,20 +129,20 @@ def crossmatch_catalog_data(
     # get lists of HEALPix pixels from alignment to pass to cross-match
     left_pixels, right_pixels = get_healpix_pixels_from_alignment(alignment)
 
-    # perform the crossmatch on each partition pairing using dask delayed for lazy computation
+    # generate meta table structure for dask df
+    meta_df = generate_meta_df_for_joined_tables(
+        [left, right], suffixes, extra_columns=crossmatch_algorithm.extra_columns
+    )
 
+    # perform the crossmatch on each partition pairing using dask delayed for lazy computation
     joined_partitions = align_and_apply(
         [(left, left_pixels), (right, right_pixels), (right.margin, right_pixels)],
         perform_crossmatch,
         crossmatch_algorithm,
         suffixes,
         right.columns,
+        meta_df,
         **kwargs,
-    )
-
-    # generate meta table structure for dask df
-    meta_df = generate_meta_df_for_joined_tables(
-        [left, right], suffixes, extra_columns=crossmatch_algorithm.extra_columns
     )
 
     return construct_catalog_args(joined_partitions, meta_df, alignment)
