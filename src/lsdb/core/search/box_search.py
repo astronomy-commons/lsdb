@@ -6,6 +6,7 @@ import dask
 import hipscat as hc
 import numpy as np
 import pandas as pd
+from hipscat.catalog.catalog_info import CatalogInfo
 from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.box_filter import filter_pixels_by_box, wrap_ra_angles
 from hipscat.pixel_math.validators import validate_box_search
@@ -32,7 +33,7 @@ class BoxSearch(AbstractSearch):
         pixel_tree = PixelTree.from_healpix(pixels)
         return filter_pixels_by_box(pixel_tree, self.ra, self.dec)
 
-    def search_points(self, frame: pd.DataFrame, metadata: hc.catalog.Catalog) -> pd.DataFrame:
+    def search_points(self, frame: pd.DataFrame, metadata: CatalogInfo) -> pd.DataFrame:
         """Determine the search results within a data frame"""
         return box_filter(frame, self.ra, self.dec, metadata)
 
@@ -42,7 +43,7 @@ def box_filter(
     data_frame: pd.DataFrame,
     ra: Tuple[float, float] | None,
     dec: Tuple[float, float] | None,
-    metadata: hc.catalog.Catalog,
+    metadata: CatalogInfo,
 ):
     """Filters a dataframe to only include points within the specified box region.
 
@@ -57,12 +58,12 @@ def box_filter(
     """
     mask = np.ones(len(data_frame), dtype=bool)
     if ra is not None:
-        ra_values = data_frame[metadata.catalog_info.ra_column]
+        ra_values = data_frame[metadata.ra_column]
         wrapped_ra = np.asarray(wrap_ra_angles(ra_values))
         mask_ra = _create_ra_mask(ra, wrapped_ra)
         mask = np.logical_and(mask, mask_ra)
     if dec is not None:
-        dec_values = data_frame[metadata.catalog_info.dec_column].to_numpy()
+        dec_values = data_frame[metadata.dec_column].to_numpy()
         mask_dec = np.logical_and(dec[0] <= dec_values, dec_values <= dec[1])
         mask = np.logical_and(mask, mask_dec)
     data_frame = data_frame.iloc[mask]

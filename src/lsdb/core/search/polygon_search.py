@@ -5,6 +5,7 @@ import healpy as hp
 import hipscat as hc
 import numpy as np
 import pandas as pd
+from hipscat.catalog.catalog_info import CatalogInfo
 from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.polygon_filter import (
     CartesianCoordinates,
@@ -35,13 +36,13 @@ class PolygonSearch(AbstractSearch):
         pixel_tree = PixelTree.from_healpix(pixels)
         return filter_pixels_by_polygon(pixel_tree, self.vertices_xyz)
 
-    def search_points(self, frame: pd.DataFrame, metadata: hc.catalog.Catalog) -> pd.DataFrame:
+    def search_points(self, frame: pd.DataFrame, metadata: CatalogInfo) -> pd.DataFrame:
         """Determine the search results within a data frame"""
         return polygon_filter(frame, self.polygon, metadata)
 
 
 @dask.delayed
-def polygon_filter(data_frame: pd.DataFrame, polygon: ConvexPolygon, metadata: hc.catalog.Catalog):
+def polygon_filter(data_frame: pd.DataFrame, polygon: ConvexPolygon, metadata: CatalogInfo):
     """Filters a dataframe to only include points within the specified polygon.
 
     Args:
@@ -52,8 +53,8 @@ def polygon_filter(data_frame: pd.DataFrame, polygon: ConvexPolygon, metadata: h
     Returns:
         A new DataFrame with the rows from `dataframe` filtered to only the pixels inside the polygon.
     """
-    ra_values = np.radians(data_frame[metadata.catalog_info.ra_column].to_numpy())
-    dec_values = np.radians(data_frame[metadata.catalog_info.dec_column].to_numpy())
+    ra_values = np.radians(data_frame[metadata.ra_column].to_numpy())
+    dec_values = np.radians(data_frame[metadata.dec_column].to_numpy())
     inside_polygon = polygon.contains(ra_values, dec_values)
     data_frame = data_frame.iloc[inside_polygon]
     return data_frame

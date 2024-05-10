@@ -31,11 +31,11 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
         if n_neighbors < 1:
             raise ValueError("n_neighbors must be greater than 1")
         # Check that the margin exists and has a compatible radius.
-        if self.right_margin_hc_structure is None:
+        if self.right_margin_catalog_info is None:
             if require_right_margin:
                 raise ValueError("Right catalog margin cache is required for cross-match.")
         else:
-            if self.right_margin_hc_structure.catalog_info.margin_threshold < radius_arcsec:
+            if self.right_margin_catalog_info.margin_threshold < radius_arcsec:
                 raise ValueError("Cross match radius is greater than margin threshold")
 
     def crossmatch(
@@ -73,12 +73,12 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
 
     def _get_point_coordinates(self) -> Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
         left_xyz = _lon_lat_to_xyz(
-            lon=self.left[self.left_metadata.catalog_info.ra_column].to_numpy(),
-            lat=self.left[self.left_metadata.catalog_info.dec_column].to_numpy(),
+            lon=self.left[self.left_catalog_info.ra_column].to_numpy(),
+            lat=self.left[self.left_catalog_info.dec_column].to_numpy(),
         )
         right_xyz = _lon_lat_to_xyz(
-            lon=self.right[self.right_metadata.catalog_info.ra_column].to_numpy(),
-            lat=self.right[self.right_metadata.catalog_info.dec_column].to_numpy(),
+            lon=self.right[self.right_catalog_info.ra_column].to_numpy(),
+            lat=self.right[self.right_catalog_info.dec_column].to_numpy(),
         )
         return left_xyz, right_xyz
 

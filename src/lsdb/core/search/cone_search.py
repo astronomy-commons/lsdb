@@ -4,6 +4,7 @@ import dask
 import hipscat as hc
 import pandas as pd
 from astropy.coordinates import SkyCoord
+from hipscat.catalog.catalog_info import CatalogInfo
 from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.cone_filter import filter_pixels_by_cone
 from hipscat.pixel_math.validators import validate_declination_values, validate_radius
@@ -32,13 +33,13 @@ class ConeSearch(AbstractSearch):
         pixel_tree = PixelTree.from_healpix(pixels)
         return filter_pixels_by_cone(pixel_tree, self.ra, self.dec, self.radius_arcsec)
 
-    def search_points(self, frame: pd.DataFrame, metadata: hc.catalog.Catalog) -> pd.DataFrame:
+    def search_points(self, frame: pd.DataFrame, metadata: CatalogInfo) -> pd.DataFrame:
         """Determine the search results within a data frame"""
         return cone_filter(frame, self.ra, self.dec, self.radius_arcsec, metadata)
 
 
 @dask.delayed
-def cone_filter(data_frame: pd.DataFrame, ra, dec, radius_arcsec, metadata: hc.catalog.Catalog):
+def cone_filter(data_frame: pd.DataFrame, ra, dec, radius_arcsec, metadata: CatalogInfo):
     """Filters a dataframe to only include points within the specified cone
 
     Args:
@@ -46,13 +47,13 @@ def cone_filter(data_frame: pd.DataFrame, ra, dec, radius_arcsec, metadata: hc.c
         ra (float): Right Ascension of the center of the cone in degrees
         dec (float): Declination of the center of the cone in degrees
         radius_arcsec (float): Radius of the cone in arcseconds
-        metadata (hc.catalog.Catalog): hipscat `Catalog` with catalog_info that matches `data_frame`
+        metadata (hc.CatalogInfo): hipscat `CatalogInfo` with metadata that matches `data_frame`
 
     Returns:
         A new DataFrame with the rows from `data_frame` filtered to only the points inside the cone
     """
-    df_ras = data_frame[metadata.catalog_info.ra_column].to_numpy()
-    df_decs = data_frame[metadata.catalog_info.dec_column].to_numpy()
+    df_ras = data_frame[metadata.ra_column].to_numpy()
+    df_decs = data_frame[metadata.dec_column].to_numpy()
     df_coords = SkyCoord(df_ras, df_decs, unit="deg")
     center_coord = SkyCoord(ra, dec, unit="deg")
     df_separations_deg = df_coords.separation(center_coord).value
