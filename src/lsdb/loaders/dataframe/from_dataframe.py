@@ -14,7 +14,7 @@ def from_dataframe(
     partition_size: int | None = None,
     threshold: int | None = None,
     margin_order: int | None = -1,
-    margin_threshold: float = 5.0,
+    margin_threshold: float | None = 5.0,
     use_pyarrow_types: bool = True,
     **kwargs,
 ) -> Catalog:
@@ -27,7 +27,8 @@ def from_dataframe(
         partition_size (int): The desired partition size, in number of rows
         threshold (int): The maximum number of data points per pixel
         margin_order (int): The order at which to generate the margin cache
-        margin_threshold (float): The size of the margin cache boundary, in arcseconds
+        margin_threshold (float): The size of the margin cache boundary, in arcseconds. If None,
+            the margin cache is not generated. Defaults to 5 arcseconds.
         use_pyarrow_types (bool): If True, the data is backed by pyarrow, otherwise we keep the
             original data types. Defaults to True.
         **kwargs: Arguments to pass to the creation of the catalog info
