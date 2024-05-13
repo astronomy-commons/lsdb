@@ -316,12 +316,13 @@ class MockCrossmatchAlgorithm(AbstractCrossmatchAlgorithm):
     extra_columns = pd.DataFrame({"_DIST": pd.Series(dtype=np.float64)})
 
     # We must have the same signature as the crossmatch method
-    def validate(
-        self, how: PixelAlignmentType, mock_results: pd.DataFrame = None
-    ):  # pylint: disable=unused-argument
+    # pylint: disable=arguments-differ,unused-argument
+    def validate(self, how: PixelAlignmentType = PixelAlignmentType.INNER, mock_results: pd.DataFrame = None):
         super().validate()
 
-    def crossmatch(self, how: PixelAlignmentType, mock_results: pd.DataFrame = None):
+    def crossmatch(
+        self, how: PixelAlignmentType = PixelAlignmentType.INNER, mock_results: pd.DataFrame = None
+    ):
         left_reset = self.left.reset_index(drop=True)
         right_reset = self.right.reset_index(drop=True)
         self._rename_columns_with_suffix(self.left, self.suffixes[0])
@@ -345,7 +346,6 @@ class MockCrossmatchAlgorithm(AbstractCrossmatchAlgorithm):
         out.set_index(HIPSCAT_ID_COLUMN, inplace=True)
         extra_columns = pd.DataFrame({"_DIST": mock_results["dist"]})
         self._append_extra_columns(out, extra_columns)
-
         return out
 
 
