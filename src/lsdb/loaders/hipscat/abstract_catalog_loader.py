@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import dataclasses
 from abc import abstractmethod
 from typing import Generic, List, Tuple, Type, TypeVar
 
@@ -39,7 +38,7 @@ class AbstractCatalogLoader(Generic[CatalogTypeVar]):
         self.storage_options = storage_options
 
     @abstractmethod
-    def load_catalog(self) -> CatalogTypeVar:
+    def load_catalog(self) -> CatalogTypeVar | None:
         """Load a dataset from the configuration specified when the loader was created
 
         Returns:
@@ -49,15 +48,7 @@ class AbstractCatalogLoader(Generic[CatalogTypeVar]):
 
     def _load_hipscat_catalog(self, catalog_type: Type[HCCatalogTypeVar]) -> HCCatalogTypeVar:
         """Load `hipscat` library catalog object with catalog metadata and partition data"""
-        hc_structure = catalog_type.read_from_hipscat(self.path, storage_options=self.storage_options)
-        if self.config.search_filter is None:
-            return hc_structure
-        pixels = hc_structure.get_healpix_pixels()
-        pixels_to_load = self.config.search_filter.search_partitions(pixels)
-        if len(pixels_to_load) == 0:
-            raise ValueError("There are no partitions for the specified subset")
-        catalog_info = dataclasses.replace(hc_structure.catalog_info, total_rows=None)
-        return catalog_type(catalog_info, pixels_to_load, self.path, self.storage_options)
+        return catalog_type.read_from_hipscat(self.path, storage_options=self.storage_options)
 
     def _load_dask_df_and_map(self, catalog: HCHealpixDataset) -> Tuple[dd.core.DataFrame, DaskDFPixelMap]:
         """Load Dask DF from parquet files and make dict of HEALPix pixel to partition index"""

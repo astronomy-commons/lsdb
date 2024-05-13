@@ -145,7 +145,7 @@ def test_read_hipscat_subset_with_order_search(small_sky_source_catalog, small_s
 
 
 def test_read_hipscat_subset_no_partitions(small_sky_order1_dir, small_sky_order1_id_index_dir):
-    with pytest.raises(ValueError, match="no partitions"):
+    with pytest.raises(ValueError, match="no coverage"):
         catalog_index = IndexCatalog.read_from_hipscat(small_sky_order1_id_index_dir)
         index_search = IndexSearch([900], catalog_index)
         lsdb.read_hipscat(small_sky_order1_dir, search_filter=index_search)

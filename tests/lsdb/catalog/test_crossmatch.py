@@ -221,9 +221,10 @@ class TestBoundedCrossmatch:
         assert len(cone.get_partition(1, 44)) == 2
         # There is an empty partition in the left catalog
         assert len(cone.get_partition(1, 46)) == 0
-        xmatched = cone.crossmatch(
-            small_sky_xmatch_catalog, radius_arcsec=0.01 * 3600, algorithm=algo
-        ).compute()
+        with pytest.warns(RuntimeWarning, match="Results may be incomplete and/or inaccurate"):
+            xmatched = cone.crossmatch(
+                small_sky_xmatch_catalog, radius_arcsec=0.01 * 3600, algorithm=algo
+            ).compute()
         assert len(xmatched) == 2
         assert all(xmatched["_dist_arcsec"] <= 0.01 * 3600)
 
