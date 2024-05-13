@@ -38,11 +38,11 @@ class AbstractCrossmatchAlgorithm(ABC):
             left_pixel (int): The HEALPix pixel number in NESTED ordering of the left pixel
             right_order (int): The HEALPix order of the right pixel
             right_pixel (int): The HEALPix pixel number in NESTED ordering of the right pixel
-            left_metadata (hipscat.CatalogInfo): The hipscat CatalogInfo object with the metadata of the
+            left_catalog_info (hipscat.CatalogInfo): The hipscat CatalogInfo object with the metadata of the
                 left catalog
-            right_metadata (hipscat.CatalogInfo): The hipscat CatalogInfo object with the metadata of the
+            right_catalog_info (hipscat.CatalogInfo): The hipscat CatalogInfo object with the metadata of the
                 right catalog
-            right_margin_hc_structure (hipscat.MarginCacheCatalogInfo): The hipscat MarginCacheCatalogInfo
+            right_margin_catalog_info (hipscat.MarginCacheCatalogInfo): The hipscat MarginCacheCatalogInfo
                 objects with the metadata of the right **margin** catalog
             suffixes (Tuple[str,str]): A pair of suffixes to be appended to the end of each column
                 name, with the first appended to the left columns and the second to the right
