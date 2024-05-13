@@ -116,12 +116,14 @@ def align_and_apply(
 
     # gets the pixels and hc_structures to pass to the function
     pixels = [pixels for (_, pixels) in catalog_mappings]
-    hc_structures = [cat.hc_structure if cat is not None else None for (cat, _) in catalog_mappings]
+    catalog_infos = [
+        cat.hc_structure.catalog_info if cat is not None else None for (cat, _) in catalog_mappings
+    ]
 
     # defines an inner function that can be vectorized to apply the given function to each of the partitions
     # with the additional arguments including as the hc_structures and any specified additional arguments
     def apply_func(*partitions_and_pixels):
-        return func(*partitions_and_pixels, *hc_structures, *args, **kwargs)
+        return func(*partitions_and_pixels, *catalog_infos, *args, **kwargs)
 
     resulting_partitions = np.vectorize(apply_func)(*aligned_partitions, *pixels)
     return resulting_partitions
