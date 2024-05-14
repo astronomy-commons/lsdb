@@ -4,6 +4,7 @@ import numpy.testing as npt
 import pandas as pd
 import pytest
 from hipscat.catalog.index.index_catalog import IndexCatalog
+from hipscat.pixel_math import HealpixPixel
 from pandas.core.dtypes.base import ExtensionDtype
 
 import lsdb
@@ -176,11 +177,15 @@ def test_read_hipscat_margin_catalog_subset(
 ):
     search_filter = ConeSearch(ra=320, dec=-35, radius_arcsec=1 * 3600)
     margin = lsdb.read_hipscat(small_sky_order1_source_margin_dir, search_filter=search_filter)
+
+    margin_info = margin.hc_structure.catalog_info
+    small_sky_order1_source_margin_info = small_sky_order1_source_margin_catalog.hc_structure.catalog_info
+
     assert isinstance(margin, lsdb.MarginCatalog)
-    assert (
-        margin.hc_structure.catalog_info == small_sky_order1_source_margin_catalog.hc_structure.catalog_info
-    )
-    assert margin.get_healpix_pixels() == small_sky_order1_source_margin_catalog.get_healpix_pixels()
+    assert margin_info.catalog_name == small_sky_order1_source_margin_info.catalog_name
+    assert margin_info.primary_catalog == small_sky_order1_source_margin_info.primary_catalog
+    assert margin_info.margin_threshold == small_sky_order1_source_margin_info.margin_threshold
+    assert margin.get_healpix_pixels() == [HealpixPixel(1, 45), HealpixPixel(1, 47)]
     assert_divisions_are_correct(margin)
 
 
