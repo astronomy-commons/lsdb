@@ -33,7 +33,7 @@ def read_hipscat(
     dtype_backend: str | None = "pyarrow",
     storage_options: dict | None = None,
     **kwargs,
-) -> Dataset:
+) -> Dataset | None:
     """Load a catalog from a HiPSCat formatted catalog.
 
     Typical usage example, where we load a catalog with a subset of columns:
