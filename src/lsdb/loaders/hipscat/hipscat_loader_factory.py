@@ -1,10 +1,12 @@
-from typing import Any, Dict, Type, Union
+from __future__ import annotations
+
+from typing import Dict, Type
 
 from lsdb.catalog.association_catalog import AssociationCatalog
 from lsdb.catalog.catalog import Catalog
 from lsdb.catalog.dataset.dataset import Dataset
 from lsdb.catalog.margin_catalog import MarginCatalog
-from lsdb.loaders.hipscat.abstract_catalog_loader import AbstractCatalogLoader
+from lsdb.loaders.hipscat.abstract_catalog_loader import AbstractCatalogLoader, CatalogTypeVar
 from lsdb.loaders.hipscat.association_catalog_loader import AssociationCatalogLoader
 from lsdb.loaders.hipscat.hipscat_catalog_loader import HipscatCatalogLoader
 from lsdb.loaders.hipscat.hipscat_loading_config import HipscatLoadingConfig
@@ -18,10 +20,10 @@ loader_class_for_catalog_type: Dict[Type[Dataset], Type[AbstractCatalogLoader]] 
 
 
 def get_loader_for_type(
-    catalog_type_to_use: Type[Dataset],
+    catalog_type_to_use: Type[CatalogTypeVar],
     path: str,
     config: HipscatLoadingConfig,
-    storage_options: Union[Dict[Any, Any], None] = None,
+    storage_options: dict | None = None,
 ) -> AbstractCatalogLoader:
     """Constructs a CatalogLoader that loads a Dataset of the specified type
 
@@ -30,6 +32,7 @@ def get_loader_for_type(
             as the input, not a string or enum value
         path (str): the path to load the catalog from
         config (HipscatLoadingConfig): Additional configuration for loading the catalog
+        storage_options (dict): Dictionary that contains abstract filesystem credentials
 
     Returns:
         An initialized CatalogLoader object with the path and config specified
