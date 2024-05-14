@@ -83,17 +83,16 @@ class AbstractCatalogLoader(Generic[CatalogTypeVar]):
         dask_meta_schema = self._load_metadata_schema(catalog)
         if self.config.columns:
             dask_meta_schema = dask_meta_schema[self.config.columns]
-        ddf = dd.io.from_map(
-            file_io.read_parquet_file_to_pandas,
-            paths,
-            divisions=divisions,
-            storage_options=self.storage_options,
-            meta=dask_meta_schema,
-            columns=self.config.columns,
-            dtype_backend=self.config.get_dtype_backend(),
+        kwargs = {
+            "columns": self.config.columns,
+            "divisions": divisions,
+            "meta": dask_meta_schema,
+            "storage_options": self.storage_options,
             **self.config.get_kwargs_dict(),
-        )
-        return ddf
+        }
+        if self.config.dtype_backend is not None:
+            kwargs["dtype_backend"] = self.config.dtype_backend
+        return dd.io.from_map(file_io.read_parquet_file_to_pandas, paths, **kwargs)
 
     def _load_metadata_schema(self, catalog: HCHealpixDataset) -> pd.DataFrame:
         metadata_pointer = hc.io.paths.get_common_metadata_pointer(catalog.catalog_base_dir)

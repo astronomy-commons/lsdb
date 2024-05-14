@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from typing import Callable, List
 
 import pandas as pd
-from pandas._libs import lib
 from pandas.io._util import _arrow_dtype_mapping
 
 from lsdb.catalog.margin_catalog import MarginCatalog
@@ -41,11 +40,6 @@ class HipscatLoadingConfig:
     def get_kwargs_dict(self) -> dict:
         """Returns a dictionary with the extra kwargs"""
         return self.kwargs if self.kwargs is not None else {}
-
-    def get_dtype_backend(self) -> str:
-        """Returns the data type backend. It is either "pyarrow", "numpy_nullable",
-        or "<no_default>", which allows us to keep the original data types."""
-        return lib.no_default if self.dtype_backend is None else self.dtype_backend
 
     def get_dtype_mapper(self) -> Callable | None:
         """Returns a mapper for pyarrow or numpy types, mirroring Pandas behaviour."""
