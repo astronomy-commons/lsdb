@@ -30,9 +30,10 @@ class HipscatCatalogLoader(AbstractCatalogLoader[Catalog]):
         self, hc_catalog: hc.catalog.Catalog, search_filter: AbstractSearch
     ) -> hc.catalog.Catalog:
         """Filters the catalog pixels according to the spatial filter provided at loading time"""
-        pixels = hc_catalog.get_healpix_pixels()
-        pixels_to_load = search_filter.search_partitions(pixels)
+        pixels_to_load = search_filter.search_partitions(hc_catalog.get_healpix_pixels())
         if len(pixels_to_load) == 0:
             raise ValueError("The selected sky region has no coverage")
         catalog_info = dataclasses.replace(hc_catalog.catalog_info, total_rows=None)
-        return hc.catalog.Catalog(catalog_info, pixels_to_load, self.path, self.storage_options)
+        return hc.catalog.Catalog(
+            catalog_info, pixels_to_load, self.path, hc_catalog.moc, self.storage_options
+        )

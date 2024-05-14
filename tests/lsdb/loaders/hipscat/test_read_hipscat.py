@@ -169,3 +169,22 @@ def test_read_hipscat_with_backend(small_sky_dir):
 def test_read_hipscat_with_invalid_backend(small_sky_dir):
     with pytest.raises(ValueError, match="data type backend must be either"):
         lsdb.read_hipscat(small_sky_dir, dtype_backend="abc")
+
+
+def test_read_hipscat_margin_catalog_subset(
+    small_sky_order1_source_margin_dir, small_sky_order1_source_margin_catalog, assert_divisions_are_correct
+):
+    search_filter = ConeSearch(ra=320, dec=-35, radius_arcsec=1 * 3600)
+    margin = lsdb.read_hipscat(small_sky_order1_source_margin_dir, search_filter=search_filter)
+    assert isinstance(margin, lsdb.MarginCatalog)
+    assert (
+        margin.hc_structure.catalog_info == small_sky_order1_source_margin_catalog.hc_structure.catalog_info
+    )
+    assert margin.get_healpix_pixels() == small_sky_order1_source_margin_catalog.get_healpix_pixels()
+    assert_divisions_are_correct(margin)
+
+
+def test_read_hipscat_margin_catalog_subset_is_empty(small_sky_order1_source_margin_dir):
+    search_filter = ConeSearch(ra=30, dec=10, radius_arcsec=1)
+    margin_catalog = lsdb.read_hipscat(small_sky_order1_source_margin_dir, search_filter=search_filter)
+    assert margin_catalog is None
