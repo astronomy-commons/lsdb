@@ -74,7 +74,8 @@ def perform_crossmatch(
         right_hc_structure,
         right_margin_hc_structure,
         suffixes,
-    ).crossmatch(how=how, **kwargs)
+        how,
+    ).crossmatch(**kwargs)
 
 
 # pylint: disable=too-many-locals
@@ -121,8 +122,9 @@ def crossmatch_catalog_data(
         right.hc_structure,
         right.margin.hc_structure if right.margin is not None else None,
         suffixes,
+        how,
     )
-    meta_df_crossmatch.validate(how=how, **kwargs)
+    meta_df_crossmatch.validate(**kwargs)
 
     if right.margin is None:
         warnings.warn(

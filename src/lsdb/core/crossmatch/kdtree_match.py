@@ -26,7 +26,6 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
 
     def validate(
         self,
-        how: PixelAlignmentType = PixelAlignmentType.INNER,
         n_neighbors: int = 1,
         radius_arcsec: float = 1,
         require_right_margin: bool = False,
@@ -45,12 +44,11 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
             if self.right_margin_hc_structure.catalog_info.margin_threshold < radius_arcsec:
                 raise ValueError("Cross match radius is greater than margin threshold")
         # Check that the crossmatch strategy has been implemented
-        if how not in [PixelAlignmentType.INNER, PixelAlignmentType.LEFT]:
+        if self.how not in [PixelAlignmentType.INNER, PixelAlignmentType.LEFT]:
             raise NotImplementedError("The cross match strategy must be 'inner' or 'left'")
 
     def crossmatch(
         self,
-        how: PixelAlignmentType = PixelAlignmentType.INNER,
         n_neighbors: int = 1,
         radius_arcsec: float = 1,
         # We need it here because the signature is shared with .validate()
@@ -62,9 +60,6 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
         are within a threshold distance by using a K-D Tree.
 
         Args:
-            how (str): The merge strategy. If "inner", only the points from the left catalog that have
-                matches are kept. If "left", points with matches and non-matches are kept.
-                Defaults to "inner".
             n_neighbors (int): The number of neighbors to find within each point.
             radius_arcsec (float): The threshold distance in arcseconds beyond which neighbors are not added.
 
@@ -80,9 +75,9 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
         left_xyz, right_xyz = self._get_point_coordinates()
         # get matching indices for cross-matched rows
         chord_distances, left_idx, right_idx = _find_crossmatch_indices(
-            left_xyz, right_xyz, how, n_neighbors, max_d_chord
+            left_xyz, right_xyz, self.how, n_neighbors, max_d_chord
         )
-        return self._create_crossmatch_df(left_idx, right_idx, chord_distances, how)
+        return self._create_crossmatch_df(left_idx, right_idx, chord_distances)
 
     def _get_point_coordinates(self) -> Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
         left_xyz = _lon_lat_to_xyz(
@@ -100,7 +95,6 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
         left_idx: npt.NDArray[np.int64],
         right_idx: npt.NDArray[np.int64],
         chord_distances: npt.NDArray[np.float64],
-        how: PixelAlignmentType,
     ) -> pd.DataFrame:
         # Rename columns so no same names during merging
         self._rename_columns_with_suffix(self.left, self.suffixes[0])
@@ -109,17 +103,14 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
         self.left.index.name = HIPSCAT_ID_COLUMN
         left_join_part = self.left.iloc[left_idx].reset_index()
         # Get the rows for the right part
-        right_join_part = self._generate_right_part(right_idx, chord_distances, how)
+        right_join_part = self._generate_right_part(right_idx, chord_distances)
         # Concatenate the left and right parts, and set the index.
         out = pd.concat([left_join_part, right_join_part], axis=1)
         out.set_index(HIPSCAT_ID_COLUMN, inplace=True)
         return out
 
     def _generate_right_part(
-        self,
-        right_idx: npt.NDArray[np.int64],
-        chord_distances: npt.NDArray[np.float64],
-        how: PixelAlignmentType,
+        self, right_idx: npt.NDArray[np.int64], chord_distances: npt.NDArray[np.float64]
     ) -> pd.DataFrame:
         """For the right part we need to decide if we keep the non-matches.
         If we do, first we get the rows for the valid matches and set their
@@ -140,7 +131,7 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
         )
         self._append_extra_columns(right_join_part, extra_columns)
 
-        if how == PixelAlignmentType.LEFT:
+        if self.how == PixelAlignmentType.LEFT:
             full_df = pd.DataFrame(None, index=np.arange(len(right_idx)), columns=right_join_part.columns)
             full_df.iloc[match_cond] = right_join_part.to_numpy()
             full_df = full_df.astype(right_join_part.dtypes)

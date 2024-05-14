@@ -6,6 +6,7 @@ from typing import Tuple
 import hipscat as hc
 import pandas as pd
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
+from hipscat.pixel_tree import PixelAlignmentType
 
 
 # pylint: disable=too-many-instance-attributes, too-many-arguments
@@ -27,6 +28,7 @@ class AbstractCrossmatchAlgorithm(ABC):
         right_metadata: hc.catalog.Catalog,
         right_margin_hc_structure: hc.catalog.MarginCatalog | None,
         suffixes: Tuple[str, str],
+        how: PixelAlignmentType = PixelAlignmentType.INNER,
     ):
         """Initializes a crossmatch algorithm
 
@@ -46,6 +48,9 @@ class AbstractCrossmatchAlgorithm(ABC):
             suffixes (Tuple[str,str]): A pair of suffixes to be appended to the end of each column
                 name, with the first appended to the left columns and the second to the right
                 columns
+            how (str): The merge strategy. If "inner", only the points from the left catalog that have
+                matches are kept. If "left", points with matches and non-matches are kept.
+                Defaults to "inner".
         """
         self.left = left.copy(deep=False)
         self.right = right.copy(deep=False)
@@ -57,6 +62,7 @@ class AbstractCrossmatchAlgorithm(ABC):
         self.right_metadata = right_metadata
         self.right_margin_hc_structure = right_margin_hc_structure
         self.suffixes = suffixes
+        self.how = how
 
     @abstractmethod
     def crossmatch(self) -> pd.DataFrame:

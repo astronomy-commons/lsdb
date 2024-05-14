@@ -3,7 +3,6 @@ import pandas as pd
 import pyarrow as pa
 import pytest
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
-from hipscat.pixel_tree import PixelAlignmentType
 
 import lsdb
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
@@ -316,13 +315,10 @@ class MockCrossmatchAlgorithm(AbstractCrossmatchAlgorithm):
     extra_columns = pd.DataFrame({"_DIST": pd.Series(dtype=np.float64)})
 
     # We must have the same signature as the crossmatch method
-    # pylint: disable=arguments-differ,unused-argument
-    def validate(self, how: PixelAlignmentType = PixelAlignmentType.INNER, mock_results: pd.DataFrame = None):
+    def validate(self, mock_results: pd.DataFrame = None):  # pylint: disable=unused-argument
         super().validate()
 
-    def crossmatch(
-        self, how: PixelAlignmentType = PixelAlignmentType.INNER, mock_results: pd.DataFrame = None
-    ):
+    def crossmatch(self, mock_results: pd.DataFrame = None):
         left_reset = self.left.reset_index(drop=True)
         right_reset = self.right.reset_index(drop=True)
         self._rename_columns_with_suffix(self.left, self.suffixes[0])
