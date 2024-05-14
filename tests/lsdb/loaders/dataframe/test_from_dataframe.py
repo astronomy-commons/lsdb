@@ -1,10 +1,10 @@
+import astropy.units as u
 import healpy as hp
 import numpy as np
 import numpy.testing as npt
 import pandas as pd
 import pytest
 from hipscat.catalog import CatalogType
-import astropy.units as u
 from hipscat.pixel_math.healpix_pixel_function import get_pixel_argsort
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
 from mocpy import MOC

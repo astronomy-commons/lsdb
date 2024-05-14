@@ -4,6 +4,7 @@ import dataclasses
 import math
 from typing import Dict, List, Tuple
 
+import astropy.units as u
 import dask.dataframe as dd
 import hipscat as hc
 import numpy as np
@@ -21,7 +22,6 @@ from lsdb.loaders.dataframe.from_dataframe_utils import (
     _generate_dask_dataframe,
 )
 from lsdb.types import DaskDFPixelMap, HealpixInfo
-import astropy.units as u
 
 pd.options.mode.chained_assignment = None  # default='warn'
 
