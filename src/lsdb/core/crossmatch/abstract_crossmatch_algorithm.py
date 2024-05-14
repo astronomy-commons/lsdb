@@ -3,8 +3,9 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Tuple
 
-import hipscat as hc
 import pandas as pd
+from hipscat.catalog.catalog_info import CatalogInfo
+from hipscat.catalog.margin_cache import MarginCacheCatalogInfo
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
 from hipscat.pixel_tree import PixelAlignmentType
 
@@ -24,9 +25,9 @@ class AbstractCrossmatchAlgorithm(ABC):
         left_pixel: int,
         right_order: int,
         right_pixel: int,
-        left_metadata: hc.catalog.Catalog,
-        right_metadata: hc.catalog.Catalog,
-        right_margin_hc_structure: hc.catalog.MarginCatalog | None,
+        left_catalog_info: CatalogInfo,
+        right_catalog_info: CatalogInfo,
+        right_margin_catalog_info: MarginCacheCatalogInfo | None,
         suffixes: Tuple[str, str],
         how: PixelAlignmentType = PixelAlignmentType.INNER,
     ):
@@ -39,12 +40,12 @@ class AbstractCrossmatchAlgorithm(ABC):
             left_pixel (int): The HEALPix pixel number in NESTED ordering of the left pixel
             right_order (int): The HEALPix order of the right pixel
             right_pixel (int): The HEALPix pixel number in NESTED ordering of the right pixel
-            left_metadata (hipscat.Catalog): The hipscat Catalog object with the metadata of the
+            left_catalog_info (hipscat.CatalogInfo): The hipscat CatalogInfo object with the metadata of the
                 left catalog
-            right_metadata (hipscat.Catalog): The hipscat Catalog object with the metadata of the
+            right_catalog_info (hipscat.CatalogInfo): The hipscat CatalogInfo object with the metadata of the
                 right catalog
-            right_margin_hc_structure (hipscat.MarginCatalog): The hipscat MarginCatalog objects
-                with the metadata of the right **margin** catalog
+            right_margin_catalog_info (hipscat.MarginCacheCatalogInfo): The hipscat MarginCacheCatalogInfo
+                objects with the metadata of the right **margin** catalog
             suffixes (Tuple[str,str]): A pair of suffixes to be appended to the end of each column
                 name, with the first appended to the left columns and the second to the right
                 columns
@@ -58,9 +59,9 @@ class AbstractCrossmatchAlgorithm(ABC):
         self.left_pixel = left_pixel
         self.right_order = right_order
         self.right_pixel = right_pixel
-        self.left_metadata = left_metadata
-        self.right_metadata = right_metadata
-        self.right_margin_hc_structure = right_margin_hc_structure
+        self.left_catalog_info = left_catalog_info
+        self.right_catalog_info = right_catalog_info
+        self.right_margin_catalog_info = right_margin_catalog_info
         self.suffixes = suffixes
         self.how = how
 
@@ -82,16 +83,16 @@ class AbstractCrossmatchAlgorithm(ABC):
         if self.right.index.name != HIPSCAT_ID_COLUMN:
             raise ValueError(f"index of right table must be {HIPSCAT_ID_COLUMN}")
         column_names = self.left.columns
-        if self.left_metadata.catalog_info.ra_column not in column_names:
-            raise ValueError(f"left table must have column {self.left_metadata.catalog_info.ra_column}")
-        if self.left_metadata.catalog_info.dec_column not in column_names:
-            raise ValueError(f"left table must have column {self.left_metadata.catalog_info.dec_column}")
+        if self.left_catalog_info.ra_column not in column_names:
+            raise ValueError(f"left table must have column {self.left_catalog_info.ra_column}")
+        if self.left_catalog_info.dec_column not in column_names:
+            raise ValueError(f"left table must have column {self.left_catalog_info.dec_column}")
 
         column_names = self.right.columns
-        if self.right_metadata.catalog_info.ra_column not in column_names:
-            raise ValueError(f"right table must have column {self.right_metadata.catalog_info.ra_column}")
-        if self.right_metadata.catalog_info.dec_column not in column_names:
-            raise ValueError(f"right table must have column {self.right_metadata.catalog_info.dec_column}")
+        if self.right_catalog_info.ra_column not in column_names:
+            raise ValueError(f"right table must have column {self.right_catalog_info.ra_column}")
+        if self.right_catalog_info.dec_column not in column_names:
+            raise ValueError(f"right table must have column {self.right_catalog_info.dec_column}")
 
     @staticmethod
     def _rename_columns_with_suffix(dataframe, suffix):

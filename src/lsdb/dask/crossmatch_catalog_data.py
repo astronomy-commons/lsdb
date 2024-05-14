@@ -38,9 +38,9 @@ def perform_crossmatch(
     right_pix,
     right_margin_pix,
     aligned_pix,
-    left_hc_structure,
-    right_hc_structure,
-    right_margin_hc_structure,
+    left_catalog_info,
+    right_catalog_info,
+    right_margin_catalog_info,
     algorithm,
     suffixes,
     right_columns,
@@ -56,6 +56,9 @@ def perform_crossmatch(
     if aligned_pix.order > left_pix.order:
         left_df = filter_by_hipscat_index_to_pixel(left_df, aligned_pix.order, aligned_pix.pixel)
 
+    if len(left_df) == 0:
+        return meta_df
+
     # The left partition has no coverage in the right catalog and the pixel alignment is "left",
     # so we want to keep all the left partition points (they will have no matches)
     if right_df is None and how == PixelAlignmentType.LEFT:
@@ -70,9 +73,9 @@ def perform_crossmatch(
         left_pix.pixel,
         right_pix.order,
         right_pix.pixel,
-        left_hc_structure,
-        right_hc_structure,
-        right_margin_hc_structure,
+        left_catalog_info,
+        right_catalog_info,
+        right_margin_catalog_info,
         suffixes,
         how,
     ).crossmatch(**kwargs)
@@ -118,9 +121,9 @@ def crossmatch_catalog_data(
         0,
         0,
         0,
-        left.hc_structure,
-        right.hc_structure,
-        right.margin.hc_structure if right.margin is not None else None,
+        left.hc_structure.catalog_info,
+        right.hc_structure.catalog_info,
+        right.margin.hc_structure.catalog_info if right.margin is not None else None,
         suffixes,
         how,
     )

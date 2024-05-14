@@ -150,7 +150,7 @@ class HealpixDataset(Dataset):
         partitions = self._ddf.to_delayed()
         targeted_partitions = [partitions[self._ddf_pixel_map[pixel]] for pixel in filtered_pixels]
         filtered_partitions = (
-            [search.search_points(partition, metadata) for partition in targeted_partitions]
+            [search.search_points(partition, metadata.catalog_info) for partition in targeted_partitions]
             if fine
             else targeted_partitions
         )
