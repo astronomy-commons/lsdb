@@ -11,9 +11,9 @@ For more information on stub files, view here: https://mypy.readthedocs.io/en/st
 
 """
 
-from typing import List, Type, overload
+from __future__ import annotations
 
-from hipscat.pixel_math import HealpixPixel
+from typing import List, Type, overload
 
 from lsdb.catalog.dataset.dataset import Dataset
 from lsdb.catalog.margin_catalog import MarginCatalog

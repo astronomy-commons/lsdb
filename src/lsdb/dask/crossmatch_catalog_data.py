@@ -36,9 +36,9 @@ def perform_crossmatch(
     left_pix,
     right_pix,
     right_margin_pix,
-    left_hc_structure,
-    right_hc_structure,
-    right_margin_hc_structure,
+    left_catalog_info,
+    right_catalog_info,
+    right_margin_catalog_info,
     algorithm,
     suffixes,
     right_columns,
@@ -65,9 +65,9 @@ def perform_crossmatch(
         left_pix.pixel,
         right_pix.order,
         right_pix.pixel,
-        left_hc_structure,
-        right_hc_structure,
-        right_margin_hc_structure,
+        left_catalog_info,
+        right_catalog_info,
+        right_margin_catalog_info,
         suffixes,
     ).crossmatch(**kwargs)
 
@@ -110,9 +110,9 @@ def crossmatch_catalog_data(
         0,
         0,
         0,
-        left.hc_structure,
-        right.hc_structure,
-        right.margin.hc_structure if right.margin is not None else None,
+        left.hc_structure.catalog_info,
+        right.hc_structure.catalog_info,
+        right.margin.hc_structure.catalog_info if right.margin is not None else None,
         suffixes,
     )
     meta_df_crossmatch.validate(**kwargs)
