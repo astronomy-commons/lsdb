@@ -56,7 +56,9 @@ def concat_partition_and_margin(
     return joined_df
 
 
-def align_catalogs(left: Catalog, right: Catalog, right_added_radius_arcsec: float = None) -> PixelAlignment:
+def align_catalogs(
+    left: Catalog, right: Catalog, right_added_radius_arcsec: float | None = None
+) -> PixelAlignment:
     """Aligns two catalogs, also using the right catalog's margin if it exists
 
     Args:
