@@ -20,5 +20,5 @@ Other tutorials
     :maxdepth: 1
 
     Import catalogs <tutorials/import_catalogs>
-    Cross-match ZTF BTS and NGC <tutorials/ztf_bts-ngc>
+    Cross-match ZTF BTS and NGC <tutorials/pre_executed/ztf_bts-ngc>
     Import and cross-match DES and Gaia <tutorials/pre_executed/des-gaia>
