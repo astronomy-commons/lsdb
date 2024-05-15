@@ -124,7 +124,7 @@ def crossmatch_catalog_data(
         )
 
     # perform alignment on the two catalogs
-    alignment = align_catalogs(left, right)
+    alignment = align_catalogs(left, right, add_right_margin=True)
 
     # get lists of HEALPix pixels from alignment to pass to cross-match
     left_pixels, right_pixels = get_healpix_pixels_from_alignment(alignment)
