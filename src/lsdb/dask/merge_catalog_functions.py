@@ -62,8 +62,8 @@ def align_catalogs(left: Catalog, right: Catalog, add_right_margin: bool = True)
     Args:
         left (lsdb.Catalog): The left catalog to align
         right (lsdb.Catalog): The right catalog to align
-        add_right_margin (float): When using MOCs to align catalogs, adds a border to the
-            right catalog's moc to include the margin of the right catalog, if the right margin exists
+        add_right_margin (bool): If True, when using MOCs to align catalogs, adds a border to the
+            right catalog's moc to include the margin of the right catalog, if it exists. Defaults to True.
     Returns:
         The PixelAlignment object from aligning the catalogs
     """
