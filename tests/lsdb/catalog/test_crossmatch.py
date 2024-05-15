@@ -230,6 +230,19 @@ class TestBoundedCrossmatch:
         assert all(xmatched["_dist_arcsec"] <= 0.01 * 3600)
 
 
+def test_crossmatch_with_moc(small_sky_order1_catalog):
+    order = 1
+    pixels = [44, 45, 46]
+    partitions = [small_sky_order1_catalog.get_partition(order, p).compute() for p in pixels]
+    df = pd.concat(partitions)
+    subset_catalog = lsdb.from_dataframe(df)
+    assert subset_catalog.get_healpix_pixels() == [HealpixPixel(0, 11)]
+    xmatched = small_sky_order1_catalog.crossmatch(subset_catalog)
+    assert xmatched.get_healpix_pixels() == [HealpixPixel(order, p) for p in pixels]
+    xmatched = subset_catalog.crossmatch(small_sky_order1_catalog)
+    assert xmatched.get_healpix_pixels() == [HealpixPixel(order, p) for p in pixels]
+
+
 # pylint: disable=too-few-public-methods
 class MockCrossmatchAlgorithm(AbstractCrossmatchAlgorithm):
     """Mock class used to test a crossmatch algorithm"""
@@ -266,17 +279,6 @@ class MockCrossmatchAlgorithm(AbstractCrossmatchAlgorithm):
         self._append_extra_columns(out, extra_columns)
 
         return out
-
-
-def test_crossmatch_with_moc(small_sky_order1_catalog):
-    order = 1
-    pixels = [44, 45, 46]
-    partitions = [small_sky_order1_catalog.get_partition(order, p).compute() for p in pixels]
-    df = pd.concat(partitions)
-    subset_catalog = lsdb.from_dataframe(df)
-    assert subset_catalog.get_healpix_pixels() == [HealpixPixel(0, 11)]
-    xmatched = small_sky_order1_catalog.crossmatch(subset_catalog)
-    assert xmatched.get_healpix_pixels() == [HealpixPixel(order, p) for p in pixels]
 
 
 def test_custom_crossmatch_algorithm(small_sky_catalog, small_sky_xmatch_catalog, xmatch_mock):
