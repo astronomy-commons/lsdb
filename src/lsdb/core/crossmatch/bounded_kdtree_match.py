@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import numpy as np
 import pandas as pd
 
 from lsdb.core.crossmatch.kdtree_match import KdTreeCrossmatch
@@ -54,7 +53,6 @@ class BoundedKdTreeCrossmatch(KdTreeCrossmatch):
         left_xyz, right_xyz = self._get_point_coordinates()
         # get matching indices for cross-matched rows
         chord_distances, left_idx, right_idx = _find_crossmatch_indices(
-            left_xyz, right_xyz, n_neighbors=n_neighbors, min_distance=min_d_chord, max_distance=max_d_chord
+            left_xyz, right_xyz, self.how, n_neighbors, max_d_chord, min_d_chord
         )
-        arc_distances = np.degrees(2.0 * np.arcsin(0.5 * chord_distances)) * 3600
-        return self._create_crossmatch_df(left_idx, right_idx, arc_distances)
+        return self._create_crossmatch_df(left_idx, right_idx, chord_distances)
