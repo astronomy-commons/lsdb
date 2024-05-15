@@ -4,6 +4,7 @@ import numpy.testing as npt
 import pandas as pd
 import pytest
 from hipscat.catalog.index.index_catalog import IndexCatalog
+from hipscat.pixel_math import HealpixPixel
 from pandas.core.dtypes.base import ExtensionDtype
 
 import lsdb
@@ -145,7 +146,7 @@ def test_read_hipscat_subset_with_order_search(small_sky_source_catalog, small_s
 
 
 def test_read_hipscat_subset_no_partitions(small_sky_order1_dir, small_sky_order1_id_index_dir):
-    with pytest.raises(ValueError, match="no partitions"):
+    with pytest.raises(ValueError, match="no coverage"):
         catalog_index = IndexCatalog.read_from_hipscat(small_sky_order1_id_index_dir)
         index_search = IndexSearch([900], catalog_index)
         lsdb.read_hipscat(small_sky_order1_dir, search_filter=index_search)
@@ -169,3 +170,26 @@ def test_read_hipscat_with_backend(small_sky_dir):
 def test_read_hipscat_with_invalid_backend(small_sky_dir):
     with pytest.raises(ValueError, match="data type backend must be either"):
         lsdb.read_hipscat(small_sky_dir, dtype_backend="abc")
+
+
+def test_read_hipscat_margin_catalog_subset(
+    small_sky_order1_source_margin_dir, small_sky_order1_source_margin_catalog, assert_divisions_are_correct
+):
+    search_filter = ConeSearch(ra=320, dec=-35, radius_arcsec=1 * 3600)
+    margin = lsdb.read_hipscat(small_sky_order1_source_margin_dir, search_filter=search_filter)
+
+    margin_info = margin.hc_structure.catalog_info
+    small_sky_order1_source_margin_info = small_sky_order1_source_margin_catalog.hc_structure.catalog_info
+
+    assert isinstance(margin, lsdb.MarginCatalog)
+    assert margin_info.catalog_name == small_sky_order1_source_margin_info.catalog_name
+    assert margin_info.primary_catalog == small_sky_order1_source_margin_info.primary_catalog
+    assert margin_info.margin_threshold == small_sky_order1_source_margin_info.margin_threshold
+    assert margin.get_healpix_pixels() == [HealpixPixel(1, 45), HealpixPixel(1, 47)]
+    assert_divisions_are_correct(margin)
+
+
+def test_read_hipscat_margin_catalog_subset_is_empty(small_sky_order1_source_margin_dir):
+    search_filter = ConeSearch(ra=30, dec=10, radius_arcsec=1)
+    margin_catalog = lsdb.read_hipscat(small_sky_order1_source_margin_dir, search_filter=search_filter)
+    assert margin_catalog is None
