@@ -15,6 +15,8 @@ def from_dataframe(
     threshold: int | None = None,
     margin_order: int | None = -1,
     margin_threshold: float | None = 5.0,
+    should_generate_moc: bool = True,
+    moc_max_order: int = 10,
     use_pyarrow_types: bool = True,
     **kwargs,
 ) -> Catalog:
@@ -42,6 +44,8 @@ def from_dataframe(
         highest_order,
         partition_size,
         threshold,
+        should_generate_moc,
+        moc_max_order,
         use_pyarrow_types,
         **kwargs,
     ).load_catalog()
