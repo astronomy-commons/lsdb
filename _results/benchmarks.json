@@ -1,6 +1,6 @@
 {
     "benchmarks.time_box_filter_on_partition": {
-        "code": "def time_box_filter_on_partition():\n    \"\"\"Time box search on a single partition\"\"\"\n    metadata = load_small_sky_order1().hc_structure\n    mock_partition_df = pd.DataFrame(\n        np.linspace(-1000, 1000, 100_000), columns=[metadata.catalog_info.ra_column]\n    )\n    box_filter(mock_partition_df, ra=(-20, 40), dec=None, metadata=metadata).compute()",
+        "code": "def time_box_filter_on_partition():\n    \"\"\"Time box search on a single partition\"\"\"\n    metadata = load_small_sky_order1().hc_structure\n    mock_partition_df = pd.DataFrame(\n        np.linspace(-1000, 1000, 100_000), columns=[metadata.catalog_info.ra_column]\n    )\n    box_filter(mock_partition_df, ra=(-20, 40), dec=None, metadata=metadata.catalog_info).compute()",
         "min_run_count": 2,
         "name": "benchmarks.time_box_filter_on_partition",
         "number": 0,
@@ -11,7 +11,7 @@
         "sample_time": 0.01,
         "type": "time",
         "unit": "seconds",
-        "version": "5d69dfcb0f3773acd43c4c38ee79e487d83f96f0ab4b8d6e544f10a40daa94a8",
+        "version": "b082de7cc2e9a8751b38a70266508b8c47746389e8365c18170de2ea3de3278b",
         "warmup_time": -1
     },
     "benchmarks.time_create_large_catalog": {
