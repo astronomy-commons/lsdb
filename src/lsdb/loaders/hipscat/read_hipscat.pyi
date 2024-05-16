@@ -27,6 +27,7 @@ def read_hipscat(
     storage_options: dict | None = None,
     columns: List[str] | None = None,
     margin_cache: MarginCatalog | None = None,
+    margin_path: str | None = None,
 ) -> Dataset: ...
 @overload
 def read_hipscat(
@@ -36,5 +37,6 @@ def read_hipscat(
     storage_options: dict | None = None,
     columns: List[str] | None = None,
     margin_cache: MarginCatalog | None = None,
+    margin_path: str | None = None,
     **kwargs,
 ) -> CatalogTypeVar: ...

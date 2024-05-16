@@ -30,6 +30,7 @@ def read_hipscat(
     search_filter: AbstractSearch | None = None,
     columns: List[str] | None = None,
     margin_cache: MarginCatalog | None = None,
+    margin_path: str | None = None,
     dtype_backend: str | None = "pyarrow",
     storage_options: dict | None = None,
     **kwargs,
@@ -57,7 +58,10 @@ def read_hipscat(
             the lsdb class for that catalog.
         search_filter (Type[AbstractSearch]): Default `None`. The filter method to be applied.
         columns (List[str]): Default `None`. The set of columns to filter the catalog on.
-        margin_cache (MarginCatalog): The margin cache for the main catalog
+        margin_cache (MarginCatalog): The margin cache for the main catalog. Only one of `margin_cache`
+            or `margin_path` can be provided. Defaults to None.
+        margin_path (str): The path that locates the root of the margin HiPSCat catalog. Only one of
+            `margin_cache` or `margin_path` can be provided. Defaults to None.
         dtype_backend (str): Backend data type to apply to the catalog.
             Defaults to "pyarrow". If None, no type conversion is performed.
         storage_options (dict): Dictionary that contains abstract filesystem credentials

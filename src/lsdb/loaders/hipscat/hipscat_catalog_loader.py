@@ -1,8 +1,11 @@
+from __future__ import annotations
+
 import dataclasses
 
 import hipscat as hc
 
-from lsdb.catalog.catalog import Catalog
+from lsdb.catalog.catalog import Catalog, MarginCatalog
+from lsdb.loaders import read_hipscat
 from lsdb.loaders.hipscat.abstract_catalog_loader import AbstractCatalogLoader
 
 
@@ -18,7 +21,7 @@ class HipscatCatalogLoader(AbstractCatalogLoader[Catalog]):
         hc_catalog = self._load_hipscat_catalog(hc.catalog.Catalog)
         filtered_hc_catalog = self._filter_hipscat_catalog(hc_catalog)
         dask_df, dask_df_pixel_map = self._load_dask_df_and_map(filtered_hc_catalog)
-        return Catalog(dask_df, dask_df_pixel_map, filtered_hc_catalog, self.config.margin_cache)
+        return Catalog(dask_df, dask_df_pixel_map, filtered_hc_catalog, self._load_margin_catalog())
 
     def _filter_hipscat_catalog(self, hc_catalog: hc.catalog.Catalog) -> hc.catalog.Catalog:
         """Filter the catalog pixels according to the spatial filter provided at loading time.
@@ -34,3 +37,19 @@ class HipscatCatalogLoader(AbstractCatalogLoader[Catalog]):
         return hc.catalog.Catalog(
             catalog_info, pixels_to_load, self.path, hc_catalog.moc, self.storage_options
         )
+
+    def _load_margin_catalog(self) -> MarginCatalog | None:
+        """Load the margin catalog. It can be provided using a margin catalog
+        instance or a path to the catalog on disk."""
+        margin_catalog = None
+        if self.config.margin_cache is not None:
+            margin_catalog = self.config.margin_cache
+        elif self.config.margin_path is not None:
+            margin_catalog = read_hipscat(
+                path=self.config.margin_path,
+                catalog_type=MarginCatalog,
+                search_filter=self.config.search_filter,
+                storage_options=self.storage_options,
+                **self.config.get_kwargs_dict(),
+            )
+        return margin_catalog

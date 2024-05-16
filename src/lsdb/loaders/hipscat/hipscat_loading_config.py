@@ -30,10 +30,15 @@ class HipscatLoadingConfig:
     """The backend data type to apply to the catalog. It defaults to "pyarrow" and 
     if it is None no type conversion is performed."""
 
+    margin_path: str | None = None
+    """The path for the margin cache catalog. By default, it is None"""
+
     kwargs: dict | None = None
     """Extra kwargs"""
 
     def __post_init__(self):
+        if self.margin_cache is not None and self.margin_path is not None:
+            raise ValueError("Only one of 'margin_path' or 'margin_cache' can be provided")
         if self.dtype_backend not in ["pyarrow", "numpy_nullable", None]:
             raise ValueError("The data type backend must be either 'pyarrow' or 'numpy_nullable'")
 
