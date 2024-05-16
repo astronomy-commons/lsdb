@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import List
 
 import pandas as pd
 from hipscat.catalog.catalog_info import CatalogInfo
-from hipscat.pixel_math import HealpixPixel
+from mocpy import MOC
+
+from lsdb.loaders.hipscat.abstract_catalog_loader import HCCatalogTypeVar
 
 
 # pylint: disable=too-many-instance-attributes, too-many-arguments
@@ -20,8 +21,14 @@ class AbstractSearch(ABC):
           individual rows matching the query terms.
     """
 
+    def filter_hc_catalog(self, hc_structure: HCCatalogTypeVar) -> HCCatalogTypeVar:
+        max_order = hc_structure.pixel_tree.tree_order
+        max_order = max(hc_structure.moc.max_order, max_order) if hc_structure.moc is not None else max_order
+        search_moc = self.generate_search_moc(max_order)
+        return hc_structure.filter_by_moc(search_moc)
+
     @abstractmethod
-    def search_partitions(self, pixels: List[HealpixPixel]) -> List[HealpixPixel]:
+    def generate_search_moc(self, max_order: int) -> MOC:
         """Determine the target partitions for further filtering."""
 
     @abstractmethod
