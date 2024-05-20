@@ -7,9 +7,10 @@ import numpy as np
 import pandas as pd
 from hipscat.catalog.catalog_info import CatalogInfo
 from hipscat.pixel_math import HealpixPixel
-from hipscat.pixel_math.box_filter import filter_pixels_by_box, wrap_ra_angles
+from hipscat.pixel_math.box_filter import filter_pixels_by_box, wrap_ra_angles, generate_box_moc
 from hipscat.pixel_math.validators import validate_box_search
 from hipscat.pixel_tree.pixel_tree import PixelTree
+from mocpy import MOC
 
 from lsdb.core.search.abstract_search import AbstractSearch
 
@@ -27,10 +28,8 @@ class BoxSearch(AbstractSearch):
         validate_box_search(ra, dec)
         self.ra, self.dec = ra, dec
 
-    def search_partitions(self, pixels: List[HealpixPixel]) -> List[HealpixPixel]:
-        """Determine the target partitions for further filtering."""
-        pixel_tree = PixelTree.from_healpix(pixels)
-        return filter_pixels_by_box(pixel_tree, self.ra, self.dec)
+    def generate_search_moc(self, max_order: int) -> MOC:
+        return generate_box_moc(self.ra, self.dec, max_order)
 
     def search_points(self, frame: pd.DataFrame, metadata: CatalogInfo) -> pd.DataFrame:
         """Determine the search results within a data frame"""

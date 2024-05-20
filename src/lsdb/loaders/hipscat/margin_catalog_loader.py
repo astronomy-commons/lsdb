@@ -32,10 +32,12 @@ class MarginCatalogLoader(AbstractCatalogLoader[MarginCatalog]):
         empty catalog. In that case, the margin catalog is considered None."""
         if self.config.search_filter is None:
             return hc_catalog
-        pixels_to_load = self.config.search_filter.search_partitions(hc_catalog.get_healpix_pixels())
-        if len(pixels_to_load) == 0:
+        filtered_catalog = self.config.search_filter.filter_hc_catalog(hc_catalog)
+        if len(filtered_catalog.get_healpix_pixels()) == 0:
             return None
-        catalog_info = dataclasses.replace(hc_catalog.catalog_info, total_rows=None)
         return hc.catalog.MarginCatalog(
-            catalog_info, pixels_to_load, self.path, hc_catalog.moc, self.storage_options
+            filtered_catalog.catalog_info,
+            filtered_catalog.pixel_tree,
+            catalog_path=hc_catalog.catalog_path,
+            storage_options=hc_catalog.storage_options,
         )

@@ -5,9 +5,10 @@ import pandas as pd
 from astropy.coordinates import SkyCoord
 from hipscat.catalog.catalog_info import CatalogInfo
 from hipscat.pixel_math import HealpixPixel
-from hipscat.pixel_math.cone_filter import filter_pixels_by_cone
+from hipscat.pixel_math.cone_filter import filter_pixels_by_cone, generate_cone_moc
 from hipscat.pixel_math.validators import validate_declination_values, validate_radius
 from hipscat.pixel_tree.pixel_tree import PixelTree
+from mocpy import MOC
 
 from lsdb.core.search.abstract_search import AbstractSearch
 
@@ -27,10 +28,8 @@ class ConeSearch(AbstractSearch):
         self.dec = dec
         self.radius_arcsec = radius_arcsec
 
-    def search_partitions(self, pixels: List[HealpixPixel]) -> List[HealpixPixel]:
-        """Determine the target partitions for further filtering."""
-        pixel_tree = PixelTree.from_healpix(pixels)
-        return filter_pixels_by_cone(pixel_tree, self.ra, self.dec, self.radius_arcsec)
+    def generate_search_moc(self, max_order: int) -> MOC:
+        return generate_cone_moc(self.ra, self.dec, self.radius_arcsec, max_order)
 
     def search_points(self, frame: pd.DataFrame, metadata: CatalogInfo) -> pd.DataFrame:
         """Determine the search results within a data frame"""

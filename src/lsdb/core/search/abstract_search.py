@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING
 
 import pandas as pd
 from hipscat.catalog.catalog_info import CatalogInfo
 from mocpy import MOC
 
-from lsdb.loaders.hipscat.abstract_catalog_loader import HCCatalogTypeVar
+if TYPE_CHECKING:
+    from lsdb.loaders.hipscat.abstract_catalog_loader import HCCatalogTypeVar
 
 
 # pylint: disable=too-many-instance-attributes, too-many-arguments
@@ -27,9 +29,11 @@ class AbstractSearch(ABC):
         search_moc = self.generate_search_moc(max_order)
         return hc_structure.filter_by_moc(search_moc)
 
-    @abstractmethod
     def generate_search_moc(self, max_order: int) -> MOC:
         """Determine the target partitions for further filtering."""
+        raise NotImplementedError(
+            "Search Class must implement `generate_search_moc` method or overwrite `filter_hc_catalog`"
+        )
 
     @abstractmethod
     def search_points(self, frame: pd.DataFrame, metadata: CatalogInfo) -> pd.DataFrame:

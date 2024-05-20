@@ -1,11 +1,13 @@
 from __future__ import annotations
 
-from typing import List
+from typing import TYPE_CHECKING
 
 import pandas as pd
-from hipscat.pixel_math import HealpixPixel
 
 from lsdb.core.search.abstract_search import AbstractSearch
+
+if TYPE_CHECKING:
+    from lsdb.loaders.hipscat.abstract_catalog_loader import HCCatalogTypeVar
 
 
 class OrderSearch(AbstractSearch):
@@ -21,13 +23,13 @@ class OrderSearch(AbstractSearch):
         self.min_order = min_order
         self.max_order = max_order
 
-    def search_partitions(self, pixels: List[HealpixPixel]) -> List[HealpixPixel]:
-        """Determine the target partitions for further filtering."""
-        max_catalog_order = max(pixel.order for pixel in pixels)
+    def filter_hc_catalog(self, hc_structure: HCCatalogTypeVar) -> HCCatalogTypeVar:
+        max_catalog_order = hc_structure.pixel_tree.get_max_depth()
         max_order = max_catalog_order if self.max_order is None else self.max_order
         if self.min_order > max_order:
             raise ValueError("The minimum order is higher than the catalog's maximum order")
-        return [pixel for pixel in pixels if self.min_order <= pixel.order <= max_order]
+        pixels = [p for p in hc_structure.get_healpix_pixels() if self.min_order <= p.order <= max_order]
+        return hc_structure.filter_from_pixel_list(pixels)
 
     def search_points(self, frame: pd.DataFrame, _) -> pd.DataFrame:
         """Determine the search results within a data frame."""

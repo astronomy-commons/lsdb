@@ -30,12 +30,15 @@ class HipscatCatalogLoader(AbstractCatalogLoader[Catalog]):
         coverage for the desired region in the sky."""
         if self.config.search_filter is None:
             return hc_catalog
-        pixels_to_load = self.config.search_filter.search_partitions(hc_catalog.get_healpix_pixels())
-        if len(pixels_to_load) == 0:
+        filtered_catalog = self.config.search_filter.filter_hc_catalog(hc_catalog)
+        if len(filtered_catalog.get_healpix_pixels()) == 0:
             raise ValueError("The selected sky region has no coverage")
-        catalog_info = dataclasses.replace(hc_catalog.catalog_info, total_rows=None)
         return hc.catalog.Catalog(
-            catalog_info, pixels_to_load, self.path, hc_catalog.moc, self.storage_options
+            filtered_catalog.catalog_info,
+            filtered_catalog.pixel_tree,
+            catalog_path=hc_catalog.catalog_path,
+            moc=filtered_catalog.moc,
+            storage_options=hc_catalog.storage_options,
         )
 
     def _load_margin_catalog(self) -> MarginCatalog | None:
