@@ -5,8 +5,8 @@ import dataclasses
 import hipscat as hc
 
 from lsdb.catalog.catalog import Catalog, MarginCatalog
-from lsdb.loaders import read_hipscat
 from lsdb.loaders.hipscat.abstract_catalog_loader import AbstractCatalogLoader
+from lsdb.loaders.hipscat.read_hipscat import read_hipscat
 
 
 class HipscatCatalogLoader(AbstractCatalogLoader[Catalog]):
@@ -49,7 +49,8 @@ class HipscatCatalogLoader(AbstractCatalogLoader[Catalog]):
                 path=self.config.margin_path,
                 catalog_type=MarginCatalog,
                 search_filter=self.config.search_filter,
+                dtype_backend=self.config.dtype_backend,
                 storage_options=self.storage_options,
-                **self.config.get_kwargs_dict(),
+                **self.config.kwargs,
             )
         return margin_catalog

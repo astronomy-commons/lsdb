@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Callable, List
 
 import pandas as pd
@@ -26,25 +26,21 @@ class HipscatLoadingConfig:
     margin_cache: MarginCatalog | None = None
     """Margin cache for the catalog. By default, it is None"""
 
+    margin_path: str | None = None
+    """The path for the margin cache catalog. By default, it is None"""
+
     dtype_backend: str | None = "pyarrow"
     """The backend data type to apply to the catalog. It defaults to "pyarrow" and 
     if it is None no type conversion is performed."""
 
-    margin_path: str | None = None
-    """The path for the margin cache catalog. By default, it is None"""
-
-    kwargs: dict | None = None
-    """Extra kwargs"""
+    kwargs: dict = field(default_factory=dict)
+    """Extra kwargs for the pandas parquet file reader"""
 
     def __post_init__(self):
         if self.margin_cache is not None and self.margin_path is not None:
             raise ValueError("Only one of 'margin_path' or 'margin_cache' can be provided")
         if self.dtype_backend not in ["pyarrow", "numpy_nullable", None]:
             raise ValueError("The data type backend must be either 'pyarrow' or 'numpy_nullable'")
-
-    def get_kwargs_dict(self) -> dict:
-        """Returns a dictionary with the extra kwargs"""
-        return self.kwargs if self.kwargs is not None else {}
 
     def get_dtype_mapper(self) -> Callable | None:
         """Returns a mapper for pyarrow or numpy types, mirroring Pandas behaviour."""
