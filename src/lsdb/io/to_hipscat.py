@@ -70,13 +70,20 @@ def to_hipscat(
         storage_options (dict): Dictionary that contains abstract filesystem credentials
         **kwargs: Arguments to pass to the parquet write operations
     """
-    # Create base directory
     base_catalog_dir_fp = hc.io.get_file_pointer_from_path(base_catalog_path)
-    hc.io.file_io.make_directory(base_catalog_dir_fp, overwrite, storage_options)
+    # Create the output directory for the catalog
+    if hc.io.file_io.directory_has_contents(base_catalog_dir_fp, storage_options):
+        if not overwrite:
+            raise ValueError(
+                f"base_catalog_path ({base_catalog_dir_fp}) contains files."
+                " choose a different directory or set overwrite to True."
+            )
+        hc.io.file_io.remove_directory(base_catalog_dir_fp, storage_options=storage_options)
+    hc.io.file_io.make_directory(base_catalog_dir_fp, exist_ok=True, storage_options=storage_options)
     # Save partition parquet files
     pixel_to_partition_size_map = write_partitions(catalog, base_catalog_dir_fp, storage_options, **kwargs)
     # Save parquet metadata
-    hc.io.write_parquet_metadata(base_catalog_path, storage_options, **kwargs)
+    hc.io.write_parquet_metadata(base_catalog_path, storage_options)
     # Save partition info
     partition_info = _get_partition_info_dict(pixel_to_partition_size_map)
     hc.io.write_partition_info(base_catalog_dir_fp, partition_info, storage_options)

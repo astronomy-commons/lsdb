@@ -193,9 +193,13 @@ def test_save_catalog(small_sky_catalog, tmp_path):
 
 def test_save_catalog_overwrite(small_sky_catalog, tmp_path):
     base_catalog_path = os.path.join(tmp_path, "small_sky")
+    # Saving a catalog to disk when the directory does not yet exist
     small_sky_catalog.to_hipscat(base_catalog_path)
-    with pytest.raises(FileExistsError):
+    # The output directory exists and it has content. Overwrite is
+    # set to False and, as such, the operation fails.
+    with pytest.raises(ValueError, match="set overwrite to True"):
         small_sky_catalog.to_hipscat(base_catalog_path)
+    # With overwrite it succeeds because the directory is recreated
     small_sky_catalog.to_hipscat(base_catalog_path, overwrite=True)
 
 
