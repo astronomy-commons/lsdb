@@ -42,15 +42,14 @@ class HipscatCatalogLoader(AbstractCatalogLoader[Catalog]):
         """Load the margin catalog. It can be provided using a margin catalog
         instance or a path to the catalog on disk."""
         margin_catalog = None
-        if self.config.margin_cache is not None:
+        if isinstance(self.config.margin_cache, MarginCatalog):
             margin_catalog = self.config.margin_cache
-        elif self.config.margin_path is not None:
+        elif isinstance(self.config.margin_cache, str):
             margin_catalog = lsdb.read_hipscat(
-                path=self.config.margin_path,
+                path=self.config.margin_cache,
                 catalog_type=MarginCatalog,
                 search_filter=self.config.search_filter,
                 margin_cache=None,
-                margin_path=None,
                 dtype_backend=self.config.dtype_backend,
                 storage_options=self.storage_options,
                 **self.config.kwargs,

@@ -80,7 +80,7 @@ def test_catalog_with_margin(
     assert isinstance(catalog, lsdb.Catalog)
     assert catalog.margin is small_sky_xmatch_margin_catalog
     # Provide the margin cache catalog path
-    catalog_2 = lsdb.read_hipscat(small_sky_xmatch_dir, margin_path=small_sky_xmatch_margin_dir)
+    catalog_2 = lsdb.read_hipscat(small_sky_xmatch_dir, margin_cache=small_sky_xmatch_margin_dir)
     assert isinstance(catalog_2, lsdb.Catalog)
     # The catalogs obtained are identical
     assert catalog.margin.hc_structure.catalog_info == catalog_2.margin.hc_structure.catalog_info
@@ -94,15 +94,9 @@ def test_catalog_without_margin_is_none(small_sky_xmatch_dir):
     assert catalog.margin is None
 
 
-def test_catalog_with_wrong_margin_args(
-    small_sky_xmatch_dir, small_sky_xmatch_margin_catalog, small_sky_xmatch_margin_dir
-):
-    with pytest.raises(ValueError, match="Only one of 'margin_path' or 'margin_cache'"):
-        lsdb.read_hipscat(
-            small_sky_xmatch_dir,
-            margin_cache=small_sky_xmatch_margin_catalog,
-            margin_path=small_sky_xmatch_margin_dir,
-        )
+def test_catalog_with_wrong_margin_args(small_sky_xmatch_dir):
+    with pytest.raises(ValueError, match="must be of type"):
+        lsdb.read_hipscat(small_sky_xmatch_dir, margin_cache=1)
 
 
 def test_read_hipscat_subset_with_cone_search(small_sky_order1_dir, small_sky_order1_catalog):

@@ -101,7 +101,7 @@ repos:
         name: mypy (python files in src/ and tests/)
         entry: mypy
         language: system
-        types_or: [python, pyi]
+        types: [python]
         files: ^(src|tests)/
         args:
           [

@@ -24,19 +24,20 @@ from lsdb.loaders.hipscat.abstract_catalog_loader import CatalogTypeVar
 def read_hipscat(
     path: str,
     search_filter: AbstractSearch | None = None,
-    storage_options: dict | None = None,
     columns: List[str] | None = None,
-    margin_cache: MarginCatalog | None = None,
-    margin_path: str | None = None,
-) -> Dataset: ...
+    margin_cache: MarginCatalog | str | None = None,
+    dtype_backend: str | None = "pyarrow",
+    storage_options: dict | None = None,
+    **kwargs,
+) -> Dataset | None: ...
 @overload
 def read_hipscat(
     path: str,
     catalog_type: Type[CatalogTypeVar],
     search_filter: AbstractSearch | None = None,
-    storage_options: dict | None = None,
     columns: List[str] | None = None,
-    margin_cache: MarginCatalog | None = None,
-    margin_path: str | None = None,
+    margin_cache: MarginCatalog | str | None = None,
+    dtype_backend: str | None = "pyarrow",
+    storage_options: dict | None = None,
     **kwargs,
-) -> CatalogTypeVar: ...
+) -> CatalogTypeVar | None: ...
