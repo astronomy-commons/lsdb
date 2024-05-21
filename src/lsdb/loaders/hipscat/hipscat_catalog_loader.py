@@ -49,6 +49,8 @@ class HipscatCatalogLoader(AbstractCatalogLoader[Catalog]):
                 path=self.config.margin_path,
                 catalog_type=MarginCatalog,
                 search_filter=self.config.search_filter,
+                margin_cache=None,
+                margin_path=None,
                 dtype_backend=self.config.dtype_backend,
                 storage_options=self.storage_options,
                 **self.config.kwargs,
