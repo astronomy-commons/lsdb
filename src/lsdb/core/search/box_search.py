@@ -6,10 +6,8 @@ import dask
 import numpy as np
 import pandas as pd
 from hipscat.catalog.catalog_info import CatalogInfo
-from hipscat.pixel_math import HealpixPixel
-from hipscat.pixel_math.box_filter import filter_pixels_by_box, wrap_ra_angles, generate_box_moc
+from hipscat.pixel_math.box_filter import wrap_ra_angles, generate_box_moc
 from hipscat.pixel_math.validators import validate_box_search
-from hipscat.pixel_tree.pixel_tree import PixelTree
 from mocpy import MOC
 
 from lsdb.core.search.abstract_search import AbstractSearch

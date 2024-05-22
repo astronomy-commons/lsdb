@@ -1,13 +1,9 @@
-from typing import List
-
 import dask
 import pandas as pd
 from astropy.coordinates import SkyCoord
 from hipscat.catalog.catalog_info import CatalogInfo
-from hipscat.pixel_math import HealpixPixel
-from hipscat.pixel_math.cone_filter import filter_pixels_by_cone, generate_cone_moc
+from hipscat.pixel_math.cone_filter import generate_cone_moc
 from hipscat.pixel_math.validators import validate_declination_values, validate_radius
-from hipscat.pixel_tree.pixel_tree import PixelTree
 from mocpy import MOC
 
 from lsdb.core.search.abstract_search import AbstractSearch

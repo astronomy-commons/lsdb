@@ -44,15 +44,7 @@ class MarginCatalog(HealpixDataset):
         """
 
         # if the margin size is greater than the size of a pixel, this is an invalid search
-        max_order = self.hc_structure.pixel_tree.get_max_depth()
-        max_order_size = hp.nside2resol(2**max_order, arcmin=True)
-        if self.hc_structure.catalog_info.margin_threshold > max_order_size * 60:
-            raise ValueError(
-                f"Cannot Filter Margin: Margin size {self.hc_structure.catalog_info.margin_threshold} is "
-                f"greater than the size of a pixel at the highest order {max_order}."
-            )
-
-        margin_search_moc = metadata.pixel_tree.to_moc().degrade_to_order(max_order).add_neighbours()
+        margin_search_moc = metadata.pixel_tree.to_moc()
 
         filtered_hc_structure = self.hc_structure.filter_by_moc(margin_search_moc)
         ddf_partition_map, search_ddf = self._perform_search(

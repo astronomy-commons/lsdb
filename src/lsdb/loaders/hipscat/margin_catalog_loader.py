@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import dataclasses
-
 import hipscat as hc
 
 from lsdb.catalog.margin_catalog import MarginCatalog
