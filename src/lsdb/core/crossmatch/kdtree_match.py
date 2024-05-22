@@ -55,10 +55,8 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
             radius_arcsec (float): The threshold distance in arcseconds beyond which neighbors are not added
 
         Returns:
-            A DataFrame from the left and right tables merged with one row for each pair of
-            neighbors found from cross-matching. The resulting table contains the columns from the
-            left table with the first suffix appended, the right columns with the second suffix, and
-            a "_dist_arcsec" column with the great circle separation between the points.
+            Indices of the matching rows from the left and right tables found from cross-matching, and a
+            datafame with the "_dist_arcsec" column with the great circle separation between the points.
         """
         # Distance in 3-D space for unit sphere
         max_d_chord = _get_chord_distance(radius_arcsec)
