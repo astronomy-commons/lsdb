@@ -17,8 +17,6 @@ class MarginCatalogLoader(AbstractCatalogLoader[MarginCatalog]):
         """
         hc_catalog = self._load_hipscat_catalog(hc.catalog.MarginCatalog)
         filtered_hc_catalog = self._filter_hipscat_catalog(hc_catalog)
-        if filtered_hc_catalog is None:
-            return None
         dask_df, dask_df_pixel_map = self._load_dask_df_and_map(filtered_hc_catalog)
         return MarginCatalog(dask_df, dask_df_pixel_map, filtered_hc_catalog)
 
@@ -31,8 +29,6 @@ class MarginCatalogLoader(AbstractCatalogLoader[MarginCatalog]):
         if self.config.search_filter is None:
             return hc_catalog
         filtered_catalog = self.config.search_filter.filter_hc_catalog(hc_catalog)
-        if len(filtered_catalog.get_healpix_pixels()) == 0:
-            return None
         return hc.catalog.MarginCatalog(
             filtered_catalog.catalog_info,
             filtered_catalog.pixel_tree,

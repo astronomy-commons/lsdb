@@ -190,7 +190,7 @@ def test_read_hipscat_with_invalid_backend(small_sky_dir):
 def test_read_hipscat_margin_catalog_subset(
     small_sky_order1_source_margin_dir, small_sky_order1_source_margin_catalog, assert_divisions_are_correct
 ):
-    search_filter = ConeSearch(ra=320, dec=-35, radius_arcsec=1 * 3600)
+    search_filter = ConeSearch(ra=315, dec=-60, radius_arcsec=10)
     margin = lsdb.read_hipscat(small_sky_order1_source_margin_dir, search_filter=search_filter)
 
     margin_info = margin.hc_structure.catalog_info
@@ -200,11 +200,19 @@ def test_read_hipscat_margin_catalog_subset(
     assert margin_info.catalog_name == small_sky_order1_source_margin_info.catalog_name
     assert margin_info.primary_catalog == small_sky_order1_source_margin_info.primary_catalog
     assert margin_info.margin_threshold == small_sky_order1_source_margin_info.margin_threshold
-    assert margin.get_healpix_pixels() == [HealpixPixel(1, 45), HealpixPixel(1, 47)]
+    assert margin.get_healpix_pixels() == [
+        HealpixPixel(1, 44),
+        HealpixPixel(1, 45),
+        HealpixPixel(1, 46),
+        HealpixPixel(1, 47),
+    ]
     assert_divisions_are_correct(margin)
 
 
 def test_read_hipscat_margin_catalog_subset_is_empty(small_sky_order1_source_margin_dir):
-    search_filter = ConeSearch(ra=30, dec=10, radius_arcsec=1)
+    search_filter = ConeSearch(ra=100, dec=80, radius_arcsec=1)
     margin_catalog = lsdb.read_hipscat(small_sky_order1_source_margin_dir, search_filter=search_filter)
-    assert margin_catalog is None
+    assert len(margin_catalog.get_healpix_pixels()) == 0
+    assert len(margin_catalog._ddf_pixel_map) == 0
+    assert len(margin_catalog.compute()) == 0
+    assert len(margin_catalog.hc_structure.pixel_tree) == 0
