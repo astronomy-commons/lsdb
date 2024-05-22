@@ -289,7 +289,7 @@ class MockCrossmatchAlgorithmOverwrite(AbstractCrossmatchAlgorithm):
 
     extra_columns = pd.DataFrame({"_DIST": pd.Series(dtype=np.float64)})
 
-    def crossmatch(self, mock_results: pd.DataFrame = None):
+    def crossmatch(self, mock_results: pd.DataFrame = None, **kwargs):
         left_reset = self.left.reset_index(drop=True)
         right_reset = self.right.reset_index(drop=True)
         self._rename_columns_with_suffix(self.left, self.suffixes[0])

@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
-from typing import Tuple, TYPE_CHECKING
+from abc import ABC
+from typing import TYPE_CHECKING, Tuple
 
 import numpy as np
-import pandas as pd
-import pyarrow as pa
 import numpy.typing as npt
+import pandas as pd
 from hipscat.catalog.catalog_info import CatalogInfo
 from hipscat.catalog.margin_cache import MarginCacheCatalogInfo
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
@@ -74,14 +73,15 @@ class AbstractCrossmatchAlgorithm(ABC):
             )
         return self._create_crossmatch_df(l_inds, r_inds, extra_cols)
 
-    def perform_crossmatch(self, **kwargs) -> Tuple[np.ndarray, np.ndarray, pd.DataFrame]:
+    def perform_crossmatch(self) -> Tuple[np.ndarray, np.ndarray, pd.DataFrame]:
+        """Performs a crossmatch to get the indices of the matching rows and any extra columns"""
         raise NotImplementedError(
             "CrossmatchAlgorithm must either implement `perform_crossmatch` or overwrite `crossmatch`"
         )
 
-    # pylint: disable=unused-argument
+    # pylint: disable=protected-access
     @classmethod
-    def validate(cls, left: Catalog, right: Catalog, **kwargs):
+    def validate(cls, left: Catalog, right: Catalog):
         """Validate the metadata and arguments.
 
         This method will be called **once**, after the algorithm object has
