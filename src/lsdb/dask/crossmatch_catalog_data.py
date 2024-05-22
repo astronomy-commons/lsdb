@@ -102,20 +102,7 @@ def crossmatch_catalog_data(
     crossmatch_algorithm = get_crossmatch_algorithm(algorithm)
     # Create an instance of the crossmatch algorithm, using the metadata dataframes
     # and the provided kwargs.
-    meta_df_crossmatch = crossmatch_algorithm(
-        # pylint: disable=protected-access
-        left._ddf,
-        right._ddf,
-        0,
-        0,
-        0,
-        0,
-        left.hc_structure.catalog_info,
-        right.hc_structure.catalog_info,
-        right.margin.hc_structure.catalog_info if right.margin is not None else None,
-        suffixes,
-    )
-    meta_df_crossmatch.validate(**kwargs)
+    crossmatch_algorithm.validate(left, right, **kwargs)
 
     if right.margin is None:
         warnings.warn(

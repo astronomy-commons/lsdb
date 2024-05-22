@@ -1,12 +1,18 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Tuple
+from typing import Tuple, TYPE_CHECKING
 
+import numpy as np
 import pandas as pd
+import pyarrow as pa
+import numpy.typing as npt
 from hipscat.catalog.catalog_info import CatalogInfo
 from hipscat.catalog.margin_cache import MarginCacheCatalogInfo
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
+
+if TYPE_CHECKING:
+    from lsdb.catalog import Catalog
 
 
 # pylint: disable=too-many-instance-attributes, too-many-arguments
@@ -59,12 +65,23 @@ class AbstractCrossmatchAlgorithm(ABC):
         self.right_margin_catalog_info = right_margin_catalog_info
         self.suffixes = suffixes
 
-    @abstractmethod
-    def crossmatch(self) -> pd.DataFrame:
+    def crossmatch(self, **kwargs) -> pd.DataFrame:
         """Perform a crossmatch"""
+        l_inds, r_inds, extra_cols = self.perform_crossmatch(**kwargs)
+        if not len(l_inds) == len(r_inds) == len(extra_cols):
+            raise ValueError(
+                "Crossmatch algorithm must return left and right indices and extra columns with same length"
+            )
+        return self._create_crossmatch_df(l_inds, r_inds, extra_cols)
+
+    def perform_crossmatch(self, **kwargs) -> Tuple[np.ndarray, np.ndarray, pd.DataFrame]:
+        raise NotImplementedError(
+            "CrossmatchAlgorithm must either implement `perform_crossmatch` or overwrite `crossmatch`"
+        )
 
     # pylint: disable=unused-argument
-    def validate(self):
+    @classmethod
+    def validate(cls, left: Catalog, right: Catalog, **kwargs):
         """Validate the metadata and arguments.
 
         This method will be called **once**, after the algorithm object has
@@ -72,21 +89,21 @@ class AbstractCrossmatchAlgorithm(ABC):
         This can be used to catch simple errors without waiting for an
         expensive ``.compute()`` call."""
         # Check that we have the appropriate columns in our dataset.
-        if self.left.index.name != HIPSCAT_ID_COLUMN:
+        if left._ddf.index.name != HIPSCAT_ID_COLUMN:
             raise ValueError(f"index of left table must be {HIPSCAT_ID_COLUMN}")
-        if self.right.index.name != HIPSCAT_ID_COLUMN:
+        if right._ddf.index.name != HIPSCAT_ID_COLUMN:
             raise ValueError(f"index of right table must be {HIPSCAT_ID_COLUMN}")
-        column_names = self.left.columns
-        if self.left_catalog_info.ra_column not in column_names:
-            raise ValueError(f"left table must have column {self.left_catalog_info.ra_column}")
-        if self.left_catalog_info.dec_column not in column_names:
-            raise ValueError(f"left table must have column {self.left_catalog_info.dec_column}")
+        column_names = left._ddf.columns
+        if left.hc_structure.catalog_info.ra_column not in column_names:
+            raise ValueError(f"left table must have column {left.hc_structure.catalog_info.ra_column}")
+        if left.hc_structure.catalog_info.dec_column not in column_names:
+            raise ValueError(f"left table must have column {left.hc_structure.catalog_info.dec_column}")
 
-        column_names = self.right.columns
-        if self.right_catalog_info.ra_column not in column_names:
-            raise ValueError(f"right table must have column {self.right_catalog_info.ra_column}")
-        if self.right_catalog_info.dec_column not in column_names:
-            raise ValueError(f"right table must have column {self.right_catalog_info.dec_column}")
+        column_names = right._ddf.columns
+        if right.hc_structure.catalog_info.ra_column not in column_names:
+            raise ValueError(f"right table must have column {right.hc_structure.catalog_info.ra_column}")
+        if right.hc_structure.catalog_info.dec_column not in column_names:
+            raise ValueError(f"right table must have column {right.hc_structure.catalog_info.dec_column}")
 
     @staticmethod
     def _rename_columns_with_suffix(dataframe, suffix):
@@ -116,3 +133,28 @@ class AbstractCrossmatchAlgorithm(ABC):
             new_col = extra_columns[col]
             new_col.index = dataframe.index
             dataframe[col] = new_col
+
+    def _create_crossmatch_df(
+        self,
+        left_idx: npt.NDArray[np.int64],
+        right_idx: npt.NDArray[np.int64],
+        extra_cols: pd.DataFrame,
+    ) -> pd.DataFrame:
+        # rename columns so no same names during merging
+        self._rename_columns_with_suffix(self.left, self.suffixes[0])
+        self._rename_columns_with_suffix(self.right, self.suffixes[1])
+        # concat dataframes together
+        self.left.index.name = HIPSCAT_ID_COLUMN
+        left_join_part = self.left.iloc[left_idx].reset_index()
+        right_join_part = self.right.iloc[right_idx].reset_index(drop=True)
+        out = pd.concat(
+            [
+                left_join_part,
+                right_join_part,
+            ],
+            axis=1,
+        )
+        out.set_index(HIPSCAT_ID_COLUMN, inplace=True)
+        extra_cols.index = out.index
+        self._append_extra_columns(out, extra_cols)
+        return out

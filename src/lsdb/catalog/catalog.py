@@ -110,6 +110,7 @@ class Catalog(HealpixDataset):
             Type[AbstractCrossmatchAlgorithm] | BuiltInCrossmatchAlgorithm
         ) = BuiltInCrossmatchAlgorithm.KD_TREE,
         output_catalog_name: str | None = None,
+        require_right_margin: bool = False,
         **kwargs,
     ) -> Catalog:
         """Perform a cross-match between two catalogs
@@ -170,6 +171,8 @@ class Catalog(HealpixDataset):
 
             output_catalog_name (str): The name of the resulting catalog.
                 Default: {left_name}_x_{right_name}
+            require_right_margin (bool): If true, raises an error if the right margin is missing which could
+                lead to incomplete crossmatches. Default: False
 
         Returns:
             A Catalog with the data from the left and right catalogs merged with one row for each
@@ -183,6 +186,8 @@ class Catalog(HealpixDataset):
             suffixes = (f"_{self.name}", f"_{other.name}")
         if len(suffixes) != 2:
             raise ValueError("`suffixes` must be a tuple with two strings")
+        if other.margin is None and require_right_margin:
+            raise ValueError("Right catalog margin cache is required for cross-match.")
         if output_catalog_name is None:
             output_catalog_name = f"{self.name}_x_{other.name}"
         ddf, ddf_map, alignment = crossmatch_catalog_data(

@@ -1,36 +1,42 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, Tuple
+
 import numpy as np
 import pandas as pd
+import pyarrow as pa
 
 from lsdb.core.crossmatch.kdtree_match import KdTreeCrossmatch
 from lsdb.core.crossmatch.kdtree_utils import _find_crossmatch_indices, _get_chord_distance
+
+if TYPE_CHECKING:
+    from lsdb import Catalog
 
 
 class BoundedKdTreeCrossmatch(KdTreeCrossmatch):
     """Nearest neighbor crossmatch using a distance range"""
 
+    @classmethod
     def validate(
-        self,
+        cls,
+        left: Catalog,
+        right: Catalog,
         n_neighbors: int = 1,
         radius_arcsec: float = 1,
-        require_right_margin: bool = False,
         min_radius_arcsec: float = 0,
     ):
-        super().validate(n_neighbors, radius_arcsec, require_right_margin)
+        super().validate(left, right, n_neighbors, radius_arcsec)
         if min_radius_arcsec < 0:
             raise ValueError("The minimum radius must be non-negative")
         if radius_arcsec <= min_radius_arcsec:
             raise ValueError("Cross match maximum radius must be greater than cross match minimum radius")
 
-    def crossmatch(
+    def perform_crossmatch(
         self,
         n_neighbors: int = 1,
         radius_arcsec: float = 1,
-        # We need it here because the signature is shared with .validate()
-        require_right_margin: bool = False,  # pylint: disable=unused-argument
         min_radius_arcsec: float = 0,
-    ) -> pd.DataFrame:
+    ) -> Tuple[np.ndarray, np.ndarray, pd.DataFrame]:
         """Perform a cross-match between the data from two HEALPix pixels
 
         Finds the n closest neighbors in the right catalog for each point in the left catalog that
@@ -57,4 +63,7 @@ class BoundedKdTreeCrossmatch(KdTreeCrossmatch):
             left_xyz, right_xyz, n_neighbors=n_neighbors, min_distance=min_d_chord, max_distance=max_d_chord
         )
         arc_distances = np.degrees(2.0 * np.arcsin(0.5 * chord_distances)) * 3600
-        return self._create_crossmatch_df(left_idx, right_idx, arc_distances)
+        extra_columns = pd.DataFrame(
+            {"_dist_arcsec": pd.Series(arc_distances, dtype=pd.ArrowDtype(pa.float64()))}
+        )
+        return left_idx, right_idx, extra_columns

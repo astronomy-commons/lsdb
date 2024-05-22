@@ -111,6 +111,12 @@ class TestCrossmatch:
         with pytest.raises(ValueError):
             small_sky_catalog.crossmatch(small_sky_xmatch_catalog, suffixes=("wrong",), algorithm=algo)
 
+    @staticmethod
+    def test_right_margin_missing(algo, small_sky_catalog, small_sky_xmatch_catalog):
+        small_sky_xmatch_catalog.margin = None
+        with pytest.raises(ValueError, match="Right catalog margin"):
+            small_sky_catalog.crossmatch(small_sky_xmatch_catalog, algorithm=algo, require_right_margin=True)
+
 
 @pytest.mark.parametrize("algo", [BoundedKdTreeCrossmatch])
 class TestBoundedCrossmatch:
@@ -249,9 +255,39 @@ class MockCrossmatchAlgorithm(AbstractCrossmatchAlgorithm):
 
     extra_columns = pd.DataFrame({"_DIST": pd.Series(dtype=np.float64)})
 
-    # We must have the same signature as the crossmatch method
-    def validate(self, mock_results: pd.DataFrame = None):  # pylint: disable=unused-argument
-        super().validate()
+    def perform_crossmatch(self, mock_results: pd.DataFrame = None):
+        left_reset = self.left.reset_index(drop=True)
+        right_reset = self.right.reset_index(drop=True)
+        mock_results = mock_results[mock_results["ss_id"].isin(left_reset["id"].to_numpy())]
+        left_indexes = mock_results.apply(
+            lambda row: left_reset[left_reset["id"] == row["ss_id"]].index[0], axis=1
+        )
+        right_indexes = mock_results.apply(
+            lambda row: right_reset[right_reset["id"] == row["xmatch_id"]].index[0], axis=1
+        )
+        extra_columns = pd.DataFrame({"_DIST": mock_results["dist"]})
+
+        return left_indexes.to_numpy(), right_indexes.to_numpy(), extra_columns
+
+
+def test_custom_crossmatch_algorithm(small_sky_catalog, small_sky_xmatch_catalog, xmatch_mock):
+    with pytest.warns(RuntimeWarning, match="Results may be incomplete and/or inaccurate"):
+        xmatched = small_sky_catalog.crossmatch(
+            small_sky_xmatch_catalog, algorithm=MockCrossmatchAlgorithm, mock_results=xmatch_mock
+        ).compute()
+    assert len(xmatched) == len(xmatch_mock)
+    for _, correct_row in xmatch_mock.iterrows():
+        assert correct_row["ss_id"] in xmatched["id_small_sky"].to_numpy()
+        xmatch_row = xmatched[xmatched["id_small_sky"] == correct_row["ss_id"]]
+        assert xmatch_row["id_small_sky_xmatch"].to_numpy() == correct_row["xmatch_id"]
+        assert xmatch_row["_DIST"].to_numpy() == pytest.approx(correct_row["dist"])
+
+
+# pylint: disable=too-few-public-methods
+class MockCrossmatchAlgorithmOverwrite(AbstractCrossmatchAlgorithm):
+    """Mock class used to test a crossmatch algorithm"""
+
+    extra_columns = pd.DataFrame({"_DIST": pd.Series(dtype=np.float64)})
 
     def crossmatch(self, mock_results: pd.DataFrame = None):
         left_reset = self.left.reset_index(drop=True)
@@ -277,14 +313,13 @@ class MockCrossmatchAlgorithm(AbstractCrossmatchAlgorithm):
         out.set_index(HIPSCAT_ID_COLUMN, inplace=True)
         extra_columns = pd.DataFrame({"_DIST": mock_results["dist"]})
         self._append_extra_columns(out, extra_columns)
-
         return out
 
 
-def test_custom_crossmatch_algorithm(small_sky_catalog, small_sky_xmatch_catalog, xmatch_mock):
+def test_custom_crossmatch_algorithm_overwrite(small_sky_catalog, small_sky_xmatch_catalog, xmatch_mock):
     with pytest.warns(RuntimeWarning, match="Results may be incomplete and/or inaccurate"):
         xmatched = small_sky_catalog.crossmatch(
-            small_sky_xmatch_catalog, algorithm=MockCrossmatchAlgorithm, mock_results=xmatch_mock
+            small_sky_xmatch_catalog, algorithm=MockCrossmatchAlgorithmOverwrite, mock_results=xmatch_mock
         ).compute()
     assert len(xmatched) == len(xmatch_mock)
     for _, correct_row in xmatch_mock.iterrows():
