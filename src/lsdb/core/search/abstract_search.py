@@ -24,6 +24,7 @@ class AbstractSearch(ABC):
     """
 
     def filter_hc_catalog(self, hc_structure: HCCatalogTypeVar) -> HCCatalogTypeVar:
+        """Filters the hispcat catalog object to the partitions included in the search"""
         max_order = hc_structure.get_max_coverage_order()
         search_moc = self.generate_search_moc(max_order)
         return hc_structure.filter_by_moc(search_moc)

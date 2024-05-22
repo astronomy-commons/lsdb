@@ -1,9 +1,5 @@
 import dask.dataframe as dd
-import healpy as hp
 import hipscat as hc
-import numpy as np
-from hipscat.pixel_tree.moc_filter import filter_by_moc
-from mocpy import MOC
 
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
 from lsdb.core.search.abstract_search import AbstractSearch

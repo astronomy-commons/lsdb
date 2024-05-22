@@ -5,11 +5,7 @@ import healpy as hp
 import numpy as np
 import pandas as pd
 from hipscat.catalog.catalog_info import CatalogInfo
-from hipscat.pixel_math.polygon_filter import (
-    SphericalCoordinates,
-    CartesianCoordinates,
-    generate_polygon_moc,
-)
+from hipscat.pixel_math.polygon_filter import CartesianCoordinates, SphericalCoordinates, generate_polygon_moc
 from hipscat.pixel_math.validators import validate_declination_values, validate_polygon
 from lsst.sphgeom import ConvexPolygon, UnitVector3d
 from mocpy import MOC
