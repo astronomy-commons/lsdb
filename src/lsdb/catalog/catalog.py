@@ -11,6 +11,7 @@ from hipscat.pixel_math.polygon_filter import SphericalCoordinates
 
 from lsdb.catalog.association_catalog import AssociationCatalog
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
+from lsdb.catalog.dataset.partition_indexer import PartitionIndexer
 from lsdb.catalog.margin_catalog import MarginCatalog
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
 from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorithm
@@ -52,6 +53,11 @@ class Catalog(HealpixDataset):
         """
         super().__init__(ddf, ddf_pixel_map, hc_structure)
         self.margin = margin
+
+    @property
+    def partitions(self):
+        """Returns the partitions of the catalog"""
+        return PartitionIndexer(self)
 
     def head(self, n: int = 5) -> pd.DataFrame:
         """Returns a few rows of data for previewing purposes.
