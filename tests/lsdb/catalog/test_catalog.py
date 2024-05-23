@@ -540,3 +540,38 @@ def test_non_working_empty_raises(small_sky_order1_catalog):
 
     with pytest.raises(ValueError):
         small_sky_order1_catalog.map_partitions(add_col)
+
+
+def test_square_bracket_single_partition(small_sky_order1_catalog):
+    index = 1
+    subset = small_sky_order1_catalog.partitions[index]
+    assert isinstance(subset, Catalog)
+    assert 1 == len(subset._ddf_pixel_map)
+    pixel = subset.get_healpix_pixels()[0]
+    assert index == small_sky_order1_catalog.get_partition_index(pixel.order, pixel.pixel)
+    dd.assert_eq(small_sky_order1_catalog._ddf.partitions[index], subset._ddf)
+
+
+def test_square_bracket_multiple_partitions(small_sky_order1_catalog):
+    indices = [0, 1, 2]
+    subset = small_sky_order1_catalog.partitions[indices]
+    assert isinstance(subset, Catalog)
+    assert 3 == len(subset._ddf_pixel_map)
+    for pixel, partition_index in subset._ddf_pixel_map.items():
+        original_index = small_sky_order1_catalog.get_partition_index(pixel.order, pixel.pixel)
+        original_partition = small_sky_order1_catalog._ddf.partitions[original_index]
+        subset_partition = subset._ddf.partitions[partition_index]
+        dd.assert_eq(original_partition, subset_partition)
+
+
+def test_square_bracket_slice_partitions(small_sky_order1_catalog):
+    subset = small_sky_order1_catalog.partitions[:2]
+    assert isinstance(subset, Catalog)
+    assert 2 == len(subset._ddf_pixel_map)
+    subset_2 = small_sky_order1_catalog.partitions[0:2]
+    assert isinstance(subset, Catalog)
+    dd.assert_eq(subset_2._ddf, subset._ddf)
+    assert subset_2.get_healpix_pixels() == subset.get_healpix_pixels()
+    subset_3 = small_sky_order1_catalog.partitions[0:2:1]
+    assert subset_3.get_healpix_pixels() == subset.get_healpix_pixels()
+    dd.assert_eq(subset_3._ddf, subset._ddf)
