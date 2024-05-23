@@ -2,9 +2,8 @@ import dask.dataframe as dd
 import healpy as hp
 import hipscat as hc
 import numpy as np
-from hipscat.pixel_math import HealpixPixel
-from hipscat.pixel_math.filter import get_filtered_pixel_list
-from hipscat.pixel_tree.pixel_tree_builder import PixelTreeBuilder
+from hipscat.pixel_tree.moc_filter import filter_by_moc
+from mocpy import MOC
 
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
 from lsdb.core.search.abstract_search import AbstractSearch
@@ -24,7 +23,7 @@ class MarginCatalog(HealpixDataset):
 
     def __init__(
         self,
-        ddf: dd.DataFrame,
+        ddf: dd.core.DataFrame,
         ddf_pixel_map: DaskDFPixelMap,
         hc_structure: hc.catalog.MarginCatalog,
     ):
@@ -54,24 +53,20 @@ class MarginCatalog(HealpixDataset):
             )
 
         # Get the pixels that match the search pixels
-        filtered_search_pixels = search.search_partitions(self.hc_structure.get_healpix_pixels())
+        filtered_search_pixels = metadata.get_healpix_pixels()
 
-        # Get the margin pixels at the max order + 1 from the search pixels
-        # the get_margin function requires a higher order than the given pixel
-        margin_order = max(pixel.order for pixel in filtered_search_pixels) + 1
-        margin_pixels = [
-            hc.pixel_math.get_margin(pixel.order, pixel.pixel, margin_order - pixel.order)
-            for pixel in filtered_search_pixels
-        ]
+        filtered_pixels = []
 
-        # Remove duplicate margin pixels and construct HealpixPixel objects
-        margin_pixels = list(set(np.concatenate(margin_pixels)))
-        margin_pixels = [HealpixPixel(margin_order, pixel) for pixel in margin_pixels]
+        if len(filtered_search_pixels) > 0:
+            # Get the margin pixels at the max order from the search pixels
+            orders = np.array([p.order for p in filtered_search_pixels])
+            pixels = np.array([p.pixel for p in filtered_search_pixels])
+            max_order = np.max(orders)
 
-        # Align the margin pixels with the catalog pixels and combine with the search pixels
-        margin_pixel_tree = PixelTreeBuilder.from_healpix(margin_pixels)
-        filtered_margin_pixels = get_filtered_pixel_list(self.hc_structure.pixel_tree, margin_pixel_tree)
-        filtered_pixels = list(set(filtered_search_pixels + filtered_margin_pixels))
+            search_moc = MOC.from_healpix_cells(pixels, orders, max_depth=max_order).add_neighbours()
+
+            # Align the margin pixels with the catalog pixels and combine with the search pixels
+            filtered_pixels = filter_by_moc(self.hc_structure.pixel_tree, search_moc).get_healpix_pixels()
 
         filtered_hc_structure = self.hc_structure.filter_from_pixel_list(filtered_pixels)
         ddf_partition_map, search_ddf = self._perform_search(metadata, filtered_pixels, search, fine)

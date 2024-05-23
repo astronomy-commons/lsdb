@@ -15,9 +15,9 @@ def kdtree_args(small_sky_catalog, small_sky_order1_source_with_margin):
         0,
         0,
         0,
-        small_sky_catalog.hc_structure,
-        small_sky_order1_source_with_margin.hc_structure,
-        small_sky_order1_source_with_margin.margin.hc_structure,
+        small_sky_catalog.hc_structure.catalog_info,
+        small_sky_order1_source_with_margin.hc_structure.catalog_info,
+        small_sky_order1_source_with_margin.margin.hc_structure.catalog_info,
         ("_a", "_b"),
     )
 
@@ -49,11 +49,9 @@ def test_bounded_kdtree_radius_invalid(bounded_kdtree_crossmatch):
 
 
 def test_kdtree_no_margin(kdtree_crossmatch):
-    kdtree_crossmatch.right_margin_hc_structure = None
-    with pytest.raises(ValueError, match="Right margin is required"):
-        kdtree_crossmatch.validate()
-
-    kdtree_crossmatch.validate(require_right_margin=False)
+    kdtree_crossmatch.right_margin_catalog_info = None
+    with pytest.raises(ValueError, match="Right catalog margin cache is required for cross-match"):
+        kdtree_crossmatch.validate(require_right_margin=True)
 
 
 def test_kdtree_left_columns(kdtree_crossmatch):

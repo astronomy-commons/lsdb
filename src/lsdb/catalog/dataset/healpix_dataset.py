@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import warnings
-from typing import Any, Callable, Dict, List, Tuple, cast
+from typing import Any, Callable, Dict, Iterable, List, Tuple, cast
 
 import dask
 import dask.dataframe as dd
@@ -39,7 +39,7 @@ class HealpixDataset(Dataset):
 
     def __init__(
         self,
-        ddf: dd.DataFrame,
+        ddf: dd.core.DataFrame,
         ddf_pixel_map: DaskDFPixelMap,
         hc_structure: HCHealpixDataset,
     ):
@@ -55,6 +55,12 @@ class HealpixDataset(Dataset):
         """
         super().__init__(ddf, hc_structure)
         self._ddf_pixel_map = ddf_pixel_map
+
+    def __getitem__(self, item):
+        result = self._ddf.__getitem__(item)
+        if isinstance(result, dd.core.DataFrame):
+            return self.__class__(result, self._ddf_pixel_map, self.hc_structure)
+        return result
 
     def get_healpix_pixels(self) -> List[HealpixPixel]:
         """Get all HEALPix pixels that are contained in the catalog
@@ -74,7 +80,7 @@ class HealpixDataset(Dataset):
         pixels = self.get_healpix_pixels()
         return np.array(pixels)[get_pixel_argsort(pixels)]
 
-    def get_partition(self, order: int, pixel: int) -> dd.DataFrame:
+    def get_partition(self, order: int, pixel: int) -> dd.core.DataFrame:
         """Get the dask partition for a given HEALPix pixel
 
         Args:
@@ -144,7 +150,7 @@ class HealpixDataset(Dataset):
         partitions = self._ddf.to_delayed()
         targeted_partitions = [partitions[self._ddf_pixel_map[pixel]] for pixel in filtered_pixels]
         filtered_partitions = (
-            [search.search_points(partition, metadata) for partition in targeted_partitions]
+            [search.search_points(partition, metadata.catalog_info) for partition in targeted_partitions]
             if fine
             else targeted_partitions
         )
@@ -152,7 +158,7 @@ class HealpixDataset(Dataset):
 
     def _construct_search_ddf(
         self, filtered_pixels: List[HealpixPixel], filtered_partitions: List[Delayed]
-    ) -> Tuple[dict, dd.DataFrame]:
+    ) -> Tuple[dict, dd.core.DataFrame]:
         """Constructs a search catalog pixel map and respective Dask Dataframe
 
         Args:
@@ -163,10 +169,74 @@ class HealpixDataset(Dataset):
             The catalog pixel map and the respective Dask DataFrame
         """
         divisions = get_pixels_divisions(filtered_pixels)
-        search_ddf = dd.from_delayed(filtered_partitions, meta=self._ddf._meta, divisions=divisions)
-        search_ddf = cast(dd.DataFrame, search_ddf)
+        search_ddf = dd.io.from_delayed(filtered_partitions, meta=self._ddf._meta, divisions=divisions)
+        search_ddf = cast(dd.core.DataFrame, search_ddf)
         ddf_partition_map = {pixel: i for i, pixel in enumerate(filtered_pixels)}
         return ddf_partition_map, search_ddf
+
+    def map_partitions(
+        self,
+        func: Callable[..., pd.DataFrame],
+        *args,
+        meta: pd.DataFrame | pd.Series | Dict | Iterable | Tuple | None = None,
+        include_pixel: bool = False,
+        **kwargs,
+    ) -> Self:
+        """Applies a function to each partition in the catalog.
+
+        The ra and dec of each row is assumed to remain unchanged.
+
+        Args:
+            func (Callable): The function applied to each partition, which will be called with:
+                `func(partition: pd.DataFrame, *args, **kwargs)` with the additional args and kwargs passed to
+                the `map_partitions` function. If the `include_pixel` parameter is set, the function will be
+                called with the `healpix_pixel` as the second positional argument set to the healpix pixel
+                of the partition as
+                `func(partition: pd.DataFrame, healpix_pixel: HealpixPixel, *args, **kwargs)`
+            *args: Additional positional arguments to call `func` with.
+            meta (pd.DataFrame | pd.Series | Dict | Iterable | Tuple | None): An empty pandas DataFrame that
+                has columns matching the output of the function applied to a partition. Other types are
+                accepted to describe the output dataframe format, for full details see the dask documentation
+                https://blog.dask.org/2022/08/09/understanding-meta-keyword-argument
+                If meta is None (default), LSDB will try to work out the output schema of the function by
+                calling the function with an empty DataFrame. If the function does not work with an empty
+                DataFrame, this will raise an error and meta must be set. Note that some operations in LSDB
+                will generate empty partitions, though these can be removed by calling the
+                `Catalog.prune_empty_partitions` method.
+            include_pixel (bool): Whether to pass the Healpix Pixel of the partition as a `HealpixPixel`
+                object to the second positional argument of the function
+            **kwargs: Additional keyword args to pass to the function. These are passed to the Dask DataFrame
+                `dask.dataframe.map_partitions` function, so any of the dask function's keyword args such as
+                `transform_divisions` will be passed through and work as described in the dask documentation
+                https://docs.dask.org/en/stable/generated/dask.dataframe.DataFrame.map_partitions.html
+
+        Returns:
+            A new catalog with each partition replaced with the output of the function applied to the original
+            partition.
+        """
+        if meta is None:
+            if include_pixel:
+                meta = func(self._ddf._meta.copy(), HealpixPixel(0, 0))
+            else:
+                meta = func(self._ddf._meta.copy())
+            if meta is None:
+                raise ValueError(
+                    "func returned None for empty DataFrame input. The function must return a value, changing"
+                    " the partitions in place will not work. If the function does not work for empty inputs, "
+                    "please specify a `meta` argument."
+                )
+        if include_pixel:
+            pixels = self.get_ordered_healpix_pixels()
+
+            def apply_func(df, *args, partition_info=None, **kwargs):
+                """Uses `partition_info` passed by dask `map_partitions` to get healpix pixel to pass to
+                ufunc"""
+                return func(df, pixels[partition_info["number"]], *args, **kwargs)
+
+            output_ddf = self._ddf.map_partitions(apply_func, *args, meta=meta, **kwargs)
+        else:
+            output_ddf = self._ddf.map_partitions(func, *args, meta=meta, **kwargs)
+        return self.__class__(output_ddf, self._ddf_pixel_map, self.hc_structure)
 
     def prune_empty_partitions(self, persist: bool = False) -> Self:
         """Prunes the catalog of its empty partitions
@@ -219,15 +289,20 @@ class HealpixDataset(Dataset):
             func (Callable[[pd.DataFrame, HealpixPixel], Any]): A function that takes a pandas
                 DataFrame with the data in a partition, the HealpixPixel of the partition, and any other
                 keyword arguments and returns an aggregated value
-            order (int | None): The HEALPix order to compute the skymap at. If None (default), will compute
-                for each partition in the catalog at their own orders
+            order (int | None): The HEALPix order to compute the skymap at. If None (default),
+                will compute for each partition in the catalog at their own orders. If a value
+                other than None, each partition will be grouped by pixel number at the order
+                specified and the function will be applied to each group.
             default_value (Any): The value to use at pixels that aren't covered by the catalog (default 0)
             **kwargs: Arguments to pass to the function
 
         Returns:
-            A dict of Delayed values, one for the function applied to each partition of the catalog
+            A dict of Delayed values, one for the function applied to each partition of the catalog.
+            If order is not None, the Delayed objects will be numpy arrays with all pixels within the
+            partition at the specified order. Any pixels within a partition that have no coverage will
+            have the default_value as its result, as well as any pixels for which the aggregate
+            function returns None.
         """
-
         partitions = self.to_delayed()
         if order is None:
             results = {
@@ -259,8 +334,10 @@ class HealpixDataset(Dataset):
         Args:
             func (Callable[[pd.DataFrame], HealpixPixel, Any]): A function that takes a pandas DataFrame and
                 the HealpixPixel the partition is from and returns a value
-            order (int | None): The HEALPix order to compute the skymap at. If None (default), will compute
-                for each partition in the catalog at their own orders
+            order (int | None): The HEALPix order to compute the skymap at. If None (default),
+                will compute for each partition in the catalog at their own orders. If a value
+                other than None, each partition will be grouped by pixel number at the order
+                specified and the function will be applied to each group.
             default_value (Any): The value to use at pixels that aren't covered by the catalog (default 0)
             **kwargs: Arguments to pass to the given function
 
@@ -270,13 +347,14 @@ class HealpixDataset(Dataset):
             If no order is supplied, the order of the resulting histogram will be the highest order partition
             in the catalog, and the function will be applied to the partitions of the catalog with the result
             copied to all pixels if the catalog partition is at a lower order than the histogram order.
-        """
 
+            If order is specified, any pixels at the specified order not covered by the catalog or any pixels
+            that the function returns None will use the default_value.
+        """
         smdata = self.skymap_data(func, order, default_value, **kwargs)
         pixels = list(smdata.keys())
         results = dask.compute(*[smdata[pixel] for pixel in pixels])
         result_dict = {pixels[i]: results[i] for i in range(len(pixels))}
-
         return compute_skymap(result_dict, order, default_value)
 
     def skymap(
@@ -293,8 +371,10 @@ class HealpixDataset(Dataset):
         Args:
             func (Callable[[pd.DataFrame], HealpixPixel, Any]): A function that takes a pandas DataFrame and
                 the HealpixPixel the partition is from and returns a value
-            order (int | None): The HEALPix order to compute the skymap at. If None (default), will compute
-                for each partition in the catalog at their own orders
+            order (int | None): The HEALPix order to compute the skymap at. If None (default),
+                will compute for each partition in the catalog at their own orders. If a value
+                other than None, each partition will be grouped by pixel number at the order
+                specified and the function will be applied to each group.
             default_value (Any): The value to use at pixels that aren't covered by the catalog (default 0)
             projection (str): The map projection to use. Valid values include:
                 - moll - Molleweide projection (default)

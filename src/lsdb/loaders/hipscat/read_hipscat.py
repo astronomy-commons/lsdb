@@ -12,6 +12,7 @@ from lsdb.catalog.catalog import Catalog
 from lsdb.catalog.dataset.dataset import Dataset
 from lsdb.catalog.margin_catalog import MarginCatalog
 from lsdb.core.search.abstract_search import AbstractSearch
+from lsdb.loaders.hipscat.abstract_catalog_loader import CatalogTypeVar
 from lsdb.loaders.hipscat.hipscat_loader_factory import get_loader_for_type
 from lsdb.loaders.hipscat.hipscat_loading_config import HipscatLoadingConfig
 
@@ -26,13 +27,14 @@ dataset_class_for_catalog_type: Dict[CatalogType, Type[Dataset]] = {
 # pylint: disable=unused-argument
 def read_hipscat(
     path: str,
-    catalog_type: Type[Dataset] | None = None,
+    catalog_type: Type[CatalogTypeVar] | None = None,
     search_filter: AbstractSearch | None = None,
-    storage_options: dict | None = None,
     columns: List[str] | None = None,
-    margin_cache: MarginCatalog | None = None,
+    margin_cache: MarginCatalog | str | None = None,
+    dtype_backend: str | None = "pyarrow",
+    storage_options: dict | None = None,
     **kwargs,
-) -> Dataset:
+) -> CatalogTypeVar | None:
     """Load a catalog from a HiPSCat formatted catalog.
 
     Typical usage example, where we load a catalog with a subset of columns:
@@ -44,7 +46,7 @@ def read_hipscat(
             path="./my_catalog_dir",
             catalog_type=lsdb.Catalog,
             columns=["ra","dec"],
-            filter=lsdb.core.search.ConeSearch(ra, dec, radius_arcsec),
+            search_filter=lsdb.core.search.ConeSearch(ra, dec, radius_arcsec),
         )
 
     Args:
@@ -55,9 +57,12 @@ def read_hipscat(
             type for type checking, the type of the catalog can be specified here. Use by specifying
             the lsdb class for that catalog.
         search_filter (Type[AbstractSearch]): Default `None`. The filter method to be applied.
-        storage_options (dict): Dictionary that contains abstract filesystem credentials
         columns (List[str]): Default `None`. The set of columns to filter the catalog on.
-        margin_cache (MarginCatalog): The margin cache for the main catalog
+        margin_cache (MarginCatalog | str): The margin cache for the main catalog, provided as a path
+            on disk or as an instance of the MarginCatalog object. Defaults to None.
+        dtype_backend (str): Backend data type to apply to the catalog.
+            Defaults to "pyarrow". If None, no type conversion is performed.
+        storage_options (dict): Dictionary that contains abstract filesystem credentials
         **kwargs: Arguments to pass to the pandas parquet file reader
 
     Returns:

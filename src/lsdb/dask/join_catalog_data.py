@@ -7,8 +7,10 @@ from typing import TYPE_CHECKING, List, Tuple
 
 import dask
 import dask.dataframe as dd
-import hipscat as hc
 import pandas as pd
+from hipscat.catalog.association_catalog import AssociationCatalogInfo
+from hipscat.catalog.catalog_info import CatalogInfo
+from hipscat.catalog.margin_cache import MarginCacheCatalogInfo
 from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
 from hipscat.pixel_tree import PixelAlignment
@@ -59,9 +61,9 @@ def perform_join_on(
     left_pixel: HealpixPixel,
     right_pixel: HealpixPixel,
     right_margin_pixel: HealpixPixel,
-    left_structure: hc.catalog.Catalog,
-    right_structure: hc.catalog.Catalog,
-    right_margin_structure: hc.catalog.Catalog,
+    left_catalog_info: CatalogInfo,
+    right_catalog_info: CatalogInfo,
+    right_margin_catalog_info: MarginCacheCatalogInfo,
     left_on: str,
     right_on: str,
     suffixes: Tuple[str, str],
@@ -76,9 +78,9 @@ def perform_join_on(
         left_pixel (HealpixPixel): the HEALPix pixel of the left partition
         right_pixel (HealpixPixel): the HEALPix pixel of the right partition
         right_margin_pixel (HealpixPixel): the HEALPix pixel of the right margin partition
-        left_structure (hc.Catalog): the hipscat structure of the left catalog
-        right_structure (hc.Catalog): the hipscat structure of the right catalog
-        right_margin_structure (hc.Catalog): the hipscat structure of the right margin catalog
+        left_catalog_info (hc.CatalogInfo): the catalog info of the left catalog
+        right_catalog_info (hc.CatalogInfo): the catalog info of the right catalog
+        right_margin_catalog_info (hc.MarginCacheCatalogInfo): the catalog info of the right margin catalog
         left_on (str): the column to join on from the left partition
         right_on (str): the column to join on from the right partition
         suffixes (Tuple[str,str]): the suffixes to apply to each partition's column names
@@ -111,10 +113,10 @@ def perform_join_through(
     right_pixel: HealpixPixel,
     right_margin_pixel: HealpixPixel,
     through_pixel: HealpixPixel,
-    left_catalog: hc.catalog.Catalog,
-    right_catalog: hc.catalog.Catalog,
-    right_margin_catalog: hc.catalog.Catalog,
-    assoc_catalog: hc.catalog.AssociationCatalog,
+    left_catalog_info: CatalogInfo,
+    right_catalog_info: CatalogInfo,
+    right_margin_catalog_info: MarginCacheCatalogInfo,
+    assoc_catalog_info: AssociationCatalogInfo,
     suffixes: Tuple[str, str],
     right_columns: List[str],
 ):
@@ -139,8 +141,7 @@ def perform_join_through(
     Returns:
         A dataframe with the result of merging the left and right partitions on the specified columns
     """
-    catalog_info = assoc_catalog.catalog_info
-    if catalog_info.primary_column is None or catalog_info.join_column is None:
+    if assoc_catalog_info.primary_column is None or assoc_catalog_info.join_column is None:
         raise ValueError("Invalid catalog_info")
     if right_pixel.order > left_pixel.order:
         left = filter_by_hipscat_index_to_pixel(left, right_pixel.order, right_pixel.pixel)
@@ -149,9 +150,9 @@ def perform_join_through(
 
     left, right_joined_df = rename_columns_with_suffixes(left, right_joined_df, suffixes)
 
-    join_columns = [catalog_info.primary_column_association]
-    if catalog_info.join_column_association != catalog_info.primary_column_association:
-        join_columns.append(catalog_info.join_column_association)
+    join_columns = [assoc_catalog_info.primary_column_association]
+    if assoc_catalog_info.join_column_association != assoc_catalog_info.primary_column_association:
+        join_columns.append(assoc_catalog_info.join_column_association)
 
     through = through.drop(NON_JOINING_ASSOCIATION_COLUMNS, axis=1)
 
@@ -159,13 +160,13 @@ def perform_join_through(
         left.reset_index()
         .merge(
             through,
-            left_on=catalog_info.primary_column + suffixes[0],
-            right_on=catalog_info.primary_column_association,
+            left_on=assoc_catalog_info.primary_column + suffixes[0],
+            right_on=assoc_catalog_info.primary_column_association,
         )
         .merge(
             right_joined_df,
-            left_on=catalog_info.join_column_association,
-            right_on=catalog_info.join_column + suffixes[1],
+            left_on=assoc_catalog_info.join_column_association,
+            right_on=assoc_catalog_info.join_column + suffixes[1],
         )
     )
 
@@ -192,7 +193,10 @@ def join_catalog_data_on(
         catalogs.
     """
     if right.margin is None:
-        warnings.warn("Right catalog does not have a margin cache. Results may be inaccurate", RuntimeWarning)
+        warnings.warn(
+            "Right catalog does not have a margin cache. Results may be incomplete and/or inaccurate.",
+            RuntimeWarning,
+        )
 
     alignment = align_catalogs(left, right)
 
@@ -245,7 +249,10 @@ def join_catalog_data_through(
         )
 
     if right.margin is None:
-        warnings.warn("Right catalog does not have a margin cache. Results may be inaccurate", RuntimeWarning)
+        warnings.warn(
+            "Right catalog does not have a margin cache. Results may be incomplete and/or inaccurate.",
+            RuntimeWarning,
+        )
 
     alignment = align_catalogs(left, right)
 

@@ -4,6 +4,8 @@ import numpy.testing as npt
 import pandas as pd
 import pytest
 from hipscat.catalog.index.index_catalog import IndexCatalog
+from hipscat.pixel_math import HealpixPixel
+from pandas.core.dtypes.base import ExtensionDtype
 
 import lsdb
 from lsdb.core.search import BoxSearch, ConeSearch, IndexSearch, OrderSearch, PolygonSearch
@@ -22,13 +24,13 @@ def test_read_hipscat_with_columns(small_sky_order1_dir):
     filter_columns = ["ra", "dec"]
     catalog = lsdb.read_hipscat(small_sky_order1_dir, columns=filter_columns)
     assert isinstance(catalog, lsdb.Catalog)
-    npt.assert_array_equal(catalog.compute().columns.values, filter_columns)
+    npt.assert_array_equal(catalog.compute().columns.to_numpy(), filter_columns)
 
 
 def test_read_hipscat_with_extra_kwargs(small_sky_order1_dir):
     catalog = lsdb.read_hipscat(small_sky_order1_dir, filters=[("ra", ">", 300)], engine="pyarrow")
     assert isinstance(catalog, lsdb.Catalog)
-    assert np.greater(catalog.compute()["ra"].values, 300).all()
+    assert np.greater(catalog.compute()["ra"].to_numpy(), 300).all()
 
 
 def test_pixels_in_map_equal_catalog_pixels(small_sky_order1_dir, small_sky_order1_hipscat_catalog):
@@ -53,7 +55,7 @@ def test_parquet_data_in_partitions_match_files(small_sky_order1_dir, small_sky_
         parquet_path = hc.io.paths.pixel_catalog_file(
             small_sky_order1_hipscat_catalog.catalog_base_dir, hp_order, hp_pixel
         )
-        loaded_df = pd.read_parquet(parquet_path)
+        loaded_df = pd.read_parquet(parquet_path, dtype_backend="pyarrow")
         pd.testing.assert_frame_equal(partition_df, loaded_df)
 
 
@@ -70,16 +72,31 @@ def test_read_hipscat_specify_wrong_catalog_type(small_sky_dir):
         lsdb.read_hipscat(small_sky_dir, catalog_type=int)
 
 
-def test_catalog_with_margin(small_sky_xmatch_dir, small_sky_xmatch_margin_catalog):
+def test_catalog_with_margin(
+    small_sky_xmatch_dir, small_sky_xmatch_margin_catalog, small_sky_xmatch_margin_dir
+):
+    # Provide the margin cache catalog object
     catalog = lsdb.read_hipscat(small_sky_xmatch_dir, margin_cache=small_sky_xmatch_margin_catalog)
     assert isinstance(catalog, lsdb.Catalog)
     assert catalog.margin is small_sky_xmatch_margin_catalog
+    # Provide the margin cache catalog path
+    catalog_2 = lsdb.read_hipscat(small_sky_xmatch_dir, margin_cache=small_sky_xmatch_margin_dir)
+    assert isinstance(catalog_2, lsdb.Catalog)
+    # The catalogs obtained are identical
+    assert catalog.margin.hc_structure.catalog_info == catalog_2.margin.hc_structure.catalog_info
+    assert catalog.margin.get_healpix_pixels() == catalog_2.margin.get_healpix_pixels()
+    pd.testing.assert_frame_equal(catalog.margin.compute(), catalog_2.margin.compute())
 
 
 def test_catalog_without_margin_is_none(small_sky_xmatch_dir):
     catalog = lsdb.read_hipscat(small_sky_xmatch_dir)
     assert isinstance(catalog, lsdb.Catalog)
     assert catalog.margin is None
+
+
+def test_catalog_with_wrong_margin_args(small_sky_xmatch_dir):
+    with pytest.raises(ValueError, match="must be of type"):
+        lsdb.read_hipscat(small_sky_xmatch_dir, margin_cache=1)
 
 
 def test_read_hipscat_subset_with_cone_search(small_sky_order1_dir, small_sky_order1_catalog):
@@ -144,7 +161,50 @@ def test_read_hipscat_subset_with_order_search(small_sky_source_catalog, small_s
 
 
 def test_read_hipscat_subset_no_partitions(small_sky_order1_dir, small_sky_order1_id_index_dir):
-    with pytest.raises(ValueError, match="no partitions"):
+    with pytest.raises(ValueError, match="no coverage"):
         catalog_index = IndexCatalog.read_from_hipscat(small_sky_order1_id_index_dir)
         index_search = IndexSearch([900], catalog_index)
         lsdb.read_hipscat(small_sky_order1_dir, search_filter=index_search)
+
+
+def test_read_hipscat_with_backend(small_sky_dir):
+    # By default, the schema is backed by pyarrow
+    default_catalog = lsdb.read_hipscat(small_sky_dir)
+    assert all(isinstance(col_type, pd.ArrowDtype) for col_type in default_catalog.dtypes)
+    # We can also pass it explicitly as an argument
+    catalog = lsdb.read_hipscat(small_sky_dir, dtype_backend="pyarrow")
+    assert catalog.dtypes.equals(default_catalog.dtypes)
+    # Load data using a numpy-nullable types.
+    catalog = lsdb.read_hipscat(small_sky_dir, dtype_backend="numpy_nullable")
+    assert all(isinstance(col_type, ExtensionDtype) for col_type in catalog.dtypes)
+    # The other option is to keep the original types. In this case they are numpy-backed.
+    catalog = lsdb.read_hipscat(small_sky_dir, dtype_backend=None)
+    assert all(isinstance(col_type, np.dtype) for col_type in catalog.dtypes)
+
+
+def test_read_hipscat_with_invalid_backend(small_sky_dir):
+    with pytest.raises(ValueError, match="data type backend must be either"):
+        lsdb.read_hipscat(small_sky_dir, dtype_backend="abc")
+
+
+def test_read_hipscat_margin_catalog_subset(
+    small_sky_order1_source_margin_dir, small_sky_order1_source_margin_catalog, assert_divisions_are_correct
+):
+    search_filter = ConeSearch(ra=320, dec=-35, radius_arcsec=1 * 3600)
+    margin = lsdb.read_hipscat(small_sky_order1_source_margin_dir, search_filter=search_filter)
+
+    margin_info = margin.hc_structure.catalog_info
+    small_sky_order1_source_margin_info = small_sky_order1_source_margin_catalog.hc_structure.catalog_info
+
+    assert isinstance(margin, lsdb.MarginCatalog)
+    assert margin_info.catalog_name == small_sky_order1_source_margin_info.catalog_name
+    assert margin_info.primary_catalog == small_sky_order1_source_margin_info.primary_catalog
+    assert margin_info.margin_threshold == small_sky_order1_source_margin_info.margin_threshold
+    assert margin.get_healpix_pixels() == [HealpixPixel(1, 45), HealpixPixel(1, 47)]
+    assert_divisions_are_correct(margin)
+
+
+def test_read_hipscat_margin_catalog_subset_is_empty(small_sky_order1_source_margin_dir):
+    search_filter = ConeSearch(ra=30, dec=10, radius_arcsec=1)
+    margin_catalog = lsdb.read_hipscat(small_sky_order1_source_margin_dir, search_filter=search_filter)
+    assert margin_catalog is None

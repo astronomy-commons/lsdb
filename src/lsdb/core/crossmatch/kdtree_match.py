@@ -5,6 +5,7 @@ from typing import Tuple
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
+import pyarrow as pa
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
 from hipscat.pixel_math.validators import validate_radius
 
@@ -15,15 +16,13 @@ from lsdb.core.crossmatch.kdtree_utils import _find_crossmatch_indices, _get_cho
 class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
     """Nearest neighbor crossmatch using a 3D k-D tree"""
 
-    extra_columns = pd.DataFrame({"_dist_arcsec": pd.Series(dtype=np.dtype("float64"))})
+    extra_columns = pd.DataFrame({"_dist_arcsec": pd.Series(dtype=pd.ArrowDtype(pa.float64()))})
 
-    # pylint: disable=unused-argument,arguments-differ
     def validate(
         self,
         n_neighbors: int = 1,
         radius_arcsec: float = 1,
-        require_right_margin=True,
-        **kwargs,
+        require_right_margin: bool = False,
     ):
         super().validate()
         # Validate radius
@@ -32,19 +31,19 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
         if n_neighbors < 1:
             raise ValueError("n_neighbors must be greater than 1")
         # Check that the margin exists and has a compatible radius.
-        if self.right_margin_hc_structure is None:
+        if self.right_margin_catalog_info is None:
             if require_right_margin:
-                raise ValueError("Right margin is required for cross-match")
+                raise ValueError("Right catalog margin cache is required for cross-match.")
         else:
-            if self.right_margin_hc_structure.catalog_info.margin_threshold < radius_arcsec:
+            if self.right_margin_catalog_info.margin_threshold < radius_arcsec:
                 raise ValueError("Cross match radius is greater than margin threshold")
 
-    # pylint: disable=unused-argument
     def crossmatch(
         self,
         n_neighbors: int = 1,
         radius_arcsec: float = 1,
-        **kwargs,
+        # We need it here because the signature is shared with .validate()
+        require_right_margin: bool = False,  # pylint: disable=unused-argument
     ) -> pd.DataFrame:
         """Perform a cross-match between the data from two HEALPix pixels
 
@@ -74,12 +73,12 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
 
     def _get_point_coordinates(self) -> Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
         left_xyz = _lon_lat_to_xyz(
-            lon=self.left[self.left_metadata.catalog_info.ra_column].values,
-            lat=self.left[self.left_metadata.catalog_info.dec_column].values,
+            lon=self.left[self.left_catalog_info.ra_column].to_numpy(),
+            lat=self.left[self.left_catalog_info.dec_column].to_numpy(),
         )
         right_xyz = _lon_lat_to_xyz(
-            lon=self.right[self.right_metadata.catalog_info.ra_column].values,
-            lat=self.right[self.right_metadata.catalog_info.dec_column].values,
+            lon=self.right[self.right_catalog_info.ra_column].to_numpy(),
+            lat=self.right[self.right_catalog_info.dec_column].to_numpy(),
         )
         return left_xyz, right_xyz
 
@@ -104,6 +103,8 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
             axis=1,
         )
         out.set_index(HIPSCAT_ID_COLUMN, inplace=True)
-        extra_columns = pd.DataFrame({"_dist_arcsec": pd.Series(arc_distances, index=out.index)})
+        extra_columns = pd.DataFrame(
+            {"_dist_arcsec": pd.Series(arc_distances, dtype=pd.ArrowDtype(pa.float64()), index=out.index)}
+        )
         self._append_extra_columns(out, extra_columns)
         return out

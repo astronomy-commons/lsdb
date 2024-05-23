@@ -36,12 +36,13 @@ def perform_crossmatch(
     left_pix,
     right_pix,
     right_margin_pix,
-    left_hc_structure,
-    right_hc_structure,
-    right_margin_hc_structure,
+    left_catalog_info,
+    right_catalog_info,
+    right_margin_catalog_info,
     algorithm,
     suffixes,
     right_columns,
+    meta_df,
     **kwargs,
 ):
     """Performs a crossmatch on data from a HEALPix pixel in each catalog
@@ -52,6 +53,9 @@ def perform_crossmatch(
     if right_pix.order > left_pix.order:
         left_df = filter_by_hipscat_index_to_pixel(left_df, right_pix.order, right_pix.pixel)
 
+    if len(left_df) == 0:
+        return meta_df
+
     right_joined_df = concat_partition_and_margin(right_df, right_margin_df, right_columns)
 
     return algorithm(
@@ -61,9 +65,9 @@ def perform_crossmatch(
         left_pix.pixel,
         right_pix.order,
         right_pix.pixel,
-        left_hc_structure,
-        right_hc_structure,
-        right_margin_hc_structure,
+        left_catalog_info,
+        right_catalog_info,
+        right_margin_catalog_info,
         suffixes,
     ).crossmatch(**kwargs)
 
@@ -106,36 +110,39 @@ def crossmatch_catalog_data(
         0,
         0,
         0,
-        left.hc_structure,
-        right.hc_structure,
-        right.margin.hc_structure if right.margin is not None else None,
+        left.hc_structure.catalog_info,
+        right.hc_structure.catalog_info,
+        right.margin.hc_structure.catalog_info if right.margin is not None else None,
         suffixes,
     )
     meta_df_crossmatch.validate(**kwargs)
 
     if right.margin is None:
-        warnings.warn("Right catalog does not have a margin cache. Results may be inaccurate", RuntimeWarning)
+        warnings.warn(
+            "Right catalog does not have a margin cache. Results may be incomplete and/or inaccurate.",
+            RuntimeWarning,
+        )
 
     # perform alignment on the two catalogs
-    alignment = align_catalogs(left, right)
+    alignment = align_catalogs(left, right, add_right_margin=True)
 
     # get lists of HEALPix pixels from alignment to pass to cross-match
     left_pixels, right_pixels = get_healpix_pixels_from_alignment(alignment)
 
-    # perform the crossmatch on each partition pairing using dask delayed for lazy computation
+    # generate meta table structure for dask df
+    meta_df = generate_meta_df_for_joined_tables(
+        [left, right], suffixes, extra_columns=crossmatch_algorithm.extra_columns
+    )
 
+    # perform the crossmatch on each partition pairing using dask delayed for lazy computation
     joined_partitions = align_and_apply(
         [(left, left_pixels), (right, right_pixels), (right.margin, right_pixels)],
         perform_crossmatch,
         crossmatch_algorithm,
         suffixes,
         right.columns,
+        meta_df,
         **kwargs,
-    )
-
-    # generate meta table structure for dask df
-    meta_df = generate_meta_df_for_joined_tables(
-        [left, right], suffixes, extra_columns=crossmatch_algorithm.extra_columns
     )
 
     return construct_catalog_args(joined_partitions, meta_df, alignment)

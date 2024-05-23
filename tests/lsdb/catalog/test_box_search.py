@@ -43,7 +43,7 @@ def test_box_search_ra_complement(small_sky_order1_catalog):
     assert len(complement_search_ra_values) == 97
 
     joined_values = np.concatenate([filtered_ra_values, complement_search_ra_values])
-    all_catalog_values = small_sky_order1_catalog.compute()[ra_column].values
+    all_catalog_values = small_sky_order1_catalog.compute()[ra_column].to_numpy()
     assert np.array_equal(np.sort(joined_values), np.sort(all_catalog_values))
 
 
@@ -122,3 +122,12 @@ def test_box_search_invalid_args(small_sky_order1_catalog):
     # No range values were provided
     with pytest.raises(ValueError, match=ValidatorsErrors.INVALID_RADEC_RANGE):
         small_sky_order1_catalog.box(ra=None, dec=None)
+
+
+def test_empty_box_search_with_margin(small_sky_order1_source_with_margin):
+    ra = (80, 100)
+    dec = (0, 10)
+    box = small_sky_order1_source_with_margin.box(ra, dec, fine=False)
+    small_sky_order1_source_with_margin.plot_pixels()
+    assert len(box._ddf_pixel_map) == 0
+    assert len(box.margin._ddf_pixel_map) == 0

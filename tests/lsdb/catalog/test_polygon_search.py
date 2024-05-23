@@ -60,13 +60,6 @@ def test_polygon_search_filters_partitions(small_sky_order1_catalog):
         assert pixel in polygon_search_catalog._ddf_pixel_map
 
 
-def test_polygon_search_empty(small_sky_order1_catalog):
-    vertices = [(0, 0), (1, 1), (0, 2)]
-    polygon_search_catalog = small_sky_order1_catalog.polygon_search(vertices)
-    assert len(polygon_search_catalog.get_healpix_pixels()) == 0
-    assert len(polygon_search_catalog.hc_structure.pixel_tree) == 0
-
-
 def test_polygon_search_coarse_versus_fine(small_sky_order1_catalog):
     vertices = [(300, -50), (300, -55), (272, -55), (272, -50)]
     coarse_polygon_search = small_sky_order1_catalog.polygon_search(vertices, fine=False)
@@ -138,3 +131,10 @@ def test_polygon_search_wrapped_right_ascension():
     for v in all_vertices_combinations:
         _, wrapped_v_xyz = get_cartesian_polygon(v)
         npt.assert_allclose(vertices_xyz, wrapped_v_xyz, rtol=1e-7)
+
+
+def test_empty_polygon_search_with_margin(small_sky_order1_source_with_margin):
+    vertices = [(80, 0), (100, 30), (120, 0)]
+    polygon = small_sky_order1_source_with_margin.polygon_search(vertices)
+    assert len(polygon._ddf_pixel_map) == 0
+    assert len(polygon.margin._ddf_pixel_map) == 0

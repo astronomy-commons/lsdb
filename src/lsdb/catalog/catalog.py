@@ -35,7 +35,7 @@ class Catalog(HealpixDataset):
 
     def __init__(
         self,
-        ddf: dd.DataFrame,
+        ddf: dd.core.DataFrame,
         ddf_pixel_map: DaskDFPixelMap,
         hc_structure: hc.catalog.Catalog,
         margin: MarginCatalog | None = None,
@@ -309,7 +309,7 @@ class Catalog(HealpixDataset):
         left_index: bool = False,
         right_index: bool = False,
         suffixes: Tuple[str, str] | None = None,
-    ) -> dd.DataFrame:
+    ) -> dd.core.DataFrame:
         """Performs the merge of two catalog Dataframes
 
         More information about pandas merge is available

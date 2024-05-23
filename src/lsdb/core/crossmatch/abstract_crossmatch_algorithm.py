@@ -3,8 +3,9 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Tuple
 
-import hipscat as hc
 import pandas as pd
+from hipscat.catalog.catalog_info import CatalogInfo
+from hipscat.catalog.margin_cache import MarginCacheCatalogInfo
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
 
 
@@ -23,9 +24,9 @@ class AbstractCrossmatchAlgorithm(ABC):
         left_pixel: int,
         right_order: int,
         right_pixel: int,
-        left_metadata: hc.catalog.Catalog,
-        right_metadata: hc.catalog.Catalog,
-        right_margin_hc_structure: hc.catalog.MarginCatalog | None,
+        left_catalog_info: CatalogInfo,
+        right_catalog_info: CatalogInfo,
+        right_margin_catalog_info: MarginCacheCatalogInfo | None,
         suffixes: Tuple[str, str],
     ):
         """Initializes a crossmatch algorithm
@@ -37,12 +38,12 @@ class AbstractCrossmatchAlgorithm(ABC):
             left_pixel (int): The HEALPix pixel number in NESTED ordering of the left pixel
             right_order (int): The HEALPix order of the right pixel
             right_pixel (int): The HEALPix pixel number in NESTED ordering of the right pixel
-            left_metadata (hipscat.Catalog): The hipscat Catalog object with the metadata of the
+            left_catalog_info (hipscat.CatalogInfo): The hipscat CatalogInfo object with the metadata of the
                 left catalog
-            right_metadata (hipscat.Catalog): The hipscat Catalog object with the metadata of the
+            right_catalog_info (hipscat.CatalogInfo): The hipscat CatalogInfo object with the metadata of the
                 right catalog
-            right_margin_hc_structure (hipscat.MarginCatalog): The hipscat MarginCatalog objects
-                with the metadata of the right **margin** catalog
+            right_margin_catalog_info (hipscat.MarginCacheCatalogInfo): The hipscat MarginCacheCatalogInfo
+                objects with the metadata of the right **margin** catalog
             suffixes (Tuple[str,str]): A pair of suffixes to be appended to the end of each column
                 name, with the first appended to the left columns and the second to the right
                 columns
@@ -53,9 +54,9 @@ class AbstractCrossmatchAlgorithm(ABC):
         self.left_pixel = left_pixel
         self.right_order = right_order
         self.right_pixel = right_pixel
-        self.left_metadata = left_metadata
-        self.right_metadata = right_metadata
-        self.right_margin_hc_structure = right_margin_hc_structure
+        self.left_catalog_info = left_catalog_info
+        self.right_catalog_info = right_catalog_info
+        self.right_margin_catalog_info = right_margin_catalog_info
         self.suffixes = suffixes
 
     @abstractmethod
@@ -63,7 +64,7 @@ class AbstractCrossmatchAlgorithm(ABC):
         """Perform a crossmatch"""
 
     # pylint: disable=unused-argument
-    def validate(self, *args, **kwargs):
+    def validate(self):
         """Validate the metadata and arguments.
 
         This method will be called **once**, after the algorithm object has
@@ -76,16 +77,16 @@ class AbstractCrossmatchAlgorithm(ABC):
         if self.right.index.name != HIPSCAT_ID_COLUMN:
             raise ValueError(f"index of right table must be {HIPSCAT_ID_COLUMN}")
         column_names = self.left.columns
-        if self.left_metadata.catalog_info.ra_column not in column_names:
-            raise ValueError(f"left table must have column {self.left_metadata.catalog_info.ra_column}")
-        if self.left_metadata.catalog_info.dec_column not in column_names:
-            raise ValueError(f"left table must have column {self.left_metadata.catalog_info.dec_column}")
+        if self.left_catalog_info.ra_column not in column_names:
+            raise ValueError(f"left table must have column {self.left_catalog_info.ra_column}")
+        if self.left_catalog_info.dec_column not in column_names:
+            raise ValueError(f"left table must have column {self.left_catalog_info.dec_column}")
 
         column_names = self.right.columns
-        if self.right_metadata.catalog_info.ra_column not in column_names:
-            raise ValueError(f"right table must have column {self.right_metadata.catalog_info.ra_column}")
-        if self.right_metadata.catalog_info.dec_column not in column_names:
-            raise ValueError(f"right table must have column {self.right_metadata.catalog_info.dec_column}")
+        if self.right_catalog_info.ra_column not in column_names:
+            raise ValueError(f"right table must have column {self.right_catalog_info.ra_column}")
+        if self.right_catalog_info.dec_column not in column_names:
+            raise ValueError(f"right table must have column {self.right_catalog_info.dec_column}")
 
     @staticmethod
     def _rename_columns_with_suffix(dataframe, suffix):
@@ -105,11 +106,13 @@ class AbstractCrossmatchAlgorithm(ABC):
                 raise ValueError(f"Provided extra column '{col}' not found in definition")
         # Update columns according to crossmatch algorithm specification
         columns_to_update = []
-        for col, col_type in cls.extra_columns.items():
+        for col, col_type in cls.extra_columns.dtypes.items():
             if col not in extra_columns:
                 raise ValueError(f"Missing extra column '{col} of type {col_type}'")
-            if col_type.dtype != extra_columns[col].dtype:
+            if col_type != extra_columns[col].dtype:
                 raise ValueError(f"Invalid type '{col_type}' for extra column '{col}'")
             columns_to_update.append(col)
         for col in columns_to_update:
-            dataframe[col] = extra_columns[col].values
+            new_col = extra_columns[col]
+            new_col.index = dataframe.index
+            dataframe[col] = new_col
