@@ -74,7 +74,7 @@ class AbstractCatalogLoader(Generic[CatalogTypeVar]):
         dask_meta_schema = self._load_metadata_schema(catalog)
         if self.config.columns:
             dask_meta_schema = dask_meta_schema[self.config.columns]
-        kwargs = self.config.get_kwargs_dict()
+        kwargs = dict(self.config.kwargs)
         if self.config.dtype_backend is not None:
             kwargs["dtype_backend"] = self.config.dtype_backend
         return dd.io.from_map(
