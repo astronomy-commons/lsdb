@@ -20,9 +20,7 @@ class MarginCatalogLoader(AbstractCatalogLoader[MarginCatalog]):
         dask_df, dask_df_pixel_map = self._load_dask_df_and_map(filtered_hc_catalog)
         return MarginCatalog(dask_df, dask_df_pixel_map, filtered_hc_catalog)
 
-    def _filter_hipscat_catalog(
-        self, hc_catalog: hc.catalog.MarginCatalog
-    ) -> hc.catalog.MarginCatalog | None:
+    def _filter_hipscat_catalog(self, hc_catalog: hc.catalog.MarginCatalog) -> hc.catalog.MarginCatalog:
         """Filter the catalog pixels according to the spatial filter provided at loading time.
         Margin catalogs, unlike object and source catalogs, are allowed to be filtered to an
         empty catalog. In that case, the margin catalog is considered None."""
