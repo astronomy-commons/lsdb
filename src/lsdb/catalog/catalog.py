@@ -7,6 +7,7 @@ import dask.dataframe as dd
 import hipscat as hc
 import pandas as pd
 from hipscat.catalog.index.index_catalog import IndexCatalog as HCIndexCatalog
+from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.polygon_filter import SphericalCoordinates
 
 from lsdb.catalog.association_catalog import AssociationCatalog
@@ -16,6 +17,7 @@ from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatc
 from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorithm
 from lsdb.core.search import BoxSearch, ConeSearch, IndexSearch, OrderSearch, PolygonSearch
 from lsdb.core.search.abstract_search import AbstractSearch
+from lsdb.core.search.pixel_search import PixelSearch
 from lsdb.dask.crossmatch_catalog_data import crossmatch_catalog_data
 from lsdb.dask.join_catalog_data import join_catalog_data_on, join_catalog_data_through
 from lsdb.dask.partition_indexer import PartitionIndexer
@@ -272,17 +274,27 @@ class Catalog(HealpixDataset):
         return self._search(IndexSearch(ids, catalog_index), fine)
 
     def order_search(self, min_order: int = 0, max_order: int | None = None) -> Catalog:
-        """
-        Filter catalog by order of HEALPix
+        """Filter catalog by order of HEALPix.
 
         Args:
             min_order (int): Minimum HEALPix order to select. Defaults to 0.
             max_order (int): Maximum HEALPix order to select. Defaults to maximum catalog order.
 
         Returns:
-            A new Catalog containing only the pixels of orders specified (inclusive)
+            A new Catalog containing only the pixels of orders specified (inclusive).
         """
         return self._search(OrderSearch(min_order, max_order), fine=False)
+
+    def pixel_search(self, pixels: List[HealpixPixel]) -> Catalog:
+        """Finds all catalog pixels that overlap with the requested pixel set.
+
+        Args:
+            pixels (List[HealpixPixel]): List of HEALPix that define the region for the search.
+
+        Returns:
+            A new Catalog containing only the pixels that overlap with the requested pixel set.
+        """
+        return self._search(PixelSearch(pixels), fine=False)
 
     def _search(self, search: AbstractSearch, fine: bool = True):
         """Find rows by reusable search algorithm.
