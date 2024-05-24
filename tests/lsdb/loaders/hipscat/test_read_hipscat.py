@@ -167,6 +167,26 @@ def test_read_hipscat_subset_no_partitions(small_sky_order1_dir, small_sky_order
         lsdb.read_hipscat(small_sky_order1_dir, search_filter=index_search)
 
 
+def test_read_hipscat_with_margin_subset(
+    small_sky_order1_source_dir, small_sky_order1_source_with_margin, small_sky_order1_source_margin_catalog
+):
+    cone_search = ConeSearch(ra=315, dec=-66, radius_arcsec=20)
+    # Filtering using catalog's cone_search
+    cone_search_catalog = small_sky_order1_source_with_margin.cone_search(ra=315, dec=-66, radius_arcsec=20)
+    # Filtering when calling `read_hipscat`
+    cone_search_catalog_2 = lsdb.read_hipscat(
+        small_sky_order1_source_dir,
+        search_filter=cone_search,
+        margin_cache=small_sky_order1_source_margin_catalog,
+    )
+    assert isinstance(cone_search_catalog_2, lsdb.Catalog)
+    # The partitions of the catalogs are equivalent
+    assert cone_search_catalog.get_healpix_pixels() == cone_search_catalog_2.get_healpix_pixels()
+    assert (
+        cone_search_catalog.margin.get_healpix_pixels() == cone_search_catalog_2.margin.get_healpix_pixels()
+    )
+
+
 def test_read_hipscat_with_backend(small_sky_dir):
     # By default, the schema is backed by pyarrow
     default_catalog = lsdb.read_hipscat(small_sky_dir)
