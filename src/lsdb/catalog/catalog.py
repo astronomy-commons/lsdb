@@ -16,8 +16,10 @@ from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatc
 from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorithm
 from lsdb.core.search import BoxSearch, ConeSearch, IndexSearch, OrderSearch, PolygonSearch
 from lsdb.core.search.abstract_search import AbstractSearch
+from lsdb.core.search.pixel_search import PixelSearch
 from lsdb.dask.crossmatch_catalog_data import crossmatch_catalog_data
 from lsdb.dask.join_catalog_data import join_catalog_data_on, join_catalog_data_through
+from lsdb.dask.partition_indexer import PartitionIndexer
 from lsdb.types import DaskDFPixelMap
 
 
@@ -52,6 +54,11 @@ class Catalog(HealpixDataset):
         """
         super().__init__(ddf, ddf_pixel_map, hc_structure)
         self.margin = margin
+
+    @property
+    def partitions(self):
+        """Returns the partitions of the catalog"""
+        return PartitionIndexer(self)
 
     def head(self, n: int = 5) -> pd.DataFrame:
         """Returns a few rows of data for previewing purposes.
@@ -266,17 +273,28 @@ class Catalog(HealpixDataset):
         return self._search(IndexSearch(ids, catalog_index), fine)
 
     def order_search(self, min_order: int = 0, max_order: int | None = None) -> Catalog:
-        """
-        Filter catalog by order of HEALPix
+        """Filter catalog by order of HEALPix.
 
         Args:
             min_order (int): Minimum HEALPix order to select. Defaults to 0.
             max_order (int): Maximum HEALPix order to select. Defaults to maximum catalog order.
 
         Returns:
-            A new Catalog containing only the pixels of orders specified (inclusive)
+            A new Catalog containing only the pixels of orders specified (inclusive).
         """
         return self._search(OrderSearch(min_order, max_order), fine=False)
+
+    def pixel_search(self, pixels: List[Tuple[int, int]]) -> Catalog:
+        """Finds all catalog pixels that overlap with the requested pixel set.
+
+        Args:
+            pixels (List[Tuple[int, int]]): The list of HEALPix tuples (order, pixel)
+                that define the region for the search.
+
+        Returns:
+            A new Catalog containing only the pixels that overlap with the requested pixel set.
+        """
+        return self._search(PixelSearch(pixels), fine=False)
 
     def _search(self, search: AbstractSearch, fine: bool = True):
         """Find rows by reusable search algorithm.
