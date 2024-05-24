@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List
+from typing import List, Tuple
 
 import pandas as pd
 from hipscat.catalog.catalog_info import CatalogInfo
@@ -18,8 +18,8 @@ class PixelSearch(AbstractSearch):
     Does not filter points inside those partitions.
     """
 
-    def __init__(self, pixels: List[HealpixPixel]):
-        self.pixels = list(set(pixels))
+    def __init__(self, pixels: List[Tuple[int, int]]):
+        self.pixels = [HealpixPixel(o, p) for o, p in set(pixels)]
 
     def search_partitions(self, pixels: List[HealpixPixel]) -> List[HealpixPixel]:
         pixel_tree = PixelTree.from_healpix(pixels)

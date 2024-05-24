@@ -7,7 +7,6 @@ import dask.dataframe as dd
 import hipscat as hc
 import pandas as pd
 from hipscat.catalog.index.index_catalog import IndexCatalog as HCIndexCatalog
-from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.polygon_filter import SphericalCoordinates
 
 from lsdb.catalog.association_catalog import AssociationCatalog
@@ -285,11 +284,12 @@ class Catalog(HealpixDataset):
         """
         return self._search(OrderSearch(min_order, max_order), fine=False)
 
-    def pixel_search(self, pixels: List[HealpixPixel]) -> Catalog:
+    def pixel_search(self, pixels: List[Tuple[int, int]]) -> Catalog:
         """Finds all catalog pixels that overlap with the requested pixel set.
 
         Args:
-            pixels (List[HealpixPixel]): List of HEALPix that define the region for the search.
+            pixels (List[Tuple[int, int]]): The list of HEALPix tuples (order, pixel)
+                that define the region for the search.
 
         Returns:
             A new Catalog containing only the pixels that overlap with the requested pixel set.
