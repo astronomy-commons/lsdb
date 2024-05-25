@@ -80,13 +80,13 @@ class AbstractCatalogLoader(Generic[CatalogTypeVar]):
             return [add_query_params(url, params) for url in urls if is_url(url)]
         
         query_params = {}
-        if "cols" in self.config.kwargs:
-            self.config.columns = self.config.kwargs["cols"]
-            query_params["cols"] = ",".join(self.config.kwargs["cols"])
+        if "columns" in self.config.kwargs:
+            self.config.columns = self.config.kwargs["columns"]
+            query_params["columns"] = ",".join(self.config.kwargs["columns"])
             self.config.kwargs.pop("cols", None)
-        if "query" in self.config.kwargs:
-            query_params["query"] = str(",".join(self.config.kwargs["query"])).replace(" ", "")
-            self.config.kwargs.pop("query", None)
+        if "filters" in self.config.kwargs:
+            query_params["filters"] = str(",".join(self.config.kwargs["filters"])).replace(" ", "")
+            self.config.kwargs.pop("filters", None)
         
         ordered_paths = add_param_to_urls(ordered_paths, query_params)
         # -- end of my changes --
