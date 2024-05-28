@@ -1,14 +1,15 @@
 from __future__ import annotations
 
-from typing import List, Tuple
+from typing import TYPE_CHECKING, List, Tuple
 
 import pandas as pd
 from hipscat.catalog.catalog_info import CatalogInfo
 from hipscat.pixel_math import HealpixPixel
-from hipscat.pixel_math.filter import get_filtered_pixel_list
-from hipscat.pixel_tree.pixel_tree import PixelTree
 
 from lsdb.core.search.abstract_search import AbstractSearch
+
+if TYPE_CHECKING:
+    from lsdb.loaders.hipscat.abstract_catalog_loader import HCCatalogTypeVar
 
 
 class PixelSearch(AbstractSearch):
@@ -21,10 +22,8 @@ class PixelSearch(AbstractSearch):
     def __init__(self, pixels: List[Tuple[int, int]]):
         self.pixels = [HealpixPixel(o, p) for o, p in set(pixels)]
 
-    def search_partitions(self, pixels: List[HealpixPixel]) -> List[HealpixPixel]:
-        pixel_tree = PixelTree.from_healpix(pixels)
-        filter_pixel_tree = PixelTree.from_healpix(self.pixels)
-        return get_filtered_pixel_list(pixel_tree, filter_pixel_tree)
+    def filter_hc_catalog(self, hc_structure: HCCatalogTypeVar) -> HCCatalogTypeVar:
+        return hc_structure.filter_from_pixel_list(self.pixels)
 
     def search_points(self, frame: pd.DataFrame, metadata: CatalogInfo) -> pd.DataFrame:
         return frame
