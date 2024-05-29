@@ -82,7 +82,6 @@ def read_hipscat(
     loader = get_loader_for_type(catalog_type_to_use, path, config, storage_options=storage_options)
     return loader.load_catalog()
 
-
 def _get_dataset_class_from_catalog_info(
     base_catalog_path: str, storage_options: Union[Dict[Any, Any], None] = None
 ) -> Type[Dataset]:

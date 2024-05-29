@@ -56,7 +56,43 @@ class AbstractCatalogLoader(Generic[CatalogTypeVar]):
         ordered_pixels = np.array(pixels)[get_pixel_argsort(pixels)]
         ordered_paths = self._get_paths_from_pixels(catalog, ordered_pixels)
         divisions = get_pixels_divisions(ordered_pixels)
+        
+        # -- my changes --
+        from urllib.parse import urlparse, urlunparse, parse_qs, urlencode
+        def is_url(path):
+            try:
+                result = urlparse(path)
+                # Check if the scheme and netloc are present
+                return all([result.scheme, result.netloc])
+            except:
+                return False
+
+        def add_query_params(url, params):
+            """ Adds or updates query parameters to the URL """
+            url_parts = list(urlparse(url))
+            query = dict(parse_qs(url_parts[4]))
+            query.update(params)
+            url_parts[4] = urlencode(query, doseq=True)
+            return urlunparse(url_parts)
+        
+        def add_param_to_urls(urls, params):
+            """ Adds or updates query parameters to the URL """
+            return [add_query_params(url, params) for url in urls if is_url(url)]
+        
+        query_params = {}
+        if "columns" in self.config.kwargs:
+            self.config.columns = self.config.kwargs["columns"]
+            query_params["columns"] = ",".join(self.config.kwargs["columns"])
+            self.config.kwargs.pop("cols", None)
+        if "filters" in self.config.kwargs:
+            query_params["filters"] = str(",".join(self.config.kwargs["filters"])).replace(" ", "")
+            self.config.kwargs.pop("filters", None)
+        
+        ordered_paths = add_param_to_urls(ordered_paths, query_params)
+        # -- end of my changes --
+        
         ddf = self._load_df_from_paths(catalog, ordered_paths, divisions)
+        
         pixel_to_index_map = {pixel: index for index, pixel in enumerate(ordered_pixels)}
         return ddf, pixel_to_index_map
 
