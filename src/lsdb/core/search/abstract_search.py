@@ -23,6 +23,9 @@ class AbstractSearch(ABC):
           individual rows matching the query terms.
     """
 
+    def __init__(self, fine: bool = True):
+        self.fine = fine
+
     def filter_hc_catalog(self, hc_structure: HCCatalogTypeVar) -> HCCatalogTypeVar:
         """Filters the hispcat catalog object to the partitions included in the search"""
         max_order = hc_structure.get_max_coverage_order()

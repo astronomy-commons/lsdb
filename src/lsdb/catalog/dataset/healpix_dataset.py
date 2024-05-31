@@ -133,7 +133,6 @@ class HealpixDataset(Dataset):
         metadata: hc.catalog.Catalog,
         filtered_pixels: List[HealpixPixel],
         search: AbstractSearch,
-        fine: bool = True,
     ):
         """Performs a search on the catalog from a list of pixels to search in
 
@@ -141,7 +140,6 @@ class HealpixDataset(Dataset):
             metadata (hc.catalog.Catalog): The metadata of the hipscat catalog.
             filtered_pixels (List[HealpixPixel]): List of pixels in the catalog to be searched.
             search (AbstractSearch): Instance of AbstractSearch.
-            fine (bool): True if points are to be filtered, False if not. Defaults to True.
 
         Returns:
             A tuple containing a dictionary mapping pixel to partition index and a dask dataframe
@@ -151,7 +149,7 @@ class HealpixDataset(Dataset):
         targeted_partitions = [partitions[self._ddf_pixel_map[pixel]] for pixel in filtered_pixels]
         filtered_partitions = (
             [search.search_points(partition, metadata.catalog_info) for partition in targeted_partitions]
-            if fine
+            if search.fine
             else targeted_partitions
         )
         return self._construct_search_ddf(filtered_pixels, filtered_partitions)

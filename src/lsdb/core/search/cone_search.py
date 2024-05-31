@@ -16,10 +16,10 @@ class ConeSearch(AbstractSearch):
     Filters partitions in the catalog to those that have some overlap with the cone.
     """
 
-    def __init__(self, ra, dec, radius_arcsec):
+    def __init__(self, ra: float, dec: float, radius_arcsec: float, fine: bool = True):
+        super().__init__(fine)
         validate_radius(radius_arcsec)
         validate_declination_values(dec)
-
         self.ra = ra
         self.dec = dec
         self.radius_arcsec = radius_arcsec
