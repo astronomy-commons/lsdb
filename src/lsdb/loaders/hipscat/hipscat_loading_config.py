@@ -48,3 +48,21 @@ class HipscatLoadingConfig:
         elif self.dtype_backend == "numpy_nullable":
             mapper = _arrow_dtype_mapping().get
         return mapper
+    
+    def make_query_url_params(self) -> str:
+        """Create a url query string from the search filter"""
+        url_params = {}
+        
+        if self.columns and len(self.columns) > 0:
+            url_params['columns'] = self.columns
+        
+        if "filters" in self.kwargs:
+            url_params['filters'] = []
+            for filter in self.kwargs["filters"]:
+                # This is how lsdb server expects the filters, JSON doesnt support tuples
+                url_params['filters'].append(f"{filter[0]}{filter[1]}{filter[2]}")
+        
+        # TODO: If kept "filters", this will raise a error when .compute() is called on the dask dataframe
+        self.kwargs.pop("filters", None)
+            
+        return url_params
