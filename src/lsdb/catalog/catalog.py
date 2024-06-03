@@ -309,10 +309,9 @@ class Catalog(HealpixDataset):
         Returns:
             A new Catalog containing the points filtered to those matching the search parameters.
         """
-        filtered_pixels = search.search_partitions(self.hc_structure.get_healpix_pixels())
-        filtered_hc_structure = self.hc_structure.filter_from_pixel_list(filtered_pixels)
+        filtered_hc_structure = search.filter_hc_catalog(self.hc_structure)
         ddf_partition_map, search_ddf = self._perform_search(
-            filtered_hc_structure, filtered_pixels, search, fine
+            filtered_hc_structure, filtered_hc_structure.get_healpix_pixels(), search, fine
         )
         margin = self.margin._search(filtered_hc_structure, search, fine) if self.margin is not None else None
         return Catalog(search_ddf, ddf_partition_map, filtered_hc_structure, margin=margin)

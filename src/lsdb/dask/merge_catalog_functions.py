@@ -12,6 +12,7 @@ from hipscat.catalog import PartitionInfo
 from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN, healpix_to_hipscat_id
 from hipscat.pixel_tree import PixelAlignment, PixelAlignmentType, align_trees
+from hipscat.pixel_tree.moc_utils import copy_moc
 from hipscat.pixel_tree.pixel_alignment import align_with_mocs
 
 from lsdb.dask.divisions import get_pixels_divisions
@@ -89,7 +90,7 @@ def align_catalogs(left: Catalog, right: Catalog, add_right_margin: bool = True)
     if right_added_radius is not None:
         right_moc_depth_resol = hp.nside2resol(hp.order2nside(right_moc.max_order), arcmin=True) * 60
         if right_added_radius < right_moc_depth_resol:
-            right_moc = right_moc.add_neighbours()
+            right_moc = copy_moc(right_moc).add_neighbours()
         else:
             delta_order = int(np.ceil(np.log2(right_added_radius / right_moc_depth_resol)))
             right_moc = right_moc.degrade_to_order(right_moc.max_order - delta_order).add_neighbours()
