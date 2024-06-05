@@ -1,4 +1,3 @@
-import dask
 import pandas as pd
 from astropy.coordinates import SkyCoord
 from hipscat.catalog.catalog_info import CatalogInfo

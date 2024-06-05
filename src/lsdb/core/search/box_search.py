@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import Tuple
 
-import dask
 import numpy as np
 import pandas as pd
 from hipscat.catalog.catalog_info import CatalogInfo
