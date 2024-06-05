@@ -87,7 +87,10 @@ class AbstractCrossmatchAlgorithm(ABC):
         This method will be called **once**, after the algorithm object has
         been initialized, during the lazy construction of the execution graph.
         This can be used to catch simple errors without waiting for an
-        expensive ``.compute()`` call."""
+        expensive ``.compute()`` call.
+
+        This must accept any additional arguments the `crossmatch` method accepts.
+        """
         # Check that we have the appropriate columns in our dataset.
         if left._ddf.index.name != HIPSCAT_ID_COLUMN:
             raise ValueError(f"index of left table must be {HIPSCAT_ID_COLUMN}")

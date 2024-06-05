@@ -6,6 +6,7 @@ from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
 
 import lsdb
+from lsdb import Catalog
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
 from lsdb.core.crossmatch.bounded_kdtree_match import BoundedKdTreeCrossmatch
 from lsdb.core.crossmatch.kdtree_match import KdTreeCrossmatch
@@ -249,7 +250,7 @@ def test_crossmatch_with_moc(small_sky_order1_catalog):
     assert xmatched.get_healpix_pixels() == [HealpixPixel(order, p) for p in pixels]
 
 
-# pylint: disable=too-few-public-methods
+# pylint: disable=too-few-public-methods, unused-argument
 class MockCrossmatchAlgorithm(AbstractCrossmatchAlgorithm):
     """Mock class used to test a crossmatch algorithm"""
 
@@ -269,6 +270,10 @@ class MockCrossmatchAlgorithm(AbstractCrossmatchAlgorithm):
 
         return left_indexes.to_numpy(), right_indexes.to_numpy(), extra_columns
 
+    @classmethod
+    def validate(cls, left: Catalog, right: Catalog, mock_results: pd.DataFrame = None):
+        super().validate(left, right)
+
 
 def test_custom_crossmatch_algorithm(small_sky_catalog, small_sky_xmatch_catalog, xmatch_mock):
     with pytest.warns(RuntimeWarning, match="Results may be incomplete and/or inaccurate"):
@@ -283,13 +288,13 @@ def test_custom_crossmatch_algorithm(small_sky_catalog, small_sky_xmatch_catalog
         assert xmatch_row["_DIST"].to_numpy() == pytest.approx(correct_row["dist"])
 
 
-# pylint: disable=too-few-public-methods
+# pylint: disable=too-few-public-methods, arguments-differ, unused-argument
 class MockCrossmatchAlgorithmOverwrite(AbstractCrossmatchAlgorithm):
     """Mock class used to test a crossmatch algorithm"""
 
     extra_columns = pd.DataFrame({"_DIST": pd.Series(dtype=np.float64)})
 
-    def crossmatch(self, mock_results: pd.DataFrame = None, **kwargs):
+    def crossmatch(self, mock_results: pd.DataFrame = None):
         left_reset = self.left.reset_index(drop=True)
         right_reset = self.right.reset_index(drop=True)
         self._rename_columns_with_suffix(self.left, self.suffixes[0])
@@ -314,6 +319,10 @@ class MockCrossmatchAlgorithmOverwrite(AbstractCrossmatchAlgorithm):
         extra_columns = pd.DataFrame({"_DIST": mock_results["dist"]})
         self._append_extra_columns(out, extra_columns)
         return out
+
+    @classmethod
+    def validate(cls, left: Catalog, right: Catalog, mock_results: pd.DataFrame = None):
+        super().validate(left, right)
 
 
 def test_custom_crossmatch_algorithm_overwrite(small_sky_catalog, small_sky_xmatch_catalog, xmatch_mock):

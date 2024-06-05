@@ -8,8 +8,10 @@ import dask.dataframe as dd
 from hipscat.pixel_tree import PixelAlignment
 
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
-from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorithm
-from lsdb.core.crossmatch.kdtree_match import KdTreeCrossmatch
+from lsdb.core.crossmatch.crossmatch_algorithms import (
+    BuiltInCrossmatchAlgorithm,
+    builtin_crossmatch_algorithms,
+)
 from lsdb.dask.merge_catalog_functions import (
     align_and_apply,
     align_catalogs,
@@ -23,8 +25,6 @@ from lsdb.types import DaskDFPixelMap
 
 if TYPE_CHECKING:
     from lsdb.catalog.catalog import Catalog
-
-builtin_crossmatch_algorithms = {BuiltInCrossmatchAlgorithm.KD_TREE: KdTreeCrossmatch}
 
 
 # pylint: disable=too-many-arguments, unused-argument
