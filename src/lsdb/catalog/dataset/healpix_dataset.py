@@ -152,7 +152,10 @@ class HealpixDataset(Dataset):
         filtered_partitions_ddf = self._ddf.partitions[target_partitions_indices]
         if search.fine:
             filtered_partitions_ddf = filtered_partitions_ddf.map_partitions(
-                search.search_points, metadata, meta=filtered_partitions_ddf, transform_divisions=False
+                search.search_points,
+                metadata.catalog_info,
+                meta=filtered_partitions_ddf,
+                transform_divisions=False,
             )
         ddf_partition_map = {pixel: i for i, pixel in enumerate(filtered_pixels)}
         return ddf_partition_map, filtered_partitions_ddf
