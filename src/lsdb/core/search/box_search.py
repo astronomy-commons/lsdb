@@ -21,7 +21,13 @@ class BoxSearch(AbstractSearch):
     Filters partitions in the catalog to those that have some overlap with the region.
     """
 
-    def __init__(self, ra: Tuple[float, float] | None = None, dec: Tuple[float, float] | None = None):
+    def __init__(
+        self,
+        ra: Tuple[float, float] | None = None,
+        dec: Tuple[float, float] | None = None,
+        fine: bool = True,
+    ):
+        super().__init__(fine)
         ra = tuple(wrap_ra_angles(ra)) if ra else None
         validate_box_search(ra, dec)
         self.ra, self.dec = ra, dec

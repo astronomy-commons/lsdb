@@ -20,7 +20,8 @@ class IndexSearch(AbstractSearch):
     NB: This requires a previously-computed catalog index table.
     """
 
-    def __init__(self, ids, catalog_index: IndexCatalog):
+    def __init__(self, ids, catalog_index: IndexCatalog, fine: bool = True):
+        super().__init__(fine)
         self.ids = ids
         self.catalog_index = catalog_index
 

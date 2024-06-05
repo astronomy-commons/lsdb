@@ -20,7 +20,8 @@ class PolygonSearch(AbstractSearch):
     Filters partitions in the catalog to those that have some overlap with the region.
     """
 
-    def __init__(self, vertices: List[SphericalCoordinates]):
+    def __init__(self, vertices: List[SphericalCoordinates], fine: bool = True):
+        super().__init__(fine)
         _, dec = np.array(vertices).T
         validate_declination_values(dec)
         self.vertices = np.array(vertices)

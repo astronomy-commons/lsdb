@@ -20,6 +20,7 @@ class PixelSearch(AbstractSearch):
     """
 
     def __init__(self, pixels: List[Tuple[int, int]]):
+        super().__init__(fine=False)
         self.pixels = [HealpixPixel(o, p) for o, p in set(pixels)]
 
     def filter_hc_catalog(self, hc_structure: HCCatalogTypeVar) -> HCCatalogTypeVar:

@@ -213,9 +213,9 @@ class Catalog(HealpixDataset):
             A new Catalog containing the points filtered to those within the cone, and the partitions that
             overlap the cone.
         """
-        return self._search(ConeSearch(ra, dec, radius_arcsec), fine)
+        return self.search(ConeSearch(ra, dec, radius_arcsec, fine))
 
-    def box(
+    def box_search(
         self,
         ra: Tuple[float, float] | None = None,
         dec: Tuple[float, float] | None = None,
@@ -235,7 +235,7 @@ class Catalog(HealpixDataset):
             A new catalog containing the points filtered to those within the region, and the
             partitions that have some overlap with it.
         """
-        return self._search(BoxSearch(ra=ra, dec=dec), fine)
+        return self.search(BoxSearch(ra, dec, fine))
 
     def polygon_search(self, vertices: List[SphericalCoordinates], fine: bool = True) -> Catalog:
         """Perform a polygonal search to filter the catalog.
@@ -252,7 +252,7 @@ class Catalog(HealpixDataset):
             A new catalog containing the points filtered to those within the
             polygonal region, and the partitions that have some overlap with it.
         """
-        return self._search(PolygonSearch(vertices), fine)
+        return self.search(PolygonSearch(vertices, fine))
 
     def index_search(self, ids, catalog_index: HCIndexCatalog, fine: bool = True) -> Catalog:
         """Find rows by ids (or other value indexed by a catalog index).
@@ -270,7 +270,7 @@ class Catalog(HealpixDataset):
         Returns:
             A new Catalog containing the points filtered to those matching the ids.
         """
-        return self._search(IndexSearch(ids, catalog_index), fine)
+        return self.search(IndexSearch(ids, catalog_index, fine))
 
     def order_search(self, min_order: int = 0, max_order: int | None = None) -> Catalog:
         """Filter catalog by order of HEALPix.
@@ -282,7 +282,7 @@ class Catalog(HealpixDataset):
         Returns:
             A new Catalog containing only the pixels of orders specified (inclusive).
         """
-        return self._search(OrderSearch(min_order, max_order), fine=False)
+        return self.search(OrderSearch(min_order, max_order))
 
     def pixel_search(self, pixels: List[Tuple[int, int]]) -> Catalog:
         """Finds all catalog pixels that overlap with the requested pixel set.
@@ -294,9 +294,9 @@ class Catalog(HealpixDataset):
         Returns:
             A new Catalog containing only the pixels that overlap with the requested pixel set.
         """
-        return self._search(PixelSearch(pixels), fine=False)
+        return self.search(PixelSearch(pixels))
 
-    def _search(self, search: AbstractSearch, fine: bool = True):
+    def search(self, search: AbstractSearch):
         """Find rows by reusable search algorithm.
 
         Filters partitions in the catalog to those that match some rough criteria.
@@ -304,16 +304,15 @@ class Catalog(HealpixDataset):
 
         Args:
             search (AbstractSearch): Instance of AbstractSearch.
-            fine (bool): True if points are to be filtered, False if not. Defaults to True.
 
         Returns:
             A new Catalog containing the points filtered to those matching the search parameters.
         """
         filtered_hc_structure = search.filter_hc_catalog(self.hc_structure)
         ddf_partition_map, search_ddf = self._perform_search(
-            filtered_hc_structure, filtered_hc_structure.get_healpix_pixels(), search, fine
+            filtered_hc_structure, filtered_hc_structure.get_healpix_pixels(), search
         )
-        margin = self.margin._search(filtered_hc_structure, search, fine) if self.margin is not None else None
+        margin = self.margin.search(filtered_hc_structure, search) if self.margin is not None else None
         return Catalog(search_ddf, ddf_partition_map, filtered_hc_structure, margin=margin)
 
     def merge(
