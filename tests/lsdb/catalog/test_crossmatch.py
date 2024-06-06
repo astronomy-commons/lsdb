@@ -229,6 +229,23 @@ class TestBoundedCrossmatch:
         assert len(xmatched) == 3
         assert all(xmatched["_dist_arcsec"] <= 0.01 * 3600)
 
+    @staticmethod
+    def test_crossmatch_empty_right_partition(algo, small_sky_order1_catalog, small_sky_xmatch_catalog):
+        ra = 300
+        dec = -60
+        radius_arcsec = 3 * 3600
+        cone = small_sky_xmatch_catalog.cone_search(ra, dec, radius_arcsec)
+        assert len(cone.get_healpix_pixels()) == 2
+        assert len(cone.get_partition(1, 44)) == 5
+        # There is an empty partition in the right catalog
+        assert len(cone.get_partition(1, 46)) == 0
+        with pytest.warns(RuntimeWarning, match="Results may be incomplete and/or inaccurate"):
+            xmatched = small_sky_order1_catalog.crossmatch(
+                cone, radius_arcsec=0.01 * 3600, algorithm=algo
+            ).compute()
+        assert len(xmatched) == 3
+        assert all(xmatched["_dist_arcsec"] <= 0.01 * 3600)
+
 
 def test_crossmatch_with_moc(small_sky_order1_catalog):
     order = 1
