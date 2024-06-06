@@ -108,6 +108,7 @@ def test_read_hipscat_subset_with_cone_search(small_sky_order1_dir, small_sky_or
     assert isinstance(cone_search_catalog_2, lsdb.Catalog)
     # The partitions of the catalogs are equivalent
     assert cone_search_catalog.get_healpix_pixels() == cone_search_catalog_2.get_healpix_pixels()
+    pd.testing.assert_frame_equal(cone_search_catalog.compute(), cone_search_catalog_2.compute())
 
 
 def test_read_hipscat_subset_with_box_search(small_sky_order1_dir, small_sky_order1_catalog):
@@ -119,6 +120,7 @@ def test_read_hipscat_subset_with_box_search(small_sky_order1_dir, small_sky_ord
     assert isinstance(box_search_catalog_2, lsdb.Catalog)
     # The partitions of the catalogs are equivalent
     assert box_search_catalog.get_healpix_pixels() == box_search_catalog_2.get_healpix_pixels()
+    pd.testing.assert_frame_equal(box_search_catalog.compute(), box_search_catalog_2.compute())
 
 
 def test_read_hipscat_subset_with_polygon_search(small_sky_order1_dir, small_sky_order1_catalog):
@@ -131,6 +133,7 @@ def test_read_hipscat_subset_with_polygon_search(small_sky_order1_dir, small_sky
     assert isinstance(polygon_search_catalog_2, lsdb.Catalog)
     # The partitions of the catalogs are equivalent
     assert polygon_search_catalog.get_healpix_pixels() == polygon_search_catalog_2.get_healpix_pixels()
+    pd.testing.assert_frame_equal(polygon_search_catalog.compute(), polygon_search_catalog_2.compute())
 
 
 def test_read_hipscat_subset_with_index_search(

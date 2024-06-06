@@ -1,24 +1,21 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import Generic, List, Tuple, Type, TypeVar
+from typing import Generic, List, Tuple, Type
 
 import dask.dataframe as dd
 import hipscat as hc
 import numpy as np
 import pandas as pd
-from hipscat.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
 from hipscat.io.file_io import file_io
 from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.healpix_pixel_function import get_pixel_argsort
 
 from lsdb.catalog.catalog import DaskDFPixelMap
-from lsdb.catalog.dataset.dataset import Dataset
+from lsdb.core.search.utils import _perform_search
 from lsdb.dask.divisions import get_pixels_divisions
 from lsdb.loaders.hipscat.hipscat_loading_config import HipscatLoadingConfig
-
-CatalogTypeVar = TypeVar("CatalogTypeVar", bound=Dataset)
-HCCatalogTypeVar = TypeVar("HCCatalogTypeVar", bound=HCHealpixDataset)
+from lsdb.types import CatalogTypeVar, HCCatalogTypeVar
 
 
 class AbstractCatalogLoader(Generic[CatalogTypeVar]):
@@ -50,7 +47,7 @@ class AbstractCatalogLoader(Generic[CatalogTypeVar]):
         """Load `hipscat` library catalog object with catalog metadata and partition data"""
         return catalog_type.read_from_hipscat(self.path, storage_options=self.storage_options)
 
-    def _load_dask_df_and_map(self, catalog: HCHealpixDataset) -> Tuple[dd.core.DataFrame, DaskDFPixelMap]:
+    def _load_dask_df_and_map(self, catalog: HCCatalogTypeVar) -> Tuple[dd.core.DataFrame, DaskDFPixelMap]:
         """Load Dask DF from parquet files and make dict of HEALPix pixel to partition index"""
         pixels = catalog.get_healpix_pixels()
         ordered_pixels = np.array(pixels)[get_pixel_argsort(pixels)]
@@ -61,7 +58,7 @@ class AbstractCatalogLoader(Generic[CatalogTypeVar]):
         return ddf, pixel_to_index_map
 
     def _get_paths_from_pixels(
-        self, catalog: HCHealpixDataset, ordered_pixels: List[HealpixPixel]
+        self, catalog: HCCatalogTypeVar, ordered_pixels: List[HealpixPixel]
     ) -> List[hc.io.FilePointer]:
         paths = hc.io.paths.pixel_catalog_files(
             catalog.catalog_base_dir, ordered_pixels, self.storage_options
@@ -69,7 +66,7 @@ class AbstractCatalogLoader(Generic[CatalogTypeVar]):
         return paths
 
     def _load_df_from_paths(
-        self, catalog: HCHealpixDataset, paths: List[hc.io.FilePointer], divisions: Tuple[int, ...] | None
+        self, catalog: HCCatalogTypeVar, paths: List[hc.io.FilePointer], divisions: Tuple[int, ...] | None
     ) -> dd.core.DataFrame:
         dask_meta_schema = self._load_metadata_schema(catalog)
         if self.config.columns:
@@ -89,11 +86,19 @@ class AbstractCatalogLoader(Generic[CatalogTypeVar]):
             )
         return dd.io.from_pandas(dask_meta_schema, npartitions=1)
 
-    def _load_metadata_schema(self, catalog: HCHealpixDataset) -> pd.DataFrame:
+    def _load_metadata_schema(self, catalog: HCCatalogTypeVar) -> pd.DataFrame:
         metadata_pointer = hc.io.paths.get_common_metadata_pointer(catalog.catalog_base_dir)
         metadata = file_io.read_parquet_metadata(metadata_pointer, storage_options=self.storage_options)
         return (
             metadata.schema.to_arrow_schema()
             .empty_table()
             .to_pandas(types_mapper=self.config.get_dtype_mapper())
+        )
+
+    def _apply_fine_filtering(self, ddf, ddf_pixel_map, filtered_hc_catalog) -> Tuple[dd.DataFrame, dict]:
+        """Apply the fine filtering to the catalog data in the partitions."""
+        return (
+            _perform_search(ddf, ddf_pixel_map, filtered_hc_catalog, self.config.search_filter)
+            if self.config.search_filter is not None
+            else (ddf, ddf_pixel_map)
         )

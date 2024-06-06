@@ -17,6 +17,7 @@ from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorith
 from lsdb.core.search import BoxSearch, ConeSearch, IndexSearch, OrderSearch, PolygonSearch
 from lsdb.core.search.abstract_search import AbstractSearch
 from lsdb.core.search.pixel_search import PixelSearch
+from lsdb.core.search.utils import _perform_search
 from lsdb.dask.crossmatch_catalog_data import crossmatch_catalog_data
 from lsdb.dask.join_catalog_data import join_catalog_data_on, join_catalog_data_through
 from lsdb.dask.partition_indexer import PartitionIndexer
@@ -309,10 +310,10 @@ class Catalog(HealpixDataset):
             A new Catalog containing the points filtered to those matching the search parameters.
         """
         filtered_hc_structure = search.filter_hc_catalog(self.hc_structure)
-        ddf_partition_map, search_ddf = self._perform_search(
-            filtered_hc_structure, filtered_hc_structure.get_healpix_pixels(), search
+        search_ddf, ddf_partition_map = _perform_search(
+            self._ddf, self._ddf_pixel_map, filtered_hc_structure, search
         )
-        margin = self.margin.search(filtered_hc_structure, search) if self.margin is not None else None
+        margin = self.margin.search(search) if self.margin is not None else None
         return Catalog(search_ddf, ddf_partition_map, filtered_hc_structure, margin=margin)
 
     def merge(
