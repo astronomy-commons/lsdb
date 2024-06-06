@@ -7,13 +7,13 @@ from hipscat.pixel_math import HealpixPixel
 
 from lsdb.core.search.abstract_search import AbstractSearch
 from lsdb.dask.divisions import get_pixels_divisions
-from lsdb.types import HCCatalogTypeVar
+from lsdb.types import HCCatalog
 
 
 def _perform_search(
     ddf: dd.DataFrame,
     ddf_pixel_map: dict,
-    metadata: HCCatalogTypeVar,
+    metadata: HCCatalog,
     search: AbstractSearch,
 ) -> Tuple[dd.core.DataFrame, dict]:
     """Performs a search on the catalog from a list of pixels to search in.
@@ -21,7 +21,7 @@ def _perform_search(
     Args:
         ddf (dd.DataFrame): The catalog Dask DataFrame to be filtered.
         ddf_pixel_map (dict): The catalog pixel-to-partition map.
-        metadata (HCCatalogTypeVar): The metadata of the hipscat catalog.
+        metadata (HCCatalog): The metadata of the hipscat catalog.
         search (AbstractSearch): Instance of AbstractSearch.
 
     Returns:

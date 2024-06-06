@@ -15,7 +15,7 @@ from lsdb.catalog.catalog import DaskDFPixelMap
 from lsdb.core.search.utils import _perform_search
 from lsdb.dask.divisions import get_pixels_divisions
 from lsdb.loaders.hipscat.hipscat_loading_config import HipscatLoadingConfig
-from lsdb.types import CatalogTypeVar, HCCatalogTypeVar
+from lsdb.types import CatalogTypeVar, HCCatalog, HCCatalogTypeVar
 
 
 class AbstractCatalogLoader(Generic[CatalogTypeVar]):
@@ -95,7 +95,12 @@ class AbstractCatalogLoader(Generic[CatalogTypeVar]):
             .to_pandas(types_mapper=self.config.get_dtype_mapper())
         )
 
-    def _apply_fine_filtering(self, ddf, ddf_pixel_map, filtered_hc_catalog) -> Tuple[dd.DataFrame, dict]:
+    def _apply_fine_filtering(
+        self,
+        ddf: dd.DataFrame,
+        ddf_pixel_map: dict,
+        filtered_hc_catalog: HCCatalog,
+    ) -> Tuple[dd.DataFrame, dict]:
         """Apply the fine filtering to the catalog data in the partitions."""
         return (
             _perform_search(ddf, ddf_pixel_map, filtered_hc_catalog, self.config.search_filter)
