@@ -189,6 +189,17 @@ class AbstractCrossmatchAlgorithm(ABC):
         right_idx: npt.NDArray[np.int64],
         extra_cols: pd.DataFrame,
     ) -> pd.DataFrame:
+        """Creates a df containing the crossmatch result from matching indices and additional columns
+
+        Args:
+            left_idx (np.ndarray): indices of the matching rows from the left table
+            right_idx (np.ndarray): indices of the matching rows from the right table
+            extra_cols (pd.DataFrame): dataframe containing additional columns from crossmatching
+
+        Returns:
+            A dataframe with the matching rows from the left and right table concatenated together, with the
+            additional columns added
+        """
         # rename columns so no same names during merging
         self._rename_columns_with_suffix(self.left, self.suffixes[0])
         self._rename_columns_with_suffix(self.right, self.suffixes[1])
