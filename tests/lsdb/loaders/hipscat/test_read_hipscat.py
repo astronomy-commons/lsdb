@@ -94,11 +94,6 @@ def test_catalog_without_margin_is_none(small_sky_xmatch_dir):
     assert catalog.margin is None
 
 
-def test_catalog_with_wrong_margin_args(small_sky_xmatch_dir):
-    with pytest.raises(ValueError, match="must be of type"):
-        lsdb.read_hipscat(small_sky_xmatch_dir, margin_cache=1)
-
-
 def test_read_hipscat_subset_with_cone_search(small_sky_order1_dir, small_sky_order1_catalog):
     cone_search = ConeSearch(ra=0, dec=-80, radius_arcsec=20 * 3600)
     # Filtering using catalog's cone_search

@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Type, Union
 import hipscat as hc
 from hipscat.catalog import CatalogType
 from hipscat.catalog.dataset import BaseCatalogInfo
+from hipscat.io.file_io import FilePointer
 
 from lsdb.catalog.association_catalog import AssociationCatalog
 from lsdb.catalog.catalog import Catalog
@@ -26,11 +27,11 @@ dataset_class_for_catalog_type: Dict[CatalogType, Type[Dataset]] = {
 
 # pylint: disable=unused-argument
 def read_hipscat(
-    path: str,
+    path: FilePointer,
     catalog_type: Type[CatalogTypeVar] | None = None,
     search_filter: AbstractSearch | None = None,
     columns: List[str] | None = None,
-    margin_cache: MarginCatalog | str | None = None,
+    margin_cache: MarginCatalog | FilePointer | None = None,
     dtype_backend: str | None = "pyarrow",
     storage_options: dict | None = None,
     **kwargs,
@@ -50,7 +51,7 @@ def read_hipscat(
         )
 
     Args:
-        path (str): The path that locates the root of the HiPSCat catalog
+        path (FilePointer): The path that locates the root of the HiPSCat catalog
         catalog_type (Type[Dataset]): Default `None`. By default, the type of the catalog is loaded
             from the catalog info and the corresponding object type is returned. Python's type hints
             cannot allow a return type specified by a loaded value, so to use the correct return
@@ -58,8 +59,8 @@ def read_hipscat(
             the lsdb class for that catalog.
         search_filter (Type[AbstractSearch]): Default `None`. The filter method to be applied.
         columns (List[str]): Default `None`. The set of columns to filter the catalog on.
-        margin_cache (MarginCatalog | str): The margin cache for the main catalog, provided as a path
-            on disk or as an instance of the MarginCatalog object. Defaults to None.
+        margin_cache (MarginCatalog | FilePointer): The margin cache for the main catalog, provided
+            as a path on disk or as an instance of the MarginCatalog object. Defaults to None.
         dtype_backend (str): Backend data type to apply to the catalog.
             Defaults to "pyarrow". If None, no type conversion is performed.
         storage_options (dict): Dictionary that contains abstract filesystem credentials
