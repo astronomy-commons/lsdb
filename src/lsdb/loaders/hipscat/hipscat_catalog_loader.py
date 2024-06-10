@@ -18,9 +18,12 @@ class HipscatCatalogLoader(AbstractCatalogLoader[Catalog]):
         """
         hc_catalog = self._load_hipscat_catalog(hc.catalog.Catalog)
         filtered_hc_catalog = self._filter_hipscat_catalog(hc_catalog)
-        ddf, ddf_pixel_map = self._load_dask_df_and_map(filtered_hc_catalog)
-        ddf, ddf_pixel_map = self._apply_fine_filtering(ddf, ddf_pixel_map, filtered_hc_catalog)
-        return Catalog(ddf, ddf_pixel_map, filtered_hc_catalog, self._load_margin_catalog())
+        dask_df, dask_df_pixel_map = self._load_dask_df_and_map(filtered_hc_catalog)
+        catalog = Catalog(dask_df, dask_df_pixel_map, filtered_hc_catalog)
+        if self.config.search_filter is not None:
+            catalog = catalog.search(self.config.search_filter)
+        catalog.margin = self._load_margin_catalog()
+        return catalog
 
     def _filter_hipscat_catalog(self, hc_catalog: hc.catalog.Catalog) -> hc.catalog.Catalog:
         """Filter the catalog pixels according to the spatial filter provided at loading time.

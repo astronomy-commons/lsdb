@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import warnings
-from typing import Any, Callable, Dict, Iterable, List, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Tuple, cast
 
 import dask
 import dask.dataframe as dd
 import healpy as hp
+import hipscat as hc
 import numpy as np
 import pandas as pd
 from dask.delayed import Delayed, delayed
@@ -19,7 +20,8 @@ from typing_extensions import Self
 from lsdb import io
 from lsdb.catalog.dataset.dataset import Dataset
 from lsdb.core.plotting.skymap import compute_skymap, perform_inner_skymap
-from lsdb.core.search.utils import _construct_search_ddf
+from lsdb.core.search.abstract_search import AbstractSearch
+from lsdb.dask.divisions import get_pixels_divisions
 from lsdb.types import DaskDFPixelMap
 
 
@@ -126,6 +128,49 @@ class HealpixDataset(Dataset):
         ddf = self._ddf.query(expr)
         return self.__class__(ddf, self._ddf_pixel_map, self.hc_structure)
 
+    def _perform_search(
+        self,
+        metadata: hc.catalog.Catalog | hc.catalog.MarginCatalog,
+        search: AbstractSearch,
+    ) -> Tuple[dict, dd.core.DataFrame]:
+        """Performs a search on the catalog from a list of pixels to search in
+
+        Args:
+            metadata (hc.catalog.Catalog | hc.catalog.MarginCatalog): The metadata of the hipscat catalog.
+            search (AbstractSearch): Instance of AbstractSearch.
+
+        Returns:
+            A tuple containing a dictionary mapping pixel to partition index and a dask dataframe
+            containing the search results
+        """
+        partitions = self._ddf.to_delayed()
+        filtered_pixels = metadata.get_healpix_pixels()
+        targeted_partitions = [partitions[self._ddf_pixel_map[pixel]] for pixel in filtered_pixels]
+        filtered_partitions = (
+            [search.search_points(partition, metadata.catalog_info) for partition in targeted_partitions]
+            if search.fine
+            else targeted_partitions
+        )
+        return self._construct_search_ddf(filtered_pixels, filtered_partitions)
+
+    def _construct_search_ddf(
+        self, filtered_pixels: List[HealpixPixel], filtered_partitions: List[Delayed]
+    ) -> Tuple[dict, dd.core.DataFrame]:
+        """Constructs a search catalog pixel map and respective Dask Dataframe
+
+        Args:
+            filtered_pixels (List[HealpixPixel]): The list of pixels in the search
+            filtered_partitions (List[Delayed]): The list of delayed partitions
+
+        Returns:
+            The catalog pixel map and the respective Dask DataFrame
+        """
+        divisions = get_pixels_divisions(filtered_pixels)
+        search_ddf = dd.io.from_delayed(filtered_partitions, meta=self._ddf._meta, divisions=divisions)
+        search_ddf = cast(dd.core.DataFrame, search_ddf)
+        ddf_partition_map = {pixel: i for i, pixel in enumerate(filtered_pixels)}
+        return ddf_partition_map, search_ddf
+
     def map_partitions(
         self,
         func: Callable[..., pd.DataFrame],
@@ -203,9 +248,7 @@ class HealpixDataset(Dataset):
         if persist:
             self._ddf.persist()
         non_empty_pixels, non_empty_partitions = self._get_non_empty_partitions()
-        search_ddf, ddf_partition_map = _construct_search_ddf(
-            non_empty_pixels, non_empty_partitions, self._ddf._meta
-        )
+        ddf_partition_map, search_ddf = self._construct_search_ddf(non_empty_pixels, non_empty_partitions)
         filtered_hc_structure = self.hc_structure.filter_from_pixel_list(non_empty_pixels)
         return self.__class__(search_ddf, ddf_partition_map, filtered_hc_structure)
 

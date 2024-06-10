@@ -17,9 +17,11 @@ class MarginCatalogLoader(AbstractCatalogLoader[MarginCatalog]):
         """
         hc_catalog = self._load_hipscat_catalog(hc.catalog.MarginCatalog)
         filtered_hc_catalog = self._filter_hipscat_catalog(hc_catalog)
-        ddf, ddf_pixel_map = self._load_dask_df_and_map(filtered_hc_catalog)
-        ddf, ddf_pixel_map = self._apply_fine_filtering(ddf, ddf_pixel_map, filtered_hc_catalog)
-        return MarginCatalog(ddf, ddf_pixel_map, filtered_hc_catalog)
+        dask_df, dask_df_pixel_map = self._load_dask_df_and_map(filtered_hc_catalog)
+        margin = MarginCatalog(dask_df, dask_df_pixel_map, filtered_hc_catalog)
+        if self.config.search_filter is not None:
+            margin = margin.search(self.config.search_filter)
+        return margin
 
     def _filter_hipscat_catalog(self, hc_catalog: hc.catalog.MarginCatalog) -> hc.catalog.MarginCatalog:
         """Filter the catalog pixels according to the spatial filter provided at loading time.

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import Dict, List, Tuple, TypeVar
 
-from hipscat.catalog import Catalog, MarginCatalog
 from hipscat.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
 from hipscat.pixel_math import HealpixPixel
 from typing_extensions import TypeAlias
@@ -18,4 +17,3 @@ DaskDFPixelMap = Dict[HealpixPixel, int]
 # Generic lsdb and hipscat catalog types
 CatalogTypeVar = TypeVar("CatalogTypeVar", bound=Dataset)
 HCCatalogTypeVar = TypeVar("HCCatalogTypeVar", bound=HCHealpixDataset)
-HCCatalog: TypeAlias = Catalog | MarginCatalog
