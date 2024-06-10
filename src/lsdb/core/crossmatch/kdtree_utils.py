@@ -13,6 +13,11 @@ def _find_crossmatch_indices(
     max_distance: float,
     min_distance: float = 0,
 ) -> Tuple[npt.NDArray[np.float64], npt.NDArray[np.int64], npt.NDArray[np.int64]]:
+    # If right catalog is empty, tree.query will raise an exception
+    # Left catalog cannot be empty, as it checked in perform_crossmatch()
+    if len(right_xyz) == 0:
+        return np.array([], dtype=float), np.array([], dtype=int), np.array([], dtype=int)
+
     # Make sure we don't ask for more neighbors than there are points
     n_neighbors = min(n_neighbors, len(right_xyz))
 
