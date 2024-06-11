@@ -223,12 +223,6 @@ class HealpixDataset(Dataset):
                     " the partitions in place will not work. If the function does not work for empty inputs, "
                     "please specify a `meta` argument."
                 )
-        if not isinstance(meta, pd.DataFrame):
-            warnings.warn(
-                "output of the function must be a DataFrame to generate an LSDB `Catalog`. `map_partitions` "
-                "will return a dask object instead of a Catalog.",
-                RuntimeWarning,
-            )
         if include_pixel:
             pixels = self.get_ordered_healpix_pixels()
 
@@ -240,8 +234,14 @@ class HealpixDataset(Dataset):
             output_ddf = self._ddf.map_partitions(apply_func, *args, meta=meta, **kwargs)
         else:
             output_ddf = self._ddf.map_partitions(func, *args, meta=meta, **kwargs)
-        if isinstance(meta, pd.DataFrame):
+
+        if isinstance(output_ddf, dd.core.DataFrame):
             return self.__class__(output_ddf, self._ddf_pixel_map, self.hc_structure)
+        warnings.warn(
+            "output of the function must be a DataFrame to generate an LSDB `Catalog`. `map_partitions` "
+            "will return a dask object instead of a Catalog.",
+            RuntimeWarning,
+        )
         return output_ddf
 
     def prune_empty_partitions(self, persist: bool = False) -> Self:
