@@ -4,6 +4,7 @@ For more information on writing benchmarks:
 https://asv.readthedocs.io/en/stable/writing_benchmarks.html."""
 
 import os
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -13,27 +14,24 @@ from benchmarks.utils import upsample_array
 from lsdb.core.search.box_search import box_filter
 from lsdb.core.search.polygon_search import get_cartesian_polygon
 
-TEST_DIR = os.path.join(os.path.dirname(__file__), "..", "tests")
+TEST_DIR = Path(os.path.dirname(__file__) / ".." / "tests")
 DATA_DIR_NAME = "data"
 SMALL_SKY_DIR_NAME = "small_sky"
 SMALL_SKY_ORDER1 = "small_sky_order1"
 SMALL_SKY_XMATCH_NAME = "small_sky_xmatch"
-BENCH_DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
+BENCH_DATA_DIR = Path(os.path.dirname(__file__)) / "data"
 
 
 def load_small_sky():
-    path = os.path.join(TEST_DIR, DATA_DIR_NAME, SMALL_SKY_DIR_NAME)
-    return lsdb.read_hipscat(path, catalog_type=lsdb.Catalog)
+    return lsdb.read_hipscat(TEST_DIR / DATA_DIR_NAME / SMALL_SKY_DIR_NAME, catalog_type=lsdb.Catalog)
 
 
 def load_small_sky_order1():
-    path = os.path.join(TEST_DIR, DATA_DIR_NAME, SMALL_SKY_ORDER1)
-    return lsdb.read_hipscat(path, catalog_type=lsdb.Catalog)
+    return lsdb.read_hipscat(TEST_DIR / DATA_DIR_NAME / SMALL_SKY_ORDER1, catalog_type=lsdb.Catalog)
 
 
 def load_small_sky_xmatch():
-    path = os.path.join(TEST_DIR, DATA_DIR_NAME, SMALL_SKY_XMATCH_NAME)
-    return lsdb.read_hipscat(path, catalog_type=lsdb.Catalog)
+    return lsdb.read_hipscat(TEST_DIR / DATA_DIR_NAME / SMALL_SKY_XMATCH_NAME, catalog_type=lsdb.Catalog)
 
 
 def time_kdtree_crossmatch():
@@ -66,10 +64,8 @@ def time_box_filter_on_partition():
 
 
 def time_create_midsize_catalog():
-    path = os.path.join(BENCH_DATA_DIR, "midsize_catalog")
-    return lsdb.read_hipscat(path)
+    return lsdb.read_hipscat(BENCH_DATA_DIR / "midsize_catalog")
 
 
 def time_create_large_catalog():
-    path = os.path.join(BENCH_DATA_DIR, "large_catalog")
-    return lsdb.read_hipscat(path)
+    return lsdb.read_hipscat(BENCH_DATA_DIR / "large_catalog")
