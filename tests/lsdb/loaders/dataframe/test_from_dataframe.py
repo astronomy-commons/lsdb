@@ -22,6 +22,7 @@ def get_catalog_kwargs(catalog, **kwargs):
     kwargs = {
         "catalog_name": catalog_info.catalog_name,
         "catalog_type": catalog_info.catalog_type,
+        "lowest_order": 0,
         "highest_order": 5,
         "threshold": 50,
         **kwargs,
@@ -159,6 +160,7 @@ def test_catalog_pixels_nested_ordering(small_sky_source_df):
         small_sky_source_df,
         catalog_name="small_sky_source",
         catalog_type="source",
+        lowest_order=0,
         highest_order=2,
         threshold=3_000,
         margin_threshold=None,
@@ -177,6 +179,7 @@ def test_from_dataframe_small_sky_source_with_margins(small_sky_source_df, small
         small_sky_source_df,
         ra_column="source_ra",
         dec_column="source_dec",
+        lowest_order=0,
         highest_order=2,
         threshold=3000,
         margin_order=8,
