@@ -1,3 +1,5 @@
+import math
+
 import astropy.units as u
 import healpy as hp
 import numpy as np
@@ -11,7 +13,6 @@ from mocpy import MOC
 
 import lsdb
 from lsdb.catalog.margin_catalog import MarginCatalog
-from lsdb.loaders.dataframe.dataframe_catalog_loader import DataframeCatalogLoader
 
 
 def get_catalog_kwargs(catalog, **kwargs):
@@ -21,6 +22,7 @@ def get_catalog_kwargs(catalog, **kwargs):
     kwargs = {
         "catalog_name": catalog_info.catalog_name,
         "catalog_type": catalog_info.catalog_type,
+        "lowest_order": 0,
         "highest_order": 5,
         "threshold": 50,
         **kwargs,
@@ -140,7 +142,9 @@ def test_partitions_obey_default_threshold_when_no_arguments_specified(
 ):
     """Tests that partitions are limited by the default threshold
     when no partition size or threshold is specified"""
-    default_threshold = DataframeCatalogLoader.DEFAULT_THRESHOLD
+    df_total_memory = small_sky_order1_df.memory_usage(deep=True).sum()
+    partition_memory = df_total_memory / len(small_sky_order1_df)
+    default_threshold = math.ceil((1 << 30) / partition_memory)
     # Read CSV file for the small sky order 1 catalog
     kwargs = get_catalog_kwargs(small_sky_order1_catalog, threshold=None, partition_size=None)
     catalog = lsdb.from_dataframe(small_sky_order1_df, margin_threshold=None, **kwargs)
@@ -156,6 +160,7 @@ def test_catalog_pixels_nested_ordering(small_sky_source_df):
         small_sky_source_df,
         catalog_name="small_sky_source",
         catalog_type="source",
+        lowest_order=0,
         highest_order=2,
         threshold=3_000,
         margin_threshold=None,
@@ -174,6 +179,7 @@ def test_from_dataframe_small_sky_source_with_margins(small_sky_source_df, small
         small_sky_source_df,
         ra_column="source_ra",
         dec_column="source_dec",
+        lowest_order=0,
         highest_order=2,
         threshold=3000,
         margin_order=8,

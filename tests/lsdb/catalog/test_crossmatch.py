@@ -259,7 +259,7 @@ def test_crossmatch_with_moc(small_sky_order1_catalog):
     pixels = [44, 45, 46]
     partitions = [small_sky_order1_catalog.get_partition(order, p).compute() for p in pixels]
     df = pd.concat(partitions)
-    subset_catalog = lsdb.from_dataframe(df)
+    subset_catalog = lsdb.from_dataframe(df, lowest_order=0, highest_order=5)
     assert subset_catalog.get_healpix_pixels() == [HealpixPixel(0, 11)]
     xmatched = small_sky_order1_catalog.crossmatch(subset_catalog)
     assert xmatched.get_healpix_pixels() == [HealpixPixel(order, p) for p in pixels]

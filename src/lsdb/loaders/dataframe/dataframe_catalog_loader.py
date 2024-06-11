@@ -29,13 +29,11 @@ pd.options.mode.chained_assignment = None  # default='warn'
 class DataframeCatalogLoader:
     """Creates a HiPSCat formatted Catalog from a Pandas Dataframe"""
 
-    DEFAULT_THRESHOLD = 100_000
-
     def __init__(
         self,
         dataframe: pd.DataFrame,
-        lowest_order: int = 0,
-        highest_order: int = 5,
+        lowest_order: int = 3,
+        highest_order: int = 7,
         partition_size: int | None = None,
         threshold: int | None = None,
         should_generate_moc: bool = True,
@@ -46,14 +44,14 @@ class DataframeCatalogLoader:
         """Initializes a DataframeCatalogLoader
 
         Args:
-            dataframe (pd.Dataframe): Catalog Pandas Dataframe
-            lowest_order (int): The lowest partition order
-            highest_order (int): The highest partition order
-            partition_size (int): The desired partition size, in number of rows
-            threshold (int): The maximum number of data points per pixel
+            dataframe (pd.Dataframe): Catalog Pandas Dataframe.
+            lowest_order (int): The lowest partition order. Defaults to 3.
+            highest_order (int): The highest partition order. Defaults to 7.
+            partition_size (int): The desired partition size, in number of rows.
+            threshold (int): The maximum number of data points per pixel.
             use_pyarrow_types (bool): If True, the data is backed by pyarrow, otherwise we keep the
                 original data types. Defaults to True.
-            **kwargs: Arguments to pass to the creation of the catalog info
+            **kwargs: Arguments to pass to the creation of the catalog info.
         """
         self.dataframe = dataframe
         self.lowest_order = lowest_order
@@ -82,9 +80,12 @@ class DataframeCatalogLoader:
                 # Round the number of partitions to the next integer, otherwise the
                 # number of pixels per partition may exceed the threshold
                 num_partitions = math.ceil(len(self.dataframe) / partition_size)
-                threshold = len(self.dataframe.index) // num_partitions
+                threshold = len(self.dataframe) // num_partitions
             else:
-                threshold = DataframeCatalogLoader.DEFAULT_THRESHOLD
+                # Each partition in memory will be of roughly 1Gib
+                df_total_memory = self.dataframe.memory_usage(deep=True).sum()
+                partition_memory = df_total_memory / len(self.dataframe)
+                threshold = math.ceil((1 << 30) / partition_memory)
         return threshold
 
     @staticmethod
