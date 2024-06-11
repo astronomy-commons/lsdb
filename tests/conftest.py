@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 
 import hipscat as hc
@@ -34,7 +33,7 @@ XMATCH_CORRECT_3N_2T_FILE = "xmatch_correct_3n_2t.csv"
 XMATCH_CORRECT_3N_2T_NO_MARGIN_FILE = "xmatch_correct_3n_2t_no_margin.csv"
 XMATCH_CORRECT_3N_2T_NEGATIVE_FILE = "xmatch_correct_3n_2t_negative.csv"
 XMATCH_MOCK_FILE = "xmatch_mock.csv"
-TEST_DIR = os.path.dirname(__file__)
+TEST_DIR = Path(__file__).parent
 
 
 @pytest.fixture
