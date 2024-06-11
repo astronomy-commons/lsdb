@@ -531,6 +531,19 @@ def test_map_partitions_specify_meta(small_sky_order1_catalog):
     assert np.all(mapcomp["a"] == mapcomp["ra"] + 1)
 
 
+def test_map_partitions_non_df(small_sky_order1_catalog):
+    def get_col(df):
+        return df["ra"] + 1
+
+    with pytest.warns(RuntimeWarning, match="DataFrame"):
+        mapped = small_sky_order1_catalog.map_partitions(get_col)
+
+    assert not isinstance(mapped, Catalog)
+    assert isinstance(mapped, dd.core.Series)
+    mapcomp = mapped.compute()
+    assert np.all(mapcomp == small_sky_order1_catalog.compute()["ra"] + 1)
+
+
 def test_non_working_empty_raises(small_sky_order1_catalog):
     def add_col(df):
         if len(df) == 0:
