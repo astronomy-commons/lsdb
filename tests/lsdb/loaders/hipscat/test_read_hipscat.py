@@ -1,5 +1,3 @@
-from pathlib import Path
-
 import hipscat as hc
 import numpy as np
 import numpy.testing as npt
@@ -82,10 +80,10 @@ def test_catalog_with_margin(
     assert isinstance(catalog, lsdb.Catalog)
     assert catalog.margin is small_sky_xmatch_margin_catalog
     # Provide the margin cache catalog path
-    catalog_2 = lsdb.read_hipscat(small_sky_xmatch_dir, margin_cache=small_sky_xmatch_margin_dir)
+    catalog_2 = lsdb.read_hipscat(small_sky_xmatch_dir, margin_cache=str(small_sky_xmatch_margin_dir))
     assert isinstance(catalog_2, lsdb.Catalog)
     # Which can also be provided with a Path object
-    catalog_3 = lsdb.read_hipscat(small_sky_xmatch_dir, margin_cache=Path(small_sky_xmatch_margin_dir))
+    catalog_3 = lsdb.read_hipscat(small_sky_xmatch_dir, margin_cache=small_sky_xmatch_margin_dir)
     assert isinstance(catalog_3, lsdb.Catalog)
     # The catalogs obtained are identical
     assert catalog.margin.hc_structure.catalog_info == catalog_2.margin.hc_structure.catalog_info

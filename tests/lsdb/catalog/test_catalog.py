@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 
 import dask.array as da
@@ -192,7 +191,7 @@ def test_save_catalog(small_sky_catalog, tmp_path):
 
 
 def test_save_catalog_overwrite(small_sky_catalog, tmp_path):
-    base_catalog_path = os.path.join(tmp_path, "small_sky")
+    base_catalog_path = tmp_path / "small_sky"
     # Saving a catalog to disk when the directory does not yet exist
     small_sky_catalog.to_hipscat(base_catalog_path)
     # The output directory exists and it has content. Overwrite is
@@ -204,7 +203,7 @@ def test_save_catalog_overwrite(small_sky_catalog, tmp_path):
 
 
 def test_save_catalog_when_catalog_is_empty(small_sky_order1_catalog, tmp_path):
-    base_catalog_path = os.path.join(tmp_path, "small_sky")
+    base_catalog_path = tmp_path / "small_sky"
 
     # The result of this cone search is known to be empty
     cone_search_catalog = small_sky_order1_catalog.cone_search(0, -80, 1)
@@ -222,7 +221,7 @@ def test_save_catalog_when_catalog_is_empty(small_sky_order1_catalog, tmp_path):
 
 
 def test_save_catalog_with_some_empty_partitions(small_sky_order1_catalog, tmp_path):
-    base_catalog_path = os.path.join(tmp_path, "small_sky")
+    base_catalog_path = tmp_path / "small_sky"
 
     # The result of this cone search is known to have one empty partition
     cone_search_catalog = small_sky_order1_catalog.cone_search(0, -80, 15 * 3600)
