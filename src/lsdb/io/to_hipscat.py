@@ -45,7 +45,7 @@ def perform_write(
     pixel_dir = hc.io.pixel_directory(base_catalog_dir, hp_pixel.order, hp_pixel.pixel)
     hc.io.file_io.make_directory(pixel_dir, exist_ok=True, storage_options=storage_options)
     pixel_path = hc.io.paths.pixel_catalog_file(base_catalog_dir, hp_pixel.order, hp_pixel.pixel)
-    hc.io.file_io.write_dataframe_to_parquet(df, pixel_path, storage_options, **kwargs)
+    hc.io.file_io.write_dataframe_to_parquet(df, pixel_path, storage_options=storage_options, **kwargs)
     return len(df)
 
 
@@ -72,7 +72,7 @@ def to_hipscat(
     """
     base_catalog_dir_fp = hc.io.get_file_pointer_from_path(base_catalog_path)
     # Create the output directory for the catalog
-    if hc.io.file_io.directory_has_contents(base_catalog_dir_fp, storage_options):
+    if hc.io.file_io.directory_has_contents(base_catalog_dir_fp, storage_options=storage_options):
         if not overwrite:
             raise ValueError(
                 f"base_catalog_path ({base_catalog_dir_fp}) contains files."
@@ -81,12 +81,14 @@ def to_hipscat(
         hc.io.file_io.remove_directory(base_catalog_dir_fp, storage_options=storage_options)
     hc.io.file_io.make_directory(base_catalog_dir_fp, exist_ok=True, storage_options=storage_options)
     # Save partition parquet files
-    pixel_to_partition_size_map = write_partitions(catalog, base_catalog_dir_fp, storage_options, **kwargs)
+    pixel_to_partition_size_map = write_partitions(
+        catalog, base_catalog_dir_fp, storage_options=storage_options, **kwargs
+    )
     # Save parquet metadata
-    hc.io.write_parquet_metadata(base_catalog_path, storage_options)
+    hc.io.write_parquet_metadata(base_catalog_path, storage_options=storage_options)
     # Save partition info
     partition_info = _get_partition_info_dict(pixel_to_partition_size_map)
-    hc.io.write_partition_info(base_catalog_dir_fp, partition_info, storage_options)
+    hc.io.write_partition_info(base_catalog_dir_fp, partition_info, storage_options=storage_options)
     # Save catalog info
     new_hc_structure = create_modified_catalog_structure(
         catalog.hc_structure,
@@ -136,7 +138,7 @@ def write_partitions(
                 partitions[partition_index],
                 pixel,
                 base_catalog_dir_fp,
-                storage_options,
+                storage_options=storage_options,
                 **kwargs,
             )
         )
