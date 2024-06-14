@@ -65,7 +65,7 @@ The results of the analysis are shown in the following plot:
 
 Some observations from the plot:
 
-* Construction of the ``SkyCoord`` objects in astropy is the most time-consuming step; in this step spherical coordinates are converted to Cartesian, so `match_coordinates_sky` has less work to do comparing to other algorithms. So if your analysis doesn't require the ``SkyCoord`` objects anywhere else, it would be more fair to add up the time of the `SkyCoord` objects construction and the `match_coordinates_sky` execution.
+* Construction of the ``SkyCoord`` objects in astropy is the most time-consuming step; in this step spherical coordinates are converted to Cartesian, so ``match_coordinates_sky()`` has less work to do comparing to other algorithms. So if your analysis doesn't require the ``SkyCoord`` objects anywhere else, it would be more fair to add up the time of the ``SkyCoord`` objects construction and the ``match_coordinates_sky()`` execution.
 * All algorithms but LSDB have a nearly linear dependency on the number of rows in the input catalogs starting from a small number of rows. LSDB has a constant overhead associated with the graph construction and Dask overhead, which is negligible for large catalogs, where the time starts to grow linearly.
 * LSDB is the only method allowing to parallelize the cross-matching operation, so we run it with 1, 4, 16, and 64 workers.
 * 16 and 64-worker cases show the same performance, which shows the limits of the parallelization, at least with the hardware setup used in the analysis.
