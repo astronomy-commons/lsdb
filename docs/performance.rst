@@ -19,10 +19,9 @@ We compare I/O speed and cross-matching performance of LSDB on an example cross-
 ZTF DR14 (metadata only, 1.2B rows, 60GB)
 and Gaia DR3 (1.8B rows, 972GB) catalogs.
 The cross-matching took 46 minutes and produced a catalog of 498GB.
-While the cross-matching optimized reading of Gaia (and didn't load the southern part of Gaia which doesn't overlap with ZTF),
-we would judge the performance by the output size, which gives us 185MB/s of the cross-matching speed.
+LSDB would read more data than it would write, so to get a lower boundary estimate we would use the output size, which gives us 185MB/s of the cross-matching speed.
 
-We compare it to just copying both catalogs with `cp -r` command, which took 86 minutes and produced 1030GB of data,
+We compare it to just copying both catalogs with ``cp -r`` command, which took 86 minutes and produced 1030GB of data,
 which corresponds to 204MB/s of the copy speed.
 These allow us to conclude that LSDB cross-matching overhead is 5-15% compared to the I/O operations.
 
@@ -33,7 +32,7 @@ LSDB's cross-matching algorithm performance versus other tools
 --------------------------------------------------------------
 
 We compare the performance of LSDB's default cross-matching algorithm with
-`astropy`'s `match_coordinates_sky <https://docs.astropy.org/en/stable/api/astropy.coordinates.match_coordinates_sky.html>`_
+astropy's `match_coordinates_sky <https://docs.astropy.org/en/stable/api/astropy.coordinates.match_coordinates_sky.html>`_
 and `smatch <https://github.com/esheldon/smatch>`_ package.
 All three approaches use scipy's k-D tree implementation to find the nearest neighbor on a 3-D unit sphere.
 
