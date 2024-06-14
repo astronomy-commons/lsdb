@@ -47,3 +47,20 @@ class HipscatLoadingConfig:
         elif self.dtype_backend == "numpy_nullable":
             mapper = _arrow_dtype_mapping().get
         return mapper
+
+    def make_query_url_params(self) -> dict:
+        """
+        Generates a dictionary of URL parameters with `columns` and `filters` attributes.
+        """
+        url_params = {}
+
+        if self.columns and len(self.columns) > 0:
+            url_params["columns"] = self.columns
+
+        if "filters" in self.kwargs:
+            url_params["filters"] = []
+            for filtr in self.kwargs["filters"]:
+                # This is how hipscat expects the filters to add to the url
+                url_params["filters"].append(f"{filtr[0]}{filtr[1]}{filtr[2]}")
+
+        return url_params

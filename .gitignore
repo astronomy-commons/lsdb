@@ -158,3 +158,6 @@ _html/
 
 # large, unused fits files
 point_map.fits
+
+# test notebook
+dev/test.ipynb
