@@ -35,6 +35,7 @@ LSDB's cross-matching algorithm performance versus other tools
 We compare the performance of LSDB's default cross-matching algorithm with
 `astropy`'s `match_coordinates_sky <https://docs.astropy.org/en/stable/api/astropy.coordinates.match_coordinates_sky.html>`_
 and `smatch <https://github.com/esheldon/smatch>`_ package.
+All three approaches use scipy's k-D tree implementation to find the nearest neighbor on a 3-D unit sphere.
 
 We use the same ZTF DR14 and Gaia DR3 catalogs as in the previous test, but we only use coordinate columns for the cross-matching.
 With each algorithm, we perform the cross-matching of the catalogs within a 1 arcsecond radius, selecting the closest match.
