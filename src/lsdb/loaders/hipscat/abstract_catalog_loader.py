@@ -67,7 +67,7 @@ class AbstractCatalogLoader(Generic[CatalogTypeVar]):
             catalog.catalog_base_dir,
             ordered_pixels,
             self.config.make_query_url_params(),
-            self.storage_options,
+            storage_options=self.storage_options,
         )
         return paths
 
