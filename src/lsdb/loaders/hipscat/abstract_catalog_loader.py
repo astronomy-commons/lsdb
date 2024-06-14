@@ -64,7 +64,10 @@ class AbstractCatalogLoader(Generic[CatalogTypeVar]):
         self, catalog: HCHealpixDataset, ordered_pixels: List[HealpixPixel]
     ) -> List[hc.io.FilePointer]:
         paths = hc.io.paths.pixel_catalog_files(
-            catalog.catalog_base_dir, ordered_pixels, storage_options=self.storage_options
+            catalog.catalog_base_dir,
+            ordered_pixels,
+            self.config.make_query_url_params(),
+            storage_options=self.storage_options,
         )
         return paths
 
