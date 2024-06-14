@@ -179,7 +179,7 @@ class HealpixDataset(Dataset):
         meta: pd.DataFrame | pd.Series | Dict | Iterable | Tuple | None = None,
         include_pixel: bool = False,
         **kwargs,
-    ) -> Self:
+    ) -> Self | dd.core.Series:
         """Applies a function to each partition in the catalog.
 
         The ra and dec of each row is assumed to remain unchanged.
@@ -210,7 +210,7 @@ class HealpixDataset(Dataset):
 
         Returns:
             A new catalog with each partition replaced with the output of the function applied to the original
-            partition.
+            partition. If the function returns a non dataframe output, a dask Series will be returned.
         """
         if meta is None:
             if include_pixel:
