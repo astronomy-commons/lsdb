@@ -136,7 +136,9 @@ class HealpixDataset(Dataset):
         """Performs a search on the catalog from a list of pixels to search in
 
         Args:
-            metadata (hc.catalog.Catalog | hc.catalog.MarginCatalog): The metadata of the hipscat catalog.
+            metadata (hc.catalog.Catalog | hc.catalog.MarginCatalog): The metadata of
+                the hipscat catalog after the coarse filtering is applied. The partitions
+                it contains are only those that overlap with the spatial region.
             search (AbstractSearch): Instance of AbstractSearch.
 
         Returns:
