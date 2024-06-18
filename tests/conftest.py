@@ -1,4 +1,4 @@
-import os
+from pathlib import Path
 
 import hipscat as hc
 import pandas as pd
@@ -33,57 +33,57 @@ XMATCH_CORRECT_3N_2T_FILE = "xmatch_correct_3n_2t.csv"
 XMATCH_CORRECT_3N_2T_NO_MARGIN_FILE = "xmatch_correct_3n_2t_no_margin.csv"
 XMATCH_CORRECT_3N_2T_NEGATIVE_FILE = "xmatch_correct_3n_2t_negative.csv"
 XMATCH_MOCK_FILE = "xmatch_mock.csv"
-TEST_DIR = os.path.dirname(__file__)
+TEST_DIR = Path(__file__).parent
 
 
 @pytest.fixture
 def test_data_dir():
-    return os.path.join(TEST_DIR, DATA_DIR_NAME)
+    return Path(TEST_DIR) / DATA_DIR_NAME
 
 
 @pytest.fixture
 def small_sky_dir(test_data_dir):
-    return os.path.join(test_data_dir, SMALL_SKY_DIR_NAME)
+    return test_data_dir / SMALL_SKY_DIR_NAME
 
 
 @pytest.fixture
 def small_sky_left_xmatch_dir(test_data_dir):
-    return os.path.join(test_data_dir, SMALL_SKY_LEFT_XMATCH_NAME)
+    return test_data_dir / SMALL_SKY_LEFT_XMATCH_NAME
 
 
 @pytest.fixture
 def small_sky_xmatch_dir(test_data_dir):
-    return os.path.join(test_data_dir, SMALL_SKY_XMATCH_NAME)
+    return test_data_dir / SMALL_SKY_XMATCH_NAME
 
 
 @pytest.fixture
 def small_sky_xmatch_margin_dir(test_data_dir):
-    return os.path.join(test_data_dir, SMALL_SKY_XMATCH_MARGIN_NAME)
+    return test_data_dir / SMALL_SKY_XMATCH_MARGIN_NAME
 
 
 @pytest.fixture
 def small_sky_to_xmatch_dir(test_data_dir):
-    return os.path.join(test_data_dir, SMALL_SKY_TO_XMATCH_NAME)
+    return test_data_dir / SMALL_SKY_TO_XMATCH_NAME
 
 
 @pytest.fixture
 def small_sky_to_xmatch_soft_dir(test_data_dir):
-    return os.path.join(test_data_dir, SMALL_SKY_TO_XMATCH_SOFT_NAME)
+    return test_data_dir / SMALL_SKY_TO_XMATCH_SOFT_NAME
 
 
 @pytest.fixture
 def small_sky_order1_dir(test_data_dir):
-    return os.path.join(test_data_dir, SMALL_SKY_ORDER1_DIR_NAME)
+    return test_data_dir / SMALL_SKY_ORDER1_DIR_NAME
 
 
 @pytest.fixture
 def small_sky_order1_source_dir(test_data_dir):
-    return os.path.join(test_data_dir, SMALL_SKY_ORDER1_SOURCE_NAME)
+    return test_data_dir / SMALL_SKY_ORDER1_SOURCE_NAME
 
 
 @pytest.fixture
 def small_sky_source_dir(test_data_dir):
-    return os.path.join(test_data_dir, SMALL_SKY_SOURCE_DIR_NAME)
+    return test_data_dir / SMALL_SKY_SOURCE_DIR_NAME
 
 
 @pytest.fixture
@@ -93,17 +93,17 @@ def small_sky_source_catalog(small_sky_source_dir):
 
 @pytest.fixture
 def small_sky_order1_source_margin_dir(test_data_dir):
-    return os.path.join(test_data_dir, SMALL_SKY_ORDER1_SOURCE_MARGIN_NAME)
+    return test_data_dir / SMALL_SKY_ORDER1_SOURCE_MARGIN_NAME
 
 
 @pytest.fixture
 def small_sky_to_order1_source_dir(test_data_dir):
-    return os.path.join(test_data_dir, SMALL_SKY_TO_ORDER1_SOURCE_NAME)
+    return test_data_dir / SMALL_SKY_TO_ORDER1_SOURCE_NAME
 
 
 @pytest.fixture
 def small_sky_to_order1_source_soft_dir(test_data_dir):
-    return os.path.join(test_data_dir, SMALL_SKY_TO_ORDER1_SOURCE_SOFT_NAME)
+    return test_data_dir / SMALL_SKY_TO_ORDER1_SOURCE_SOFT_NAME
 
 
 @pytest.fixture
@@ -113,7 +113,7 @@ def small_sky_hipscat_catalog(small_sky_dir):
 
 @pytest.fixture
 def small_sky_order1_id_index_dir(test_data_dir):
-    return os.path.join(test_data_dir, "small_sky_order1_id_index")
+    return test_data_dir / "small_sky_order1_id_index"
 
 
 @pytest.fixture
@@ -183,82 +183,82 @@ def small_sky_to_o1source_soft_catalog(small_sky_to_order1_source_soft_dir):
 
 @pytest.fixture
 def small_sky_order1_df(small_sky_order1_dir):
-    return pd.read_csv(os.path.join(small_sky_order1_dir, SMALL_SKY_ORDER1_CSV))
+    return pd.read_csv(small_sky_order1_dir / SMALL_SKY_ORDER1_CSV)
 
 
 @pytest.fixture
 def small_sky_source_df(test_data_dir):
-    return pd.read_csv(os.path.join(test_data_dir, "raw", "small_sky_source", "small_sky_source.csv"))
+    return pd.read_csv(test_data_dir / "raw" / "small_sky_source" / "small_sky_source.csv")
 
 
 @pytest.fixture
 def small_sky_source_margin_catalog(test_data_dir):
-    return lsdb.read_hipscat(os.path.join(test_data_dir, SMALL_SKY_SOURCE_MARGIN_NAME))
+    return lsdb.read_hipscat(test_data_dir / SMALL_SKY_SOURCE_MARGIN_NAME)
 
 
 @pytest.fixture
 def small_sky_order3_source_margin_catalog(test_data_dir):
-    return lsdb.read_hipscat(os.path.join(test_data_dir, SMALL_SKY_ORDER3_SOURCE_MARGIN_NAME))
+    return lsdb.read_hipscat(test_data_dir / SMALL_SKY_ORDER3_SOURCE_MARGIN_NAME)
 
 
 @pytest.fixture
 def xmatch_expected_dir(test_data_dir):
-    return os.path.join(test_data_dir, "raw", "xmatch_expected")
+    return test_data_dir / "raw" / "xmatch_expected"
 
 
 @pytest.fixture
 def xmatch_correct(xmatch_expected_dir):
-    return pd.read_csv(os.path.join(xmatch_expected_dir, XMATCH_CORRECT_FILE))
+    return pd.read_csv(xmatch_expected_dir / XMATCH_CORRECT_FILE)
 
 
 @pytest.fixture
 def xmatch_correct_005(xmatch_expected_dir):
-    return pd.read_csv(os.path.join(xmatch_expected_dir, XMATCH_CORRECT_005_FILE))
+    return pd.read_csv(xmatch_expected_dir / XMATCH_CORRECT_005_FILE)
 
 
 @pytest.fixture
 def xmatch_correct_002_005(xmatch_expected_dir):
-    return pd.read_csv(os.path.join(xmatch_expected_dir, XMATCH_CORRECT_002_005_FILE))
+    return pd.read_csv(xmatch_expected_dir / XMATCH_CORRECT_002_005_FILE)
 
 
 @pytest.fixture
 def xmatch_correct_05_2_3n_margin(xmatch_expected_dir):
-    return pd.read_csv(os.path.join(xmatch_expected_dir, XMATCH_CORRECT_05_2_3N_MARGIN_FILE))
+    return pd.read_csv(xmatch_expected_dir / XMATCH_CORRECT_05_2_3N_MARGIN_FILE)
 
 
 @pytest.fixture
 def xmatch_correct_3n_2t(xmatch_expected_dir):
-    return pd.read_csv(os.path.join(xmatch_expected_dir, XMATCH_CORRECT_3N_2T_FILE))
+    return pd.read_csv(xmatch_expected_dir / XMATCH_CORRECT_3N_2T_FILE)
 
 
 @pytest.fixture
 def xmatch_correct_3n_2t_no_margin(xmatch_expected_dir):
-    return pd.read_csv(os.path.join(xmatch_expected_dir, XMATCH_CORRECT_3N_2T_NO_MARGIN_FILE))
+    return pd.read_csv(xmatch_expected_dir / XMATCH_CORRECT_3N_2T_NO_MARGIN_FILE)
 
 
 @pytest.fixture
 def xmatch_correct_3n_2t_negative(xmatch_expected_dir):
-    return pd.read_csv(os.path.join(xmatch_expected_dir, XMATCH_CORRECT_3N_2T_NEGATIVE_FILE))
+    return pd.read_csv(xmatch_expected_dir / XMATCH_CORRECT_3N_2T_NEGATIVE_FILE)
 
 
 @pytest.fixture
 def xmatch_mock(xmatch_expected_dir):
-    return pd.read_csv(os.path.join(xmatch_expected_dir, XMATCH_MOCK_FILE))
+    return pd.read_csv(xmatch_expected_dir / XMATCH_MOCK_FILE)
 
 
 @pytest.fixture
 def cone_search_expected_dir(test_data_dir):
-    return os.path.join(test_data_dir, "raw", "cone_search_expected")
+    return test_data_dir / "raw" / "cone_search_expected"
 
 
 @pytest.fixture
 def cone_search_expected(cone_search_expected_dir):
-    return pd.read_csv(os.path.join(cone_search_expected_dir, "catalog.csv"), index_col=HIPSCAT_ID_COLUMN)
+    return pd.read_csv(cone_search_expected_dir / "catalog.csv", index_col=HIPSCAT_ID_COLUMN)
 
 
 @pytest.fixture
 def cone_search_margin_expected(cone_search_expected_dir):
-    return pd.read_csv(os.path.join(cone_search_expected_dir, "margin.csv"), index_col=HIPSCAT_ID_COLUMN)
+    return pd.read_csv(cone_search_expected_dir / "margin.csv", index_col=HIPSCAT_ID_COLUMN)
 
 
 @pytest.fixture

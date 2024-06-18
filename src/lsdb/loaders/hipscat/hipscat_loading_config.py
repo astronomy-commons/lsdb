@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from typing import Callable, List
 
 import pandas as pd
+from hipscat.io.file_io import FilePointer
 from pandas.io._util import _arrow_dtype_mapping
 
 from lsdb.catalog.margin_catalog import MarginCatalog
@@ -23,7 +24,7 @@ class HipscatLoadingConfig:
     columns: List[str] | None = None
     """Columns to load from the catalog. If not specified, all columns are loaded"""
 
-    margin_cache: MarginCatalog | str | None = None
+    margin_cache: MarginCatalog | FilePointer | None = None
     """Margin cache for the catalog. It can be provided as a path for the margin on disk,
     or as a margin object instance. By default, it is None."""
 
@@ -35,8 +36,6 @@ class HipscatLoadingConfig:
     """Extra kwargs for the pandas parquet file reader"""
 
     def __post_init__(self):
-        if self.margin_cache is not None and not isinstance(self.margin_cache, (MarginCatalog, str)):
-            raise ValueError("`margin_cache` must be of type 'MarginCatalog' or 'str'")
         if self.dtype_backend not in ["pyarrow", "numpy_nullable", None]:
             raise ValueError("The data type backend must be either 'pyarrow' or 'numpy_nullable'")
 
@@ -48,3 +47,20 @@ class HipscatLoadingConfig:
         elif self.dtype_backend == "numpy_nullable":
             mapper = _arrow_dtype_mapping().get
         return mapper
+
+    def make_query_url_params(self) -> dict:
+        """
+        Generates a dictionary of URL parameters with `columns` and `filters` attributes.
+        """
+        url_params = {}
+
+        if self.columns and len(self.columns) > 0:
+            url_params["columns"] = self.columns
+
+        if "filters" in self.kwargs:
+            url_params["filters"] = []
+            for filtr in self.kwargs["filters"]:
+                # This is how hipscat expects the filters to add to the url
+                url_params["filters"].append(f"{filtr[0]}{filtr[1]}{filtr[2]}")
+
+        return url_params
