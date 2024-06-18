@@ -36,6 +36,7 @@ Learn more about contributing to this repository in our :doc:`Contribution Guide
    Installation <installation>
    Getting Started <tutorials/quickstart>
    Tutorials <tutorials>
+   Performance <performance>
 
 .. toctree::
    :hidden:
