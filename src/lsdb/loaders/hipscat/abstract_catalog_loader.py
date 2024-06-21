@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import Generic, List, Tuple, Type, TypeVar
+from typing import Generic, List, Tuple, Type
 
 import dask.dataframe as dd
 import hipscat as hc
@@ -13,12 +13,9 @@ from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.healpix_pixel_function import get_pixel_argsort
 
 from lsdb.catalog.catalog import DaskDFPixelMap
-from lsdb.catalog.dataset.dataset import Dataset
 from lsdb.dask.divisions import get_pixels_divisions
 from lsdb.loaders.hipscat.hipscat_loading_config import HipscatLoadingConfig
-
-CatalogTypeVar = TypeVar("CatalogTypeVar", bound=Dataset)
-HCCatalogTypeVar = TypeVar("HCCatalogTypeVar", bound=HCHealpixDataset)
+from lsdb.types import CatalogTypeVar, HCCatalogTypeVar
 
 
 class AbstractCatalogLoader(Generic[CatalogTypeVar]):

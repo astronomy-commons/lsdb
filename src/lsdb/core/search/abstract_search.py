@@ -8,7 +8,7 @@ from hipscat.catalog.catalog_info import CatalogInfo
 from mocpy import MOC
 
 if TYPE_CHECKING:
-    from lsdb.loaders.hipscat.abstract_catalog_loader import HCCatalogTypeVar
+    from lsdb.types import HCCatalogTypeVar
 
 
 # pylint: disable=too-many-instance-attributes, too-many-arguments

@@ -8,7 +8,7 @@ from hipscat.pixel_math import HealpixPixel
 from lsdb.core.search.abstract_search import AbstractSearch
 
 if TYPE_CHECKING:
-    from lsdb.loaders.hipscat.abstract_catalog_loader import HCCatalogTypeVar
+    from lsdb.types import HCCatalogTypeVar
 
 
 class PixelSearch(AbstractSearch):
