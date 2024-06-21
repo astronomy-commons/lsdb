@@ -188,10 +188,7 @@ def small_sky_order1_df(small_sky_order1_dir):
 
 @pytest.fixture
 def small_sky_source_df(test_data_dir):
-    return pd.read_csv(
-        test_data_dir / "raw" / "small_sky_source" / "small_sky_source.csv",
-        dtype={"band": "string[pyarrow]"},
-    )
+    return pd.read_csv(test_data_dir / "raw" / "small_sky_source" / "small_sky_source.csv")
 
 
 @pytest.fixture
@@ -283,6 +280,8 @@ def assert_divisions_are_correct():
             div_pixel = hipscat_id_to_healpix([division], target_order=hp_pixel.order)
             assert hp_pixel.pixel == div_pixel
         # The last division corresponds to the HIPSCAT_ID_MAX
-        assert catalog._ddf.divisions[-1] >= healpix_to_hipscat_id(hp_pixels[-1].order, hp_pixels[-1].pixel + 1)
+        assert catalog._ddf.divisions[-1] >= healpix_to_hipscat_id(
+            hp_pixels[-1].order, hp_pixels[-1].pixel + 1
+        )
 
     return assert_divisions_are_correct
