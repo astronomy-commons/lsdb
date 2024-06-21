@@ -34,6 +34,10 @@ def test_catalog_compute_equals_ddf_compute(small_sky_order1_catalog):
     pd.testing.assert_frame_equal(small_sky_order1_catalog.compute(), small_sky_order1_catalog._ddf.compute())
 
 
+def test_catalog_uses_dask_expressions(small_sky_order1_catalog):
+    assert hasattr(small_sky_order1_catalog._ddf, "expr")
+
+
 def test_get_catalog_partition_gets_correct_partition(small_sky_order1_catalog):
     for healpix_pixel in small_sky_order1_catalog.get_healpix_pixels():
         hp_order = healpix_pixel.order
