@@ -335,7 +335,7 @@ class HealpixDataset(Dataset):
         **kwargs,
     ) -> np.ndarray:
         """Get a histogram with the result of a given function applied to the points in each HEALPix pixel of
-            a given order
+        a given order
 
         Args:
             func (Callable[[pd.DataFrame], HealpixPixel, Any]): A function that takes a pandas DataFrame and

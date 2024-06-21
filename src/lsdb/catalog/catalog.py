@@ -153,7 +153,6 @@ class Catalog(HealpixDataset):
 
                     The class will have been initialized with the following parameters, which the
                     crossmatch function should use:
-
                         - left: pd.DataFrame,
                         - right: pd.DataFrame,
                         - left_order: int,
@@ -394,6 +393,8 @@ class Catalog(HealpixDataset):
             other (Catalog): the right catalog to join to
             left_on (str): the name of the column in the left catalog to join on
             right_on (str): the name of the column in the right catalog to join on
+            through (AssociationCatalog): an association catalog that provides the alignment
+                between pixels and individual rows.
             suffixes (Tuple[str,str]): suffixes to apply to the columns of each table
             output_catalog_name (str): The name of the resulting catalog to be stored in metadata
 

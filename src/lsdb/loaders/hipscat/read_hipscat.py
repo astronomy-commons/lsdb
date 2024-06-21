@@ -38,11 +38,12 @@ def read_hipscat(
 ) -> CatalogTypeVar | None:
     """Load a catalog from a HiPSCat formatted catalog.
 
-    Typical usage example, where we load a catalog with a subset of columns:
+    Typical usage example, where we load a catalog with a subset of columns::
 
         lsdb.read_hipscat(path="./my_catalog_dir", columns=["ra","dec"])
 
-    Typical usage example, where we load a catalog from a cone search:
+    Typical usage example, where we load a catalog from a cone search::
+
         lsdb.read_hipscat_subset(
             path="./my_catalog_dir",
             catalog_type=lsdb.Catalog,
