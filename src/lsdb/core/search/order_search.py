@@ -7,7 +7,7 @@ import pandas as pd
 from lsdb.core.search.abstract_search import AbstractSearch
 
 if TYPE_CHECKING:
-    from lsdb.loaders.hipscat.abstract_catalog_loader import HCCatalogTypeVar
+    from lsdb.types import HCCatalogTypeVar
 
 
 class OrderSearch(AbstractSearch):

@@ -130,15 +130,15 @@ class HealpixDataset(Dataset):
 
     def _perform_search(
         self,
-        metadata: hc.catalog.Catalog,
-        filtered_pixels: List[HealpixPixel],
+        metadata: hc.catalog.Catalog | hc.catalog.MarginCatalog,
         search: AbstractSearch,
-    ):
+    ) -> Tuple[dict, dd.core.DataFrame]:
         """Performs a search on the catalog from a list of pixels to search in
 
         Args:
-            metadata (hc.catalog.Catalog): The metadata of the hipscat catalog.
-            filtered_pixels (List[HealpixPixel]): List of pixels in the catalog to be searched.
+            metadata (hc.catalog.Catalog | hc.catalog.MarginCatalog): The metadata of
+                the hipscat catalog after the coarse filtering is applied. The partitions
+                it contains are only those that overlap with the spatial region.
             search (AbstractSearch): Instance of AbstractSearch.
 
         Returns:
@@ -146,6 +146,7 @@ class HealpixDataset(Dataset):
             containing the search results
         """
         partitions = self._ddf.to_delayed()
+        filtered_pixels = metadata.get_healpix_pixels()
         targeted_partitions = [partitions[self._ddf_pixel_map[pixel]] for pixel in filtered_pixels]
         filtered_partitions = (
             [search.search_points(partition, metadata.catalog_info) for partition in targeted_partitions]
