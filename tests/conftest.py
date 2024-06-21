@@ -7,7 +7,6 @@ from hipscat.pixel_math import hipscat_id_to_healpix
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN, healpix_to_hipscat_id
 
 import lsdb
-from lsdb.dask.divisions import HIPSCAT_ID_MAX
 
 DATA_DIR_NAME = "data"
 SMALL_SKY_DIR_NAME = "small_sky"
