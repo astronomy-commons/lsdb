@@ -8,7 +8,7 @@ from hipscat.catalog.catalog_info import CatalogInfo
 from mocpy import MOC
 
 if TYPE_CHECKING:
-    from lsdb.loaders.hipscat.abstract_catalog_loader import HCCatalogTypeVar
+    from lsdb.types import HCCatalogTypeVar
 
 
 # pylint: disable=too-many-instance-attributes, too-many-arguments
@@ -27,6 +27,8 @@ class AbstractSearch(ABC):
 
     def filter_hc_catalog(self, hc_structure: HCCatalogTypeVar) -> HCCatalogTypeVar:
         """Filters the hispcat catalog object to the partitions included in the search"""
+        if len(hc_structure.get_healpix_pixels()) == 0:
+            return hc_structure
         max_order = hc_structure.get_max_coverage_order()
         search_moc = self.generate_search_moc(max_order)
         return hc_structure.filter_by_moc(search_moc)
