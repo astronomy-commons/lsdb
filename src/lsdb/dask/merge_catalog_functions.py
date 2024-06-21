@@ -243,8 +243,8 @@ def generate_meta_df_for_joined_tables(
         index_type (npt.DTypeLike): The type of the index in the resulting DataFrame
 
     Returns:
-    An empty dataframe with the columns of each catalog with their respective suffix, and any extra columns
-    specified, with the index name set.
+        An empty dataframe with the columns of each catalog with their respective suffix, and any extra 
+        columns specified, with the index name set.
     """
     meta = {}
     # Construct meta for crossmatched catalog columns
