@@ -188,7 +188,7 @@ class HealpixDataset(Dataset):
         meta: pd.DataFrame | pd.Series | Dict | Iterable | Tuple | None = None,
         include_pixel: bool = False,
         **kwargs,
-    ) -> Self | dd.core.Series:
+    ) -> Self | dd.Series:
         """Applies a function to each partition in the catalog.
 
         The ra and dec of each row is assumed to remain unchanged.
@@ -244,7 +244,7 @@ class HealpixDataset(Dataset):
         else:
             output_ddf = self._ddf.map_partitions(func, *args, meta=meta, **kwargs)
 
-        if isinstance(output_ddf, dd.core.DataFrame):
+        if isinstance(output_ddf, dd.DataFrame):
             return self.__class__(output_ddf, self._ddf_pixel_map, self.hc_structure)
         warnings.warn(
             "output of the function must be a DataFrame to generate an LSDB `Catalog`. `map_partitions` "

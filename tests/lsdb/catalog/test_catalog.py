@@ -66,7 +66,7 @@ def test_head_rows_less_than_requested(small_sky_order1_catalog):
     schema = small_sky_order1_catalog.dtypes
     two_rows = small_sky_order1_catalog._ddf.partitions[0].compute()[:2]
     tiny_df = pd.DataFrame(data=two_rows, columns=schema.index, dtype=schema.to_numpy())
-    altered_ddf = dd.io.from_pandas(tiny_df, npartitions=1)
+    altered_ddf = dd.from_pandas(tiny_df, npartitions=1)
     catalog = lsdb.Catalog(altered_ddf, {}, small_sky_order1_catalog.hc_structure)
     # The head only contains two values
     assert len(catalog.head()) == 2
@@ -542,7 +542,7 @@ def test_map_partitions_non_df(small_sky_order1_catalog):
         mapped = small_sky_order1_catalog.map_partitions(get_col)
 
     assert not isinstance(mapped, Catalog)
-    assert isinstance(mapped, dd.core.Series)
+    assert isinstance(mapped, dd.Series)
     mapcomp = mapped.compute()
     assert np.all(mapcomp == small_sky_order1_catalog.compute()["ra"] + 1)
 
