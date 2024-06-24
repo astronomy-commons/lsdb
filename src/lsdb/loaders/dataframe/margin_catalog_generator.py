@@ -82,7 +82,7 @@ class MarginCatalogGenerator:
         margin_structure = hc.catalog.MarginCatalog(margin_catalog_info, margin_pixels)
         return MarginCatalog(ddf, ddf_pixel_map, margin_structure)
 
-    def _get_margins(self):
+    def _get_margins(self) -> Tuple[List[HealpixPixel], List[pd.DataFrame]]:
         combined_pixels = (
             self.hc_structure.get_healpix_pixels() + self.hc_structure.generate_negative_tree_pixels()
         )
