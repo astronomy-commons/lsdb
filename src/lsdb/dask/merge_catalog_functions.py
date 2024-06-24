@@ -294,7 +294,7 @@ def align_catalog_to_partitions(
     """
     if catalog is None:
         return [None] * len(pixels)
-    dfs = catalog.to_delayed(optimize_graph=False)
+    dfs = catalog.to_delayed()
     get_partition = np.vectorize(
         lambda pix: (
             dfs[catalog.get_partition_index(pix.order, pix.pixel)]
