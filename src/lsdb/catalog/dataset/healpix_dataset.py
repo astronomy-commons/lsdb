@@ -160,27 +160,6 @@ class HealpixDataset(Dataset):
         ddf_partition_map = {pixel: i for i, pixel in enumerate(filtered_pixels)}
         return ddf_partition_map, filtered_partitions_ddf
 
-    def _construct_search_ddf(
-        self, filtered_pixels: List[HealpixPixel], filtered_partitions: List[Delayed]
-    ) -> Tuple[dict, dd.DataFrame]:
-        """Constructs a search catalog pixel map and respective Dask Dataframe
-
-        Args:
-            filtered_pixels (List[HealpixPixel]): The list of pixels in the search
-            filtered_partitions (List[Delayed]): The list of delayed partitions
-
-        Returns:
-            The catalog pixel map and the respective Dask DataFrame
-        """
-        filtered_partitions = (
-            filtered_partitions if len(filtered_partitions) > 0 else [delayed(self._ddf._meta)]
-        )
-        divisions = get_pixels_divisions(filtered_pixels)
-        search_ddf = dd.from_delayed(filtered_partitions, meta=self._ddf._meta, divisions=divisions)
-        search_ddf = cast(dd.DataFrame, search_ddf)
-        ddf_partition_map = {pixel: i for i, pixel in enumerate(filtered_pixels)}
-        return ddf_partition_map, search_ddf
-
     def map_partitions(
         self,
         func: Callable[..., pd.DataFrame],
@@ -266,30 +245,35 @@ class HealpixDataset(Dataset):
         if persist:
             self._ddf.persist()
         non_empty_pixels, non_empty_partitions = self._get_non_empty_partitions()
-        ddf_partition_map, search_ddf = self._construct_search_ddf(non_empty_pixels, non_empty_partitions)
+        search_ddf = (
+            self._ddf.partitions[non_empty_partitions]
+            if len(non_empty_partitions) > 0
+            else dd.from_pandas(self._ddf._meta, npartitions=1)
+        )
+        ddf_partition_map = {pixel: i for i, pixel in enumerate(non_empty_pixels)}
         filtered_hc_structure = self.hc_structure.filter_from_pixel_list(non_empty_pixels)
         return self.__class__(search_ddf, ddf_partition_map, filtered_hc_structure)
 
-    def _get_non_empty_partitions(self) -> Tuple[List[HealpixPixel], List[Delayed]]:
+    def _get_non_empty_partitions(self) -> Tuple[List[HealpixPixel], np.ndarray]:
         """Determines which pixels and partitions of a catalog are not empty
 
         Returns:
             A tuple with the non-empty pixels and respective partitions
         """
-        partitions = self._ddf.to_delayed()
 
         # Compute partition lengths (expensive operation)
         partition_sizes = self._ddf.map_partitions(len).compute()
-        empty_partition_indices = np.argwhere(partition_sizes == 0).flatten()
+        non_empty_partition_indices = np.argwhere(partition_sizes > 0).flatten()
+
+        non_empty_indices_set = set(non_empty_partition_indices)
 
         # Extract the non-empty pixels and respective partitions
-        non_empty_pixels, non_empty_partitions = [], []
+        non_empty_pixels = []
         for pixel, partition_index in self._ddf_pixel_map.items():
-            if partition_index not in empty_partition_indices:
+            if partition_index in non_empty_indices_set:
                 non_empty_pixels.append(pixel)
-                non_empty_partitions.append(partitions[partition_index])
 
-        return non_empty_pixels, non_empty_partitions
+        return non_empty_pixels, non_empty_partition_indices
 
     def skymap_data(
         self,
