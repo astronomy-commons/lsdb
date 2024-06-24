@@ -92,7 +92,7 @@ class MarginCatalogGenerator:
         return pixels, partitions
 
     def _generate_dask_df_and_map(
-        self, pixels, partitions
+        self, pixels: List[HealpixPixel], partitions: List[pd.DataFrame]
     ) -> Tuple[dd.DataFrame, Dict[HealpixPixel, int], int]:
         """Create the Dask Dataframe containing the data points in the margins
         for the catalog as well as the mapping of those HEALPix to Dataframes
