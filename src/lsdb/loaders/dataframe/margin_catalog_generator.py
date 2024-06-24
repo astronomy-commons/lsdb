@@ -83,6 +83,13 @@ class MarginCatalogGenerator:
         return MarginCatalog(ddf, ddf_pixel_map, margin_structure)
 
     def _get_margins(self) -> Tuple[List[HealpixPixel], List[pd.DataFrame]]:
+        """Generates the list of pixels that have margin data, and the dataframes with the margin data for
+        each partition
+
+        Returns:
+            A tuple of the list of HealpixPixels corresponding to partitions that have margin data, and
+            a list of the dataframes with the margin data for each partition.
+        """
         combined_pixels = (
             self.hc_structure.get_healpix_pixels() + self.hc_structure.generate_negative_tree_pixels()
         )
@@ -96,6 +103,11 @@ class MarginCatalogGenerator:
     ) -> Tuple[dd.DataFrame, Dict[HealpixPixel, int], int]:
         """Create the Dask Dataframe containing the data points in the margins
         for the catalog as well as the mapping of those HEALPix to Dataframes
+
+        Args:
+            pixels (List[HealpixPixel]): The list of healpix pixels in the catalog with margins
+            partitions (List[pd.DataFrame]): The list of dataframes containing the margin rows for each
+                partition, aligned with the pixels list
 
         Returns:
             Tuple containing the Dask Dataframe, the mapping of margin HEALPix
