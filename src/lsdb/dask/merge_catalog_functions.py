@@ -7,7 +7,7 @@ import healpy as hp
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
-from dask.delayed import Delayed
+from dask.delayed import Delayed, delayed
 from hipscat.catalog import PartitionInfo
 from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN, healpix_to_hipscat_id
@@ -177,7 +177,7 @@ def filter_by_hipscat_index_to_pixel(dataframe: pd.DataFrame, order: int, pixel:
 
 def construct_catalog_args(
     partitions: List[Delayed], meta_df: pd.DataFrame, alignment: PixelAlignment
-) -> Tuple[dd.core.DataFrame, DaskDFPixelMap, PixelAlignment]:
+) -> Tuple[dd.DataFrame, DaskDFPixelMap, PixelAlignment]:
     """Constructs the arguments needed to create a catalog from a list of delayed partitions
 
     Args:
@@ -191,11 +191,11 @@ def construct_catalog_args(
     """
     # generate dask df partition map from alignment
     partition_map = get_partition_map_from_alignment_pixels(alignment.pixel_mapping)
-
     # create dask df from delayed partitions
     divisions = get_pixels_divisions(list(partition_map.keys()))
-    ddf = dd.io.from_delayed(partitions, meta=meta_df, divisions=divisions)
-    ddf = cast(dd.core.DataFrame, ddf)
+    partitions = partitions if len(partitions) > 0 else [delayed(pd.DataFrame([]))]
+    ddf = dd.from_delayed(partitions, meta=meta_df, divisions=divisions)
+    ddf = cast(dd.DataFrame, ddf)
     return ddf, partition_map, alignment
 
 

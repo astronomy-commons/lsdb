@@ -1,6 +1,5 @@
 from typing import List, Tuple
 
-import dask
 import healpy as hp
 import numpy as np
 import pandas as pd
@@ -35,7 +34,6 @@ class PolygonSearch(AbstractSearch):
         return polygon_filter(frame, self.polygon, metadata)
 
 
-@dask.delayed
 def polygon_filter(data_frame: pd.DataFrame, polygon: ConvexPolygon, metadata: CatalogInfo):
     """Filters a dataframe to only include points within the specified polygon.
 

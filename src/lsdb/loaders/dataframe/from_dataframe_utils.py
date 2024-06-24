@@ -14,7 +14,7 @@ from lsdb.dask.divisions import get_pixels_divisions
 
 def _generate_dask_dataframe(
     pixel_dfs: List[pd.DataFrame], pixels: List[HealpixPixel], use_pyarrow_types: bool = True
-) -> Tuple[dd.core.DataFrame, int]:
+) -> Tuple[dd.DataFrame, int]:
     """Create the Dask Dataframe from the list of HEALPix pixel Dataframes
 
     Args:
@@ -29,8 +29,8 @@ def _generate_dask_dataframe(
     schema = pixel_dfs[0].iloc[:0, :].copy() if len(pixels) > 0 else []
     delayed_dfs = [delayed(df) for df in pixel_dfs]
     divisions = get_pixels_divisions(pixels)
-    ddf = dd.io.from_delayed(delayed_dfs, meta=schema, divisions=divisions)
-    ddf = ddf if isinstance(ddf, dd.core.DataFrame) else ddf.to_frame()
+    ddf = dd.from_delayed(delayed_dfs, meta=schema, divisions=divisions)
+    ddf = ddf if isinstance(ddf, dd.DataFrame) else ddf.to_frame()
     return ddf, len(ddf)
 
 

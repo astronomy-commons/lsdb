@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import Tuple
 
-import dask
 import numpy as np
 import pandas as pd
 from hipscat.catalog.catalog_info import CatalogInfo
@@ -40,7 +39,6 @@ class BoxSearch(AbstractSearch):
         return box_filter(frame, self.ra, self.dec, metadata)
 
 
-@dask.delayed
 def box_filter(
     data_frame: pd.DataFrame,
     ra: Tuple[float, float] | None,
