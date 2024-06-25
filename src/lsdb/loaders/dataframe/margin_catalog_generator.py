@@ -12,6 +12,7 @@ from hipscat.catalog import CatalogType
 from hipscat.catalog.margin_cache import MarginCacheCatalogInfo
 from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.healpix_pixel_function import get_pixel_argsort
+from nested_dask import NestedFrame
 
 from lsdb import Catalog
 from lsdb.catalog.margin_catalog import MarginCatalog
@@ -101,7 +102,7 @@ class MarginCatalogGenerator:
 
     def _generate_dask_df_and_map(
         self, pixels: List[HealpixPixel], partitions: List[pd.DataFrame]
-    ) -> Tuple[dd.DataFrame, Dict[HealpixPixel, int], int]:
+    ) -> Tuple[NestedFrame, Dict[HealpixPixel, int], int]:
         """Create the Dask Dataframe containing the data points in the margins
         for the catalog as well as the mapping of those HEALPix to Dataframes
 

@@ -14,6 +14,8 @@ from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN, healpix_to_hipscat_
 from hipscat.pixel_tree import PixelAlignment, PixelAlignmentType, align_trees
 from hipscat.pixel_tree.moc_utils import copy_moc
 from hipscat.pixel_tree.pixel_alignment import align_with_mocs
+from nested_dask import NestedFrame
+import nested_pandas as npd
 
 from lsdb.dask.divisions import get_pixels_divisions
 from lsdb.types import DaskDFPixelMap
@@ -177,7 +179,7 @@ def filter_by_hipscat_index_to_pixel(dataframe: pd.DataFrame, order: int, pixel:
 
 def construct_catalog_args(
     partitions: List[Delayed], meta_df: pd.DataFrame, alignment: PixelAlignment
-) -> Tuple[dd.DataFrame, DaskDFPixelMap, PixelAlignment]:
+) -> Tuple[NestedFrame, DaskDFPixelMap, PixelAlignment]:
     """Constructs the arguments needed to create a catalog from a list of delayed partitions
 
     Args:
@@ -195,7 +197,7 @@ def construct_catalog_args(
     divisions = get_pixels_divisions(list(partition_map.keys()))
     partitions = partitions if len(partitions) > 0 else [delayed(pd.DataFrame([]))]
     ddf = dd.from_delayed(partitions, meta=meta_df, divisions=divisions)
-    ddf = cast(dd.DataFrame, ddf)
+    ddf = NestedFrame.from_dask_dataframe(ddf)
     return ddf, partition_map, alignment
 
 
@@ -229,7 +231,7 @@ def generate_meta_df_for_joined_tables(
     extra_columns: pd.DataFrame | None = None,
     index_name: str = HIPSCAT_ID_COLUMN,
     index_type: npt.DTypeLike = np.uint64,
-) -> pd.DataFrame:
+) -> npd.NestedFrame:
     """Generates a Dask meta DataFrame that would result from joining two catalogs
 
     Creates an empty dataframe with the columns of each catalog appended with a suffix. Allows specifying
@@ -256,7 +258,7 @@ def generate_meta_df_for_joined_tables(
         meta.update(extra_columns)
     index = pd.Index(pd.Series(dtype=index_type), name=index_name)
     meta_df = pd.DataFrame(meta, index)
-    return meta_df
+    return npd.NestedFrame(meta_df)
 
 
 def get_partition_map_from_alignment_pixels(join_pixels: pd.DataFrame) -> DaskDFPixelMap:

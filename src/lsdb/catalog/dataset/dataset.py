@@ -1,9 +1,9 @@
 from typing import List
 
-import dask.dataframe as dd
 import hipscat as hc
 import pandas as pd
 from dask.delayed import Delayed
+from nested_dask import NestedFrame
 
 
 class Dataset:
@@ -11,7 +11,7 @@ class Dataset:
 
     def __init__(
         self,
-        ddf: dd.DataFrame,
+        ddf: NestedFrame,
         hc_structure: hc.catalog.Dataset,
     ):
         """Initialise a Catalog object.
