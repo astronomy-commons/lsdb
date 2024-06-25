@@ -14,6 +14,7 @@ from hipscat.catalog.margin_cache import MarginCacheCatalogInfo
 from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
 from hipscat.pixel_tree import PixelAlignment
+from nested_dask import NestedFrame
 
 from lsdb.catalog.association_catalog import AssociationCatalog
 from lsdb.dask.merge_catalog_functions import (
@@ -177,7 +178,7 @@ def perform_join_through(
 
 def join_catalog_data_on(
     left: Catalog, right: Catalog, left_on: str, right_on: str, suffixes: Tuple[str, str]
-) -> Tuple[dd.DataFrame, DaskDFPixelMap, PixelAlignment]:
+) -> Tuple[NestedFrame, DaskDFPixelMap, PixelAlignment]:
     """Joins two catalogs spatially on a specified column
 
     Args:
@@ -218,7 +219,7 @@ def join_catalog_data_on(
 
 def join_catalog_data_through(
     left: Catalog, right: Catalog, association: AssociationCatalog, suffixes: Tuple[str, str]
-) -> Tuple[dd.DataFrame, DaskDFPixelMap, PixelAlignment]:
+) -> Tuple[NestedFrame, DaskDFPixelMap, PixelAlignment]:
     """Joins two catalogs with an association table
 
     Args:

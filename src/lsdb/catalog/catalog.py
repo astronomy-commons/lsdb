@@ -3,7 +3,7 @@ from __future__ import annotations
 import dataclasses
 from typing import List, Tuple, Type
 
-import dask.dataframe as dd
+from nested_dask import NestedFrame
 import hipscat as hc
 import pandas as pd
 from hipscat.catalog.index.index_catalog import IndexCatalog as HCIndexCatalog
@@ -38,7 +38,7 @@ class Catalog(HealpixDataset):
 
     def __init__(
         self,
-        ddf: dd.DataFrame,
+        ddf: NestedFrame,
         ddf_pixel_map: DaskDFPixelMap,
         hc_structure: hc.catalog.Catalog,
         margin: MarginCatalog | None = None,
@@ -329,7 +329,7 @@ class Catalog(HealpixDataset):
         left_index: bool = False,
         right_index: bool = False,
         suffixes: Tuple[str, str] | None = None,
-    ) -> dd.DataFrame:
+    ) -> NestedFrame:
         """Performs the merge of two catalog Dataframes
 
         More information about pandas merge is available

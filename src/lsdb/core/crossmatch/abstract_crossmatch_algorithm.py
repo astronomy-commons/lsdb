@@ -137,10 +137,10 @@ class AbstractCrossmatchAlgorithm(ABC):
         This must accept any additional arguments the `crossmatch` method accepts.
         """
         # Check that we have the appropriate columns in our dataset.
-        if left._ddf.index.name != HIPSCAT_ID_COLUMN:
-            raise ValueError(f"index of left table must be {HIPSCAT_ID_COLUMN}")
-        if right._ddf.index.name != HIPSCAT_ID_COLUMN:
-            raise ValueError(f"index of right table must be {HIPSCAT_ID_COLUMN}")
+        # if left._ddf.index.name != HIPSCAT_ID_COLUMN:
+        #     raise ValueError(f"index of left table must be {HIPSCAT_ID_COLUMN}")
+        # if right._ddf.index.name != HIPSCAT_ID_COLUMN:
+        #     raise ValueError(f"index of right table must be {HIPSCAT_ID_COLUMN}")
         column_names = left._ddf.columns
         if left.hc_structure.catalog_info.ra_column not in column_names:
             raise ValueError(f"left table must have column {left.hc_structure.catalog_info.ra_column}")

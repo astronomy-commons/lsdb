@@ -5,6 +5,7 @@ from typing import Any, Callable, Dict, Iterable, List, Tuple
 
 import dask
 import dask.dataframe as dd
+from nested_dask import NestedFrame
 import healpy as hp
 import hipscat as hc
 import numpy as np
@@ -38,7 +39,7 @@ class HealpixDataset(Dataset):
 
     def __init__(
         self,
-        ddf: dd.DataFrame,
+        ddf: NestedFrame,
         ddf_pixel_map: DaskDFPixelMap,
         hc_structure: HCHealpixDataset,
     ):
@@ -57,7 +58,7 @@ class HealpixDataset(Dataset):
 
     def __getitem__(self, item):
         result = self._ddf.__getitem__(item)
-        if isinstance(result, dd.DataFrame):
+        if isinstance(result, NestedFrame):
             return self.__class__(result, self._ddf_pixel_map, self.hc_structure)
         return result
 
@@ -79,7 +80,7 @@ class HealpixDataset(Dataset):
         pixels = self.get_healpix_pixels()
         return np.array(pixels)[get_pixel_argsort(pixels)]
 
-    def get_partition(self, order: int, pixel: int) -> dd.DataFrame:
+    def get_partition(self, order: int, pixel: int) -> NestedFrame:
         """Get the dask partition for a given HEALPix pixel
 
         Args:
@@ -131,7 +132,7 @@ class HealpixDataset(Dataset):
         self,
         metadata: hc.catalog.Catalog | hc.catalog.MarginCatalog,
         search: AbstractSearch,
-    ) -> Tuple[DaskDFPixelMap, dd.DataFrame]:
+    ) -> Tuple[DaskDFPixelMap, NestedFrame]:
         """Performs a search on the catalog from a list of pixels to search in
 
         Args:
@@ -146,7 +147,7 @@ class HealpixDataset(Dataset):
         """
         filtered_pixels = metadata.get_healpix_pixels()
         if len(filtered_pixels) == 0:
-            return {}, dd.from_pandas(self._ddf._meta)
+            return {}, NestedFrame.from_dask_dataframe(dd.from_pandas(self._ddf._meta))
         target_partitions_indices = [self._ddf_pixel_map[pixel] for pixel in filtered_pixels]
         filtered_partitions_ddf = self._ddf.partitions[target_partitions_indices]
         if search.fine:
@@ -222,8 +223,10 @@ class HealpixDataset(Dataset):
         else:
             output_ddf = self._ddf.map_partitions(func, *args, meta=meta, **kwargs)
 
-        if isinstance(output_ddf, dd.DataFrame):
-            return self.__class__(output_ddf, self._ddf_pixel_map, self.hc_structure)
+        if isinstance(output_ddf, NestedFrame) | isinstance(output_ddf, dd.DataFrame):
+            return self.__class__(
+                NestedFrame.from_dask_dataframe(output_ddf), self._ddf_pixel_map, self.hc_structure
+            )
         warnings.warn(
             "output of the function must be a DataFrame to generate an LSDB `Catalog`. `map_partitions` "
             "will return a dask object instead of a Catalog.",
@@ -247,7 +250,7 @@ class HealpixDataset(Dataset):
         search_ddf = (
             self._ddf.partitions[non_empty_partitions]
             if len(non_empty_partitions) > 0
-            else dd.from_pandas(self._ddf._meta, npartitions=1)
+            else NestedFrame.from_dask_dataframe(dd.from_pandas(self._ddf._meta, npartitions=1))
         )
         ddf_partition_map = {pixel: i for i, pixel in enumerate(non_empty_pixels)}
         filtered_hc_structure = self.hc_structure.filter_from_pixel_list(non_empty_pixels)
