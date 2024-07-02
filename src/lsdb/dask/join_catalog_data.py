@@ -15,6 +15,8 @@ from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
 from hipscat.pixel_tree import PixelAlignment
 from nested_dask import NestedFrame
+from nested_pandas.series.packer import pack_flat
+import nested_pandas as npd
 
 from lsdb.catalog.association_catalog import AssociationCatalog
 from lsdb.dask.merge_catalog_functions import (
@@ -25,6 +27,7 @@ from lsdb.dask.merge_catalog_functions import (
     filter_by_hipscat_index_to_pixel,
     generate_meta_df_for_joined_tables,
     get_healpix_pixels_from_alignment,
+    generate_meta_df_for_nested_tables,
 )
 from lsdb.types import DaskDFPixelMap
 
@@ -99,6 +102,58 @@ def perform_join_on(
     merged = left.reset_index().merge(
         right_joined_df, left_on=left_on + suffixes[0], right_on=right_on + suffixes[1]
     )
+    merged.set_index(HIPSCAT_ID_COLUMN, inplace=True)
+    return merged
+
+
+# pylint: disable=too-many-arguments, unused-argument
+@dask.delayed
+def perform_join_nested(
+    left: pd.DataFrame,
+    right: pd.DataFrame,
+    right_margin: pd.DataFrame,
+    left_pixel: HealpixPixel,
+    right_pixel: HealpixPixel,
+    right_margin_pixel: HealpixPixel,
+    left_catalog_info: CatalogInfo,
+    right_catalog_info: CatalogInfo,
+    right_margin_catalog_info: MarginCacheCatalogInfo,
+    left_on: str,
+    right_on: str,
+    suffixes: Tuple[str, str],
+    right_columns: List[str],
+    right_name: str,
+):
+    """Performs a join on two catalog partitions
+
+    Args:
+        left (pd.DataFrame): the left partition to merge
+        right (pd.DataFrame): the right partition to merge
+        right_margin (pd.DataFrame): the right margin partition to merge
+        left_pixel (HealpixPixel): the HEALPix pixel of the left partition
+        right_pixel (HealpixPixel): the HEALPix pixel of the right partition
+        right_margin_pixel (HealpixPixel): the HEALPix pixel of the right margin partition
+        left_catalog_info (hc.CatalogInfo): the catalog info of the left catalog
+        right_catalog_info (hc.CatalogInfo): the catalog info of the right catalog
+        right_margin_catalog_info (hc.MarginCacheCatalogInfo): the catalog info of the right margin catalog
+        left_on (str): the column to join on from the left partition
+        right_on (str): the column to join on from the right partition
+        suffixes (Tuple[str,str]): the suffixes to apply to each partition's column names
+        right_columns (List[str]): the columns to include from the right margin partition
+
+    Returns:
+        A dataframe with the result of merging the left and right partitions on the specified columns
+    """
+    if right_pixel.order > left_pixel.order:
+        left = filter_by_hipscat_index_to_pixel(left, right_pixel.order, right_pixel.pixel)
+
+    right_joined_df = concat_partition_and_margin(right, right_margin, right_columns)
+
+    left, _ = rename_columns_with_suffixes(left, right_joined_df, suffixes)
+
+    right_joined_df = pack_flat(npd.NestedFrame(right_joined_df.set_index(right_on))).rename(right_name)
+
+    merged = left.reset_index().merge(right_joined_df, left_on=left_on + suffixes[0], right_index=True)
     merged.set_index(HIPSCAT_ID_COLUMN, inplace=True)
     return merged
 
@@ -213,6 +268,58 @@ def join_catalog_data_on(
     )
 
     meta_df = generate_meta_df_for_joined_tables([left, right], suffixes)
+
+    return construct_catalog_args(joined_partitions, meta_df, alignment)
+
+
+def join_catalog_data_nested(
+    left: Catalog,
+    right: Catalog,
+    left_on: str,
+    right_on: str,
+    suffixes: Tuple[str, str],
+    nested_column_name: str | None = None,
+) -> Tuple[NestedFrame, DaskDFPixelMap, PixelAlignment]:
+    """Joins two catalogs spatially on a specified column
+
+    Args:
+        left (lsdb.Catalog): the left catalog to join
+        right (lsdb.Catalog): the right catalog to join
+        left_on (str): the column to join on from the left partition
+        right_on (str): the column to join on from the right partition
+        suffixes (Tuple[str,str]): the suffixes to apply to each partition's column names
+
+    Returns:
+        A tuple of the dask dataframe with the result of the join, the pixel map from HEALPix
+        pixel to partition index within the dataframe, and the PixelAlignment of the two input
+        catalogs.
+    """
+    if right.margin is None:
+        warnings.warn(
+            "Right catalog does not have a margin cache. Results may be incomplete and/or inaccurate.",
+            RuntimeWarning,
+        )
+
+    if nested_column_name is None:
+        nested_column_name = right.name
+
+    alignment = align_catalogs(left, right)
+
+    left_pixels, right_pixels = get_healpix_pixels_from_alignment(alignment)
+
+    joined_partitions = align_and_apply(
+        [(left, left_pixels), (right, right_pixels), (right.margin, right_pixels)],
+        perform_join_nested,
+        left_on,
+        right_on,
+        suffixes,
+        right.columns,
+        nested_column_name,
+    )
+
+    meta_df = generate_meta_df_for_nested_tables(
+        [left], suffixes[0:], right, nested_column_name, join_column_name=right_on
+    )
 
     return construct_catalog_args(joined_partitions, meta_df, alignment)
 
