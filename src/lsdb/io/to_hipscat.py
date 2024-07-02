@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, Dict, Union
 
 import dask
 import hipscat as hc
-import pandas as pd
+import nested_pandas as npd
 from hipscat.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
 from hipscat.io import FilePointer
 from hipscat.pixel_math import HealpixPixel
@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 
 @dask.delayed
 def perform_write(
-    df: pd.DataFrame,
+    df: npd.NestedFrame,
     hp_pixel: HealpixPixel,
     base_catalog_dir: FilePointer,
     storage_options: dict | None = None,
@@ -31,7 +31,7 @@ def perform_write(
     To be used as a dask delayed method as part of a dask task graph.
 
     Args:
-        df (pd.DataFrame): dataframe to write to file
+        df (npd.NestedFrame): dataframe to write to file
         hp_pixel (HealpixPixel): HEALPix pixel of file to be written
         base_catalog_dir (FilePointer): Location of the base catalog directory to write to
         storage_options (dict): fsspec storage options

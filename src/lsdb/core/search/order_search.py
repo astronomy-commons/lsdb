@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pandas as pd
+import nested_pandas as npd
 
 from lsdb.core.search.abstract_search import AbstractSearch
 
@@ -32,6 +33,6 @@ class OrderSearch(AbstractSearch):
         pixels = [p for p in hc_structure.get_healpix_pixels() if self.min_order <= p.order <= max_order]
         return hc_structure.filter_from_pixel_list(pixels)
 
-    def search_points(self, frame: pd.DataFrame, _) -> pd.DataFrame:
+    def search_points(self, frame: npd.NestedFrame, _) -> npd.NestedFrame:
         """Determine the search results within a data frame."""
         return frame
