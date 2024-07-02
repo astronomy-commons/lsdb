@@ -1,3 +1,4 @@
+import nested_pandas as npd
 from typing import List, Tuple
 
 import healpy as hp
@@ -34,7 +35,7 @@ class PolygonSearch(AbstractSearch):
         return polygon_filter(frame, self.polygon, metadata)
 
 
-def polygon_filter(data_frame: pd.DataFrame, polygon: ConvexPolygon, metadata: CatalogInfo):
+def polygon_filter(data_frame: npd.NestedFrame, polygon: ConvexPolygon, metadata: CatalogInfo):
     """Filters a dataframe to only include points within the specified polygon.
 
     Args:
