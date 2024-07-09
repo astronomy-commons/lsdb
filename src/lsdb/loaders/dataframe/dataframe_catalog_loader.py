@@ -1,3 +1,4 @@
+import nested_pandas as npd
 from __future__ import annotations
 
 import dataclasses
@@ -68,7 +69,7 @@ class DataframeCatalogLoader:
                 automatically inferred from the provided DataFrame using `pa.Schema.from_pandas`.
             **kwargs: Arguments to pass to the creation of the catalog info.
         """
-        self.dataframe = dataframe
+        self.dataframe = npd.NestedFrame(dataframe)
         self.lowest_order = lowest_order
         self.highest_order = highest_order
         self.drop_empty_siblings = drop_empty_siblings
@@ -190,7 +191,7 @@ class DataframeCatalogLoader:
             to the respective Pandas Dataframes and the total number of rows.
         """
         # Dataframes for each destination HEALPix pixel
-        pixel_dfs: List[pd.DataFrame] = []
+        pixel_dfs: List[npd.NestedFrame] = []
 
         # Mapping HEALPix pixels to the respective Dataframe indices
         ddf_pixel_map: Dict[HealpixPixel, int] = {}
