@@ -1,5 +1,6 @@
-import nested_pandas as npd
 from __future__ import annotations
+
+import nested_pandas as npd
 
 import dataclasses
 from typing import List, Tuple, Type

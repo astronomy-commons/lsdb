@@ -1,3 +1,4 @@
+import nested_pandas as npd
 from __future__ import annotations
 
 from typing import Dict, List, Tuple
@@ -84,7 +85,7 @@ class MarginCatalogGenerator:
         margin_structure = hc.catalog.MarginCatalog(margin_catalog_info, margin_pixels, schema=self.schema)
         return MarginCatalog(ddf, ddf_pixel_map, margin_structure)
 
-    def _get_margins(self) -> Tuple[List[HealpixPixel], List[pd.DataFrame]]:
+    def _get_margins(self) -> Tuple[List[HealpixPixel], List[npd.NestedFrame]]:
         """Generates the list of pixels that have margin data, and the dataframes with the margin data for
         each partition
 

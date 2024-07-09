@@ -6,8 +6,6 @@ import warnings
 from typing import TYPE_CHECKING, List, Tuple
 
 import dask
-import dask.dataframe as dd
-import pandas as pd
 from hipscat.catalog.association_catalog import AssociationCatalogInfo
 from hipscat.catalog.catalog_info import CatalogInfo
 from hipscat.catalog.margin_cache import MarginCacheCatalogInfo
@@ -38,12 +36,12 @@ if TYPE_CHECKING:
 NON_JOINING_ASSOCIATION_COLUMNS = ["Norder", "Dir", "Npix", "join_Norder", "join_Dir", "join_Npix"]
 
 
-def rename_columns_with_suffixes(left: pd.DataFrame, right: pd.DataFrame, suffixes: Tuple[str, str]):
+def rename_columns_with_suffixes(left: npd.NestedFrame, right: npd.NestedFrame, suffixes: Tuple[str, str]):
     """Renames two dataframes with the suffixes specified
 
     Args:
-        left (pd.DataFrame): the left dataframe to apply the first suffix to
-        right (pd.DataFrame): the right dataframe to apply the second suffix to
+        left (npd.NestedFrame): the left dataframe to apply the first suffix to
+        right (npd.NestedFrame): the right dataframe to apply the second suffix to
         suffixes (Tuple[str, str]): the pair of suffixes to apply to the dataframes
 
     Returns:
@@ -59,9 +57,9 @@ def rename_columns_with_suffixes(left: pd.DataFrame, right: pd.DataFrame, suffix
 # pylint: disable=too-many-arguments, unused-argument
 @dask.delayed
 def perform_join_on(
-    left: pd.DataFrame,
-    right: pd.DataFrame,
-    right_margin: pd.DataFrame,
+    left: npd.NestedFrame,
+    right: npd.NestedFrame,
+    right_margin: npd.NestedFrame,
     left_pixel: HealpixPixel,
     right_pixel: HealpixPixel,
     right_margin_pixel: HealpixPixel,
@@ -76,9 +74,9 @@ def perform_join_on(
     """Performs a join on two catalog partitions
 
     Args:
-        left (pd.DataFrame): the left partition to merge
-        right (pd.DataFrame): the right partition to merge
-        right_margin (pd.DataFrame): the right margin partition to merge
+        left (npd.NestedFrame): the left partition to merge
+        right (npd.NestedFrame): the right partition to merge
+        right_margin (npd.NestedFrame): the right margin partition to merge
         left_pixel (HealpixPixel): the HEALPix pixel of the left partition
         right_pixel (HealpixPixel): the HEALPix pixel of the right partition
         right_margin_pixel (HealpixPixel): the HEALPix pixel of the right margin partition
@@ -109,9 +107,9 @@ def perform_join_on(
 # pylint: disable=too-many-arguments, unused-argument
 @dask.delayed
 def perform_join_nested(
-    left: pd.DataFrame,
-    right: pd.DataFrame,
-    right_margin: pd.DataFrame,
+    left: npd.NestedFrame,
+    right: npd.NestedFrame,
+    right_margin: npd.NestedFrame,
     left_pixel: HealpixPixel,
     right_pixel: HealpixPixel,
     right_margin_pixel: HealpixPixel,
@@ -127,9 +125,9 @@ def perform_join_nested(
     """Performs a join on two catalog partitions
 
     Args:
-        left (pd.DataFrame): the left partition to merge
-        right (pd.DataFrame): the right partition to merge
-        right_margin (pd.DataFrame): the right margin partition to merge
+        left (npd.NestedFrame): the left partition to merge
+        right (npd.NestedFrame): the right partition to merge
+        right_margin (npd.NestedFrame): the right margin partition to merge
         left_pixel (HealpixPixel): the HEALPix pixel of the left partition
         right_pixel (HealpixPixel): the HEALPix pixel of the right partition
         right_margin_pixel (HealpixPixel): the HEALPix pixel of the right margin partition
@@ -161,10 +159,10 @@ def perform_join_nested(
 # pylint: disable=too-many-arguments, unused-argument
 @dask.delayed
 def perform_join_through(
-    left: pd.DataFrame,
-    right: pd.DataFrame,
-    right_margin: pd.DataFrame,
-    through: pd.DataFrame,
+    left: npd.NestedFrame,
+    right: npd.NestedFrame,
+    right_margin: npd.NestedFrame,
+    through: npd.NestedFrame,
     left_pixel: HealpixPixel,
     right_pixel: HealpixPixel,
     right_margin_pixel: HealpixPixel,
@@ -179,10 +177,10 @@ def perform_join_through(
     """Performs a join on two catalog partitions through an association catalog
 
     Args:
-        left (pd.DataFrame): the left partition to merge
-        right (pd.DataFrame): the right partition to merge
-        right_margin (pd.DataFrame): the right margin partition to merge
-        through (pd.DataFrame): the association column partition to merge with
+        left (npd.NestedFrame): the left partition to merge
+        right (npd.NestedFrame): the right partition to merge
+        right_margin (npd.NestedFrame): the right margin partition to merge
+        through (npd.NestedFrame): the association column partition to merge with
         left_pixel (HealpixPixel): the HEALPix pixel of the left partition
         right_pixel (HealpixPixel): the HEALPix pixel of the right partition
         right_margin_pixel (HealpixPixel): the HEALPix pixel of the right margin partition

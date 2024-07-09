@@ -1,3 +1,4 @@
+import nested_pandas as npd
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, List, Tuple
@@ -25,5 +26,5 @@ class PixelSearch(AbstractSearch):
     def filter_hc_catalog(self, hc_structure: HCCatalogTypeVar) -> HCCatalogTypeVar:
         return hc_structure.filter_from_pixel_list(self.pixels)
 
-    def search_points(self, frame: pd.DataFrame, _) -> pd.DataFrame:
+    def search_points(self, frame: npd.NestedFrame, _) -> npd.NestedFrame:
         return frame

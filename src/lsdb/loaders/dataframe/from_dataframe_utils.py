@@ -1,3 +1,4 @@
+import nested_pandas as npd
 from typing import List, Tuple
 
 import dask.dataframe as dd
@@ -14,7 +15,7 @@ from lsdb.dask.divisions import get_pixels_divisions
 
 
 def _generate_dask_dataframe(
-    pixel_dfs: List[pd.DataFrame], pixels: List[HealpixPixel], use_pyarrow_types: bool = True
+    pixel_dfs: List[npd.NestedFrame], pixels: List[HealpixPixel], use_pyarrow_types: bool = True
 ) -> Tuple[NestedFrame, int]:
     """Create the Dask Dataframe from the list of HEALPix pixel Dataframes
 
@@ -55,7 +56,9 @@ def _convert_dtypes_to_pyarrow(df: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(new_series, index=df_index, copy=False)
 
 
-def _append_partition_information_to_dataframe(dataframe: pd.DataFrame, pixel: HealpixPixel) -> pd.DataFrame:
+def _append_partition_information_to_dataframe(
+    dataframe: npd.NestedFrame, pixel: HealpixPixel
+) -> npd.NestedFrame:
     """Append partitioning information to a HEALPix dataframe
 
     Args:
@@ -113,7 +116,7 @@ def _format_margin_partition_dataframe(dataframe: pd.DataFrame) -> pd.DataFrame:
     return _order_partition_dataframe_columns(dataframe)
 
 
-def _order_partition_dataframe_columns(dataframe: pd.DataFrame) -> pd.DataFrame:
+def _order_partition_dataframe_columns(dataframe: npd.NestedFrame) -> npd.NestedFrame:
     """Reorder columns of a partition dataframe so that pixel information
     always appears in the same sequence
 

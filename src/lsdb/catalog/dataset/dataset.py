@@ -1,3 +1,4 @@
+import nested_pandas as npd
 from typing import List
 
 import hipscat as hc
@@ -34,7 +35,7 @@ class Dataset:
         data = self._ddf._repr_data().to_html(max_rows=5, show_dimensions=False, notebook=True)
         return f"<div><strong>lsdb Catalog {self.name}:</strong></div>{data}"
 
-    def compute(self) -> pd.DataFrame:
+    def compute(self) -> npd.NestedFrame:
         """Compute dask distributed dataframe to pandas dataframe"""
         return self._ddf.compute()
 

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import nested_pandas as npd
+
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
@@ -40,5 +42,5 @@ class AbstractSearch(ABC):
         )
 
     @abstractmethod
-    def search_points(self, frame: pd.DataFrame, metadata: CatalogInfo) -> pd.DataFrame:
+    def search_points(self, frame: npd.NestedFrame, metadata: CatalogInfo) -> npd.NestedFrame:
         """Determine the search results within a data frame"""

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import nested_pandas as npd
+
 from typing import TYPE_CHECKING
 
 import pandas as pd
@@ -29,6 +31,6 @@ class IndexSearch(AbstractSearch):
         healpix_pixels = self.catalog_index.loc_partitions(self.ids)
         return hc_structure.filter_from_pixel_list(healpix_pixels)
 
-    def search_points(self, frame: pd.DataFrame, _) -> pd.DataFrame:
+    def search_points(self, frame: npd.NestedFrame, _) -> npd.NestedFrame:
         """Determine the search results within a data frame"""
         return frame[frame[self.catalog_index.catalog_info.indexing_column].isin(self.ids)]
