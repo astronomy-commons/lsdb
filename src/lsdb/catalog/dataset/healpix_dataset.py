@@ -1,15 +1,13 @@
 from __future__ import annotations
 
-import nested_pandas as npd
-
 import warnings
 from typing import Any, Callable, Dict, Iterable, List, Tuple
 
 import dask
 import dask.dataframe as dd
-from nested_dask import NestedFrame
 import healpy as hp
 import hipscat as hc
+import nested_pandas as npd
 import numpy as np
 import pandas as pd
 from dask.delayed import Delayed, delayed
@@ -18,6 +16,7 @@ from hipscat.inspection import plot_pixel_list
 from hipscat.inspection.visualize_catalog import get_projection_method
 from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.healpix_pixel_function import get_pixel_argsort
+from nested_dask import NestedFrame
 from typing_extensions import Self
 
 from lsdb import io

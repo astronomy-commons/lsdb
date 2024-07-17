@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-import nested_pandas as npd
-
 from abc import ABC
 from typing import TYPE_CHECKING, Tuple
 
+import nested_pandas as npd
 import numpy as np
 import numpy.typing as npt
 import pandas as pd

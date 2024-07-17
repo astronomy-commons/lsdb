@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-import nested_pandas as npd
-
 from typing import Tuple
 
+import nested_pandas as npd
 import numpy as np
 import pandas as pd
 from hipscat.catalog.catalog_info import CatalogInfo

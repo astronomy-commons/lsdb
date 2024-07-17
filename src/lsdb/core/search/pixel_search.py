@@ -1,8 +1,8 @@
-import nested_pandas as npd
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, List, Tuple
 
+import nested_pandas as npd
 import pandas as pd
 from hipscat.pixel_math import HealpixPixel
 

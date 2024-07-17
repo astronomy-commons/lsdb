@@ -1,15 +1,14 @@
 from __future__ import annotations
 
-import nested_pandas as npd
-
 import dataclasses
 from typing import List, Tuple, Type
 
-from nested_dask import NestedFrame
 import hipscat as hc
+import nested_pandas as npd
 import pandas as pd
 from hipscat.catalog.index.index_catalog import IndexCatalog as HCIndexCatalog
 from hipscat.pixel_math.polygon_filter import SphericalCoordinates
+from nested_dask import NestedFrame
 
 from lsdb.catalog.association_catalog import AssociationCatalog
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
@@ -21,9 +20,9 @@ from lsdb.core.search.abstract_search import AbstractSearch
 from lsdb.core.search.pixel_search import PixelSearch
 from lsdb.dask.crossmatch_catalog_data import crossmatch_catalog_data
 from lsdb.dask.join_catalog_data import (
+    join_catalog_data_nested,
     join_catalog_data_on,
     join_catalog_data_through,
-    join_catalog_data_nested,
 )
 from lsdb.dask.partition_indexer import PartitionIndexer
 from lsdb.io.schema import get_arrow_schema
