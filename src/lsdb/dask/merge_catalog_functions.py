@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Callable, List, Sequence, Tuple, cast
 
 import dask.dataframe as dd
 import healpy as hp
+import nested_pandas as npd
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
@@ -15,7 +16,6 @@ from hipscat.pixel_tree import PixelAlignment, PixelAlignmentType, align_trees
 from hipscat.pixel_tree.moc_utils import copy_moc
 from hipscat.pixel_tree.pixel_alignment import align_with_mocs
 from nested_dask import NestedFrame
-import nested_pandas as npd
 
 from lsdb.dask.divisions import get_pixels_divisions
 from lsdb.types import DaskDFPixelMap

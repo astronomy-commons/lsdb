@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-import nested_pandas as npd
-
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
+import nested_pandas as npd
 import pandas as pd
 from hipscat.catalog.catalog_info import CatalogInfo
 from mocpy import MOC

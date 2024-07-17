@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-import nested_pandas as npd
-
 from typing import Any, Callable, Dict
 
 import healpy as hp
+import nested_pandas as npd
 import numpy as np
 import pandas as pd
 from dask import delayed

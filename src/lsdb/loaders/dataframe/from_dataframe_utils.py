@@ -1,7 +1,7 @@
-import nested_pandas as npd
 from typing import List, Tuple
 
 import dask.dataframe as dd
+import nested_pandas as npd
 import numpy as np
 import pandas as pd
 import pyarrow as pa
@@ -82,7 +82,7 @@ def _append_partition_information_to_dataframe(
     return _order_partition_dataframe_columns(dataframe)
 
 
-def _format_margin_partition_dataframe(dataframe: pd.DataFrame) -> pd.DataFrame:
+def _format_margin_partition_dataframe(dataframe: npd.NestedFrame) -> npd.NestedFrame:
     """Finalizes the dataframe for a margin catalog partition
 
     Args:

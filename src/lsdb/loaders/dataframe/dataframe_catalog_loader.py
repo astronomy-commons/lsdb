@@ -1,4 +1,3 @@
-import nested_pandas as npd
 from __future__ import annotations
 
 import dataclasses
@@ -9,6 +8,7 @@ from typing import Dict, List, Tuple
 import astropy.units as u
 import dask.dataframe as dd
 import hipscat as hc
+import nested_pandas as npd
 import numpy as np
 import pandas as pd
 import pyarrow as pa

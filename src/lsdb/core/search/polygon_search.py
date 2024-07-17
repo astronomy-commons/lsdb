@@ -1,7 +1,7 @@
-import nested_pandas as npd
 from typing import List, Tuple
 
 import healpy as hp
+import nested_pandas as npd
 import numpy as np
 import pandas as pd
 from hipscat.catalog.catalog_info import CatalogInfo

@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pandas as pd
 import nested_pandas as npd
+import pandas as pd
 
 from lsdb.core.search.abstract_search import AbstractSearch
 
