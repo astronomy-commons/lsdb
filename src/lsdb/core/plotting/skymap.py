@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Callable, Dict
 
-import healpy as hp
+import hipscat.pixel_math.healpix_shim as hp
 import numpy as np
 import pandas as pd
 from dask import delayed

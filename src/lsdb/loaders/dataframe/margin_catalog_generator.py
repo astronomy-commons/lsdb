@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Dict, List, Tuple
 
 import dask.dataframe as dd
-import healpy as hp
+import hipscat.pixel_math.healpix_shim as hp
 import hipscat as hc
 import numpy as np
 import pandas as pd

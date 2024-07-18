@@ -1,7 +1,7 @@
 import math
 
 import astropy.units as u
-import healpy as hp
+import hipscat.pixel_math.healpix_shim as hp
 import numpy as np
 import numpy.testing as npt
 import pandas as pd

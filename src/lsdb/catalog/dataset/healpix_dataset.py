@@ -5,7 +5,7 @@ from typing import Any, Callable, Dict, Iterable, List, Tuple, cast
 
 import dask
 import dask.dataframe as dd
-import healpy as hp
+import hipscat.pixel_math.healpix_shim as hp
 import hipscat as hc
 import numpy as np
 import pandas as pd
@@ -367,7 +367,7 @@ class HealpixDataset(Dataset):
         self,
         func: Callable[[pd.DataFrame, HealpixPixel], Any],
         order: int | None = None,
-        default_value: Any = hp.pixelfunc.UNSEEN,
+        default_value: Any = None,
         projection="moll",
         plotting_args: Dict | None = None,
         **kwargs,
@@ -390,7 +390,8 @@ class HealpixDataset(Dataset):
             plotting_args (dict): A dictionary of additional arguments to pass to the plotting function
             **kwargs: Arguments to pass to the given function
         """
-
+        if default_value is None:
+            default_value = hp.unseen_pixel()
         img = self.skymap_histogram(func, order, default_value, **kwargs)
         projection_method = get_projection_method(projection)
         if plotting_args is None:

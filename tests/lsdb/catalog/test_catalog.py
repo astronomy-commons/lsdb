@@ -2,11 +2,12 @@ from pathlib import Path
 
 import dask.array as da
 import dask.dataframe as dd
-import healpy as hp
+import hipscat.pixel_math.healpix_shim as hp
 import numpy as np
 import pandas as pd
 import pytest
 from hipscat.pixel_math import HealpixPixel, hipscat_id_to_healpix
+import healpy
 
 import lsdb
 from lsdb import Catalog
@@ -433,15 +434,15 @@ def test_skymap_plot(small_sky_order1_catalog, mocker):
     pixel_map = small_sky_order1_catalog.skymap_data(func)
     pixel_map = {pixel: value.compute() for pixel, value in pixel_map.items()}
     max_order = max(pixel_map.keys(), key=lambda x: x.order).order
-    img = np.full(hp.nside2npix(hp.order2nside(max_order)), hp.pixelfunc.UNSEEN)
+    img = np.full(hp.nside2npix(hp.order2nside(max_order)), hp.unseen_pixel())
     for pixel, value in pixel_map.items():
         dorder = max_order - pixel.order
         start = pixel.pixel * (4**dorder)
         end = (pixel.pixel + 1) * (4**dorder)
         img_order_pixels = np.arange(start, end)
         img[img_order_pixels] = value
-    hp.mollview.assert_called_once()
-    assert (hp.mollview.call_args[0][0] == img).all()
+    healpy.mollview.assert_called_once()
+    assert (healpy.mollview.call_args[0][0] == img).all()
 
 
 # pylint: disable=no-member
@@ -451,11 +452,11 @@ def test_plot_pixels(small_sky_order1_catalog, mocker):
     small_sky_order1_catalog.plot_pixels()
 
     # Everything will be empty, except the four pixels at order 1.
-    img = np.full(48, hp.pixelfunc.UNSEEN)
+    img = np.full(48, hp.unseen_pixel())
     img[[44, 45, 46, 47]] = 1
 
-    hp.mollview.assert_called_once()
-    assert (hp.mollview.call_args[0][0] == img).all()
+    healpy.mollview.assert_called_once()
+    assert (healpy.mollview.call_args[0][0] == img).all()
 
 
 def test_square_bracket_columns(small_sky_order1_catalog):

@@ -1,7 +1,7 @@
 from typing import List, Tuple
 
 import dask
-import healpy as hp
+import hipscat.pixel_math.healpix_shim as hp
 import numpy as np
 import pandas as pd
 from hipscat.catalog.catalog_info import CatalogInfo

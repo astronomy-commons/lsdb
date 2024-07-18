@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Callable, List, Sequence, Tuple, cast
 
 import dask.dataframe as dd
-import healpy as hp
+import hipscat.pixel_math.healpix_shim as hp
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
