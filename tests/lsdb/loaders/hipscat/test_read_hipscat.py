@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import nested_pandas as npd
 import hipscat as hc
 import numpy as np
 import numpy.testing as npt
@@ -8,6 +9,7 @@ import pytest
 from hipscat.catalog.index.index_catalog import IndexCatalog
 from hipscat.io import get_file_pointer_from_path
 from hipscat.pixel_math import HealpixPixel
+from nested_dask import NestedFrame
 from pandas.core.dtypes.base import ExtensionDtype
 
 import lsdb
@@ -17,9 +19,11 @@ from lsdb.core.search import BoxSearch, ConeSearch, IndexSearch, OrderSearch, Po
 def test_read_hipscat(small_sky_order1_dir, small_sky_order1_hipscat_catalog, assert_divisions_are_correct):
     catalog = lsdb.read_hipscat(small_sky_order1_dir)
     assert isinstance(catalog, lsdb.Catalog)
+    assert isinstance(catalog._ddf, NestedFrame)
     assert catalog.hc_structure.catalog_base_dir == small_sky_order1_hipscat_catalog.catalog_base_dir
     assert catalog.get_healpix_pixels() == small_sky_order1_hipscat_catalog.get_healpix_pixels()
     assert len(catalog.compute().columns) == 8
+    assert isinstance(catalog.compute(), npd.NestedFrame)
     assert_divisions_are_correct(catalog)
 
 
@@ -65,9 +69,11 @@ def test_parquet_data_in_partitions_match_files(small_sky_order1_dir, small_sky_
 def test_read_hipscat_specify_catalog_type(small_sky_catalog, small_sky_dir):
     catalog = lsdb.read_hipscat(small_sky_dir, catalog_type=lsdb.Catalog)
     assert isinstance(catalog, lsdb.Catalog)
+    assert isinstance(catalog._ddf, NestedFrame)
     pd.testing.assert_frame_equal(catalog.compute(), small_sky_catalog.compute())
     assert catalog.get_healpix_pixels() == small_sky_catalog.get_healpix_pixels()
     assert catalog.hc_structure.catalog_info == small_sky_catalog.hc_structure.catalog_info
+    assert isinstance(catalog.compute(), npd.NestedFrame)
 
 
 def test_read_hipscat_specify_wrong_catalog_type(small_sky_dir):
@@ -79,7 +85,9 @@ def test_catalog_with_margin_object(small_sky_xmatch_dir, small_sky_xmatch_margi
     catalog = lsdb.read_hipscat(small_sky_xmatch_dir, margin_cache=small_sky_xmatch_margin_catalog)
     assert isinstance(catalog, lsdb.Catalog)
     assert isinstance(catalog.margin, lsdb.MarginCatalog)
+    assert isinstance(catalog._ddf, NestedFrame)
     assert catalog.margin is small_sky_xmatch_margin_catalog
+    assert isinstance(catalog.margin._ddf, NestedFrame)
 
 
 def test_catalog_with_margin_file_pointer(
@@ -89,6 +97,8 @@ def test_catalog_with_margin_file_pointer(
     catalog = lsdb.read_hipscat(small_sky_xmatch_dir, margin_cache=small_sky_xmatch_margin_fp)
     assert isinstance(catalog, lsdb.Catalog)
     assert isinstance(catalog.margin, lsdb.MarginCatalog)
+    assert isinstance(catalog._ddf, NestedFrame)
+    assert isinstance(catalog.margin._ddf, NestedFrame)
     assert (
         catalog.margin.hc_structure.catalog_info == small_sky_xmatch_margin_catalog.hc_structure.catalog_info
     )
@@ -103,6 +113,8 @@ def test_catalog_with_margin_path(
     catalog = lsdb.read_hipscat(small_sky_xmatch_dir, margin_cache=small_sky_xmatch_margin_dir)
     assert isinstance(catalog, lsdb.Catalog)
     assert isinstance(catalog.margin, lsdb.MarginCatalog)
+    assert isinstance(catalog._ddf, NestedFrame)
+    assert isinstance(catalog.margin._ddf, NestedFrame)
     assert (
         catalog.margin.hc_structure.catalog_info == small_sky_xmatch_margin_catalog.hc_structure.catalog_info
     )
@@ -220,6 +232,9 @@ def test_read_hipscat_with_backend(small_sky_dir):
     # The other option is to keep the original types. In this case they are numpy-backed.
     catalog = lsdb.read_hipscat(small_sky_dir, dtype_backend=None)
     assert all(isinstance(col_type, np.dtype) for col_type in catalog.dtypes)
+
+    assert isinstance(catalog._ddf, NestedFrame)
+    assert isinstance(catalog.compute(), npd.NestedFrame)
 
 
 def test_read_hipscat_with_invalid_backend(small_sky_dir):

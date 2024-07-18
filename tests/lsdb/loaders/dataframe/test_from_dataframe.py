@@ -1,3 +1,4 @@
+import nested_pandas as npd
 import math
 
 import astropy.units as u
@@ -11,6 +12,7 @@ from hipscat.catalog import CatalogType
 from hipscat.pixel_math.healpix_pixel_function import get_pixel_argsort
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
 from mocpy import MOC
+from nested_dask import NestedFrame
 
 import lsdb
 from lsdb.catalog.margin_catalog import MarginCatalog
@@ -40,6 +42,7 @@ def test_from_dataframe(
     # Read CSV file for the small sky order 1 catalog
     catalog = lsdb.from_dataframe(small_sky_order1_df, margin_threshold=None, **kwargs)
     assert isinstance(catalog, lsdb.Catalog)
+    assert isinstance(catalog._ddf, NestedFrame)
     # Catalogs have the same information
     assert catalog.hc_structure.catalog_info == small_sky_order1_catalog.hc_structure.catalog_info
     # Index is set to hipscat index
@@ -53,6 +56,8 @@ def test_from_dataframe(
     # The arrow schema was automatically inferred
     expected_schema = hc.read_from_hipscat(small_sky_order1_dir).schema
     assert catalog.hc_structure.schema.equals(expected_schema)
+
+    assert isinstance(catalog.compute(), npd.NestedFrame)
 
 
 def test_from_dataframe_catalog_of_invalid_type(small_sky_order1_df, small_sky_order1_catalog):
@@ -219,6 +224,7 @@ def test_from_dataframe_small_sky_source_with_margins(small_sky_source_df, small
 
     assert catalog.margin is not None
     assert isinstance(catalog.margin, MarginCatalog)
+    assert isinstance(catalog.margin._ddf, NestedFrame)
     assert catalog.margin.get_healpix_pixels() == small_sky_source_margin_catalog.get_healpix_pixels()
 
     # The points of this margin catalog are present in one partition only
@@ -228,6 +234,7 @@ def test_from_dataframe_small_sky_source_with_margins(small_sky_source_df, small
         small_sky_source_margin_catalog.compute().sort_index(),
         check_like=True,
     )
+    assert isinstance(catalog.margin.compute(), npd.NestedFrame)
 
     # The margin and main catalog's schemas are the same
     assert catalog.margin.hc_structure.schema is catalog.hc_structure.schema
