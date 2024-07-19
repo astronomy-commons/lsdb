@@ -185,3 +185,28 @@ def test_join_source_margin_soft(
         suffixes=suffixes,
     )
     pd.testing.assert_frame_equal(joined.compute(), joined_on.compute())
+
+
+def test_join_nested(small_sky_catalog, small_sky_order1_source_with_margin, assert_divisions_are_correct):
+    suffixes = ("_a", "_b")
+    joined = small_sky_catalog.join_nested(
+        small_sky_order1_source_with_margin,
+        left_on="id",
+        right_on="object_id",
+        nested_column_name="sources",
+    )
+    for col_name, dtype in small_sky_catalog.dtypes.items():
+        assert (col_name, dtype) in joined.dtypes.items()
+    for col_name, dtype in small_sky_order1_source_with_margin.dtypes.items():
+        if col_name != "object_id":
+            assert (col_name, dtype.pyarrow_dtype) in joined["sources"].dtypes.fields.items()
+    assert_divisions_are_correct(joined)
+    joined_compute = joined.compute()
+    source_compute = small_sky_order1_source_with_margin.compute()
+    assert isinstance(joined_compute, npd.NestedFrame)
+    for _, row in joined_compute.iterrows():
+        id = row["id"]
+        pd.testing.assert_frame_equal(
+            row["sources"],
+            pd.DataFrame(source_compute[source_compute["object_id"] == id].set_index("object_id")),
+        )

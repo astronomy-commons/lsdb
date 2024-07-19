@@ -118,7 +118,6 @@ def perform_join_nested(
     right_margin_catalog_info: MarginCacheCatalogInfo,
     left_on: str,
     right_on: str,
-    suffixes: Tuple[str, str],
     right_columns: List[str],
     right_name: str,
 ):
@@ -136,7 +135,6 @@ def perform_join_nested(
         right_margin_catalog_info (hc.MarginCacheCatalogInfo): the catalog info of the right margin catalog
         left_on (str): the column to join on from the left partition
         right_on (str): the column to join on from the right partition
-        suffixes (Tuple[str,str]): the suffixes to apply to each partition's column names
         right_columns (List[str]): the columns to include from the right margin partition
 
     Returns:
@@ -147,11 +145,9 @@ def perform_join_nested(
 
     right_joined_df = concat_partition_and_margin(right, right_margin, right_columns)
 
-    left, _ = rename_columns_with_suffixes(left, right_joined_df, suffixes)
-
     right_joined_df = pack_flat(npd.NestedFrame(right_joined_df.set_index(right_on))).rename(right_name)
 
-    merged = left.reset_index().merge(right_joined_df, left_on=left_on + suffixes[0], right_index=True)
+    merged = left.reset_index().merge(right_joined_df, left_on=left_on, right_index=True)
     merged.set_index(HIPSCAT_ID_COLUMN, inplace=True)
     return merged
 
@@ -275,7 +271,6 @@ def join_catalog_data_nested(
     right: Catalog,
     left_on: str,
     right_on: str,
-    suffixes: Tuple[str, str],
     nested_column_name: str | None = None,
 ) -> Tuple[NestedFrame, DaskDFPixelMap, PixelAlignment]:
     """Joins two catalogs spatially on a specified column
@@ -310,14 +305,11 @@ def join_catalog_data_nested(
         perform_join_nested,
         left_on,
         right_on,
-        suffixes,
         right.columns,
         nested_column_name,
     )
 
-    meta_df = generate_meta_df_for_nested_tables(
-        [left], suffixes[0:], right, nested_column_name, join_column_name=right_on
-    )
+    meta_df = generate_meta_df_for_nested_tables([left], right, nested_column_name, join_column_name=right_on)
 
     return construct_catalog_args(joined_partitions, meta_df, alignment)
 
