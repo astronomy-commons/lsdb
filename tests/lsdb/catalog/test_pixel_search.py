@@ -1,5 +1,6 @@
 import pandas as pd
 from hipscat.pixel_math import HealpixPixel
+from nested_dask import NestedFrame
 
 from lsdb.core.search.pixel_search import PixelSearch
 
@@ -7,6 +8,7 @@ from lsdb.core.search.pixel_search import PixelSearch
 def test_pixel_search(small_sky_catalog, small_sky_order1_catalog):
     # Searching for pixels at a higher order
     catalog = small_sky_catalog.pixel_search([(1, 44), (1, 45)])
+    assert isinstance(catalog._ddf, NestedFrame)
     assert 1 == len(catalog._ddf_pixel_map)
     assert [HealpixPixel(0, 11)] == catalog.get_healpix_pixels()
     # Searching for pixels at a lower order
