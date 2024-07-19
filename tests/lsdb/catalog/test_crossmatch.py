@@ -22,9 +22,9 @@ class TestCrossmatch:
             xmatched_cat = small_sky_catalog.crossmatch(
                 small_sky_xmatch_catalog, algorithm=algo, radius_arcsec=0.01 * 3600
             )
-            assert isinstance(xmatched_cat, NestedFrame)
+            assert isinstance(xmatched_cat._ddf, NestedFrame)
             xmatched = xmatched_cat.compute()
-        assert isinstance(xmatched._ddf, npd.NestedFrame)
+        assert isinstance(xmatched, npd.NestedFrame)
         assert len(xmatched) == len(xmatch_correct)
         for _, correct_row in xmatch_correct.iterrows():
             assert correct_row["ss_id"] in xmatched["id_small_sky"].to_numpy()
