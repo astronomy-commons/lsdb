@@ -1,7 +1,9 @@
+import nested_pandas as npd
 import numpy as np
 import pandas as pd
 import pytest
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
+from nested_dask import NestedFrame
 
 
 def test_small_sky_join_small_sky_order1(
@@ -12,6 +14,7 @@ def test_small_sky_join_small_sky_order1(
         joined = small_sky_catalog.join(
             small_sky_order1_catalog, left_on="id", right_on="id", suffixes=suffixes
         )
+        assert isinstance(joined._ddf, NestedFrame)
     for col_name, dtype in small_sky_catalog.dtypes.items():
         assert (col_name + suffixes[0], dtype) in joined.dtypes.items()
     for col_name, dtype in small_sky_order1_catalog.dtypes.items():
@@ -20,6 +23,7 @@ def test_small_sky_join_small_sky_order1(
     assert joined._ddf.index.dtype == np.uint64
 
     joined_compute = joined.compute()
+    assert isinstance(joined_compute, npd.NestedFrame)
     small_sky_compute = small_sky_catalog.compute()
     small_sky_order1_compute = small_sky_order1_catalog.compute()
     assert len(joined_compute) == len(small_sky_compute)
@@ -68,8 +72,10 @@ def test_join_association(small_sky_catalog, small_sky_xmatch_catalog, small_sky
         joined = small_sky_catalog.join(
             small_sky_xmatch_catalog, through=small_sky_to_xmatch_catalog, suffixes=suffixes
         )
+        assert isinstance(joined._ddf, NestedFrame)
     assert joined._ddf.npartitions == len(small_sky_to_xmatch_catalog.hc_structure.join_info.data_frame)
     joined_data = joined.compute()
+    assert isinstance(joined_data, npd.NestedFrame)
     association_data = small_sky_to_xmatch_catalog.compute()
     assert len(joined_data) == len(association_data)
 
