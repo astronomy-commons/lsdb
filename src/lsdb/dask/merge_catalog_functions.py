@@ -263,7 +263,6 @@ def generate_meta_df_for_joined_tables(
 
 def generate_meta_df_for_nested_tables(
     catalogs: Sequence[Catalog],
-    suffixes: Sequence[str],
     nested_catalog: Catalog,
     nested_name: str,
     join_column_name: str,
@@ -289,9 +288,9 @@ def generate_meta_df_for_nested_tables(
     """
     meta = {}
     # Construct meta for crossmatched catalog columns
-    for table, suffix in zip(catalogs, suffixes):
+    for table in catalogs:
         for name, col_type in table.dtypes.items():
-            meta[name + suffix] = pd.Series(dtype=col_type)
+            meta[name] = pd.Series(dtype=col_type)
     # Construct meta for crossmatch result columns
     if extra_columns is not None:
         meta.update(extra_columns)

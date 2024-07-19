@@ -455,7 +455,6 @@ class Catalog(HealpixDataset):
         other: Catalog,
         left_on: str | None = None,
         right_on: str | None = None,
-        suffixes: Tuple[str, str] | None = None,
         nested_column_name: str | None = None,
         output_catalog_name: str | None = None,
     ) -> Catalog:
@@ -469,20 +468,12 @@ class Catalog(HealpixDataset):
             other (Catalog): the right catalog to join to
             left_on (str): the name of the column in the left catalog to join on
             right_on (str): the name of the column in the right catalog to join on
-            through (AssociationCatalog): an association catalog that provides the alignment
-                between pixels and individual rows.
-            suffixes (Tuple[str,str]): suffixes to apply to the columns of each table
             output_catalog_name (str): The name of the resulting catalog to be stored in metadata
 
         Returns:
             A new catalog with the columns from each of the input catalogs with their respective suffixes
             added, and the rows merged on the specified columns.
         """
-        if suffixes is None:
-            suffixes = (f"_{self.name}", f"_{other.name}")
-
-        if len(suffixes) != 2:
-            raise ValueError("`suffixes` must be a tuple with two strings")
 
         if left_on is None or right_on is None:
             raise ValueError("Both of left_on and right_on")
@@ -494,7 +485,7 @@ class Catalog(HealpixDataset):
             raise ValueError("right_on must be a column in the right catalog")
 
         ddf, ddf_map, alignment = join_catalog_data_nested(
-            self, other, left_on, right_on, suffixes=suffixes, nested_column_name=nested_column_name
+            self, other, left_on, right_on, nested_column_name=nested_column_name
         )
 
         if output_catalog_name is None:
@@ -503,8 +494,6 @@ class Catalog(HealpixDataset):
         new_catalog_info = dataclasses.replace(
             self.hc_structure.catalog_info,
             catalog_name=output_catalog_name,
-            ra_column=self.hc_structure.catalog_info.ra_column + suffixes[0],
-            dec_column=self.hc_structure.catalog_info.dec_column + suffixes[0],
         )
         hc_catalog = hc.catalog.Catalog(new_catalog_info, alignment.pixel_tree)
         return Catalog(ddf, ddf_map, hc_catalog)
