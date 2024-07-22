@@ -40,6 +40,7 @@ class HipscatCatalogLoader(AbstractCatalogLoader[Catalog]):
             filtered_catalog.pixel_tree,
             catalog_path=hc_catalog.catalog_path,
             moc=filtered_catalog.moc,
+            schema=filtered_catalog.schema,
             storage_options=hc_catalog.storage_options,
         )
 

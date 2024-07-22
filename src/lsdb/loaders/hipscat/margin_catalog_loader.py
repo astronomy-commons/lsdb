@@ -34,5 +34,6 @@ class MarginCatalogLoader(AbstractCatalogLoader[MarginCatalog]):
             filtered_catalog.catalog_info,
             filtered_catalog.pixel_tree,
             catalog_path=hc_catalog.catalog_path,
+            schema=filtered_catalog.schema,
             storage_options=hc_catalog.storage_options,
         )

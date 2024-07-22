@@ -17,6 +17,7 @@ from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN, compute_hipscat_id,
 from mocpy import MOC
 
 from lsdb.catalog.catalog import Catalog
+from lsdb.io.schema import get_arrow_schema
 from lsdb.loaders.dataframe.from_dataframe_utils import (
     _append_partition_information_to_dataframe,
     _generate_dask_dataframe,
@@ -116,7 +117,8 @@ class DataframeCatalogLoader:
         self.catalog_info = dataclasses.replace(self.catalog_info, total_rows=total_rows)
         healpix_pixels = list(pixel_map.keys())
         moc = self._generate_moc() if self.should_generate_moc else None
-        hc_structure = hc.catalog.Catalog(self.catalog_info, healpix_pixels, moc=moc)
+        schema = get_arrow_schema(ddf)
+        hc_structure = hc.catalog.Catalog(self.catalog_info, healpix_pixels, moc=moc, schema=schema)
         return Catalog(ddf, ddf_pixel_map, hc_structure)
 
     def _set_hipscat_index(self):
