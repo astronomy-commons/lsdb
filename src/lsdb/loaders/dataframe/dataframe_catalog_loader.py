@@ -33,7 +33,7 @@ class DataframeCatalogLoader:
     def __init__(
         self,
         dataframe: pd.DataFrame,
-        lowest_order: int = 3,
+        lowest_order: int = 0,
         highest_order: int = 7,
         drop_empty_siblings: bool = False,
         partition_size: int | None = None,
@@ -56,7 +56,7 @@ class DataframeCatalogLoader:
             should_generate_moc (bool): should we generate a MOC (multi-order coverage map)
                 of the data. can improve performance when joining/crossmatching to
                 other hipscatted datasets.
-            moc_max_order (int): if generating a MOC, what to use as the max order.
+            moc_max_order (int): if generating a MOC, what to use as the max order. Defaults to 10.
             use_pyarrow_types (bool): If True, the data is backed by pyarrow, otherwise we keep the
                 original data types. Defaults to True.
             **kwargs: Arguments to pass to the creation of the catalog info.
@@ -198,7 +198,6 @@ class DataframeCatalogLoader:
             pixel_dfs.append(_append_partition_information_to_dataframe(pixel_df, hp_pixel))
 
         # Generate Dask Dataframe with the original schema and desired backend
-        pixel_list = list(ddf_pixel_map.keys())
         ddf, total_rows = _generate_dask_dataframe(pixel_dfs, pixel_list, self.use_pyarrow_types)
         return ddf, ddf_pixel_map, total_rows
 

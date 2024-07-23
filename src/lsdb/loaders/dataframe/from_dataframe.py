@@ -43,7 +43,7 @@ def from_dataframe(
         should_generate_moc (bool): should we generate a MOC (multi-order coverage map)
             of the data. can improve performance when joining/crossmatching to
             other hipscatted datasets.
-        moc_max_order (int): if generating a MOC, what to use as the max order.
+        moc_max_order (int): if generating a MOC, what to use as the max order. Defaults to 10.
         use_pyarrow_types (bool): If True, the data is backed by pyarrow, otherwise we keep the
             original data types. Defaults to True.
         **kwargs: Arguments to pass to the creation of the catalog info.
