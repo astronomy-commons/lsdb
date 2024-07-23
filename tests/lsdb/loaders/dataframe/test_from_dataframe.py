@@ -137,6 +137,31 @@ def test_partitions_obey_threshold(small_sky_order1_df, small_sky_order1_catalog
     assert all(num_pixels <= threshold for num_pixels in num_partition_pixels)
 
 
+def test_from_dataframe_large_input(small_sky_order1_catalog, assert_divisions_are_correct):
+    """Tests that we can initialize a catalog from a LARGE Pandas Dataframe and
+    that we're warned about the catalog's size"""
+    original_catalog_info = small_sky_order1_catalog.hc_structure.catalog_info
+    kwargs = {
+        "catalog_name": original_catalog_info.catalog_name,
+        "catalog_type": original_catalog_info.catalog_type,
+    }
+
+    rng = np.random.default_rng()
+    random_df = pd.DataFrame({"ra": rng.uniform(0, 60, 1_500_000), "dec": rng.uniform(0, 60, 1_500_000)})
+
+    # Read CSV file for the small sky order 1 catalog
+    with pytest.warns(RuntimeWarning, match="from_dataframe is not intended for large datasets"):
+        catalog = lsdb.from_dataframe(random_df, margin_threshold=None, **kwargs)
+    assert isinstance(catalog, lsdb.Catalog)
+    # Catalogs have the same information
+    original_catalog_info.total_rows = 1_500_000
+    assert catalog.hc_structure.catalog_info == original_catalog_info
+    # Index is set to hipscat index
+    assert catalog._ddf.index.name == HIPSCAT_ID_COLUMN
+    # Divisions belong to the respective HEALPix pixels
+    assert_divisions_are_correct(catalog)
+
+
 def test_partitions_obey_default_threshold_when_no_arguments_specified(
     small_sky_order1_df, small_sky_order1_catalog
 ):
