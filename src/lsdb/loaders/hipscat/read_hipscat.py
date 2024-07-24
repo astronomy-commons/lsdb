@@ -53,7 +53,7 @@ def read_hipscat(
         )
 
     Args:
-        path (FilePointer): The path that locates the root of the HiPSCat catalog
+        path (FilePointer | Path): The path that locates the root of the HiPSCat catalog
         catalog_type (Type[Dataset]): Default `None`. By default, the type of the catalog is loaded
             from the catalog info and the corresponding object type is returned. Python's type hints
             cannot allow a return type specified by a loaded value, so to use the correct return
@@ -71,18 +71,19 @@ def read_hipscat(
     Returns:
         Catalog object loaded from the given parameters
     """
+    path_str = str(path)
 
     # Creates a config object to store loading parameters from all keyword arguments.
     kwd_args = locals().copy()
     config_args = {field.name: kwd_args[field.name] for field in dataclasses.fields(HipscatLoadingConfig)}
     config = HipscatLoadingConfig(**config_args)
 
-    catalog_type_to_use = _get_dataset_class_from_catalog_info(path, storage_options=storage_options)
+    catalog_type_to_use = _get_dataset_class_from_catalog_info(path_str, storage_options=storage_options)
 
     if catalog_type is not None:
         catalog_type_to_use = catalog_type
 
-    loader = get_loader_for_type(catalog_type_to_use, path, config, storage_options=storage_options)
+    loader = get_loader_for_type(catalog_type_to_use, path_str, config, storage_options=storage_options)
     return loader.load_catalog()
 
 

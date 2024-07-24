@@ -25,7 +25,7 @@ from lsdb.loaders.hipscat.abstract_catalog_loader import CatalogTypeVar
 
 @overload
 def read_hipscat(
-    path: FilePointer,
+    path: FilePointer | Path,
     search_filter: AbstractSearch | None = None,
     columns: List[str] | None = None,
     margin_cache: MarginCatalog | FilePointer | Path | None = None,
@@ -35,7 +35,7 @@ def read_hipscat(
 ) -> Dataset | None: ...
 @overload
 def read_hipscat(
-    path: str,
+    path: FilePointer | Path,
     catalog_type: Type[CatalogTypeVar],
     search_filter: AbstractSearch | None = None,
     columns: List[str] | None = None,
