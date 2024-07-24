@@ -6,6 +6,7 @@ import numpy.testing as npt
 import pandas as pd
 import pytest
 from hipscat.catalog.index.index_catalog import IndexCatalog
+from hipscat.io import get_file_pointer_from_path
 from hipscat.pixel_math import HealpixPixel
 from pandas.core.dtypes.base import ExtensionDtype
 
@@ -84,7 +85,8 @@ def test_catalog_with_margin_object(small_sky_xmatch_dir, small_sky_xmatch_margi
 def test_catalog_with_margin_file_pointer(
     small_sky_xmatch_dir, small_sky_xmatch_margin_dir, small_sky_xmatch_margin_catalog
 ):
-    catalog = lsdb.read_hipscat(small_sky_xmatch_dir, margin_cache=str(small_sky_xmatch_margin_dir))
+    small_sky_xmatch_margin_fp = get_file_pointer_from_path(str(small_sky_xmatch_margin_dir))
+    catalog = lsdb.read_hipscat(small_sky_xmatch_dir, margin_cache=small_sky_xmatch_margin_fp)
     assert isinstance(catalog, lsdb.Catalog)
     assert isinstance(catalog.margin, lsdb.MarginCatalog)
     assert (
