@@ -131,8 +131,9 @@ class DataframeCatalogLoader:
         ddf, ddf_pixel_map, total_rows = self._generate_dask_df_and_map(pixel_list)
         self.catalog_info = dataclasses.replace(self.catalog_info, total_rows=total_rows)
         moc = self._generate_moc() if self.should_generate_moc else None
-        schema = get_arrow_schema(ddf)
-        hc_structure = hc.catalog.Catalog(self.catalog_info, pixel_list, moc=moc, schema=schema)
+        hc_structure = hc.catalog.Catalog(
+            self.catalog_info, pixel_list, moc=moc, schema=get_arrow_schema(ddf)
+        )
         return Catalog(ddf, ddf_pixel_map, hc_structure)
 
     def _set_hipscat_index(self):
