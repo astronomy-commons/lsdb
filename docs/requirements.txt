@@ -9,4 +9,4 @@ sphinx
 sphinx-autoapi
 sphinx-copybutton
 sphinx-book-theme
-git+https://github.com/astronomy-commons/hipscat.git@main
+git+https://github.com/astronomy-commons/hipscat.git@add-arrow-schema-to-catalog
