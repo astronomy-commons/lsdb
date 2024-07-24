@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import hipscat as hc
 import numpy as np
 import numpy.testing as npt
@@ -72,23 +74,38 @@ def test_read_hipscat_specify_wrong_catalog_type(small_sky_dir):
         lsdb.read_hipscat(small_sky_dir, catalog_type=int)
 
 
-def test_catalog_with_margin(
-    small_sky_xmatch_dir, small_sky_xmatch_margin_catalog, small_sky_xmatch_margin_dir
-):
-    # Provide the margin cache catalog object
+def test_catalog_with_margin_object(small_sky_xmatch_dir, small_sky_xmatch_margin_catalog):
     catalog = lsdb.read_hipscat(small_sky_xmatch_dir, margin_cache=small_sky_xmatch_margin_catalog)
     assert isinstance(catalog, lsdb.Catalog)
+    assert isinstance(catalog.margin, lsdb.MarginCatalog)
     assert catalog.margin is small_sky_xmatch_margin_catalog
-    # Provide the margin cache catalog path
-    catalog_2 = lsdb.read_hipscat(small_sky_xmatch_dir, margin_cache=str(small_sky_xmatch_margin_dir))
-    assert isinstance(catalog_2, lsdb.Catalog)
-    # Which can also be provided with a Path object
-    catalog_3 = lsdb.read_hipscat(small_sky_xmatch_dir, margin_cache=small_sky_xmatch_margin_dir)
-    assert isinstance(catalog_3, lsdb.Catalog)
-    # The catalogs obtained are identical
-    assert catalog.margin.hc_structure.catalog_info == catalog_2.margin.hc_structure.catalog_info
-    assert catalog.margin.get_healpix_pixels() == catalog_2.margin.get_healpix_pixels()
-    pd.testing.assert_frame_equal(catalog.margin.compute(), catalog_2.margin.compute())
+
+
+def test_catalog_with_margin_file_pointer(
+    small_sky_xmatch_dir, small_sky_xmatch_margin_dir, small_sky_xmatch_margin_catalog
+):
+    catalog = lsdb.read_hipscat(small_sky_xmatch_dir, margin_cache=str(small_sky_xmatch_margin_dir))
+    assert isinstance(catalog, lsdb.Catalog)
+    assert isinstance(catalog.margin, lsdb.MarginCatalog)
+    assert (
+        catalog.margin.hc_structure.catalog_info == small_sky_xmatch_margin_catalog.hc_structure.catalog_info
+    )
+    assert catalog.margin.get_healpix_pixels() == small_sky_xmatch_margin_catalog.get_healpix_pixels()
+    pd.testing.assert_frame_equal(catalog.margin.compute(), small_sky_xmatch_margin_catalog.compute())
+
+
+def test_catalog_with_margin_path(
+    small_sky_xmatch_dir, small_sky_xmatch_margin_dir, small_sky_xmatch_margin_catalog
+):
+    assert isinstance(small_sky_xmatch_margin_dir, Path)
+    catalog = lsdb.read_hipscat(small_sky_xmatch_dir, margin_cache=small_sky_xmatch_margin_dir)
+    assert isinstance(catalog, lsdb.Catalog)
+    assert isinstance(catalog.margin, lsdb.MarginCatalog)
+    assert (
+        catalog.margin.hc_structure.catalog_info == small_sky_xmatch_margin_catalog.hc_structure.catalog_info
+    )
+    assert catalog.margin.get_healpix_pixels() == small_sky_xmatch_margin_catalog.get_healpix_pixels()
+    pd.testing.assert_frame_equal(catalog.margin.compute(), small_sky_xmatch_margin_catalog.compute())
 
 
 def test_catalog_without_margin_is_none(small_sky_xmatch_dir):

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
+from pathlib import Path
 from typing import Any, Dict, List, Type, Union
 
 import hipscat as hc
@@ -27,11 +28,11 @@ dataset_class_for_catalog_type: Dict[CatalogType, Type[Dataset]] = {
 
 # pylint: disable=unused-argument
 def read_hipscat(
-    path: FilePointer,
+    path: FilePointer | Path,
     catalog_type: Type[CatalogTypeVar] | None = None,
     search_filter: AbstractSearch | None = None,
     columns: List[str] | None = None,
-    margin_cache: MarginCatalog | FilePointer | None = None,
+    margin_cache: MarginCatalog | FilePointer | Path | None = None,
     dtype_backend: str | None = "pyarrow",
     storage_options: dict | None = None,
     **kwargs,
@@ -60,8 +61,8 @@ def read_hipscat(
             the lsdb class for that catalog.
         search_filter (Type[AbstractSearch]): Default `None`. The filter method to be applied.
         columns (List[str]): Default `None`. The set of columns to filter the catalog on.
-        margin_cache (MarginCatalog | FilePointer): The margin cache for the main catalog, provided
-            as a path on disk or as an instance of the MarginCatalog object. Defaults to None.
+        margin_cache (MarginCatalog | FilePointer | Path): The margin cache for the main catalog,
+            provided as a path on disk or as an instance of the MarginCatalog object. Defaults to None.
         dtype_backend (str): Backend data type to apply to the catalog.
             Defaults to "pyarrow". If None, no type conversion is performed.
         storage_options (dict): Dictionary that contains abstract filesystem credentials

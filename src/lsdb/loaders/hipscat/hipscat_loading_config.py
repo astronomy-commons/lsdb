@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Callable, List
 
 import pandas as pd
@@ -24,7 +25,7 @@ class HipscatLoadingConfig:
     columns: List[str] | None = None
     """Columns to load from the catalog. If not specified, all columns are loaded"""
 
-    margin_cache: MarginCatalog | FilePointer | None = None
+    margin_cache: MarginCatalog | FilePointer | Path | None = None
     """Margin cache for the catalog. It can be provided as a path for the margin on disk,
     or as a margin object instance. By default, it is None."""
 

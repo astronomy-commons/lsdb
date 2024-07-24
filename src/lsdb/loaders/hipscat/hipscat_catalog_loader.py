@@ -52,7 +52,7 @@ class HipscatCatalogLoader(AbstractCatalogLoader[Catalog]):
             if self.config.search_filter is not None:
                 # pylint: disable=protected-access
                 margin_catalog = margin_catalog.search(self.config.search_filter)
-        elif isinstance(self.config.margin_cache, str):
+        elif self.config.margin_cache is not None:
             margin_catalog = lsdb.read_hipscat(
                 path=self.config.margin_cache,
                 catalog_type=MarginCatalog,
