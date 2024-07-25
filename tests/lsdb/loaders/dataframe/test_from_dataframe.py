@@ -6,7 +6,6 @@ import hipscat as hc
 import numpy as np
 import numpy.testing as npt
 import pandas as pd
-import pyarrow as pa
 import pytest
 from hipscat.catalog import CatalogType
 from hipscat.pixel_math.healpix_pixel_function import get_pixel_argsort
@@ -32,7 +31,9 @@ def get_catalog_kwargs(catalog, **kwargs):
     return kwargs
 
 
-def test_from_dataframe(small_sky_order1_df, small_sky_order1_catalog, assert_divisions_are_correct):
+def test_from_dataframe(
+    small_sky_order1_dir, small_sky_order1_df, small_sky_order1_catalog, assert_divisions_are_correct
+):
     """Tests that we can initialize a catalog from a Pandas Dataframe and
     that the loaded content is correct"""
     kwargs = get_catalog_kwargs(small_sky_order1_catalog)
@@ -50,7 +51,8 @@ def test_from_dataframe(small_sky_order1_df, small_sky_order1_catalog, assert_di
     # Divisions belong to the respective HEALPix pixels
     assert_divisions_are_correct(catalog)
     # The arrow schema was automatically inferred
-    assert isinstance(catalog.hc_structure.schema, pa.Schema)
+    expected_schema = hc.read_from_hipscat(small_sky_order1_dir).schema
+    assert catalog.hc_structure.schema.equals(expected_schema)
 
 
 def test_from_dataframe_catalog_of_invalid_type(small_sky_order1_df, small_sky_order1_catalog):
