@@ -10,6 +10,7 @@ import dask.dataframe as dd
 import hipscat as hc
 import numpy as np
 import pandas as pd
+import pyarrow as pa
 from hipscat.catalog import CatalogType
 from hipscat.catalog.catalog_info import CatalogInfo
 from hipscat.pixel_math import HealpixPixel, generate_histogram
@@ -31,6 +32,7 @@ pd.options.mode.chained_assignment = None  # default='warn'
 class DataframeCatalogLoader:
     """Creates a HiPSCat formatted Catalog from a Pandas Dataframe"""
 
+    # pylint: disable=too-many-arguments
     def __init__(
         self,
         dataframe: pd.DataFrame,
@@ -42,6 +44,7 @@ class DataframeCatalogLoader:
         should_generate_moc: bool = True,
         moc_max_order: int = 10,
         use_pyarrow_types: bool = True,
+        schema: pa.Schema | None = None,
         **kwargs,
     ) -> None:
         """Initializes a DataframeCatalogLoader
@@ -60,6 +63,8 @@ class DataframeCatalogLoader:
             moc_max_order (int): if generating a MOC, what to use as the max order. Defaults to 10.
             use_pyarrow_types (bool): If True, the data is backed by pyarrow, otherwise we keep the
                 original data types. Defaults to True.
+            schema (pa.Schema): the arrow schema to create the catalog with. If None, the schema is
+                automatically inferred from the provided DataFrame using `pa.Schema.from_pandas`.
             **kwargs: Arguments to pass to the creation of the catalog info.
         """
         self.dataframe = dataframe
@@ -71,6 +76,7 @@ class DataframeCatalogLoader:
         self.should_generate_moc = should_generate_moc
         self.moc_max_order = moc_max_order
         self.use_pyarrow_types = use_pyarrow_types
+        self.schema = schema
 
     def _calculate_threshold(self, partition_size: int | None = None, threshold: int | None = None) -> int:
         """Calculates the number of pixels per HEALPix pixel (threshold) for the
@@ -131,9 +137,8 @@ class DataframeCatalogLoader:
         ddf, ddf_pixel_map, total_rows = self._generate_dask_df_and_map(pixel_list)
         self.catalog_info = dataclasses.replace(self.catalog_info, total_rows=total_rows)
         moc = self._generate_moc() if self.should_generate_moc else None
-        hc_structure = hc.catalog.Catalog(
-            self.catalog_info, pixel_list, moc=moc, schema=get_arrow_schema(ddf)
-        )
+        schema = self.schema if self.schema is not None else get_arrow_schema(ddf)
+        hc_structure = hc.catalog.Catalog(self.catalog_info, pixel_list, moc=moc, schema=schema)
         return Catalog(ddf, ddf_pixel_map, hc_structure)
 
     def _set_hipscat_index(self):

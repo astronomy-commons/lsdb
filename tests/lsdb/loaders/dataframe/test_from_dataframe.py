@@ -2,9 +2,11 @@ import math
 
 import astropy.units as u
 import healpy as hp
+import hipscat as hc
 import numpy as np
 import numpy.testing as npt
 import pandas as pd
+import pyarrow as pa
 import pytest
 from hipscat.catalog import CatalogType
 from hipscat.pixel_math.healpix_pixel_function import get_pixel_argsort
@@ -47,6 +49,8 @@ def test_from_dataframe(small_sky_order1_df, small_sky_order1_catalog, assert_di
     )
     # Divisions belong to the respective HEALPix pixels
     assert_divisions_are_correct(catalog)
+    # The arrow schema was automatically inferred
+    assert isinstance(catalog.hc_structure.schema, pa.Schema)
 
 
 def test_from_dataframe_catalog_of_invalid_type(small_sky_order1_df, small_sky_order1_catalog):
@@ -223,6 +227,9 @@ def test_from_dataframe_small_sky_source_with_margins(small_sky_source_df, small
         check_like=True,
     )
 
+    # The margin and main catalog's schemas are the same
+    assert catalog.margin.hc_structure.schema is catalog.hc_structure.schema
+
 
 def test_from_dataframe_invalid_margin_order(small_sky_source_df):
     with pytest.raises(ValueError, match="margin_order"):
@@ -302,3 +309,9 @@ def test_from_dataframe_with_backend(small_sky_order1_df, small_sky_order1_dir):
     catalog = lsdb.from_dataframe(small_sky_order1_df, use_pyarrow_types=False, **kwargs)
     assert all(isinstance(col_type, np.dtype) for col_type in catalog.dtypes)
     pd.testing.assert_frame_equal(catalog.compute().sort_index(), expected_catalog.compute().sort_index())
+
+
+def test_from_dataframe_with_arrow_schema(small_sky_order1_df, small_sky_order1_dir):
+    expected_schema = hc.read_from_hipscat(small_sky_order1_dir).schema
+    catalog = lsdb.from_dataframe(small_sky_order1_df, schema=expected_schema)
+    assert catalog.hc_structure.schema is expected_schema

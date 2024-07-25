@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pandas as pd
+import pyarrow as pa
 
 from lsdb.catalog import Catalog
 from lsdb.loaders.dataframe.dataframe_catalog_loader import DataframeCatalogLoader
@@ -21,6 +22,7 @@ def from_dataframe(
     should_generate_moc: bool = True,
     moc_max_order: int = 10,
     use_pyarrow_types: bool = True,
+    schema: pa.Schema | None = None,
     **kwargs,
 ) -> Catalog:
     """Load a catalog from a Pandas Dataframe in CSV format.
@@ -46,6 +48,8 @@ def from_dataframe(
         moc_max_order (int): if generating a MOC, what to use as the max order. Defaults to 10.
         use_pyarrow_types (bool): If True, the data is backed by pyarrow, otherwise we keep the
             original data types. Defaults to True.
+        schema (pa.Schema): the arrow schema to create the catalog with. If None, the schema is
+            automatically inferred from the provided DataFrame using `pa.Schema.from_pandas`.
         **kwargs: Arguments to pass to the creation of the catalog info.
 
     Returns:
@@ -61,6 +65,7 @@ def from_dataframe(
         should_generate_moc=should_generate_moc,
         moc_max_order=moc_max_order,
         use_pyarrow_types=use_pyarrow_types,
+        schema=schema,
         **kwargs,
     ).load_catalog()
     if margin_threshold:
