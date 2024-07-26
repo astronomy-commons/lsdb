@@ -24,6 +24,7 @@ SMALL_SKY_ORDER1_SOURCE_MARGIN_NAME = "small_sky_order1_source_margin"
 SMALL_SKY_TO_ORDER1_SOURCE_NAME = "small_sky_to_o1source"
 SMALL_SKY_TO_ORDER1_SOURCE_SOFT_NAME = "small_sky_to_o1source_soft"
 SMALL_SKY_ORDER1_CSV = "small_sky_order1.csv"
+SMALL_SKY_NO_METADATA = "small_sky_no_metadata"
 XMATCH_CORRECT_FILE = "xmatch_correct.csv"
 XMATCH_CORRECT_005_FILE = "xmatch_correct_0_005.csv"
 XMATCH_CORRECT_002_005_FILE = "xmatch_correct_002_005.csv"
@@ -198,6 +199,11 @@ def small_sky_source_margin_catalog(test_data_dir):
 @pytest.fixture
 def small_sky_order3_source_margin_catalog(test_data_dir):
     return lsdb.read_hipscat(test_data_dir / SMALL_SKY_ORDER3_SOURCE_MARGIN_NAME)
+
+
+@pytest.fixture
+def small_sky_no_metadata_dir(test_data_dir):
+    return test_data_dir / "raw" / SMALL_SKY_NO_METADATA
 
 
 @pytest.fixture
