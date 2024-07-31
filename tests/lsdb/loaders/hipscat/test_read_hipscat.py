@@ -256,3 +256,8 @@ def test_read_hipscat_margin_catalog_subset_is_empty(small_sky_order1_source_mar
     assert len(margin_catalog._ddf_pixel_map) == 0
     assert len(margin_catalog.compute()) == 0
     assert len(margin_catalog.hc_structure.pixel_tree) == 0
+
+
+def test_read_hipscat_schema_not_found(small_sky_no_metadata_dir):
+    with pytest.raises(ValueError, match="catalog schema could not be loaded"):
+        lsdb.read_hipscat(small_sky_no_metadata_dir)

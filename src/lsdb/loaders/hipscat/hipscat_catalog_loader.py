@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import hipscat as hc
 
-import lsdb
 from lsdb.catalog.catalog import Catalog, MarginCatalog
 from lsdb.loaders.hipscat.abstract_catalog_loader import AbstractCatalogLoader
+from lsdb.loaders.hipscat.hipscat_loading_config import HipscatLoadingConfig
+from lsdb.loaders.hipscat.margin_catalog_loader import MarginCatalogLoader
 
 
 class HipscatCatalogLoader(AbstractCatalogLoader[Catalog]):
@@ -40,6 +41,7 @@ class HipscatCatalogLoader(AbstractCatalogLoader[Catalog]):
             filtered_catalog.pixel_tree,
             catalog_path=hc_catalog.catalog_path,
             moc=filtered_catalog.moc,
+            schema=filtered_catalog.schema,
             storage_options=hc_catalog.storage_options,
         )
 
@@ -53,13 +55,15 @@ class HipscatCatalogLoader(AbstractCatalogLoader[Catalog]):
                 # pylint: disable=protected-access
                 margin_catalog = margin_catalog.search(self.config.search_filter)
         elif self.config.margin_cache is not None:
-            margin_catalog = lsdb.read_hipscat(
-                path=self.config.margin_cache,
-                catalog_type=MarginCatalog,
-                search_filter=self.config.search_filter,
-                margin_cache=None,
-                dtype_backend=self.config.dtype_backend,
+            margin_catalog = MarginCatalogLoader(
+                str(self.config.margin_cache),
+                HipscatLoadingConfig(
+                    search_filter=self.config.search_filter,
+                    columns=self.config.columns,
+                    margin_cache=None,
+                    dtype_backend=self.config.dtype_backend,
+                    **self.config.kwargs,
+                ),
                 storage_options=self.storage_options,
-                **self.config.kwargs,
-            )
+            ).load_catalog()
         return margin_catalog

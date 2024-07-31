@@ -7,6 +7,7 @@ import dask.dataframe as dd
 import hipscat as hc
 import numpy as np
 import pandas as pd
+import pyarrow as pa
 from hipscat.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
 from hipscat.io.file_io import file_io
 from hipscat.pixel_math import HealpixPixel
@@ -45,7 +46,13 @@ class AbstractCatalogLoader(Generic[CatalogTypeVar]):
 
     def _load_hipscat_catalog(self, catalog_type: Type[HCCatalogTypeVar]) -> HCCatalogTypeVar:
         """Load `hipscat` library catalog object with catalog metadata and partition data"""
-        return catalog_type.read_from_hipscat(self.path, storage_options=self.storage_options)
+        hc_catalog = catalog_type.read_from_hipscat(self.path, storage_options=self.storage_options)
+        if hc_catalog.schema is None:
+            raise ValueError(
+                "The catalog schema could not be loaded from metadata."
+                " Ensure your catalog has _common_metadata or _metadata files"
+            )
+        return hc_catalog
 
     def _load_dask_df_and_map(self, catalog: HCHealpixDataset) -> Tuple[dd.DataFrame, DaskDFPixelMap]:
         """Load Dask DF from parquet files and make dict of HEALPix pixel to partition index"""
@@ -71,12 +78,7 @@ class AbstractCatalogLoader(Generic[CatalogTypeVar]):
     def _load_df_from_paths(
         self, catalog: HCHealpixDataset, paths: List[hc.io.FilePointer], divisions: Tuple[int, ...] | None
     ) -> dd.DataFrame:
-        dask_meta_schema = self._load_metadata_schema(catalog)
-        if self.config.columns:
-            dask_meta_schema = dask_meta_schema[self.config.columns]
-        kwargs = dict(self.config.kwargs)
-        if self.config.dtype_backend is not None:
-            kwargs["dtype_backend"] = self.config.dtype_backend
+        dask_meta_schema = self._create_dask_meta_schema(catalog.schema)
         if len(paths) > 0:
             return dd.from_map(
                 file_io.read_parquet_file_to_pandas,
@@ -84,16 +86,22 @@ class AbstractCatalogLoader(Generic[CatalogTypeVar]):
                 columns=self.config.columns,
                 divisions=divisions,
                 meta=dask_meta_schema,
+                schema=catalog.schema,
                 storage_options=self.storage_options,
-                **kwargs,
+                **self._get_kwargs(),
             )
         return dd.from_pandas(dask_meta_schema, npartitions=1)
 
-    def _load_metadata_schema(self, catalog: HCHealpixDataset) -> pd.DataFrame:
-        metadata_pointer = hc.io.paths.get_common_metadata_pointer(catalog.catalog_base_dir)
-        metadata = file_io.read_parquet_metadata(metadata_pointer, storage_options=self.storage_options)
-        return (
-            metadata.schema.to_arrow_schema()
-            .empty_table()
-            .to_pandas(types_mapper=self.config.get_dtype_mapper())
-        )
+    def _create_dask_meta_schema(self, schema: pa.Schema) -> pd.DataFrame:
+        """Creates the Dask meta DataFrame from the HiPSCat catalog schema."""
+        dask_meta_schema = schema.empty_table().to_pandas(types_mapper=self.config.get_dtype_mapper())
+        if self.config.columns is not None:
+            dask_meta_schema = dask_meta_schema[self.config.columns]
+        return dask_meta_schema
+
+    def _get_kwargs(self) -> dict:
+        """Constructs additional arguments for the `read_parquet` call"""
+        kwargs = dict(self.config.kwargs)
+        if self.config.dtype_backend is not None:
+            kwargs["dtype_backend"] = self.config.dtype_backend
+        return kwargs

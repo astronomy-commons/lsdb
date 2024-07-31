@@ -20,6 +20,7 @@ from lsdb.core.search.pixel_search import PixelSearch
 from lsdb.dask.crossmatch_catalog_data import crossmatch_catalog_data
 from lsdb.dask.join_catalog_data import join_catalog_data_on, join_catalog_data_through
 from lsdb.dask.partition_indexer import PartitionIndexer
+from lsdb.io.schema import get_arrow_schema
 from lsdb.types import DaskDFPixelMap
 
 
@@ -199,7 +200,7 @@ class Catalog(HealpixDataset):
             ra_column=self.hc_structure.catalog_info.ra_column + suffixes[0],
             dec_column=self.hc_structure.catalog_info.dec_column + suffixes[0],
         )
-        hc_catalog = hc.catalog.Catalog(new_catalog_info, alignment.pixel_tree)
+        hc_catalog = hc.catalog.Catalog(new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(ddf))
         return Catalog(ddf, ddf_map, hc_catalog)
 
     def cone_search(self, ra: float, dec: float, radius_arcsec: float, fine: bool = True) -> Catalog:
@@ -418,7 +419,9 @@ class Catalog(HealpixDataset):
                 ra_column=self.hc_structure.catalog_info.ra_column + suffixes[0],
                 dec_column=self.hc_structure.catalog_info.dec_column + suffixes[0],
             )
-            hc_catalog = hc.catalog.Catalog(new_catalog_info, alignment.pixel_tree)
+            hc_catalog = hc.catalog.Catalog(
+                new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(ddf)
+            )
             return Catalog(ddf, ddf_map, hc_catalog)
         if left_on is None or right_on is None:
             raise ValueError("Either both of left_on and right_on, or through must be set")
@@ -439,5 +442,5 @@ class Catalog(HealpixDataset):
             ra_column=self.hc_structure.catalog_info.ra_column + suffixes[0],
             dec_column=self.hc_structure.catalog_info.dec_column + suffixes[0],
         )
-        hc_catalog = hc.catalog.Catalog(new_catalog_info, alignment.pixel_tree)
+        hc_catalog = hc.catalog.Catalog(new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(ddf))
         return Catalog(ddf, ddf_map, hc_catalog)
