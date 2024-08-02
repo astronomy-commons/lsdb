@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import List, Tuple, cast
 
 import dask.dataframe as dd
 import nested_pandas as npd
@@ -20,7 +20,7 @@ def _generate_dask_dataframe(
     """Create the Dask Dataframe from the list of HEALPix pixel Dataframes
 
     Args:
-        pixel_dfs (List[pd.DataFrame]): The list of HEALPix pixel Dataframes
+        pixel_dfs (List[npd.NestedFrame]): The list of HEALPix pixel Dataframes
         pixels (List[HealpixPixel]): The list of HEALPix pixels in the catalog
         use_pyarrow_types (bool): If True, use pyarrow types. Defaults to True.
 
@@ -34,6 +34,7 @@ def _generate_dask_dataframe(
     ddf = dd.from_delayed(delayed_dfs, meta=schema, divisions=divisions)
     ddf = ddf if isinstance(ddf, dd.DataFrame) else ddf.to_frame()
     ddf = NestedFrame.from_dask_dataframe(ddf)
+    ddf = cast(NestedFrame, ddf)
     return ddf, len(ddf)
 
 
