@@ -1,6 +1,7 @@
-from typing import List, Tuple
+from typing import List, Tuple, cast
 
 import dask.dataframe as dd
+import nested_pandas as npd
 import numpy as np
 import pandas as pd
 import pyarrow as pa
@@ -8,17 +9,18 @@ from dask import delayed
 from hipscat.catalog import PartitionInfo
 from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
+from nested_dask import NestedFrame
 
 from lsdb.dask.divisions import get_pixels_divisions
 
 
 def _generate_dask_dataframe(
-    pixel_dfs: List[pd.DataFrame], pixels: List[HealpixPixel], use_pyarrow_types: bool = True
-) -> Tuple[dd.DataFrame, int]:
+    pixel_dfs: List[npd.NestedFrame], pixels: List[HealpixPixel], use_pyarrow_types: bool = True
+) -> Tuple[NestedFrame, int]:
     """Create the Dask Dataframe from the list of HEALPix pixel Dataframes
 
     Args:
-        pixel_dfs (List[pd.DataFrame]): The list of HEALPix pixel Dataframes
+        pixel_dfs (List[npd.NestedFrame]): The list of HEALPix pixel Dataframes
         pixels (List[HealpixPixel]): The list of HEALPix pixels in the catalog
         use_pyarrow_types (bool): If True, use pyarrow types. Defaults to True.
 
@@ -31,6 +33,8 @@ def _generate_dask_dataframe(
     divisions = get_pixels_divisions(pixels)
     ddf = dd.from_delayed(delayed_dfs, meta=schema, divisions=divisions)
     ddf = ddf if isinstance(ddf, dd.DataFrame) else ddf.to_frame()
+    ddf = NestedFrame.from_dask_dataframe(ddf)
+    ddf = cast(NestedFrame, ddf)
     return ddf, len(ddf)
 
 
@@ -53,7 +57,9 @@ def _convert_dtypes_to_pyarrow(df: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(new_series, index=df_index, copy=False)
 
 
-def _append_partition_information_to_dataframe(dataframe: pd.DataFrame, pixel: HealpixPixel) -> pd.DataFrame:
+def _append_partition_information_to_dataframe(
+    dataframe: npd.NestedFrame, pixel: HealpixPixel
+) -> npd.NestedFrame:
     """Append partitioning information to a HEALPix dataframe
 
     Args:
@@ -77,7 +83,7 @@ def _append_partition_information_to_dataframe(dataframe: pd.DataFrame, pixel: H
     return _order_partition_dataframe_columns(dataframe)
 
 
-def _format_margin_partition_dataframe(dataframe: pd.DataFrame) -> pd.DataFrame:
+def _format_margin_partition_dataframe(dataframe: npd.NestedFrame) -> npd.NestedFrame:
     """Finalizes the dataframe for a margin catalog partition
 
     Args:
@@ -111,7 +117,7 @@ def _format_margin_partition_dataframe(dataframe: pd.DataFrame) -> pd.DataFrame:
     return _order_partition_dataframe_columns(dataframe)
 
 
-def _order_partition_dataframe_columns(dataframe: pd.DataFrame) -> pd.DataFrame:
+def _order_partition_dataframe_columns(dataframe: npd.NestedFrame) -> npd.NestedFrame:
     """Reorder columns of a partition dataframe so that pixel information
     always appears in the same sequence
 

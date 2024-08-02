@@ -1,7 +1,9 @@
+import nested_pandas as npd
 import numpy as np
 import numpy.testing as npt
 import pytest
 from hipscat.pixel_math.validators import ValidatorsErrors
+from nested_dask import NestedFrame
 
 from lsdb.core.search.polygon_search import get_cartesian_polygon
 
@@ -10,7 +12,9 @@ def test_polygon_search_filters_correct_points(small_sky_order1_catalog, assert_
     vertices = [(300, -50), (300, -55), (272, -55), (272, -50)]
     polygon, _ = get_cartesian_polygon(vertices)
     polygon_search_catalog = small_sky_order1_catalog.polygon_search(vertices)
+    assert isinstance(polygon_search_catalog._ddf, NestedFrame)
     polygon_search_df = polygon_search_catalog.compute()
+    assert isinstance(polygon_search_df, npd.NestedFrame)
     ra_values_radians = np.radians(
         polygon_search_df[small_sky_order1_catalog.hc_structure.catalog_info.ra_column]
     )

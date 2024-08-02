@@ -1,8 +1,8 @@
 from typing import List, Tuple
 
 import healpy as hp
+import nested_pandas as npd
 import numpy as np
-import pandas as pd
 from hipscat.catalog.catalog_info import CatalogInfo
 from hipscat.pixel_math.polygon_filter import CartesianCoordinates, SphericalCoordinates, generate_polygon_moc
 from hipscat.pixel_math.validators import validate_declination_values, validate_polygon
@@ -29,16 +29,18 @@ class PolygonSearch(AbstractSearch):
     def generate_search_moc(self, max_order: int) -> MOC:
         return generate_polygon_moc(self.vertices_xyz, max_order)
 
-    def search_points(self, frame: pd.DataFrame, metadata: CatalogInfo) -> pd.DataFrame:
+    def search_points(self, frame: npd.NestedFrame, metadata: CatalogInfo) -> npd.NestedFrame:
         """Determine the search results within a data frame"""
         return polygon_filter(frame, self.polygon, metadata)
 
 
-def polygon_filter(data_frame: pd.DataFrame, polygon: ConvexPolygon, metadata: CatalogInfo):
+def polygon_filter(
+    data_frame: npd.NestedFrame, polygon: ConvexPolygon, metadata: CatalogInfo
+) -> npd.NestedFrame:
     """Filters a dataframe to only include points within the specified polygon.
 
     Args:
-        data_frame (pd.DataFrame): DataFrame containing points in the sky
+        data_frame (npd.NestedFrame): DataFrame containing points in the sky
         polygon (ConvexPolygon): Convex spherical polygon of interest, used to filter points
         metadata (hc.catalog.Catalog): hipscat `Catalog` with catalog_info that matches `dataframe`
 

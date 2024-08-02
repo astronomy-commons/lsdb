@@ -6,8 +6,8 @@ import warnings
 from typing import Dict, List, Tuple
 
 import astropy.units as u
-import dask.dataframe as dd
 import hipscat as hc
+import nested_pandas as npd
 import numpy as np
 import pandas as pd
 import pyarrow as pa
@@ -17,6 +17,7 @@ from hipscat.pixel_math import HealpixPixel, generate_histogram
 from hipscat.pixel_math.healpix_pixel_function import get_pixel_argsort
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN, compute_hipscat_id, healpix_to_hipscat_id
 from mocpy import MOC
+from nested_dask import NestedFrame
 
 from lsdb.catalog.catalog import Catalog
 from lsdb.io.schema import get_arrow_schema
@@ -67,7 +68,7 @@ class DataframeCatalogLoader:
                 automatically inferred from the provided DataFrame using `pa.Schema.from_pandas`.
             **kwargs: Arguments to pass to the creation of the catalog info.
         """
-        self.dataframe = dataframe
+        self.dataframe = npd.NestedFrame(dataframe)
         self.lowest_order = lowest_order
         self.highest_order = highest_order
         self.drop_empty_siblings = drop_empty_siblings
@@ -177,7 +178,7 @@ class DataframeCatalogLoader:
 
     def _generate_dask_df_and_map(
         self, pixel_list: List[HealpixPixel]
-    ) -> Tuple[dd.DataFrame, DaskDFPixelMap, int]:
+    ) -> Tuple[NestedFrame, DaskDFPixelMap, int]:
         """Load Dask DataFrame from HEALPix pixel Dataframes and
         generate a mapping of HEALPix pixels to HEALPix Dataframes
 
@@ -189,7 +190,7 @@ class DataframeCatalogLoader:
             to the respective Pandas Dataframes and the total number of rows.
         """
         # Dataframes for each destination HEALPix pixel
-        pixel_dfs: List[pd.DataFrame] = []
+        pixel_dfs: List[npd.NestedFrame] = []
 
         # Mapping HEALPix pixels to the respective Dataframe indices
         ddf_pixel_map: Dict[HealpixPixel, int] = {}

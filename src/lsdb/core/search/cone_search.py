@@ -1,4 +1,4 @@
-import pandas as pd
+import nested_pandas as npd
 from astropy.coordinates import SkyCoord
 from hipscat.catalog.catalog_info import CatalogInfo
 from hipscat.pixel_math.cone_filter import generate_cone_moc
@@ -26,16 +26,16 @@ class ConeSearch(AbstractSearch):
     def generate_search_moc(self, max_order: int) -> MOC:
         return generate_cone_moc(self.ra, self.dec, self.radius_arcsec, max_order)
 
-    def search_points(self, frame: pd.DataFrame, metadata: CatalogInfo) -> pd.DataFrame:
+    def search_points(self, frame: npd.NestedFrame, metadata: CatalogInfo) -> npd.NestedFrame:
         """Determine the search results within a data frame"""
         return cone_filter(frame, self.ra, self.dec, self.radius_arcsec, metadata)
 
 
-def cone_filter(data_frame: pd.DataFrame, ra, dec, radius_arcsec, metadata: CatalogInfo):
+def cone_filter(data_frame: npd.NestedFrame, ra, dec, radius_arcsec, metadata: CatalogInfo):
     """Filters a dataframe to only include points within the specified cone
 
     Args:
-        data_frame (pd.DataFrame): DataFrame containing points in the sky
+        data_frame (npd.NestedFrame): DataFrame containing points in the sky
         ra (float): Right Ascension of the center of the cone in degrees
         dec (float): Declination of the center of the cone in degrees
         radius_arcsec (float): Radius of the cone in arcseconds

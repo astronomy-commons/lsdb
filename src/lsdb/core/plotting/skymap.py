@@ -3,16 +3,16 @@ from __future__ import annotations
 from typing import Any, Callable, Dict
 
 import healpy as hp
+import nested_pandas as npd
 import numpy as np
-import pandas as pd
 from dask import delayed
 from hipscat.pixel_math import HealpixPixel, hipscat_id_to_healpix
 
 
 @delayed
 def perform_inner_skymap(
-    partition: pd.DataFrame,
-    func: Callable[[pd.DataFrame, HealpixPixel], Any],
+    partition: npd.NestedFrame,
+    func: Callable[[npd.NestedFrame, HealpixPixel], Any],
     pixel: HealpixPixel,
     target_order: int,
     default_value: Any = 0,
