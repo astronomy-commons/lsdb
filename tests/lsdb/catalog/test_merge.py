@@ -1,4 +1,3 @@
-import dask.dataframe as dd
 import pandas as pd
 import pytest
 from nested_dask import NestedFrame

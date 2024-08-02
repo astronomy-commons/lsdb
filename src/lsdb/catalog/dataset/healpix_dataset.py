@@ -175,9 +175,9 @@ class HealpixDataset(Dataset):
 
         Args:
             func (Callable): The function applied to each partition, which will be called with:
-                `func(partition: npd.NestedFrame, *args, **kwargs)` with the additional args and kwargs passed to
-                the `map_partitions` function. If the `include_pixel` parameter is set, the function will be
-                called with the `healpix_pixel` as the second positional argument set to the healpix pixel
+                `func(partition: npd.NestedFrame, *args, **kwargs)` with the additional args and kwargs passed
+                to the `map_partitions` function. If the `include_pixel` parameter is set, the function will
+                be called with the `healpix_pixel` as the second positional argument set to the healpix pixel
                 of the partition as
                 `func(partition: npd.NestedFrame, healpix_pixel: HealpixPixel, *args, **kwargs)`
             *args: Additional positional arguments to call `func` with.
@@ -334,8 +334,8 @@ class HealpixDataset(Dataset):
         a given order
 
         Args:
-            func (Callable[[npd.NestedFrame, HealpixPixel], Any]): A function that takes a pandas DataFrame and
-                the HealpixPixel the partition is from and returns a value
+            func (Callable[[npd.NestedFrame, HealpixPixel], Any]): A function that takes a pandas DataFrame
+                and the HealpixPixel the partition is from and returns a value
             order (int | None): The HEALPix order to compute the skymap at. If None (default),
                 will compute for each partition in the catalog at their own orders. If a value
                 other than None, each partition will be grouped by pixel number at the order
@@ -371,8 +371,8 @@ class HealpixDataset(Dataset):
         """Plot a skymap of an aggregate function applied over each partition
 
         Args:
-            func (Callable[[npd.NestedFrame, HealpixPixel], Any]): A function that takes a pandas DataFrame and
-                the HealpixPixel the partition is from and returns a value
+            func (Callable[[npd.NestedFrame, HealpixPixel], Any]): A function that takes a pandas DataFrame
+                and the HealpixPixel the partition is from and returns a value
             order (int | None): The HEALPix order to compute the skymap at. If None (default),
                 will compute for each partition in the catalog at their own orders. If a value
                 other than None, each partition will be grouped by pixel number at the order

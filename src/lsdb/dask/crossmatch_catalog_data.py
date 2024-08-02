@@ -4,7 +4,6 @@ import warnings
 from typing import TYPE_CHECKING, Tuple, Type
 
 import dask
-import dask.dataframe as dd
 from hipscat.pixel_tree import PixelAlignment
 from nested_dask import NestedFrame
 

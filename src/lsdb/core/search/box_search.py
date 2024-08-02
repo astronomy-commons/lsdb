@@ -4,7 +4,6 @@ from typing import Tuple
 
 import nested_pandas as npd
 import numpy as np
-import pandas as pd
 from hipscat.catalog.catalog_info import CatalogInfo
 from hipscat.pixel_math.box_filter import generate_box_moc, wrap_ra_angles
 from hipscat.pixel_math.validators import validate_box_search

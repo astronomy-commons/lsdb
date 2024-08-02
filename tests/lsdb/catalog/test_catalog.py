@@ -1,9 +1,9 @@
-import nested_pandas as npd
 from pathlib import Path
 
 import dask.array as da
 import dask.dataframe as dd
 import healpy as hp
+import nested_pandas as npd
 import numpy as np
 import pandas as pd
 import pytest

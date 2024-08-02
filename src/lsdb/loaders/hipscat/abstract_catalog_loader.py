@@ -3,7 +3,6 @@ from __future__ import annotations
 from abc import abstractmethod
 from typing import Generic, List, Tuple, Type
 
-import dask.dataframe as dd
 import hipscat as hc
 import nested_pandas as npd
 import numpy as np

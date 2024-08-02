@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import nested_pandas as npd
-import pandas as pd
 from hipscat.catalog.index.index_catalog import IndexCatalog
 
 from lsdb.core.search.abstract_search import AbstractSearch

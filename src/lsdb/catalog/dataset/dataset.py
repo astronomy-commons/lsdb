@@ -2,7 +2,6 @@ from typing import List
 
 import hipscat as hc
 import nested_pandas as npd
-import pandas as pd
 from dask.delayed import Delayed
 from nested_dask import NestedFrame
 

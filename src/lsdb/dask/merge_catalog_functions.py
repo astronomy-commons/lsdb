@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable, List, Sequence, Tuple, cast
+from typing import TYPE_CHECKING, Callable, List, Sequence, Tuple
 
-import dask.dataframe as dd
 import healpy as hp
 import nested_pandas as npd
 import numpy as np
@@ -295,6 +294,7 @@ def generate_meta_df_for_nested_tables(
         meta.update(extra_columns)
     index = pd.Index(pd.Series(dtype=index_type), name=index_name)
     meta_df = pd.DataFrame(meta, index)
+    # pylint: disable=protected-access
     nested_catalog_meta = nested_catalog._ddf._meta.copy().iloc[:0].drop(join_column_name, axis=1)
     return npd.NestedFrame(meta_df).add_nested(nested_catalog_meta, nested_name)
 

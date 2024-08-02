@@ -6,7 +6,6 @@ import warnings
 from typing import Dict, List, Tuple
 
 import astropy.units as u
-import dask.dataframe as dd
 import hipscat as hc
 import nested_pandas as npd
 import numpy as np
