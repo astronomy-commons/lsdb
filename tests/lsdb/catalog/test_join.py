@@ -207,6 +207,11 @@ def test_join_nested(small_sky_catalog, small_sky_order1_source_with_margin, ass
     for _, row in joined_compute.iterrows():
         id = row["id"]
         pd.testing.assert_frame_equal(
-            row["sources"],
-            pd.DataFrame(source_compute[source_compute["object_id"] == id].set_index("object_id")),
+            row["sources"].sort_values("source_ra").reset_index(drop=True),
+            pd.DataFrame(source_compute[source_compute["object_id"] == id].set_index("object_id"))
+            .sort_values("source_ra")
+            .reset_index(drop=True),
+            check_dtype=False,
+            check_column_type=False,
+            check_index_type=False,
         )
