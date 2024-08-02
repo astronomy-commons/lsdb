@@ -81,19 +81,17 @@ class AbstractCatalogLoader(Generic[CatalogTypeVar]):
     ) -> NestedFrame:
         dask_meta_schema = self._create_dask_meta_schema(catalog.schema)
         if len(paths) > 0:
-            return NestedFrame.from_dask_dataframe(
-                dd.from_map(
-                    file_io.read_parquet_file_to_pandas,
-                    paths,
-                    columns=self.config.columns,
-                    divisions=divisions,
-                    meta=dask_meta_schema,
-                    schema=catalog.schema,
-                    storage_options=self.storage_options,
-                    **self._get_kwargs(),
-                )
+            return NestedFrame.from_map(
+                file_io.read_parquet_file_to_pandas,
+                paths,
+                columns=self.config.columns,
+                divisions=divisions,
+                meta=dask_meta_schema,
+                schema=catalog.schema,
+                storage_options=self.storage_options,
+                **self._get_kwargs(),
             )
-        return NestedFrame.from_dask_dataframe(dd.from_pandas(dask_meta_schema, npartitions=1))
+        return NestedFrame.from_pandas(dask_meta_schema, npartitions=1)
 
     def _create_dask_meta_schema(self, schema: pa.Schema) -> npd.NestedFrame:
         """Creates the Dask meta DataFrame from the HiPSCat catalog schema."""

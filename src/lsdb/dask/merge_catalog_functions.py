@@ -196,8 +196,7 @@ def construct_catalog_args(
     # create dask df from delayed partitions
     divisions = get_pixels_divisions(list(partition_map.keys()))
     partitions = partitions if len(partitions) > 0 else [delayed(meta_df.copy())]
-    ddf = dd.from_delayed(partitions, meta=meta_df, divisions=divisions, verify_meta=True)
-    ddf = NestedFrame.from_dask_dataframe(ddf)
+    ddf = NestedFrame.from_delayed(partitions, meta=meta_df, divisions=divisions, verify_meta=True)
     return ddf, partition_map, alignment
 
 

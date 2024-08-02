@@ -24,5 +24,5 @@ class AssociationCatalogLoader(AbstractCatalogLoader[AssociationCatalog]):
 
     def _load_empty_dask_df_and_map(self, hc_catalog):
         dask_meta_schema = self._create_dask_meta_schema(hc_catalog.schema)
-        ddf = NestedFrame.from_dask_dataframe(dd.from_pandas(dask_meta_schema, npartitions=1))
+        ddf = NestedFrame.from_pandas(dask_meta_schema, npartitions=1)
         return ddf, {}
