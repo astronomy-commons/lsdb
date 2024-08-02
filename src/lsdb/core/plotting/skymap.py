@@ -5,7 +5,6 @@ from typing import Any, Callable, Dict
 import healpy as hp
 import nested_pandas as npd
 import numpy as np
-import pandas as pd
 from dask import delayed
 from hipscat.pixel_math import HealpixPixel, hipscat_id_to_healpix
 

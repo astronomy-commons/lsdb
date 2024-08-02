@@ -188,7 +188,6 @@ def test_join_source_margin_soft(
 
 
 def test_join_nested(small_sky_catalog, small_sky_order1_source_with_margin, assert_divisions_are_correct):
-    suffixes = ("_a", "_b")
     joined = small_sky_catalog.join_nested(
         small_sky_order1_source_with_margin,
         left_on="id",
@@ -205,10 +204,10 @@ def test_join_nested(small_sky_catalog, small_sky_order1_source_with_margin, ass
     source_compute = small_sky_order1_source_with_margin.compute()
     assert isinstance(joined_compute, npd.NestedFrame)
     for _, row in joined_compute.iterrows():
-        id = row["id"]
+        row_id = row["id"]
         pd.testing.assert_frame_equal(
             row["sources"].sort_values("source_ra").reset_index(drop=True),
-            pd.DataFrame(source_compute[source_compute["object_id"] == id].set_index("object_id"))
+            pd.DataFrame(source_compute[source_compute["object_id"] == row_id].set_index("object_id"))
             .sort_values("source_ra")
             .reset_index(drop=True),
             check_dtype=False,

@@ -1,7 +1,7 @@
 from pathlib import Path
 
-import nested_pandas as npd
 import hipscat as hc
+import nested_pandas as npd
 import numpy as np
 import numpy.testing as npt
 import pandas as pd

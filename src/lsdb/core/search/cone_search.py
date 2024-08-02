@@ -1,5 +1,4 @@
 import nested_pandas as npd
-import pandas as pd
 from astropy.coordinates import SkyCoord
 from hipscat.catalog.catalog_info import CatalogInfo
 from hipscat.pixel_math.cone_filter import generate_cone_moc
