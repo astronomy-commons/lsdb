@@ -158,7 +158,7 @@ class AbstractCrossmatchAlgorithm(ABC):
 
     # pylint: disable=protected-access
     @classmethod
-    def generate_meta_df(cls, left: Catalog, right: Catalog, suffixes: Tuple[str]):
+    def generate_meta_df(cls, left: Catalog, right: Catalog, suffixes: Tuple[str], **kwargs):
         return generate_meta_df_for_joined_tables([left, right], suffixes, extra_columns=cls.extra_columns)
 
     @staticmethod
