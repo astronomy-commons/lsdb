@@ -117,9 +117,7 @@ def crossmatch_catalog_data(
     left_pixels, right_pixels = get_healpix_pixels_from_alignment(alignment)
 
     # generate meta table structure for dask df
-    meta_df = generate_meta_df_for_joined_tables(
-        [left, right], suffixes, extra_columns=crossmatch_algorithm.extra_columns
-    )
+    meta_df = crossmatch_algorithm.generate_meta_df(left, right, suffixes, **kwargs)
 
     # perform the crossmatch on each partition pairing using dask delayed for lazy computation
     joined_partitions = align_and_apply(

@@ -11,6 +11,8 @@ from hipscat.catalog.catalog_info import CatalogInfo
 from hipscat.catalog.margin_cache import MarginCacheCatalogInfo
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
 
+from lsdb.dask.merge_catalog_functions import generate_meta_df_for_joined_tables
+
 if TYPE_CHECKING:
     from lsdb.catalog import Catalog
 
@@ -153,6 +155,11 @@ class AbstractCrossmatchAlgorithm(ABC):
             raise ValueError(f"right table must have column {right.hc_structure.catalog_info.ra_column}")
         if right.hc_structure.catalog_info.dec_column not in column_names:
             raise ValueError(f"right table must have column {right.hc_structure.catalog_info.dec_column}")
+
+    # pylint: disable=protected-access
+    @classmethod
+    def generate_meta_df(cls, left: Catalog, right: Catalog, suffixes: Tuple[str]):
+        return generate_meta_df_for_joined_tables([left, right], suffixes, extra_columns=cls.extra_columns)
 
     @staticmethod
     def _rename_columns_with_suffix(dataframe, suffix):
