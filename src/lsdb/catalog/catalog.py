@@ -506,3 +506,9 @@ class Catalog(HealpixDataset):
         )
         hc_catalog = hc.catalog.Catalog(new_catalog_info, alignment.pixel_tree)
         return Catalog(ddf, ddf_map, hc_catalog)
+
+    def reduce(self, *args, **kwargs):
+        catalog = super().reduce(*args, **kwargs)
+        if self.margin is not None:
+            catalog.margin = self.margin.reduce(*args, **kwargs)
+        return catalog

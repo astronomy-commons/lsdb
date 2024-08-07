@@ -424,3 +424,7 @@ class HealpixDataset(Dataset):
             **kwargs: Arguments to pass to the parquet write operations
         """
         io.to_hipscat(self, base_catalog_path, catalog_name, overwrite, storage_options, **kwargs)
+
+    def reduce(self, *args, **kwargs):
+        result_ddf = self._ddf.reduce(*args, **kwargs)
+        return self.__class__(result_ddf, self._ddf_pixel_map, self.hc_structure)
