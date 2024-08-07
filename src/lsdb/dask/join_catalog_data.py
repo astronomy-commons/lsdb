@@ -121,7 +121,8 @@ def perform_join_nested(
     right_columns: List[str],
     right_name: str,
 ):
-    """Performs a join on two catalog partitions
+    """Performs a join on two catalog partitions by adding the right catalog a nested column using
+    nested-pandas
 
     Args:
         left (npd.NestedFrame): the left partition to merge
@@ -136,6 +137,7 @@ def perform_join_nested(
         left_on (str): the column to join on from the left partition
         right_on (str): the column to join on from the right partition
         right_columns (List[str]): the columns to include from the right margin partition
+        right_name (str): the name of the nested column in the resulting df to join the right catalog into
 
     Returns:
         A dataframe with the result of merging the left and right partitions on the specified columns
@@ -181,10 +183,11 @@ def perform_join_through(
         right_pixel (HealpixPixel): the HEALPix pixel of the right partition
         right_margin_pixel (HealpixPixel): the HEALPix pixel of the right margin partition
         through_pixel (HealpixPixel): the HEALPix pixel of the association partition
-        left_catalog (hc.Catalog): the hipscat structure of the left catalog
-        right_catalog (hc.Catalog): the hipscat structure of the right catalog
-        right_margin_catalog (hc.Catalog): the hipscat structure of the right margin catalog
-        assoc_catalog (hc.AssociationCatalog): the hipscat structure of the association catalog
+        left_catalog_info (hc.CatalogInfo): the hipscat structure of the left catalog
+        right_catalog_info (hc.CatalogInfo): the hipscat structure of the right catalog
+        right_margin_catalog_info (hc.MarginCacheCatalogInfo): the hipscat structure of the right margin
+            catalog
+        assoc_catalog_info (hc.AssociationCatalogInfo): the hipscat structure of the association catalog
         suffixes (Tuple[str,str]): the suffixes to apply to each partition's column names
         right_columns (List[str]): the columns to include from the right margin partition
 

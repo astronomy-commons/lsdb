@@ -458,16 +458,25 @@ class Catalog(HealpixDataset):
         nested_column_name: str | None = None,
         output_catalog_name: str | None = None,
     ) -> Catalog:
-        """Perform a spatial join to another catalog
+        """Perform a spatial join to another catalog by adding the other catalog a nested column
 
-        Joins two catalogs together on a shared column value, merging rows where they match. The operation
-        only joins data from matching partitions, and does not join rows that have a matching column value but
-        are in separate partitions in the sky. For a more general join, see the `merge` function.
+        Joins two catalogs together on a shared column value, merging rows where they match.
+
+        The result is added as a nested dataframe column using
+        `nested-dask <https://github.com/lincc-frameworks/nested-dask>`__, where the right catalog's columns
+        are encoded within a column in the resulting dataframe. For more information, view the
+        `nested-dask documentation <https://nested-dask.readthedocs.io/en/latest/>`__
+
+        The operation only joins data from matching partitions and their margin caches, and does not join rows
+        that have a matching column value but are in separate partitions in the sky. For a more general join,
+        see the `merge` function.
 
         Args:
             other (Catalog): the right catalog to join to
             left_on (str): the name of the column in the left catalog to join on
             right_on (str): the name of the column in the right catalog to join on
+            nested_column_name (str): the name of the nested column in the resulting dataframe storing the
+                joined columns in the right catalog. (Default: name of right catalog)
             output_catalog_name (str): The name of the resulting catalog to be stored in metadata
 
         Returns:
@@ -476,7 +485,7 @@ class Catalog(HealpixDataset):
         """
 
         if left_on is None or right_on is None:
-            raise ValueError("Both of left_on and right_on")
+            raise ValueError("Both of left_on and right_on must be set")
 
         if left_on not in self._ddf.columns:
             raise ValueError("left_on must be a column in the left catalog")

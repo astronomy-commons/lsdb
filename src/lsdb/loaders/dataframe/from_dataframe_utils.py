@@ -1,6 +1,5 @@
-from typing import List, Tuple, cast
+from typing import List, Tuple
 
-import dask.dataframe as dd
 import nested_pandas as npd
 import numpy as np
 import pandas as pd
@@ -31,10 +30,7 @@ def _generate_dask_dataframe(
     schema = pixel_dfs[0].iloc[:0, :].copy() if len(pixels) > 0 else []
     delayed_dfs = [delayed(df) for df in pixel_dfs]
     divisions = get_pixels_divisions(pixels)
-    ddf = dd.from_delayed(delayed_dfs, meta=schema, divisions=divisions)
-    ddf = ddf if isinstance(ddf, dd.DataFrame) else ddf.to_frame()
-    ddf = NestedFrame.from_dask_dataframe(ddf)
-    ddf = cast(NestedFrame, ddf)
+    ddf = NestedFrame.from_delayed(delayed_dfs, meta=schema, divisions=divisions)
     return ddf, len(ddf)
 
 

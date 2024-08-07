@@ -294,8 +294,13 @@ def generate_meta_df_for_nested_tables(
         meta.update(extra_columns)
     index = pd.Index(pd.Series(dtype=index_type), name=index_name)
     meta_df = pd.DataFrame(meta, index)
+
+    # make an empty copy of the nested catalog, removing the column that will be joined on (and removed from
+    # the eventual dataframe)
     # pylint: disable=protected-access
     nested_catalog_meta = nested_catalog._ddf._meta.copy().iloc[:0].drop(join_column_name, axis=1)
+
+    # Use nested-pandas to make the resulting meta with the nested catalog meta as a nested column
     return npd.NestedFrame(meta_df).add_nested(nested_catalog_meta, nested_name)
 
 
