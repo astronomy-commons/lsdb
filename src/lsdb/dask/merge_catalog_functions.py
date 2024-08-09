@@ -3,15 +3,18 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Callable, List, Sequence, Tuple, cast
 
 import dask.dataframe as dd
+import healpy as hp
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
-from dask.delayed import Delayed
+from dask.delayed import Delayed, delayed
 from hipscat.catalog import PartitionInfo
 from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.healpix_pixel import INVALID_PIXEL
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN, healpix_to_hipscat_id
 from hipscat.pixel_tree import PixelAlignment, PixelAlignmentType, align_trees
+from hipscat.pixel_tree.moc_utils import copy_moc
+from hipscat.pixel_tree.pixel_alignment import align_with_mocs
 
 from lsdb.dask.divisions import get_pixels_divisions
 from lsdb.types import DaskDFPixelMap
@@ -56,18 +59,25 @@ def concat_partition_and_margin(
 
 
 def align_catalogs(
-    left: Catalog, right: Catalog, alignment_type: PixelAlignmentType = PixelAlignmentType.INNER
+    left: Catalog,
+    right: Catalog,
+    alignment_type: PixelAlignmentType = PixelAlignmentType.INNER,
+    add_right_margin: bool = True,
 ) -> PixelAlignment:
     """Aligns two catalogs, also using the right catalog's margin if it exists
 
     Args:
         left (lsdb.Catalog): The left catalog to align
         right (lsdb.Catalog): The right catalog to align
-        alignment_type (PixelAlignmentType): The type of alignment
+        alignment_type (PixelAlignmentType): The type of alignment. Defaults to "inner".
+        add_right_margin (bool): If True, when using MOCs to align catalogs, adds a border to the
+            right catalog's moc to include the margin of the right catalog, if it exists. Defaults to True.
 
     Returns:
         The PixelAlignment object from aligning the catalogs
     """
+
+    right_added_radius = None
 
     if right.margin is not None:
         right_tree = align_trees(
@@ -75,9 +85,31 @@ def align_catalogs(
             right.margin.hc_structure.pixel_tree,
             alignment_type=PixelAlignmentType.OUTER,
         ).pixel_tree
+        if add_right_margin:
+            right_added_radius = right.margin.hc_structure.catalog_info.margin_threshold
     else:
         right_tree = right.hc_structure.pixel_tree
-    return align_trees(left.hc_structure.pixel_tree, right_tree, alignment_type)
+
+    right_moc = (
+        right.hc_structure.moc
+        if right.hc_structure.moc is not None
+        else right.hc_structure.pixel_tree.to_moc()
+    )
+    if right_added_radius is not None:
+        right_moc_depth_resol = hp.nside2resol(hp.order2nside(right_moc.max_order), arcmin=True) * 60
+        if right_added_radius < right_moc_depth_resol:
+            right_moc = copy_moc(right_moc).add_neighbours()
+        else:
+            delta_order = int(np.ceil(np.log2(right_added_radius / right_moc_depth_resol)))
+            right_moc = right_moc.degrade_to_order(right_moc.max_order - delta_order).add_neighbours()
+
+    return align_with_mocs(
+        left.hc_structure.pixel_tree,
+        right_tree,
+        left.hc_structure.moc,
+        right_moc,
+        alignment_type=alignment_type,
+    )
 
 
 def align_and_apply(
@@ -160,7 +192,7 @@ def filter_by_hipscat_index_to_pixel(dataframe: pd.DataFrame, order: int, pixel:
 
 def construct_catalog_args(
     partitions: List[Delayed], meta_df: pd.DataFrame, alignment: PixelAlignment
-) -> Tuple[dd.core.DataFrame, DaskDFPixelMap, PixelAlignment]:
+) -> Tuple[dd.DataFrame, DaskDFPixelMap, PixelAlignment]:
     """Constructs the arguments needed to create a catalog from a list of delayed partitions
 
     Args:
@@ -174,11 +206,11 @@ def construct_catalog_args(
     """
     # generate dask df partition map from alignment
     partition_map = get_partition_map_from_alignment_pixels(alignment.pixel_mapping)
-
     # create dask df from delayed partitions
     divisions = get_pixels_divisions(list(partition_map.keys()))
-    ddf = dd.io.from_delayed(partitions, meta=meta_df, divisions=divisions)
-    ddf = cast(dd.core.DataFrame, ddf)
+    partitions = partitions if len(partitions) > 0 else [delayed(pd.DataFrame([]))]
+    ddf = dd.from_delayed(partitions, meta=meta_df, divisions=divisions)
+    ddf = cast(dd.DataFrame, ddf)
     return ddf, partition_map, alignment
 
 
@@ -232,8 +264,8 @@ def generate_meta_df_for_joined_tables(
         index_type (npt.DTypeLike): The type of the index in the resulting DataFrame
 
     Returns:
-    An empty dataframe with the columns of each catalog with their respective suffix, and any extra columns
-    specified, with the index name set.
+        An empty dataframe with the columns of each catalog with their respective suffix, and any extra
+        columns specified, with the index name set.
     """
     meta = {}
     # Construct meta for crossmatched catalog columns

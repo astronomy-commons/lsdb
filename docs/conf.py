@@ -24,7 +24,13 @@ version = ".".join(release.split(".")[:2])
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-extensions = ["sphinx.ext.mathjax", "sphinx.ext.napoleon", "sphinx.ext.viewcode", "sphinx.ext.intersphinx"]
+extensions = [
+    "sphinx.ext.mathjax",
+    "sphinx.ext.napoleon",
+    "sphinx.ext.viewcode",
+    "sphinx.ext.intersphinx",
+    "sphinx.ext.graphviz",
+]
 
 extensions.append("autoapi.extension")
 extensions.append("nbsphinx")
@@ -38,6 +44,8 @@ copybutton_prompt_text = ">> "
 
 ## lets us suppress the copy button on select code blocks.
 copybutton_selector = "div:not(.no-copybutton) > div.highlight > pre"
+
+graphviz_output_format = "svg"
 
 templates_path = []
 exclude_patterns = ["_build", "**.ipynb_checkpoints"]
@@ -58,8 +66,6 @@ autoapi_member_order = "bysource"
 html_theme = "sphinx_book_theme"
 html_static_path = ["_static"]
 html_css_files = ["custom.css"]
-
-nbsphinx_allow_errors = True
 
 # Cross-link hipscat documentation from the API reference:
 # https://docs.readthedocs.io/en/stable/guides/intersphinx.html

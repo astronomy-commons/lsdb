@@ -13,7 +13,10 @@ For more information on stub files, view here: https://mypy.readthedocs.io/en/st
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import List, Type, overload
+
+from hipscat.io.file_io import FilePointer
 
 from lsdb.catalog.dataset.dataset import Dataset
 from lsdb.catalog.margin_catalog import MarginCatalog
@@ -22,19 +25,22 @@ from lsdb.loaders.hipscat.abstract_catalog_loader import CatalogTypeVar
 
 @overload
 def read_hipscat(
-    path: str,
+    path: FilePointer | Path,
     search_filter: AbstractSearch | None = None,
-    storage_options: dict | None = None,
     columns: List[str] | None = None,
-    margin_cache: MarginCatalog | None = None,
-) -> Dataset: ...
+    margin_cache: MarginCatalog | FilePointer | Path | None = None,
+    dtype_backend: str | None = "pyarrow",
+    storage_options: dict | None = None,
+    **kwargs,
+) -> Dataset | None: ...
 @overload
 def read_hipscat(
-    path: str,
+    path: FilePointer | Path,
     catalog_type: Type[CatalogTypeVar],
     search_filter: AbstractSearch | None = None,
-    storage_options: dict | None = None,
     columns: List[str] | None = None,
-    margin_cache: MarginCatalog | None = None,
+    margin_cache: MarginCatalog | FilePointer | Path | None = None,
+    dtype_backend: str | None = "pyarrow",
+    storage_options: dict | None = None,
     **kwargs,
-) -> CatalogTypeVar: ...
+) -> CatalogTypeVar | None: ...

@@ -1,15 +1,13 @@
 from __future__ import annotations
 
-from typing import List, Tuple
+from typing import Tuple
 
-import dask
 import numpy as np
 import pandas as pd
 from hipscat.catalog.catalog_info import CatalogInfo
-from hipscat.pixel_math import HealpixPixel
-from hipscat.pixel_math.box_filter import filter_pixels_by_box, wrap_ra_angles
+from hipscat.pixel_math.box_filter import generate_box_moc, wrap_ra_angles
 from hipscat.pixel_math.validators import validate_box_search
-from hipscat.pixel_tree.pixel_tree import PixelTree
+from mocpy import MOC
 
 from lsdb.core.search.abstract_search import AbstractSearch
 
@@ -22,22 +20,25 @@ class BoxSearch(AbstractSearch):
     Filters partitions in the catalog to those that have some overlap with the region.
     """
 
-    def __init__(self, ra: Tuple[float, float] | None = None, dec: Tuple[float, float] | None = None):
+    def __init__(
+        self,
+        ra: Tuple[float, float] | None = None,
+        dec: Tuple[float, float] | None = None,
+        fine: bool = True,
+    ):
+        super().__init__(fine)
         ra = tuple(wrap_ra_angles(ra)) if ra else None
         validate_box_search(ra, dec)
         self.ra, self.dec = ra, dec
 
-    def search_partitions(self, pixels: List[HealpixPixel]) -> List[HealpixPixel]:
-        """Determine the target partitions for further filtering."""
-        pixel_tree = PixelTree.from_healpix(pixels)
-        return filter_pixels_by_box(pixel_tree, self.ra, self.dec)
+    def generate_search_moc(self, max_order: int) -> MOC:
+        return generate_box_moc(self.ra, self.dec, max_order)
 
     def search_points(self, frame: pd.DataFrame, metadata: CatalogInfo) -> pd.DataFrame:
         """Determine the search results within a data frame"""
         return box_filter(frame, self.ra, self.dec, metadata)
 
 
-@dask.delayed
 def box_filter(
     data_frame: pd.DataFrame,
     ra: Tuple[float, float] | None,

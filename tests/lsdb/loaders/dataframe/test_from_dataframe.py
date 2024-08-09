@@ -1,4 +1,8 @@
+import math
+
+import astropy.units as u
 import healpy as hp
+import hipscat as hc
 import numpy as np
 import numpy.testing as npt
 import pandas as pd
@@ -6,10 +10,10 @@ import pytest
 from hipscat.catalog import CatalogType
 from hipscat.pixel_math.healpix_pixel_function import get_pixel_argsort
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
+from mocpy import MOC
 
 import lsdb
 from lsdb.catalog.margin_catalog import MarginCatalog
-from lsdb.loaders.dataframe.dataframe_catalog_loader import DataframeCatalogLoader
 
 
 def get_catalog_kwargs(catalog, **kwargs):
@@ -19,6 +23,7 @@ def get_catalog_kwargs(catalog, **kwargs):
     kwargs = {
         "catalog_name": catalog_info.catalog_name,
         "catalog_type": catalog_info.catalog_type,
+        "lowest_order": 0,
         "highest_order": 5,
         "threshold": 50,
         **kwargs,
@@ -26,7 +31,9 @@ def get_catalog_kwargs(catalog, **kwargs):
     return kwargs
 
 
-def test_from_dataframe(small_sky_order1_df, small_sky_order1_catalog, assert_divisions_are_correct):
+def test_from_dataframe(
+    small_sky_order1_dir, small_sky_order1_df, small_sky_order1_catalog, assert_divisions_are_correct
+):
     """Tests that we can initialize a catalog from a Pandas Dataframe and
     that the loaded content is correct"""
     kwargs = get_catalog_kwargs(small_sky_order1_catalog)
@@ -43,6 +50,9 @@ def test_from_dataframe(small_sky_order1_df, small_sky_order1_catalog, assert_di
     )
     # Divisions belong to the respective HEALPix pixels
     assert_divisions_are_correct(catalog)
+    # The arrow schema was automatically inferred
+    expected_schema = hc.read_from_hipscat(small_sky_order1_dir).schema
+    assert catalog.hc_structure.schema.equals(expected_schema)
 
 
 def test_from_dataframe_catalog_of_invalid_type(small_sky_order1_df, small_sky_order1_catalog):
@@ -133,12 +143,39 @@ def test_partitions_obey_threshold(small_sky_order1_df, small_sky_order1_catalog
     assert all(num_pixels <= threshold for num_pixels in num_partition_pixels)
 
 
+def test_from_dataframe_large_input(small_sky_order1_catalog, assert_divisions_are_correct):
+    """Tests that we can initialize a catalog from a LARGE Pandas Dataframe and
+    that we're warned about the catalog's size"""
+    original_catalog_info = small_sky_order1_catalog.hc_structure.catalog_info
+    kwargs = {
+        "catalog_name": original_catalog_info.catalog_name,
+        "catalog_type": original_catalog_info.catalog_type,
+    }
+
+    rng = np.random.default_rng()
+    random_df = pd.DataFrame({"ra": rng.uniform(0, 60, 1_500_000), "dec": rng.uniform(0, 60, 1_500_000)})
+
+    # Read CSV file for the small sky order 1 catalog
+    with pytest.warns(RuntimeWarning, match="from_dataframe is not intended for large datasets"):
+        catalog = lsdb.from_dataframe(random_df, margin_threshold=None, **kwargs)
+    assert isinstance(catalog, lsdb.Catalog)
+    # Catalogs have the same information
+    original_catalog_info.total_rows = 1_500_000
+    assert catalog.hc_structure.catalog_info == original_catalog_info
+    # Index is set to hipscat index
+    assert catalog._ddf.index.name == HIPSCAT_ID_COLUMN
+    # Divisions belong to the respective HEALPix pixels
+    assert_divisions_are_correct(catalog)
+
+
 def test_partitions_obey_default_threshold_when_no_arguments_specified(
     small_sky_order1_df, small_sky_order1_catalog
 ):
     """Tests that partitions are limited by the default threshold
     when no partition size or threshold is specified"""
-    default_threshold = DataframeCatalogLoader.DEFAULT_THRESHOLD
+    df_total_memory = small_sky_order1_df.memory_usage(deep=True).sum()
+    partition_memory = df_total_memory / len(small_sky_order1_df)
+    default_threshold = math.ceil((1 << 30) / partition_memory)
     # Read CSV file for the small sky order 1 catalog
     kwargs = get_catalog_kwargs(small_sky_order1_catalog, threshold=None, partition_size=None)
     catalog = lsdb.from_dataframe(small_sky_order1_df, margin_threshold=None, **kwargs)
@@ -154,6 +191,7 @@ def test_catalog_pixels_nested_ordering(small_sky_source_df):
         small_sky_source_df,
         catalog_name="small_sky_source",
         catalog_type="source",
+        lowest_order=0,
         highest_order=2,
         threshold=3_000,
         margin_threshold=None,
@@ -172,6 +210,7 @@ def test_from_dataframe_small_sky_source_with_margins(small_sky_source_df, small
         small_sky_source_df,
         ra_column="source_ra",
         dec_column="source_dec",
+        lowest_order=0,
         highest_order=2,
         threshold=3000,
         margin_order=8,
@@ -189,6 +228,9 @@ def test_from_dataframe_small_sky_source_with_margins(small_sky_source_df, small
         small_sky_source_margin_catalog.compute().sort_index(),
         check_like=True,
     )
+
+    # The margin and main catalog's schemas are the same
+    assert catalog.margin.hc_structure.schema is catalog.hc_structure.schema
 
 
 def test_from_dataframe_invalid_margin_order(small_sky_source_df):
@@ -213,6 +255,46 @@ def test_from_dataframe_margin_is_empty(small_sky_order1_df):
     assert catalog.margin is None
 
 
+def test_from_dataframe_moc(small_sky_order1_catalog):
+    order = 1
+    pixels = [44, 45, 46]
+    partitions = [small_sky_order1_catalog.get_partition(order, p).compute() for p in pixels]
+    df = pd.concat(partitions)
+    subset_catalog = lsdb.from_dataframe(df)
+    assert subset_catalog.hc_structure.moc is not None
+    assert np.all(subset_catalog.hc_structure.moc.degrade_to_order(1).flatten() == pixels)
+    correct_moc = MOC.from_lonlat(
+        lon=df["ra"].to_numpy() * u.deg, lat=df["dec"].to_numpy() * u.deg, max_norder=10
+    )
+    assert correct_moc == subset_catalog.hc_structure.moc
+
+
+def test_from_dataframe_moc_params(small_sky_order1_catalog):
+    order = 1
+    pixels = [44, 45, 46]
+    max_order = 5
+    partitions = [small_sky_order1_catalog.get_partition(order, p).compute() for p in pixels]
+    df = pd.concat(partitions)
+    subset_catalog = lsdb.from_dataframe(df, moc_max_order=max_order)
+    assert subset_catalog.hc_structure.moc is not None
+    assert subset_catalog.hc_structure.moc.max_order == max_order
+    assert np.all(subset_catalog.hc_structure.moc.degrade_to_order(1).flatten() == pixels)
+    correct_moc = MOC.from_lonlat(
+        lon=df["ra"].to_numpy() * u.deg, lat=df["dec"].to_numpy() * u.deg, max_norder=max_order
+    )
+    assert correct_moc == subset_catalog.hc_structure.moc
+
+
+def test_from_dataframe_without_moc(small_sky_order1_catalog):
+    order = 1
+    pixels = [44, 45, 46]
+    max_order = 5
+    partitions = [small_sky_order1_catalog.get_partition(order, p).compute() for p in pixels]
+    df = pd.concat(partitions)
+    subset_catalog = lsdb.from_dataframe(df, moc_max_order=max_order, should_generate_moc=False)
+    assert subset_catalog.hc_structure.moc is None
+
+
 def test_from_dataframe_with_backend(small_sky_order1_df, small_sky_order1_dir):
     """Tests that we can initialize a catalog from a Pandas Dataframe with the desired backend"""
     # Read the catalog from hipscat format using pyarrow, import it from a CSV using
@@ -229,3 +311,9 @@ def test_from_dataframe_with_backend(small_sky_order1_df, small_sky_order1_dir):
     catalog = lsdb.from_dataframe(small_sky_order1_df, use_pyarrow_types=False, **kwargs)
     assert all(isinstance(col_type, np.dtype) for col_type in catalog.dtypes)
     pd.testing.assert_frame_equal(catalog.compute().sort_index(), expected_catalog.compute().sort_index())
+
+
+def test_from_dataframe_with_arrow_schema(small_sky_order1_df, small_sky_order1_dir):
+    expected_schema = hc.read_from_hipscat(small_sky_order1_dir).schema
+    catalog = lsdb.from_dataframe(small_sky_order1_df, schema=expected_schema)
+    assert catalog.hc_structure.schema is expected_schema

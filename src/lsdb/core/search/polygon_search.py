@@ -1,19 +1,13 @@
 from typing import List, Tuple
 
-import dask
 import healpy as hp
 import numpy as np
 import pandas as pd
 from hipscat.catalog.catalog_info import CatalogInfo
-from hipscat.pixel_math import HealpixPixel
-from hipscat.pixel_math.polygon_filter import (
-    CartesianCoordinates,
-    SphericalCoordinates,
-    filter_pixels_by_polygon,
-)
+from hipscat.pixel_math.polygon_filter import CartesianCoordinates, SphericalCoordinates, generate_polygon_moc
 from hipscat.pixel_math.validators import validate_declination_values, validate_polygon
-from hipscat.pixel_tree.pixel_tree import PixelTree
 from lsst.sphgeom import ConvexPolygon, UnitVector3d
+from mocpy import MOC
 
 from lsdb.core.search.abstract_search import AbstractSearch
 
@@ -25,22 +19,21 @@ class PolygonSearch(AbstractSearch):
     Filters partitions in the catalog to those that have some overlap with the region.
     """
 
-    def __init__(self, vertices: List[SphericalCoordinates]):
+    def __init__(self, vertices: List[SphericalCoordinates], fine: bool = True):
+        super().__init__(fine)
         _, dec = np.array(vertices).T
         validate_declination_values(dec)
+        self.vertices = np.array(vertices)
         self.polygon, self.vertices_xyz = get_cartesian_polygon(vertices)
 
-    def search_partitions(self, pixels: List[HealpixPixel]) -> List[HealpixPixel]:
-        """Determine the target partitions for further filtering."""
-        pixel_tree = PixelTree.from_healpix(pixels)
-        return filter_pixels_by_polygon(pixel_tree, self.vertices_xyz)
+    def generate_search_moc(self, max_order: int) -> MOC:
+        return generate_polygon_moc(self.vertices_xyz, max_order)
 
     def search_points(self, frame: pd.DataFrame, metadata: CatalogInfo) -> pd.DataFrame:
         """Determine the search results within a data frame"""
         return polygon_filter(frame, self.polygon, metadata)
 
 
-@dask.delayed
 def polygon_filter(data_frame: pd.DataFrame, polygon: ConvexPolygon, metadata: CatalogInfo):
     """Filters a dataframe to only include points within the specified polygon.
 

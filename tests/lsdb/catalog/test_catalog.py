@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 
 import dask.array as da
@@ -35,6 +34,10 @@ def test_catalog_compute_equals_ddf_compute(small_sky_order1_catalog):
     pd.testing.assert_frame_equal(small_sky_order1_catalog.compute(), small_sky_order1_catalog._ddf.compute())
 
 
+def test_catalog_uses_dask_expressions(small_sky_order1_catalog):
+    assert hasattr(small_sky_order1_catalog._ddf, "expr")
+
+
 def test_get_catalog_partition_gets_correct_partition(small_sky_order1_catalog):
     for healpix_pixel in small_sky_order1_catalog.get_healpix_pixels():
         hp_order = healpix_pixel.order
@@ -63,7 +66,7 @@ def test_head_rows_less_than_requested(small_sky_order1_catalog):
     schema = small_sky_order1_catalog.dtypes
     two_rows = small_sky_order1_catalog._ddf.partitions[0].compute()[:2]
     tiny_df = pd.DataFrame(data=two_rows, columns=schema.index, dtype=schema.to_numpy())
-    altered_ddf = dd.io.from_pandas(tiny_df, npartitions=1)
+    altered_ddf = dd.from_pandas(tiny_df, npartitions=1)
     catalog = lsdb.Catalog(altered_ddf, {}, small_sky_order1_catalog.hc_structure)
     # The head only contains two values
     assert len(catalog.head()) == 2
@@ -73,8 +76,8 @@ def test_head_first_partition_is_empty(small_sky_order1_catalog):
     # The same catalog but now the first partition is empty
     schema = small_sky_order1_catalog.dtypes
     empty_df = pd.DataFrame(columns=schema.index, dtype=schema.to_numpy())
-    empty_ddf = dd.io.from_pandas(empty_df, npartitions=1)
-    altered_ddf = dd.multi.concat([empty_ddf, small_sky_order1_catalog._ddf])
+    empty_ddf = dd.from_pandas(empty_df, npartitions=1)
+    altered_ddf = dd.concat([empty_ddf, small_sky_order1_catalog._ddf])
     catalog = lsdb.Catalog(altered_ddf, {}, small_sky_order1_catalog.hc_structure)
     # The first partition is empty
     first_partition_df = catalog._ddf.partitions[0].compute()
@@ -87,7 +90,7 @@ def test_head_empty_catalog(small_sky_order1_catalog):
     # Create an empty Pandas DataFrame with the same schema
     schema = small_sky_order1_catalog.dtypes
     empty_df = pd.DataFrame(columns=schema.index, dtype=schema.to_numpy())
-    empty_ddf = dd.io.from_pandas(empty_df, npartitions=1)
+    empty_ddf = dd.from_pandas(empty_df, npartitions=1)
     empty_catalog = lsdb.Catalog(empty_ddf, {}, small_sky_order1_catalog.hc_structure)
     assert len(empty_catalog.head()) == 0
 
@@ -192,15 +195,19 @@ def test_save_catalog(small_sky_catalog, tmp_path):
 
 
 def test_save_catalog_overwrite(small_sky_catalog, tmp_path):
-    base_catalog_path = os.path.join(tmp_path, "small_sky")
+    base_catalog_path = tmp_path / "small_sky"
+    # Saving a catalog to disk when the directory does not yet exist
     small_sky_catalog.to_hipscat(base_catalog_path)
-    with pytest.raises(FileExistsError):
+    # The output directory exists and it has content. Overwrite is
+    # set to False and, as such, the operation fails.
+    with pytest.raises(ValueError, match="set overwrite to True"):
         small_sky_catalog.to_hipscat(base_catalog_path)
+    # With overwrite it succeeds because the directory is recreated
     small_sky_catalog.to_hipscat(base_catalog_path, overwrite=True)
 
 
 def test_save_catalog_when_catalog_is_empty(small_sky_order1_catalog, tmp_path):
-    base_catalog_path = os.path.join(tmp_path, "small_sky")
+    base_catalog_path = tmp_path / "small_sky"
 
     # The result of this cone search is known to be empty
     cone_search_catalog = small_sky_order1_catalog.cone_search(0, -80, 1)
@@ -218,7 +225,7 @@ def test_save_catalog_when_catalog_is_empty(small_sky_order1_catalog, tmp_path):
 
 
 def test_save_catalog_with_some_empty_partitions(small_sky_order1_catalog, tmp_path):
-    base_catalog_path = os.path.join(tmp_path, "small_sky")
+    base_catalog_path = tmp_path / "small_sky"
 
     # The result of this cone search is known to have one empty partition
     cone_search_catalog = small_sky_order1_catalog.cone_search(0, -80, 15 * 3600)
@@ -471,7 +478,7 @@ def test_square_bracket_column(small_sky_order1_catalog):
     column = small_sky_order1_catalog[column_name]
     pd.testing.assert_series_equal(column.compute(), small_sky_order1_catalog.compute()[column_name])
     assert np.all(column.compute().index.to_numpy() == small_sky_order1_catalog.compute().index.to_numpy())
-    assert isinstance(column, dd.core.Series)
+    assert isinstance(column, dd.Series)
 
 
 def test_square_bracket_filter(small_sky_order1_catalog):
@@ -527,6 +534,19 @@ def test_map_partitions_specify_meta(small_sky_order1_catalog):
     assert np.all(mapcomp["a"] == mapcomp["ra"] + 1)
 
 
+def test_map_partitions_non_df(small_sky_order1_catalog):
+    def get_col(df):
+        return df["ra"] + 1
+
+    with pytest.warns(RuntimeWarning, match="DataFrame"):
+        mapped = small_sky_order1_catalog.map_partitions(get_col)
+
+    assert not isinstance(mapped, Catalog)
+    assert isinstance(mapped, dd.Series)
+    mapcomp = mapped.compute()
+    assert np.all(mapcomp == small_sky_order1_catalog.compute()["ra"] + 1)
+
+
 def test_non_working_empty_raises(small_sky_order1_catalog):
     def add_col(df):
         if len(df) == 0:
@@ -536,3 +556,38 @@ def test_non_working_empty_raises(small_sky_order1_catalog):
 
     with pytest.raises(ValueError):
         small_sky_order1_catalog.map_partitions(add_col)
+
+
+def test_square_bracket_single_partition(small_sky_order1_catalog):
+    index = 1
+    subset = small_sky_order1_catalog.partitions[index]
+    assert isinstance(subset, Catalog)
+    assert 1 == len(subset._ddf_pixel_map)
+    pixel = subset.get_healpix_pixels()[0]
+    assert index == small_sky_order1_catalog.get_partition_index(pixel.order, pixel.pixel)
+    dd.assert_eq(small_sky_order1_catalog._ddf.partitions[index], subset._ddf)
+
+
+def test_square_bracket_multiple_partitions(small_sky_order1_catalog):
+    indices = [0, 1, 2]
+    subset = small_sky_order1_catalog.partitions[indices]
+    assert isinstance(subset, Catalog)
+    assert 3 == len(subset._ddf_pixel_map)
+    for pixel, partition_index in subset._ddf_pixel_map.items():
+        original_index = small_sky_order1_catalog.get_partition_index(pixel.order, pixel.pixel)
+        original_partition = small_sky_order1_catalog._ddf.partitions[original_index]
+        subset_partition = subset._ddf.partitions[partition_index]
+        dd.assert_eq(original_partition, subset_partition)
+
+
+def test_square_bracket_slice_partitions(small_sky_order1_catalog):
+    subset = small_sky_order1_catalog.partitions[:2]
+    assert isinstance(subset, Catalog)
+    assert 2 == len(subset._ddf_pixel_map)
+    subset_2 = small_sky_order1_catalog.partitions[0:2]
+    assert isinstance(subset, Catalog)
+    dd.assert_eq(subset_2._ddf, subset._ddf)
+    assert subset_2.get_healpix_pixels() == subset.get_healpix_pixels()
+    subset_3 = small_sky_order1_catalog.partitions[0:2:1]
+    assert subset_3.get_healpix_pixels() == subset.get_healpix_pixels()
+    dd.assert_eq(subset_3._ddf, subset._ddf)

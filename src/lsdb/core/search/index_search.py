@@ -1,10 +1,14 @@
-from typing import List
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 import pandas as pd
 from hipscat.catalog.index.index_catalog import IndexCatalog
-from hipscat.pixel_math import HealpixPixel
 
 from lsdb.core.search.abstract_search import AbstractSearch
+
+if TYPE_CHECKING:
+    from lsdb.types import HCCatalogTypeVar
 
 
 class IndexSearch(AbstractSearch):
@@ -16,13 +20,14 @@ class IndexSearch(AbstractSearch):
     NB: This requires a previously-computed catalog index table.
     """
 
-    def __init__(self, ids, catalog_index: IndexCatalog):
+    def __init__(self, ids, catalog_index: IndexCatalog, fine: bool = True):
+        super().__init__(fine)
         self.ids = ids
         self.catalog_index = catalog_index
 
-    def search_partitions(self, _: List[HealpixPixel]) -> List[HealpixPixel]:
-        """Determine the target partitions for further filtering."""
-        return self.catalog_index.loc_partitions(self.ids)
+    def filter_hc_catalog(self, hc_structure: HCCatalogTypeVar) -> HCCatalogTypeVar:
+        healpix_pixels = self.catalog_index.loc_partitions(self.ids)
+        return hc_structure.filter_from_pixel_list(healpix_pixels)
 
     def search_points(self, frame: pd.DataFrame, _) -> pd.DataFrame:
         """Determine the search results within a data frame"""

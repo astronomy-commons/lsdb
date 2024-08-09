@@ -2,9 +2,12 @@ import numpy as np
 import pandas as pd
 import pyarrow as pa
 import pytest
+from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
+from hipscat.pixel_tree import PixelAlignmentType
 
 import lsdb
+from lsdb import Catalog
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
 from lsdb.core.crossmatch.bounded_kdtree_match import BoundedKdTreeCrossmatch
 from lsdb.core.crossmatch.kdtree_match import KdTreeCrossmatch
@@ -159,6 +162,12 @@ class TestCrossmatch:
             small_sky_catalog.crossmatch(small_sky_xmatch_catalog, suffixes=("wrong",), algorithm=algo)
 
     @staticmethod
+    def test_right_margin_missing(algo, small_sky_catalog, small_sky_xmatch_catalog):
+        small_sky_xmatch_catalog.margin = None
+        with pytest.raises(ValueError, match="Right catalog margin"):
+            small_sky_catalog.crossmatch(small_sky_xmatch_catalog, algorithm=algo, require_right_margin=True)
+
+    @staticmethod
     def test_wrong_how(algo, small_sky_catalog, small_sky_xmatch_catalog):
         with pytest.raises(NotImplementedError):
             small_sky_catalog.crossmatch(
@@ -273,16 +282,34 @@ class TestBoundedCrossmatch:
     def test_crossmatch_empty_left_partition(algo, small_sky_order1_catalog, small_sky_xmatch_catalog):
         ra = 300
         dec = -60
-        radius_arcsec = 1 * 3600
+        radius_arcsec = 3 * 3600
         cone = small_sky_order1_catalog.cone_search(ra, dec, radius_arcsec)
         assert len(cone.get_healpix_pixels()) == 2
-        assert len(cone.get_partition(1, 44)) == 2
+        assert len(cone.get_partition(1, 44)) == 5
         # There is an empty partition in the left catalog
         assert len(cone.get_partition(1, 46)) == 0
-        xmatched = cone.crossmatch(
-            small_sky_xmatch_catalog, radius_arcsec=0.01 * 3600, algorithm=algo
-        ).compute()
-        assert len(xmatched) == 2
+        with pytest.warns(RuntimeWarning, match="Results may be incomplete and/or inaccurate"):
+            xmatched = cone.crossmatch(
+                small_sky_xmatch_catalog, radius_arcsec=0.01 * 3600, algorithm=algo
+            ).compute()
+        assert len(xmatched) == 3
+        assert all(xmatched["_dist_arcsec"] <= 0.01 * 3600)
+
+    @staticmethod
+    def test_crossmatch_empty_right_partition(algo, small_sky_order1_catalog, small_sky_xmatch_catalog):
+        ra = 300
+        dec = -60
+        radius_arcsec = 3 * 3600
+        cone = small_sky_xmatch_catalog.cone_search(ra, dec, radius_arcsec)
+        assert len(cone.get_healpix_pixels()) == 2
+        assert len(cone.get_partition(1, 44)) == 5
+        # There is an empty partition in the right catalog
+        assert len(cone.get_partition(1, 46)) == 0
+        with pytest.warns(RuntimeWarning, match="Results may be incomplete and/or inaccurate"):
+            xmatched = small_sky_order1_catalog.crossmatch(
+                cone, radius_arcsec=0.01 * 3600, algorithm=algo
+            ).compute()
+        assert len(xmatched) == 3
         assert all(xmatched["_dist_arcsec"] <= 0.01 * 3600)
 
     @staticmethod
@@ -324,17 +351,69 @@ class TestBoundedCrossmatch:
         )
 
 
-# pylint: disable=too-few-public-methods
+def test_crossmatch_with_moc(small_sky_order1_catalog):
+    order = 1
+    pixels = [44, 45, 46]
+    partitions = [small_sky_order1_catalog.get_partition(order, p).compute() for p in pixels]
+    df = pd.concat(partitions)
+    subset_catalog = lsdb.from_dataframe(df, lowest_order=0, highest_order=5)
+    assert subset_catalog.get_healpix_pixels() == [HealpixPixel(0, 11)]
+    xmatched = small_sky_order1_catalog.crossmatch(subset_catalog)
+    assert xmatched.get_healpix_pixels() == [HealpixPixel(order, p) for p in pixels]
+    xmatched = subset_catalog.crossmatch(small_sky_order1_catalog)
+    assert xmatched.get_healpix_pixels() == [HealpixPixel(order, p) for p in pixels]
+
+
+# pylint: disable=too-few-public-methods, unused-argument
 class MockCrossmatchAlgorithm(AbstractCrossmatchAlgorithm):
     """Mock class used to test a crossmatch algorithm"""
 
     extra_columns = pd.DataFrame({"_DIST": pd.Series(dtype=np.float64)})
 
-    # We must have the same signature as the crossmatch method
-    def validate(self, mock_results: pd.DataFrame = None):  # pylint: disable=unused-argument
-        super().validate()
+    def perform_crossmatch(self, mock_results: pd.DataFrame = None):
+        left_reset = self.left.reset_index(drop=True)
+        right_reset = self.right.reset_index(drop=True)
+        mock_results = mock_results[mock_results["ss_id"].isin(left_reset["id"].to_numpy())]
+        left_indexes = mock_results.apply(
+            lambda row: left_reset[left_reset["id"] == row["ss_id"]].index[0], axis=1
+        )
+        right_indexes = mock_results.apply(
+            lambda row: right_reset[right_reset["id"] == row["xmatch_id"]].index[0], axis=1
+        )
+        extra_columns = pd.DataFrame({"_DIST": mock_results["dist"]})
+        return left_indexes.to_numpy(), right_indexes.to_numpy(), extra_columns
 
-    def crossmatch(self, mock_results: pd.DataFrame = None):
+    @classmethod
+    def validate(
+        cls,
+        left: Catalog,
+        right: Catalog,
+        how: PixelAlignmentType = PixelAlignmentType.INNER,
+        mock_results: pd.DataFrame = None,
+    ):
+        super().validate(left, right, how)
+
+
+def test_custom_crossmatch_algorithm(small_sky_catalog, small_sky_xmatch_catalog, xmatch_mock):
+    with pytest.warns(RuntimeWarning, match="Results may be incomplete and/or inaccurate"):
+        xmatched = small_sky_catalog.crossmatch(
+            small_sky_xmatch_catalog, algorithm=MockCrossmatchAlgorithm, mock_results=xmatch_mock
+        ).compute()
+    assert len(xmatched) == len(xmatch_mock)
+    for _, correct_row in xmatch_mock.iterrows():
+        assert correct_row["ss_id"] in xmatched["id_small_sky"].to_numpy()
+        xmatch_row = xmatched[xmatched["id_small_sky"] == correct_row["ss_id"]]
+        assert xmatch_row["id_small_sky_xmatch"].to_numpy() == correct_row["xmatch_id"]
+        assert xmatch_row["_DIST"].to_numpy() == pytest.approx(correct_row["dist"])
+
+
+# pylint: disable=too-few-public-methods, arguments-differ, unused-argument
+class MockCrossmatchAlgorithmOverwrite(AbstractCrossmatchAlgorithm):
+    """Mock class used to test a crossmatch algorithm"""
+
+    extra_columns = pd.DataFrame({"_DIST": pd.Series(dtype=np.float64)})
+
+    def crossmatch(self, mock_results: pd.DataFrame = None):  # type: ignore
         left_reset = self.left.reset_index(drop=True)
         right_reset = self.right.reset_index(drop=True)
         self._rename_columns_with_suffix(self.left, self.suffixes[0])
@@ -360,11 +439,21 @@ class MockCrossmatchAlgorithm(AbstractCrossmatchAlgorithm):
         self._append_extra_columns(out, extra_columns)
         return out
 
+    @classmethod
+    def validate(
+        cls,
+        left: Catalog,
+        right: Catalog,
+        how: PixelAlignmentType = PixelAlignmentType.INNER,
+        mock_results: pd.DataFrame = None,
+    ):
+        super().validate(left, right, how)
 
-def test_custom_crossmatch_algorithm(small_sky_catalog, small_sky_xmatch_catalog, xmatch_mock):
+
+def test_custom_crossmatch_algorithm_overwrite(small_sky_catalog, small_sky_xmatch_catalog, xmatch_mock):
     with pytest.warns(RuntimeWarning, match="Results may be incomplete and/or inaccurate"):
         xmatched = small_sky_catalog.crossmatch(
-            small_sky_xmatch_catalog, algorithm=MockCrossmatchAlgorithm, mock_results=xmatch_mock
+            small_sky_xmatch_catalog, algorithm=MockCrossmatchAlgorithmOverwrite, mock_results=xmatch_mock
         ).compute()
     assert len(xmatched) == len(xmatch_mock)
     for _, correct_row in xmatch_mock.iterrows():

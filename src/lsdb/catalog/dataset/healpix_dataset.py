@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import warnings
-from typing import Any, Callable, Dict, Iterable, List, Tuple, cast
+from typing import Any, Callable, Dict, Iterable, List, Tuple
 
 import dask
 import dask.dataframe as dd
@@ -21,7 +21,6 @@ from lsdb import io
 from lsdb.catalog.dataset.dataset import Dataset
 from lsdb.core.plotting.skymap import compute_skymap, perform_inner_skymap
 from lsdb.core.search.abstract_search import AbstractSearch
-from lsdb.dask.divisions import get_pixels_divisions
 from lsdb.types import DaskDFPixelMap
 
 
@@ -39,7 +38,7 @@ class HealpixDataset(Dataset):
 
     def __init__(
         self,
-        ddf: dd.core.DataFrame,
+        ddf: dd.DataFrame,
         ddf_pixel_map: DaskDFPixelMap,
         hc_structure: HCHealpixDataset,
     ):
@@ -58,7 +57,7 @@ class HealpixDataset(Dataset):
 
     def __getitem__(self, item):
         result = self._ddf.__getitem__(item)
-        if isinstance(result, dd.core.DataFrame):
+        if isinstance(result, dd.DataFrame):
             return self.__class__(result, self._ddf_pixel_map, self.hc_structure)
         return result
 
@@ -80,7 +79,7 @@ class HealpixDataset(Dataset):
         pixels = self.get_healpix_pixels()
         return np.array(pixels)[get_pixel_argsort(pixels)]
 
-    def get_partition(self, order: int, pixel: int) -> dd.core.DataFrame:
+    def get_partition(self, order: int, pixel: int) -> dd.DataFrame:
         """Get the dask partition for a given HEALPix pixel
 
         Args:
@@ -130,49 +129,35 @@ class HealpixDataset(Dataset):
 
     def _perform_search(
         self,
-        metadata: hc.catalog.Catalog,
-        filtered_pixels: List[HealpixPixel],
+        metadata: hc.catalog.Catalog | hc.catalog.MarginCatalog,
         search: AbstractSearch,
-        fine: bool = True,
-    ):
+    ) -> Tuple[DaskDFPixelMap, dd.DataFrame]:
         """Performs a search on the catalog from a list of pixels to search in
 
         Args:
-            metadata (hc.catalog.Catalog): The metadata of the hipscat catalog.
-            filtered_pixels (List[HealpixPixel]): List of pixels in the catalog to be searched.
+            metadata (hc.catalog.Catalog | hc.catalog.MarginCatalog): The metadata of
+                the hipscat catalog after the coarse filtering is applied. The partitions
+                it contains are only those that overlap with the spatial region.
             search (AbstractSearch): Instance of AbstractSearch.
-            fine (bool): True if points are to be filtered, False if not. Defaults to True.
 
         Returns:
             A tuple containing a dictionary mapping pixel to partition index and a dask dataframe
             containing the search results
         """
-        partitions = self._ddf.to_delayed()
-        targeted_partitions = [partitions[self._ddf_pixel_map[pixel]] for pixel in filtered_pixels]
-        filtered_partitions = (
-            [search.search_points(partition, metadata.catalog_info) for partition in targeted_partitions]
-            if fine
-            else targeted_partitions
-        )
-        return self._construct_search_ddf(filtered_pixels, filtered_partitions)
-
-    def _construct_search_ddf(
-        self, filtered_pixels: List[HealpixPixel], filtered_partitions: List[Delayed]
-    ) -> Tuple[dict, dd.core.DataFrame]:
-        """Constructs a search catalog pixel map and respective Dask Dataframe
-
-        Args:
-            filtered_pixels (List[HealpixPixel]): The list of pixels in the search
-            filtered_partitions (List[Delayed]): The list of delayed partitions
-
-        Returns:
-            The catalog pixel map and the respective Dask DataFrame
-        """
-        divisions = get_pixels_divisions(filtered_pixels)
-        search_ddf = dd.io.from_delayed(filtered_partitions, meta=self._ddf._meta, divisions=divisions)
-        search_ddf = cast(dd.core.DataFrame, search_ddf)
+        filtered_pixels = metadata.get_healpix_pixels()
+        if len(filtered_pixels) == 0:
+            return {}, dd.from_pandas(self._ddf._meta)
+        target_partitions_indices = [self._ddf_pixel_map[pixel] for pixel in filtered_pixels]
+        filtered_partitions_ddf = self._ddf.partitions[target_partitions_indices]
+        if search.fine:
+            filtered_partitions_ddf = filtered_partitions_ddf.map_partitions(
+                search.search_points,
+                metadata.catalog_info,
+                meta=self._ddf._meta,
+                transform_divisions=False,
+            )
         ddf_partition_map = {pixel: i for i, pixel in enumerate(filtered_pixels)}
-        return ddf_partition_map, search_ddf
+        return ddf_partition_map, filtered_partitions_ddf
 
     def map_partitions(
         self,
@@ -181,7 +166,7 @@ class HealpixDataset(Dataset):
         meta: pd.DataFrame | pd.Series | Dict | Iterable | Tuple | None = None,
         include_pixel: bool = False,
         **kwargs,
-    ) -> Self:
+    ) -> Self | dd.Series:
         """Applies a function to each partition in the catalog.
 
         The ra and dec of each row is assumed to remain unchanged.
@@ -212,7 +197,7 @@ class HealpixDataset(Dataset):
 
         Returns:
             A new catalog with each partition replaced with the output of the function applied to the original
-            partition.
+            partition. If the function returns a non dataframe output, a dask Series will be returned.
         """
         if meta is None:
             if include_pixel:
@@ -236,7 +221,15 @@ class HealpixDataset(Dataset):
             output_ddf = self._ddf.map_partitions(apply_func, *args, meta=meta, **kwargs)
         else:
             output_ddf = self._ddf.map_partitions(func, *args, meta=meta, **kwargs)
-        return self.__class__(output_ddf, self._ddf_pixel_map, self.hc_structure)
+
+        if isinstance(output_ddf, dd.DataFrame):
+            return self.__class__(output_ddf, self._ddf_pixel_map, self.hc_structure)
+        warnings.warn(
+            "output of the function must be a DataFrame to generate an LSDB `Catalog`. `map_partitions` "
+            "will return a dask object instead of a Catalog.",
+            RuntimeWarning,
+        )
+        return output_ddf
 
     def prune_empty_partitions(self, persist: bool = False) -> Self:
         """Prunes the catalog of its empty partitions
@@ -251,30 +244,35 @@ class HealpixDataset(Dataset):
         if persist:
             self._ddf.persist()
         non_empty_pixels, non_empty_partitions = self._get_non_empty_partitions()
-        ddf_partition_map, search_ddf = self._construct_search_ddf(non_empty_pixels, non_empty_partitions)
+        search_ddf = (
+            self._ddf.partitions[non_empty_partitions]
+            if len(non_empty_partitions) > 0
+            else dd.from_pandas(self._ddf._meta, npartitions=1)
+        )
+        ddf_partition_map = {pixel: i for i, pixel in enumerate(non_empty_pixels)}
         filtered_hc_structure = self.hc_structure.filter_from_pixel_list(non_empty_pixels)
         return self.__class__(search_ddf, ddf_partition_map, filtered_hc_structure)
 
-    def _get_non_empty_partitions(self) -> Tuple[List[HealpixPixel], List[Delayed]]:
+    def _get_non_empty_partitions(self) -> Tuple[List[HealpixPixel], np.ndarray]:
         """Determines which pixels and partitions of a catalog are not empty
 
         Returns:
             A tuple with the non-empty pixels and respective partitions
         """
-        partitions = self._ddf.to_delayed()
 
         # Compute partition lengths (expensive operation)
         partition_sizes = self._ddf.map_partitions(len).compute()
-        empty_partition_indices = np.argwhere(partition_sizes == 0).flatten()
+        non_empty_partition_indices = np.argwhere(partition_sizes > 0).flatten()
+
+        non_empty_indices_set = set(non_empty_partition_indices)
 
         # Extract the non-empty pixels and respective partitions
-        non_empty_pixels, non_empty_partitions = [], []
+        non_empty_pixels = []
         for pixel, partition_index in self._ddf_pixel_map.items():
-            if partition_index not in empty_partition_indices:
+            if partition_index in non_empty_indices_set:
                 non_empty_pixels.append(pixel)
-                non_empty_partitions.append(partitions[partition_index])
 
-        return non_empty_pixels, non_empty_partitions
+        return non_empty_pixels, non_empty_partition_indices
 
     def skymap_data(
         self,
@@ -329,7 +327,7 @@ class HealpixDataset(Dataset):
         **kwargs,
     ) -> np.ndarray:
         """Get a histogram with the result of a given function applied to the points in each HEALPix pixel of
-            a given order
+        a given order
 
         Args:
             func (Callable[[pd.DataFrame], HealpixPixel, Any]): A function that takes a pandas DataFrame and

@@ -1,9 +1,13 @@
+from pathlib import Path
+
 import hipscat as hc
 import numpy as np
 import numpy.testing as npt
 import pandas as pd
 import pytest
 from hipscat.catalog.index.index_catalog import IndexCatalog
+from hipscat.io import get_file_pointer_from_path
+from hipscat.pixel_math import HealpixPixel
 from pandas.core.dtypes.base import ExtensionDtype
 
 import lsdb
@@ -71,10 +75,39 @@ def test_read_hipscat_specify_wrong_catalog_type(small_sky_dir):
         lsdb.read_hipscat(small_sky_dir, catalog_type=int)
 
 
-def test_catalog_with_margin(small_sky_xmatch_dir, small_sky_xmatch_margin_catalog):
+def test_catalog_with_margin_object(small_sky_xmatch_dir, small_sky_xmatch_margin_catalog):
     catalog = lsdb.read_hipscat(small_sky_xmatch_dir, margin_cache=small_sky_xmatch_margin_catalog)
     assert isinstance(catalog, lsdb.Catalog)
+    assert isinstance(catalog.margin, lsdb.MarginCatalog)
     assert catalog.margin is small_sky_xmatch_margin_catalog
+
+
+def test_catalog_with_margin_file_pointer(
+    small_sky_xmatch_dir, small_sky_xmatch_margin_dir, small_sky_xmatch_margin_catalog
+):
+    small_sky_xmatch_margin_fp = get_file_pointer_from_path(str(small_sky_xmatch_margin_dir))
+    catalog = lsdb.read_hipscat(small_sky_xmatch_dir, margin_cache=small_sky_xmatch_margin_fp)
+    assert isinstance(catalog, lsdb.Catalog)
+    assert isinstance(catalog.margin, lsdb.MarginCatalog)
+    assert (
+        catalog.margin.hc_structure.catalog_info == small_sky_xmatch_margin_catalog.hc_structure.catalog_info
+    )
+    assert catalog.margin.get_healpix_pixels() == small_sky_xmatch_margin_catalog.get_healpix_pixels()
+    pd.testing.assert_frame_equal(catalog.margin.compute(), small_sky_xmatch_margin_catalog.compute())
+
+
+def test_catalog_with_margin_path(
+    small_sky_xmatch_dir, small_sky_xmatch_margin_dir, small_sky_xmatch_margin_catalog
+):
+    assert isinstance(small_sky_xmatch_margin_dir, Path)
+    catalog = lsdb.read_hipscat(small_sky_xmatch_dir, margin_cache=small_sky_xmatch_margin_dir)
+    assert isinstance(catalog, lsdb.Catalog)
+    assert isinstance(catalog.margin, lsdb.MarginCatalog)
+    assert (
+        catalog.margin.hc_structure.catalog_info == small_sky_xmatch_margin_catalog.hc_structure.catalog_info
+    )
+    assert catalog.margin.get_healpix_pixels() == small_sky_xmatch_margin_catalog.get_healpix_pixels()
+    pd.testing.assert_frame_equal(catalog.margin.compute(), small_sky_xmatch_margin_catalog.compute())
 
 
 def test_catalog_without_margin_is_none(small_sky_xmatch_dir):
@@ -92,17 +125,19 @@ def test_read_hipscat_subset_with_cone_search(small_sky_order1_dir, small_sky_or
     assert isinstance(cone_search_catalog_2, lsdb.Catalog)
     # The partitions of the catalogs are equivalent
     assert cone_search_catalog.get_healpix_pixels() == cone_search_catalog_2.get_healpix_pixels()
+    pd.testing.assert_frame_equal(cone_search_catalog.compute(), cone_search_catalog_2.compute())
 
 
 def test_read_hipscat_subset_with_box_search(small_sky_order1_dir, small_sky_order1_catalog):
     box_search = BoxSearch(ra=(0, 10), dec=(-20, 10))
     # Filtering using catalog's box_search
-    box_search_catalog = small_sky_order1_catalog.box(ra=(0, 10), dec=(-20, 10))
+    box_search_catalog = small_sky_order1_catalog.box_search(ra=(0, 10), dec=(-20, 10))
     # Filtering when calling `read_hipscat`
     box_search_catalog_2 = lsdb.read_hipscat(small_sky_order1_dir, search_filter=box_search)
     assert isinstance(box_search_catalog_2, lsdb.Catalog)
     # The partitions of the catalogs are equivalent
     assert box_search_catalog.get_healpix_pixels() == box_search_catalog_2.get_healpix_pixels()
+    pd.testing.assert_frame_equal(box_search_catalog.compute(), box_search_catalog_2.compute())
 
 
 def test_read_hipscat_subset_with_polygon_search(small_sky_order1_dir, small_sky_order1_catalog):
@@ -115,6 +150,7 @@ def test_read_hipscat_subset_with_polygon_search(small_sky_order1_dir, small_sky
     assert isinstance(polygon_search_catalog_2, lsdb.Catalog)
     # The partitions of the catalogs are equivalent
     assert polygon_search_catalog.get_healpix_pixels() == polygon_search_catalog_2.get_healpix_pixels()
+    pd.testing.assert_frame_equal(polygon_search_catalog.compute(), polygon_search_catalog_2.compute())
 
 
 def test_read_hipscat_subset_with_index_search(
@@ -145,10 +181,30 @@ def test_read_hipscat_subset_with_order_search(small_sky_source_catalog, small_s
 
 
 def test_read_hipscat_subset_no_partitions(small_sky_order1_dir, small_sky_order1_id_index_dir):
-    with pytest.raises(ValueError, match="no partitions"):
+    with pytest.raises(ValueError, match="no coverage"):
         catalog_index = IndexCatalog.read_from_hipscat(small_sky_order1_id_index_dir)
         index_search = IndexSearch([900], catalog_index)
         lsdb.read_hipscat(small_sky_order1_dir, search_filter=index_search)
+
+
+def test_read_hipscat_with_margin_subset(
+    small_sky_order1_source_dir, small_sky_order1_source_with_margin, small_sky_order1_source_margin_catalog
+):
+    cone_search = ConeSearch(ra=315, dec=-66, radius_arcsec=20)
+    # Filtering using catalog's cone_search
+    cone_search_catalog = small_sky_order1_source_with_margin.cone_search(ra=315, dec=-66, radius_arcsec=20)
+    # Filtering when calling `read_hipscat`
+    cone_search_catalog_2 = lsdb.read_hipscat(
+        small_sky_order1_source_dir,
+        search_filter=cone_search,
+        margin_cache=small_sky_order1_source_margin_catalog,
+    )
+    assert isinstance(cone_search_catalog_2, lsdb.Catalog)
+    # The partitions of the catalogs are equivalent
+    assert cone_search_catalog.get_healpix_pixels() == cone_search_catalog_2.get_healpix_pixels()
+    assert (
+        cone_search_catalog.margin.get_healpix_pixels() == cone_search_catalog_2.margin.get_healpix_pixels()
+    )
 
 
 def test_read_hipscat_with_backend(small_sky_dir):
@@ -169,3 +225,39 @@ def test_read_hipscat_with_backend(small_sky_dir):
 def test_read_hipscat_with_invalid_backend(small_sky_dir):
     with pytest.raises(ValueError, match="data type backend must be either"):
         lsdb.read_hipscat(small_sky_dir, dtype_backend="abc")
+
+
+def test_read_hipscat_margin_catalog_subset(
+    small_sky_order1_source_margin_dir, small_sky_order1_source_margin_catalog, assert_divisions_are_correct
+):
+    search_filter = ConeSearch(ra=315, dec=-60, radius_arcsec=10)
+    margin = lsdb.read_hipscat(small_sky_order1_source_margin_dir, search_filter=search_filter)
+
+    margin_info = margin.hc_structure.catalog_info
+    small_sky_order1_source_margin_info = small_sky_order1_source_margin_catalog.hc_structure.catalog_info
+
+    assert isinstance(margin, lsdb.MarginCatalog)
+    assert margin_info.catalog_name == small_sky_order1_source_margin_info.catalog_name
+    assert margin_info.primary_catalog == small_sky_order1_source_margin_info.primary_catalog
+    assert margin_info.margin_threshold == small_sky_order1_source_margin_info.margin_threshold
+    assert margin.get_healpix_pixels() == [
+        HealpixPixel(1, 44),
+        HealpixPixel(1, 45),
+        HealpixPixel(1, 46),
+        HealpixPixel(1, 47),
+    ]
+    assert_divisions_are_correct(margin)
+
+
+def test_read_hipscat_margin_catalog_subset_is_empty(small_sky_order1_source_margin_dir):
+    search_filter = ConeSearch(ra=100, dec=80, radius_arcsec=1)
+    margin_catalog = lsdb.read_hipscat(small_sky_order1_source_margin_dir, search_filter=search_filter)
+    assert len(margin_catalog.get_healpix_pixels()) == 0
+    assert len(margin_catalog._ddf_pixel_map) == 0
+    assert len(margin_catalog.compute()) == 0
+    assert len(margin_catalog.hc_structure.pixel_tree) == 0
+
+
+def test_read_hipscat_schema_not_found(small_sky_no_metadata_dir):
+    with pytest.raises(ValueError, match="catalog schema could not be loaded"):
+        lsdb.read_hipscat(small_sky_no_metadata_dir)

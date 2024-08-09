@@ -8,8 +8,10 @@ import dask.dataframe as dd
 from hipscat.pixel_tree import PixelAlignment, PixelAlignmentType
 
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
-from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorithm
-from lsdb.core.crossmatch.kdtree_match import KdTreeCrossmatch
+from lsdb.core.crossmatch.crossmatch_algorithms import (
+    BuiltInCrossmatchAlgorithm,
+    builtin_crossmatch_algorithms,
+)
 from lsdb.dask.merge_catalog_functions import (
     align_and_apply,
     align_catalogs,
@@ -24,8 +26,6 @@ from lsdb.types import DaskDFPixelMap
 
 if TYPE_CHECKING:
     from lsdb.catalog.catalog import Catalog
-
-builtin_crossmatch_algorithms = {BuiltInCrossmatchAlgorithm.KD_TREE: KdTreeCrossmatch}
 
 
 # pylint: disable=too-many-arguments, unused-argument
@@ -91,7 +91,7 @@ def crossmatch_catalog_data(
     ) = BuiltInCrossmatchAlgorithm.KD_TREE,
     how: PixelAlignmentType = PixelAlignmentType.INNER,
     **kwargs,
-) -> Tuple[dd.core.DataFrame, DaskDFPixelMap, PixelAlignment]:
+) -> Tuple[dd.DataFrame, DaskDFPixelMap, PixelAlignment]:
     """Cross-matches the data from two catalogs
 
     Args:
@@ -113,21 +113,7 @@ def crossmatch_catalog_data(
     crossmatch_algorithm = get_crossmatch_algorithm(algorithm)
     # Create an instance of the crossmatch algorithm, using the metadata dataframes
     # and the provided kwargs.
-    meta_df_crossmatch = crossmatch_algorithm(
-        # pylint: disable=protected-access
-        left._ddf,
-        right._ddf,
-        0,
-        0,
-        0,
-        0,
-        left.hc_structure.catalog_info,
-        right.hc_structure.catalog_info,
-        right.margin.hc_structure.catalog_info if right.margin is not None else None,
-        suffixes,
-        how,
-    )
-    meta_df_crossmatch.validate(**kwargs)
+    crossmatch_algorithm.validate(left, right, how, **kwargs)
 
     if right.margin is None:
         warnings.warn(
@@ -136,7 +122,7 @@ def crossmatch_catalog_data(
         )
 
     # perform alignment on the two catalogs
-    alignment = align_catalogs(left, right, how)
+    alignment = align_catalogs(left, right, alignment_type=how, add_right_margin=True)
 
     # get lists of HEALPix pixels from alignment to pass to cross-match
     left_pixels, right_pixels, aligned_pixels = get_healpix_pixels_from_alignment(alignment)

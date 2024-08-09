@@ -1,35 +1,43 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, Tuple
+
+import numpy as np
 import pandas as pd
+from hipscat.pixel_tree import PixelAlignmentType
 
 from lsdb.core.crossmatch.kdtree_match import KdTreeCrossmatch
 from lsdb.core.crossmatch.kdtree_utils import _find_crossmatch_indices, _get_chord_distance
+
+if TYPE_CHECKING:
+    from lsdb import Catalog
 
 
 class BoundedKdTreeCrossmatch(KdTreeCrossmatch):
     """Nearest neighbor crossmatch using a distance range"""
 
+    @classmethod
     def validate(
-        self,
+        cls,
+        left: Catalog,
+        right: Catalog,
+        how: PixelAlignmentType = PixelAlignmentType.INNER,
         n_neighbors: int = 1,
         radius_arcsec: float = 1,
-        require_right_margin: bool = False,
         min_radius_arcsec: float = 0,
     ):
-        super().validate(n_neighbors, radius_arcsec, require_right_margin)
+        super().validate(left, right, how, n_neighbors, radius_arcsec)
         if min_radius_arcsec < 0:
             raise ValueError("The minimum radius must be non-negative")
         if radius_arcsec <= min_radius_arcsec:
             raise ValueError("Cross match maximum radius must be greater than cross match minimum radius")
 
-    def crossmatch(
+    def perform_crossmatch(
         self,
         n_neighbors: int = 1,
         radius_arcsec: float = 1,
-        # We need it here because the signature is shared with .validate()
-        require_right_margin: bool = False,  # pylint: disable=unused-argument
         min_radius_arcsec: float = 0,
-    ) -> pd.DataFrame:
+    ) -> Tuple[np.ndarray, np.ndarray, pd.DataFrame]:
         """Perform a cross-match between the data from two HEALPix pixels
 
         Finds the n closest neighbors in the right catalog for each point in the left catalog that
@@ -53,6 +61,13 @@ class BoundedKdTreeCrossmatch(KdTreeCrossmatch):
         left_xyz, right_xyz = self._get_point_coordinates()
         # get matching indices for cross-matched rows
         chord_distances, left_idx, right_idx = _find_crossmatch_indices(
-            left_xyz, right_xyz, self.how, n_neighbors, max_d_chord, min_d_chord
+            left_xyz,
+            right_xyz,
+            how=self.how,
+            n_neighbors=n_neighbors,
+            min_distance=min_d_chord,
+            max_distance=max_d_chord,
         )
-        return self._create_crossmatch_df(left_idx, right_idx, chord_distances)
+        # build the dataframe with the extra column values
+        extra_columns = self._get_extra_columns_df(chord_distances)
+        return left_idx, right_idx, extra_columns
