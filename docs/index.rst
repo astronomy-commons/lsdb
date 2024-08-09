@@ -2,16 +2,17 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-LSDB - Large Survey DataBase
+
+LSDB
 ========================================================================================
 
-LSDB is a framework that facilitates and enables fast spatial analysis for extremely large astronomical catalogs
-(i.e. querying and crossmatching O(1B) sources). It aims to address large-scale data processing challenges, in
-particular those brought up by `LSST <https://www.lsst.org/about>`_.
+LSDB (Large Survey DataBase) is a python framework that enables simple, fast spatial analysis of extremely
+large astronomical catalogs (e.g. querying and crossmatching O(1B) sources). It aims to address large-scale
+data processing challenges, in particular those brought up by `LSST <https://www.lsst.org/about>`_.
 
-Built on top of Dask to efficiently scale and parallelize operations across multiple workers, it leverages
-the `HiPSCat <https://hipscat.readthedocs.io/en/stable/>`_ data format for surveys in a partitioned HEALPix
-(Hierarchical Equal Area isoLatitude Pixelization) structure.
+Built on top of Dask to efficiently scale and parallelize operations across multiple distributed workers, it
+uses the `HiPSCat <https://hipscat.readthedocs.io/en/stable/>`_ data format to effeciently perform spatial
+operations.
 
 .. figure:: _static/gaia.png
    :class: no-scaled-link
@@ -21,11 +22,38 @@ the `HiPSCat <https://hipscat.readthedocs.io/en/stable/>`_ data format for surve
 
    A possible HEALPix distribution for Gaia DR3.
 
-In this website you will find:
 
-- Getting Started guides on how to :doc:`install <installation>` and run an :doc:`example workflow <tutorials/quickstart>`
-- :doc:`Tutorials <tutorials>` with more advanced usage examples
-- The detailed :doc:`API Reference <autoapi/index>` documentation
+Using this Guide
+-------------------------------------------------------------------------------
+
+
+.. card:: Getting Started
+    :link: getting-started
+    :link-type: doc
+
+    Installation and QuickStart Guide
+
+.. card:: Tutorial
+    :link: tutorials
+    :link-type: doc
+
+    Learn the LSDB features by working through basic astronomy use cases
+
+.. card:: Example Notebooks
+    :link: notebooks
+    :link-type: doc
+
+    More scientific example use cases
+
+.. card:: API Reference
+    :link: autoapi/index
+    :link-type: doc
+
+    The detailed API documentation
+
+
+For Developers
+-------------------------------------------------------------------------------
 
 Learn more about contributing to this repository in our :doc:`Contribution Guide <developer/contributing>`.
 
@@ -34,21 +62,22 @@ Learn more about contributing to this repository in our :doc:`Contribution Guide
 
    Home page <self>
    Installation <installation>
-   Getting Started <tutorials/quickstart>
-   Tutorials <tutorials>
+   Getting Started <getting-started>
+   Tutorial <tutorials>
+   Notebooks <notebooks>
    Performance <performance>
-
-.. toctree::
-   :hidden:
-   :caption: Developer
-
    API Reference <autoapi/index>
-   Contribution Guide <developer/contributing>
 
 .. toctree::
    :hidden:
 
    Contact us <contact>
+
+.. toctree::
+   :hidden:
+   :caption: Developer
+
+   Contribution Guide <developer/contributing>
 
 Acknowledgements
 -------------------------------------------------------------------------------

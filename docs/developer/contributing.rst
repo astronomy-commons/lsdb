@@ -1,6 +1,38 @@
 Contributing to LSDB
 ===============================================================================
 
+Installation from Source
+---------------------
+
+To install the latest development version of LSDB you will want to build it from source. First, with your virtual environment activated, type in your terminal:
+
+.. code-block:: bash
+
+    git clone https://github.com/astronomy-commons/lsdb
+    cd lsdb/
+
+To install the package and a minimum number of dependencies you can run:
+
+.. code-block:: bash
+
+    python -m pip install .
+    python -m pip install pytest # to validate package installation
+
+In alternative, you can execute the `setup_dev` script which installs all the additional requirements
+to setup a development environment. Read more about contributing to LSDB in our
+:doc:`Contribution Guide <developer/contributing>`.
+
+.. code-block:: bash
+
+    chmod +x .setup_dev.sh
+    ./.setup_dev.sh
+
+Finally, to check that your package has been correctly installed, run the package unit tests:
+
+.. code-block:: bash
+
+    python -m pytest
+
 Find (or make) a new GitHub issue
 -------------------------------------------------------------------------------
 
