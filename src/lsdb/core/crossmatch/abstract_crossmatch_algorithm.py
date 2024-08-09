@@ -110,7 +110,7 @@ class AbstractCrossmatchAlgorithm(ABC):
             raise ValueError("Crossmatch algorithm must return left and right indices with same length")
         return self._create_crossmatch_df(l_inds, r_inds, extra_cols)
 
-    def perform_crossmatch(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    def perform_crossmatch(self) -> Tuple[np.ndarray, np.ndarray, pd.DataFrame]:
         """Performs a crossmatch to get the indices of the matching rows and any extra columns
 
         Any additional keyword arguments needed can be added to this method in the subclass, and the user
