@@ -276,14 +276,16 @@ def join_catalog_data_nested(
     right_on: str,
     nested_column_name: str | None = None,
 ) -> Tuple[NestedFrame, DaskDFPixelMap, PixelAlignment]:
-    """Joins two catalogs spatially on a specified column
+    """Joins two catalogs spatially on a specified column, adding the right as a nested column with nested
+    dask
 
     Args:
         left (lsdb.Catalog): the left catalog to join
         right (lsdb.Catalog): the right catalog to join
         left_on (str): the column to join on from the left partition
         right_on (str): the column to join on from the right partition
-        suffixes (Tuple[str,str]): the suffixes to apply to each partition's column names
+        nested_column_name (str): the name of the nested column in the final output, if None, defaults to
+            name of the right catalog
 
     Returns:
         A tuple of the dask dataframe with the result of the join, the pixel map from HEALPix

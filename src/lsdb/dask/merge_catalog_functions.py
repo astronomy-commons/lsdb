@@ -262,26 +262,30 @@ def generate_meta_df_for_joined_tables(
 def generate_meta_df_for_nested_tables(
     catalogs: Sequence[Catalog],
     nested_catalog: Catalog,
-    nested_name: str,
+    nested_column_name: str,
     join_column_name: str,
     extra_columns: pd.DataFrame | None = None,
     index_name: str = HIPSCAT_ID_COLUMN,
     index_type: npt.DTypeLike = np.uint64,
 ) -> npd.NestedFrame:
-    """Generates a Dask meta DataFrame that would result from joining two catalogs
+    """Generates a Dask meta DataFrame that would result from joining two catalogs, adding the right as a
+    nested frame
 
-    Creates an empty dataframe with the columns of each catalog appended with a suffix. Allows specifying
-    extra columns that should also be added, and the name of the index of the resulting dataframe.
+    Creates an empty dataframe with the columns of the left catalog, and a nested column with the right
+    catalog. Allows specifying extra columns that should also be added, and the name of the index of the
+    resulting dataframe.
 
     Args:
         catalogs (Sequence[lsdb.Catalog]): The catalogs to merge together
-        suffixes (Sequence[Str]): The column suffixes to apply each catalog
+        nested_catalog (Catalog): The catalog to add as a nested column
+        nested_column_name (str): The name of the nested column
+        join_column_name (str): The name of the column in the right catalog to join on
         extra_columns (pd.Dataframe): Any additional columns to the merged catalogs
         index_name (str): The name of the index in the resulting DataFrame
         index_type (npt.DTypeLike): The type of the index in the resulting DataFrame
 
     Returns:
-        An empty dataframe with the columns of each catalog with their respective suffix, and any extra
+        An empty dataframe with the right catalog joined to the left as a nested column, and any extra
         columns specified, with the index name set.
     """
     meta = {}
@@ -301,7 +305,7 @@ def generate_meta_df_for_nested_tables(
     nested_catalog_meta = nested_catalog._ddf._meta.copy().iloc[:0].drop(join_column_name, axis=1)
 
     # Use nested-pandas to make the resulting meta with the nested catalog meta as a nested column
-    return npd.NestedFrame(meta_df).add_nested(nested_catalog_meta, nested_name)
+    return npd.NestedFrame(meta_df).add_nested(nested_catalog_meta, nested_column_name)
 
 
 def get_partition_map_from_alignment_pixels(join_pixels: pd.DataFrame) -> DaskDFPixelMap:
