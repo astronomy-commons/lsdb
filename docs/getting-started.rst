@@ -42,8 +42,9 @@ for more information.
 Loading a Catalog
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Let's start by loading a HiPSCat formatted Catalog into LSDB. Use the ``lsdb.read_hispscat`` function to lazy
-load a catalog object.
+Let's start by loading a HiPSCat formatted Catalog into LSDB. Use the :func:`lsdb.read_hipscat` function to
+lazy load a catalog object. We'll pass in the URL to load the Zwicky Transient Facility Data Release 14
+Catalog, and specify which columns we want to use from it.
 
 .. code-block:: python
 
@@ -73,19 +74,19 @@ usually see values).
 
 Where to get Catalogs
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
-LSDB can load any catalogs in the HiPSCat format. If you have your own data, you can import it into this
-format by following the instructions in our
+LSDB can load any catalogs in the HiPSCat format, locally or from remote sources. If you have your own data
+not in this format, you can import it by following the instructions in our
 :doc:`importing catalogs tutorial section. </tutorials/import_catalogs>`
 
-There are also a limited number of catalogs available publicly from the cloud. You can see them at our website
-`data.lsdb.io <https://data.lsdb.io>`_
+There are also a number of catalogs available publicly to use from the cloud. You can see them with their URLs
+to load with LSDB at our website `data.lsdb.io <https://data.lsdb.io>`_
 
 Performing Filters
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 LSDB can perform spatial filters fast, taking advantage of HiPSCat's spatial partitioning. These optimized
-filters have their own methods, such as ```cone_search``. For the list of these methods see the full docs
-for the :func:`lsdb.catalog.Catalog` class.
+filters have their own methods, such as :func:`cone_search <lsdb.catalog.Catalog.cone_search>`. For the list
+of these methods see the full docs for the :func:`Catalog <lsdb.catalog.Catalog>` class.
 
 .. code-block:: python
 
