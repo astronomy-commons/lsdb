@@ -37,7 +37,7 @@ Using this Guide
        :link: tutorials
        :link-type: doc
 
-       Learn the LSDB features by working through basic astronomy use cases
+       Learn the LSDB features by working through simple use cases
 
 .. grid:: 1 1 2 2
 

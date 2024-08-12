@@ -67,15 +67,25 @@ usually see values).
 .. important::
 
     We've specified 5 columns to load here. It's important for performance to select only the columns you need
-    for your workflow. Without specifying any columns, all possible columns will be loaded and worked on when
-    the workflow is executed, making everything much slower and needing much more memory.
+    for your workflow. Without specifying any columns, all possible columns will be loaded when
+    the workflow is executed, making everything much slower and using much more memory.
+
+
+Where to get Catalogs
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+LSDB can load any catalogs in the HiPSCat format. If you have your own data, you can import it into this
+format by following the instructions in our
+:doc:`importing catalogs tutorial section. </tutorials/import_catalogs>`
+
+There are also a limited number of catalogs available publicly from the cloud. You can see them at our website
+`data.lsdb.io <https://data.lsdb.io>`_
 
 Performing Filters
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 LSDB can perform spatial filters fast, taking advantage of HiPSCat's spatial partitioning. These optimized
 filters have their own methods, such as ```cone_search``. For the list of these methods see the full docs
-for :func:`lsdb.catalog.Catalog`
+for the :func:`lsdb.catalog.Catalog` class.
 
 .. code-block:: python
 
@@ -92,8 +102,8 @@ Cross Matching
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Now we've filtered our catalog, let's try cross-matching! We'll need to load another catalog first. For a
-catalog on the right side of a cross-match, we need to make sure that we load it with a ``margin_cache`` to get
-accurate results. This should be provided with the catalog by the catalog's data provider. See the
+catalog on the right side of a cross-match, we need to make sure that we load it with a ``margin_cache`` to
+get accurate results. This should be provided with the catalog by the catalog's data provider. See the
 :doc:`margins tutorial section </tutorials/margins>` for more.
 
 .. code-block:: python
