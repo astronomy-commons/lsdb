@@ -70,6 +70,10 @@ html_css_files = ["custom.css"]
 
 html_logo = "_static/lincc_logo.png"
 html_title = "LSDB"
+html_context = {"default_mode": "light"}
+
+pygments_style = "sphinx"
+
 # Cross-link hipscat documentation from the API reference:
 # https://docs.readthedocs.io/en/stable/guides/intersphinx.html
 intersphinx_mapping = {

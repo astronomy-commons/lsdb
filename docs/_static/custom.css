@@ -1,3 +1,7 @@
 #lsdb h1 {
     text-align: center;
 }
+
+.skip-link {
+    background-color: transparent !important;
+}

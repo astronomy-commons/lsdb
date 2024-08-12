@@ -25,31 +25,33 @@ operations.
 
 Using this Guide
 -------------------------------------------------------------------------------
+.. grid:: 1 1 2 2
 
+   .. grid-item-card:: Getting Started
+       :link: getting-started
+       :link-type: doc
 
-.. card:: Getting Started
-    :link: getting-started
-    :link-type: doc
+       Installation and QuickStart Guide
 
-    Installation and QuickStart Guide
+   .. grid-item-card:: Tutorial
+       :link: tutorials
+       :link-type: doc
 
-.. card:: Tutorial
-    :link: tutorials
-    :link-type: doc
+       Learn the LSDB features by working through basic astronomy use cases
 
-    Learn the LSDB features by working through basic astronomy use cases
+.. grid:: 1 1 2 2
 
-.. card:: Example Notebooks
-    :link: notebooks
-    :link-type: doc
+   .. grid-item-card:: Example Notebooks
+       :link: notebooks
+       :link-type: doc
 
-    More scientific example use cases
+       More scientific example use cases
 
-.. card:: API Reference
-    :link: autoapi/index
-    :link-type: doc
+   .. grid-item-card:: API Reference
+       :link: autoapi/index
+       :link-type: doc
 
-    The detailed API documentation
+       The detailed API documentation
 
 
 For Developers
@@ -64,8 +66,8 @@ Learn more about contributing to this repository in our :doc:`Contribution Guide
    Installation <installation>
    Getting Started <getting-started>
    Tutorial <tutorials>
-   Notebooks <notebooks>
-   Performance <performance>
+   Example Notebooks <notebooks>
+   Performance Testing <performance>
    API Reference <autoapi/index>
 
 .. toctree::
