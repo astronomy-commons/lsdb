@@ -458,7 +458,7 @@ class Catalog(HealpixDataset):
         nested_column_name: str | None = None,
         output_catalog_name: str | None = None,
     ) -> Catalog:
-        """Perform a spatial join to another catalog by adding the other catalog a nested column
+        """Perform a spatial join to another catalog by adding the other catalog as a nested column
 
         Joins two catalogs together on a shared column value, merging rows where they match.
 
