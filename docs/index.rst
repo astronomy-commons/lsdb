@@ -33,7 +33,7 @@ Using this Guide
 
        Installation and QuickStart Guide
 
-   .. grid-item-card:: Tutorial
+   .. grid-item-card:: Tutorials
        :link: tutorials
        :link-type: doc
 
@@ -41,23 +41,17 @@ Using this Guide
 
 .. grid:: 1 1 2 2
 
-   .. grid-item-card:: Example Notebooks
-       :link: notebooks
-       :link-type: doc
-
-       More scientific example use cases
-
    .. grid-item-card:: API Reference
        :link: autoapi/index
        :link-type: doc
 
        The detailed API documentation
 
+   .. grid-item-card:: Contribution Guide
+       :link: developer/contributing
+       :link-type: doc
 
-For Developers
--------------------------------------------------------------------------------
-
-Learn more about contributing to this repository in our :doc:`Contribution Guide <developer/contributing>`.
+       For developers, learn more about contributing to this repository
 
 .. toctree::
    :hidden:
@@ -65,7 +59,7 @@ Learn more about contributing to this repository in our :doc:`Contribution Guide
    Home page <self>
    Installation <installation>
    Getting Started <getting-started>
-   Tutorial <tutorials>
+   Tutorials <tutorials>
    API Reference <autoapi/index>
 
 .. toctree::
@@ -75,7 +69,7 @@ Learn more about contributing to this repository in our :doc:`Contribution Guide
 
 .. toctree::
    :hidden:
-   :caption: Developer
+   :caption: Developers
 
    Contribution Guide <developer/contributing>
 
