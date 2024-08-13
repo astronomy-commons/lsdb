@@ -66,8 +66,6 @@ Learn more about contributing to this repository in our :doc:`Contribution Guide
    Installation <installation>
    Getting Started <getting-started>
    Tutorial <tutorials>
-   Example Notebooks <notebooks>
-   Performance Testing <performance>
    API Reference <autoapi/index>
 
 .. toctree::
