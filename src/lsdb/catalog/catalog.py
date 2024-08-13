@@ -465,7 +465,7 @@ class Catalog(HealpixDataset):
         The result is added as a nested dataframe column using
         `nested-dask <https://github.com/lincc-frameworks/nested-dask>`__, where the right catalog's columns
         are encoded within a column in the resulting dataframe. For more information, view the
-        `nested-dask documentation <https://nested-dask.readthedocs.io/en/latest/>`__
+        `nested-dask documentation <https://nested-dask.readthedocs.io/en/latest/>`__.
 
         The operation only joins data from matching partitions and their margin caches, and does not join rows
         that have a matching column value but are in separate partitions in the sky. For a more general join,
