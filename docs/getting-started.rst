@@ -47,7 +47,7 @@ The latest release version of LSDB is available to install with `pip <https://py
     We recommend Python versions **>=3.9, <=3.12**.
 
 LSDB can also be installed from source on `GitHub <https://github.com/astronomy-commons/lsdb>`_. See our
-advanced installation instructions in the :doc:`contributing guide </developer/contributing>`
+advanced installation instructions in the :doc:`contribution guide </developer/contributing>`.
 
 Quickstart
 --------------------------
