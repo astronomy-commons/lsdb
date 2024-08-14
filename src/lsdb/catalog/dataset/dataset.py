@@ -3,7 +3,7 @@ from typing import List
 import hipscat as hc
 import nested_pandas as npd
 from dask.delayed import Delayed
-from nested_dask import NestedFrame
+import nested_dask as nd
 
 
 class Dataset:
@@ -11,7 +11,7 @@ class Dataset:
 
     def __init__(
         self,
-        ddf: NestedFrame,
+        ddf: nd.NestedFrame,
         hc_structure: hc.catalog.Dataset,
     ):
         """Initialise a Catalog object.

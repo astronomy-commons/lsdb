@@ -11,8 +11,7 @@ from hipscat.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HC
 from hipscat.io.file_io import file_io
 from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.healpix_pixel_function import get_pixel_argsort
-from nested_dask import NestedFrame
-
+import nested_dask as nd
 from lsdb.catalog.catalog import DaskDFPixelMap
 from lsdb.dask.divisions import get_pixels_divisions
 from lsdb.loaders.hipscat.hipscat_loading_config import HipscatLoadingConfig
@@ -54,7 +53,7 @@ class AbstractCatalogLoader(Generic[CatalogTypeVar]):
             )
         return hc_catalog
 
-    def _load_dask_df_and_map(self, catalog: HCHealpixDataset) -> Tuple[NestedFrame, DaskDFPixelMap]:
+    def _load_dask_df_and_map(self, catalog: HCHealpixDataset) -> Tuple[nd.NestedFrame, DaskDFPixelMap]:
         """Load Dask DF from parquet files and make dict of HEALPix pixel to partition index"""
         pixels = catalog.get_healpix_pixels()
         ordered_pixels = np.array(pixels)[get_pixel_argsort(pixels)]
@@ -77,10 +76,10 @@ class AbstractCatalogLoader(Generic[CatalogTypeVar]):
 
     def _load_df_from_paths(
         self, catalog: HCHealpixDataset, paths: List[hc.io.FilePointer], divisions: Tuple[int, ...] | None
-    ) -> NestedFrame:
+    ) -> nd.NestedFrame:
         dask_meta_schema = self._create_dask_meta_schema(catalog.schema)
         if len(paths) > 0:
-            return NestedFrame.from_map(
+            return nd.NestedFrame.from_map(
                 file_io.read_parquet_file_to_pandas,
                 paths,
                 columns=self.config.columns,
@@ -90,7 +89,7 @@ class AbstractCatalogLoader(Generic[CatalogTypeVar]):
                 storage_options=self.storage_options,
                 **self._get_kwargs(),
             )
-        return NestedFrame.from_pandas(dask_meta_schema, npartitions=1)
+        return nd.NestedFrame.from_pandas(dask_meta_schema, npartitions=1)
 
     def _create_dask_meta_schema(self, schema: pa.Schema) -> npd.NestedFrame:
         """Creates the Dask meta DataFrame from the HiPSCat catalog schema."""

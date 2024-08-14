@@ -1,6 +1,5 @@
 import hipscat as hc
-from nested_dask import NestedFrame
-
+import nested_dask as nd
 from lsdb.catalog.association_catalog import AssociationCatalog
 from lsdb.loaders.hipscat.abstract_catalog_loader import AbstractCatalogLoader
 
@@ -23,5 +22,5 @@ class AssociationCatalogLoader(AbstractCatalogLoader[AssociationCatalog]):
 
     def _load_empty_dask_df_and_map(self, hc_catalog):
         dask_meta_schema = self._create_dask_meta_schema(hc_catalog.schema)
-        ddf = NestedFrame.from_pandas(dask_meta_schema, npartitions=1)
+        ddf = nd.NestedFrame.from_pandas(dask_meta_schema, npartitions=1)
         return ddf, {}

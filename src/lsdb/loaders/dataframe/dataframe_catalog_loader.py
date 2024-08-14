@@ -17,7 +17,7 @@ from hipscat.pixel_math import HealpixPixel, generate_histogram
 from hipscat.pixel_math.healpix_pixel_function import get_pixel_argsort
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN, compute_hipscat_id, healpix_to_hipscat_id
 from mocpy import MOC
-from nested_dask import NestedFrame
+import nested_dask as nd
 
 from lsdb.catalog.catalog import Catalog
 from lsdb.io.schema import get_arrow_schema
@@ -178,7 +178,7 @@ class DataframeCatalogLoader:
 
     def _generate_dask_df_and_map(
         self, pixel_list: List[HealpixPixel]
-    ) -> Tuple[NestedFrame, DaskDFPixelMap, int]:
+    ) -> Tuple[nd.NestedFrame, DaskDFPixelMap, int]:
         """Load Dask DataFrame from HEALPix pixel Dataframes and
         generate a mapping of HEALPix pixels to HEALPix Dataframes
 

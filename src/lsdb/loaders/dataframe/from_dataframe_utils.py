@@ -8,14 +8,13 @@ from dask import delayed
 from hipscat.catalog import PartitionInfo
 from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
-from nested_dask import NestedFrame
-
+import nested_dask as nd
 from lsdb.dask.divisions import get_pixels_divisions
 
 
 def _generate_dask_dataframe(
     pixel_dfs: List[npd.NestedFrame], pixels: List[HealpixPixel], use_pyarrow_types: bool = True
-) -> Tuple[NestedFrame, int]:
+) -> Tuple[nd.NestedFrame, int]:
     """Create the Dask Dataframe from the list of HEALPix pixel Dataframes
 
     Args:
@@ -30,7 +29,7 @@ def _generate_dask_dataframe(
     schema = pixel_dfs[0].iloc[:0, :].copy() if len(pixels) > 0 else []
     delayed_dfs = [delayed(df) for df in pixel_dfs]
     divisions = get_pixels_divisions(pixels)
-    ddf = NestedFrame.from_delayed(delayed_dfs, meta=schema, divisions=divisions)
+    ddf = nd.NestedFrame.from_delayed(delayed_dfs, meta=schema, divisions=divisions)
     return ddf, len(ddf)
 
 

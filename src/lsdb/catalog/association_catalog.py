@@ -1,5 +1,5 @@
 import hipscat as hc
-from nested_dask import NestedFrame
+import nested_dask as nd
 
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
 from lsdb.types import DaskDFPixelMap
@@ -18,7 +18,7 @@ class AssociationCatalog(HealpixDataset):
 
     def __init__(
         self,
-        ddf: NestedFrame,
+        ddf: nd.NestedFrame,
         ddf_pixel_map: DaskDFPixelMap,
         hc_structure: hc.catalog.AssociationCatalog,
     ):

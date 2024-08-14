@@ -5,7 +5,7 @@ import pyarrow as pa
 import pytest
 from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
-from nested_dask import NestedFrame
+import nested_dask as nd
 
 import lsdb
 from lsdb import Catalog
@@ -22,7 +22,7 @@ class TestCrossmatch:
             xmatched_cat = small_sky_catalog.crossmatch(
                 small_sky_xmatch_catalog, algorithm=algo, radius_arcsec=0.01 * 3600
             )
-            assert isinstance(xmatched_cat._ddf, NestedFrame)
+            assert isinstance(xmatched_cat._ddf, nd.NestedFrame)
             xmatched = xmatched_cat.compute()
         assert isinstance(xmatched, npd.NestedFrame)
         assert len(xmatched) == len(xmatch_correct)

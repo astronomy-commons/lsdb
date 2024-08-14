@@ -2,12 +2,12 @@ import nested_pandas as npd
 import numpy as np
 import pytest
 from hipscat.pixel_math.validators import ValidatorsErrors
-from nested_dask import NestedFrame
+import nested_dask as nd
 
 
 def test_box_search_ra_filters_correct_points(small_sky_order1_catalog, assert_divisions_are_correct):
     ra_search_catalog = small_sky_order1_catalog.box_search(ra=(280, 300))
-    assert isinstance(ra_search_catalog._ddf, NestedFrame)
+    assert isinstance(ra_search_catalog._ddf, nd.NestedFrame)
     ra_search_df = ra_search_catalog.compute()
     assert isinstance(ra_search_df, npd.NestedFrame)
     ra_values = ra_search_df[small_sky_order1_catalog.hc_structure.catalog_info.ra_column]

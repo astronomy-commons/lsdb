@@ -8,8 +8,7 @@ import nested_pandas as npd
 import pandas as pd
 from hipscat.catalog.index.index_catalog import IndexCatalog as HCIndexCatalog
 from hipscat.pixel_math.polygon_filter import SphericalCoordinates
-from nested_dask import NestedFrame
-
+import nested_dask as nd
 from lsdb.catalog.association_catalog import AssociationCatalog
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
 from lsdb.catalog.margin_catalog import MarginCatalog
@@ -43,7 +42,7 @@ class Catalog(HealpixDataset):
 
     def __init__(
         self,
-        ddf: NestedFrame,
+        ddf: nd.NestedFrame,
         ddf_pixel_map: DaskDFPixelMap,
         hc_structure: hc.catalog.Catalog,
         margin: MarginCatalog | None = None,

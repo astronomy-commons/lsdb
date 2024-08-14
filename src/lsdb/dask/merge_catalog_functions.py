@@ -14,7 +14,7 @@ from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN, healpix_to_hipscat_
 from hipscat.pixel_tree import PixelAlignment, PixelAlignmentType, align_trees
 from hipscat.pixel_tree.moc_utils import copy_moc
 from hipscat.pixel_tree.pixel_alignment import align_with_mocs
-from nested_dask import NestedFrame
+import nested_dask as nd
 
 from lsdb.dask.divisions import get_pixels_divisions
 from lsdb.types import DaskDFPixelMap
@@ -178,7 +178,7 @@ def filter_by_hipscat_index_to_pixel(dataframe: npd.NestedFrame, order: int, pix
 
 def construct_catalog_args(
     partitions: List[Delayed], meta_df: npd.NestedFrame, alignment: PixelAlignment
-) -> Tuple[NestedFrame, DaskDFPixelMap, PixelAlignment]:
+) -> Tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]:
     """Constructs the arguments needed to create a catalog from a list of delayed partitions
 
     Args:
@@ -195,7 +195,7 @@ def construct_catalog_args(
     # create dask df from delayed partitions
     divisions = get_pixels_divisions(list(partition_map.keys()))
     partitions = partitions if len(partitions) > 0 else [delayed(meta_df.copy())]
-    ddf = NestedFrame.from_delayed(partitions, meta=meta_df, divisions=divisions, verify_meta=True)
+    ddf = nd.NestedFrame.from_delayed(partitions, meta=meta_df, divisions=divisions, verify_meta=True)
     return ddf, partition_map, alignment
 
 

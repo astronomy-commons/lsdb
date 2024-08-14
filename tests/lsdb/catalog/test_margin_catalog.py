@@ -2,7 +2,7 @@ from pathlib import Path
 
 import hipscat as hc
 import pandas as pd
-from nested_dask import NestedFrame
+import nested_dask as nd
 
 import lsdb
 from lsdb.catalog.margin_catalog import MarginCatalog
@@ -11,7 +11,7 @@ from lsdb.catalog.margin_catalog import MarginCatalog
 def test_read_margin_catalog(small_sky_xmatch_margin_dir):
     margin = lsdb.read_hipscat(small_sky_xmatch_margin_dir)
     assert isinstance(margin, MarginCatalog)
-    assert isinstance(margin._ddf, NestedFrame)
+    assert isinstance(margin._ddf, nd.NestedFrame)
     hc_margin = hc.catalog.MarginCatalog.read_from_hipscat(small_sky_xmatch_margin_dir)
     assert margin.hc_structure.catalog_info == hc_margin.catalog_info
     assert margin.hc_structure.get_healpix_pixels() == hc_margin.get_healpix_pixels()

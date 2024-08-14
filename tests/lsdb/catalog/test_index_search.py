@@ -1,13 +1,13 @@
 import nested_pandas as npd
 from hipscat.catalog.index.index_catalog import IndexCatalog
-from nested_dask import NestedFrame
+import nested_dask as nd
 
 
 def test_index_search(small_sky_order1_catalog, small_sky_order1_id_index_dir, assert_divisions_are_correct):
     catalog_index = IndexCatalog.read_from_hipscat(small_sky_order1_id_index_dir)
     # Searching for an object that does not exist
     index_search_catalog = small_sky_order1_catalog.index_search([900], catalog_index)
-    assert isinstance(index_search_catalog._ddf, NestedFrame)
+    assert isinstance(index_search_catalog._ddf, nd.NestedFrame)
     index_search_df = index_search_catalog.compute()
     assert isinstance(index_search_df, npd.NestedFrame)
     assert len(index_search_df) == 0

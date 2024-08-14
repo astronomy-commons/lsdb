@@ -3,7 +3,7 @@ import pandas as pd
 import pytest
 from astropy.coordinates import SkyCoord
 from hipscat.pixel_math.validators import ValidatorsErrors
-from nested_dask import NestedFrame
+import nested_dask as nd
 
 
 def test_cone_search_filters_correct_points(small_sky_order1_catalog, assert_divisions_are_correct):
@@ -13,7 +13,7 @@ def test_cone_search_filters_correct_points(small_sky_order1_catalog, assert_div
     radius = radius_degrees * 3600
     center_coord = SkyCoord(ra, dec, unit="deg")
     cone_search_catalog = small_sky_order1_catalog.cone_search(ra, dec, radius)
-    assert isinstance(cone_search_catalog._ddf, NestedFrame)
+    assert isinstance(cone_search_catalog._ddf, nd.NestedFrame)
     cone_search_df = cone_search_catalog.compute()
     assert isinstance(cone_search_df, npd.NestedFrame)
     for _, row in small_sky_order1_catalog.compute().iterrows():

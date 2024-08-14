@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import pytest
 from hipscat.pixel_math import HealpixPixel, hipscat_id_to_healpix
-from nested_dask import NestedFrame
+import nested_dask as nd
 
 import lsdb
 from lsdb import Catalog
@@ -48,7 +48,7 @@ def test_get_catalog_partition_gets_correct_partition(small_sky_order1_catalog):
         pixel = HealpixPixel(order=hp_order, pixel=hp_pixel)
         partition_index = small_sky_order1_catalog._ddf_pixel_map[pixel]
         ddf_partition = small_sky_order1_catalog._ddf.partitions[partition_index]
-        assert isinstance(partition, NestedFrame)
+        assert isinstance(partition, nd.NestedFrame)
         assert isinstance(partition.compute(), npd.NestedFrame)
         pd.testing.assert_frame_equal(partition.compute(), ddf_partition.compute())
 
@@ -106,19 +106,19 @@ def test_query(small_sky_order1_catalog):
     ]
     # Simple query, with no value injection or backticks
     result_catalog = small_sky_order1_catalog.query("ra > 300 and dec < -50")
-    assert isinstance(result_catalog._ddf, NestedFrame)
+    assert isinstance(result_catalog._ddf, nd.NestedFrame)
     pd.testing.assert_frame_equal(result_catalog._ddf.compute(), expected_ddf.compute())
     # Query with value injection
     ra, dec = 300, -50
     result_catalog = small_sky_order1_catalog.query(f"ra > {ra} and dec < {dec}")
-    assert isinstance(result_catalog._ddf, NestedFrame)
+    assert isinstance(result_catalog._ddf, nd.NestedFrame)
     pd.testing.assert_frame_equal(result_catalog._ddf.compute(), expected_ddf.compute())
     # Query with backticks (for invalid Python variables names)
     new_columns = {"ra": "right ascension"}
     expected_ddf = expected_ddf.rename(columns=new_columns)
     small_sky_order1_catalog._ddf = small_sky_order1_catalog._ddf.rename(columns=new_columns)
     result_catalog = small_sky_order1_catalog.query("`right ascension` > 300 and dec < -50")
-    assert isinstance(result_catalog._ddf, NestedFrame)
+    assert isinstance(result_catalog._ddf, nd.NestedFrame)
     pd.testing.assert_frame_equal(result_catalog._ddf.compute(), expected_ddf.compute())
 
 
@@ -135,13 +135,13 @@ def test_query_margin(small_sky_xmatch_with_margin):
     assert result_catalog.margin is not None
     pd.testing.assert_frame_equal(result_catalog.compute(), expected_ddf.compute())
     pd.testing.assert_frame_equal(result_catalog.margin.compute(), expected_margin_ddf.compute())
-    assert isinstance(result_catalog.margin._ddf, NestedFrame)
+    assert isinstance(result_catalog.margin._ddf, nd.NestedFrame)
 
 
 def test_assign_no_arguments(small_sky_order1_catalog):
     result_catalog = small_sky_order1_catalog.assign()
     pd.testing.assert_frame_equal(result_catalog._ddf.compute(), small_sky_order1_catalog._ddf.compute())
-    assert isinstance(result_catalog._ddf, NestedFrame)
+    assert isinstance(result_catalog._ddf, nd.NestedFrame)
 
 
 def test_assign_with_callable(small_sky_order1_catalog):
@@ -150,7 +150,7 @@ def test_assign_with_callable(small_sky_order1_catalog):
     expected_ddf = small_sky_order1_catalog._ddf.copy()
     expected_ddf["squared_ra_err"] = expected_ddf["ra_error"] ** 2
     pd.testing.assert_frame_equal(result_catalog.compute(), expected_ddf.compute())
-    assert isinstance(result_catalog._ddf, NestedFrame)
+    assert isinstance(result_catalog._ddf, nd.NestedFrame)
 
 
 def test_assign_with_series(small_sky_order1_catalog):
@@ -161,7 +161,7 @@ def test_assign_with_series(small_sky_order1_catalog):
     expected_ddf = small_sky_order1_catalog._ddf.copy()
     expected_ddf["new_column"] = squared_ra_err
     pd.testing.assert_frame_equal(result_catalog.compute(), expected_ddf.compute())
-    assert isinstance(result_catalog._ddf, NestedFrame)
+    assert isinstance(result_catalog._ddf, nd.NestedFrame)
 
 
 def test_assign_with_multiple_columns(small_sky_order1_catalog):
@@ -267,7 +267,7 @@ def test_prune_empty_partitions(small_sky_order1_catalog):
     _, non_empty_partitions = pruned_catalog._get_non_empty_partitions()
     assert pruned_catalog._ddf.npartitions - len(non_empty_partitions) == 0
     pd.testing.assert_frame_equal(catalog.compute(), pruned_catalog.compute())
-    assert isinstance(pruned_catalog._ddf, NestedFrame)
+    assert isinstance(pruned_catalog._ddf, nd.NestedFrame)
     assert isinstance(pruned_catalog.compute(), npd.NestedFrame)
 
 
@@ -476,7 +476,7 @@ def test_square_bracket_columns(small_sky_order1_catalog):
     column_subset = small_sky_order1_catalog[columns]
     assert all(column_subset.columns == columns)
     assert isinstance(column_subset, Catalog)
-    assert isinstance(column_subset._ddf, NestedFrame)
+    assert isinstance(column_subset._ddf, nd.NestedFrame)
     assert isinstance(column_subset.compute(), npd.NestedFrame)
     pd.testing.assert_frame_equal(column_subset.compute(), small_sky_order1_catalog.compute()[columns])
     assert np.all(
@@ -495,7 +495,7 @@ def test_square_bracket_column(small_sky_order1_catalog):
 def test_square_bracket_filter(small_sky_order1_catalog):
     filtered_id = small_sky_order1_catalog[small_sky_order1_catalog["id"] > 750]
     assert isinstance(filtered_id, Catalog)
-    assert isinstance(filtered_id._ddf, NestedFrame)
+    assert isinstance(filtered_id._ddf, nd.NestedFrame)
     assert isinstance(filtered_id.compute(), npd.NestedFrame)
     ss_computed = small_sky_order1_catalog.compute()
     pd.testing.assert_frame_equal(filtered_id.compute(), ss_computed[ss_computed["id"] > 750])
@@ -511,7 +511,7 @@ def test_map_partitions(small_sky_order1_catalog):
 
     mapped = small_sky_order1_catalog.map_partitions(add_col)
     assert isinstance(mapped, Catalog)
-    assert isinstance(mapped._ddf, NestedFrame)
+    assert isinstance(mapped._ddf, nd.NestedFrame)
     assert "a" in mapped.columns
     assert mapped.dtypes["a"] == mapped.dtypes["ra"]
     mapcomp = mapped.compute()
@@ -577,7 +577,7 @@ def test_square_bracket_single_partition(small_sky_order1_catalog):
     index = 1
     subset = small_sky_order1_catalog.partitions[index]
     assert isinstance(subset, Catalog)
-    assert isinstance(subset._ddf, NestedFrame)
+    assert isinstance(subset._ddf, nd.NestedFrame)
     assert 1 == len(subset._ddf_pixel_map)
     pixel = subset.get_healpix_pixels()[0]
     assert index == small_sky_order1_catalog.get_partition_index(pixel.order, pixel.pixel)
