@@ -94,12 +94,15 @@ usually see values).
 
 Where to get Catalogs
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
-LSDB can load any catalogs in the HiPSCat format, locally or from remote sources. If you have your own data
-not in this format, you can import it by following the instructions in our
+LSDB can load any catalogs in the HiPSCat format, locally or from remote sources. There are also a number of
+catalogs available publicly to use from the cloud. You can see them with their URLs to load with LSDB at our
+website `data.lsdb.io <https://data.lsdb.io>`_
+
+
+If you have your own data not in this format, you can import it by following the instructions in our
 :doc:`importing catalogs tutorial section. </tutorials/import_catalogs>`
 
-There are also a number of catalogs available publicly to use from the cloud. You can see them with their URLs
-to load with LSDB at our website `data.lsdb.io <https://data.lsdb.io>`_
+
 
 Performing Filters
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
