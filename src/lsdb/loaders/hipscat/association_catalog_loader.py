@@ -1,5 +1,6 @@
 import hipscat as hc
 import nested_dask as nd
+
 from lsdb.catalog.association_catalog import AssociationCatalog
 from lsdb.loaders.hipscat.abstract_catalog_loader import AbstractCatalogLoader
 

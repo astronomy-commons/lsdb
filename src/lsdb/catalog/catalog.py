@@ -4,11 +4,12 @@ import dataclasses
 from typing import List, Tuple, Type
 
 import hipscat as hc
+import nested_dask as nd
 import nested_pandas as npd
 import pandas as pd
 from hipscat.catalog.index.index_catalog import IndexCatalog as HCIndexCatalog
 from hipscat.pixel_math.polygon_filter import SphericalCoordinates
-import nested_dask as nd
+
 from lsdb.catalog.association_catalog import AssociationCatalog
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
 from lsdb.catalog.margin_catalog import MarginCatalog

@@ -1,8 +1,8 @@
+import nested_dask as nd
 import nested_pandas as npd
 import numpy as np
 import pytest
 from hipscat.pixel_math.validators import ValidatorsErrors
-import nested_dask as nd
 
 
 def test_box_search_ra_filters_correct_points(small_sky_order1_catalog, assert_divisions_are_correct):

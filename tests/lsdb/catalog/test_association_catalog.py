@@ -1,6 +1,6 @@
 import hipscat as hc
-import pandas as pd
 import nested_dask as nd
+import pandas as pd
 
 import lsdb
 from lsdb.catalog.association_catalog import AssociationCatalog

@@ -1,9 +1,9 @@
+import nested_dask as nd
 import nested_pandas as npd
 import numpy as np
 import numpy.testing as npt
 import pytest
 from hipscat.pixel_math.validators import ValidatorsErrors
-import nested_dask as nd
 
 from lsdb.core.search.polygon_search import get_cartesian_polygon
 

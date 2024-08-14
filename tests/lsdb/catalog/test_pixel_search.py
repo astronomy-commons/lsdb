@@ -1,6 +1,6 @@
+import nested_dask as nd
 import pandas as pd
 from hipscat.pixel_math import HealpixPixel
-import nested_dask as nd
 
 from lsdb.core.search.pixel_search import PixelSearch
 

@@ -1,9 +1,9 @@
+import nested_dask as nd
 import nested_pandas as npd
 import numpy as np
 import pandas as pd
 import pytest
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
-import nested_dask as nd
 
 
 def test_small_sky_join_small_sky_order1(

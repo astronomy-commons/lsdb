@@ -7,6 +7,7 @@ from typing import Dict, List, Tuple
 
 import astropy.units as u
 import hipscat as hc
+import nested_dask as nd
 import nested_pandas as npd
 import numpy as np
 import pandas as pd
@@ -17,7 +18,6 @@ from hipscat.pixel_math import HealpixPixel, generate_histogram
 from hipscat.pixel_math.healpix_pixel_function import get_pixel_argsort
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN, compute_hipscat_id, healpix_to_hipscat_id
 from mocpy import MOC
-import nested_dask as nd
 
 from lsdb.catalog.catalog import Catalog
 from lsdb.io.schema import get_arrow_schema

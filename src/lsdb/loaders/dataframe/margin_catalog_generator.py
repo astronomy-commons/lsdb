@@ -4,6 +4,7 @@ from typing import Dict, List, Tuple
 
 import healpy as hp
 import hipscat as hc
+import nested_dask as nd
 import nested_pandas as npd
 import numpy as np
 import pandas as pd
@@ -12,7 +13,6 @@ from hipscat.catalog import CatalogType
 from hipscat.catalog.margin_cache import MarginCacheCatalogInfo
 from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.healpix_pixel_function import get_pixel_argsort
-import nested_dask as nd
 
 from lsdb import Catalog
 from lsdb.catalog.margin_catalog import MarginCatalog

@@ -1,9 +1,9 @@
 from typing import List
 
 import hipscat as hc
+import nested_dask as nd
 import nested_pandas as npd
 from dask.delayed import Delayed
-import nested_dask as nd
 
 
 class Dataset:

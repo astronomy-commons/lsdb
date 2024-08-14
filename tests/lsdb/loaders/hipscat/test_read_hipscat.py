@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import hipscat as hc
+import nested_dask as nd
 import nested_pandas as npd
 import numpy as np
 import numpy.testing as npt
@@ -9,7 +10,6 @@ import pytest
 from hipscat.catalog.index.index_catalog import IndexCatalog
 from hipscat.io import get_file_pointer_from_path
 from hipscat.pixel_math import HealpixPixel
-import nested_dask as nd
 from pandas.core.dtypes.base import ExtensionDtype
 
 import lsdb

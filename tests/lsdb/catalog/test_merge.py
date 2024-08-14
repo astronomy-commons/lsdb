@@ -1,6 +1,6 @@
+import nested_dask as nd
 import pandas as pd
 import pytest
-import nested_dask as nd
 
 
 @pytest.mark.parametrize("how", ["left", "right", "inner", "outer"])

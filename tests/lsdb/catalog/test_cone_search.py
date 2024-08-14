@@ -1,9 +1,9 @@
+import nested_dask as nd
 import nested_pandas as npd
 import pandas as pd
 import pytest
 from astropy.coordinates import SkyCoord
 from hipscat.pixel_math.validators import ValidatorsErrors
-import nested_dask as nd
 
 
 def test_cone_search_filters_correct_points(small_sky_order1_catalog, assert_divisions_are_correct):

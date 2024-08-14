@@ -3,12 +3,12 @@ from pathlib import Path
 import dask.array as da
 import dask.dataframe as dd
 import healpy as hp
+import nested_dask as nd
 import nested_pandas as npd
 import numpy as np
 import pandas as pd
 import pytest
 from hipscat.pixel_math import HealpixPixel, hipscat_id_to_healpix
-import nested_dask as nd
 
 import lsdb
 from lsdb import Catalog

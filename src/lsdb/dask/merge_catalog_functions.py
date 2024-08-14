@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Callable, List, Sequence, Tuple
 
 import healpy as hp
+import nested_dask as nd
 import nested_pandas as npd
 import numpy as np
 import numpy.typing as npt
@@ -14,7 +15,6 @@ from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN, healpix_to_hipscat_
 from hipscat.pixel_tree import PixelAlignment, PixelAlignmentType, align_trees
 from hipscat.pixel_tree.moc_utils import copy_moc
 from hipscat.pixel_tree.pixel_alignment import align_with_mocs
-import nested_dask as nd
 
 from lsdb.dask.divisions import get_pixels_divisions
 from lsdb.types import DaskDFPixelMap

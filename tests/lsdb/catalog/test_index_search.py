@@ -1,6 +1,6 @@
+import nested_dask as nd
 import nested_pandas as npd
 from hipscat.catalog.index.index_catalog import IndexCatalog
-import nested_dask as nd
 
 
 def test_index_search(small_sky_order1_catalog, small_sky_order1_id_index_dir, assert_divisions_are_correct):

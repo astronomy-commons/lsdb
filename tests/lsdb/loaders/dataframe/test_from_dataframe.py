@@ -3,6 +3,7 @@ import math
 import astropy.units as u
 import healpy as hp
 import hipscat as hc
+import nested_dask as nd
 import nested_pandas as npd
 import numpy as np
 import numpy.testing as npt
@@ -12,7 +13,6 @@ from hipscat.catalog import CatalogType
 from hipscat.pixel_math.healpix_pixel_function import get_pixel_argsort
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
 from mocpy import MOC
-import nested_dask as nd
 
 import lsdb
 from lsdb.catalog.margin_catalog import MarginCatalog

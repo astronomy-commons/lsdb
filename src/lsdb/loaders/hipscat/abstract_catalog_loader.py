@@ -4,6 +4,7 @@ from abc import abstractmethod
 from typing import Generic, List, Tuple, Type
 
 import hipscat as hc
+import nested_dask as nd
 import nested_pandas as npd
 import numpy as np
 import pyarrow as pa
@@ -11,7 +12,7 @@ from hipscat.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HC
 from hipscat.io.file_io import file_io
 from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.healpix_pixel_function import get_pixel_argsort
-import nested_dask as nd
+
 from lsdb.catalog.catalog import DaskDFPixelMap
 from lsdb.dask.divisions import get_pixels_divisions
 from lsdb.loaders.hipscat.hipscat_loading_config import HipscatLoadingConfig

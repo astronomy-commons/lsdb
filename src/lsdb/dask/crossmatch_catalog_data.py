@@ -4,8 +4,8 @@ import warnings
 from typing import TYPE_CHECKING, Tuple, Type
 
 import dask
-from hipscat.pixel_tree import PixelAlignment
 import nested_dask as nd
+from hipscat.pixel_tree import PixelAlignment
 
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
 from lsdb.core.crossmatch.crossmatch_algorithms import (

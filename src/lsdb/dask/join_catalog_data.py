@@ -6,6 +6,7 @@ import warnings
 from typing import TYPE_CHECKING, List, Tuple
 
 import dask
+import nested_dask as nd
 import nested_pandas as npd
 from hipscat.catalog.association_catalog import AssociationCatalogInfo
 from hipscat.catalog.catalog_info import CatalogInfo
@@ -13,7 +14,6 @@ from hipscat.catalog.margin_cache import MarginCacheCatalogInfo
 from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
 from hipscat.pixel_tree import PixelAlignment
-import nested_dask as nd
 from nested_pandas.series.packer import pack_flat
 
 from lsdb.catalog.association_catalog import AssociationCatalog

@@ -1,3 +1,4 @@
+import nested_dask as nd
 import nested_pandas as npd
 import numpy as np
 import pandas as pd
@@ -5,7 +6,6 @@ import pyarrow as pa
 import pytest
 from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
-import nested_dask as nd
 
 import lsdb
 from lsdb import Catalog

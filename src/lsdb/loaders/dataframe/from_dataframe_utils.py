@@ -1,5 +1,6 @@
 from typing import List, Tuple
 
+import nested_dask as nd
 import nested_pandas as npd
 import numpy as np
 import pandas as pd
@@ -8,7 +9,7 @@ from dask import delayed
 from hipscat.catalog import PartitionInfo
 from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
-import nested_dask as nd
+
 from lsdb.dask.divisions import get_pixels_divisions
 
 

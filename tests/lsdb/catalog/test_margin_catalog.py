@@ -1,8 +1,8 @@
 from pathlib import Path
 
 import hipscat as hc
-import pandas as pd
 import nested_dask as nd
+import pandas as pd
 
 import lsdb
 from lsdb.catalog.margin_catalog import MarginCatalog
