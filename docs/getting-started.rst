@@ -171,7 +171,7 @@ So instead, we can run the computation and save the results directly to disk in 
 
 This creates the following HiPSCat Catalog on disk:
 
-:: code-block::
+.. code-block::
 
     ztf_x_gaia/
     ├── Norder=4/
