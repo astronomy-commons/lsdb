@@ -38,7 +38,7 @@ An introduction to LSDB's core features and functionality
     :maxdepth: 1
 
     Loading data into LSDB <tutorials/loading_data>
-    Filtering large catalogs <tutorials/working_with_large_catalogs>
+    Filtering large catalogs <tutorials/filtering_large_catalogs>
     Exporting results <tutorials/exporting_results>
 
 Advanced Topics
