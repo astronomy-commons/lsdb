@@ -17,12 +17,32 @@ The latest release version of LSDB is available to install with `pip <https://py
 .. hint::
 
     We recommend using a virtual environment. Before installing the package, create and activate a fresh
-    environment. For example using conda, create a new environment with the terminal command:
+    environment. Here are some examples with different tools:
 
-    .. code-block:: bash
+    .. tab-set::
 
-        conda create -n lsdb_env python=3.11
-        conda activate lsdb_env
+        .. tab-item:: Conda
+
+            .. code-block:: bash
+
+                conda create -n lsdb_env python=3.11
+                conda activate lsdb_env
+
+        .. tab-item:: venv
+
+            .. code-block:: bash
+
+                python -m venv ./lsdb_env
+                source ./lsdb_env/bin/activate
+
+        .. tab-item:: pyenv
+
+            With the pyenv-virtualenv plug-in:
+
+            .. code-block:: bash
+
+                pyenv virtualenv 3.11 lsdb_env
+                pyenv local lsdb_env
 
     We recommend Python versions **>=3.9, <=3.12**.
 
