@@ -55,7 +55,7 @@ Quickstart
 LSDB is built on top of `Dask DataFrame <https://docs.dask.org/en/stable/dataframe.html>`_ which allows workflows
 to run in parallel on distributed environments, and scale to large, out of memory datasets. For this to work,
 Catalogs are loaded **lazily**, meaning that only the metadata is loaded at first. This way, LSDB can plan
-how tasks will be executed in the future without actually doing any computation. See our :doc:`tutorial </tutorials>`
+how tasks will be executed in the future without actually doing any computation. See our :doc:`tutorials </tutorials>`
 for more information.
 
 
