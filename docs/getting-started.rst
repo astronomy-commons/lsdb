@@ -94,8 +94,8 @@ usually see values).
 
 Where to get Catalogs
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
-LSDB can load any catalogs in the HiPSCat format, locally or from remote sources. There are also a number of
-catalogs available publicly to use from the cloud. You can see them with their URLs to load with LSDB at our
+LSDB can load any catalogs in the HiPSCat format, locally or from remote sources. There are a number of
+catalogs available publicly to use from the cloud. You can see them with their URLs to load in LSDB at our
 website `data.lsdb.io <https://data.lsdb.io>`_
 
 
