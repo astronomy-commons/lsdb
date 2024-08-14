@@ -38,5 +38,5 @@ class MarginCatalog(HealpixDataset):
             A new Catalog containing the points filtered to those matching the search parameters.
         """
         filtered_hc_structure = search.filter_hc_catalog(self.hc_structure)
-        ddf_partition_map, search_ddf = self._perform_search(filtered_hc_structure, search)
-        return self.__class__(search_ddf, ddf_partition_map, filtered_hc_structure)
+        ddf_partition_map, search_ndf = self._perform_search(filtered_hc_structure, search)
+        return self.__class__(search_ndf, ddf_partition_map, filtered_hc_structure)

@@ -71,8 +71,8 @@ def test_head_rows_less_than_requested(small_sky_order1_catalog):
     schema = small_sky_order1_catalog.dtypes
     two_rows = small_sky_order1_catalog._ddf.partitions[0].compute()[:2]
     tiny_df = pd.DataFrame(data=two_rows, columns=schema.index, dtype=schema.to_numpy())
-    altered_ddf = dd.from_pandas(tiny_df, npartitions=1)
-    catalog = lsdb.Catalog(altered_ddf, {}, small_sky_order1_catalog.hc_structure)
+    altered_ndf = nd.NestedFrame.from_pandas(tiny_df, npartitions=1)
+    catalog = lsdb.Catalog(altered_ndf, {}, small_sky_order1_catalog.hc_structure)
     # The head only contains two values
     assert len(catalog.head()) == 2
 
@@ -82,8 +82,8 @@ def test_head_first_partition_is_empty(small_sky_order1_catalog):
     schema = small_sky_order1_catalog.dtypes
     empty_df = pd.DataFrame(columns=schema.index, dtype=schema.to_numpy())
     empty_ddf = dd.from_pandas(empty_df, npartitions=1)
-    altered_ddf = dd.concat([empty_ddf, small_sky_order1_catalog._ddf])
-    catalog = lsdb.Catalog(altered_ddf, {}, small_sky_order1_catalog.hc_structure)
+    altered_ndf = nd.NestedFrame.from_dask_dataframe(dd.concat([empty_ddf, small_sky_order1_catalog._ddf]))
+    catalog = lsdb.Catalog(altered_ndf, {}, small_sky_order1_catalog.hc_structure)
     # The first partition is empty
     first_partition_df = catalog._ddf.partitions[0].compute()
     assert len(first_partition_df) == 0

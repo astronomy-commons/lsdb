@@ -126,8 +126,8 @@ class HealpixDataset(Dataset):
             A catalog that contains the data from the original catalog that complies
             with the query expression
         """
-        ddf = self._ddf.query(expr)
-        return self.__class__(ddf, self._ddf_pixel_map, self.hc_structure)
+        ndf = self._ddf.query(expr)
+        return self.__class__(ndf, self._ddf_pixel_map, self.hc_structure)
 
     def _perform_search(
         self,

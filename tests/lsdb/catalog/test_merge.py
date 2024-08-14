@@ -10,10 +10,10 @@ def test_catalog_merge_on_indices(small_sky_catalog, small_sky_order1_catalog, h
     small_sky_catalog._ddf = small_sky_catalog._ddf.set_index("id")
     small_sky_order1_catalog._ddf = small_sky_order1_catalog._ddf.set_index("id")
     # The wrapper outputs the same result as the underlying pandas merge
-    merged_ddf = small_sky_catalog.merge(small_sky_order1_catalog, **kwargs)
-    assert isinstance(merged_ddf, nd.NestedFrame)
+    merged_ndf = small_sky_catalog.merge(small_sky_order1_catalog, **kwargs)
+    assert isinstance(merged_ndf, nd.NestedFrame)
     expected_df = small_sky_catalog._ddf.merge(small_sky_order1_catalog._ddf, **kwargs)
-    pd.testing.assert_frame_equal(expected_df.compute(), merged_ddf.compute())
+    pd.testing.assert_frame_equal(expected_df.compute(), merged_ndf.compute())
 
 
 @pytest.mark.parametrize("how", ["left", "right", "inner", "outer"])

@@ -319,9 +319,9 @@ class Catalog(HealpixDataset):
             A new Catalog containing the points filtered to those matching the search parameters.
         """
         filtered_hc_structure = search.filter_hc_catalog(self.hc_structure)
-        ddf_partition_map, search_ddf = self._perform_search(filtered_hc_structure, search)
+        ddf_partition_map, search_ndf = self._perform_search(filtered_hc_structure, search)
         margin = self.margin.search(search) if self.margin is not None else None
-        return Catalog(search_ddf, ddf_partition_map, filtered_hc_structure, margin=margin)
+        return Catalog(search_ndf, ddf_partition_map, filtered_hc_structure, margin=margin)
 
     def merge(
         self,
@@ -333,7 +333,7 @@ class Catalog(HealpixDataset):
         left_index: bool = False,
         right_index: bool = False,
         suffixes: Tuple[str, str] | None = None,
-    ) -> NestedFrame:
+    ) -> nd.NestedFrame:
         """Performs the merge of two catalog Dataframes
 
         More information about pandas merge is available
