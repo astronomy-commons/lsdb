@@ -149,11 +149,21 @@ So instead, we can run the computation and save the results directly to disk in 
 
     ztf_x_gaia.to_hipscat("./ztf_x_gaia")
 
-.. figure:: _static/ztf_x_gaia_tree.png
-   :align: center
-   :alt: The file structure of the output hipscat files
+This creates the following HiPSCat Catalog on disk:
 
-    The file structure of the output hipscat files
+:: code-block::
+
+    ztf_x_gaia/
+    ├── Norder=4/
+    │   ├── Dir=0/
+    │   │   ├── Npix=57.parquet
+    │   │   └── ...
+    │   └── ...
+    ├── _metadata
+    ├── _common_metadata
+    ├── catalog_info.json
+    ├── partition_info.csv
+    └── provenance_info.json
 
 Creation of Jupyter Kernel
 --------------------------
