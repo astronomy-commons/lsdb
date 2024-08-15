@@ -1,3 +1,5 @@
+import nested_dask as nd
+import nested_pandas as npd
 import numpy as np
 import pandas as pd
 import pytest
@@ -12,6 +14,7 @@ def test_small_sky_join_small_sky_order1(
         joined = small_sky_catalog.join(
             small_sky_order1_catalog, left_on="id", right_on="id", suffixes=suffixes
         )
+        assert isinstance(joined._ddf, nd.NestedFrame)
     for col_name, dtype in small_sky_catalog.dtypes.items():
         assert (col_name + suffixes[0], dtype) in joined.dtypes.items()
     for col_name, dtype in small_sky_order1_catalog.dtypes.items():
@@ -20,6 +23,7 @@ def test_small_sky_join_small_sky_order1(
     assert joined._ddf.index.dtype == np.uint64
 
     joined_compute = joined.compute()
+    assert isinstance(joined_compute, npd.NestedFrame)
     small_sky_compute = small_sky_catalog.compute()
     small_sky_order1_compute = small_sky_order1_catalog.compute()
     assert len(joined_compute) == len(small_sky_compute)
@@ -68,8 +72,10 @@ def test_join_association(small_sky_catalog, small_sky_xmatch_catalog, small_sky
         joined = small_sky_catalog.join(
             small_sky_xmatch_catalog, through=small_sky_to_xmatch_catalog, suffixes=suffixes
         )
+        assert isinstance(joined._ddf, nd.NestedFrame)
     assert joined._ddf.npartitions == len(small_sky_to_xmatch_catalog.hc_structure.join_info.data_frame)
     joined_data = joined.compute()
+    assert isinstance(joined_data, npd.NestedFrame)
     association_data = small_sky_to_xmatch_catalog.compute()
     assert len(joined_data) == len(association_data)
 
@@ -179,3 +185,32 @@ def test_join_source_margin_soft(
         suffixes=suffixes,
     )
     pd.testing.assert_frame_equal(joined.compute(), joined_on.compute())
+
+
+def test_join_nested(small_sky_catalog, small_sky_order1_source_with_margin, assert_divisions_are_correct):
+    joined = small_sky_catalog.join_nested(
+        small_sky_order1_source_with_margin,
+        left_on="id",
+        right_on="object_id",
+        nested_column_name="sources",
+    )
+    for col_name, dtype in small_sky_catalog.dtypes.items():
+        assert (col_name, dtype) in joined.dtypes.items()
+    for col_name, dtype in small_sky_order1_source_with_margin.dtypes.items():
+        if col_name != "object_id":
+            assert (col_name, dtype.pyarrow_dtype) in joined["sources"].dtypes.fields.items()
+    assert_divisions_are_correct(joined)
+    joined_compute = joined.compute()
+    source_compute = small_sky_order1_source_with_margin.compute()
+    assert isinstance(joined_compute, npd.NestedFrame)
+    for _, row in joined_compute.iterrows():
+        row_id = row["id"]
+        pd.testing.assert_frame_equal(
+            row["sources"].sort_values("source_ra").reset_index(drop=True),
+            pd.DataFrame(source_compute[source_compute["object_id"] == row_id].set_index("object_id"))
+            .sort_values("source_ra")
+            .reset_index(drop=True),
+            check_dtype=False,
+            check_column_type=False,
+            check_index_type=False,
+        )

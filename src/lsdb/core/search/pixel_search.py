@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, List, Tuple
 
-import pandas as pd
+import nested_pandas as npd
 from hipscat.pixel_math import HealpixPixel
 
 from lsdb.core.search.abstract_search import AbstractSearch
@@ -25,5 +25,5 @@ class PixelSearch(AbstractSearch):
     def filter_hc_catalog(self, hc_structure: HCCatalogTypeVar) -> HCCatalogTypeVar:
         return hc_structure.filter_from_pixel_list(self.pixels)
 
-    def search_points(self, frame: pd.DataFrame, _) -> pd.DataFrame:
+    def search_points(self, frame: npd.NestedFrame, _) -> npd.NestedFrame:
         return frame

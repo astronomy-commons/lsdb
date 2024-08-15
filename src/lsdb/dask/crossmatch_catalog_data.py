@@ -4,7 +4,7 @@ import warnings
 from typing import TYPE_CHECKING, Tuple, Type
 
 import dask
-import dask.dataframe as dd
+import nested_dask as nd
 from hipscat.pixel_tree import PixelAlignment
 
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
@@ -81,7 +81,7 @@ def crossmatch_catalog_data(
         Type[AbstractCrossmatchAlgorithm] | BuiltInCrossmatchAlgorithm
     ) = BuiltInCrossmatchAlgorithm.KD_TREE,
     **kwargs,
-) -> Tuple[dd.DataFrame, DaskDFPixelMap, PixelAlignment]:
+) -> Tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]:
     """Cross-matches the data from two catalogs
 
     Args:

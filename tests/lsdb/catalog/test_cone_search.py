@@ -1,3 +1,5 @@
+import nested_dask as nd
+import nested_pandas as npd
 import pandas as pd
 import pytest
 from astropy.coordinates import SkyCoord
@@ -11,7 +13,9 @@ def test_cone_search_filters_correct_points(small_sky_order1_catalog, assert_div
     radius = radius_degrees * 3600
     center_coord = SkyCoord(ra, dec, unit="deg")
     cone_search_catalog = small_sky_order1_catalog.cone_search(ra, dec, radius)
+    assert isinstance(cone_search_catalog._ddf, nd.NestedFrame)
     cone_search_df = cone_search_catalog.compute()
+    assert isinstance(cone_search_df, npd.NestedFrame)
     for _, row in small_sky_order1_catalog.compute().iterrows():
         row_ra = row[small_sky_order1_catalog.hc_structure.catalog_info.ra_column]
         row_dec = row[small_sky_order1_catalog.hc_structure.catalog_info.dec_column]

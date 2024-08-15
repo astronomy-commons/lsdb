@@ -1,3 +1,4 @@
+import nested_dask as nd
 import pandas as pd
 import pytest
 
@@ -6,6 +7,7 @@ from lsdb.core.search import OrderSearch
 
 def test_order_search_filters_correct_pixels(small_sky_source_catalog, assert_divisions_are_correct):
     order_search_catalog = small_sky_source_catalog.order_search(min_order=1, max_order=1)
+    assert isinstance(order_search_catalog._ddf, nd.NestedFrame)
     pixel_orders = [pixel.order for pixel in order_search_catalog.get_healpix_pixels()]
     assert all(order == 1 for order in pixel_orders)
     assert_divisions_are_correct(order_search_catalog)

@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from typing import Dict, List, Tuple
 
-import dask.dataframe as dd
 import healpy as hp
 import hipscat as hc
+import nested_dask as nd
+import nested_pandas as npd
 import numpy as np
 import pandas as pd
 from hipscat import pixel_math
@@ -39,7 +40,7 @@ class MarginCatalogGenerator:
             margin_threshold (float): The size of the margin cache boundary, in arcseconds
             use_pyarrow_types (bool): If True, use pyarrow types. Defaults to True.
         """
-        self.dataframe = catalog.compute().copy()
+        self.dataframe: npd.NestedFrame = catalog.compute().copy()
         self.hc_structure = catalog.hc_structure
         self.margin_threshold = margin_threshold
         self.margin_order = self._set_margin_order(margin_order)
@@ -83,7 +84,7 @@ class MarginCatalogGenerator:
         margin_structure = hc.catalog.MarginCatalog(margin_catalog_info, margin_pixels, schema=self.schema)
         return MarginCatalog(ddf, ddf_pixel_map, margin_structure)
 
-    def _get_margins(self) -> Tuple[List[HealpixPixel], List[pd.DataFrame]]:
+    def _get_margins(self) -> Tuple[List[HealpixPixel], List[npd.NestedFrame]]:
         """Generates the list of pixels that have margin data, and the dataframes with the margin data for
         each partition
 
@@ -101,7 +102,7 @@ class MarginCatalogGenerator:
 
     def _generate_dask_df_and_map(
         self, pixels: List[HealpixPixel], partitions: List[pd.DataFrame]
-    ) -> Tuple[dd.DataFrame, Dict[HealpixPixel, int], int]:
+    ) -> Tuple[nd.NestedFrame, Dict[HealpixPixel, int], int]:
         """Create the Dask Dataframe containing the data points in the margins
         for the catalog as well as the mapping of those HEALPix to Dataframes
 
@@ -163,7 +164,7 @@ class MarginCatalogGenerator:
         Returns:
             A dictionary mapping each margin pixel to the respective DataFrame.
         """
-        margin_pixel_df_map: Dict[HealpixPixel, pd.DataFrame] = {}
+        margin_pixel_df_map: Dict[HealpixPixel, npd.NestedFrame] = {}
         self.dataframe["margin_pixel"] = hp.ang2pix(
             2**self.margin_order,
             self.dataframe[self.hc_structure.catalog_info.ra_column].to_numpy(),
@@ -183,7 +184,9 @@ class MarginCatalogGenerator:
                     margin_pixel_df_map[margin_pixel] = df
         return margin_pixel_df_map
 
-    def _get_data_in_margin(self, partition_df: pd.DataFrame, margin_pixel: HealpixPixel) -> pd.DataFrame:
+    def _get_data_in_margin(
+        self, partition_df: npd.NestedFrame, margin_pixel: HealpixPixel
+    ) -> npd.NestedFrame:
         """Calculate the margin boundaries for the HEALPix and include the points
         on the margin according to the specified threshold
 
