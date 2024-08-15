@@ -30,6 +30,7 @@ extensions = [
     "sphinx.ext.viewcode",
     "sphinx.ext.intersphinx",
     "sphinx.ext.graphviz",
+    "sphinx_design",
 ]
 
 extensions.append("autoapi.extension")
@@ -66,6 +67,12 @@ autoapi_member_order = "bysource"
 html_theme = "sphinx_book_theme"
 html_static_path = ["_static"]
 html_css_files = ["custom.css"]
+
+html_logo = "_static/lincc_logo.png"
+html_title = "LSDB"
+html_context = {"default_mode": "light"}
+
+pygments_style = "sphinx"
 
 # Cross-link hipscat documentation from the API reference:
 # https://docs.readthedocs.io/en/stable/guides/intersphinx.html
