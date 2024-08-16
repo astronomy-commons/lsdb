@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
-import pandas as pd
+import nested_pandas as npd
 from hipscat.catalog.catalog_info import CatalogInfo
 from mocpy import MOC
 
@@ -40,5 +40,5 @@ class AbstractSearch(ABC):
         )
 
     @abstractmethod
-    def search_points(self, frame: pd.DataFrame, metadata: CatalogInfo) -> pd.DataFrame:
+    def search_points(self, frame: npd.NestedFrame, metadata: CatalogInfo) -> npd.NestedFrame:
         """Determine the search results within a data frame"""

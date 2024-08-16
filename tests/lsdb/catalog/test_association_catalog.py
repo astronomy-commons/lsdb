@@ -1,4 +1,5 @@
 import hipscat as hc
+import nested_dask as nd
 import pandas as pd
 
 import lsdb
@@ -8,6 +9,7 @@ from lsdb.catalog.association_catalog import AssociationCatalog
 def test_load_association(small_sky_to_xmatch_dir):
     small_sky_to_xmatch = lsdb.read_hipscat(small_sky_to_xmatch_dir)
     assert isinstance(small_sky_to_xmatch, AssociationCatalog)
+    assert isinstance(small_sky_to_xmatch._ddf, nd.NestedFrame)
     assert small_sky_to_xmatch.get_healpix_pixels() == small_sky_to_xmatch.hc_structure.get_healpix_pixels()
     assert repr(small_sky_to_xmatch) == repr(small_sky_to_xmatch._ddf)
     for healpix_pixel in small_sky_to_xmatch.get_healpix_pixels():
@@ -26,4 +28,5 @@ def test_load_association(small_sky_to_xmatch_dir):
 def test_load_soft_association(small_sky_to_xmatch_soft_dir):
     small_sky_to_xmatch_soft = lsdb.read_hipscat(small_sky_to_xmatch_soft_dir)
     assert isinstance(small_sky_to_xmatch_soft, AssociationCatalog)
+    assert isinstance(small_sky_to_xmatch_soft._ddf, nd.NestedFrame)
     assert len(small_sky_to_xmatch_soft.compute()) == 0

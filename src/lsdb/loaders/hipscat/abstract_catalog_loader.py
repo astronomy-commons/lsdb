@@ -3,10 +3,10 @@ from __future__ import annotations
 from abc import abstractmethod
 from typing import Generic, List, Tuple, Type
 
-import dask.dataframe as dd
 import hipscat as hc
+import nested_dask as nd
+import nested_pandas as npd
 import numpy as np
-import pandas as pd
 import pyarrow as pa
 from hipscat.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
 from hipscat.io.file_io import file_io
@@ -54,7 +54,7 @@ class AbstractCatalogLoader(Generic[CatalogTypeVar]):
             )
         return hc_catalog
 
-    def _load_dask_df_and_map(self, catalog: HCHealpixDataset) -> Tuple[dd.DataFrame, DaskDFPixelMap]:
+    def _load_dask_df_and_map(self, catalog: HCHealpixDataset) -> Tuple[nd.NestedFrame, DaskDFPixelMap]:
         """Load Dask DF from parquet files and make dict of HEALPix pixel to partition index"""
         pixels = catalog.get_healpix_pixels()
         ordered_pixels = np.array(pixels)[get_pixel_argsort(pixels)]
@@ -77,10 +77,10 @@ class AbstractCatalogLoader(Generic[CatalogTypeVar]):
 
     def _load_df_from_paths(
         self, catalog: HCHealpixDataset, paths: List[hc.io.FilePointer], divisions: Tuple[int, ...] | None
-    ) -> dd.DataFrame:
+    ) -> nd.NestedFrame:
         dask_meta_schema = self._create_dask_meta_schema(catalog.schema)
         if len(paths) > 0:
-            return dd.from_map(
+            return nd.NestedFrame.from_map(
                 file_io.read_parquet_file_to_pandas,
                 paths,
                 columns=self.config.columns,
@@ -90,14 +90,14 @@ class AbstractCatalogLoader(Generic[CatalogTypeVar]):
                 storage_options=self.storage_options,
                 **self._get_kwargs(),
             )
-        return dd.from_pandas(dask_meta_schema, npartitions=1)
+        return nd.NestedFrame.from_pandas(dask_meta_schema, npartitions=1)
 
-    def _create_dask_meta_schema(self, schema: pa.Schema) -> pd.DataFrame:
+    def _create_dask_meta_schema(self, schema: pa.Schema) -> npd.NestedFrame:
         """Creates the Dask meta DataFrame from the HiPSCat catalog schema."""
         dask_meta_schema = schema.empty_table().to_pandas(types_mapper=self.config.get_dtype_mapper())
         if self.config.columns is not None:
             dask_meta_schema = dask_meta_schema[self.config.columns]
-        return dask_meta_schema
+        return npd.NestedFrame(dask_meta_schema)
 
     def _get_kwargs(self) -> dict:
         """Constructs additional arguments for the `read_parquet` call"""

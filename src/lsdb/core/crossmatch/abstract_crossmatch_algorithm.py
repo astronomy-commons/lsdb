@@ -3,6 +3,7 @@ from __future__ import annotations
 from abc import ABC
 from typing import TYPE_CHECKING, Tuple
 
+import nested_pandas as npd
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
@@ -35,8 +36,8 @@ class AbstractCrossmatchAlgorithm(ABC):
 
     The class will have been initialized with the following parameters, which the
     crossmatch function should use:
-        - left: pd.DataFrame,
-        - right: pd.DataFrame,
+        - left: npd.NestedFrame,
+        - right: npd.NestedFrame,
         - left_order: int,
         - left_pixel: int,
         - right_order: int,
@@ -57,8 +58,8 @@ class AbstractCrossmatchAlgorithm(ABC):
 
     def __init__(
         self,
-        left: pd.DataFrame,
-        right: pd.DataFrame,
+        left: npd.NestedFrame,
+        right: npd.NestedFrame,
         left_order: int,
         left_pixel: int,
         right_order: int,
@@ -103,7 +104,7 @@ class AbstractCrossmatchAlgorithm(ABC):
         self.suffixes = suffixes
         self.how = how
 
-    def crossmatch(self, **kwargs) -> pd.DataFrame:
+    def crossmatch(self, **kwargs) -> npd.NestedFrame:
         """Perform a crossmatch"""
         l_inds, r_inds, extra_cols = self.perform_crossmatch(**kwargs)
         if not len(l_inds) == len(r_inds):
@@ -167,7 +168,7 @@ class AbstractCrossmatchAlgorithm(ABC):
         dataframe.rename(columns=columns_renamed, inplace=True)
 
     @classmethod
-    def _append_extra_columns(cls, dataframe: pd.DataFrame, extra_columns: pd.DataFrame | None = None):
+    def _append_extra_columns(cls, dataframe: npd.NestedFrame, extra_columns: pd.DataFrame | None = None):
         """Adds crossmatch extra columns to the resulting Dataframe."""
         if cls.extra_columns is None:
             return
@@ -195,7 +196,7 @@ class AbstractCrossmatchAlgorithm(ABC):
         left_idx: npt.NDArray[np.int64],
         right_idx: npt.NDArray[np.int64],
         extra_cols: pd.DataFrame,
-    ) -> pd.DataFrame:
+    ) -> npd.NestedFrame:
         """Creates a df containing the crossmatch result from matching indices and additional columns
 
         Args:
@@ -217,7 +218,7 @@ class AbstractCrossmatchAlgorithm(ABC):
         # concatenate the left and right parts, and set the index
         out = pd.concat([left_join_part, right_join_part], axis=1)
         out.set_index(HIPSCAT_ID_COLUMN, inplace=True)
-        return out
+        return npd.NestedFrame(out)
 
     def _generate_right_join_part(
         self, right_idx: npt.NDArray[np.int64], extra_columns: pd.DataFrame

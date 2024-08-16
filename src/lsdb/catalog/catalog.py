@@ -3,8 +3,9 @@ from __future__ import annotations
 import dataclasses
 from typing import List, Tuple, Type
 
-import dask.dataframe as dd
 import hipscat as hc
+import nested_dask as nd
+import nested_pandas as npd
 import pandas as pd
 from hipscat.catalog.index.index_catalog import IndexCatalog as HCIndexCatalog
 from hipscat.pixel_math.polygon_filter import SphericalCoordinates
@@ -18,7 +19,11 @@ from lsdb.core.search import BoxSearch, ConeSearch, IndexSearch, OrderSearch, Po
 from lsdb.core.search.abstract_search import AbstractSearch
 from lsdb.core.search.pixel_search import PixelSearch
 from lsdb.dask.crossmatch_catalog_data import crossmatch_catalog_data
-from lsdb.dask.join_catalog_data import join_catalog_data_on, join_catalog_data_through
+from lsdb.dask.join_catalog_data import (
+    join_catalog_data_nested,
+    join_catalog_data_on,
+    join_catalog_data_through,
+)
 from lsdb.dask.partition_indexer import PartitionIndexer
 from lsdb.io.schema import get_arrow_schema
 from lsdb.types import DaskDFPixelMap
@@ -38,7 +43,7 @@ class Catalog(HealpixDataset):
 
     def __init__(
         self,
-        ddf: dd.DataFrame,
+        ddf: nd.NestedFrame,
         ddf_pixel_map: DaskDFPixelMap,
         hc_structure: hc.catalog.Catalog,
         margin: MarginCatalog | None = None,
@@ -61,7 +66,7 @@ class Catalog(HealpixDataset):
         """Returns the partitions of the catalog"""
         return PartitionIndexer(self)
 
-    def head(self, n: int = 5) -> pd.DataFrame:
+    def head(self, n: int = 5) -> npd.NestedFrame:
         """Returns a few rows of data for previewing purposes.
 
         Args:
@@ -80,7 +85,7 @@ class Catalog(HealpixDataset):
                 dfs.append(partition_head)
                 remaining_rows -= len(partition_head)
         if len(dfs) > 0:
-            return pd.concat(dfs)
+            return npd.NestedFrame(pd.concat(dfs))
         return self._ddf._meta
 
     def query(self, expr: str) -> Catalog:
@@ -154,8 +159,8 @@ class Catalog(HealpixDataset):
 
                     The class will have been initialized with the following parameters, which the
                     crossmatch function should use:
-                        - left: pd.DataFrame,
-                        - right: pd.DataFrame,
+                        - left: npd.NestedFrame,
+                        - right: npd.NestedFrame,
                         - left_order: int,
                         - left_pixel: int,
                         - right_order: int,
@@ -315,9 +320,9 @@ class Catalog(HealpixDataset):
             A new Catalog containing the points filtered to those matching the search parameters.
         """
         filtered_hc_structure = search.filter_hc_catalog(self.hc_structure)
-        ddf_partition_map, search_ddf = self._perform_search(filtered_hc_structure, search)
+        ddf_partition_map, search_ndf = self._perform_search(filtered_hc_structure, search)
         margin = self.margin.search(search) if self.margin is not None else None
-        return Catalog(search_ddf, ddf_partition_map, filtered_hc_structure, margin=margin)
+        return Catalog(search_ndf, ddf_partition_map, filtered_hc_structure, margin=margin)
 
     def merge(
         self,
@@ -329,7 +334,7 @@ class Catalog(HealpixDataset):
         left_index: bool = False,
         right_index: bool = False,
         suffixes: Tuple[str, str] | None = None,
-    ) -> dd.DataFrame:
+    ) -> nd.NestedFrame:
         """Performs the merge of two catalog Dataframes
 
         More information about pandas merge is available
@@ -443,4 +448,61 @@ class Catalog(HealpixDataset):
             dec_column=self.hc_structure.catalog_info.dec_column + suffixes[0],
         )
         hc_catalog = hc.catalog.Catalog(new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(ddf))
+        return Catalog(ddf, ddf_map, hc_catalog)
+
+    def join_nested(
+        self,
+        other: Catalog,
+        left_on: str | None = None,
+        right_on: str | None = None,
+        nested_column_name: str | None = None,
+        output_catalog_name: str | None = None,
+    ) -> Catalog:
+        """Perform a spatial join to another catalog by adding the other catalog as a nested column
+
+        Joins two catalogs together on a shared column value, merging rows where they match.
+
+        The result is added as a nested dataframe column using
+        `nested-dask <https://github.com/lincc-frameworks/nested-dask>`__, where the right catalog's columns
+        are encoded within a column in the resulting dataframe. For more information, view the
+        `nested-dask documentation <https://nested-dask.readthedocs.io/en/latest/>`__.
+
+        The operation only joins data from matching partitions and their margin caches, and does not join rows
+        that have a matching column value but are in separate partitions in the sky. For a more general join,
+        see the `merge` function.
+
+        Args:
+            other (Catalog): the right catalog to join to
+            left_on (str): the name of the column in the left catalog to join on
+            right_on (str): the name of the column in the right catalog to join on
+            nested_column_name (str): the name of the nested column in the resulting dataframe storing the
+                joined columns in the right catalog. (Default: name of right catalog)
+            output_catalog_name (str): The name of the resulting catalog to be stored in metadata
+
+        Returns:
+            A new catalog with the columns from each of the input catalogs with their respective suffixes
+            added, and the rows merged on the specified columns.
+        """
+
+        if left_on is None or right_on is None:
+            raise ValueError("Both of left_on and right_on must be set")
+
+        if left_on not in self._ddf.columns:
+            raise ValueError("left_on must be a column in the left catalog")
+
+        if right_on not in other._ddf.columns:
+            raise ValueError("right_on must be a column in the right catalog")
+
+        ddf, ddf_map, alignment = join_catalog_data_nested(
+            self, other, left_on, right_on, nested_column_name=nested_column_name
+        )
+
+        if output_catalog_name is None:
+            output_catalog_name = self.hc_structure.catalog_info.catalog_name
+
+        new_catalog_info = dataclasses.replace(
+            self.hc_structure.catalog_info,
+            catalog_name=output_catalog_name,
+        )
+        hc_catalog = hc.catalog.Catalog(new_catalog_info, alignment.pixel_tree)
         return Catalog(ddf, ddf_map, hc_catalog)

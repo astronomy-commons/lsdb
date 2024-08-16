@@ -1,4 +1,4 @@
-import dask.dataframe as dd
+import nested_dask as nd
 import pandas as pd
 import pytest
 
@@ -10,10 +10,10 @@ def test_catalog_merge_on_indices(small_sky_catalog, small_sky_order1_catalog, h
     small_sky_catalog._ddf = small_sky_catalog._ddf.set_index("id")
     small_sky_order1_catalog._ddf = small_sky_order1_catalog._ddf.set_index("id")
     # The wrapper outputs the same result as the underlying pandas merge
-    merged_ddf = small_sky_catalog.merge(small_sky_order1_catalog, **kwargs)
-    assert isinstance(merged_ddf, dd.DataFrame)
+    merged_ndf = small_sky_catalog.merge(small_sky_order1_catalog, **kwargs)
+    assert isinstance(merged_ndf, nd.NestedFrame)
     expected_df = small_sky_catalog._ddf.merge(small_sky_order1_catalog._ddf, **kwargs)
-    pd.testing.assert_frame_equal(expected_df.compute(), merged_ddf.compute())
+    pd.testing.assert_frame_equal(expected_df.compute(), merged_ndf.compute())
 
 
 @pytest.mark.parametrize("how", ["left", "right", "inner", "outer"])
@@ -24,7 +24,7 @@ def test_catalog_merge_on_columns(small_sky_catalog, small_sky_order1_catalog, h
     small_sky_order1_catalog._ddf = small_sky_order1_catalog._ddf.reset_index()
     # The wrapper outputs the same result as the underlying pandas merge
     merged_ddf = small_sky_catalog.merge(small_sky_order1_catalog, **kwargs)
-    assert isinstance(merged_ddf, dd.DataFrame)
+    assert isinstance(merged_ddf, nd.NestedFrame)
     expected_df = small_sky_catalog._ddf.merge(small_sky_order1_catalog._ddf, **kwargs)
     pd.testing.assert_frame_equal(expected_df.compute(), merged_ddf.compute())
 
@@ -38,7 +38,7 @@ def test_catalog_merge_on_index_and_column(small_sky_catalog, small_sky_order1_c
     small_sky_order1_catalog._ddf = small_sky_order1_catalog._ddf.reset_index()
     # The wrapper outputs the same result as the underlying pandas merge
     merged_ddf = small_sky_catalog.merge(small_sky_order1_catalog, **kwargs)
-    assert isinstance(merged_ddf, dd.DataFrame)
+    assert isinstance(merged_ddf, nd.NestedFrame)
     expected_df = small_sky_catalog._ddf.merge(small_sky_order1_catalog._ddf, **kwargs)
     pd.testing.assert_frame_equal(expected_df.compute(), merged_ddf.compute())
 
@@ -52,7 +52,7 @@ def test_catalog_merge_invalid_suffixes(small_sky_catalog, small_sky_order1_cata
 
 def test_catalog_merge_no_suffixes(small_sky_catalog, small_sky_order1_catalog):
     merged_ddf = small_sky_catalog.merge(small_sky_order1_catalog, how="inner", on="id")
-    assert isinstance(merged_ddf, dd.DataFrame)
+    assert isinstance(merged_ddf, nd.NestedFrame)
     # Get the columns with the same name in both catalogs
     non_join_columns_left = small_sky_catalog._ddf.columns.drop("id")
     non_join_columns_right = small_sky_order1_catalog._ddf.columns.drop("id")

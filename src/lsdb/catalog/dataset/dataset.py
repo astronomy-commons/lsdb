@@ -1,8 +1,8 @@
 from typing import List
 
-import dask.dataframe as dd
 import hipscat as hc
-import pandas as pd
+import nested_dask as nd
+import nested_pandas as npd
 from dask.delayed import Delayed
 
 
@@ -11,7 +11,7 @@ class Dataset:
 
     def __init__(
         self,
-        ddf: dd.DataFrame,
+        ddf: nd.NestedFrame,
         hc_structure: hc.catalog.Dataset,
     ):
         """Initialise a Catalog object.
@@ -34,7 +34,7 @@ class Dataset:
         data = self._ddf._repr_data().to_html(max_rows=5, show_dimensions=False, notebook=True)
         return f"<div><strong>lsdb Catalog {self.name}:</strong></div>{data}"
 
-    def compute(self) -> pd.DataFrame:
+    def compute(self) -> npd.NestedFrame:
         """Compute dask distributed dataframe to pandas dataframe"""
         return self._ddf.compute()
 

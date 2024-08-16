@@ -7,6 +7,8 @@ import dask
 import dask.dataframe as dd
 import healpy as hp
 import hipscat as hc
+import nested_dask as nd
+import nested_pandas as npd
 import numpy as np
 import pandas as pd
 from dask.delayed import Delayed, delayed
@@ -38,7 +40,7 @@ class HealpixDataset(Dataset):
 
     def __init__(
         self,
-        ddf: dd.DataFrame,
+        ddf: nd.NestedFrame,
         ddf_pixel_map: DaskDFPixelMap,
         hc_structure: HCHealpixDataset,
     ):
@@ -57,7 +59,7 @@ class HealpixDataset(Dataset):
 
     def __getitem__(self, item):
         result = self._ddf.__getitem__(item)
-        if isinstance(result, dd.DataFrame):
+        if isinstance(result, nd.NestedFrame):
             return self.__class__(result, self._ddf_pixel_map, self.hc_structure)
         return result
 
@@ -79,7 +81,7 @@ class HealpixDataset(Dataset):
         pixels = self.get_healpix_pixels()
         return np.array(pixels)[get_pixel_argsort(pixels)]
 
-    def get_partition(self, order: int, pixel: int) -> dd.DataFrame:
+    def get_partition(self, order: int, pixel: int) -> nd.NestedFrame:
         """Get the dask partition for a given HEALPix pixel
 
         Args:
@@ -124,14 +126,14 @@ class HealpixDataset(Dataset):
             A catalog that contains the data from the original catalog that complies
             with the query expression
         """
-        ddf = self._ddf.query(expr)
-        return self.__class__(ddf, self._ddf_pixel_map, self.hc_structure)
+        ndf = self._ddf.query(expr)
+        return self.__class__(ndf, self._ddf_pixel_map, self.hc_structure)
 
     def _perform_search(
         self,
         metadata: hc.catalog.Catalog | hc.catalog.MarginCatalog,
         search: AbstractSearch,
-    ) -> Tuple[DaskDFPixelMap, dd.DataFrame]:
+    ) -> Tuple[DaskDFPixelMap, nd.NestedFrame]:
         """Performs a search on the catalog from a list of pixels to search in
 
         Args:
@@ -146,7 +148,7 @@ class HealpixDataset(Dataset):
         """
         filtered_pixels = metadata.get_healpix_pixels()
         if len(filtered_pixels) == 0:
-            return {}, dd.from_pandas(self._ddf._meta)
+            return {}, nd.NestedFrame.from_pandas(self._ddf._meta)
         target_partitions_indices = [self._ddf_pixel_map[pixel] for pixel in filtered_pixels]
         filtered_partitions_ddf = self._ddf.partitions[target_partitions_indices]
         if search.fine:
@@ -161,7 +163,7 @@ class HealpixDataset(Dataset):
 
     def map_partitions(
         self,
-        func: Callable[..., pd.DataFrame],
+        func: Callable[..., npd.NestedFrame],
         *args,
         meta: pd.DataFrame | pd.Series | Dict | Iterable | Tuple | None = None,
         include_pixel: bool = False,
@@ -173,11 +175,11 @@ class HealpixDataset(Dataset):
 
         Args:
             func (Callable): The function applied to each partition, which will be called with:
-                `func(partition: pd.DataFrame, *args, **kwargs)` with the additional args and kwargs passed to
-                the `map_partitions` function. If the `include_pixel` parameter is set, the function will be
-                called with the `healpix_pixel` as the second positional argument set to the healpix pixel
+                `func(partition: npd.NestedFrame, *args, **kwargs)` with the additional args and kwargs passed
+                to the `map_partitions` function. If the `include_pixel` parameter is set, the function will
+                be called with the `healpix_pixel` as the second positional argument set to the healpix pixel
                 of the partition as
-                `func(partition: pd.DataFrame, healpix_pixel: HealpixPixel, *args, **kwargs)`
+                `func(partition: npd.NestedFrame, healpix_pixel: HealpixPixel, *args, **kwargs)`
             *args: Additional positional arguments to call `func` with.
             meta (pd.DataFrame | pd.Series | Dict | Iterable | Tuple | None): An empty pandas DataFrame that
                 has columns matching the output of the function applied to a partition. Other types are
@@ -222,8 +224,10 @@ class HealpixDataset(Dataset):
         else:
             output_ddf = self._ddf.map_partitions(func, *args, meta=meta, **kwargs)
 
-        if isinstance(output_ddf, dd.DataFrame):
-            return self.__class__(output_ddf, self._ddf_pixel_map, self.hc_structure)
+        if isinstance(output_ddf, nd.NestedFrame) | isinstance(output_ddf, dd.DataFrame):
+            return self.__class__(
+                nd.NestedFrame.from_dask_dataframe(output_ddf), self._ddf_pixel_map, self.hc_structure
+            )
         warnings.warn(
             "output of the function must be a DataFrame to generate an LSDB `Catalog`. `map_partitions` "
             "will return a dask object instead of a Catalog.",
@@ -247,7 +251,7 @@ class HealpixDataset(Dataset):
         search_ddf = (
             self._ddf.partitions[non_empty_partitions]
             if len(non_empty_partitions) > 0
-            else dd.from_pandas(self._ddf._meta, npartitions=1)
+            else nd.NestedFrame.from_pandas(self._ddf._meta, npartitions=1)
         )
         ddf_partition_map = {pixel: i for i, pixel in enumerate(non_empty_pixels)}
         filtered_hc_structure = self.hc_structure.filter_from_pixel_list(non_empty_pixels)
@@ -276,7 +280,7 @@ class HealpixDataset(Dataset):
 
     def skymap_data(
         self,
-        func: Callable[[pd.DataFrame, HealpixPixel], Any],
+        func: Callable[[npd.NestedFrame, HealpixPixel], Any],
         order: int | None = None,
         default_value: Any = 0.0,
         **kwargs,
@@ -284,7 +288,7 @@ class HealpixDataset(Dataset):
         """Perform a function on each partition of the catalog, returning a dict of values for each pixel.
 
         Args:
-            func (Callable[[pd.DataFrame, HealpixPixel], Any]): A function that takes a pandas
+            func (Callable[[npd.NestedFrame, HealpixPixel], Any]): A function that takes a pandas
                 DataFrame with the data in a partition, the HealpixPixel of the partition, and any other
                 keyword arguments and returns an aggregated value
             order (int | None): The HEALPix order to compute the skymap at. If None (default),
@@ -321,7 +325,7 @@ class HealpixDataset(Dataset):
 
     def skymap_histogram(
         self,
-        func: Callable[[pd.DataFrame, HealpixPixel], Any],
+        func: Callable[[npd.NestedFrame, HealpixPixel], Any],
         order: int | None = None,
         default_value: Any = 0.0,
         **kwargs,
@@ -330,8 +334,8 @@ class HealpixDataset(Dataset):
         a given order
 
         Args:
-            func (Callable[[pd.DataFrame], HealpixPixel, Any]): A function that takes a pandas DataFrame and
-                the HealpixPixel the partition is from and returns a value
+            func (Callable[[npd.NestedFrame, HealpixPixel], Any]): A function that takes a pandas DataFrame
+                and the HealpixPixel the partition is from and returns a value
             order (int | None): The HEALPix order to compute the skymap at. If None (default),
                 will compute for each partition in the catalog at their own orders. If a value
                 other than None, each partition will be grouped by pixel number at the order
@@ -357,7 +361,7 @@ class HealpixDataset(Dataset):
 
     def skymap(
         self,
-        func: Callable[[pd.DataFrame, HealpixPixel], Any],
+        func: Callable[[npd.NestedFrame, HealpixPixel], Any],
         order: int | None = None,
         default_value: Any = hp.pixelfunc.UNSEEN,
         projection="moll",
@@ -367,8 +371,8 @@ class HealpixDataset(Dataset):
         """Plot a skymap of an aggregate function applied over each partition
 
         Args:
-            func (Callable[[pd.DataFrame], HealpixPixel, Any]): A function that takes a pandas DataFrame and
-                the HealpixPixel the partition is from and returns a value
+            func (Callable[[npd.NestedFrame, HealpixPixel], Any]): A function that takes a pandas DataFrame
+                and the HealpixPixel the partition is from and returns a value
             order (int | None): The HEALPix order to compute the skymap at. If None (default),
                 will compute for each partition in the catalog at their own orders. If a value
                 other than None, each partition will be grouped by pixel number at the order

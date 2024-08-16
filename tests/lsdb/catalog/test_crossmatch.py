@@ -1,3 +1,5 @@
+import nested_dask as nd
+import nested_pandas as npd
 import numpy as np
 import pandas as pd
 import pyarrow as pa
@@ -18,9 +20,12 @@ class TestCrossmatch:
     @staticmethod
     def test_kdtree_crossmatch(algo, small_sky_catalog, small_sky_xmatch_catalog, xmatch_correct):
         with pytest.warns(RuntimeWarning, match="Results may be incomplete and/or inaccurate"):
-            xmatched = small_sky_catalog.crossmatch(
+            xmatched_cat = small_sky_catalog.crossmatch(
                 small_sky_xmatch_catalog, algorithm=algo, radius_arcsec=0.01 * 3600
-            ).compute()
+            )
+            assert isinstance(xmatched_cat._ddf, nd.NestedFrame)
+            xmatched = xmatched_cat.compute()
+        assert isinstance(xmatched, npd.NestedFrame)
         assert len(xmatched) == len(xmatch_correct)
         for _, correct_row in xmatch_correct.iterrows():
             assert correct_row["ss_id"] in xmatched["id_small_sky"].to_numpy()

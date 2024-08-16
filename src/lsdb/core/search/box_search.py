@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import Tuple
 
+import nested_pandas as npd
 import numpy as np
-import pandas as pd
 from hipscat.catalog.catalog_info import CatalogInfo
 from hipscat.pixel_math.box_filter import generate_box_moc, wrap_ra_angles
 from hipscat.pixel_math.validators import validate_box_search
@@ -34,21 +34,21 @@ class BoxSearch(AbstractSearch):
     def generate_search_moc(self, max_order: int) -> MOC:
         return generate_box_moc(self.ra, self.dec, max_order)
 
-    def search_points(self, frame: pd.DataFrame, metadata: CatalogInfo) -> pd.DataFrame:
+    def search_points(self, frame: npd.NestedFrame, metadata: CatalogInfo) -> npd.NestedFrame:
         """Determine the search results within a data frame"""
         return box_filter(frame, self.ra, self.dec, metadata)
 
 
 def box_filter(
-    data_frame: pd.DataFrame,
+    data_frame: npd.NestedFrame,
     ra: Tuple[float, float] | None,
     dec: Tuple[float, float] | None,
     metadata: CatalogInfo,
-):
+) -> npd.NestedFrame:
     """Filters a dataframe to only include points within the specified box region.
 
     Args:
-        data_frame (pd.DataFrame): DataFrame containing points in the sky
+        data_frame (npd.NestedFrame): DataFrame containing points in the sky
         ra (Tuple[float, float]): Right ascension range, in degrees
         dec (Tuple[float, float]): Declination range, in degrees
         metadata (hc.catalog.Catalog): hipscat `Catalog` with catalog_info that matches `data_frame`

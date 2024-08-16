@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Callable, List, Sequence, Tuple, cast
+from typing import TYPE_CHECKING, Any, Callable, List, Sequence, Tuple
 
-import dask.dataframe as dd
 import healpy as hp
+import nested_dask as nd
+import nested_pandas as npd
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
@@ -25,13 +26,13 @@ if TYPE_CHECKING:
 
 
 def concat_partition_and_margin(
-    partition: pd.DataFrame, margin: pd.DataFrame | None, right_columns: List[str]
-) -> pd.DataFrame:
+    partition: npd.NestedFrame, margin: npd.NestedFrame | None, right_columns: List[str]
+) -> npd.NestedFrame:
     """Concatenates a partition and margin dataframe together
 
     Args:
-        partition (pd.DataFrame): The partition dataframe
-        margin (pd.DataFrame): The margin dataframe
+        partition (npd.NestedFrame): The partition dataframe
+        margin (npd.NestedFrame): The margin dataframe
 
     Returns:
         The concatenated dataframe with the partition on top and the margin on the bottom
@@ -55,7 +56,7 @@ def concat_partition_and_margin(
     margin_renamed = margin[margin_columns_no_hive].rename(columns=rename_columns)
     margin_filtered = margin_renamed[right_columns]
     joined_df = pd.concat([partition, margin_filtered]) if margin_filtered is not None else partition
-    return joined_df
+    return npd.NestedFrame(joined_df)
 
 
 def align_catalogs(
@@ -173,11 +174,11 @@ def align_and_apply(
     return resulting_partitions
 
 
-def filter_by_hipscat_index_to_pixel(dataframe: pd.DataFrame, order: int, pixel: int) -> pd.DataFrame:
+def filter_by_hipscat_index_to_pixel(dataframe: npd.NestedFrame, order: int, pixel: int) -> npd.NestedFrame:
     """Filters a catalog dataframe to the points within a specified HEALPix pixel using the hipscat index
 
     Args:
-        dataframe (pd.DataFrame): The dataframe to filter
+        dataframe (npd.NestedFrame): The dataframe to filter
         order (int): The order of the HEALPix pixel to filter to
         pixel (int): The pixel number in NESTED numbering of the HEALPix pixel to filter to
 
@@ -191,13 +192,13 @@ def filter_by_hipscat_index_to_pixel(dataframe: pd.DataFrame, order: int, pixel:
 
 
 def construct_catalog_args(
-    partitions: List[Delayed], meta_df: pd.DataFrame, alignment: PixelAlignment
-) -> Tuple[dd.DataFrame, DaskDFPixelMap, PixelAlignment]:
+    partitions: List[Delayed], meta_df: npd.NestedFrame, alignment: PixelAlignment
+) -> Tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]:
     """Constructs the arguments needed to create a catalog from a list of delayed partitions
 
     Args:
         partitions (List[Delayed]): The list of delayed partitions to create the catalog from
-        meta_df (pd.DataFrame): The dask meta schema for the partitions
+        meta_df (npd.NestedFrame): The dask meta schema for the partitions
         alignment (PixelAlignment): The alignment used to create the delayed partitions
 
     Returns:
@@ -208,9 +209,8 @@ def construct_catalog_args(
     partition_map = get_partition_map_from_alignment_pixels(alignment.pixel_mapping)
     # create dask df from delayed partitions
     divisions = get_pixels_divisions(list(partition_map.keys()))
-    partitions = partitions if len(partitions) > 0 else [delayed(pd.DataFrame([]))]
-    ddf = dd.from_delayed(partitions, meta=meta_df, divisions=divisions)
-    ddf = cast(dd.DataFrame, ddf)
+    partitions = partitions if len(partitions) > 0 else [delayed(meta_df.copy())]
+    ddf = nd.NestedFrame.from_delayed(partitions, meta=meta_df, divisions=divisions, verify_meta=True)
     return ddf, partition_map, alignment
 
 
@@ -250,7 +250,7 @@ def generate_meta_df_for_joined_tables(
     extra_columns: pd.DataFrame | None = None,
     index_name: str = HIPSCAT_ID_COLUMN,
     index_type: npt.DTypeLike = np.uint64,
-) -> pd.DataFrame:
+) -> npd.NestedFrame:
     """Generates a Dask meta DataFrame that would result from joining two catalogs
 
     Creates an empty dataframe with the columns of each catalog appended with a suffix. Allows specifying
@@ -277,7 +277,56 @@ def generate_meta_df_for_joined_tables(
         meta.update(extra_columns)
     index = pd.Index(pd.Series(dtype=index_type), name=index_name)
     meta_df = pd.DataFrame(meta, index)
-    return meta_df
+    return npd.NestedFrame(meta_df)
+
+
+def generate_meta_df_for_nested_tables(
+    catalogs: Sequence[Catalog],
+    nested_catalog: Catalog,
+    nested_column_name: str,
+    join_column_name: str,
+    extra_columns: pd.DataFrame | None = None,
+    index_name: str = HIPSCAT_ID_COLUMN,
+    index_type: npt.DTypeLike = np.uint64,
+) -> npd.NestedFrame:
+    """Generates a Dask meta DataFrame that would result from joining two catalogs, adding the right as a
+    nested frame
+
+    Creates an empty dataframe with the columns of the left catalog, and a nested column with the right
+    catalog. Allows specifying extra columns that should also be added, and the name of the index of the
+    resulting dataframe.
+
+    Args:
+        catalogs (Sequence[lsdb.Catalog]): The catalogs to merge together
+        nested_catalog (Catalog): The catalog to add as a nested column
+        nested_column_name (str): The name of the nested column
+        join_column_name (str): The name of the column in the right catalog to join on
+        extra_columns (pd.Dataframe): Any additional columns to the merged catalogs
+        index_name (str): The name of the index in the resulting DataFrame
+        index_type (npt.DTypeLike): The type of the index in the resulting DataFrame
+
+    Returns:
+        An empty dataframe with the right catalog joined to the left as a nested column, and any extra
+        columns specified, with the index name set.
+    """
+    meta = {}
+    # Construct meta for crossmatched catalog columns
+    for table in catalogs:
+        for name, col_type in table.dtypes.items():
+            meta[name] = pd.Series(dtype=col_type)
+    # Construct meta for crossmatch result columns
+    if extra_columns is not None:
+        meta.update(extra_columns)
+    index = pd.Index(pd.Series(dtype=index_type), name=index_name)
+    meta_df = pd.DataFrame(meta, index)
+
+    # make an empty copy of the nested catalog, removing the column that will be joined on (and removed from
+    # the eventual dataframe)
+    # pylint: disable=protected-access
+    nested_catalog_meta = nested_catalog._ddf._meta.copy().iloc[:0].drop(join_column_name, axis=1)
+
+    # Use nested-pandas to make the resulting meta with the nested catalog meta as a nested column
+    return npd.NestedFrame(meta_df).add_nested(nested_catalog_meta, nested_column_name)
 
 
 def get_partition_map_from_alignment_pixels(join_pixels: pd.DataFrame) -> DaskDFPixelMap:

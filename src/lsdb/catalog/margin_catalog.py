@@ -1,5 +1,5 @@
-import dask.dataframe as dd
 import hipscat as hc
+import nested_dask as nd
 
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
 from lsdb.core.search.abstract_search import AbstractSearch
@@ -19,7 +19,7 @@ class MarginCatalog(HealpixDataset):
 
     def __init__(
         self,
-        ddf: dd.DataFrame,
+        ddf: nd.NestedFrame,
         ddf_pixel_map: DaskDFPixelMap,
         hc_structure: hc.catalog.MarginCatalog,
     ):
@@ -38,5 +38,5 @@ class MarginCatalog(HealpixDataset):
             A new Catalog containing the points filtered to those matching the search parameters.
         """
         filtered_hc_structure = search.filter_hc_catalog(self.hc_structure)
-        ddf_partition_map, search_ddf = self._perform_search(filtered_hc_structure, search)
-        return self.__class__(search_ddf, ddf_partition_map, filtered_hc_structure)
+        ddf_partition_map, search_ndf = self._perform_search(filtered_hc_structure, search)
+        return self.__class__(search_ndf, ddf_partition_map, filtered_hc_structure)

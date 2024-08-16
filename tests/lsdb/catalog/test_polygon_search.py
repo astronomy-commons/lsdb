@@ -1,3 +1,5 @@
+import nested_dask as nd
+import nested_pandas as npd
 import numpy as np
 import numpy.testing as npt
 import pytest
@@ -10,7 +12,9 @@ def test_polygon_search_filters_correct_points(small_sky_order1_catalog, assert_
     vertices = [(300, -50), (300, -55), (272, -55), (272, -50)]
     polygon, _ = get_cartesian_polygon(vertices)
     polygon_search_catalog = small_sky_order1_catalog.polygon_search(vertices)
+    assert isinstance(polygon_search_catalog._ddf, nd.NestedFrame)
     polygon_search_df = polygon_search_catalog.compute()
+    assert isinstance(polygon_search_df, npd.NestedFrame)
     ra_values_radians = np.radians(
         polygon_search_df[small_sky_order1_catalog.hc_structure.catalog_info.ra_column]
     )
