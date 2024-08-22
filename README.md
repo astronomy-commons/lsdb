@@ -1,5 +1,5 @@
-<img src="https://github.com/lincc-frameworks/tape/blob/main/docs/DARK_Combo_sm.png?raw=true" width="300" height="100">
-<img src="https://user-images.githubusercontent.com/113376043/211332292-4705c34c-5e74-4f12-85e2-be4bacaa8700.jpg" width="300">
+<img src="https://github.com/astronomy-commons/lsdb.io/blob/main/assets/img/lincc-logo.png?raw=true" width="300" height="100">
+
 
 # LSDB
 
