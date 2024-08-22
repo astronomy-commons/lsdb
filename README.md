@@ -1,4 +1,4 @@
-<img src="https://github.com/astronomy-commons/lsdb.io/blob/main/assets/img/lincc-logo.png?raw=true" width="300" height="100">
+<img src="https://github.com/astronomy-commons/lsdb/blob/main/docs/lincc-logo.png?raw=true" width="300" height="100">
 
 
 # LSDB
