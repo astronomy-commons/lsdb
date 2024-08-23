@@ -23,6 +23,7 @@ from lsdb.dask.join_catalog_data import (
     join_catalog_data_nested,
     join_catalog_data_on,
     join_catalog_data_through,
+    merge_asof_catalog_data,
 )
 from lsdb.dask.partition_indexer import PartitionIndexer
 from lsdb.io.schema import get_arrow_schema
@@ -377,6 +378,53 @@ class Catalog(HealpixDataset):
             right_index=right_index,
             suffixes=suffixes,
         )
+
+    def merge_asof(
+        self,
+        other: Catalog,
+        direction: str = "backward",
+        suffixes: Tuple[str, str] | None = None,
+        output_catalog_name: str | None = None,
+    ):
+        """Uses the pandas `merge_asof` function to merge two catalogs on their indices by distance of keys
+
+        Must be along catalog indices, and does not include margin caches, meaning results may be incomplete
+        for merging points.
+
+        This function is intended for use in special cases such as Dust Map Catalogs, for general merges,
+        the `crossmatch`and `join` functions should be used.
+
+        Args:
+            other (lsdb.Catalog): the right catalog to merge to
+            suffixes (Tuple[str,str]): the suffixes to apply to each partition's column names
+            direction (str): the direction to perform the merge_asof
+
+        Returns:
+            A new catalog with the columns from each of the input catalogs with their respective suffixes
+            added, and the rows merged using merge_asof on the specified columns.
+        """
+        if suffixes is None:
+            suffixes = (f"_{self.name}", f"_{other.name}")
+
+        if len(suffixes) != 2:
+            raise ValueError("`suffixes` must be a tuple with two strings")
+
+        ddf, ddf_map, alignment = merge_asof_catalog_data(self, other, suffixes=suffixes, direction=direction)
+
+        if output_catalog_name is None:
+            output_catalog_name = (
+                f"{self.hc_structure.catalog_info.catalog_name} merge_asof "
+                f"{other.hc_structure.catalog_info.catalog_name}"
+            )
+
+        new_catalog_info = dataclasses.replace(
+            self.hc_structure.catalog_info,
+            catalog_name=output_catalog_name,
+            ra_column=self.hc_structure.catalog_info.ra_column + suffixes[0],
+            dec_column=self.hc_structure.catalog_info.dec_column + suffixes[0],
+        )
+        hc_catalog = hc.catalog.Catalog(new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(ddf))
+        return Catalog(ddf, ddf_map, hc_catalog)
 
     def join(
         self,

@@ -3,7 +3,7 @@ import nested_pandas as npd
 import numpy as np
 import pandas as pd
 import pytest
-from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
+from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN, hipscat_id_to_healpix
 
 
 def test_small_sky_join_small_sky_order1(
@@ -214,3 +214,34 @@ def test_join_nested(small_sky_catalog, small_sky_order1_source_with_margin, ass
             check_column_type=False,
             check_index_type=False,
         )
+
+
+def test_merge_asof(small_sky_catalog, small_sky_xmatch_catalog, assert_divisions_are_correct):
+    suffixes = ("_a", "_b")
+    for direction in ["backward", "forward", "nearest"]:
+        joined = small_sky_catalog.merge_asof(
+            small_sky_xmatch_catalog, direction=direction, suffixes=suffixes
+        )
+        assert isinstance(joined._ddf, nd.NestedFrame)
+        assert_divisions_are_correct(joined)
+        joined_compute = joined.compute()
+        assert isinstance(joined_compute, npd.NestedFrame)
+        small_sky_compute = small_sky_catalog.compute().rename(
+            columns={c: c + suffixes[0] for c in small_sky_catalog.columns}
+        )
+        order_1_partition = hipscat_id_to_healpix(small_sky_compute.index.to_numpy(), 1)
+        left_partitions = [
+            small_sky_compute[order_1_partition == p.pixel]
+            for p in small_sky_xmatch_catalog.get_healpix_pixels()
+        ]
+        small_sky_order1_partitions = [
+            p.compute().rename(columns={c: c + suffixes[1] for c in small_sky_xmatch_catalog.columns})
+            for p in small_sky_xmatch_catalog.partitions
+        ]
+        correct_result = pd.concat(
+            [
+                pd.merge_asof(lp, rp, direction=direction, left_index=True, right_index=True)
+                for lp, rp in zip(left_partitions, small_sky_order1_partitions)
+            ]
+        )
+        pd.testing.assert_frame_equal(joined_compute, correct_result)
