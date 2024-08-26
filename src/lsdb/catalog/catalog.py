@@ -524,5 +524,12 @@ class Catalog(HealpixDataset):
             axis=axis, how=how, thresh=thresh, on_nested=on_nested, subset=subset, ignore_index=ignore_index
         )
         if self.margin is not None:
-            catalog.margin = self.margin.dropna()
+            catalog.margin = self.margin.dropna(
+                axis=axis,
+                how=how,
+                thresh=thresh,
+                on_nested=on_nested,
+                subset=subset,
+                ignore_index=ignore_index,
+            )
         return catalog
