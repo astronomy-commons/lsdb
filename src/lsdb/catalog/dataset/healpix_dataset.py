@@ -18,7 +18,7 @@ from hipscat.inspection.visualize_catalog import get_projection_method
 from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.healpix_pixel_function import get_pixel_argsort
 from pandas._libs import lib
-from pandas._typing import Axis, AnyAll, IndexLabel
+from pandas._typing import AnyAll, Axis, IndexLabel
 from pandas.api.extensions import no_default
 from typing_extensions import Self
 

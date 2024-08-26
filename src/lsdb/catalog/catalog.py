@@ -10,7 +10,7 @@ import pandas as pd
 from hipscat.catalog.index.index_catalog import IndexCatalog as HCIndexCatalog
 from hipscat.pixel_math.polygon_filter import SphericalCoordinates
 from pandas._libs import lib
-from pandas._typing import Axis, AnyAll, IndexLabel
+from pandas._typing import AnyAll, Axis, IndexLabel
 from pandas.api.extensions import no_default
 
 from lsdb.catalog.association_catalog import AssociationCatalog
