@@ -413,7 +413,7 @@ class Catalog(HealpixDataset):
 
         if output_catalog_name is None:
             output_catalog_name = (
-                f"{self.hc_structure.catalog_info.catalog_name} merge_asof "
+                f"{self.hc_structure.catalog_info.catalog_name}_merge_asof_"
                 f"{other.hc_structure.catalog_info.catalog_name}"
             )
 

@@ -260,6 +260,8 @@ def perform_merge_asof(
         left = filter_by_hipscat_index_to_pixel(left, right_pixel.order, right_pixel.pixel)
 
     left, right = rename_columns_with_suffixes(left, right, suffixes)
+    left.sort_index(inplace=True)
+    right.sort_index(inplace=True)
     merged = pd.merge_asof(left, right, left_index=True, right_index=True, direction=direction)
     return merged
 
@@ -442,11 +444,6 @@ def merge_asof_catalog_data(
         pixel to partition index within the dataframe, and the PixelAlignment of the two input
         catalogs.
     """
-    if right.margin is None:
-        warnings.warn(
-            "Right catalog does not have a margin cache. Results may be incomplete and/or inaccurate.",
-            RuntimeWarning,
-        )
 
     alignment = align_catalogs(left, right)
 
