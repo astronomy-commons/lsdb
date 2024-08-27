@@ -1,1 +1,1 @@
-{"regressions": [["benchmarks.time_create_midsize_catalog", "graphs/Cython/branch-HEAD/build/machine-gh-runner/packaging/python-3.10/benchmarks.time_create_midsize_catalog.json", {}, null, 1.5352205455000103, 0.4757023800000013, [[null, 774, 0.4757023800000013, 1.5352205455000103]]]]}
+{"regressions": [["benchmarks.time_create_midsize_catalog", "graphs/Cython/branch-HEAD/build/machine-gh-runner/packaging/python-3.10/benchmarks.time_create_midsize_catalog.json", {}, null, 1.5472713759999976, 0.4757023800000013, [[null, 774, 0.4757023800000013, 1.5472713759999976]]]]}
