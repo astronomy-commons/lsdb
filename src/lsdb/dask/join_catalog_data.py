@@ -1,5 +1,4 @@
 # pylint: disable=duplicate-code
-
 from __future__ import annotations
 
 import warnings
@@ -8,6 +7,7 @@ from typing import TYPE_CHECKING, List, Tuple
 import dask
 import nested_dask as nd
 import nested_pandas as npd
+import pandas as pd
 from hipscat.catalog.association_catalog import AssociationCatalogInfo
 from hipscat.catalog.catalog_info import CatalogInfo
 from hipscat.catalog.margin_cache import MarginCacheCatalogInfo
@@ -228,6 +228,44 @@ def perform_join_through(
     return merged
 
 
+# pylint: disable=too-many-arguments, unused-argument
+@dask.delayed
+def perform_merge_asof(
+    left: npd.NestedFrame,
+    right: npd.NestedFrame,
+    left_pixel: HealpixPixel,
+    right_pixel: HealpixPixel,
+    left_catalog_info: CatalogInfo,
+    right_catalog_info: CatalogInfo,
+    suffixes: Tuple[str, str],
+    direction: str,
+):
+    """Performs a merge_asof on two catalog partitions
+
+    Args:
+        left (npd.NestedFrame): the left partition to merge
+        right (npd.NestedFrame): the right partition to merge
+        left_pixel (HealpixPixel): the HEALPix pixel of the left partition
+        right_pixel (HealpixPixel): the HEALPix pixel of the right partition
+        left_catalog_info (hc.CatalogInfo): the catalog info of the left catalog
+        right_catalog_info (hc.CatalogInfo): the catalog info of the right catalog
+        suffixes (Tuple[str,str]): the suffixes to apply to each partition's column names
+        direction (str): The direction to perform the merge_asof
+
+    Returns:
+        A dataframe with the result of merging the left and right partitions on the specified columns with
+        `merge_asof`
+    """
+    if right_pixel.order > left_pixel.order:
+        left = filter_by_hipscat_index_to_pixel(left, right_pixel.order, right_pixel.pixel)
+
+    left, right = rename_columns_with_suffixes(left, right, suffixes)
+    left.sort_index(inplace=True)
+    right.sort_index(inplace=True)
+    merged = pd.merge_asof(left, right, left_index=True, right_index=True, direction=direction)
+    return merged
+
+
 def join_catalog_data_on(
     left: Catalog, right: Catalog, left_on: str, right_on: str, suffixes: Tuple[str, str]
 ) -> Tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]:
@@ -380,5 +418,41 @@ def join_catalog_data_through(
     # pylint: disable=protected-access
     extra_df = association._ddf._meta.drop(NON_JOINING_ASSOCIATION_COLUMNS + association_join_columns, axis=1)
     meta_df = generate_meta_df_for_joined_tables([left, extra_df, right], [suffixes[0], "", suffixes[1]])
+
+    return construct_catalog_args(joined_partitions, meta_df, alignment)
+
+
+def merge_asof_catalog_data(
+    left: Catalog, right: Catalog, suffixes: Tuple[str, str], direction: str = "backward"
+) -> Tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]:
+    """Uses the pandas `merge_asof` function to merge two catalogs on their indices by distance of keys
+
+    Must be along catalog indices, and does not include margin caches, meaning results may be incomplete for
+    merging points.
+
+    This function is intended for use in special cases such as Dust Map Catalogs, for general merges,
+    the `crossmatch`and `join` functions should be used.
+
+    Args:
+        left (lsdb.Catalog): the left catalog to join
+        right (lsdb.Catalog): the right catalog to join
+        suffixes (Tuple[str,str]): the suffixes to apply to each partition's column names
+        direction (str): the direction to perform the merge_asof
+
+    Returns:
+        A tuple of the dask dataframe with the result of the join, the pixel map from HEALPix
+        pixel to partition index within the dataframe, and the PixelAlignment of the two input
+        catalogs.
+    """
+
+    alignment = align_catalogs(left, right)
+
+    left_pixels, right_pixels = get_healpix_pixels_from_alignment(alignment)
+
+    joined_partitions = align_and_apply(
+        [(left, left_pixels), (right, right_pixels)], perform_merge_asof, suffixes, direction
+    )
+
+    meta_df = generate_meta_df_for_joined_tables([left, right], suffixes)
 
     return construct_catalog_args(joined_partitions, meta_df, alignment)
