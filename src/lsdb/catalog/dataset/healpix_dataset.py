@@ -3,6 +3,7 @@ from __future__ import annotations
 import warnings
 from typing import Any, Callable, Dict, Iterable, List, Tuple
 
+from upath import UPath
 import dask
 import dask.dataframe as dd
 import healpy as hp
@@ -408,7 +409,7 @@ class HealpixDataset(Dataset):
 
     def to_hipscat(
         self,
-        base_catalog_path: str,
+        base_catalog_path: UPath,
         catalog_name: str | None = None,
         overwrite: bool = False,
         storage_options: dict | None = None,

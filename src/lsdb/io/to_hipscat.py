@@ -9,8 +9,8 @@ import dask
 import hipscat as hc
 import nested_pandas as npd
 from hipscat.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
-from hipscat.io import FilePointer
 from hipscat.pixel_math import HealpixPixel
+from upath import UPath
 
 from lsdb.types import HealpixInfo
 
@@ -22,8 +22,8 @@ if TYPE_CHECKING:
 def perform_write(
     df: npd.NestedFrame,
     hp_pixel: HealpixPixel,
-    base_catalog_dir: FilePointer,
-    storage_options: dict | None = None,
+    base_catalog_dir: UPath,
+    # storage_options: dict | None = None,
     **kwargs,
 ) -> int:
     """Performs a write of a pandas dataframe to a single parquet file, following the hipscat structure.
@@ -33,7 +33,7 @@ def perform_write(
     Args:
         df (npd.NestedFrame): dataframe to write to file
         hp_pixel (HealpixPixel): HEALPix pixel of file to be written
-        base_catalog_dir (FilePointer): Location of the base catalog directory to write to
+        base_catalog_dir (UPath): Location of the base catalog directory to write to
         storage_options (dict): fsspec storage options
         **kwargs: other kwargs to pass to pd.to_parquet method
 
@@ -43,16 +43,16 @@ def perform_write(
     if len(df) == 0:
         return 0
     pixel_dir = hc.io.pixel_directory(base_catalog_dir, hp_pixel.order, hp_pixel.pixel)
-    hc.io.file_io.make_directory(pixel_dir, exist_ok=True, storage_options=storage_options)
-    pixel_path = hc.io.paths.pixel_catalog_file(base_catalog_dir, hp_pixel.order, hp_pixel.pixel)
-    hc.io.file_io.write_dataframe_to_parquet(df, pixel_path, storage_options=storage_options, **kwargs)
+    hc.io.file_io.make_directory(pixel_dir, exist_ok=True)
+    pixel_path = hc.io.paths.pixel_catalog_file(base_catalog_dir, hp_pixel)
+    hc.io.file_io.write_dataframe_to_parquet(df, pixel_path, **kwargs)
     return len(df)
 
 
 # pylint: disable=W0212
 def to_hipscat(
     catalog: HealpixDataset,
-    base_catalog_path: str,
+    base_catalog_path: UPath,
     catalog_name: Union[str, None] = None,
     overwrite: bool = False,
     storage_options: dict | None = None,
@@ -70,25 +70,24 @@ def to_hipscat(
         storage_options (dict): Dictionary that contains abstract filesystem credentials
         **kwargs: Arguments to pass to the parquet write operations
     """
-    base_catalog_dir_fp = hc.io.get_file_pointer_from_path(base_catalog_path)
     # Create the output directory for the catalog
-    if hc.io.file_io.directory_has_contents(base_catalog_dir_fp, storage_options=storage_options):
+    if hc.io.file_io.directory_has_contents(base_catalog_path, storage_options=storage_options):
         if not overwrite:
             raise ValueError(
-                f"base_catalog_path ({base_catalog_dir_fp}) contains files."
+                f"base_catalog_path ({str(base_catalog_path)}) contains files."
                 " choose a different directory or set overwrite to True."
             )
-        hc.io.file_io.remove_directory(base_catalog_dir_fp, storage_options=storage_options)
-    hc.io.file_io.make_directory(base_catalog_dir_fp, exist_ok=True, storage_options=storage_options)
+        hc.io.file_io.remove_directory(base_catalog_path, storage_options=storage_options)
+    hc.io.file_io.make_directory(base_catalog_path, exist_ok=True, storage_options=storage_options)
     # Save partition parquet files
     pixel_to_partition_size_map = write_partitions(
-        catalog, base_catalog_dir_fp, storage_options=storage_options, **kwargs
+        catalog, base_catalog_path, storage_options=storage_options, **kwargs
     )
     # Save parquet metadata
     hc.io.write_parquet_metadata(base_catalog_path, storage_options=storage_options)
     # Save partition info
     partition_info = _get_partition_info_dict(pixel_to_partition_size_map)
-    hc.io.write_partition_info(base_catalog_dir_fp, partition_info, storage_options=storage_options)
+    hc.io.write_partition_info(base_catalog_path, partition_info, storage_options=storage_options)
     # Save catalog info
     new_hc_structure = create_modified_catalog_structure(
         catalog.hc_structure,
@@ -103,7 +102,7 @@ def to_hipscat(
     )
     # Save provenance info
     hc.io.write_metadata.write_provenance_info(
-        catalog_base_dir=base_catalog_dir_fp,
+        catalog_base_dir=base_catalog_path,
         dataset_info=new_hc_structure.catalog_info,
         tool_args=_get_provenance_info(new_hc_structure),
         storage_options=storage_options,
@@ -112,7 +111,7 @@ def to_hipscat(
 
 def write_partitions(
     catalog: HealpixDataset,
-    base_catalog_dir_fp: FilePointer,
+    base_catalog_dir_fp: UPath,
     storage_options: Union[Dict[Any, Any], None] = None,
     **kwargs,
 ) -> Dict[HealpixPixel, int]:
@@ -120,7 +119,7 @@ def write_partitions(
 
     Args:
         catalog (HealpixDataset): A catalog to export
-        base_catalog_dir_fp (FilePointer): Path to the base directory of the catalog
+        base_catalog_dir_fp (UPath): Path to the base directory of the catalog
         storage_options (dict): Dictionary that contains abstract filesystem credentials
         **kwargs: Arguments to pass to the parquet write operations
 
@@ -138,7 +137,7 @@ def write_partitions(
                 partitions[partition_index],
                 pixel,
                 base_catalog_dir_fp,
-                storage_options=storage_options,
+                # storage_options=storage_options,
                 **kwargs,
             )
         )
@@ -190,7 +189,7 @@ def create_modified_catalog_structure(
     new_hc_structure = copy(catalog_structure)
     new_hc_structure.catalog_name = catalog_name
     new_hc_structure.catalog_path = catalog_base_dir
-    new_hc_structure.catalog_base_dir = hc.io.file_io.get_file_pointer_from_path(catalog_base_dir)
+    new_hc_structure.catalog_base_dir = hc.io.file_io.get_upath(catalog_base_dir)
     new_hc_structure.on_disk = True
     new_hc_structure.catalog_info = dataclasses.replace(
         new_hc_structure.catalog_info, catalog_name=catalog_name, **kwargs

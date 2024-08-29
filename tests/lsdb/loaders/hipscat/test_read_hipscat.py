@@ -8,7 +8,6 @@ import numpy.testing as npt
 import pandas as pd
 import pytest
 from hipscat.catalog.index.index_catalog import IndexCatalog
-from hipscat.io import get_file_pointer_from_path
 from hipscat.pixel_math import HealpixPixel
 from pandas.core.dtypes.base import ExtensionDtype
 
@@ -60,7 +59,7 @@ def test_parquet_data_in_partitions_match_files(small_sky_order1_dir, small_sky_
         partition = catalog.get_partition(hp_order, hp_pixel)
         partition_df = partition.compute()
         parquet_path = hc.io.paths.pixel_catalog_file(
-            small_sky_order1_hipscat_catalog.catalog_base_dir, hp_order, hp_pixel
+            small_sky_order1_hipscat_catalog.catalog_base_dir, healpix_pixel
         )
         loaded_df = pd.read_parquet(parquet_path, dtype_backend="pyarrow")
         pd.testing.assert_frame_equal(partition_df, loaded_df)
@@ -88,22 +87,6 @@ def test_catalog_with_margin_object(small_sky_xmatch_dir, small_sky_xmatch_margi
     assert isinstance(catalog._ddf, nd.NestedFrame)
     assert catalog.margin is small_sky_xmatch_margin_catalog
     assert isinstance(catalog.margin._ddf, nd.NestedFrame)
-
-
-def test_catalog_with_margin_file_pointer(
-    small_sky_xmatch_dir, small_sky_xmatch_margin_dir, small_sky_xmatch_margin_catalog
-):
-    small_sky_xmatch_margin_fp = get_file_pointer_from_path(str(small_sky_xmatch_margin_dir))
-    catalog = lsdb.read_hipscat(small_sky_xmatch_dir, margin_cache=small_sky_xmatch_margin_fp)
-    assert isinstance(catalog, lsdb.Catalog)
-    assert isinstance(catalog.margin, lsdb.MarginCatalog)
-    assert isinstance(catalog._ddf, nd.NestedFrame)
-    assert isinstance(catalog.margin._ddf, nd.NestedFrame)
-    assert (
-        catalog.margin.hc_structure.catalog_info == small_sky_xmatch_margin_catalog.hc_structure.catalog_info
-    )
-    assert catalog.margin.get_healpix_pixels() == small_sky_xmatch_margin_catalog.get_healpix_pixels()
-    pd.testing.assert_frame_equal(catalog.margin.compute(), small_sky_xmatch_margin_catalog.compute())
 
 
 def test_catalog_with_margin_path(

@@ -5,8 +5,8 @@ from pathlib import Path
 from typing import Callable, List
 
 import pandas as pd
-from hipscat.io.file_io import FilePointer
 from pandas.io._util import _arrow_dtype_mapping
+from upath import UPath
 
 from lsdb.catalog.margin_catalog import MarginCatalog
 from lsdb.core.search.abstract_search import AbstractSearch
@@ -25,7 +25,7 @@ class HipscatLoadingConfig:
     columns: List[str] | None = None
     """Columns to load from the catalog. If not specified, all columns are loaded"""
 
-    margin_cache: MarginCatalog | FilePointer | Path | None = None
+    margin_cache: MarginCatalog | UPath | Path | None = None
     """Margin cache for the catalog. It can be provided as a path for the margin on disk,
     or as a margin object instance. By default, it is None."""
 
