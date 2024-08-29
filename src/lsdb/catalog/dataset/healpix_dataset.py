@@ -3,7 +3,6 @@ from __future__ import annotations
 import warnings
 from typing import Any, Callable, Dict, Iterable, List, Tuple
 
-from upath import UPath
 import dask
 import dask.dataframe as dd
 import healpy as hp
@@ -19,6 +18,7 @@ from hipscat.inspection.visualize_catalog import get_projection_method
 from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.healpix_pixel_function import get_pixel_argsort
 from typing_extensions import Self
+from upath import UPath
 
 from lsdb import io
 from lsdb.catalog.dataset.dataset import Dataset
@@ -108,7 +108,7 @@ class HealpixDataset(Dataset):
             ValueError: if no data exists for the specified pixel
         """
         hp_pixel = HealpixPixel(order, pixel)
-        if not hp_pixel in self._ddf_pixel_map:
+        if hp_pixel not in self._ddf_pixel_map:
             raise ValueError(f"Pixel at order {order} pixel {pixel} not in Catalog")
         partition_index = self._ddf_pixel_map[hp_pixel]
         return partition_index
@@ -412,7 +412,6 @@ class HealpixDataset(Dataset):
         base_catalog_path: UPath,
         catalog_name: str | None = None,
         overwrite: bool = False,
-        storage_options: dict | None = None,
         **kwargs,
     ):
         """Saves the catalog to disk in HiPSCat format
@@ -421,7 +420,6 @@ class HealpixDataset(Dataset):
             base_catalog_path (str): Location where catalog is saved to
             catalog_name (str): The name of the catalog to be saved
             overwrite (bool): If True existing catalog is overwritten
-            storage_options (dict): Dictionary that contains abstract filesystem credentials
             **kwargs: Arguments to pass to the parquet write operations
         """
-        io.to_hipscat(self, base_catalog_path, catalog_name, overwrite, storage_options, **kwargs)
+        io.to_hipscat(self, base_catalog_path, catalog_name, overwrite, **kwargs)

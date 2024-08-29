@@ -30,7 +30,6 @@ def read_hipscat(
     columns: List[str] | None = None,
     margin_cache: MarginCatalog | UPath | Path | None = None,
     dtype_backend: str | None = "pyarrow",
-    storage_options: dict | None = None,
     **kwargs,
 ) -> Dataset | None: ...
 @overload
@@ -41,6 +40,5 @@ def read_hipscat(
     columns: List[str] | None = None,
     margin_cache: MarginCatalog | UPath | Path | None = None,
     dtype_backend: str | None = "pyarrow",
-    storage_options: dict | None = None,
     **kwargs,
 ) -> CatalogTypeVar | None: ...
