@@ -1,5 +1,5 @@
-import numpy as np
 import nested_dask as nd
+import numpy as np
 import pandas as pd
 
 from lsdb import Catalog
