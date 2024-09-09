@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import dataclasses
 from typing import List, Tuple, Type
+from typing_extensions import Self
 
 import hipscat as hc
 import nested_dask as nd
@@ -650,4 +651,10 @@ class Catalog(HealpixDataset):
                 subset=subset,
                 ignore_index=ignore_index,
             )
+        return catalog
+
+    def reduce(self, func, *args, meta=None, **kwargs) -> Self:
+        catalog = super().reduce(func, *args, meta=meta, **kwargs)
+        if self.margin is not None:
+            catalog.margin = self.margin.reduce(func, *args, meta=meta, **kwargs)
         return catalog
