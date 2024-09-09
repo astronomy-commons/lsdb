@@ -510,3 +510,51 @@ class HealpixDataset(Dataset):
         hc_structure = copy.copy(self.hc_structure)
         hc_structure.catalog_info.total_rows = None
         return self.__class__(ndf, self._ddf_pixel_map, hc_structure)
+
+    def reduce(self, func, *args, meta=None, **kwargs) -> Self:
+        """
+        Takes a function and applies it to each top-level row of the Catalog.
+
+        docstring copied from nested-pandas
+
+        The user may specify which columns the function is applied to, with
+        columns from the 'base' layer being passsed to the function as
+        scalars and columns from the nested layers being passed as numpy arrays.
+
+        Parameters
+        ----------
+        func : callable
+            Function to apply to each nested dataframe. The first arguments to `func` should be which
+            columns to apply the function to. See the Notes for recommendations
+            on writing func outputs.
+        args : positional arguments
+            Positional arguments to pass to the function, the first *args should be the names of the
+            columns to apply the function to.
+        meta : dataframe or series-like, optional
+            The dask meta of the output.
+        kwargs : keyword arguments, optional
+            Keyword arguments to pass to the function.
+
+        Returns
+        -------
+        `HealpixDataset`
+            `HealpixDataset` with the results of the function applied to the columns of the frame.
+
+        Notes
+        -----
+        By default, `reduce` will produce a `NestedFrame` with enumerated
+        column names for each returned value of the function. For more useful
+        naming, it's recommended to have `func` return a dictionary where each
+        key is an output column of the dataframe returned by `reduce`.
+
+        Example User Function:
+
+        >>> def my_sum(col1, col2):
+        >>>    '''reduce will return a NestedFrame with two columns'''
+        >>>    return {"sum_col1": sum(col1), "sum_col2": sum(col2)}
+        >>>
+        >>> catalog.reduce(my_sum, 'sources.col1', 'sources.col2')
+
+        """
+        ndf = self._ddf.reduce(func, *args, meta=meta, **kwargs)
+        return self.__class__(ndf, self._ddf_pixel_map, self.hc_structure)
