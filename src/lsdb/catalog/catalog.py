@@ -9,6 +9,9 @@ import nested_pandas as npd
 import pandas as pd
 from hipscat.catalog.index.index_catalog import IndexCatalog as HCIndexCatalog
 from hipscat.pixel_math.polygon_filter import SphericalCoordinates
+from pandas._libs import lib
+from pandas._typing import AnyAll, Axis, IndexLabel
+from pandas.api.extensions import no_default
 
 from lsdb.catalog.association_catalog import AssociationCatalog
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
@@ -554,3 +557,27 @@ class Catalog(HealpixDataset):
         )
         hc_catalog = hc.catalog.Catalog(new_catalog_info, alignment.pixel_tree)
         return Catalog(ddf, ddf_map, hc_catalog)
+
+    def dropna(
+        self,
+        *,
+        axis: Axis = 0,
+        how: AnyAll | lib.NoDefault = no_default,
+        thresh: int | lib.NoDefault = no_default,
+        on_nested: bool = False,
+        subset: IndexLabel | None = None,
+        ignore_index: bool = False,
+    ) -> Catalog:
+        catalog = super().dropna(
+            axis=axis, how=how, thresh=thresh, on_nested=on_nested, subset=subset, ignore_index=ignore_index
+        )
+        if self.margin is not None:
+            catalog.margin = self.margin.dropna(
+                axis=axis,
+                how=how,
+                thresh=thresh,
+                on_nested=on_nested,
+                subset=subset,
+                ignore_index=ignore_index,
+            )
+        return catalog
