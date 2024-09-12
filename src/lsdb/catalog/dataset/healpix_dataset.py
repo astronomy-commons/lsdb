@@ -5,8 +5,8 @@ from typing import Any, Callable, Dict, Iterable, List, Tuple
 
 import dask
 import dask.dataframe as dd
-import healpy as hp
 import hipscat as hc
+import hipscat.pixel_math.healpix_shim as hp
 import nested_dask as nd
 import nested_pandas as npd
 import numpy as np
@@ -364,7 +364,7 @@ class HealpixDataset(Dataset):
         self,
         func: Callable[[npd.NestedFrame, HealpixPixel], Any],
         order: int | None = None,
-        default_value: Any = hp.pixelfunc.UNSEEN,
+        default_value: Any = hp.unseen_pixel(),
         projection="moll",
         plotting_args: Dict | None = None,
         **kwargs,
