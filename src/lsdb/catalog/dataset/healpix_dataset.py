@@ -18,6 +18,9 @@ from hipscat.inspection import plot_pixel_list
 from hipscat.inspection.visualize_catalog import get_projection_method
 from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.healpix_pixel_function import get_pixel_argsort
+from pandas._libs import lib
+from pandas._typing import AnyAll, Axis, IndexLabel
+from pandas.api.extensions import no_default
 from typing_extensions import Self
 from upath import UPath
 
@@ -424,3 +427,71 @@ class HealpixDataset(Dataset):
             **kwargs: Arguments to pass to the parquet write operations
         """
         io.to_hipscat(self, base_catalog_path, catalog_name, overwrite, **kwargs)
+
+    def dropna(
+        self,
+        *,
+        axis: Axis = 0,
+        how: AnyAll | lib.NoDefault = no_default,
+        thresh: int | lib.NoDefault = no_default,
+        on_nested: bool = False,
+        subset: IndexLabel | None = None,
+        ignore_index: bool = False,
+    ) -> Self:  # type: ignore[name-defined] # noqa: F821:
+        """
+        Remove missing values for one layer of nested columns in the catalog.
+
+        Parameters
+        ----------
+        axis : {0 or 'index', 1 or 'columns'}, default 0
+            Determine if rows or columns which contain missing values are
+            removed.
+
+            * 0, or 'index' : Drop rows which contain missing values.
+            * 1, or 'columns' : Drop columns which contain missing value.
+
+            Only a single axis is allowed.
+
+        how : {'any', 'all'}, default 'any'
+            Determine if row or column is removed from catalog, when we have
+            at least one NA or all NA.
+
+            * 'any' : If any NA values are present, drop that row or column.
+            * 'all' : If all values are NA, drop that row or column.
+        thresh : int, optional
+            Require that many non-NA values. Cannot be combined with how.
+        on_nested : str or bool, optional
+            If not False, applies the call to the nested dataframe in the
+            column with label equal to the provided string. If specified,
+            the nested dataframe should align with any columns given in
+            `subset`.
+        subset : column label or sequence of labels, optional
+            Labels along other axis to consider, e.g. if you are dropping rows
+            these would be a list of columns to include.
+
+            Access nested columns using `nested_df.nested_col` (where
+            `nested_df` refers to a particular nested dataframe and
+            `nested_col` is a column of that nested dataframe).
+        ignore_index : bool, default ``False``
+            If ``True``, the resulting axis will be labeled 0, 1, …, n - 1.
+
+            .. versionadded:: 2.0.0
+
+        Returns
+        -------
+        Catalog
+            Catalog with NA entries dropped from it.
+
+        Notes
+        -----
+        Operations that target a particular nested structure return a dataframe
+        with rows of that particular nested structure affected.
+
+        Values for `on_nested` and `subset` should be consistent in pointing
+        to a single layer, multi-layer operations are not supported at this
+        time.
+        """
+        ndf = self._ddf.dropna(
+            axis=axis, how=how, thresh=thresh, on_nested=on_nested, subset=subset, ignore_index=ignore_index
+        )
+        return self.__class__(ndf, self._ddf_pixel_map, self.hc_structure)
