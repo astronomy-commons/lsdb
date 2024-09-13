@@ -556,5 +556,5 @@ class HealpixDataset(Dataset):
         >>> catalog.reduce(my_sum, 'sources.col1', 'sources.col2')
 
         """
-        ndf = self._ddf.reduce(func, *args, meta=meta, **kwargs)
+        ndf = nd.NestedFrame.from_dask_dataframe(self._ddf.reduce(func, *args, meta=meta, **kwargs))
         return self.__class__(ndf, self._ddf_pixel_map, self.hc_structure)

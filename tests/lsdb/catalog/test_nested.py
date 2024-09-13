@@ -1,3 +1,4 @@
+import nested_pandas as npd
 import nested_dask as nd
 import numpy as np
 import pandas as pd
@@ -11,6 +12,7 @@ def test_dropna(small_sky_with_nested_sources):
     assert isinstance(drop_na_cat, Catalog)
     assert isinstance(drop_na_cat._ddf, nd.NestedFrame)
     drop_na_compute = drop_na_cat.compute()
+    assert isinstance(drop_na_compute, npd.NestedFrame)
     filtered_compute = filtered_cat.compute()
     assert len(drop_na_compute) < len(filtered_compute)
     pd.testing.assert_frame_equal(drop_na_compute, filtered_compute.dropna())
@@ -35,3 +37,24 @@ def test_dropna_on_nested(small_sky_with_nested_sources):
     pd.testing.assert_frame_equal(
         drop_na_cat.compute(), filtered_cat._ddf.dropna(on_nested="sources").compute()
     )
+
+
+def test_reduce(small_sky_with_nested_sources):
+    def mean_mag(ra, dec, mag):
+        return {"ra": ra, "dec": dec, "mean_mag": np.mean(mag)}
+
+    reduced_cat = small_sky_with_nested_sources.reduce(
+        mean_mag, "ra", "dec", "sources.mag", meta={"ra": float, "dec": float, "mean_mag": float}
+    )
+
+    assert isinstance(reduced_cat, Catalog)
+    assert isinstance(reduced_cat._ddf, nd.NestedFrame)
+
+    reduced_cat_compute = reduced_cat.compute()
+    assert isinstance(reduced_cat_compute, npd.NestedFrame)
+
+    reduced_ddf = small_sky_with_nested_sources._ddf.reduce(
+        mean_mag, "ra", "dec", "sources.mag", meta={"ra": float, "dec": float, "mean_mag": float}
+    )
+
+    pd.testing.assert_frame_equal(reduced_cat_compute, reduced_ddf.compute())
