@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from abc import abstractmethod
+from pathlib import Path
 from typing import Generic, List, Tuple, Type
 
 import hipscat as hc
@@ -23,7 +24,7 @@ from lsdb.types import CatalogTypeVar, HCCatalogTypeVar
 class AbstractCatalogLoader(Generic[CatalogTypeVar]):
     """Loads a HiPSCat Dataset with the type specified by the type variable"""
 
-    def __init__(self, path: UPath | str, config: HipscatLoadingConfig) -> None:
+    def __init__(self, path: str | Path | UPath, config: HipscatLoadingConfig) -> None:
         """Initializes a HipscatCatalogLoader
 
         Args:

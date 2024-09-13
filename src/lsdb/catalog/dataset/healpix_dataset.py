@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import warnings
+from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Tuple
 
 import dask
@@ -409,7 +410,7 @@ class HealpixDataset(Dataset):
 
     def to_hipscat(
         self,
-        base_catalog_path: UPath,
+        base_catalog_path: str | Path | UPath,
         catalog_name: str | None = None,
         overwrite: bool = False,
         **kwargs,

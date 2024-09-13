@@ -25,7 +25,7 @@ class HipscatLoadingConfig:
     columns: List[str] | None = None
     """Columns to load from the catalog. If not specified, all columns are loaded"""
 
-    margin_cache: MarginCatalog | UPath | Path | None = None
+    margin_cache: MarginCatalog | str | Path | UPath | None = None
     """Margin cache for the catalog. It can be provided as a path for the margin on disk,
     or as a margin object instance. By default, it is None."""
 

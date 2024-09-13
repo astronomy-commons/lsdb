@@ -3,6 +3,7 @@ from __future__ import annotations
 import dataclasses
 from copy import copy
 from importlib.metadata import version
+from pathlib import Path
 from typing import TYPE_CHECKING, Dict, Union
 
 import dask
@@ -22,7 +23,7 @@ if TYPE_CHECKING:
 def perform_write(
     df: npd.NestedFrame,
     hp_pixel: HealpixPixel,
-    base_catalog_dir: UPath,
+    base_catalog_dir: str | Path | UPath,
     **kwargs,
 ) -> int:
     """Performs a write of a pandas dataframe to a single parquet file, following the hipscat structure.
@@ -32,7 +33,7 @@ def perform_write(
     Args:
         df (npd.NestedFrame): dataframe to write to file
         hp_pixel (HealpixPixel): HEALPix pixel of file to be written
-        base_catalog_dir (UPath): Location of the base catalog directory to write to
+        base_catalog_dir (path-like): Location of the base catalog directory to write to
         **kwargs: other kwargs to pass to pd.to_parquet method
 
     Returns:
@@ -50,7 +51,7 @@ def perform_write(
 # pylint: disable=W0212
 def to_hipscat(
     catalog: HealpixDataset,
-    base_catalog_path: UPath,
+    base_catalog_path: str | Path | UPath,
     catalog_name: Union[str, None] = None,
     overwrite: bool = False,
     **kwargs,
@@ -99,7 +100,7 @@ def to_hipscat(
 
 
 def write_partitions(
-    catalog: HealpixDataset, base_catalog_dir_fp: UPath, **kwargs
+    catalog: HealpixDataset, base_catalog_dir_fp: str | Path | UPath, **kwargs
 ) -> Dict[HealpixPixel, int]:
     """Saves catalog partitions as parquet to disk
 
@@ -157,7 +158,7 @@ def _get_partition_info_dict(ddf_points_map: Dict[HealpixPixel, int]) -> Dict[He
 
 
 def create_modified_catalog_structure(
-    catalog_structure: HCHealpixDataset, catalog_base_dir: UPath, catalog_name: str, **kwargs
+    catalog_structure: HCHealpixDataset, catalog_base_dir: str | Path | UPath, catalog_name: str, **kwargs
 ) -> HCHealpixDataset:
     """Creates a modified version of the HiPSCat catalog structure
 

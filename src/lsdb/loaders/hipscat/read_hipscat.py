@@ -28,11 +28,11 @@ dataset_class_for_catalog_type: Dict[CatalogType, Type[Dataset]] = {
 
 # pylint: disable=unused-argument
 def read_hipscat(
-    path: UPath,
+    path: str | Path | UPath,
     catalog_type: Type[CatalogTypeVar] | None = None,
     search_filter: AbstractSearch | None = None,
     columns: List[str] | None = None,
-    margin_cache: MarginCatalog | UPath | Path | None = None,
+    margin_cache: MarginCatalog | str | Path | UPath | None = None,
     dtype_backend: str | None = "pyarrow",
     **kwargs,
 ) -> CatalogTypeVar | None:
@@ -60,7 +60,7 @@ def read_hipscat(
             the lsdb class for that catalog.
         search_filter (Type[AbstractSearch]): Default `None`. The filter method to be applied.
         columns (List[str]): Default `None`. The set of columns to filter the catalog on.
-        margin_cache (MarginCatalog | UPath | Path): The margin cache for the main catalog,
+        margin_cache (MarginCatalog or path-like): The margin cache for the main catalog,
             provided as a path on disk or as an instance of the MarginCatalog object. Defaults to None.
         dtype_backend (str): Backend data type to apply to the catalog.
             Defaults to "pyarrow". If None, no type conversion is performed.
@@ -83,7 +83,7 @@ def read_hipscat(
     return loader.load_catalog()
 
 
-def _get_dataset_class_from_catalog_info(base_catalog_path: UPath) -> Type[Dataset]:
+def _get_dataset_class_from_catalog_info(base_catalog_path: str | Path | UPath) -> Type[Dataset]:
     base_catalog_dir = hc.io.file_io.get_upath(base_catalog_path)
     catalog_info_path = hc.io.paths.get_catalog_info_pointer(base_catalog_dir)
     catalog_info = BaseCatalogInfo.read_from_metadata_file(catalog_info_path)

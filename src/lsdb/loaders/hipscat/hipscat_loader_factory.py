@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Dict, Type
 
 from upath import UPath
@@ -22,7 +23,7 @@ loader_class_for_catalog_type: Dict[Type[Dataset], Type[AbstractCatalogLoader]] 
 
 
 def get_loader_for_type(
-    catalog_type_to_use: Type[CatalogTypeVar], path: UPath, config: HipscatLoadingConfig
+    catalog_type_to_use: Type[CatalogTypeVar], path: str | Path | UPath, config: HipscatLoadingConfig
 ) -> AbstractCatalogLoader:
     """Constructs a CatalogLoader that loads a Dataset of the specified type
 
