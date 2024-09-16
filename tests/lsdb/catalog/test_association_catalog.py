@@ -17,8 +17,7 @@ def test_load_association(small_sky_to_xmatch_dir):
         hp_pixel = healpix_pixel.pixel
         path = hc.io.paths.pixel_catalog_file(
             catalog_base_dir=small_sky_to_xmatch_dir,
-            pixel_order=hp_order,
-            pixel_number=hp_pixel,
+            pixel=healpix_pixel,
         )
         partition = small_sky_to_xmatch.get_partition(hp_order, hp_pixel)
         data = pd.read_parquet(path, dtype_backend="pyarrow")

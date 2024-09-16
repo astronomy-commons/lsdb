@@ -202,6 +202,13 @@ def small_sky_order3_source_margin_catalog(test_data_dir):
 
 
 @pytest.fixture
+def small_sky_with_nested_sources(small_sky_order1_catalog, small_sky_order1_source_with_margin):
+    return small_sky_order1_catalog.join_nested(
+        small_sky_order1_source_with_margin, left_on="id", right_on="object_id", nested_column_name="sources"
+    )
+
+
+@pytest.fixture
 def small_sky_no_metadata_dir(test_data_dir):
     return test_data_dir / "raw" / SMALL_SKY_NO_METADATA
 

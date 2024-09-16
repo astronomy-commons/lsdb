@@ -42,7 +42,6 @@ class HipscatCatalogLoader(AbstractCatalogLoader[Catalog]):
             catalog_path=hc_catalog.catalog_path,
             moc=filtered_catalog.moc,
             schema=filtered_catalog.schema,
-            storage_options=hc_catalog.storage_options,
         )
 
     def _load_margin_catalog(self) -> MarginCatalog | None:
@@ -64,6 +63,5 @@ class HipscatCatalogLoader(AbstractCatalogLoader[Catalog]):
                     dtype_backend=self.config.dtype_backend,
                     **self.config.kwargs,
                 ),
-                storage_options=self.storage_options,
             ).load_catalog()
         return margin_catalog
