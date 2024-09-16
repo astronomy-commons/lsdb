@@ -28,8 +28,7 @@ def test_margin_catalog_partitions_correct(small_sky_xmatch_margin_dir):
         hp_pixel = healpix_pixel.pixel
         path = hc.io.paths.pixel_catalog_file(
             catalog_base_dir=small_sky_xmatch_margin_dir,
-            pixel_order=hp_order,
-            pixel_number=hp_pixel,
+            pixel=healpix_pixel,
         )
         partition = margin.get_partition(hp_order, hp_pixel)
         data = pd.read_parquet(path, dtype_backend="pyarrow")

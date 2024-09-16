@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import dataclasses
 from pathlib import Path
-from typing import Any, Dict, List, Type, Union
+from typing import Dict, List, Type
 
 import hipscat as hc
 from hipscat.catalog import CatalogType
 from hipscat.catalog.dataset import BaseCatalogInfo
-from hipscat.io.file_io import FilePointer
+from upath import UPath
 
 from lsdb.catalog.association_catalog import AssociationCatalog
 from lsdb.catalog.catalog import Catalog
@@ -28,13 +28,12 @@ dataset_class_for_catalog_type: Dict[CatalogType, Type[Dataset]] = {
 
 # pylint: disable=unused-argument
 def read_hipscat(
-    path: FilePointer | Path,
+    path: str | Path | UPath,
     catalog_type: Type[CatalogTypeVar] | None = None,
     search_filter: AbstractSearch | None = None,
     columns: List[str] | None = None,
-    margin_cache: MarginCatalog | FilePointer | Path | None = None,
+    margin_cache: MarginCatalog | str | Path | UPath | None = None,
     dtype_backend: str | None = "pyarrow",
-    storage_options: dict | None = None,
     **kwargs,
 ) -> CatalogTypeVar | None:
     """Load a catalog from a HiPSCat formatted catalog.
@@ -53,7 +52,7 @@ def read_hipscat(
         )
 
     Args:
-        path (FilePointer | Path): The path that locates the root of the HiPSCat catalog
+        path (UPath | Path): The path that locates the root of the HiPSCat catalog
         catalog_type (Type[Dataset]): Default `None`. By default, the type of the catalog is loaded
             from the catalog info and the corresponding object type is returned. Python's type hints
             cannot allow a return type specified by a loaded value, so to use the correct return
@@ -61,38 +60,33 @@ def read_hipscat(
             the lsdb class for that catalog.
         search_filter (Type[AbstractSearch]): Default `None`. The filter method to be applied.
         columns (List[str]): Default `None`. The set of columns to filter the catalog on.
-        margin_cache (MarginCatalog | FilePointer | Path): The margin cache for the main catalog,
+        margin_cache (MarginCatalog or path-like): The margin cache for the main catalog,
             provided as a path on disk or as an instance of the MarginCatalog object. Defaults to None.
         dtype_backend (str): Backend data type to apply to the catalog.
             Defaults to "pyarrow". If None, no type conversion is performed.
-        storage_options (dict): Dictionary that contains abstract filesystem credentials
         **kwargs: Arguments to pass to the pandas parquet file reader
 
     Returns:
         Catalog object loaded from the given parameters
     """
-    path_str = str(path)
-
     # Creates a config object to store loading parameters from all keyword arguments.
     kwd_args = locals().copy()
     config_args = {field.name: kwd_args[field.name] for field in dataclasses.fields(HipscatLoadingConfig)}
     config = HipscatLoadingConfig(**config_args)
 
-    catalog_type_to_use = _get_dataset_class_from_catalog_info(path_str, storage_options=storage_options)
+    catalog_type_to_use = _get_dataset_class_from_catalog_info(path)
 
     if catalog_type is not None:
         catalog_type_to_use = catalog_type
 
-    loader = get_loader_for_type(catalog_type_to_use, path_str, config, storage_options=storage_options)
+    loader = get_loader_for_type(catalog_type_to_use, path, config)
     return loader.load_catalog()
 
 
-def _get_dataset_class_from_catalog_info(
-    base_catalog_path: str, storage_options: Union[Dict[Any, Any], None] = None
-) -> Type[Dataset]:
-    base_catalog_dir = hc.io.get_file_pointer_from_path(base_catalog_path)
+def _get_dataset_class_from_catalog_info(base_catalog_path: str | Path | UPath) -> Type[Dataset]:
+    base_catalog_dir = hc.io.file_io.get_upath(base_catalog_path)
     catalog_info_path = hc.io.paths.get_catalog_info_pointer(base_catalog_dir)
-    catalog_info = BaseCatalogInfo.read_from_metadata_file(catalog_info_path, storage_options=storage_options)
+    catalog_info = BaseCatalogInfo.read_from_metadata_file(catalog_info_path)
     catalog_type = catalog_info.catalog_type
     if catalog_type not in dataset_class_for_catalog_type:
         raise NotImplementedError(f"Cannot load catalog of type {catalog_type}")
