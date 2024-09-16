@@ -15,6 +15,7 @@ from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.healpix_pixel_function import get_pixel_argsort
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
 from upath import UPath
+
 from lsdb.catalog.catalog import DaskDFPixelMap
 from lsdb.dask.divisions import get_pixels_divisions
 from lsdb.loaders.hipscat.hipscat_loading_config import HipscatLoadingConfig
@@ -98,11 +99,16 @@ class AbstractCatalogLoader(Generic[CatalogTypeVar]):
             kwargs["dtype_backend"] = self.config.dtype_backend
         return kwargs
 
+
 def read_pixel(
-    pixel: HealpixPixel, catalog: HCHealpixDataset, query_url_params: dict | None = None, **kwargs
+    pixel: HealpixPixel,
+    catalog: HCHealpixDataset,
+    query_url_params: dict | None = None,
+    columns=None,
+    **kwargs,
 ):
     """Utility method to read a single pixel's parquet file from disk."""
-    dataframe =  file_io.read_parquet_file_to_pandas(
+    dataframe = file_io.read_parquet_file_to_pandas(
         hc.io.pixel_catalog_file(catalog.catalog_base_dir, pixel, query_url_params), columns=columns, **kwargs
     )
 
