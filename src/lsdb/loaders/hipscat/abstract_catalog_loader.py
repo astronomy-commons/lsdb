@@ -13,6 +13,7 @@ from hipscat.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HC
 from hipscat.io.file_io import file_io
 from hipscat.pixel_math import HealpixPixel
 from hipscat.pixel_math.healpix_pixel_function import get_pixel_argsort
+from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
 from upath import UPath
 
 from lsdb.catalog.catalog import DaskDFPixelMap
@@ -86,6 +87,9 @@ class AbstractCatalogLoader(Generic[CatalogTypeVar]):
         dask_meta_schema = schema.empty_table().to_pandas(types_mapper=self.config.get_dtype_mapper())
         if self.config.columns is not None:
             dask_meta_schema = dask_meta_schema[self.config.columns]
+
+        if dask_meta_schema.index.name != HIPSCAT_ID_COLUMN and HIPSCAT_ID_COLUMN in dask_meta_schema.columns:
+            dask_meta_schema = dask_meta_schema.set_index(HIPSCAT_ID_COLUMN)
         return npd.NestedFrame(dask_meta_schema)
 
     def _get_kwargs(self) -> dict:
@@ -104,6 +108,11 @@ def read_pixel(
     **kwargs,
 ):
     """Utility method to read a single pixel's parquet file from disk."""
-    return file_io.read_parquet_file_to_pandas(
+    dataframe = file_io.read_parquet_file_to_pandas(
         hc.io.pixel_catalog_file(catalog.catalog_base_dir, pixel, query_url_params), columns=columns, **kwargs
     )
+
+    if dataframe.index.name != HIPSCAT_ID_COLUMN and HIPSCAT_ID_COLUMN in dataframe.columns:
+        dataframe = dataframe.set_index(HIPSCAT_ID_COLUMN)
+
+    return dataframe
