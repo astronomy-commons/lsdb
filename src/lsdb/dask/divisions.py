@@ -3,8 +3,8 @@ from __future__ import annotations
 from typing import List, Tuple
 
 import numpy as np
-from hipscat.pixel_math import HealpixPixel
-from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_MAX, healpix_to_hipscat_id
+from hats.pixel_math import HealpixPixel
+from hats.pixel_math.hipscat_id import HIPSCAT_ID_MAX, healpix_to_hipscat_id
 
 
 def get_pixels_divisions(healpix_pixels: List[HealpixPixel]) -> Tuple[int, ...] | None:

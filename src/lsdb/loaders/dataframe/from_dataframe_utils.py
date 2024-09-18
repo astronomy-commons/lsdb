@@ -6,9 +6,9 @@ import numpy as np
 import pandas as pd
 import pyarrow as pa
 from dask import delayed
-from hipscat.catalog import PartitionInfo
-from hipscat.pixel_math import HealpixPixel
-from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
+from hats.catalog import PartitionInfo
+from hats.pixel_math import HealpixPixel
+from hats.pixel_math.hipscat_id import SPATIAL_INDEX_COLUMN
 
 from lsdb.dask.divisions import get_pixels_divisions
 
@@ -109,7 +109,7 @@ def _format_margin_partition_dataframe(dataframe: npd.NestedFrame) -> npd.Nested
             PartitionInfo.METADATA_PIXEL_COLUMN_NAME: np.uint64,
         }
     )
-    dataframe = dataframe.set_index(HIPSCAT_ID_COLUMN).sort_index()
+    dataframe = dataframe.set_index(SPATIAL_INDEX_COLUMN).sort_index()
     return _order_partition_dataframe_columns(dataframe)
 
 

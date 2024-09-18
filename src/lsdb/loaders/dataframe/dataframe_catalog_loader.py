@@ -6,17 +6,17 @@ import warnings
 from typing import Dict, List, Tuple
 
 import astropy.units as u
-import hipscat as hc
+import hats as hc
 import nested_dask as nd
 import nested_pandas as npd
 import numpy as np
 import pandas as pd
 import pyarrow as pa
-from hipscat.catalog import CatalogType
-from hipscat.catalog.catalog_info import CatalogInfo
-from hipscat.pixel_math import HealpixPixel, generate_histogram
-from hipscat.pixel_math.healpix_pixel_function import get_pixel_argsort
-from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN, compute_hipscat_id, healpix_to_hipscat_id
+from hats.catalog import CatalogType
+from hats.catalog.catalog_info import CatalogInfo
+from hats.pixel_math import HealpixPixel, generate_histogram
+from hats.pixel_math.healpix_pixel_function import get_pixel_argsort
+from hats.pixel_math.hipscat_id import SPATIAL_INDEX_COLUMN, compute_hipscat_id, healpix_to_hipscat_id
 from mocpy import MOC
 
 from lsdb.catalog.catalog import Catalog
@@ -31,7 +31,7 @@ pd.options.mode.chained_assignment = None  # default='warn'
 
 
 class DataframeCatalogLoader:
-    """Creates a HiPSCat formatted Catalog from a Pandas Dataframe"""
+    """Creates a HATS formatted Catalog from a Pandas Dataframe"""
 
     # pylint: disable=too-many-arguments
     def __init__(
@@ -60,7 +60,7 @@ class DataframeCatalogLoader:
             threshold (int): The maximum number of data points per pixel.
             should_generate_moc (bool): should we generate a MOC (multi-order coverage map)
                 of the data. can improve performance when joining/crossmatching to
-                other hipscatted datasets.
+                other hats-sharded datasets.
             moc_max_order (int): if generating a MOC, what to use as the max order. Defaults to 10.
             use_pyarrow_types (bool): If True, the data is backed by pyarrow, otherwise we keep the
                 original data types. Defaults to True.
@@ -94,7 +94,7 @@ class DataframeCatalogLoader:
         if df_total_memory > (1 << 30) or len(self.dataframe) > 1_000_000:
             warnings.warn(
                 "from_dataframe is not intended for large datasets. "
-                "Consider using hipscat-import: https://hipscat-import.readthedocs.io/",
+                "Consider using hats-import: https://hats-import.readthedocs.io/",
                 RuntimeWarning,
             )
         if threshold is not None and partition_size is not None:
@@ -145,11 +145,11 @@ class DataframeCatalogLoader:
     def _set_hipscat_index(self):
         """Generates the hipscat indices for each data point and assigns
         the hipscat index column as the Dataframe index."""
-        self.dataframe[HIPSCAT_ID_COLUMN] = compute_hipscat_id(
+        self.dataframe[SPATIAL_INDEX_COLUMN] = compute_hipscat_id(
             ra_values=self.dataframe[self.catalog_info.ra_column].to_numpy(),
             dec_values=self.dataframe[self.catalog_info.dec_column].to_numpy(),
         )
-        self.dataframe.set_index(HIPSCAT_ID_COLUMN, inplace=True)
+        self.dataframe.set_index(SPATIAL_INDEX_COLUMN, inplace=True)
 
     def _compute_pixel_list(self) -> List[HealpixPixel]:
         """Compute object histogram and generate the sorted list of

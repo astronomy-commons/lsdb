@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Tuple, Type
 
 import dask
 import nested_dask as nd
-from hipscat.pixel_tree import PixelAlignment
+from hats.pixel_tree import PixelAlignment
 
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
 from lsdb.core.crossmatch.crossmatch_algorithms import (

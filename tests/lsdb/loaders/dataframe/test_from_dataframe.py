@@ -1,17 +1,17 @@
 import math
 
 import astropy.units as u
-import hipscat as hc
-import hipscat.pixel_math.healpix_shim as hp
+import hats as hc
+import hats.pixel_math.healpix_shim as hp
 import nested_dask as nd
 import nested_pandas as npd
 import numpy as np
 import numpy.testing as npt
 import pandas as pd
 import pytest
-from hipscat.catalog import CatalogType
-from hipscat.pixel_math.healpix_pixel_function import get_pixel_argsort
-from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
+from hats.catalog import CatalogType
+from hats.pixel_math.healpix_pixel_function import get_pixel_argsort
+from hats.pixel_math.hipscat_id import SPATIAL_INDEX_COLUMN
 from mocpy import MOC
 
 import lsdb
@@ -46,7 +46,7 @@ def test_from_dataframe(
     # Catalogs have the same information
     assert catalog.hc_structure.catalog_info == small_sky_order1_catalog.hc_structure.catalog_info
     # Index is set to hipscat index
-    assert catalog._ddf.index.name == HIPSCAT_ID_COLUMN
+    assert catalog._ddf.index.name == SPATIAL_INDEX_COLUMN
     # Dataframes have the same data (column data types may differ)
     pd.testing.assert_frame_equal(
         catalog.compute().sort_index(), small_sky_order1_catalog.compute().sort_index()
@@ -54,7 +54,7 @@ def test_from_dataframe(
     # Divisions belong to the respective HEALPix pixels
     assert_divisions_are_correct(catalog)
     # The arrow schema was automatically inferred
-    expected_schema = hc.read_from_hipscat(small_sky_order1_dir).schema
+    expected_schema = hc.read_hats(small_sky_order1_dir).schema
     assert catalog.hc_structure.schema.equals(expected_schema)
 
     assert isinstance(catalog.compute(), npd.NestedFrame)
@@ -168,7 +168,7 @@ def test_from_dataframe_large_input(small_sky_order1_catalog, assert_divisions_a
     original_catalog_info.total_rows = 1_500_000
     assert catalog.hc_structure.catalog_info == original_catalog_info
     # Index is set to hipscat index
-    assert catalog._ddf.index.name == HIPSCAT_ID_COLUMN
+    assert catalog._ddf.index.name == SPATIAL_INDEX_COLUMN
     # Divisions belong to the respective HEALPix pixels
     assert_divisions_are_correct(catalog)
 
@@ -304,16 +304,16 @@ def test_from_dataframe_without_moc(small_sky_order1_catalog):
 
 def test_from_dataframe_with_backend(small_sky_order1_df, small_sky_order1_dir):
     """Tests that we can initialize a catalog from a Pandas Dataframe with the desired backend"""
-    # Read the catalog from hipscat format using pyarrow, import it from a CSV using
+    # Read the catalog from hats format using pyarrow, import it from a CSV using
     # the same backend and assert that we obtain the same catalog
-    expected_catalog = lsdb.read_hipscat(small_sky_order1_dir)
+    expected_catalog = lsdb.read_hats(small_sky_order1_dir)
     kwargs = get_catalog_kwargs(expected_catalog)
     catalog = lsdb.from_dataframe(small_sky_order1_df, **kwargs)
     assert all(isinstance(col_type, pd.ArrowDtype) for col_type in catalog.dtypes)
     pd.testing.assert_frame_equal(catalog.compute().sort_index(), expected_catalog.compute().sort_index())
 
     # Test that we can also keep the original types if desired
-    expected_catalog = lsdb.read_hipscat(small_sky_order1_dir, dtype_backend=None)
+    expected_catalog = lsdb.read_hats(small_sky_order1_dir, dtype_backend=None)
     kwargs = get_catalog_kwargs(expected_catalog)
     catalog = lsdb.from_dataframe(small_sky_order1_df, use_pyarrow_types=False, **kwargs)
     assert all(isinstance(col_type, np.dtype) for col_type in catalog.dtypes)
@@ -321,6 +321,6 @@ def test_from_dataframe_with_backend(small_sky_order1_df, small_sky_order1_dir):
 
 
 def test_from_dataframe_with_arrow_schema(small_sky_order1_df, small_sky_order1_dir):
-    expected_schema = hc.read_from_hipscat(small_sky_order1_dir).schema
+    expected_schema = hc.read_hats(small_sky_order1_dir).schema
     catalog = lsdb.from_dataframe(small_sky_order1_df, schema=expected_schema)
     assert catalog.hc_structure.schema is expected_schema

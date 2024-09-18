@@ -1,11 +1,11 @@
 from typing import List, Tuple
 
-import hipscat.pixel_math.healpix_shim as hp
+import hats.pixel_math.healpix_shim as hp
 import nested_pandas as npd
 import numpy as np
-from hipscat.catalog.catalog_info import CatalogInfo
-from hipscat.pixel_math.polygon_filter import CartesianCoordinates, SphericalCoordinates, generate_polygon_moc
-from hipscat.pixel_math.validators import validate_declination_values, validate_polygon
+from hats.catalog.catalog_info import CatalogInfo
+from hats.pixel_math.polygon_filter import CartesianCoordinates, SphericalCoordinates, generate_polygon_moc
+from hats.pixel_math.validators import validate_declination_values, validate_polygon
 from lsst.sphgeom import ConvexPolygon, UnitVector3d
 from mocpy import MOC
 
@@ -42,7 +42,7 @@ def polygon_filter(
     Args:
         data_frame (npd.NestedFrame): DataFrame containing points in the sky
         polygon (ConvexPolygon): Convex spherical polygon of interest, used to filter points
-        metadata (hc.catalog.Catalog): hipscat `Catalog` with catalog_info that matches `dataframe`
+        metadata (hc.catalog.Catalog): hats `Catalog` with catalog_info that matches `dataframe`
 
     Returns:
         A new DataFrame with the rows from `dataframe` filtered to only the pixels inside the polygon.

@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
 import nested_pandas as npd
-from hipscat.catalog.catalog_info import CatalogInfo
+from hats.catalog.catalog_info import CatalogInfo
 from mocpy import MOC
 
 if TYPE_CHECKING:

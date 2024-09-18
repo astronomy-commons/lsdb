@@ -1,10 +1,10 @@
 from pathlib import Path
 
-import hipscat as hc
+import hats as hc
 import pandas as pd
 import pytest
-from hipscat.pixel_math import hipscat_id_to_healpix
-from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN, healpix_to_hipscat_id
+from hats.pixel_math import hipscat_id_to_healpix
+from hats.pixel_math.hipscat_id import SPATIAL_INDEX_COLUMN, healpix_to_hipscat_id
 
 import lsdb
 
@@ -88,7 +88,7 @@ def small_sky_source_dir(test_data_dir):
 
 @pytest.fixture
 def small_sky_source_catalog(small_sky_source_dir):
-    return lsdb.read_hipscat(small_sky_source_dir)
+    return lsdb.read_hats(small_sky_source_dir)
 
 
 @pytest.fixture
@@ -107,8 +107,8 @@ def small_sky_to_order1_source_soft_dir(test_data_dir):
 
 
 @pytest.fixture
-def small_sky_hipscat_catalog(small_sky_dir):
-    return hc.catalog.Catalog.read_from_hipscat(small_sky_dir)
+def small_sky_hats_catalog(small_sky_dir):
+    return hc.catalog.Catalog.read_hats(small_sky_dir)
 
 
 @pytest.fixture
@@ -118,67 +118,67 @@ def small_sky_order1_id_index_dir(test_data_dir):
 
 @pytest.fixture
 def small_sky_catalog(small_sky_dir):
-    return lsdb.read_hipscat(small_sky_dir, catalog_type=lsdb.catalog.Catalog)
+    return lsdb.read_hats(small_sky_dir, catalog_type=lsdb.catalog.Catalog)
 
 
 @pytest.fixture
 def small_sky_left_xmatch_catalog(small_sky_left_xmatch_dir):
-    return lsdb.read_hipscat(small_sky_left_xmatch_dir)
+    return lsdb.read_hats(small_sky_left_xmatch_dir)
 
 
 @pytest.fixture
 def small_sky_xmatch_catalog(small_sky_xmatch_dir):
-    return lsdb.read_hipscat(small_sky_xmatch_dir)
+    return lsdb.read_hats(small_sky_xmatch_dir)
 
 
 @pytest.fixture
 def small_sky_xmatch_margin_catalog(small_sky_xmatch_margin_dir):
-    return lsdb.read_hipscat(small_sky_xmatch_margin_dir)
+    return lsdb.read_hats(small_sky_xmatch_margin_dir)
 
 
 @pytest.fixture
 def small_sky_xmatch_with_margin(small_sky_xmatch_dir, small_sky_xmatch_margin_catalog):
-    return lsdb.read_hipscat(small_sky_xmatch_dir, margin_cache=small_sky_xmatch_margin_catalog)
+    return lsdb.read_hats(small_sky_xmatch_dir, margin_cache=small_sky_xmatch_margin_catalog)
 
 
 @pytest.fixture
 def small_sky_to_xmatch_catalog(small_sky_to_xmatch_dir):
-    return lsdb.read_hipscat(small_sky_to_xmatch_dir)
+    return lsdb.read_hats(small_sky_to_xmatch_dir)
 
 
 @pytest.fixture
 def small_sky_to_xmatch_soft_catalog(small_sky_to_xmatch_soft_dir):
-    return lsdb.read_hipscat(small_sky_to_xmatch_soft_dir)
+    return lsdb.read_hats(small_sky_to_xmatch_soft_dir)
 
 
 @pytest.fixture
-def small_sky_order1_hipscat_catalog(small_sky_order1_dir):
-    return hc.catalog.Catalog.read_from_hipscat(small_sky_order1_dir)
+def small_sky_order1_hats_catalog(small_sky_order1_dir):
+    return hc.catalog.Catalog.read_hats(small_sky_order1_dir)
 
 
 @pytest.fixture
 def small_sky_order1_catalog(small_sky_order1_dir):
-    return lsdb.read_hipscat(small_sky_order1_dir)
+    return lsdb.read_hats(small_sky_order1_dir)
 
 
 @pytest.fixture
 def small_sky_order1_source_with_margin(small_sky_order1_source_dir, small_sky_order1_source_margin_catalog):
-    return lsdb.read_hipscat(small_sky_order1_source_dir, margin_cache=small_sky_order1_source_margin_catalog)
+    return lsdb.read_hats(small_sky_order1_source_dir, margin_cache=small_sky_order1_source_margin_catalog)
 
 
 @pytest.fixture
 def small_sky_order1_source_margin_catalog(small_sky_order1_source_margin_dir):
-    return lsdb.read_hipscat(small_sky_order1_source_margin_dir)
+    return lsdb.read_hats(small_sky_order1_source_margin_dir)
 
 
 @pytest.fixture
 def small_sky_to_o1source_catalog(small_sky_to_order1_source_dir):
-    return lsdb.read_hipscat(small_sky_to_order1_source_dir)
+    return lsdb.read_hats(small_sky_to_order1_source_dir)
 
 
 @pytest.fixture
 def small_sky_to_o1source_soft_catalog(small_sky_to_order1_source_soft_dir):
-    return lsdb.read_hipscat(small_sky_to_order1_source_soft_dir)
+    return lsdb.read_hats(small_sky_to_order1_source_soft_dir)
 
 
 @pytest.fixture
@@ -193,12 +193,12 @@ def small_sky_source_df(test_data_dir):
 
 @pytest.fixture
 def small_sky_source_margin_catalog(test_data_dir):
-    return lsdb.read_hipscat(test_data_dir / SMALL_SKY_SOURCE_MARGIN_NAME)
+    return lsdb.read_hats(test_data_dir / SMALL_SKY_SOURCE_MARGIN_NAME)
 
 
 @pytest.fixture
 def small_sky_order3_source_margin_catalog(test_data_dir):
-    return lsdb.read_hipscat(test_data_dir / SMALL_SKY_ORDER3_SOURCE_MARGIN_NAME)
+    return lsdb.read_hats(test_data_dir / SMALL_SKY_ORDER3_SOURCE_MARGIN_NAME)
 
 
 @pytest.fixture
@@ -265,12 +265,12 @@ def cone_search_expected_dir(test_data_dir):
 
 @pytest.fixture
 def cone_search_expected(cone_search_expected_dir):
-    return pd.read_csv(cone_search_expected_dir / "catalog.csv", index_col=HIPSCAT_ID_COLUMN)
+    return pd.read_csv(cone_search_expected_dir / "catalog.csv", index_col=SPATIAL_INDEX_COLUMN)
 
 
 @pytest.fixture
 def cone_search_margin_expected(cone_search_expected_dir):
-    return pd.read_csv(cone_search_expected_dir / "margin.csv", index_col=HIPSCAT_ID_COLUMN)
+    return pd.read_csv(cone_search_expected_dir / "margin.csv", index_col=SPATIAL_INDEX_COLUMN)
 
 
 @pytest.fixture

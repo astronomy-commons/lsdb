@@ -3,7 +3,7 @@ import nested_pandas as npd
 import pandas as pd
 import pytest
 from astropy.coordinates import SkyCoord
-from hipscat.pixel_math.validators import ValidatorsErrors
+from hats.pixel_math.validators import ValidatorsErrors
 
 
 def test_cone_search_filters_correct_points(small_sky_order1_catalog, assert_divisions_are_correct):

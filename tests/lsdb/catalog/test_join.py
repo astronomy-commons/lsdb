@@ -3,7 +3,7 @@ import nested_pandas as npd
 import numpy as np
 import pandas as pd
 import pytest
-from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN, hipscat_id_to_healpix
+from hats.pixel_math.hipscat_id import SPATIAL_INDEX_COLUMN, hipscat_id_to_healpix
 
 
 def test_small_sky_join_small_sky_order1(
@@ -19,7 +19,7 @@ def test_small_sky_join_small_sky_order1(
         assert (col_name + suffixes[0], dtype) in joined.dtypes.items()
     for col_name, dtype in small_sky_order1_catalog.dtypes.items():
         assert (col_name + suffixes[1], dtype) in joined.dtypes.items()
-    assert joined._ddf.index.name == HIPSCAT_ID_COLUMN
+    assert joined._ddf.index.name == SPATIAL_INDEX_COLUMN
     assert joined._ddf.index.dtype == np.uint64
 
     joined_compute = joined.compute()
@@ -83,7 +83,7 @@ def test_join_association(small_sky_catalog, small_sky_xmatch_catalog, small_sky
         assert col + suffixes[0] in joined._ddf.columns
     for col in small_sky_xmatch_catalog._ddf.columns:
         assert col + suffixes[1] in joined._ddf.columns
-    assert joined._ddf.index.name == HIPSCAT_ID_COLUMN
+    assert joined._ddf.index.name == SPATIAL_INDEX_COLUMN
     assert joined._ddf.index.dtype == np.uint64
 
     small_sky_compute = small_sky_catalog.compute()

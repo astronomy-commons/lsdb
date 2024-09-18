@@ -2,19 +2,19 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Callable, List, Sequence, Tuple
 
-import hipscat.pixel_math.healpix_shim as hp
+import hats.pixel_math.healpix_shim as hp
 import nested_dask as nd
 import nested_pandas as npd
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
 from dask.delayed import Delayed, delayed
-from hipscat.catalog import PartitionInfo
-from hipscat.pixel_math import HealpixPixel
-from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN, healpix_to_hipscat_id
-from hipscat.pixel_tree import PixelAlignment, PixelAlignmentType, align_trees
-from hipscat.pixel_tree.moc_utils import copy_moc
-from hipscat.pixel_tree.pixel_alignment import align_with_mocs
+from hats.catalog import PartitionInfo
+from hats.pixel_math import HealpixPixel
+from hats.pixel_math.hipscat_id import SPATIAL_INDEX_COLUMN, healpix_to_hipscat_id
+from hats.pixel_tree import PixelAlignment, PixelAlignmentType, align_trees
+from hats.pixel_tree.moc_utils import copy_moc
+from hats.pixel_tree.pixel_alignment import align_with_mocs
 
 from lsdb.dask.divisions import get_pixels_divisions
 from lsdb.types import DaskDFPixelMap
@@ -227,7 +227,7 @@ def generate_meta_df_for_joined_tables(
     catalogs: Sequence[Catalog],
     suffixes: Sequence[str],
     extra_columns: pd.DataFrame | None = None,
-    index_name: str = HIPSCAT_ID_COLUMN,
+    index_name: str = SPATIAL_INDEX_COLUMN,
     index_type: npt.DTypeLike = np.uint64,
 ) -> npd.NestedFrame:
     """Generates a Dask meta DataFrame that would result from joining two catalogs
@@ -265,7 +265,7 @@ def generate_meta_df_for_nested_tables(
     nested_column_name: str,
     join_column_name: str,
     extra_columns: pd.DataFrame | None = None,
-    index_name: str = HIPSCAT_ID_COLUMN,
+    index_name: str = SPATIAL_INDEX_COLUMN,
     index_type: npt.DTypeLike = np.uint64,
 ) -> npd.NestedFrame:
     """Generates a Dask meta DataFrame that would result from joining two catalogs, adding the right as a

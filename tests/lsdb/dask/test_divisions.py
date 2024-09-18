@@ -1,4 +1,4 @@
-import hipscat as hc
+import hats as hc
 import numpy.testing as npt
 
 from lsdb.dask.divisions import get_pixels_divisions

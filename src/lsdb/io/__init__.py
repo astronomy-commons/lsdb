@@ -1,1 +1,1 @@
-from .to_hipscat import to_hipscat
+from .to_hats import to_hats
