@@ -1,0 +1,8 @@
+{
+    "catalog_name": "small_sky_order1_source",
+    "catalog_type": "source",
+    "total_rows": 17161,
+    "epoch": "J2000",
+    "ra_column": "source_ra",
+    "dec_column": "source_dec"
+}

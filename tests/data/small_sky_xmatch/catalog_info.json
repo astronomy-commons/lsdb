@@ -1,0 +1,8 @@
+{
+    "catalog_name": "small_sky_xmatch",
+    "catalog_type": "object",
+    "total_rows": 111,
+    "epoch": "J2000",
+    "ra_column": "ra",
+    "dec_column": "dec"
+}

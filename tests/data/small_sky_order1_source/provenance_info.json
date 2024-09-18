@@ -1,0 +1,55 @@
+{
+    "catalog_name": "small_sky_order1_source",
+    "catalog_type": "source",
+    "total_rows": 17161,
+    "epoch": "J2000",
+    "ra_column": "source_ra",
+    "dec_column": "source_dec",
+    "version": "0.3.10.dev6+g5cb658f",
+    "generation_date": "2024.09.18",
+    "tool_args": {
+        "tool_name": "hats_import",
+        "version": "0.3.6.dev16+g829fe47.d20240918",
+        "runtime_args": {
+            "catalog_name": "small_sky_order1_source",
+            "output_path": ".",
+            "output_artifact_name": "small_sky_order1_source",
+            "tmp_dir": "/tmp/tmpjx75awsm",
+            "dask_tmp": null,
+            "dask_n_workers": 1,
+            "dask_threads_per_worker": 1,
+            "catalog_path": "small_sky_order1_source",
+            "tmp_path": "/tmp/tmpjx75awsm/small_sky_order1_source/intermediate",
+            "epoch": "J2000",
+            "catalog_type": "source",
+            "input_path": null,
+            "input_paths": [
+                "raw/small_sky_source/small_sky_source.csv"
+            ],
+            "input_file_list": [
+                "raw/small_sky_source/small_sky_source.csv"
+            ],
+            "ra_column": "source_ra",
+            "dec_column": "source_dec",
+            "use_healpix_29": false,
+            "sort_columns": null,
+            "constant_healpix_order": 1,
+            "lowest_healpix_order": 0,
+            "highest_healpix_order": 10,
+            "pixel_threshold": 1000000,
+            "mapping_healpix_order": 1,
+            "debug_stats_only": false,
+            "file_reader_info": {
+                "input_reader_type": "CsvReader",
+                "chunksize": 500000,
+                "header": "infer",
+                "schema_file": null,
+                "column_names": null,
+                "type_map": null,
+                "parquet_kwargs": null,
+                "upath_kwargs": null,
+                "kwargs": {}
+            }
+        }
+    }
+}

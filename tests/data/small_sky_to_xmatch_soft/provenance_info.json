@@ -1,0 +1,36 @@
+{
+    "catalog_name": "small_sky_to_xmatch_soft",
+    "catalog_type": "association",
+    "total_rows": 111,
+    "primary_catalog": "small_sky",
+    "primary_column": "id",
+    "primary_column_association": "object_id",
+    "join_catalog": "small_sky_xmatch",
+    "join_column": "id",
+    "join_column_association": "source_id",
+    "contains_leaf_files": false,
+    "version": "0.3.10.dev6+g5cb658f",
+    "generation_date": "2024.09.18",
+    "tool_args": {
+        "tool_name": "hats_import",
+        "version": "0.3.6.dev16+g829fe47.d20240918",
+        "runtime_args": {
+            "catalog_name": "small_sky_to_xmatch_soft",
+            "output_path": ".",
+            "output_artifact_name": "small_sky_to_xmatch_soft",
+            "tmp_dir": null,
+            "dask_tmp": null,
+            "dask_n_workers": 1,
+            "dask_threads_per_worker": 1,
+            "catalog_path": "small_sky_to_xmatch_soft",
+            "tmp_path": "small_sky_to_xmatch_soft/intermediate",
+            "object_catalog_dir": "small_sky",
+            "object_id_column": "id",
+            "source_catalog_dir": "small_sky_xmatch",
+            "source_object_id_column": "id",
+            "source_id_column": "id",
+            "compute_partition_size": 1000000000,
+            "write_leaf_files": false
+        }
+    }
+}

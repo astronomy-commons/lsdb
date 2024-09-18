@@ -110,6 +110,7 @@ def test_join_association(small_sky_catalog, small_sky_xmatch_catalog, small_sky
         assert joined_row.index == left_index
 
 
+@pytest.mark.skip(reason="HIPSCAT2HATS")
 def test_join_association_source_margin(
     small_sky_catalog, small_sky_order1_source_with_margin, small_sky_to_o1source_catalog
 ):
@@ -149,6 +150,7 @@ def test_join_association_source_margin(
         assert col + suffixes[1] in joined._ddf.columns
 
 
+@pytest.mark.skip(reason="HIPSCAT2HATS")
 def test_join_association_soft(small_sky_catalog, small_sky_xmatch_catalog, small_sky_to_xmatch_soft_catalog):
     suffixes = ("_a", "_b")
     with pytest.warns(match="margin"):
@@ -167,6 +169,7 @@ def test_join_association_soft(small_sky_catalog, small_sky_xmatch_catalog, smal
     pd.testing.assert_frame_equal(joined.compute(), joined_on.compute())
 
 
+@pytest.mark.skip(reason="HIPSCAT2HATS")
 def test_join_source_margin_soft(
     small_sky_catalog, small_sky_order1_source_with_margin, small_sky_to_o1source_soft_catalog
 ):

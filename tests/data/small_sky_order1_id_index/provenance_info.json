@@ -1,0 +1,31 @@
+{
+    "catalog_name": "small_sky_order1_id_index",
+    "catalog_type": "index",
+    "total_rows": 131,
+    "primary_catalog": "./small_sky_order1",
+    "indexing_column": "id",
+    "extra_columns": [],
+    "version": "0.3.10.dev6+g5cb658f",
+    "generation_date": "2024.09.18",
+    "tool_args": {
+        "tool_name": "hats_import",
+        "version": "0.3.6.dev16+g829fe47.d20240918",
+        "runtime_args": {
+            "catalog_name": "small_sky_order1_id_index",
+            "output_path": ".",
+            "output_artifact_name": "small_sky_order1_id_index",
+            "tmp_dir": "/tmp/tmplk8i22e3",
+            "dask_tmp": null,
+            "dask_n_workers": 1,
+            "dask_threads_per_worker": 1,
+            "catalog_path": "small_sky_order1_id_index",
+            "tmp_path": "/tmp/tmplk8i22e3/small_sky_order1_id_index/intermediate",
+            "input_catalog_path": "./small_sky_order1",
+            "indexing_column": "id",
+            "extra_columns": [],
+            "include_healpix_29": false,
+            "include_order_pixel": true,
+            "include_radec": false
+        }
+    }
+}

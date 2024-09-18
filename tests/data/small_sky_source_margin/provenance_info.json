@@ -1,0 +1,31 @@
+{
+    "catalog_name": "small_sky_source_margin",
+    "catalog_type": "margin",
+    "total_rows": 395,
+    "epoch": "J2000",
+    "ra_column": "source_ra",
+    "dec_column": "source_dec",
+    "primary_catalog": "small_sky_source",
+    "margin_threshold": 180,
+    "version": "0.3.10.dev6+g5cb658f",
+    "generation_date": "2024.09.18",
+    "tool_args": {
+        "tool_name": "hats_import",
+        "version": "0.3.6.dev16+g829fe47.d20240918",
+        "runtime_args": {
+            "catalog_name": "small_sky_source_margin",
+            "output_path": ".",
+            "output_artifact_name": "small_sky_source_margin",
+            "tmp_dir": "/tmp/tmp29f0k5kn",
+            "dask_tmp": null,
+            "dask_n_workers": 1,
+            "dask_threads_per_worker": 1,
+            "catalog_path": "small_sky_source_margin",
+            "tmp_path": "/tmp/tmp29f0k5kn/small_sky_source_margin/intermediate",
+            "input_catalog_path": "small_sky_source",
+            "margin_threshold": 180,
+            "margin_order": 8,
+            "debug_filter_pixel_list": []
+        }
+    }
+}

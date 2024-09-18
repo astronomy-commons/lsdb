@@ -23,7 +23,6 @@ SMALL_SKY_ORDER1_SOURCE_NAME = "small_sky_order1_source"
 SMALL_SKY_ORDER1_SOURCE_MARGIN_NAME = "small_sky_order1_source_margin"
 SMALL_SKY_TO_ORDER1_SOURCE_NAME = "small_sky_to_o1source"
 SMALL_SKY_TO_ORDER1_SOURCE_SOFT_NAME = "small_sky_to_o1source_soft"
-SMALL_SKY_ORDER1_CSV = "small_sky_order1.csv"
 SMALL_SKY_NO_METADATA = "small_sky_no_metadata"
 XMATCH_CORRECT_FILE = "xmatch_correct.csv"
 XMATCH_CORRECT_005_FILE = "xmatch_correct_0_005.csv"
@@ -182,8 +181,8 @@ def small_sky_to_o1source_soft_catalog(small_sky_to_order1_source_soft_dir):
 
 
 @pytest.fixture
-def small_sky_order1_df(small_sky_order1_dir):
-    return pd.read_csv(small_sky_order1_dir / SMALL_SKY_ORDER1_CSV)
+def small_sky_order1_df(test_data_dir):
+    return pd.read_csv(test_data_dir / "raw" / "small_sky" / "small_sky.csv")
 
 
 @pytest.fixture

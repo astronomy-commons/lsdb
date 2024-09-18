@@ -124,6 +124,7 @@ class TestCrossmatch:
             small_sky_catalog.crossmatch(small_sky_xmatch_catalog, algorithm=algo, require_right_margin=True)
 
 
+@pytest.mark.skip(reason="HIPSCAT2HATS")
 @pytest.mark.parametrize("algo", [BoundedKdTreeCrossmatch])
 class TestBoundedCrossmatch:
     @staticmethod

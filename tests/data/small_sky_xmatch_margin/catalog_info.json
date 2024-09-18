@@ -1,0 +1,10 @@
+{
+    "catalog_name": "small_sky_xmatch_margin",
+    "catalog_type": "margin",
+    "total_rows": 26,
+    "epoch": "J2000",
+    "ra_column": "ra",
+    "dec_column": "dec",
+    "primary_catalog": "small_sky_xmatch",
+    "margin_threshold": 7200
+}

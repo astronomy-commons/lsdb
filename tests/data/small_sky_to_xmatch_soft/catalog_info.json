@@ -1,0 +1,12 @@
+{
+    "catalog_name": "small_sky_to_xmatch_soft",
+    "catalog_type": "association",
+    "total_rows": 111,
+    "primary_catalog": "small_sky",
+    "primary_column": "id",
+    "primary_column_association": "object_id",
+    "join_catalog": "small_sky_xmatch",
+    "join_column": "id",
+    "join_column_association": "source_id",
+    "contains_leaf_files": false
+}
