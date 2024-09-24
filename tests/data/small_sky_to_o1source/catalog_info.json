@@ -6,7 +6,7 @@
     "primary_column": "id",
     "primary_column_association": "object_id",
     "join_catalog": "small_sky_order1_source",
-    "join_column": "source_id",
+    "join_column": "object_id",
     "join_column_association": "source_id",
     "contains_leaf_files": true
 }

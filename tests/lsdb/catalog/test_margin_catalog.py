@@ -1,6 +1,6 @@
 from pathlib import Path
 
-import hipscat as hc
+import hats as hc
 import nested_dask as nd
 import pandas as pd
 
@@ -9,10 +9,10 @@ from lsdb.catalog.margin_catalog import MarginCatalog
 
 
 def test_read_margin_catalog(small_sky_xmatch_margin_dir):
-    margin = lsdb.read_hipscat(small_sky_xmatch_margin_dir)
+    margin = lsdb.read_hats(small_sky_xmatch_margin_dir)
     assert isinstance(margin, MarginCatalog)
     assert isinstance(margin._ddf, nd.NestedFrame)
-    hc_margin = hc.catalog.MarginCatalog.read_from_hipscat(small_sky_xmatch_margin_dir)
+    hc_margin = hc.catalog.MarginCatalog.read_hats(small_sky_xmatch_margin_dir)
     assert margin.hc_structure.catalog_info == hc_margin.catalog_info
     assert margin.hc_structure.get_healpix_pixels() == hc_margin.get_healpix_pixels()
     assert margin.get_healpix_pixels() == margin.hc_structure.get_healpix_pixels()
@@ -21,7 +21,7 @@ def test_read_margin_catalog(small_sky_xmatch_margin_dir):
 
 
 def test_margin_catalog_partitions_correct(small_sky_xmatch_margin_dir):
-    margin = lsdb.read_hipscat(small_sky_xmatch_margin_dir)
+    margin = lsdb.read_hats(small_sky_xmatch_margin_dir)
     assert isinstance(margin, MarginCatalog)
     for healpix_pixel in margin.get_healpix_pixels():
         hp_order = healpix_pixel.order
@@ -38,8 +38,8 @@ def test_margin_catalog_partitions_correct(small_sky_xmatch_margin_dir):
 def test_save_margin_catalog(small_sky_xmatch_margin_catalog, tmp_path):
     new_catalog_name = "small_sky_xmatch_margin"
     base_catalog_path = Path(tmp_path) / new_catalog_name
-    small_sky_xmatch_margin_catalog.to_hipscat(base_catalog_path, catalog_name=new_catalog_name)
-    expected_catalog = lsdb.read_hipscat(base_catalog_path)
+    small_sky_xmatch_margin_catalog.to_hats(base_catalog_path, catalog_name=new_catalog_name)
+    expected_catalog = lsdb.read_hats(base_catalog_path)
     assert expected_catalog.hc_structure.catalog_name == new_catalog_name
     assert (
         expected_catalog.hc_structure.catalog_info

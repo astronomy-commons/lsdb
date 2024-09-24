@@ -22,15 +22,15 @@ BENCH_DATA_DIR = Path(__file__).parent / "data"
 
 
 def load_small_sky():
-    return lsdb.read_hipscat(TEST_DIR / DATA_DIR_NAME / SMALL_SKY_DIR_NAME, catalog_type=lsdb.Catalog)
+    return lsdb.read_hats(TEST_DIR / DATA_DIR_NAME / SMALL_SKY_DIR_NAME, catalog_type=lsdb.Catalog)
 
 
 def load_small_sky_order1():
-    return lsdb.read_hipscat(TEST_DIR / DATA_DIR_NAME / SMALL_SKY_ORDER1, catalog_type=lsdb.Catalog)
+    return lsdb.read_hats(TEST_DIR / DATA_DIR_NAME / SMALL_SKY_ORDER1, catalog_type=lsdb.Catalog)
 
 
 def load_small_sky_xmatch():
-    return lsdb.read_hipscat(TEST_DIR / DATA_DIR_NAME / SMALL_SKY_XMATCH_NAME, catalog_type=lsdb.Catalog)
+    return lsdb.read_hats(TEST_DIR / DATA_DIR_NAME / SMALL_SKY_XMATCH_NAME, catalog_type=lsdb.Catalog)
 
 
 def time_kdtree_crossmatch():
@@ -63,8 +63,8 @@ def time_box_filter_on_partition():
 
 
 def time_create_midsize_catalog():
-    return lsdb.read_hipscat(BENCH_DATA_DIR / "midsize_catalog")
+    return lsdb.read_hats(BENCH_DATA_DIR / "midsize_catalog")
 
 
 def time_create_large_catalog():
-    return lsdb.read_hipscat(BENCH_DATA_DIR / "large_catalog")
+    return lsdb.read_hats(BENCH_DATA_DIR / "large_catalog")

@@ -1,13 +1,13 @@
 from typing import List
 
-import hipscat as hc
+import hats as hc
 import nested_dask as nd
 import nested_pandas as npd
 from dask.delayed import Delayed
 
 
 class Dataset:
-    """Base HiPSCat Dataset"""
+    """Base HATS Dataset"""
 
     def __init__(
         self,
@@ -21,7 +21,7 @@ class Dataset:
 
         Args:
             ddf: Dask DataFrame with the source data of the catalog
-            hc_structure: `hipscat.Catalog` object with hipscat metadata of the catalog
+            hc_structure: `hats.Catalog` object with hats metadata of the catalog
         """
         self._ddf = ddf
         self.hc_structure = hc_structure

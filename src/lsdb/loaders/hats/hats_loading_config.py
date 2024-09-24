@@ -13,10 +13,10 @@ from lsdb.core.search.abstract_search import AbstractSearch
 
 
 @dataclass
-class HipscatLoadingConfig:
-    """Configuration for loading a HiPSCat catalog in lsdb.
+class HatsLoadingConfig:
+    """Configuration for loading a HATS catalog in lsdb.
 
-    Contains all parameters needed for a user to specify how to correctly read a hipscat catalog.
+    Contains all parameters needed for a user to specify how to correctly read a hats-sharded catalog.
     """
 
     search_filter: AbstractSearch | None = None
@@ -61,7 +61,7 @@ class HipscatLoadingConfig:
         if "filters" in self.kwargs:
             url_params["filters"] = []
             for filtr in self.kwargs["filters"]:
-                # This is how hipscat expects the filters to add to the url
+                # This is how HATS expects the filters to add to the url
                 url_params["filters"].append(f"{filtr[0]}{filtr[1]}{filtr[2]}")
 
         return url_params

@@ -2,24 +2,22 @@ from pathlib import Path
 
 import dask.array as da
 import dask.dataframe as dd
+import hats.pixel_math.healpix_shim as hp
 import healpy
-import hipscat.pixel_math.healpix_shim as hp
 import nested_dask as nd
 import nested_pandas as npd
 import numpy as np
 import pandas as pd
 import pytest
-from hipscat.pixel_math import HealpixPixel, hipscat_id_to_healpix
+from hats.pixel_math import HealpixPixel, hipscat_id_to_healpix
 
 import lsdb
 from lsdb import Catalog
 from lsdb.dask.merge_catalog_functions import filter_by_hipscat_index_to_pixel
 
 
-def test_catalog_pixels_equals_hc_catalog_pixels(small_sky_order1_catalog, small_sky_order1_hipscat_catalog):
-    assert (
-        small_sky_order1_catalog.get_healpix_pixels() == small_sky_order1_hipscat_catalog.get_healpix_pixels()
-    )
+def test_catalog_pixels_equals_hc_catalog_pixels(small_sky_order1_catalog, small_sky_order1_hats_catalog):
+    assert small_sky_order1_catalog.get_healpix_pixels() == small_sky_order1_hats_catalog.get_healpix_pixels()
 
 
 def test_catalog_repr_equals_ddf_repr(small_sky_order1_catalog):
@@ -194,8 +192,8 @@ def test_assign_with_invalid_arguments(small_sky_order1_catalog):
 def test_save_catalog(small_sky_catalog, tmp_path):
     new_catalog_name = "small_sky"
     base_catalog_path = Path(tmp_path) / new_catalog_name
-    small_sky_catalog.to_hipscat(base_catalog_path, catalog_name=new_catalog_name)
-    expected_catalog = lsdb.read_hipscat(base_catalog_path)
+    small_sky_catalog.to_hats(base_catalog_path, catalog_name=new_catalog_name)
+    expected_catalog = lsdb.read_hats(base_catalog_path)
     assert expected_catalog.hc_structure.catalog_name == new_catalog_name
     assert expected_catalog.hc_structure.catalog_info == small_sky_catalog.hc_structure.catalog_info
     assert expected_catalog.get_healpix_pixels() == small_sky_catalog.get_healpix_pixels()
@@ -205,13 +203,13 @@ def test_save_catalog(small_sky_catalog, tmp_path):
 def test_save_catalog_overwrite(small_sky_catalog, tmp_path):
     base_catalog_path = tmp_path / "small_sky"
     # Saving a catalog to disk when the directory does not yet exist
-    small_sky_catalog.to_hipscat(base_catalog_path)
+    small_sky_catalog.to_hats(base_catalog_path)
     # The output directory exists and it has content. Overwrite is
     # set to False and, as such, the operation fails.
     with pytest.raises(ValueError, match="set overwrite to True"):
-        small_sky_catalog.to_hipscat(base_catalog_path)
+        small_sky_catalog.to_hats(base_catalog_path)
     # With overwrite it succeeds because the directory is recreated
-    small_sky_catalog.to_hipscat(base_catalog_path, overwrite=True)
+    small_sky_catalog.to_hats(base_catalog_path, overwrite=True)
 
 
 def test_save_catalog_when_catalog_is_empty(small_sky_order1_catalog, tmp_path):
@@ -229,7 +227,7 @@ def test_save_catalog_when_catalog_is_empty(small_sky_order1_catalog, tmp_path):
 
     # The catalog is not written to disk
     with pytest.raises(RuntimeError, match="The output catalog is empty"):
-        cone_search_catalog.to_hipscat(base_catalog_path)
+        cone_search_catalog.to_hats(base_catalog_path)
 
 
 def test_save_catalog_with_some_empty_partitions(small_sky_order1_catalog, tmp_path):
@@ -245,11 +243,11 @@ def test_save_catalog_with_some_empty_partitions(small_sky_order1_catalog, tmp_p
             non_empty_pixels.append(pixel)
     assert len(non_empty_pixels) == 1
 
-    cone_search_catalog.to_hipscat(base_catalog_path)
+    cone_search_catalog.to_hats(base_catalog_path)
 
     # Confirm that we can read the catalog from disk, and that it was
     # written with no empty partitions
-    catalog = lsdb.read_hipscat(base_catalog_path)
+    catalog = lsdb.read_hats(base_catalog_path)
     assert catalog._ddf.npartitions == 1
     assert len(catalog._ddf.partitions[0]) > 0
     assert list(catalog._ddf_pixel_map.keys()) == non_empty_pixels

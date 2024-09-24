@@ -31,7 +31,7 @@ def test_bounded_kdtree_radius_invalid(small_sky_catalog, small_sky_order1_sourc
 def test_kdtree_left_columns(small_sky_catalog, small_sky_order1_source_with_margin):
     original_df = small_sky_catalog._ddf
     small_sky_catalog._ddf = original_df.reset_index()
-    with pytest.raises(ValueError, match="index of left table must be _hipscat_index"):
+    with pytest.raises(ValueError, match="index of left table must be _healpix_29"):
         KdTreeCrossmatch.validate(
             small_sky_catalog,
             small_sky_order1_source_with_margin,
@@ -55,7 +55,7 @@ def test_kdtree_left_columns(small_sky_catalog, small_sky_order1_source_with_mar
 def test_kdtree_right_columns(small_sky_catalog, small_sky_order1_source_with_margin):
     original_df = small_sky_order1_source_with_margin._ddf
     small_sky_order1_source_with_margin._ddf = original_df.reset_index()
-    with pytest.raises(ValueError, match="index of right table must be _hipscat_index"):
+    with pytest.raises(ValueError, match="index of right table must be _healpix_29"):
         KdTreeCrossmatch.validate(small_sky_catalog, small_sky_order1_source_with_margin)
 
     small_sky_order1_source_with_margin._ddf = original_df.drop(columns=["source_ra"])

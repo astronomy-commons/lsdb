@@ -3,12 +3,12 @@ from __future__ import annotations
 import dataclasses
 from typing import List, Tuple, Type
 
-import hipscat as hc
+import hats as hc
 import nested_dask as nd
 import nested_pandas as npd
 import pandas as pd
-from hipscat.catalog.index.index_catalog import IndexCatalog as HCIndexCatalog
-from hipscat.pixel_math.polygon_filter import SphericalCoordinates
+from hats.catalog.index.index_catalog import IndexCatalog as HCIndexCatalog
+from hats.pixel_math.polygon_filter import SphericalCoordinates
 from pandas._libs import lib
 from pandas._typing import AnyAll, Axis, IndexLabel
 from pandas.api.extensions import no_default
@@ -39,8 +39,8 @@ class Catalog(HealpixDataset):
     spatial operations.
 
     Attributes:
-        hc_structure: `hipscat.Catalog` object representing the structure
-                      and metadata of the HiPSCat catalog
+        hc_structure: `hats.Catalog` object representing the structure
+                      and metadata of the HATS catalog
     """
 
     hc_structure: hc.catalog.Catalog
@@ -60,7 +60,7 @@ class Catalog(HealpixDataset):
         Args:
             ddf: Dask DataFrame with the source data of the catalog
             ddf_pixel_map: Dictionary mapping HEALPix order and pixel to partition index of ddf
-            hc_structure: `hipscat.Catalog` object with hipscat metadata of the catalog
+            hc_structure: `hats.Catalog` object with hats metadata of the catalog
         """
         super().__init__(ddf, ddf_pixel_map, hc_structure)
         self.margin = margin
@@ -279,7 +279,7 @@ class Catalog(HealpixDataset):
 
         Args:
             ids: Values to search for.
-            catalog_index (HCIndexCatalog): A pre-computed hipscat index catalog.
+            catalog_index (HCIndexCatalog): A pre-computed hats index catalog.
             fine (bool): True if points are to be filtered, False if not. Defaults to True.
 
         Returns:

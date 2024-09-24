@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from typing import Any, Callable, Dict
 
-import hipscat.pixel_math.healpix_shim as hp
+import hats.pixel_math.healpix_shim as hp
 import nested_pandas as npd
 import numpy as np
 from dask import delayed
-from hipscat.pixel_math import HealpixPixel, hipscat_id_to_healpix
+from hats.pixel_math import HealpixPixel, hipscat_id_to_healpix
 
 
 @delayed

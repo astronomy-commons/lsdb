@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-import hipscat as hc
+import hats as hc
 
 from lsdb.catalog.margin_catalog import MarginCatalog
-from lsdb.loaders.hipscat.abstract_catalog_loader import AbstractCatalogLoader
+from lsdb.loaders.hats.abstract_catalog_loader import AbstractCatalogLoader
 
 
 class MarginCatalogLoader(AbstractCatalogLoader[MarginCatalog]):
-    """Loads an HiPSCat MarginCatalog"""
+    """Loads an HATS MarginCatalog"""
 
     def load_catalog(self) -> MarginCatalog | None:
         """Load a catalog from the configuration specified when the loader was created
@@ -15,15 +15,15 @@ class MarginCatalogLoader(AbstractCatalogLoader[MarginCatalog]):
         Returns:
             Catalog object with data from the source given at loader initialization
         """
-        hc_catalog = self._load_hipscat_catalog(hc.catalog.MarginCatalog)
-        filtered_hc_catalog = self._filter_hipscat_catalog(hc_catalog)
+        hc_catalog = self._load_hats_catalog(hc.catalog.MarginCatalog)
+        filtered_hc_catalog = self._filter_hats_catalog(hc_catalog)
         dask_df, dask_df_pixel_map = self._load_dask_df_and_map(filtered_hc_catalog)
         margin = MarginCatalog(dask_df, dask_df_pixel_map, filtered_hc_catalog)
         if self.config.search_filter is not None:
             margin = margin.search(self.config.search_filter)
         return margin
 
-    def _filter_hipscat_catalog(self, hc_catalog: hc.catalog.MarginCatalog) -> hc.catalog.MarginCatalog:
+    def _filter_hats_catalog(self, hc_catalog: hc.catalog.MarginCatalog) -> hc.catalog.MarginCatalog:
         """Filter the catalog pixels according to the spatial filter provided at loading time.
         Margin catalogs, unlike object and source catalogs, are allowed to be filtered to an
         empty catalog. In that case, the margin catalog is considered None."""

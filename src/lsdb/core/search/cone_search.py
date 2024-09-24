@@ -1,8 +1,8 @@
 import nested_pandas as npd
 from astropy.coordinates import SkyCoord
-from hipscat.catalog.catalog_info import CatalogInfo
-from hipscat.pixel_math.cone_filter import generate_cone_moc
-from hipscat.pixel_math.validators import validate_declination_values, validate_radius
+from hats.catalog.catalog_info import CatalogInfo
+from hats.pixel_math.cone_filter import generate_cone_moc
+from hats.pixel_math.validators import validate_declination_values, validate_radius
 from mocpy import MOC
 
 from lsdb.core.search.abstract_search import AbstractSearch
@@ -39,7 +39,7 @@ def cone_filter(data_frame: npd.NestedFrame, ra, dec, radius_arcsec, metadata: C
         ra (float): Right Ascension of the center of the cone in degrees
         dec (float): Declination of the center of the cone in degrees
         radius_arcsec (float): Radius of the cone in arcseconds
-        metadata (hc.CatalogInfo): hipscat `CatalogInfo` with metadata that matches `data_frame`
+        metadata (hc.CatalogInfo): hats `CatalogInfo` with metadata that matches `data_frame`
 
     Returns:
         A new DataFrame with the rows from `data_frame` filtered to only the points inside the cone

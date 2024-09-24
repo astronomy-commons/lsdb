@@ -1,15 +1,15 @@
 from __future__ import annotations
 
-import hipscat as hc
+import hats as hc
 
 from lsdb.catalog.catalog import Catalog, MarginCatalog
-from lsdb.loaders.hipscat.abstract_catalog_loader import AbstractCatalogLoader
-from lsdb.loaders.hipscat.hipscat_loading_config import HipscatLoadingConfig
-from lsdb.loaders.hipscat.margin_catalog_loader import MarginCatalogLoader
+from lsdb.loaders.hats.abstract_catalog_loader import AbstractCatalogLoader
+from lsdb.loaders.hats.hats_loading_config import HatsLoadingConfig
+from lsdb.loaders.hats.margin_catalog_loader import MarginCatalogLoader
 
 
-class HipscatCatalogLoader(AbstractCatalogLoader[Catalog]):
-    """Loads a HiPSCat formatted Catalog"""
+class HatsCatalogLoader(AbstractCatalogLoader[Catalog]):
+    """Loads a HATS formatted Catalog"""
 
     def load_catalog(self) -> Catalog:
         """Load a catalog from the configuration specified when the loader was created
@@ -17,8 +17,8 @@ class HipscatCatalogLoader(AbstractCatalogLoader[Catalog]):
         Returns:
             Catalog object with data from the source given at loader initialization
         """
-        hc_catalog = self._load_hipscat_catalog(hc.catalog.Catalog)
-        filtered_hc_catalog = self._filter_hipscat_catalog(hc_catalog)
+        hc_catalog = self._load_hats_catalog(hc.catalog.Catalog)
+        filtered_hc_catalog = self._filter_hats_catalog(hc_catalog)
         dask_df, dask_df_pixel_map = self._load_dask_df_and_map(filtered_hc_catalog)
         catalog = Catalog(dask_df, dask_df_pixel_map, filtered_hc_catalog)
         if self.config.search_filter is not None:
@@ -26,7 +26,7 @@ class HipscatCatalogLoader(AbstractCatalogLoader[Catalog]):
         catalog.margin = self._load_margin_catalog()
         return catalog
 
-    def _filter_hipscat_catalog(self, hc_catalog: hc.catalog.Catalog) -> hc.catalog.Catalog:
+    def _filter_hats_catalog(self, hc_catalog: hc.catalog.Catalog) -> hc.catalog.Catalog:
         """Filter the catalog pixels according to the spatial filter provided at loading time.
         Object and source catalogs are not allowed to be filtered to an empty catalog. If the
         resulting catalog is empty an error is issued indicating that the catalog does not have
@@ -56,7 +56,7 @@ class HipscatCatalogLoader(AbstractCatalogLoader[Catalog]):
         elif self.config.margin_cache is not None:
             margin_catalog = MarginCatalogLoader(
                 str(self.config.margin_cache),
-                HipscatLoadingConfig(
+                HatsLoadingConfig(
                     search_filter=self.config.search_filter,
                     columns=self.config.columns,
                     margin_cache=None,

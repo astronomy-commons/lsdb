@@ -4,9 +4,9 @@ from typing import Tuple
 
 import nested_pandas as npd
 import numpy as np
-from hipscat.catalog.catalog_info import CatalogInfo
-from hipscat.pixel_math.box_filter import generate_box_moc, wrap_ra_angles
-from hipscat.pixel_math.validators import validate_box_search
+from hats.catalog.catalog_info import CatalogInfo
+from hats.pixel_math.box_filter import generate_box_moc, wrap_ra_angles
+from hats.pixel_math.validators import validate_box_search
 from mocpy import MOC
 
 from lsdb.core.search.abstract_search import AbstractSearch
@@ -51,7 +51,7 @@ def box_filter(
         data_frame (npd.NestedFrame): DataFrame containing points in the sky
         ra (Tuple[float, float]): Right ascension range, in degrees
         dec (Tuple[float, float]): Declination range, in degrees
-        metadata (hc.catalog.Catalog): hipscat `Catalog` with catalog_info that matches `data_frame`
+        metadata (hc.catalog.Catalog): hats `Catalog` with catalog_info that matches `data_frame`
 
     Returns:
         A new DataFrame with the rows from `data_frame` filtered to only the points inside the box region.

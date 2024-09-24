@@ -4,32 +4,32 @@ from abc import abstractmethod
 from pathlib import Path
 from typing import Generic, List, Tuple, Type
 
-import hipscat as hc
+import hats as hc
 import nested_dask as nd
 import nested_pandas as npd
 import numpy as np
 import pyarrow as pa
-from hipscat.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
-from hipscat.io.file_io import file_io
-from hipscat.pixel_math import HealpixPixel
-from hipscat.pixel_math.healpix_pixel_function import get_pixel_argsort
-from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
+from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
+from hats.io.file_io import file_io
+from hats.pixel_math import HealpixPixel
+from hats.pixel_math.healpix_pixel_function import get_pixel_argsort
+from hats.pixel_math.hipscat_id import SPATIAL_INDEX_COLUMN
 from upath import UPath
 
 from lsdb.catalog.catalog import DaskDFPixelMap
 from lsdb.dask.divisions import get_pixels_divisions
-from lsdb.loaders.hipscat.hipscat_loading_config import HipscatLoadingConfig
+from lsdb.loaders.hats.hats_loading_config import HatsLoadingConfig
 from lsdb.types import CatalogTypeVar, HCCatalogTypeVar
 
 
 class AbstractCatalogLoader(Generic[CatalogTypeVar]):
-    """Loads a HiPSCat Dataset with the type specified by the type variable"""
+    """Loads a HATS Dataset with the type specified by the type variable"""
 
-    def __init__(self, path: str | Path | UPath, config: HipscatLoadingConfig) -> None:
-        """Initializes a HipscatCatalogLoader
+    def __init__(self, path: str | Path | UPath, config: HatsLoadingConfig) -> None:
+        """Initializes a HatsCatalogLoader
 
         Args:
-            path: path to the root of the HiPSCat catalog
+            path: path to the root of the HATS catalog
             config: options to configure how the catalog is loaded
         """
         self.path = path
@@ -45,9 +45,9 @@ class AbstractCatalogLoader(Generic[CatalogTypeVar]):
         """
         pass
 
-    def _load_hipscat_catalog(self, catalog_type: Type[HCCatalogTypeVar]) -> HCCatalogTypeVar:
-        """Load `hipscat` library catalog object with catalog metadata and partition data"""
-        hc_catalog = catalog_type.read_from_hipscat(self.path)
+    def _load_hats_catalog(self, catalog_type: Type[HCCatalogTypeVar]) -> HCCatalogTypeVar:
+        """Load `hats` library catalog object with catalog metadata and partition data"""
+        hc_catalog = catalog_type.read_hats(self.path)
         if hc_catalog.schema is None:
             raise ValueError(
                 "The catalog schema could not be loaded from metadata."
@@ -83,13 +83,16 @@ class AbstractCatalogLoader(Generic[CatalogTypeVar]):
         return nd.NestedFrame.from_pandas(dask_meta_schema, npartitions=1)
 
     def _create_dask_meta_schema(self, schema: pa.Schema) -> npd.NestedFrame:
-        """Creates the Dask meta DataFrame from the HiPSCat catalog schema."""
+        """Creates the Dask meta DataFrame from the HATS catalog schema."""
         dask_meta_schema = schema.empty_table().to_pandas(types_mapper=self.config.get_dtype_mapper())
         if self.config.columns is not None:
             dask_meta_schema = dask_meta_schema[self.config.columns]
 
-        if dask_meta_schema.index.name != HIPSCAT_ID_COLUMN and HIPSCAT_ID_COLUMN in dask_meta_schema.columns:
-            dask_meta_schema = dask_meta_schema.set_index(HIPSCAT_ID_COLUMN)
+        if (
+            dask_meta_schema.index.name != SPATIAL_INDEX_COLUMN
+            and SPATIAL_INDEX_COLUMN in dask_meta_schema.columns
+        ):
+            dask_meta_schema = dask_meta_schema.set_index(SPATIAL_INDEX_COLUMN)
         return npd.NestedFrame(dask_meta_schema)
 
     def _get_kwargs(self) -> dict:
@@ -112,7 +115,7 @@ def read_pixel(
         hc.io.pixel_catalog_file(catalog.catalog_base_dir, pixel, query_url_params), columns=columns, **kwargs
     )
 
-    if dataframe.index.name != HIPSCAT_ID_COLUMN and HIPSCAT_ID_COLUMN in dataframe.columns:
-        dataframe = dataframe.set_index(HIPSCAT_ID_COLUMN)
+    if dataframe.index.name != SPATIAL_INDEX_COLUMN and SPATIAL_INDEX_COLUMN in dataframe.columns:
+        dataframe = dataframe.set_index(SPATIAL_INDEX_COLUMN)
 
     return dataframe

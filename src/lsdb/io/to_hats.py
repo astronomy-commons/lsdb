@@ -7,10 +7,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Dict, Union
 
 import dask
-import hipscat as hc
+import hats as hc
 import nested_pandas as npd
-from hipscat.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
-from hipscat.pixel_math import HealpixPixel
+from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
+from hats.pixel_math import HealpixPixel
 from upath import UPath
 
 from lsdb.types import HealpixInfo
@@ -26,7 +26,7 @@ def perform_write(
     base_catalog_dir: str | Path | UPath,
     **kwargs,
 ) -> int:
-    """Performs a write of a pandas dataframe to a single parquet file, following the hipscat structure.
+    """Performs a write of a pandas dataframe to a single parquet file, following the hats structure.
 
     To be used as a dask delayed method as part of a dask task graph.
 
@@ -49,14 +49,14 @@ def perform_write(
 
 
 # pylint: disable=W0212
-def to_hipscat(
+def to_hats(
     catalog: HealpixDataset,
     base_catalog_path: str | Path | UPath,
     catalog_name: Union[str, None] = None,
     overwrite: bool = False,
     **kwargs,
 ):
-    """Writes a catalog to disk, in HiPSCat format. The output catalog comprises
+    """Writes a catalog to disk, in HATS format. The output catalog comprises
     partition parquet files and respective metadata, as well as JSON files detailing
     partition, catalog and provenance info.
 
@@ -160,16 +160,16 @@ def _get_partition_info_dict(ddf_points_map: Dict[HealpixPixel, int]) -> Dict[He
 def create_modified_catalog_structure(
     catalog_structure: HCHealpixDataset, catalog_base_dir: str | Path | UPath, catalog_name: str, **kwargs
 ) -> HCHealpixDataset:
-    """Creates a modified version of the HiPSCat catalog structure
+    """Creates a modified version of the HATS catalog structure
 
     Args:
-        catalog_structure (hc.catalog.Catalog): HiPSCat catalog structure
+        catalog_structure (hc.catalog.Catalog): HATS catalog structure
         catalog_base_dir (UPath): Base location for the catalog
         catalog_name (str): The name of the catalog to be saved
         **kwargs: The remaining parameters to be updated in the catalog info object
 
     Returns:
-        A HiPSCat structure, modified with the parameters provided.
+        A HATS structure, modified with the parameters provided.
     """
     new_hc_structure = copy(catalog_structure)
     new_hc_structure.catalog_name = catalog_name

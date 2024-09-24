@@ -8,12 +8,12 @@ import dask
 import nested_dask as nd
 import nested_pandas as npd
 import pandas as pd
-from hipscat.catalog.association_catalog import AssociationCatalogInfo
-from hipscat.catalog.catalog_info import CatalogInfo
-from hipscat.catalog.margin_cache import MarginCacheCatalogInfo
-from hipscat.pixel_math import HealpixPixel
-from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
-from hipscat.pixel_tree import PixelAlignment
+from hats.catalog.association_catalog import AssociationCatalogInfo
+from hats.catalog.catalog_info import CatalogInfo
+from hats.catalog.margin_cache import MarginCacheCatalogInfo
+from hats.pixel_math import HealpixPixel
+from hats.pixel_math.hipscat_id import SPATIAL_INDEX_COLUMN
+from hats.pixel_tree import PixelAlignment
 from nested_pandas.series.packer import pack_flat
 
 from lsdb.catalog.association_catalog import AssociationCatalog
@@ -100,7 +100,7 @@ def perform_join_on(
     merged = left.reset_index().merge(
         right_joined_df, left_on=left_on + suffixes[0], right_on=right_on + suffixes[1]
     )
-    merged.set_index(HIPSCAT_ID_COLUMN, inplace=True)
+    merged.set_index(SPATIAL_INDEX_COLUMN, inplace=True)
     return merged
 
 
@@ -150,7 +150,7 @@ def perform_join_nested(
     right_joined_df = pack_flat(npd.NestedFrame(right_joined_df.set_index(right_on))).rename(right_name)
 
     merged = left.reset_index().merge(right_joined_df, left_on=left_on, right_index=True)
-    merged.set_index(HIPSCAT_ID_COLUMN, inplace=True)
+    merged.set_index(SPATIAL_INDEX_COLUMN, inplace=True)
     return merged
 
 
@@ -183,11 +183,11 @@ def perform_join_through(
         right_pixel (HealpixPixel): the HEALPix pixel of the right partition
         right_margin_pixel (HealpixPixel): the HEALPix pixel of the right margin partition
         through_pixel (HealpixPixel): the HEALPix pixel of the association partition
-        left_catalog_info (hc.CatalogInfo): the hipscat structure of the left catalog
-        right_catalog_info (hc.CatalogInfo): the hipscat structure of the right catalog
-        right_margin_catalog_info (hc.MarginCacheCatalogInfo): the hipscat structure of the right margin
+        left_catalog_info (hc.CatalogInfo): the hats structure of the left catalog
+        right_catalog_info (hc.CatalogInfo): the hats structure of the right catalog
+        right_margin_catalog_info (hc.MarginCacheCatalogInfo): the hats structure of the right margin
             catalog
-        assoc_catalog_info (hc.AssociationCatalogInfo): the hipscat structure of the association catalog
+        assoc_catalog_info (hc.AssociationCatalogInfo): the hats structure of the association catalog
         suffixes (Tuple[str,str]): the suffixes to apply to each partition's column names
         right_columns (List[str]): the columns to include from the right margin partition
 
@@ -223,7 +223,7 @@ def perform_join_through(
         )
     )
 
-    merged.set_index(HIPSCAT_ID_COLUMN, inplace=True)
+    merged.set_index(SPATIAL_INDEX_COLUMN, inplace=True)
     merged.drop(join_columns, axis=1, inplace=True)
     return merged
 

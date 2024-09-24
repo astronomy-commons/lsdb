@@ -7,9 +7,9 @@ import nested_pandas as npd
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
-from hipscat.catalog.catalog_info import CatalogInfo
-from hipscat.catalog.margin_cache import MarginCacheCatalogInfo
-from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
+from hats.catalog.catalog_info import CatalogInfo
+from hats.catalog.margin_cache import MarginCacheCatalogInfo
+from hats.pixel_math.hipscat_id import SPATIAL_INDEX_COLUMN
 
 if TYPE_CHECKING:
     from lsdb.catalog import Catalog
@@ -77,11 +77,11 @@ class AbstractCrossmatchAlgorithm(ABC):
             left_pixel (int): The HEALPix pixel number in NESTED ordering of the left pixel
             right_order (int): The HEALPix order of the right pixel
             right_pixel (int): The HEALPix pixel number in NESTED ordering of the right pixel
-            left_catalog_info (hipscat.CatalogInfo): The hipscat CatalogInfo object with the metadata of the
+            left_catalog_info (hats.CatalogInfo): The hats CatalogInfo object with the metadata of the
                 left catalog
-            right_catalog_info (hipscat.CatalogInfo): The hipscat CatalogInfo object with the metadata of the
+            right_catalog_info (hats.CatalogInfo): The hats CatalogInfo object with the metadata of the
                 right catalog
-            right_margin_catalog_info (hipscat.MarginCacheCatalogInfo): The hipscat MarginCacheCatalogInfo
+            right_margin_catalog_info (hats.MarginCacheCatalogInfo): The hats MarginCacheCatalogInfo
                 objects with the metadata of the right **margin** catalog
             suffixes (Tuple[str,str]): A pair of suffixes to be appended to the end of each column
                 name, with the first appended to the left columns and the second to the right
@@ -138,10 +138,10 @@ class AbstractCrossmatchAlgorithm(ABC):
         This must accept any additional arguments the `crossmatch` method accepts.
         """
         # Check that we have the appropriate columns in our dataset.
-        if left._ddf.index.name != HIPSCAT_ID_COLUMN:
-            raise ValueError(f"index of left table must be {HIPSCAT_ID_COLUMN}")
-        if right._ddf.index.name != HIPSCAT_ID_COLUMN:
-            raise ValueError(f"index of right table must be {HIPSCAT_ID_COLUMN}")
+        if left._ddf.index.name != SPATIAL_INDEX_COLUMN:
+            raise ValueError(f"index of left table must be {SPATIAL_INDEX_COLUMN}")
+        if right._ddf.index.name != SPATIAL_INDEX_COLUMN:
+            raise ValueError(f"index of right table must be {SPATIAL_INDEX_COLUMN}")
         column_names = left._ddf.columns
         if left.hc_structure.catalog_info.ra_column not in column_names:
             raise ValueError(f"left table must have column {left.hc_structure.catalog_info.ra_column}")
@@ -204,7 +204,7 @@ class AbstractCrossmatchAlgorithm(ABC):
         self._rename_columns_with_suffix(self.left, self.suffixes[0])
         self._rename_columns_with_suffix(self.right, self.suffixes[1])
         # concat dataframes together
-        self.left.index.name = HIPSCAT_ID_COLUMN
+        self.left.index.name = SPATIAL_INDEX_COLUMN
         left_join_part = self.left.iloc[left_idx].reset_index()
         right_join_part = self.right.iloc[right_idx].reset_index(drop=True)
         out = pd.concat(
@@ -214,7 +214,7 @@ class AbstractCrossmatchAlgorithm(ABC):
             ],
             axis=1,
         )
-        out.set_index(HIPSCAT_ID_COLUMN, inplace=True)
+        out.set_index(SPATIAL_INDEX_COLUMN, inplace=True)
         extra_cols.index = out.index
         self._append_extra_columns(out, extra_cols)
         return npd.NestedFrame(out)

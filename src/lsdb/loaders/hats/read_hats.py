@@ -4,9 +4,9 @@ import dataclasses
 from pathlib import Path
 from typing import Dict, List, Type
 
-import hipscat as hc
-from hipscat.catalog import CatalogType
-from hipscat.catalog.dataset import BaseCatalogInfo
+import hats as hc
+from hats.catalog import CatalogType
+from hats.catalog.dataset import BaseCatalogInfo
 from upath import UPath
 
 from lsdb.catalog.association_catalog import AssociationCatalog
@@ -14,9 +14,9 @@ from lsdb.catalog.catalog import Catalog
 from lsdb.catalog.dataset.dataset import Dataset
 from lsdb.catalog.margin_catalog import MarginCatalog
 from lsdb.core.search.abstract_search import AbstractSearch
-from lsdb.loaders.hipscat.abstract_catalog_loader import CatalogTypeVar
-from lsdb.loaders.hipscat.hipscat_loader_factory import get_loader_for_type
-from lsdb.loaders.hipscat.hipscat_loading_config import HipscatLoadingConfig
+from lsdb.loaders.hats.abstract_catalog_loader import CatalogTypeVar
+from lsdb.loaders.hats.hats_loader_factory import get_loader_for_type
+from lsdb.loaders.hats.hats_loading_config import HatsLoadingConfig
 
 dataset_class_for_catalog_type: Dict[CatalogType, Type[Dataset]] = {
     CatalogType.OBJECT: Catalog,
@@ -27,7 +27,7 @@ dataset_class_for_catalog_type: Dict[CatalogType, Type[Dataset]] = {
 
 
 # pylint: disable=unused-argument
-def read_hipscat(
+def read_hats(
     path: str | Path | UPath,
     catalog_type: Type[CatalogTypeVar] | None = None,
     search_filter: AbstractSearch | None = None,
@@ -36,15 +36,15 @@ def read_hipscat(
     dtype_backend: str | None = "pyarrow",
     **kwargs,
 ) -> CatalogTypeVar | None:
-    """Load a catalog from a HiPSCat formatted catalog.
+    """Load a catalog from a HATS formatted catalog.
 
     Typical usage example, where we load a catalog with a subset of columns::
 
-        lsdb.read_hipscat(path="./my_catalog_dir", columns=["ra","dec"])
+        lsdb.read_hats(path="./my_catalog_dir", columns=["ra","dec"])
 
     Typical usage example, where we load a catalog from a cone search::
 
-        lsdb.read_hipscat_subset(
+        lsdb.read_hats(
             path="./my_catalog_dir",
             catalog_type=lsdb.Catalog,
             columns=["ra","dec"],
@@ -52,7 +52,7 @@ def read_hipscat(
         )
 
     Args:
-        path (UPath | Path): The path that locates the root of the HiPSCat catalog
+        path (UPath | Path): The path that locates the root of the HATS catalog
         catalog_type (Type[Dataset]): Default `None`. By default, the type of the catalog is loaded
             from the catalog info and the corresponding object type is returned. Python's type hints
             cannot allow a return type specified by a loaded value, so to use the correct return
@@ -71,8 +71,8 @@ def read_hipscat(
     """
     # Creates a config object to store loading parameters from all keyword arguments.
     kwd_args = locals().copy()
-    config_args = {field.name: kwd_args[field.name] for field in dataclasses.fields(HipscatLoadingConfig)}
-    config = HipscatLoadingConfig(**config_args)
+    config_args = {field.name: kwd_args[field.name] for field in dataclasses.fields(HatsLoadingConfig)}
+    config = HatsLoadingConfig(**config_args)
 
     catalog_type_to_use = _get_dataset_class_from_catalog_info(path)
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, List, Tuple
 
 import nested_pandas as npd
-from hipscat.pixel_math import HealpixPixel
+from hats.pixel_math import HealpixPixel
 
 from lsdb.core.search.abstract_search import AbstractSearch
 

@@ -2,27 +2,30 @@
     "catalog_name": "small_sky_order3_source_margin",
     "catalog_type": "margin",
     "total_rows": 1025,
+    "epoch": "J2000",
+    "ra_column": "source_ra",
+    "dec_column": "source_dec",
     "primary_catalog": "small_sky_order3_source",
     "margin_threshold": 300,
-    "version": "0.2.7.dev15+g85ec4a0",
-    "generation_date": "2024.03.08",
+    "version": "0.3.10.dev6+g5cb658f",
+    "generation_date": "2024.09.18",
     "tool_args": {
-        "tool_name": "hipscat_import",
-        "version": "0.2.5.dev8+g9d0bfc4",
+        "tool_name": "hats_import",
+        "version": "0.3.6.dev16+g829fe47.d20240918",
         "runtime_args": {
             "catalog_name": "small_sky_order3_source_margin",
             "output_path": ".",
             "output_artifact_name": "small_sky_order3_source_margin",
-            "tmp_dir": "/var/folders/x4/rmzh8l_s0zxc74nwr72z12340000gn/T/tmpuqum4py3",
-            "overwrite": true,
-            "dask_tmp": "",
+            "tmp_dir": "/tmp/tmpxiec_553",
+            "dask_tmp": null,
             "dask_n_workers": 1,
             "dask_threads_per_worker": 1,
-            "catalog_path": "./small_sky_order3_source_margin",
-            "tmp_path": "/var/folders/x4/rmzh8l_s0zxc74nwr72z12340000gn/T/tmpuqum4py3/small_sky_order3_source_margin/intermediate",
+            "catalog_path": "small_sky_order3_source_margin",
+            "tmp_path": "/tmp/tmpxiec_553/small_sky_order3_source_margin/intermediate",
             "input_catalog_path": "small_sky_order3_source",
             "margin_threshold": 300,
-            "margin_order": 7
+            "margin_order": 7,
+            "debug_filter_pixel_list": []
         }
     }
 }

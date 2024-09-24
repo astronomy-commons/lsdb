@@ -1,7 +1,7 @@
 from typing import Dict, List, Tuple, TypeVar
 
-from hipscat.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
-from hipscat.pixel_math import HealpixPixel
+from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
+from hats.pixel_math import HealpixPixel
 from typing_extensions import TypeAlias
 
 from lsdb.catalog.dataset.dataset import Dataset

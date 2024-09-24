@@ -10,4 +10,5 @@ sphinx-autoapi
 sphinx-copybutton
 sphinx-book-theme
 sphinx-design
-git+https://github.com/astronomy-commons/hipscat.git@main
+git+https://github.com/astronomy-commons/hipscat.git@hats
+git+https://github.com/astronomy-commons/hipscat-import.git@hats

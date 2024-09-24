@@ -5,6 +5,6 @@
     "epoch": "J2000",
     "ra_column": "source_ra",
     "dec_column": "source_dec",
-    "primary_catalog": "../../../hipscat-import/tests/hipscat_import/data/small_sky_source_catalog",
+    "primary_catalog": "small_sky_source",
     "margin_threshold": 180
 }

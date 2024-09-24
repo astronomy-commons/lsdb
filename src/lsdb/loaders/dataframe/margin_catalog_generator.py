@@ -2,17 +2,17 @@ from __future__ import annotations
 
 from typing import Dict, List, Tuple
 
-import hipscat as hc
-import hipscat.pixel_math.healpix_shim as hp
+import hats as hc
+import hats.pixel_math.healpix_shim as hp
 import nested_dask as nd
 import nested_pandas as npd
 import numpy as np
 import pandas as pd
-from hipscat import pixel_math
-from hipscat.catalog import CatalogType
-from hipscat.catalog.margin_cache import MarginCacheCatalogInfo
-from hipscat.pixel_math import HealpixPixel
-from hipscat.pixel_math.healpix_pixel_function import get_pixel_argsort
+from hats import pixel_math
+from hats.catalog import CatalogType
+from hats.catalog.margin_cache import MarginCacheCatalogInfo
+from hats.pixel_math import HealpixPixel
+from hats.pixel_math.healpix_pixel_function import get_pixel_argsort
 
 from lsdb import Catalog
 from lsdb.catalog.margin_catalog import MarginCatalog
@@ -23,7 +23,7 @@ from lsdb.loaders.dataframe.from_dataframe_utils import (
 
 
 class MarginCatalogGenerator:
-    """Creates a HiPSCat formatted margin catalog"""
+    """Creates a HATS formatted margin catalog"""
 
     def __init__(
         self,

@@ -24,26 +24,26 @@
 <polygon fill="none" stroke="black" points="45,-8 45,-84.5 275,-84.5 275,-8 45,-8"/>
 <text text-anchor="middle" x="160" y="-67.2" font-family="Times,serif" font-size="14.00">Read data / Do compute</text>
 </g>
-<!-- read_hipscat -->
+<!-- read_hats -->
 <g id="node1" class="node">
-<title>read_hipscat</title>
-<text text-anchor="middle" x="160" y="-197.95" font-family="Courier,monospace" font-size="14.00">read_hipscat, from_dataframe, ...</text>
+<title>read_hats</title>
+<text text-anchor="middle" x="160" y="-197.95" font-family="Courier,monospace" font-size="14.00">read_hats, from_dataframe, ...</text>
 </g>
 <!-- crossmatch -->
 <g id="node2" class="node">
 <title>crossmatch</title>
 <text text-anchor="middle" x="160" y="-113.45" font-family="Courier,monospace" font-size="14.00">crossmatch, cone_search, ...</text>
 </g>
-<!-- read_hipscat&#45;&gt;crossmatch -->
+<!-- read_hats&#45;&gt;crossmatch -->
 <g id="edge1" class="edge">
-<title>read_hipscat&#45;&gt;crossmatch</title>
+<title>read_hats&#45;&gt;crossmatch</title>
 <path fill="none" stroke="black" d="M160,-177C160,-175 160,-173 160,-171"/>
 <polygon fill="black" stroke="black" points="163.5,-180.51 160,-170.51 156.5,-180.51 163.5,-180.51"/>
 </g>
 <!-- compute -->
 <g id="node3" class="node">
 <title>compute</title>
-<text text-anchor="middle" x="160" y="-28.95" font-family="Courier,monospace" font-size="14.00">compute, to_hipscat, ...</text>
+<text text-anchor="middle" x="160" y="-28.95" font-family="Courier,monospace" font-size="14.00">compute, to_hats, ...</text>
 </g>
 <!-- crossmatch&#45;&gt;compute -->
 <g id="edge2" class="edge">
