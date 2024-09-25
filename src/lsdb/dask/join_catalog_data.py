@@ -8,9 +8,7 @@ import dask
 import nested_dask as nd
 import nested_pandas as npd
 import pandas as pd
-from hats.catalog.association_catalog import AssociationCatalogInfo
-from hats.catalog.catalog_info import CatalogInfo
-from hats.catalog.margin_cache import MarginCacheCatalogInfo
+from hats.catalog import TableProperties
 from hats.pixel_math import HealpixPixel
 from hats.pixel_math.hipscat_id import SPATIAL_INDEX_COLUMN
 from hats.pixel_tree import PixelAlignment
@@ -63,9 +61,9 @@ def perform_join_on(
     left_pixel: HealpixPixel,
     right_pixel: HealpixPixel,
     right_margin_pixel: HealpixPixel,
-    left_catalog_info: CatalogInfo,
-    right_catalog_info: CatalogInfo,
-    right_margin_catalog_info: MarginCacheCatalogInfo,
+    left_catalog_info: TableProperties,
+    right_catalog_info: TableProperties,
+    right_margin_catalog_info: TableProperties,
     left_on: str,
     right_on: str,
     suffixes: Tuple[str, str],
@@ -80,9 +78,9 @@ def perform_join_on(
         left_pixel (HealpixPixel): the HEALPix pixel of the left partition
         right_pixel (HealpixPixel): the HEALPix pixel of the right partition
         right_margin_pixel (HealpixPixel): the HEALPix pixel of the right margin partition
-        left_catalog_info (hc.CatalogInfo): the catalog info of the left catalog
-        right_catalog_info (hc.CatalogInfo): the catalog info of the right catalog
-        right_margin_catalog_info (hc.MarginCacheCatalogInfo): the catalog info of the right margin catalog
+        left_catalog_info (hc.TableProperties): the catalog info of the left catalog
+        right_catalog_info (hc.TableProperties): the catalog info of the right catalog
+        right_margin_catalog_info (hc.TableProperties): the catalog info of the right margin catalog
         left_on (str): the column to join on from the left partition
         right_on (str): the column to join on from the right partition
         suffixes (Tuple[str,str]): the suffixes to apply to each partition's column names
@@ -113,9 +111,9 @@ def perform_join_nested(
     left_pixel: HealpixPixel,
     right_pixel: HealpixPixel,
     right_margin_pixel: HealpixPixel,
-    left_catalog_info: CatalogInfo,
-    right_catalog_info: CatalogInfo,
-    right_margin_catalog_info: MarginCacheCatalogInfo,
+    left_catalog_info: TableProperties,
+    right_catalog_info: TableProperties,
+    right_margin_catalog_info: TableProperties,
     left_on: str,
     right_on: str,
     right_columns: List[str],
@@ -131,9 +129,9 @@ def perform_join_nested(
         left_pixel (HealpixPixel): the HEALPix pixel of the left partition
         right_pixel (HealpixPixel): the HEALPix pixel of the right partition
         right_margin_pixel (HealpixPixel): the HEALPix pixel of the right margin partition
-        left_catalog_info (hc.CatalogInfo): the catalog info of the left catalog
-        right_catalog_info (hc.CatalogInfo): the catalog info of the right catalog
-        right_margin_catalog_info (hc.MarginCacheCatalogInfo): the catalog info of the right margin catalog
+        left_catalog_info (hc.TableProperties): the catalog info of the left catalog
+        right_catalog_info (hc.TableProperties): the catalog info of the right catalog
+        right_margin_catalog_info (hc.TableProperties): the catalog info of the right margin catalog
         left_on (str): the column to join on from the left partition
         right_on (str): the column to join on from the right partition
         right_columns (List[str]): the columns to include from the right margin partition
@@ -165,10 +163,10 @@ def perform_join_through(
     right_pixel: HealpixPixel,
     right_margin_pixel: HealpixPixel,
     through_pixel: HealpixPixel,
-    left_catalog_info: CatalogInfo,
-    right_catalog_info: CatalogInfo,
-    right_margin_catalog_info: MarginCacheCatalogInfo,
-    assoc_catalog_info: AssociationCatalogInfo,
+    left_catalog_info: TableProperties,
+    right_catalog_info: TableProperties,
+    right_margin_catalog_info: TableProperties,
+    assoc_catalog_info: TableProperties,
     suffixes: Tuple[str, str],
     right_columns: List[str],
 ):
@@ -183,11 +181,11 @@ def perform_join_through(
         right_pixel (HealpixPixel): the HEALPix pixel of the right partition
         right_margin_pixel (HealpixPixel): the HEALPix pixel of the right margin partition
         through_pixel (HealpixPixel): the HEALPix pixel of the association partition
-        left_catalog_info (hc.CatalogInfo): the hats structure of the left catalog
-        right_catalog_info (hc.CatalogInfo): the hats structure of the right catalog
-        right_margin_catalog_info (hc.MarginCacheCatalogInfo): the hats structure of the right margin
+        left_catalog_info (hc.TableProperties): the hats structure of the left catalog
+        right_catalog_info (hc.TableProperties): the hats structure of the right catalog
+        right_margin_catalog_info (hc.TableProperties): the hats structure of the right margin
             catalog
-        assoc_catalog_info (hc.AssociationCatalogInfo): the hats structure of the association catalog
+        assoc_catalog_info (hc.TableProperties): the hats structure of the association catalog
         suffixes (Tuple[str,str]): the suffixes to apply to each partition's column names
         right_columns (List[str]): the columns to include from the right margin partition
 
@@ -235,8 +233,8 @@ def perform_merge_asof(
     right: npd.NestedFrame,
     left_pixel: HealpixPixel,
     right_pixel: HealpixPixel,
-    left_catalog_info: CatalogInfo,
-    right_catalog_info: CatalogInfo,
+    left_catalog_info: TableProperties,
+    right_catalog_info: TableProperties,
     suffixes: Tuple[str, str],
     direction: str,
 ):
@@ -247,8 +245,8 @@ def perform_merge_asof(
         right (npd.NestedFrame): the right partition to merge
         left_pixel (HealpixPixel): the HEALPix pixel of the left partition
         right_pixel (HealpixPixel): the HEALPix pixel of the right partition
-        left_catalog_info (hc.CatalogInfo): the catalog info of the left catalog
-        right_catalog_info (hc.CatalogInfo): the catalog info of the right catalog
+        left_catalog_info (hc.TableProperties): the catalog info of the left catalog
+        right_catalog_info (hc.TableProperties): the catalog info of the right catalog
         suffixes (Tuple[str,str]): the suffixes to apply to each partition's column names
         direction (str): The direction to perform the merge_asof
 

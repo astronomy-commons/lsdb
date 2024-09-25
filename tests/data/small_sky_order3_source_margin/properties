@@ -1,0 +1,8 @@
+#HATS catalog
+obs_collection=small_sky_order3_source_margin
+dataproduct_type=margin
+hats_nrows=1025
+hats_col_j2000_ra=source_ra
+hats_col_j2000_dec=source_dec
+hats_primary_table_url=small_sky_order3_source
+hats_margin_threshold=300.0

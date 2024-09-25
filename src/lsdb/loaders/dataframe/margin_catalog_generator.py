@@ -9,8 +9,7 @@ import nested_pandas as npd
 import numpy as np
 import pandas as pd
 from hats import pixel_math
-from hats.catalog import CatalogType
-from hats.catalog.margin_cache import MarginCacheCatalogInfo
+from hats.catalog import CatalogType, TableProperties
 from hats.pixel_math import HealpixPixel
 from hats.pixel_math.healpix_pixel_function import get_pixel_argsort
 
@@ -207,7 +206,7 @@ class MarginCatalogGenerator:
         )
         return partition_df.iloc[margin_mask]
 
-    def _create_catalog_info(self, total_rows: int) -> MarginCacheCatalogInfo:
+    def _create_catalog_info(self, total_rows: int) -> TableProperties:
         """Create the margin catalog info object
 
         Args:
@@ -217,7 +216,7 @@ class MarginCatalogGenerator:
             The margin catalog info object.
         """
         catalog_name = self.hc_structure.catalog_info.catalog_name
-        return MarginCacheCatalogInfo(
+        return TableProperties(
             catalog_name=f"{catalog_name}_margin",
             catalog_type=CatalogType.MARGIN,
             total_rows=total_rows,

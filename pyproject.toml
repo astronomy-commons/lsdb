@@ -79,3 +79,7 @@ line_length = 110
 
 [tool.coverage.run]
 omit=["src/lsdb/_version.py"]
+
+[tool.mypy]
+plugins = "pydantic.mypy"
+disable_error_code = ["operator"]

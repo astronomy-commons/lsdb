@@ -1,0 +1,11 @@
+#HATS catalog
+obs_collection=small_sky_to_xmatch
+dataproduct_type=association
+hats_nrows=111
+hats_primary_table_url=small_sky
+hats_col_assn_primary=id
+hats_col_assn_primary_assn=object_id
+hats_assn_join_table_url=small_sky_xmatch
+hats_col_assn_join=id
+hats_col_assn_join_assn=source_id
+hats_assn_leaf_files=True

@@ -3,7 +3,7 @@ from typing import List, Tuple
 import hats.pixel_math.healpix_shim as hp
 import nested_pandas as npd
 import numpy as np
-from hats.catalog.catalog_info import CatalogInfo
+from hats.catalog import TableProperties
 from hats.pixel_math.polygon_filter import CartesianCoordinates, SphericalCoordinates, generate_polygon_moc
 from hats.pixel_math.validators import validate_declination_values, validate_polygon
 from lsst.sphgeom import ConvexPolygon, UnitVector3d
@@ -29,13 +29,13 @@ class PolygonSearch(AbstractSearch):
     def generate_search_moc(self, max_order: int) -> MOC:
         return generate_polygon_moc(self.vertices_xyz, max_order)
 
-    def search_points(self, frame: npd.NestedFrame, metadata: CatalogInfo) -> npd.NestedFrame:
+    def search_points(self, frame: npd.NestedFrame, metadata: TableProperties) -> npd.NestedFrame:
         """Determine the search results within a data frame"""
         return polygon_filter(frame, self.polygon, metadata)
 
 
 def polygon_filter(
-    data_frame: npd.NestedFrame, polygon: ConvexPolygon, metadata: CatalogInfo
+    data_frame: npd.NestedFrame, polygon: ConvexPolygon, metadata: TableProperties
 ) -> npd.NestedFrame:
     """Filters a dataframe to only include points within the specified polygon.
 
