@@ -114,7 +114,7 @@ class DataframeCatalogLoader:
         catalog_name: str = "from_lsdb_dataframe",
         ra_column: str = "ra",
         dec_column: str = "dec",
-        catalog_type=CatalogType.OBJECT,
+        catalog_type: CatalogType = CatalogType.OBJECT,
         **kwargs,
     ) -> TableProperties:
         """Creates the catalog info object
@@ -123,7 +123,7 @@ class DataframeCatalogLoader:
             catalog_name: it is recommended to provide a new name for your catalog
             ra_column: column to find right ascension coordinate
             dec_column: column to find declination coordinate
-            catalog_type: type of table being created (e.g. object, margin, index)
+            catalog_type: type of table being created (e.g. OBJECT, MARGIN, INDEX)
             **kwargs: Arguments to pass to the creation of the catalog info
 
         Returns:

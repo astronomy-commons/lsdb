@@ -89,8 +89,6 @@ def to_hats(
         total_rows=sum(pi[0] for pi in partition_info.values()),
     )
     new_hc_structure.catalog_info.to_properties_file(base_catalog_path)
-    # Save provenance info
-    ## TODO - optionally write out arguments file
 
 
 def write_partitions(
@@ -171,8 +169,6 @@ def create_modified_catalog_structure(
     new_hc_structure.catalog_base_dir = hc.io.file_io.get_upath(catalog_base_dir)
     new_hc_structure.on_disk = True
 
-    new_hc_structure.catalog_info = new_hc_structure.catalog_info.model_copy()
+    new_hc_structure.catalog_info = new_hc_structure.catalog_info.model_copy(update=kwargs)
     new_hc_structure.catalog_info.catalog_name = catalog_name
-    for key, val in kwargs.items():
-        setattr(new_hc_structure.catalog_info, key, val)
     return new_hc_structure
