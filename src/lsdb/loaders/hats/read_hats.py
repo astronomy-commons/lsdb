@@ -5,8 +5,7 @@ from pathlib import Path
 from typing import Dict, List, Type
 
 import hats as hc
-from hats.catalog import CatalogType
-from hats.catalog.dataset import BaseCatalogInfo
+from hats.catalog import CatalogType, TableProperties
 from upath import UPath
 
 from lsdb.catalog.association_catalog import AssociationCatalog
@@ -85,8 +84,7 @@ def read_hats(
 
 def _get_dataset_class_from_catalog_info(base_catalog_path: str | Path | UPath) -> Type[Dataset]:
     base_catalog_dir = hc.io.file_io.get_upath(base_catalog_path)
-    catalog_info_path = hc.io.paths.get_catalog_info_pointer(base_catalog_dir)
-    catalog_info = BaseCatalogInfo.read_from_metadata_file(catalog_info_path)
+    catalog_info = TableProperties.read_from_dir(base_catalog_dir)
     catalog_type = catalog_info.catalog_type
     if catalog_type not in dataset_class_for_catalog_type:
         raise NotImplementedError(f"Cannot load catalog of type {catalog_type}")

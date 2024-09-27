@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import dataclasses
 from typing import List, Tuple, Type
 
 import hats as hc
@@ -203,12 +202,16 @@ class Catalog(HealpixDataset):
         ddf, ddf_map, alignment = crossmatch_catalog_data(
             self, other, suffixes, algorithm=algorithm, **kwargs
         )
-        new_catalog_info = dataclasses.replace(
-            self.hc_structure.catalog_info,
-            catalog_name=output_catalog_name,
-            ra_column=self.hc_structure.catalog_info.ra_column + suffixes[0],
-            dec_column=self.hc_structure.catalog_info.dec_column + suffixes[0],
+        new_catalog_info = self.hc_structure.catalog_info.model_copy(
+            update={
+                "catalog_name": output_catalog_name,
+                "ra_column": self.hc_structure.catalog_info.ra_column + suffixes[0],
+                "dec_column": self.hc_structure.catalog_info.dec_column + suffixes[0],
+            }
         )
+        new_catalog_info.catalog_name = output_catalog_name
+        new_catalog_info.ra_column = self.hc_structure.catalog_info.ra_column + suffixes[0]
+        new_catalog_info.dec_column = self.hc_structure.catalog_info.dec_column + suffixes[0]
         hc_catalog = hc.catalog.Catalog(new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(ddf))
         return Catalog(ddf, ddf_map, hc_catalog)
 
@@ -420,12 +423,14 @@ class Catalog(HealpixDataset):
                 f"{other.hc_structure.catalog_info.catalog_name}"
             )
 
-        new_catalog_info = dataclasses.replace(
-            self.hc_structure.catalog_info,
-            catalog_name=output_catalog_name,
-            ra_column=self.hc_structure.catalog_info.ra_column + suffixes[0],
-            dec_column=self.hc_structure.catalog_info.dec_column + suffixes[0],
+        new_catalog_info = self.hc_structure.catalog_info.model_copy(
+            update={
+                "catalog_name": output_catalog_name,
+                "ra_column": self.hc_structure.catalog_info.ra_column + suffixes[0],
+                "dec_column": self.hc_structure.catalog_info.dec_column + suffixes[0],
+            }
         )
+
         hc_catalog = hc.catalog.Catalog(new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(ddf))
         return Catalog(ddf, ddf_map, hc_catalog)
 
@@ -469,12 +474,14 @@ class Catalog(HealpixDataset):
             if output_catalog_name is None:
                 output_catalog_name = self.hc_structure.catalog_info.catalog_name
 
-            new_catalog_info = dataclasses.replace(
-                self.hc_structure.catalog_info,
-                catalog_name=output_catalog_name,
-                ra_column=self.hc_structure.catalog_info.ra_column + suffixes[0],
-                dec_column=self.hc_structure.catalog_info.dec_column + suffixes[0],
+            new_catalog_info = self.hc_structure.catalog_info.model_copy(
+                update={
+                    "catalog_name": output_catalog_name,
+                    "ra_column": self.hc_structure.catalog_info.ra_column + suffixes[0],
+                    "dec_column": self.hc_structure.catalog_info.dec_column + suffixes[0],
+                }
             )
+
             hc_catalog = hc.catalog.Catalog(
                 new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(ddf)
             )
@@ -492,12 +499,14 @@ class Catalog(HealpixDataset):
         if output_catalog_name is None:
             output_catalog_name = self.hc_structure.catalog_info.catalog_name
 
-        new_catalog_info = dataclasses.replace(
-            self.hc_structure.catalog_info,
-            catalog_name=output_catalog_name,
-            ra_column=self.hc_structure.catalog_info.ra_column + suffixes[0],
-            dec_column=self.hc_structure.catalog_info.dec_column + suffixes[0],
+        new_catalog_info = self.hc_structure.catalog_info.model_copy(
+            update={
+                "catalog_name": output_catalog_name,
+                "ra_column": self.hc_structure.catalog_info.ra_column + suffixes[0],
+                "dec_column": self.hc_structure.catalog_info.dec_column + suffixes[0],
+            }
         )
+
         hc_catalog = hc.catalog.Catalog(new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(ddf))
         return Catalog(ddf, ddf_map, hc_catalog)
 
@@ -551,10 +560,10 @@ class Catalog(HealpixDataset):
         if output_catalog_name is None:
             output_catalog_name = self.hc_structure.catalog_info.catalog_name
 
-        new_catalog_info = dataclasses.replace(
-            self.hc_structure.catalog_info,
-            catalog_name=output_catalog_name,
+        new_catalog_info = self.hc_structure.catalog_info.model_copy(
+            update={"catalog_name": output_catalog_name}
         )
+
         hc_catalog = hc.catalog.Catalog(new_catalog_info, alignment.pixel_tree)
         return Catalog(ddf, ddf_map, hc_catalog)
 

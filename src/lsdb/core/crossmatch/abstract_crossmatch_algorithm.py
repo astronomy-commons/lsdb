@@ -7,8 +7,7 @@ import nested_pandas as npd
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
-from hats.catalog.catalog_info import CatalogInfo
-from hats.catalog.margin_cache import MarginCacheCatalogInfo
+from hats.catalog import TableProperties
 from hats.pixel_math.hipscat_id import SPATIAL_INDEX_COLUMN
 
 if TYPE_CHECKING:
@@ -63,9 +62,9 @@ class AbstractCrossmatchAlgorithm(ABC):
         left_pixel: int,
         right_order: int,
         right_pixel: int,
-        left_catalog_info: CatalogInfo,
-        right_catalog_info: CatalogInfo,
-        right_margin_catalog_info: MarginCacheCatalogInfo | None,
+        left_catalog_info: TableProperties,
+        right_catalog_info: TableProperties,
+        right_margin_catalog_info: TableProperties | None,
         suffixes: Tuple[str, str],
     ):
         """Initializes a crossmatch algorithm
@@ -77,11 +76,11 @@ class AbstractCrossmatchAlgorithm(ABC):
             left_pixel (int): The HEALPix pixel number in NESTED ordering of the left pixel
             right_order (int): The HEALPix order of the right pixel
             right_pixel (int): The HEALPix pixel number in NESTED ordering of the right pixel
-            left_catalog_info (hats.CatalogInfo): The hats CatalogInfo object with the metadata of the
-                left catalog
-            right_catalog_info (hats.CatalogInfo): The hats CatalogInfo object with the metadata of the
-                right catalog
-            right_margin_catalog_info (hats.MarginCacheCatalogInfo): The hats MarginCacheCatalogInfo
+            left_catalog_info (hats.TableProperties): The hats TableProperties object with the
+                metadata of the left catalog
+            right_catalog_info (hats.TableProperties): The hats TableProperties object with the
+                metadata of the right catalog
+            right_margin_catalog_info (hats.TableProperties): The hats TableProperties
                 objects with the metadata of the right **margin** catalog
             suffixes (Tuple[str,str]): A pair of suffixes to be appended to the end of each column
                 name, with the first appended to the left columns and the second to the right

@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import dataclasses
 from copy import copy
-from importlib.metadata import version
 from pathlib import Path
 from typing import TYPE_CHECKING, Dict, Union
 
@@ -90,13 +88,7 @@ def to_hats(
         catalog_name if catalog_name else catalog.hc_structure.catalog_name,
         total_rows=sum(pi[0] for pi in partition_info.values()),
     )
-    hc.io.write_catalog_info(catalog_base_dir=base_catalog_path, dataset_info=new_hc_structure.catalog_info)
-    # Save provenance info
-    hc.io.write_metadata.write_provenance_info(
-        catalog_base_dir=base_catalog_path,
-        dataset_info=new_hc_structure.catalog_info,
-        tool_args=_get_provenance_info(new_hc_structure),
-    )
+    new_hc_structure.catalog_info.to_properties_file(base_catalog_path)
 
 
 def write_partitions(
@@ -176,34 +168,7 @@ def create_modified_catalog_structure(
     new_hc_structure.catalog_path = catalog_base_dir
     new_hc_structure.catalog_base_dir = hc.io.file_io.get_upath(catalog_base_dir)
     new_hc_structure.on_disk = True
-    new_hc_structure.catalog_info = dataclasses.replace(
-        new_hc_structure.catalog_info, catalog_name=catalog_name, **kwargs
-    )
+
+    new_hc_structure.catalog_info = new_hc_structure.catalog_info.model_copy(update=kwargs)
+    new_hc_structure.catalog_info.catalog_name = catalog_name
     return new_hc_structure
-
-
-def _get_provenance_info(catalog_structure: HCHealpixDataset) -> dict:
-    """Fill all known information in a dictionary for provenance tracking.
-
-    Args:
-        catalog_structure (HCHealpixDataset): The catalog structure
-
-    Returns:
-        dictionary with all argument_name -> argument_value as key -> value pairs.
-    """
-    structure_args = {
-        "catalog_name": catalog_structure.catalog_name,
-        "output_path": catalog_structure.catalog_path,
-        "output_catalog_name": catalog_structure.catalog_name,
-        "catalog_path": catalog_structure.catalog_path,
-    }
-    args = {
-        **structure_args,
-        **dataclasses.asdict(catalog_structure.catalog_info),
-    }
-    provenance_info = {
-        "tool_name": "lsdb",
-        "version": version("lsdb"),
-        "runtime_args": args,
-    }
-    return provenance_info

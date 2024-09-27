@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import dataclasses
 import math
 import warnings
 from typing import Dict, List, Tuple
@@ -12,8 +11,7 @@ import nested_pandas as npd
 import numpy as np
 import pandas as pd
 import pyarrow as pa
-from hats.catalog import CatalogType
-from hats.catalog.catalog_info import CatalogInfo
+from hats.catalog import CatalogType, TableProperties
 from hats.pixel_math import HealpixPixel, generate_histogram
 from hats.pixel_math.healpix_pixel_function import get_pixel_argsort
 from hats.pixel_math.hipscat_id import SPATIAL_INDEX_COLUMN, compute_hipscat_id, healpix_to_hipscat_id
@@ -73,7 +71,7 @@ class DataframeCatalogLoader:
         self.highest_order = highest_order
         self.drop_empty_siblings = drop_empty_siblings
         self.threshold = self._calculate_threshold(partition_size, threshold)
-        self.catalog_info = self._create_catalog_info(**kwargs)
+        self.catalog_info = self._create_catalog_info(total_rows=len(self.dataframe), **kwargs)
         self.should_generate_moc = should_generate_moc
         self.moc_max_order = moc_max_order
         self.use_pyarrow_types = use_pyarrow_types
@@ -112,20 +110,32 @@ class DataframeCatalogLoader:
         return threshold
 
     @staticmethod
-    def _create_catalog_info(**kwargs) -> CatalogInfo:
+    def _create_catalog_info(
+        catalog_name: str = "from_lsdb_dataframe",
+        ra_column: str = "ra",
+        dec_column: str = "dec",
+        catalog_type: CatalogType = CatalogType.OBJECT,
+        **kwargs,
+    ) -> TableProperties:
         """Creates the catalog info object
 
         Args:
+            catalog_name: it is recommended to provide a new name for your catalog
+            ra_column: column to find right ascension coordinate
+            dec_column: column to find declination coordinate
+            catalog_type: type of table being created (e.g. OBJECT, MARGIN, INDEX)
             **kwargs: Arguments to pass to the creation of the catalog info
 
         Returns:
             The catalog info object
         """
-        valid_catalog_types = [CatalogType.OBJECT, CatalogType.SOURCE]
-        catalog_info = CatalogInfo(**kwargs)
-        if catalog_info.catalog_type not in valid_catalog_types:
-            raise ValueError("Catalog must be of type OBJECT or SOURCE")
-        return catalog_info
+        return TableProperties(
+            catalog_name=catalog_name,
+            ra_column=ra_column,
+            dec_column=dec_column,
+            catalog_type=catalog_type,
+            **kwargs,
+        )
 
     def load_catalog(self) -> Catalog:
         """Load a catalog from a Pandas Dataframe, in CSV format
@@ -136,7 +146,7 @@ class DataframeCatalogLoader:
         self._set_hipscat_index()
         pixel_list = self._compute_pixel_list()
         ddf, ddf_pixel_map, total_rows = self._generate_dask_df_and_map(pixel_list)
-        self.catalog_info = dataclasses.replace(self.catalog_info, total_rows=total_rows)
+        self.catalog_info.total_rows = total_rows
         moc = self._generate_moc() if self.should_generate_moc else None
         schema = self.schema if self.schema is not None else get_arrow_schema(ddf)
         hc_structure = hc.catalog.Catalog(self.catalog_info, pixel_list, moc=moc, schema=schema)

@@ -1,0 +1,6 @@
+#HATS catalog
+obs_collection=small_sky_order1_source
+dataproduct_type=source
+hats_nrows=17161
+hats_col_j2000_ra=source_ra
+hats_col_j2000_dec=source_dec

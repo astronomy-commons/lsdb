@@ -184,9 +184,8 @@ This creates the following HATS Catalog on disk:
     │   └── ...
     ├── _common_metadata
     ├── _metadata
-    ├── catalog_info.json
-    ├── partition_info.csv
-    └── provenance_info.json
+    ├── properties
+    └── partition_info.csv
 
 Creation of Jupyter Kernel
 --------------------------

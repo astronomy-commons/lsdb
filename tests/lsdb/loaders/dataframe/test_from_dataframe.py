@@ -68,7 +68,7 @@ def test_from_dataframe_catalog_of_invalid_type(small_sky_order1_df, small_sky_o
         if catalog_type in valid_catalog_types:
             lsdb.from_dataframe(small_sky_order1_df, margin_threshold=None, **kwargs)
         else:
-            with pytest.raises(ValueError, match="Catalog must be of type OBJECT or SOURCE"):
+            with pytest.raises(ValueError):
                 lsdb.from_dataframe(small_sky_order1_df, margin_threshold=None, **kwargs)
         # Drop hipscat_index that might have been created in place
         small_sky_order1_df.reset_index(drop=True, inplace=True)
