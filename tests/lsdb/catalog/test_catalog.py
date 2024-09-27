@@ -461,7 +461,7 @@ def test_skymap_histogram_null_values_order(small_sky_order1_catalog):
 
 # pylint: disable=no-member
 def test_skymap_plot(small_sky_order1_catalog, mocker):
-    mocker.patch("healpy.mollview")
+    mocker.patch("lsdb.catalog.dataset.healpix_dataset.plot_healpix_map")
 
     def func(df, healpix):
         return len(df) / hp.nside2pixarea(hp.order2nside(healpix.order), degrees=True)
@@ -477,8 +477,8 @@ def test_skymap_plot(small_sky_order1_catalog, mocker):
         end = (pixel.pixel + 1) * (4**dorder)
         img_order_pixels = np.arange(start, end)
         img[img_order_pixels] = value
-    healpy.mollview.assert_called_once()
-    assert (healpy.mollview.call_args[0][0] == img).all()
+    lsdb.catalog.dataset.healpix_dataset.plot_healpix_map.assert_called_once()
+    assert (lsdb.catalog.dataset.healpix_dataset.plot_healpix_map.call_args[0][0] == img).all()
 
 
 # pylint: disable=no-member
