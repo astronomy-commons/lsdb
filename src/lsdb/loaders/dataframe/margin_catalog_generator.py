@@ -16,6 +16,7 @@ from hats.pixel_math.healpix_pixel_function import get_pixel_argsort
 from lsdb import Catalog
 from lsdb.catalog.margin_catalog import MarginCatalog
 from lsdb.loaders.dataframe.from_dataframe_utils import (
+    _extra_property_dict,
     _format_margin_partition_dataframe,
     _generate_dask_dataframe,
 )
@@ -30,6 +31,7 @@ class MarginCatalogGenerator:
         margin_order: int | None = -1,
         margin_threshold: float = 5.0,
         use_pyarrow_types: bool = True,
+        **kwargs,
     ) -> None:
         """Initialize a MarginCatalogGenerator
 
@@ -38,12 +40,14 @@ class MarginCatalogGenerator:
             margin_order (int): The order at which to generate the margin cache
             margin_threshold (float): The size of the margin cache boundary, in arcseconds
             use_pyarrow_types (bool): If True, use pyarrow types. Defaults to True.
+            **kwargs: Arguments to pass to the creation of the catalog info.
         """
         self.dataframe: npd.NestedFrame = catalog.compute().copy()
         self.hc_structure = catalog.hc_structure
         self.margin_threshold = margin_threshold
         self.margin_order = self._set_margin_order(margin_order)
         self.use_pyarrow_types = use_pyarrow_types
+        self.catalog_info = self._create_catalog_info(**kwargs)
         self.schema = catalog.hc_structure.schema
 
     def _set_margin_order(self, margin_order: int | None) -> int:
@@ -78,9 +82,9 @@ class MarginCatalogGenerator:
         if len(pixels) == 0:
             return None
         ddf, ddf_pixel_map, total_rows = self._generate_dask_df_and_map(pixels, partitions)
+        self.catalog_info.total_rows = total_rows
         margin_pixels = list(ddf_pixel_map.keys())
-        margin_catalog_info = self._create_catalog_info(total_rows)
-        margin_structure = hc.catalog.MarginCatalog(margin_catalog_info, margin_pixels, schema=self.schema)
+        margin_structure = hc.catalog.MarginCatalog(self.catalog_info, margin_pixels, schema=self.schema)
         return MarginCatalog(ddf, ddf_pixel_map, margin_structure)
 
     def _get_margins(self) -> Tuple[List[HealpixPixel], List[npd.NestedFrame]]:
@@ -206,20 +210,27 @@ class MarginCatalogGenerator:
         )
         return partition_df.iloc[margin_mask]
 
-    def _create_catalog_info(self, total_rows: int) -> TableProperties:
+    def _create_catalog_info(self, catalog_name: str | None = None, **kwargs) -> TableProperties:
         """Create the margin catalog info object
 
         Args:
-            total_rows (int): The number of elements in the margin catalog
+            **kwargs: Arguments to pass to the creation of the catalog info
 
         Returns:
             The margin catalog info object.
         """
-        catalog_name = self.hc_structure.catalog_info.catalog_name
+        if kwargs is None:
+            kwargs = {}
+        kwargs.pop("catalog_type", None)
+        kwargs = kwargs | _extra_property_dict(0)
+        if not catalog_name:
+            catalog_name = f"{self.hc_structure.catalog_info.catalog_name}_margin"
+
         return TableProperties(
             catalog_name=f"{catalog_name}_margin",
             catalog_type=CatalogType.MARGIN,
-            total_rows=total_rows,
+            total_rows=self.hc_structure.catalog_info.total_rows,
             primary_catalog=catalog_name,
             margin_threshold=self.margin_threshold,
+            **kwargs,
         )

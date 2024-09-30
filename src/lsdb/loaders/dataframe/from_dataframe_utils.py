@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from typing import List, Tuple
 
 import nested_dask as nd
@@ -10,6 +11,7 @@ from hats.io import paths
 from hats.pixel_math import HealpixPixel
 from hats.pixel_math.hipscat_id import SPATIAL_INDEX_COLUMN
 
+import lsdb
 from lsdb.dask.divisions import get_pixels_divisions
 
 
@@ -132,3 +134,17 @@ def _order_partition_dataframe_columns(dataframe: npd.NestedFrame) -> npd.Nested
     unordered_columns = [col for col in dataframe.columns if col not in order_of_columns]
     ordered_columns = [col for col in order_of_columns if col in dataframe.columns]
     return dataframe[unordered_columns + ordered_columns]
+
+
+def _extra_property_dict(est_size_bytes: int):
+    """Create a dictionary of additional fields to store in the properties file."""
+    properties = {}
+    properties["hats_builder"] = f"lsdb v{lsdb.__version__}"
+
+    now = datetime.now(tz=timezone.utc)
+    properties["hats_creation_date"] = now.strftime("%Y-%m-%dT%H:%M%Z")
+    properties["hats_estsize"] = f"{int(est_size_bytes / 1024)}"
+    properties["hats_release_date"] = "2024-09-18"
+    properties["hats_version"] = "v0.1"
+
+    return properties

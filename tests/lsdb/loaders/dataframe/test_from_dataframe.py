@@ -44,7 +44,10 @@ def test_from_dataframe(
     assert isinstance(catalog, lsdb.Catalog)
     assert isinstance(catalog._ddf, nd.NestedFrame)
     # Catalogs have the same information
-    assert catalog.hc_structure.catalog_info == small_sky_order1_catalog.hc_structure.catalog_info
+    assert (
+        catalog.hc_structure.catalog_info.explicit_dict()
+        == small_sky_order1_catalog.hc_structure.catalog_info.explicit_dict()
+    )
     # Index is set to hipscat index
     assert catalog._ddf.index.name == SPATIAL_INDEX_COLUMN
     # Dataframes have the same data (column data types may differ)
@@ -155,6 +158,7 @@ def test_from_dataframe_large_input(small_sky_order1_catalog, assert_divisions_a
     kwargs = {
         "catalog_name": original_catalog_info.catalog_name,
         "catalog_type": original_catalog_info.catalog_type,
+        "obs_regime": "Optical",
     }
 
     rng = np.random.default_rng()
@@ -166,7 +170,9 @@ def test_from_dataframe_large_input(small_sky_order1_catalog, assert_divisions_a
     assert isinstance(catalog, lsdb.Catalog)
     # Catalogs have the same information
     original_catalog_info.total_rows = 1_500_000
-    assert catalog.hc_structure.catalog_info == original_catalog_info
+    assert catalog.hc_structure.catalog_info.explicit_dict() == original_catalog_info.explicit_dict()
+    assert catalog.hc_structure.catalog_info.__pydantic_extra__["obs_regime"] == "Optical"
+    assert catalog.hc_structure.catalog_info.__pydantic_extra__["hats_builder"].startswith("lsdb")
     # Index is set to hipscat index
     assert catalog._ddf.index.name == SPATIAL_INDEX_COLUMN
     # Divisions belong to the respective HEALPix pixels
@@ -211,6 +217,11 @@ def test_catalog_pixels_nested_ordering(small_sky_source_df):
 
 
 def test_from_dataframe_small_sky_source_with_margins(small_sky_source_df, small_sky_source_margin_catalog):
+    kwargs = {
+        "catalog_name": "small_sky_source",
+        "catalog_type": "source",
+        "obs_regime": "Optical",
+    }
     catalog = lsdb.from_dataframe(
         small_sky_source_df,
         ra_column="source_ra",
@@ -220,6 +231,7 @@ def test_from_dataframe_small_sky_source_with_margins(small_sky_source_df, small
         threshold=3000,
         margin_order=8,
         margin_threshold=180,
+        **kwargs,
     )
 
     assert catalog.margin is not None
@@ -236,6 +248,11 @@ def test_from_dataframe_small_sky_source_with_margins(small_sky_source_df, small
     )
     assert isinstance(catalog.margin.compute(), npd.NestedFrame)
 
+    assert catalog.hc_structure.catalog_info.__pydantic_extra__["obs_regime"] == "Optical"
+    assert catalog.margin.hc_structure.catalog_info.__pydantic_extra__["obs_regime"] == "Optical"
+
+    assert catalog.hc_structure.catalog_info.__pydantic_extra__["hats_builder"].startswith("lsdb")
+    assert catalog.margin.hc_structure.catalog_info.__pydantic_extra__["hats_builder"].startswith("lsdb")
     # The margin and main catalog's schemas are the same
     assert catalog.margin.hc_structure.schema is catalog.hc_structure.schema
 
