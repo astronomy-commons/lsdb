@@ -214,6 +214,8 @@ class MarginCatalogGenerator:
         """Create the margin catalog info object
 
         Args:
+            catalog_name (str): name of the PRIMARY catalog being created. this margin
+                catalog will take on a name like `<catalog_name>_margin`.
             **kwargs: Arguments to pass to the creation of the catalog info
 
         Returns:
@@ -224,7 +226,7 @@ class MarginCatalogGenerator:
         kwargs.pop("catalog_type", None)
         kwargs = kwargs | _extra_property_dict(0)
         if not catalog_name:
-            catalog_name = f"{self.hc_structure.catalog_info.catalog_name}_margin"
+            catalog_name = self.hc_structure.catalog_info.catalog_name
 
         return TableProperties(
             catalog_name=f"{catalog_name}_margin",
