@@ -12,8 +12,6 @@ from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHea
 from hats.pixel_math import HealpixPixel
 from upath import UPath
 
-from lsdb.types import HealpixInfo
-
 if TYPE_CHECKING:
     from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
 
