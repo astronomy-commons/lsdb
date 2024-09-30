@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Dict, Union
 import dask
 import hats as hc
 import nested_pandas as npd
+from hats.catalog import PartitionInfo
 from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
 from hats.pixel_math import HealpixPixel
 from upath import UPath
@@ -79,14 +80,14 @@ def to_hats(
     # Save parquet metadata
     hc.io.write_parquet_metadata(base_catalog_path)
     # Save partition info
-    partition_info = _get_partition_info_dict(pixel_to_partition_size_map)
-    hc.io.write_partition_info(base_catalog_path, partition_info)
+    partition_info = PartitionInfo(list(pixel_to_partition_size_map.keys()))
+    partition_info.write_to_file(base_catalog_path / "partition_info.csv")
     # Save catalog info
     new_hc_structure = create_modified_catalog_structure(
         catalog.hc_structure,
         base_catalog_path,
         catalog_name if catalog_name else catalog.hc_structure.catalog_name,
-        total_rows=sum(pi[0] for pi in partition_info.values()),
+        total_rows=sum(pixel_to_partition_size_map.values()),
     )
     new_hc_structure.catalog_info.to_properties_file(base_catalog_path)
 
@@ -134,21 +135,6 @@ def write_partitions(
     return pixel_to_partition_size_map
 
 
-def _get_partition_info_dict(ddf_points_map: Dict[HealpixPixel, int]) -> Dict[HealpixPixel, HealpixInfo]:
-    """Creates the partition info dictionary
-
-    Args:
-        ddf_points_map (Dict[HealpixPix,int]): Dictionary mapping each HealpixPixel
-            to the respective number of points inside its partition
-
-    Returns:
-        A partition info dictionary, where the keys are the HEALPix pixels and
-        the values are pairs where the first element is the number of points
-        inside the pixel, and the second is the list of destination pixel numbers.
-    """
-    return {pixel: (length, [pixel.pixel]) for pixel, length in ddf_points_map.items()}
-
-
 def create_modified_catalog_structure(
     catalog_structure: HCHealpixDataset, catalog_base_dir: str | Path | UPath, catalog_name: str, **kwargs
 ) -> HCHealpixDataset:
@@ -169,6 +155,6 @@ def create_modified_catalog_structure(
     new_hc_structure.catalog_base_dir = hc.io.file_io.get_upath(catalog_base_dir)
     new_hc_structure.on_disk = True
 
-    new_hc_structure.catalog_info = new_hc_structure.catalog_info.model_copy(update=kwargs)
+    new_hc_structure.catalog_info = new_hc_structure.catalog_info.copy_and_update(**kwargs)
     new_hc_structure.catalog_info.catalog_name = catalog_name
     return new_hc_structure

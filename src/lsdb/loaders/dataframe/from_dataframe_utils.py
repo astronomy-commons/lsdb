@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import pyarrow as pa
 from dask import delayed
-from hats.catalog import PartitionInfo
+from hats.io import paths
 from hats.pixel_math import HealpixPixel
 from hats.pixel_math.hipscat_id import SPATIAL_INDEX_COLUMN
 
@@ -66,14 +66,14 @@ def _append_partition_information_to_dataframe(
         The dataframe for a HEALPix, with data points and respective partition information.
     """
     columns_to_assign = {
-        PartitionInfo.METADATA_ORDER_COLUMN_NAME: pixel.order,
-        PartitionInfo.METADATA_DIR_COLUMN_NAME: pixel.dir,
-        PartitionInfo.METADATA_PIXEL_COLUMN_NAME: pixel.pixel,
+        paths.PARTITION_ORDER: pixel.order,
+        paths.PARTITION_DIR: pixel.dir,
+        paths.PARTITION_PIXEL: pixel.pixel,
     }
     column_types = {
-        PartitionInfo.METADATA_ORDER_COLUMN_NAME: np.uint8,
-        PartitionInfo.METADATA_DIR_COLUMN_NAME: np.uint64,
-        PartitionInfo.METADATA_PIXEL_COLUMN_NAME: np.uint64,
+        paths.PARTITION_ORDER: np.uint8,
+        paths.PARTITION_DIR: np.uint64,
+        paths.PARTITION_PIXEL: np.uint64,
     }
     dataframe = dataframe.assign(**columns_to_assign).astype(column_types)
     return _order_partition_dataframe_columns(dataframe)
@@ -91,22 +91,20 @@ def _format_margin_partition_dataframe(dataframe: npd.NestedFrame) -> npd.Nested
     """
     dataframe = dataframe.drop(columns=["margin_pixel"])
     rename_columns = {
-        PartitionInfo.METADATA_ORDER_COLUMN_NAME: f"margin_{PartitionInfo.METADATA_ORDER_COLUMN_NAME}",
-        PartitionInfo.METADATA_DIR_COLUMN_NAME: f"margin_{PartitionInfo.METADATA_DIR_COLUMN_NAME}",
-        PartitionInfo.METADATA_PIXEL_COLUMN_NAME: f"margin_{PartitionInfo.METADATA_PIXEL_COLUMN_NAME}",
-        "partition_order": PartitionInfo.METADATA_ORDER_COLUMN_NAME,
-        "partition_pixel": PartitionInfo.METADATA_PIXEL_COLUMN_NAME,
+        paths.PARTITION_ORDER: f"margin_{paths.PARTITION_ORDER}",
+        paths.PARTITION_DIR: f"margin_{paths.PARTITION_DIR}",
+        paths.PARTITION_PIXEL: f"margin_{paths.PARTITION_PIXEL}",
+        "partition_order": paths.PARTITION_ORDER,
+        "partition_pixel": paths.PARTITION_PIXEL,
     }
     dataframe.rename(columns=rename_columns, inplace=True)
-    dir_column = (
-        np.floor_divide(dataframe[PartitionInfo.METADATA_PIXEL_COLUMN_NAME].to_numpy(), 10000) * 10000
-    )
-    dataframe[PartitionInfo.METADATA_DIR_COLUMN_NAME] = dir_column
+    dir_column = np.floor_divide(dataframe[paths.PARTITION_PIXEL].to_numpy(), 10000) * 10000
+    dataframe[paths.PARTITION_DIR] = dir_column
     dataframe = dataframe.astype(
         {
-            PartitionInfo.METADATA_ORDER_COLUMN_NAME: np.uint8,
-            PartitionInfo.METADATA_DIR_COLUMN_NAME: np.uint64,
-            PartitionInfo.METADATA_PIXEL_COLUMN_NAME: np.uint64,
+            paths.PARTITION_ORDER: np.uint8,
+            paths.PARTITION_DIR: np.uint64,
+            paths.PARTITION_PIXEL: np.uint64,
         }
     )
     dataframe = dataframe.set_index(SPATIAL_INDEX_COLUMN).sort_index()
@@ -124,12 +122,12 @@ def _order_partition_dataframe_columns(dataframe: npd.NestedFrame) -> npd.Nested
         The partition dataframe with the columns in the correct order.
     """
     order_of_columns = [
-        f"margin_{PartitionInfo.METADATA_ORDER_COLUMN_NAME}",
-        f"margin_{PartitionInfo.METADATA_DIR_COLUMN_NAME}",
-        f"margin_{PartitionInfo.METADATA_PIXEL_COLUMN_NAME}",
-        PartitionInfo.METADATA_ORDER_COLUMN_NAME,
-        PartitionInfo.METADATA_DIR_COLUMN_NAME,
-        PartitionInfo.METADATA_PIXEL_COLUMN_NAME,
+        f"margin_{paths.PARTITION_ORDER}",
+        f"margin_{paths.PARTITION_DIR}",
+        f"margin_{paths.PARTITION_PIXEL}",
+        paths.PARTITION_ORDER,
+        paths.PARTITION_DIR,
+        paths.PARTITION_PIXEL,
     ]
     unordered_columns = [col for col in dataframe.columns if col not in order_of_columns]
     ordered_columns = [col for col in order_of_columns if col in dataframe.columns]
