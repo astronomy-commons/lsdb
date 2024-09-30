@@ -9,7 +9,7 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 from dask.delayed import Delayed, delayed
-from hats.catalog import PartitionInfo
+from hats.io import paths
 from hats.pixel_math import HealpixPixel
 from hats.pixel_math.hipscat_id import SPATIAL_INDEX_COLUMN, healpix_to_hipscat_id
 from hats.pixel_tree import PixelAlignment, PixelAlignmentType, align_trees
@@ -39,18 +39,14 @@ def concat_partition_and_margin(
     if margin is None:
         return partition
 
-    hive_columns = [
-        PartitionInfo.METADATA_ORDER_COLUMN_NAME,
-        PartitionInfo.METADATA_DIR_COLUMN_NAME,
-        PartitionInfo.METADATA_PIXEL_COLUMN_NAME,
-    ]
+    hive_columns = [paths.PARTITION_ORDER, paths.PARTITION_DIR, paths.PARTITION_PIXEL]
     # Remove the Norder/Dir/Npix columns (used only for partitioning the margin itself),
     # and rename the margin_Norder/Dir/Npix to take their place.
     margin_columns_no_hive = [col for col in margin.columns if col not in hive_columns]
     rename_columns = {
-        f"margin_{PartitionInfo.METADATA_ORDER_COLUMN_NAME}": PartitionInfo.METADATA_ORDER_COLUMN_NAME,
-        f"margin_{PartitionInfo.METADATA_DIR_COLUMN_NAME}": PartitionInfo.METADATA_DIR_COLUMN_NAME,
-        f"margin_{PartitionInfo.METADATA_PIXEL_COLUMN_NAME}": PartitionInfo.METADATA_PIXEL_COLUMN_NAME,
+        f"margin_{paths.PARTITION_ORDER}": paths.PARTITION_ORDER,
+        f"margin_{paths.PARTITION_DIR}": paths.PARTITION_DIR,
+        f"margin_{paths.PARTITION_PIXEL}": paths.PARTITION_PIXEL,
     }
     margin_renamed = margin[margin_columns_no_hive].rename(columns=rename_columns)
     margin_filtered = margin_renamed[right_columns]

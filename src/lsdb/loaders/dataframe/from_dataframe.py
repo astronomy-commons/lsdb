@@ -74,5 +74,6 @@ def from_dataframe(
             margin_order,
             margin_threshold,
             use_pyarrow_types,
+            **kwargs,
         ).create_catalog()
     return catalog

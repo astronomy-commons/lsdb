@@ -21,6 +21,7 @@ from lsdb.catalog.catalog import Catalog
 from lsdb.io.schema import get_arrow_schema
 from lsdb.loaders.dataframe.from_dataframe_utils import (
     _append_partition_information_to_dataframe,
+    _extra_property_dict,
     _generate_dask_dataframe,
 )
 from lsdb.types import DaskDFPixelMap
@@ -88,8 +89,8 @@ class DataframeCatalogLoader:
         Returns:
             The HEALPix pixel threshold
         """
-        df_total_memory = self.dataframe.memory_usage(deep=True).sum()
-        if df_total_memory > (1 << 30) or len(self.dataframe) > 1_000_000:
+        self.df_total_memory = self.dataframe.memory_usage(deep=True).sum()
+        if self.df_total_memory > (1 << 30) or len(self.dataframe) > 1_000_000:
             warnings.warn(
                 "from_dataframe is not intended for large datasets. "
                 "Consider using hats-import: https://hats-import.readthedocs.io/",
@@ -105,12 +106,12 @@ class DataframeCatalogLoader:
                 threshold = len(self.dataframe) // num_partitions
             else:
                 # Each partition in memory will be of roughly 1Gib
-                partition_memory = df_total_memory / len(self.dataframe)
+                partition_memory = self.df_total_memory / len(self.dataframe)
                 threshold = math.ceil((1 << 30) / partition_memory)
         return threshold
 
-    @staticmethod
     def _create_catalog_info(
+        self,
         catalog_name: str = "from_lsdb_dataframe",
         ra_column: str = "ra",
         dec_column: str = "dec",
@@ -129,6 +130,9 @@ class DataframeCatalogLoader:
         Returns:
             The catalog info object
         """
+        if kwargs is None:
+            kwargs = {}
+        kwargs = kwargs | _extra_property_dict(self.df_total_memory)
         return TableProperties(
             catalog_name=catalog_name,
             ra_column=ra_column,
