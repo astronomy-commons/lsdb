@@ -11,7 +11,7 @@ import pandas as pd
 from dask.delayed import Delayed, delayed
 from hats.io import paths
 from hats.pixel_math import HealpixPixel
-from hats.pixel_math.hipscat_id import SPATIAL_INDEX_COLUMN, healpix_to_hipscat_id
+from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN, healpix_to_spatial_index
 from hats.pixel_tree import PixelAlignment, PixelAlignmentType, align_trees
 from hats.pixel_tree.moc_utils import copy_moc
 from hats.pixel_tree.pixel_alignment import align_with_mocs
@@ -155,8 +155,8 @@ def align_and_apply(
     return resulting_partitions
 
 
-def filter_by_hipscat_index_to_pixel(dataframe: npd.NestedFrame, order: int, pixel: int) -> npd.NestedFrame:
-    """Filters a catalog dataframe to the points within a specified HEALPix pixel using the hipscat index
+def filter_by_spatial_index_to_pixel(dataframe: npd.NestedFrame, order: int, pixel: int) -> npd.NestedFrame:
+    """Filters a catalog dataframe to the points within a specified HEALPix pixel using the spatial index
 
     Args:
         dataframe (npd.NestedFrame): The dataframe to filter
@@ -166,8 +166,8 @@ def filter_by_hipscat_index_to_pixel(dataframe: npd.NestedFrame, order: int, pix
     Returns:
         The filtered dataframe with only the rows that are within the specified HEALPix pixel
     """
-    lower_bound = healpix_to_hipscat_id(order, pixel)
-    upper_bound = healpix_to_hipscat_id(order, pixel + 1)
+    lower_bound = healpix_to_spatial_index(order, pixel)
+    upper_bound = healpix_to_spatial_index(order, pixel + 1)
     filtered_df = dataframe[(dataframe.index >= lower_bound) & (dataframe.index < upper_bound)]
     return filtered_df
 

@@ -10,7 +10,7 @@ import nested_pandas as npd
 import pandas as pd
 from hats.catalog import TableProperties
 from hats.pixel_math import HealpixPixel
-from hats.pixel_math.hipscat_id import SPATIAL_INDEX_COLUMN
+from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 from hats.pixel_tree import PixelAlignment
 from nested_pandas.series.packer import pack_flat
 
@@ -20,7 +20,7 @@ from lsdb.dask.merge_catalog_functions import (
     align_catalogs,
     concat_partition_and_margin,
     construct_catalog_args,
-    filter_by_hipscat_index_to_pixel,
+    filter_by_spatial_index_to_pixel,
     generate_meta_df_for_joined_tables,
     generate_meta_df_for_nested_tables,
     get_healpix_pixels_from_alignment,
@@ -90,7 +90,7 @@ def perform_join_on(
         A dataframe with the result of merging the left and right partitions on the specified columns
     """
     if right_pixel.order > left_pixel.order:
-        left = filter_by_hipscat_index_to_pixel(left, right_pixel.order, right_pixel.pixel)
+        left = filter_by_spatial_index_to_pixel(left, right_pixel.order, right_pixel.pixel)
 
     right_joined_df = concat_partition_and_margin(right, right_margin, right_columns)
 
@@ -141,7 +141,7 @@ def perform_join_nested(
         A dataframe with the result of merging the left and right partitions on the specified columns
     """
     if right_pixel.order > left_pixel.order:
-        left = filter_by_hipscat_index_to_pixel(left, right_pixel.order, right_pixel.pixel)
+        left = filter_by_spatial_index_to_pixel(left, right_pixel.order, right_pixel.pixel)
 
     right_joined_df = concat_partition_and_margin(right, right_margin, right_columns)
 
@@ -195,7 +195,7 @@ def perform_join_through(
     if assoc_catalog_info.primary_column is None or assoc_catalog_info.join_column is None:
         raise ValueError("Invalid catalog_info")
     if right_pixel.order > left_pixel.order:
-        left = filter_by_hipscat_index_to_pixel(left, right_pixel.order, right_pixel.pixel)
+        left = filter_by_spatial_index_to_pixel(left, right_pixel.order, right_pixel.pixel)
 
     right_joined_df = concat_partition_and_margin(right, right_margin, right_columns)
 
@@ -255,7 +255,7 @@ def perform_merge_asof(
         `merge_asof`
     """
     if right_pixel.order > left_pixel.order:
-        left = filter_by_hipscat_index_to_pixel(left, right_pixel.order, right_pixel.pixel)
+        left = filter_by_spatial_index_to_pixel(left, right_pixel.order, right_pixel.pixel)
 
     left, right = rename_columns_with_suffixes(left, right, suffixes)
     left.sort_index(inplace=True)

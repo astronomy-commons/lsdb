@@ -3,7 +3,7 @@ import nested_pandas as npd
 import numpy as np
 import pandas as pd
 import pytest
-from hats.pixel_math.hipscat_id import SPATIAL_INDEX_COLUMN, hipscat_id_to_healpix
+from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN, spatial_index_to_healpix
 
 
 def test_small_sky_join_small_sky_order1(
@@ -229,7 +229,7 @@ def test_merge_asof(small_sky_catalog, small_sky_xmatch_catalog, assert_division
         small_sky_compute = small_sky_catalog.compute().rename(
             columns={c: c + suffixes[0] for c in small_sky_catalog.columns}
         )
-        order_1_partition = hipscat_id_to_healpix(small_sky_compute.index.to_numpy(), 1)
+        order_1_partition = spatial_index_to_healpix(small_sky_compute.index.to_numpy(), 1)
         left_partitions = [
             small_sky_compute[order_1_partition == p.pixel]
             for p in small_sky_xmatch_catalog.get_healpix_pixels()

@@ -118,7 +118,7 @@ class MarginCatalogGenerator:
             Tuple containing the Dask Dataframe, the mapping of margin HEALPix
             to the respective partitions and the total number of rows.
         """
-        # Generate pixel map ordered by _hipscat_index
+        # Generate pixel map ordered by _healpix_29
         pixel_order = get_pixel_argsort(pixels)
         ordered_pixels = np.asarray(pixels)[pixel_order]
         ordered_partitions = [partitions[i] for i in pixel_order]

@@ -9,7 +9,7 @@ import pyarrow as pa
 from dask import delayed
 from hats.io import paths
 from hats.pixel_math import HealpixPixel
-from hats.pixel_math.hipscat_id import SPATIAL_INDEX_COLUMN
+from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 
 import lsdb
 from lsdb.dask.divisions import get_pixels_divisions

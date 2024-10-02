@@ -5,7 +5,7 @@ import pandas as pd
 import pyarrow as pa
 import pytest
 from hats.pixel_math import HealpixPixel
-from hats.pixel_math.hipscat_id import SPATIAL_INDEX_COLUMN
+from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 
 import lsdb
 from lsdb import Catalog

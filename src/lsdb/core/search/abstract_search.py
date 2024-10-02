@@ -26,7 +26,7 @@ class AbstractSearch(ABC):
         self.fine = fine
 
     def filter_hc_catalog(self, hc_structure: HCCatalogTypeVar) -> HCCatalogTypeVar:
-        """Filters the hispcat catalog object to the partitions included in the search"""
+        """Filters the hats catalog object to the partitions included in the search"""
         if len(hc_structure.get_healpix_pixels()) == 0:
             return hc_structure
         max_order = hc_structure.get_max_coverage_order()
