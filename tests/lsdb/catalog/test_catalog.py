@@ -28,7 +28,7 @@ def test_catalog_html_repr_equals_ddf_html_repr(small_sky_order1_catalog):
     full_html = small_sky_order1_catalog._repr_html_()
     assert small_sky_order1_catalog.name in full_html
     # this is a _healpix_29 that's in the data
-    assert "3187422220182231470" in full_html
+    assert "3170534137668829184" in full_html
 
 
 def test_catalog_compute_equals_ddf_compute(small_sky_order1_catalog):

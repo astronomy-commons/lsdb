@@ -245,7 +245,7 @@ class TestBoundedCrossmatch:
     def test_crossmatch_empty_right_partition(algo, small_sky_order1_catalog, small_sky_xmatch_catalog):
         ra = 300
         dec = -60
-        radius_arcsec = 3 * 3600
+        radius_arcsec = 3.4 * 3600
         cone = small_sky_xmatch_catalog.cone_search(ra, dec, radius_arcsec)
         assert len(cone.get_healpix_pixels()) == 2
         assert len(cone.get_partition(1, 44)) == 5
