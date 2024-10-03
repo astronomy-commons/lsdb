@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import dataclasses
 import copy
 import warnings
 from pathlib import Path
@@ -29,6 +30,7 @@ from lsdb import io
 from lsdb.catalog.dataset.dataset import Dataset
 from lsdb.core.plotting.skymap import compute_skymap, perform_inner_skymap
 from lsdb.core.search.abstract_search import AbstractSearch
+from lsdb.io.schema import get_arrow_schema
 from lsdb.types import DaskDFPixelMap
 
 
@@ -511,7 +513,7 @@ class HealpixDataset(Dataset):
         hc_structure.catalog_info.total_rows = None
         return self.__class__(ndf, self._ddf_pixel_map, hc_structure)
 
-    def reduce(self, func, *args, meta=None, **kwargs) -> Self:
+    def reduce(self, func, *args, meta=None, append_columns=False, **kwargs) -> Self:
         """
         Takes a function and applies it to each top-level row of the Catalog.
 
@@ -532,6 +534,8 @@ class HealpixDataset(Dataset):
             columns to apply the function to.
         meta : dataframe or series-like, optional
             The dask meta of the output.
+        append_columns : bool
+            If the output columns should be appended to the orignal dataframe.
         kwargs : keyword arguments, optional
             Keyword arguments to pass to the function.
 
@@ -555,6 +559,42 @@ class HealpixDataset(Dataset):
         >>>
         >>> catalog.reduce(my_sum, 'sources.col1', 'sources.col2')
 
+        Args:
+            append_columns:
+
         """
-        ndf = nd.NestedFrame.from_dask_dataframe(self._ddf.reduce(func, *args, meta=meta, **kwargs))
-        return self.__class__(ndf, self._ddf_pixel_map, self.hc_structure)
+        if meta is None:
+            meta = npd.NestedFrame(self._ddf._meta.copy()).reduce(func, *args, **kwargs)
+            if meta is None:
+                raise ValueError(
+                    "func returned None for empty DataFrame input. The function must return a value, changing"
+                    " the partitions in place will not work. If the function does not work for empty inputs, "
+                    "please specify a `meta` argument."
+                )
+
+        catalog_info = self.hc_structure.catalog_info
+
+        def reduce_part(df):
+            reduced_result = npd.NestedFrame(df).reduce(func, *args, **kwargs)
+            if append_columns:
+                if catalog_info.ra_column in reduced_result or catalog_info.dec_column in reduced_result:
+                    raise ValueError("ra and dec columns can not be modified using reduce")
+                return npd.NestedFrame(pd.concat([df, reduced_result], axis=1))
+            return reduced_result
+
+        ndf = nd.NestedFrame.from_dask_dataframe(self._ddf.map_partitions(reduce_part, meta=meta))
+
+        hc_catalog = self.hc_structure
+        if not append_columns:
+            new_catalog_info = dataclasses.replace(
+                self.hc_structure.catalog_info,
+                ra_column=None,
+                dec_column=None,
+            )
+            hc_catalog = self.hc_structure.__class__(
+                new_catalog_info,
+                self.hc_structure.pixel_tree,
+                schema=get_arrow_schema(ndf),
+                moc=self.hc_structure.moc,
+            )
+        return self.__class__(ndf, self._ddf_pixel_map, hc_catalog)
