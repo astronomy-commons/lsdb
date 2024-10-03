@@ -224,7 +224,7 @@ def generate_meta_df_for_joined_tables(
     suffixes: Sequence[str],
     extra_columns: pd.DataFrame | None = None,
     index_name: str = SPATIAL_INDEX_COLUMN,
-    index_type: npt.DTypeLike = np.uint64,
+    index_type: npt.DTypeLike = np.int64,
 ) -> npd.NestedFrame:
     """Generates a Dask meta DataFrame that would result from joining two catalogs
 
