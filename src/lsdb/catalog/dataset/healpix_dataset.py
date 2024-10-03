@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import warnings
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, List, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Tuple, cast
 
 import dask
 import dask.dataframe as dd
@@ -496,13 +496,16 @@ class HealpixDataset(Dataset):
         def drop_na_part(df: npd.NestedFrame):
             if df.index.name == SPATIAL_INDEX_COLUMN:
                 df = df.reset_index()
-            df = df.dropna(
-                axis=axis,
-                how=how,
-                thresh=thresh,
-                on_nested=on_nested,
-                subset=subset,
-                ignore_index=ignore_index,
+            df = cast(
+                npd.NestedFrame,
+                df.dropna(
+                    axis=axis,
+                    how=how,
+                    thresh=thresh,
+                    on_nested=on_nested,
+                    subset=subset,
+                    ignore_index=ignore_index,
+                ),
             )
             if SPATIAL_INDEX_COLUMN in df.columns:
                 df = df.set_index(SPATIAL_INDEX_COLUMN)
