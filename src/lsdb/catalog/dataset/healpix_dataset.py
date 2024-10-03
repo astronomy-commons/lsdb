@@ -30,6 +30,7 @@ from lsdb import io
 from lsdb.catalog.dataset.dataset import Dataset
 from lsdb.core.plotting.skymap import compute_skymap, perform_inner_skymap
 from lsdb.core.search.abstract_search import AbstractSearch
+from lsdb.dask.merge_catalog_functions import concat_metas
 from lsdb.io.schema import get_arrow_schema
 from lsdb.types import DaskDFPixelMap
 
@@ -572,6 +573,9 @@ class HealpixDataset(Dataset):
                     "please specify a `meta` argument."
                 )
 
+        if append_columns:
+            meta = concat_metas([self._ddf._meta.copy(), meta])
+
         catalog_info = self.hc_structure.catalog_info
 
         def reduce_part(df):
@@ -588,8 +592,8 @@ class HealpixDataset(Dataset):
         if not append_columns:
             new_catalog_info = dataclasses.replace(
                 self.hc_structure.catalog_info,
-                ra_column=None,
-                dec_column=None,
+                ra_column="",
+                dec_column="",
             )
             hc_catalog = self.hc_structure.__class__(
                 new_catalog_info,
