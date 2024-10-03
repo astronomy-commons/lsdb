@@ -80,7 +80,6 @@ def test_polygon_search_invalid_dec(small_sky_order1_catalog):
         small_sky_order1_catalog.polygon_search(vertices)
 
 
-@pytest.mark.skip(reason="healpy_error")
 def test_polygon_search_invalid_shape(small_sky_order1_catalog):
     """The polygon is not convex, so the shape is invalid"""
     with pytest.raises(RuntimeError):
