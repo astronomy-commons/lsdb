@@ -52,7 +52,8 @@ def test_from_dataframe(
     assert catalog._ddf.index.name == SPATIAL_INDEX_COLUMN
     # Dataframes have the same data (column data types may differ)
     pd.testing.assert_frame_equal(
-        catalog.compute().sort_index(), small_sky_order1_catalog.compute().sort_index()
+        catalog.compute().sort_values([SPATIAL_INDEX_COLUMN, "id"]),
+        small_sky_order1_catalog.compute().sort_values([SPATIAL_INDEX_COLUMN, "id"]),
     )
     # Divisions belong to the respective HEALPix pixels
     assert_divisions_are_correct(catalog)
@@ -327,14 +328,20 @@ def test_from_dataframe_with_backend(small_sky_order1_df, small_sky_order1_dir):
     kwargs = get_catalog_kwargs(expected_catalog)
     catalog = lsdb.from_dataframe(small_sky_order1_df, **kwargs)
     assert all(isinstance(col_type, pd.ArrowDtype) for col_type in catalog.dtypes)
-    pd.testing.assert_frame_equal(catalog.compute().sort_index(), expected_catalog.compute().sort_index())
+    pd.testing.assert_frame_equal(
+        catalog.compute().sort_values([SPATIAL_INDEX_COLUMN, "id"]),
+        expected_catalog.compute().sort_values([SPATIAL_INDEX_COLUMN, "id"]),
+    )
 
     # Test that we can also keep the original types if desired
     expected_catalog = lsdb.read_hats(small_sky_order1_dir, dtype_backend=None)
     kwargs = get_catalog_kwargs(expected_catalog)
     catalog = lsdb.from_dataframe(small_sky_order1_df, use_pyarrow_types=False, **kwargs)
     assert all(isinstance(col_type, np.dtype) for col_type in catalog.dtypes)
-    pd.testing.assert_frame_equal(catalog.compute().sort_index(), expected_catalog.compute().sort_index())
+    pd.testing.assert_frame_equal(
+        catalog.compute().sort_values([SPATIAL_INDEX_COLUMN, "id"]),
+        expected_catalog.compute().sort_values([SPATIAL_INDEX_COLUMN, "id"]),
+    )
 
 
 def test_from_dataframe_with_arrow_schema(small_sky_order1_df, small_sky_order1_dir):

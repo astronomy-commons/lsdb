@@ -29,4 +29,4 @@ def get_pixels_divisions(healpix_pixels: List[HealpixPixel]) -> Tuple[int, ...] 
     divisions = healpix_to_spatial_index(orders, pixels)
     last_pixel = healpix_pixels[get_pixel_argsort(healpix_pixels)[-1]]
     divisions = np.append(divisions, healpix_to_spatial_index(last_pixel.order, last_pixel.pixel + 1))
-    return tuple(divisions)
+    return tuple(np.sort(divisions))

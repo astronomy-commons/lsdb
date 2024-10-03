@@ -47,7 +47,7 @@ def _convert_dtypes_to_pyarrow(df: pd.DataFrame) -> pd.DataFrame:
         shallow copy of the initial DataFrame to avoid copying the data.
     """
     new_series = {}
-    df_index = df.index.astype(pd.ArrowDtype(pa.uint64()))
+    df_index = df.index.astype(pd.ArrowDtype(pa.int64()))
     for column in df.columns:
         pa_array = pa.array(df[column], from_pandas=True)
         series = pd.Series(pa_array, dtype=pd.ArrowDtype(pa_array.type), copy=False, index=df_index)

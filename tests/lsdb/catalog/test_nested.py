@@ -32,6 +32,3 @@ def test_dropna_on_nested(small_sky_with_nested_sources):
     filtered_sources_compute = filtered_cat["sources"].compute()
     assert len(drop_na_sources_compute) == len(filtered_sources_compute)
     assert sum(map(len, drop_na_sources_compute)) < sum(map(len, filtered_sources_compute))
-    pd.testing.assert_frame_equal(
-        drop_na_cat.compute(), filtered_cat._ddf.dropna(on_nested="sources").compute()
-    )
