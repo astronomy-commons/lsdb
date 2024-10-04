@@ -20,7 +20,7 @@ def test_small_sky_join_small_sky_order1(
     for col_name, dtype in small_sky_order1_catalog.dtypes.items():
         assert (col_name + suffixes[1], dtype) in joined.dtypes.items()
     assert joined._ddf.index.name == SPATIAL_INDEX_COLUMN
-    assert joined._ddf.index.dtype == np.uint64
+    assert joined._ddf.index.dtype == np.int64
 
     joined_compute = joined.compute()
     assert isinstance(joined_compute, npd.NestedFrame)
@@ -84,7 +84,7 @@ def test_join_association(small_sky_catalog, small_sky_xmatch_catalog, small_sky
     for col in small_sky_xmatch_catalog._ddf.columns:
         assert col + suffixes[1] in joined._ddf.columns
     assert joined._ddf.index.name == SPATIAL_INDEX_COLUMN
-    assert joined._ddf.index.dtype == np.uint64
+    assert joined._ddf.index.dtype == np.int64
 
     small_sky_compute = small_sky_catalog.compute()
     small_sky_xmatch_compute = small_sky_xmatch_catalog.compute()
