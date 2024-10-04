@@ -8,7 +8,7 @@ def test_divisions_are_independent_of_pixel_order(small_sky_order1_catalog):
     hp_pixels = small_sky_order1_catalog.get_ordered_healpix_pixels()
     order = [p.order for p in hp_pixels]
     pixel = [p.pixel for p in hp_pixels]
-    pixels = hc.pixel_math.hipscat_id.healpix_to_hipscat_id(order, pixel)
+    pixels = hc.pixel_math.spatial_index.healpix_to_spatial_index(order, pixel)
     npt.assert_array_equal(pixels, sorted(pixels))
     # Calculate divisions for ordered pixels
     divisions = get_pixels_divisions(hp_pixels)

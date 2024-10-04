@@ -156,9 +156,6 @@ _html/
 # Project initialization script
 .initialize_new_project.sh
 
-# large, unused fits files
-point_map.fits
-
 # test notebook
 dev/test.ipynb
 docs/tutorials/pre_executed/data

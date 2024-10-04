@@ -9,7 +9,7 @@ import pyarrow as pa
 from dask import delayed
 from hats.io import paths
 from hats.pixel_math import HealpixPixel
-from hats.pixel_math.hipscat_id import SPATIAL_INDEX_COLUMN
+from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 
 import lsdb
 from lsdb.dask.divisions import get_pixels_divisions
@@ -47,7 +47,7 @@ def _convert_dtypes_to_pyarrow(df: pd.DataFrame) -> pd.DataFrame:
         shallow copy of the initial DataFrame to avoid copying the data.
     """
     new_series = {}
-    df_index = df.index.astype(pd.ArrowDtype(pa.uint64()))
+    df_index = df.index.astype(pd.ArrowDtype(pa.int64()))
     for column in df.columns:
         pa_array = pa.array(df[column], from_pandas=True)
         series = pd.Series(pa_array, dtype=pd.ArrowDtype(pa_array.type), copy=False, index=df_index)

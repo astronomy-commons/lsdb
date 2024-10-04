@@ -17,7 +17,7 @@ from lsdb.dask.merge_catalog_functions import (
     align_catalogs,
     concat_partition_and_margin,
     construct_catalog_args,
-    filter_by_hipscat_index_to_pixel,
+    filter_by_spatial_index_to_pixel,
     generate_meta_df_for_joined_tables,
     get_healpix_pixels_from_alignment,
 )
@@ -51,7 +51,7 @@ def perform_crossmatch(
     the result.
     """
     if right_pix.order > left_pix.order:
-        left_df = filter_by_hipscat_index_to_pixel(left_df, right_pix.order, right_pix.pixel)
+        left_df = filter_by_spatial_index_to_pixel(left_df, right_pix.order, right_pix.pixel)
 
     if len(left_df) == 0:
         return meta_df

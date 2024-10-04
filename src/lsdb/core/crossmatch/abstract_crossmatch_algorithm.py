@@ -8,7 +8,7 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 from hats.catalog import TableProperties
-from hats.pixel_math.hipscat_id import SPATIAL_INDEX_COLUMN
+from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 
 if TYPE_CHECKING:
     from lsdb.catalog import Catalog

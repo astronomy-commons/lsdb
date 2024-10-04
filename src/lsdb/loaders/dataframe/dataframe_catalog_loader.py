@@ -14,7 +14,11 @@ import pyarrow as pa
 from hats.catalog import CatalogType, TableProperties
 from hats.pixel_math import HealpixPixel, generate_histogram
 from hats.pixel_math.healpix_pixel_function import get_pixel_argsort
-from hats.pixel_math.hipscat_id import SPATIAL_INDEX_COLUMN, compute_hipscat_id, healpix_to_hipscat_id
+from hats.pixel_math.spatial_index import (
+    SPATIAL_INDEX_COLUMN,
+    compute_spatial_index,
+    healpix_to_spatial_index,
+)
 from mocpy import MOC
 
 from lsdb.catalog.catalog import Catalog
@@ -147,7 +151,7 @@ class DataframeCatalogLoader:
         Returns:
             Catalog object with data from the source given at loader initialization
         """
-        self._set_hipscat_index()
+        self._set_spatial_index()
         pixel_list = self._compute_pixel_list()
         ddf, ddf_pixel_map, total_rows = self._generate_dask_df_and_map(pixel_list)
         self.catalog_info.total_rows = total_rows
@@ -156,10 +160,10 @@ class DataframeCatalogLoader:
         hc_structure = hc.catalog.Catalog(self.catalog_info, pixel_list, moc=moc, schema=schema)
         return Catalog(ddf, ddf_pixel_map, hc_structure)
 
-    def _set_hipscat_index(self):
-        """Generates the hipscat indices for each data point and assigns
-        the hipscat index column as the Dataframe index."""
-        self.dataframe[SPATIAL_INDEX_COLUMN] = compute_hipscat_id(
+    def _set_spatial_index(self):
+        """Generates the spatial indices for each data point and assigns
+        the spatial index column as the Dataframe index."""
+        self.dataframe[SPATIAL_INDEX_COLUMN] = compute_spatial_index(
             ra_values=self.dataframe[self.catalog_info.ra_column].to_numpy(),
             dec_values=self.dataframe[self.catalog_info.dec_column].to_numpy(),
         )
@@ -167,7 +171,7 @@ class DataframeCatalogLoader:
 
     def _compute_pixel_list(self) -> List[HealpixPixel]:
         """Compute object histogram and generate the sorted list of
-        HEALPix pixels. The pixels are sorted by ascending hipscat_id.
+        HEALPix pixels. The pixels are sorted by ascending spatial index.
 
         Returns:
             List of HEALPix pixels for the final partitioning.
@@ -213,8 +217,8 @@ class DataframeCatalogLoader:
             # Store HEALPix pixel in map
             ddf_pixel_map[hp_pixel] = hp_pixel_index
             # Obtain Dataframe for current HEALPix pixel, using NESTED characteristics.
-            left_bound = healpix_to_hipscat_id(hp_pixel.order, hp_pixel.pixel)
-            right_bound = healpix_to_hipscat_id(hp_pixel.order, hp_pixel.pixel + 1)
+            left_bound = healpix_to_spatial_index(hp_pixel.order, hp_pixel.pixel)
+            right_bound = healpix_to_spatial_index(hp_pixel.order, hp_pixel.pixel + 1)
             pixel_df = self.dataframe.loc[
                 (self.dataframe.index >= left_bound) & (self.dataframe.index < right_bound)
             ]

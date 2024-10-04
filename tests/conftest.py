@@ -3,8 +3,8 @@ from pathlib import Path
 import hats as hc
 import pandas as pd
 import pytest
-from hats.pixel_math import hipscat_id_to_healpix
-from hats.pixel_math.hipscat_id import SPATIAL_INDEX_COLUMN, healpix_to_hipscat_id
+from hats.pixel_math import spatial_index_to_healpix
+from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN, healpix_to_spatial_index
 
 import lsdb
 
@@ -288,10 +288,10 @@ def assert_divisions_are_correct():
         assert None not in catalog._ddf.divisions
         # Check that divisions belong to the correct pixel
         for division, hp_pixel in zip(catalog._ddf.divisions, hp_pixels):
-            div_pixel = hipscat_id_to_healpix([division], target_order=hp_pixel.order)
+            div_pixel = spatial_index_to_healpix([division], target_order=hp_pixel.order)
             assert hp_pixel.pixel == div_pixel
-        # The last division corresponds to the HIPSCAT_ID_MAX
-        assert catalog._ddf.divisions[-1] >= healpix_to_hipscat_id(
+        # The last division corresponds to the largest healpix value
+        assert catalog._ddf.divisions[-1] == healpix_to_spatial_index(
             hp_pixels[-1].order, hp_pixels[-1].pixel + 1
         )
 

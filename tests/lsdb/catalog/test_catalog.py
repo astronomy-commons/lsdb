@@ -9,11 +9,11 @@ import nested_pandas as npd
 import numpy as np
 import pandas as pd
 import pytest
-from hats.pixel_math import HealpixPixel, hipscat_id_to_healpix
+from hats.pixel_math import HealpixPixel, spatial_index_to_healpix
 
 import lsdb
 from lsdb import Catalog
-from lsdb.dask.merge_catalog_functions import filter_by_hipscat_index_to_pixel
+from lsdb.dask.merge_catalog_functions import filter_by_spatial_index_to_pixel
 
 
 def test_catalog_pixels_equals_hc_catalog_pixels(small_sky_order1_catalog, small_sky_order1_hats_catalog):
@@ -27,8 +27,8 @@ def test_catalog_repr_equals_ddf_repr(small_sky_order1_catalog):
 def test_catalog_html_repr_equals_ddf_html_repr(small_sky_order1_catalog):
     full_html = small_sky_order1_catalog._repr_html_()
     assert small_sky_order1_catalog.name in full_html
-    # this is a _hipscat_index that's in the data
-    assert "12682136550675316736" in full_html
+    # this is a _healpix_29 that's in the data
+    assert "3170534137668829184" in full_html
 
 
 def test_catalog_compute_equals_ddf_compute(small_sky_order1_catalog):
@@ -326,7 +326,7 @@ def test_skymap_data_order(small_sky_order1_catalog):
         for i in range(expected_array_length):
             p = pixels[i]
             expected_value = func(
-                filter_by_hipscat_index_to_pixel(partition, order, p), HealpixPixel(order, p)
+                filter_by_spatial_index_to_pixel(partition, order, p), HealpixPixel(order, p)
             )
             assert value[i] == expected_value
 
@@ -375,7 +375,7 @@ def test_skymap_histogram_order_default(small_sky_order1_catalog):
         return len(df) / hp.nside2pixarea(hp.order2nside(order), degrees=True)
 
     computed_catalog = small_sky_order1_catalog.compute()
-    order_3_pixels = hipscat_id_to_healpix(computed_catalog.index.to_numpy(), order)
+    order_3_pixels = spatial_index_to_healpix(computed_catalog.index.to_numpy(), order)
     pixel_map = computed_catalog.groupby(order_3_pixels).apply(lambda x: func(x, None))
 
     img = np.full(hp.order2npix(order), default)

@@ -11,7 +11,7 @@ import pandas as pd
 import pytest
 from hats.catalog import CatalogType
 from hats.pixel_math.healpix_pixel_function import get_pixel_argsort
-from hats.pixel_math.hipscat_id import SPATIAL_INDEX_COLUMN
+from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 from mocpy import MOC
 
 import lsdb
@@ -48,11 +48,12 @@ def test_from_dataframe(
         catalog.hc_structure.catalog_info.explicit_dict()
         == small_sky_order1_catalog.hc_structure.catalog_info.explicit_dict()
     )
-    # Index is set to hipscat index
+    # Index is set to spatial index
     assert catalog._ddf.index.name == SPATIAL_INDEX_COLUMN
     # Dataframes have the same data (column data types may differ)
     pd.testing.assert_frame_equal(
-        catalog.compute().sort_index(), small_sky_order1_catalog.compute().sort_index()
+        catalog.compute().sort_values([SPATIAL_INDEX_COLUMN, "id"]),
+        small_sky_order1_catalog.compute().sort_values([SPATIAL_INDEX_COLUMN, "id"]),
     )
     # Divisions belong to the respective HEALPix pixels
     assert_divisions_are_correct(catalog)
@@ -73,7 +74,7 @@ def test_from_dataframe_catalog_of_invalid_type(small_sky_order1_df, small_sky_o
         else:
             with pytest.raises(ValueError):
                 lsdb.from_dataframe(small_sky_order1_df, margin_threshold=None, **kwargs)
-        # Drop hipscat_index that might have been created in place
+        # Drop spatial_index that might have been created in place
         small_sky_order1_df.reset_index(drop=True, inplace=True)
 
 
@@ -173,7 +174,7 @@ def test_from_dataframe_large_input(small_sky_order1_catalog, assert_divisions_a
     assert catalog.hc_structure.catalog_info.explicit_dict() == original_catalog_info.explicit_dict()
     assert catalog.hc_structure.catalog_info.__pydantic_extra__["obs_regime"] == "Optical"
     assert catalog.hc_structure.catalog_info.__pydantic_extra__["hats_builder"].startswith("lsdb")
-    # Index is set to hipscat index
+    # Index is set to spatial index
     assert catalog._ddf.index.name == SPATIAL_INDEX_COLUMN
     # Divisions belong to the respective HEALPix pixels
     assert_divisions_are_correct(catalog)
@@ -327,14 +328,20 @@ def test_from_dataframe_with_backend(small_sky_order1_df, small_sky_order1_dir):
     kwargs = get_catalog_kwargs(expected_catalog)
     catalog = lsdb.from_dataframe(small_sky_order1_df, **kwargs)
     assert all(isinstance(col_type, pd.ArrowDtype) for col_type in catalog.dtypes)
-    pd.testing.assert_frame_equal(catalog.compute().sort_index(), expected_catalog.compute().sort_index())
+    pd.testing.assert_frame_equal(
+        catalog.compute().sort_values([SPATIAL_INDEX_COLUMN, "id"]),
+        expected_catalog.compute().sort_values([SPATIAL_INDEX_COLUMN, "id"]),
+    )
 
     # Test that we can also keep the original types if desired
     expected_catalog = lsdb.read_hats(small_sky_order1_dir, dtype_backend=None)
     kwargs = get_catalog_kwargs(expected_catalog)
     catalog = lsdb.from_dataframe(small_sky_order1_df, use_pyarrow_types=False, **kwargs)
     assert all(isinstance(col_type, np.dtype) for col_type in catalog.dtypes)
-    pd.testing.assert_frame_equal(catalog.compute().sort_index(), expected_catalog.compute().sort_index())
+    pd.testing.assert_frame_equal(
+        catalog.compute().sort_values([SPATIAL_INDEX_COLUMN, "id"]),
+        expected_catalog.compute().sort_values([SPATIAL_INDEX_COLUMN, "id"]),
+    )
 
 
 def test_from_dataframe_with_arrow_schema(small_sky_order1_df, small_sky_order1_dir):

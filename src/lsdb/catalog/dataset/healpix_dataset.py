@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import warnings
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, List, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Tuple, cast
 
 import dask
 import dask.dataframe as dd
@@ -18,6 +18,7 @@ from hats.inspection import plot_pixel_list
 from hats.inspection.visualize_catalog import get_projection_method
 from hats.pixel_math import HealpixPixel
 from hats.pixel_math.healpix_pixel_function import get_pixel_argsort
+from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 from pandas._libs import lib
 from pandas._typing import AnyAll, Axis, IndexLabel
 from pandas.api.extensions import no_default
@@ -491,7 +492,24 @@ class HealpixDataset(Dataset):
         to a single layer, multi-layer operations are not supported at this
         time.
         """
-        ndf = self._ddf.dropna(
-            axis=axis, how=how, thresh=thresh, on_nested=on_nested, subset=subset, ignore_index=ignore_index
-        )
+
+        def drop_na_part(df: npd.NestedFrame):
+            if df.index.name == SPATIAL_INDEX_COLUMN:
+                df = df.reset_index()
+            df = cast(
+                npd.NestedFrame,
+                df.dropna(
+                    axis=axis,
+                    how=how,
+                    thresh=thresh,
+                    on_nested=on_nested,
+                    subset=subset,
+                    ignore_index=ignore_index,
+                ),
+            )
+            if SPATIAL_INDEX_COLUMN in df.columns:
+                df = df.set_index(SPATIAL_INDEX_COLUMN)
+            return df
+
+        ndf = self._ddf.map_partitions(drop_na_part, meta=self._ddf._meta)
         return self.__class__(ndf, self._ddf_pixel_map, self.hc_structure)

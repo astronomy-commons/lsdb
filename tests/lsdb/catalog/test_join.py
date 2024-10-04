@@ -3,7 +3,7 @@ import nested_pandas as npd
 import numpy as np
 import pandas as pd
 import pytest
-from hats.pixel_math.hipscat_id import SPATIAL_INDEX_COLUMN, hipscat_id_to_healpix
+from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN, spatial_index_to_healpix
 
 
 def test_small_sky_join_small_sky_order1(
@@ -20,7 +20,7 @@ def test_small_sky_join_small_sky_order1(
     for col_name, dtype in small_sky_order1_catalog.dtypes.items():
         assert (col_name + suffixes[1], dtype) in joined.dtypes.items()
     assert joined._ddf.index.name == SPATIAL_INDEX_COLUMN
-    assert joined._ddf.index.dtype == np.uint64
+    assert joined._ddf.index.dtype == np.int64
 
     joined_compute = joined.compute()
     assert isinstance(joined_compute, npd.NestedFrame)
@@ -84,7 +84,7 @@ def test_join_association(small_sky_catalog, small_sky_xmatch_catalog, small_sky
     for col in small_sky_xmatch_catalog._ddf.columns:
         assert col + suffixes[1] in joined._ddf.columns
     assert joined._ddf.index.name == SPATIAL_INDEX_COLUMN
-    assert joined._ddf.index.dtype == np.uint64
+    assert joined._ddf.index.dtype == np.int64
 
     small_sky_compute = small_sky_catalog.compute()
     small_sky_xmatch_compute = small_sky_xmatch_catalog.compute()
@@ -229,7 +229,7 @@ def test_merge_asof(small_sky_catalog, small_sky_xmatch_catalog, assert_division
         small_sky_compute = small_sky_catalog.compute().rename(
             columns={c: c + suffixes[0] for c in small_sky_catalog.columns}
         )
-        order_1_partition = hipscat_id_to_healpix(small_sky_compute.index.to_numpy(), 1)
+        order_1_partition = spatial_index_to_healpix(small_sky_compute.index.to_numpy(), 1)
         left_partitions = [
             small_sky_compute[order_1_partition == p.pixel]
             for p in small_sky_xmatch_catalog.get_healpix_pixels()

@@ -13,7 +13,7 @@ from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHea
 from hats.io.file_io import file_io
 from hats.pixel_math import HealpixPixel
 from hats.pixel_math.healpix_pixel_function import get_pixel_argsort
-from hats.pixel_math.hipscat_id import SPATIAL_INDEX_COLUMN
+from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 from upath import UPath
 
 from lsdb.catalog.catalog import DaskDFPixelMap
