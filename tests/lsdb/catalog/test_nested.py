@@ -58,3 +58,25 @@ def test_reduce(small_sky_with_nested_sources):
     )
 
     pd.testing.assert_frame_equal(reduced_cat_compute, reduced_ddf.compute())
+
+
+def test_reduce_append_columns(small_sky_with_nested_sources):
+    def mean_mag(mag):
+        return {"mean_mag": np.mean(mag)}
+
+    reduced_cat = small_sky_with_nested_sources.reduce(
+        mean_mag, "sources.mag", meta={"mean_mag": float}, append_columns=True
+    )
+
+    assert isinstance(reduced_cat, Catalog)
+    assert isinstance(reduced_cat._ddf, nd.NestedFrame)
+
+    reduced_cat_compute = reduced_cat.compute()
+    assert isinstance(reduced_cat_compute, npd.NestedFrame)
+
+    reduced_ddf = small_sky_with_nested_sources._ddf.reduce(mean_mag, "sources.mag", meta={"mean_mag": float})
+
+    pd.testing.assert_series_equal(reduced_cat_compute["mean_mag"], reduced_ddf.compute()["mean_mag"])
+    pd.testing.assert_frame_equal(
+        reduced_cat_compute[small_sky_with_nested_sources.columns], small_sky_with_nested_sources.compute()
+    )

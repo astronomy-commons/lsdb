@@ -534,7 +534,8 @@ class HealpixDataset(Dataset):
             Positional arguments to pass to the function, the first *args should be the names of the
             columns to apply the function to.
         meta : dataframe or series-like, optional
-            The dask meta of the output.
+            The dask meta of the output. If append_columns is True, the meta should specify just the
+            additional columns output by func.
         append_columns : bool
             If the output columns should be appended to the orignal dataframe.
         kwargs : keyword arguments, optional
@@ -560,18 +561,7 @@ class HealpixDataset(Dataset):
         >>>
         >>> catalog.reduce(my_sum, 'sources.col1', 'sources.col2')
 
-        Args:
-            append_columns:
-
         """
-        if meta is None:
-            meta = npd.NestedFrame(self._ddf._meta.copy()).reduce(func, *args, **kwargs)
-            if meta is None:
-                raise ValueError(
-                    "func returned None for empty DataFrame input. The function must return a value, changing"
-                    " the partitions in place will not work. If the function does not work for empty inputs, "
-                    "please specify a `meta` argument."
-                )
 
         if append_columns:
             meta = concat_metas([self._ddf._meta.copy(), meta])
