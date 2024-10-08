@@ -310,6 +310,15 @@ def generate_meta_df_for_nested_tables(
 
 
 def concat_metas(metas: Sequence[npd.NestedFrame | dict]):
+    """Concats the columns of a sequence of dask metas into a single NestedFrame meta
+
+    Args:
+        metas (Sequence[dict | DataFrame]): A collection of dask meta inputs
+
+    Returns:
+        (npd.NestedFrame) An empty NestedFrame with the columns of the input metas concatenated together in
+        the order of the input sequence.
+    """
     pandas_metas = []
     for meta in metas:
         pandas_metas.append(npd.NestedFrame(make_meta(meta)))
