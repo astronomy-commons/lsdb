@@ -2,6 +2,7 @@ import nested_dask as nd
 import nested_pandas as npd
 import numpy as np
 import pandas as pd
+import pytest
 
 from lsdb import Catalog
 
@@ -80,3 +81,18 @@ def test_reduce_append_columns(small_sky_with_nested_sources):
     pd.testing.assert_frame_equal(
         reduced_cat_compute[small_sky_with_nested_sources.columns], small_sky_with_nested_sources.compute()
     )
+
+
+def test_reduce_append_columns_raises_error(small_sky_with_nested_sources):
+    def mean_mag(ra, dec, mag):
+        return {"ra": ra, "dec": dec, "mean_mag": np.mean(mag)}
+
+    with pytest.raises(ValueError):
+        small_sky_with_nested_sources.reduce(
+            mean_mag,
+            "ra",
+            "dec",
+            "sources.mag",
+            meta={"ra": float, "dec": float, "mean_mag": float},
+            append_columns=True,
+        ).compute()
