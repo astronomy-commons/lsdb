@@ -20,6 +20,7 @@ def test_read_hipscat(small_sky_order1_dir, small_sky_order1_hipscat_catalog, as
     assert isinstance(catalog, lsdb.Catalog)
     assert isinstance(catalog._ddf, nd.NestedFrame)
     assert catalog.hc_structure.catalog_base_dir == small_sky_order1_hipscat_catalog.catalog_base_dir
+    assert catalog.hc_structure.catalog_info.total_rows == len(catalog)
     assert catalog.get_healpix_pixels() == small_sky_order1_hipscat_catalog.get_healpix_pixels()
     assert len(catalog.compute().columns) == 8
     assert isinstance(catalog.compute(), npd.NestedFrame)

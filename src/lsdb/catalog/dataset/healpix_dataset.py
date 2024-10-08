@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import copy
+import dataclasses
 import warnings
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Tuple
@@ -68,6 +70,16 @@ class HealpixDataset(Dataset):
             return self.__class__(result, self._ddf_pixel_map, self.hc_structure)
         return result
 
+    def __len__(self):
+        """The number of rows in the catalog.
+
+        Returns:
+            The number of rows in the catalog, as specified in its metadata.
+            This value is undetermined if the catalog was modified by means
+            of queries and spatial filters, in which case it raises an error.
+        """
+        return len(self.hc_structure)
+
     def get_healpix_pixels(self) -> List[HealpixPixel]:
         """Get all HEALPix pixels that are contained in the catalog
 
@@ -132,7 +144,9 @@ class HealpixDataset(Dataset):
             with the query expression
         """
         ndf = self._ddf.query(expr)
-        return self.__class__(ndf, self._ddf_pixel_map, self.hc_structure)
+        hc_structure = copy.copy(self.hc_structure)
+        hc_structure.catalog_info.total_rows = None
+        return self.__class__(ndf, self._ddf_pixel_map, hc_structure)
 
     def _perform_search(
         self,
@@ -494,4 +508,6 @@ class HealpixDataset(Dataset):
         ndf = self._ddf.dropna(
             axis=axis, how=how, thresh=thresh, on_nested=on_nested, subset=subset, ignore_index=ignore_index
         )
-        return self.__class__(ndf, self._ddf_pixel_map, self.hc_structure)
+        hc_structure = copy.copy(self.hc_structure)
+        hc_structure.catalog_info.total_rows = None
+        return self.__class__(ndf, self._ddf_pixel_map, hc_structure)

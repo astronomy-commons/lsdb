@@ -199,6 +199,7 @@ def test_join_nested(small_sky_catalog, small_sky_order1_source_with_margin, ass
     for col_name, dtype in small_sky_order1_source_with_margin.dtypes.items():
         if col_name != "object_id":
             assert (col_name, dtype.pyarrow_dtype) in joined["sources"].dtypes.fields.items()
+    assert len(small_sky_catalog) == len(joined)
     assert_divisions_are_correct(joined)
     joined_compute = joined.compute()
     source_compute = small_sky_order1_source_with_margin.compute()
@@ -223,6 +224,7 @@ def test_merge_asof(small_sky_catalog, small_sky_xmatch_catalog, assert_division
             small_sky_xmatch_catalog, direction=direction, suffixes=suffixes
         )
         assert isinstance(joined._ddf, nd.NestedFrame)
+        assert len(small_sky_catalog) == len(joined)
         assert_divisions_are_correct(joined)
         joined_compute = joined.compute()
         assert isinstance(joined_compute, npd.NestedFrame)

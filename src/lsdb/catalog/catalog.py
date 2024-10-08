@@ -93,6 +93,19 @@ class Catalog(HealpixDataset):
         return self._ddf._meta
 
     def query(self, expr: str) -> Catalog:
+        """Filters catalog and respective margin, if it exists, using a complex query expression
+
+        Args:
+            expr (str): Query expression to evaluate. The column names that are not valid Python
+                variables names should be wrapped in backticks, and any variable values can be
+                injected using f-strings. The use of '@' to reference variables is not supported.
+                More information about pandas query strings is available
+                `here <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.query.html>`__.
+
+        Returns:
+            A catalog that contains the data from the original catalog that complies with the query
+            expression. If a margin exists, it is filtered according to the same query expression.
+        """
         catalog = super().query(expr)
         if self.margin is not None:
             catalog.margin = self.margin.query(expr)
@@ -208,6 +221,7 @@ class Catalog(HealpixDataset):
             catalog_name=output_catalog_name,
             ra_column=self.hc_structure.catalog_info.ra_column + suffixes[0],
             dec_column=self.hc_structure.catalog_info.dec_column + suffixes[0],
+            total_rows=None,
         )
         hc_catalog = hc.catalog.Catalog(new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(ddf))
         return Catalog(ddf, ddf_map, hc_catalog)
@@ -474,6 +488,7 @@ class Catalog(HealpixDataset):
                 catalog_name=output_catalog_name,
                 ra_column=self.hc_structure.catalog_info.ra_column + suffixes[0],
                 dec_column=self.hc_structure.catalog_info.dec_column + suffixes[0],
+                total_rows=None,
             )
             hc_catalog = hc.catalog.Catalog(
                 new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(ddf)
@@ -497,6 +512,7 @@ class Catalog(HealpixDataset):
             catalog_name=output_catalog_name,
             ra_column=self.hc_structure.catalog_info.ra_column + suffixes[0],
             dec_column=self.hc_structure.catalog_info.dec_column + suffixes[0],
+            total_rows=None,
         )
         hc_catalog = hc.catalog.Catalog(new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(ddf))
         return Catalog(ddf, ddf_map, hc_catalog)
@@ -568,6 +584,58 @@ class Catalog(HealpixDataset):
         subset: IndexLabel | None = None,
         ignore_index: bool = False,
     ) -> Catalog:
+        """Remove missing values for one layer of nested columns in the catalog.
+
+        Parameters
+        ----------
+        axis : {0 or 'index', 1 or 'columns'}, default 0
+            Determine if rows or columns which contain missing values are
+            removed.
+
+            * 0, or 'index' : Drop rows which contain missing values.
+            * 1, or 'columns' : Drop columns which contain missing value.
+
+            Only a single axis is allowed.
+
+        how : {'any', 'all'}, default 'any'
+            Determine if row or column is removed from catalog, when we have
+            at least one NA or all NA.
+
+            * 'any' : If any NA values are present, drop that row or column.
+            * 'all' : If all values are NA, drop that row or column.
+        thresh : int, optional
+            Require that many non-NA values. Cannot be combined with how.
+        on_nested : str or bool, optional
+            If not False, applies the call to the nested dataframe in the
+            column with label equal to the provided string. If specified,
+            the nested dataframe should align with any columns given in
+            `subset`.
+        subset : column label or sequence of labels, optional
+            Labels along other axis to consider, e.g. if you are dropping rows
+            these would be a list of columns to include.
+
+            Access nested columns using `nested_df.nested_col` (where
+            `nested_df` refers to a particular nested dataframe and
+            `nested_col` is a column of that nested dataframe).
+        ignore_index : bool, default ``False``
+            If ``True``, the resulting axis will be labeled 0, 1, …, n - 1.
+
+            .. versionadded:: 2.0.0
+
+        Returns
+        -------
+        Catalog
+            Catalog with NA entries dropped from it.
+
+        Notes
+        -----
+        Operations that target a particular nested structure return a dataframe
+        with rows of that particular nested structure affected.
+
+        Values for `on_nested` and `subset` should be consistent in pointing
+        to a single layer, multi-layer operations are not supported at this
+        time.
+        """
         catalog = super().dropna(
             axis=axis, how=how, thresh=thresh, on_nested=on_nested, subset=subset, ignore_index=ignore_index
         )
