@@ -5,9 +5,9 @@ name: Build documentation
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, development ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, development ]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
