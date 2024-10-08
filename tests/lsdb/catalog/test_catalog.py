@@ -614,12 +614,7 @@ def test_square_bracket_slice_partitions(small_sky_order1_catalog):
     pd.testing.assert_frame_equal(subset_3.compute(), subset.compute())
 
 
-def test_filtered_catalog_has_undetermined_len(
-    small_sky_order1_catalog,
-    small_sky_order1_id_index_dir,
-    small_sky_xmatch_catalog,
-    small_sky_order1_source_with_margin,
-):
+def test_filtered_catalog_has_undetermined_len(small_sky_order1_catalog, small_sky_order1_id_index_dir):
     """Tests that filtered catalogs have an undetermined number of rows"""
     with pytest.raises(ValueError, match="undetermined"):
         len(small_sky_order1_catalog.query("ra > 300"))
