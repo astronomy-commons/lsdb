@@ -1,1 +1,1 @@
-git+https://github.com/astronomy-commons/hipscat.git@issue/333/catalog-len-method
+git+https://github.com/astronomy-commons/hipscat.git@development
