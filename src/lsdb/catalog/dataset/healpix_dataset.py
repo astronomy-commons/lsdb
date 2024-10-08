@@ -74,8 +74,8 @@ class HealpixDataset(Dataset):
 
         Returns:
             The number of rows in the catalog, as specified in its metadata.
-            This value is undetermined if the catalog was modified by means
-            of queries and spatial filters, in which case it raises an error.
+            This value is undetermined when the catalog is modified, and
+            therefore an error is raised.
         """
         return len(self.hc_structure)
 
