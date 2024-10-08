@@ -439,6 +439,7 @@ class Catalog(HealpixDataset):
             catalog_name=output_catalog_name,
             ra_column=self.hc_structure.catalog_info.ra_column + suffixes[0],
             dec_column=self.hc_structure.catalog_info.dec_column + suffixes[0],
+            total_rows=None,
         )
         hc_catalog = hc.catalog.Catalog(new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(ddf))
         return Catalog(ddf, ddf_map, hc_catalog)
@@ -570,6 +571,7 @@ class Catalog(HealpixDataset):
         new_catalog_info = dataclasses.replace(
             self.hc_structure.catalog_info,
             catalog_name=output_catalog_name,
+            total_rows=None,
         )
         hc_catalog = hc.catalog.Catalog(new_catalog_info, alignment.pixel_tree)
         return Catalog(ddf, ddf_map, hc_catalog)

@@ -614,13 +614,13 @@ def test_square_bracket_slice_partitions(small_sky_order1_catalog):
     pd.testing.assert_frame_equal(subset_3.compute(), subset.compute())
 
 
-def test_catalog_len_is_undetermined(
+def test_filtered_catalog_has_undetermined_len(
     small_sky_order1_catalog,
     small_sky_order1_id_index_dir,
     small_sky_xmatch_catalog,
     small_sky_order1_source_with_margin,
 ):
-    """Tests that catalogs that were modified have an undetermined number of rows"""
+    """Tests that filtered catalogs have an undetermined number of rows"""
     with pytest.raises(ValueError, match="undetermined"):
         len(small_sky_order1_catalog.query("ra > 300"))
     with pytest.raises(ValueError, match="undetermined"):
@@ -638,6 +638,15 @@ def test_catalog_len_is_undetermined(
     with pytest.raises(ValueError, match="undetermined"):
         len(small_sky_order1_catalog.pixel_search([(0, 11)]))
     with pytest.raises(ValueError, match="undetermined"):
+        len(small_sky_order1_catalog.dropna())
+
+
+def test_joined_catalog_has_undetermined_len(
+    small_sky_order1_catalog, small_sky_xmatch_catalog, small_sky_order1_source_with_margin
+):
+    """Tests that catalogs resulting from joining, merging and crossmatching
+    have an undetermined number of rows"""
+    with pytest.raises(ValueError, match="undetermined"):
         len(small_sky_order1_catalog.crossmatch(small_sky_xmatch_catalog, radius_arcsec=0.005 * 3600))
     with pytest.raises(ValueError, match="undetermined"):
         len(
@@ -646,4 +655,13 @@ def test_catalog_len_is_undetermined(
             )
         )
     with pytest.raises(ValueError, match="undetermined"):
-        len(small_sky_order1_catalog.dropna())
+        len(
+            small_sky_order1_catalog.join_nested(
+                small_sky_order1_source_with_margin,
+                left_on="id",
+                right_on="object_id",
+                nested_column_name="sources",
+            )
+        )
+    with pytest.raises(ValueError, match="undetermined"):
+        len(small_sky_order1_catalog.merge_asof(small_sky_xmatch_catalog))
