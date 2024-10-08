@@ -9,6 +9,7 @@ import nested_pandas as npd
 import numpy as np
 import pandas as pd
 import pytest
+from hipscat import read_from_hipscat
 from hipscat.pixel_math import HealpixPixel, hipscat_id_to_healpix
 
 import lsdb
@@ -611,3 +612,51 @@ def test_square_bracket_slice_partitions(small_sky_order1_catalog):
     subset_3 = small_sky_order1_catalog.partitions[0:2:1]
     assert subset_3.get_healpix_pixels() == subset.get_healpix_pixels()
     pd.testing.assert_frame_equal(subset_3.compute(), subset.compute())
+
+
+def test_filtered_catalog_has_undetermined_len(small_sky_order1_catalog, small_sky_order1_id_index_dir):
+    """Tests that filtered catalogs have an undetermined number of rows"""
+    with pytest.raises(ValueError, match="undetermined"):
+        len(small_sky_order1_catalog.query("ra > 300"))
+    with pytest.raises(ValueError, match="undetermined"):
+        len(small_sky_order1_catalog.cone_search(0, -80, 1))
+    with pytest.raises(ValueError, match="undetermined"):
+        vertices = [(300, -50), (300, -55), (272, -55), (272, -50)]
+        len(small_sky_order1_catalog.polygon_search(vertices))
+    with pytest.raises(ValueError, match="undetermined"):
+        len(small_sky_order1_catalog.box_search(ra=(280, 300)))
+    with pytest.raises(ValueError, match="undetermined"):
+        len(small_sky_order1_catalog.order_search(max_order=2))
+    with pytest.raises(ValueError, match="undetermined"):
+        catalog_index = read_from_hipscat(small_sky_order1_id_index_dir)
+        len(small_sky_order1_catalog.index_search([900], catalog_index))
+    with pytest.raises(ValueError, match="undetermined"):
+        len(small_sky_order1_catalog.pixel_search([(0, 11)]))
+    with pytest.raises(ValueError, match="undetermined"):
+        len(small_sky_order1_catalog.dropna())
+
+
+def test_joined_catalog_has_undetermined_len(
+    small_sky_order1_catalog, small_sky_xmatch_catalog, small_sky_order1_source_with_margin
+):
+    """Tests that catalogs resulting from joining, merging and crossmatching
+    have an undetermined number of rows"""
+    with pytest.raises(ValueError, match="undetermined"):
+        len(small_sky_order1_catalog.crossmatch(small_sky_xmatch_catalog, radius_arcsec=0.005 * 3600))
+    with pytest.raises(ValueError, match="undetermined"):
+        len(
+            small_sky_order1_catalog.join(
+                small_sky_order1_source_with_margin, left_on="id", right_on="object_id"
+            )
+        )
+    with pytest.raises(ValueError, match="undetermined"):
+        len(
+            small_sky_order1_catalog.join_nested(
+                small_sky_order1_source_with_margin,
+                left_on="id",
+                right_on="object_id",
+                nested_column_name="sources",
+            )
+        )
+    with pytest.raises(ValueError, match="undetermined"):
+        len(small_sky_order1_catalog.merge_asof(small_sky_xmatch_catalog))
