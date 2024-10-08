@@ -576,6 +576,62 @@ class Catalog(HealpixDataset):
         hc_catalog = hc.catalog.Catalog(new_catalog_info, alignment.pixel_tree)
         return Catalog(ddf, ddf_map, hc_catalog)
 
+    def from_lists(
+        self,
+        base_columns: list[str] | None,
+        list_columns: list[str] | None = None,
+        name: str = "nested",
+    ):
+        """Creates a new catalog with a set of list columns packed into a
+        nested column.
+
+        Args:
+            base_columns (list-like or None): Any columns that have non-list values in the input catalog. These will
+                simply be kept as identical columns in the result
+        list_columns (list-like or None): The list-value columns that should be packed into a nested column.
+            All columns in the list will attempt to be packed into a single
+                nested column with the name provided in `nested_name`. All columns
+                in list_columns must have pyarrow list dtypes, otherwise the
+                operation will fail. If None, is defined as all columns not in
+                `base_columns`.
+        name (str): The name of the output column the `nested_columns` are packed into.
+
+        Returns:
+            A new catalog with specified list columns nested into a new nested column.
+
+        Note:
+            As noted above, all columns in `list_columns` must have a pyarrow
+            ListType dtype. This is needed for proper meta propagation. To convert
+            a list column to this dtype, you can use this command structure:
+            `nf= nf.astype({"colname": pd.ArrowDtype(pa.list_(pa.int64()))})`
+            Where pa.int64 above should be replaced with the correct dtype of the
+            underlying data accordingly.
+            Additionally, it's a known issue in Dask
+            (https://github.com/dask/dask/issues/10139) that columns with list
+            values will by default be converted to the string type. This will
+            interfere with the ability to recast these to pyarrow lists. We
+            recommend setting the following dask config setting to prevent this:
+            `dask.config.set({"dataframe.convert-string":False})`
+        """
+        new_ddf = nd.NestedFrame.from_lists(
+            self._ddf,
+            base_columns=base_columns,
+            list_columns=list_columns,
+            name=name,
+        )
+
+        catalog = Catalog(new_ddf, self._ddf_pixel_map, self.hc_structure)
+
+        if self.margin is not None:
+            catalog.margin = self.margin.from_lists(
+                self.margin_ddf,
+                base_columns=base_columns,
+                list_columns=list_columns,
+                name=name,
+            )
+
+        return catalog
+
     def dropna(
         self,
         *,
