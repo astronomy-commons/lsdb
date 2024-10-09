@@ -35,3 +35,12 @@ def test_dropna_on_nested(small_sky_with_nested_sources):
     pd.testing.assert_frame_equal(
         drop_na_cat.compute(), filtered_cat._ddf.dropna(on_nested="sources").compute()
     )
+
+
+def test_nest_lists(small_sky_with_nested_sources):
+    """Test the behavior of catalog.nest_lists"""
+    cat_ndf = small_sky_with_nested_sources._ddf
+    catlists_ndf = cat_ndf.sources.nest.to_lists()
+    smallsky_lists = cat_ndf[["id", "ra", "dec"]].join(catlists_ndf)
+    small_sky_with_nested_sources._ddf = smallsky_lists
+    cat_ndf_renested = small_sky_with_nested_sources.nest_lists(base_columns=["id", "ra", "dec"])
