@@ -512,6 +512,7 @@ class HealpixDataset(Dataset):
         hc_structure.catalog_info.total_rows = None
         return self.__class__(ndf, self._ddf_pixel_map, hc_structure)
 
+
     def nest_lists(
         self,
         base_columns: list[str] | None,
@@ -559,3 +560,4 @@ class HealpixDataset(Dataset):
         hc_structure = copy.copy(self.hc_structure)
         hc_structure.catalog_info.total_rows = None
         return self.__class__(new_ddf, self._ddf_pixel_map, hc_structure)
+
