@@ -581,7 +581,7 @@ class Catalog(HealpixDataset):
         base_columns: list[str] | None,
         list_columns: list[str] | None = None,
         name: str = "nested",
-    ):
+    ) -> Catalog:
         """Creates a new catalog with a set of list columns packed into a
         nested column.
 
@@ -613,7 +613,7 @@ class Catalog(HealpixDataset):
             recommend setting the following dask config setting to prevent this:
             `dask.config.set({"dataframe.convert-string":False})`
         """
-        new_ddf = nd.NestedFrame.from_lists(
+        new_ddf = super().nest_lists(
             self._ddf,
             base_columns=base_columns,
             list_columns=list_columns,
