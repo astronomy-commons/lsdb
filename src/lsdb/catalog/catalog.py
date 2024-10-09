@@ -623,8 +623,8 @@ class Catalog(HealpixDataset):
         catalog = Catalog(new_ddf, self._ddf_pixel_map, self.hc_structure)
 
         if self.margin is not None:
-            catalog.margin = self.margin.from_lists(
-                self.margin_ddf,
+            catalog.margin = self.margin.nest_lists(
+                self.margin._ddf,
                 base_columns=base_columns,
                 list_columns=list_columns,
                 name=name,
