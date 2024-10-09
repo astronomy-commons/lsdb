@@ -576,7 +576,7 @@ class Catalog(HealpixDataset):
         hc_catalog = hc.catalog.Catalog(new_catalog_info, alignment.pixel_tree)
         return Catalog(ddf, ddf_map, hc_catalog)
 
-    def from_lists(
+    def nest_lists(
         self,
         base_columns: list[str] | None,
         list_columns: list[str] | None = None,
