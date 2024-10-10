@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import dataclasses
 import copy
+import dataclasses
 import warnings
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Tuple
