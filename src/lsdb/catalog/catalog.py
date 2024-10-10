@@ -707,3 +707,9 @@ class Catalog(HealpixDataset):
                 ignore_index=ignore_index,
             )
         return catalog
+
+    def reduce(self, func, *args, meta=None, **kwargs) -> Catalog:
+        catalog = super().reduce(func, *args, meta=meta, **kwargs)
+        if self.margin is not None:
+            catalog.margin = self.margin.reduce(func, *args, meta=meta, **kwargs)
+        return catalog

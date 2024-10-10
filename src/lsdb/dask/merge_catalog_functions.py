@@ -8,6 +8,7 @@ import nested_pandas as npd
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
+from dask.dataframe.dispatch import make_meta
 from dask.delayed import Delayed, delayed
 from hipscat.catalog import PartitionInfo
 from hipscat.pixel_math import HealpixPixel
@@ -306,6 +307,22 @@ def generate_meta_df_for_nested_tables(
 
     # Use nested-pandas to make the resulting meta with the nested catalog meta as a nested column
     return npd.NestedFrame(meta_df).add_nested(nested_catalog_meta, nested_column_name)
+
+
+def concat_metas(metas: Sequence[npd.NestedFrame | dict]):
+    """Concats the columns of a sequence of dask metas into a single NestedFrame meta
+
+    Args:
+        metas (Sequence[dict | DataFrame]): A collection of dask meta inputs
+
+    Returns:
+        (npd.NestedFrame) An empty NestedFrame with the columns of the input metas concatenated together in
+        the order of the input sequence.
+    """
+    pandas_metas = []
+    for meta in metas:
+        pandas_metas.append(npd.NestedFrame(make_meta(meta)))
+    return npd.NestedFrame(pd.concat(pandas_metas, axis=1))
 
 
 def get_partition_map_from_alignment_pixels(join_pixels: pd.DataFrame) -> DaskDFPixelMap:
