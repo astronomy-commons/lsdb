@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import dataclasses
 import warnings
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Tuple
@@ -29,6 +30,8 @@ from lsdb import io
 from lsdb.catalog.dataset.dataset import Dataset
 from lsdb.core.plotting.skymap import compute_skymap, perform_inner_skymap
 from lsdb.core.search.abstract_search import AbstractSearch
+from lsdb.dask.merge_catalog_functions import concat_metas
+from lsdb.io.schema import get_arrow_schema
 from lsdb.types import DaskDFPixelMap
 
 
@@ -510,3 +513,82 @@ class HealpixDataset(Dataset):
         hc_structure = copy.copy(self.hc_structure)
         hc_structure.catalog_info.total_rows = None
         return self.__class__(ndf, self._ddf_pixel_map, hc_structure)
+
+    def reduce(self, func, *args, meta=None, append_columns=False, **kwargs) -> Self:
+        """
+        Takes a function and applies it to each top-level row of the Catalog.
+
+        docstring copied from nested-pandas
+
+        The user may specify which columns the function is applied to, with
+        columns from the 'base' layer being passsed to the function as
+        scalars and columns from the nested layers being passed as numpy arrays.
+
+        Parameters
+        ----------
+        func : callable
+            Function to apply to each nested dataframe. The first arguments to `func` should be which
+            columns to apply the function to. See the Notes for recommendations
+            on writing func outputs.
+        args : positional arguments
+            Positional arguments to pass to the function, the first *args should be the names of the
+            columns to apply the function to.
+        meta : dataframe or series-like, optional
+            The dask meta of the output. If append_columns is True, the meta should specify just the
+            additional columns output by func.
+        append_columns : bool
+            If the output columns should be appended to the orignal dataframe.
+        kwargs : keyword arguments, optional
+            Keyword arguments to pass to the function.
+
+        Returns
+        -------
+        `HealpixDataset`
+            `HealpixDataset` with the results of the function applied to the columns of the frame.
+
+        Notes
+        -----
+        By default, `reduce` will produce a `NestedFrame` with enumerated
+        column names for each returned value of the function. For more useful
+        naming, it's recommended to have `func` return a dictionary where each
+        key is an output column of the dataframe returned by `reduce`.
+
+        Example User Function:
+
+        >>> def my_sum(col1, col2):
+        >>>    '''reduce will return a NestedFrame with two columns'''
+        >>>    return {"sum_col1": sum(col1), "sum_col2": sum(col2)}
+        >>>
+        >>> catalog.reduce(my_sum, 'sources.col1', 'sources.col2')
+
+        """
+
+        if append_columns:
+            meta = concat_metas([self._ddf._meta.copy(), meta])
+
+        catalog_info = self.hc_structure.catalog_info
+
+        def reduce_part(df):
+            reduced_result = npd.NestedFrame(df).reduce(func, *args, **kwargs)
+            if append_columns:
+                if catalog_info.ra_column in reduced_result or catalog_info.dec_column in reduced_result:
+                    raise ValueError("ra and dec columns can not be modified using reduce")
+                return npd.NestedFrame(pd.concat([df, reduced_result], axis=1))
+            return reduced_result
+
+        ndf = nd.NestedFrame.from_dask_dataframe(self._ddf.map_partitions(reduce_part, meta=meta))
+
+        hc_catalog = self.hc_structure
+        if not append_columns:
+            new_catalog_info = dataclasses.replace(
+                self.hc_structure.catalog_info,
+                ra_column="",
+                dec_column="",
+            )
+            hc_catalog = self.hc_structure.__class__(
+                new_catalog_info,
+                self.hc_structure.pixel_tree,
+                schema=get_arrow_schema(ndf),
+                moc=self.hc_structure.moc,
+            )
+        return self.__class__(ndf, self._ddf_pixel_map, hc_catalog)
