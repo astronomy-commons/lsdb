@@ -83,6 +83,43 @@ def test_reduce_append_columns(small_sky_with_nested_sources):
     )
 
 
+def test_reduce_no_return_column(small_sky_with_nested_sources):
+    def mean_mag(mag):
+        return np.mean(mag)
+
+    reduced_cat = small_sky_with_nested_sources.reduce(
+        mean_mag, "sources.mag", meta={0: float}, append_columns=True
+    )
+
+    assert isinstance(reduced_cat, Catalog)
+    assert isinstance(reduced_cat._ddf, nd.NestedFrame)
+
+    reduced_cat_compute = reduced_cat.compute()
+    assert isinstance(reduced_cat_compute, npd.NestedFrame)
+
+    reduced_ddf = small_sky_with_nested_sources._ddf.reduce(mean_mag, "sources.mag", meta={0: float})
+
+    pd.testing.assert_series_equal(reduced_cat_compute[0], reduced_ddf.compute()[0])
+    pd.testing.assert_frame_equal(
+        reduced_cat_compute[small_sky_with_nested_sources.columns], small_sky_with_nested_sources.compute()
+    )
+
+
+def test_reduce_invalid_return_column(small_sky_with_nested_sources):
+    def mean_mag(mag):
+        return pd.DataFrame.from_dict({"mean_mag": [np.mean(mag)]})
+
+    reduced_cat = small_sky_with_nested_sources.reduce(
+        mean_mag, "sources.mag", meta={0: float}, append_columns=True
+    )
+
+    assert isinstance(reduced_cat, Catalog)
+    assert isinstance(reduced_cat._ddf, nd.NestedFrame)
+
+    with pytest.raises(ValueError):
+        reduced_cat.compute()
+
+
 def test_reduce_append_columns_raises_error(small_sky_with_nested_sources):
     def mean_mag(ra, dec, mag):
         return {"ra": ra, "dec": dec, "mean_mag": np.mean(mag)}
