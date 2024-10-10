@@ -44,3 +44,13 @@ def test_nest_lists(small_sky_with_nested_sources):
     smallsky_lists = cat_ndf[["id", "ra", "dec"]].join(catlists_ndf)
     small_sky_with_nested_sources._ddf = smallsky_lists
     cat_ndf_renested = small_sky_with_nested_sources.nest_lists(base_columns=["id", "ra", "dec"])
+
+    # try a compute call
+    cat_ndf_renested.compute()
+
+    # check column structure
+    assert "nested" in cat_ndf_renested.columns
+    assert "id" in cat_ndf_renested.columns
+    assert "ra" in cat_ndf_renested.columns
+    assert "dec" in cat_ndf_renested.columns
+    assert cat_ndf_renested._ddf["nested"].nest.fields == cat_ndf["sources"].nest.fields
