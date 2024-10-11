@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 import pytest
 from hipscat import read_from_hipscat
+from hipscat.io.file_io import does_file_or_directory_exist, read_fits_image
 from hipscat.pixel_math import HealpixPixel, hipscat_id_to_healpix
 
 import lsdb
@@ -201,6 +202,25 @@ def test_save_catalog(small_sky_catalog, tmp_path):
     assert expected_catalog.hc_structure.catalog_info == small_sky_catalog.hc_structure.catalog_info
     assert expected_catalog.get_healpix_pixels() == small_sky_catalog.get_healpix_pixels()
     pd.testing.assert_frame_equal(expected_catalog.compute(), small_sky_catalog._ddf.compute())
+
+
+def test_save_catalog_point_map(small_sky_catalog, tmp_path):
+    new_catalog_name = "small_sky"
+    base_catalog_path = Path(tmp_path) / new_catalog_name
+    small_sky_catalog.to_hipscat(base_catalog_path, catalog_name=new_catalog_name)
+    # Check that point map fits was written to disk
+    point_map_path = base_catalog_path / "point_map.fits"
+    assert does_file_or_directory_exist(point_map_path)
+    # Check the fits file metadata
+    map_fits_image = hp.read_map(point_map_path, nest=True, h=True)
+    histogram, header_dict = map_fits_image[0], dict(map_fits_image[1])
+    assert header_dict["PIXTYPE"] == "HEALPIX"
+    assert header_dict["ORDERING"] == "NESTED"
+    assert header_dict["INDXSCHM"] == "IMPLICIT"
+    assert header_dict["OBJECT"] == "FULLSKY"
+    assert header_dict["NSIDE"] == 256
+    assert hp.nside2npix(256) == len(histogram)
+    assert len(small_sky_catalog) == np.sum(histogram)
 
 
 def test_save_catalog_overwrite(small_sky_catalog, tmp_path):

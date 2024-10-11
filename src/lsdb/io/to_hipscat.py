@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Dict, Union
 
 import dask
 import hipscat as hc
+import hipscat.pixel_math.healpix_shim as hp
 import nested_pandas as npd
 from hipscat.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
 from hipscat.pixel_math import HealpixPixel
@@ -58,7 +59,8 @@ def to_hipscat(
 ):
     """Writes a catalog to disk, in HiPSCat format. The output catalog comprises
     partition parquet files and respective metadata, as well as JSON files detailing
-    partition, catalog and provenance info.
+    partition, catalog and provenance info. We also generate a point map distribution
+    at order 10.
 
     Args:
         catalog (HealpixDataset): A catalog to export
@@ -97,6 +99,9 @@ def to_hipscat(
         dataset_info=new_hc_structure.catalog_info,
         tool_args=_get_provenance_info(new_hc_structure),
     )
+    # Save point map fits
+    histogram = catalog.skymap_histogram(lambda df, _: len(df), order=hp.nside2npix(256))
+    hc.io.write_metadata.write_fits_map(base_catalog_path, histogram)
 
 
 def write_partitions(
