@@ -614,7 +614,6 @@ class Catalog(HealpixDataset):
             `dask.config.set({"dataframe.convert-string":False})`
         """
         new_ddf = super().nest_lists(
-            # self._ddf,
             base_columns=base_columns,
             list_columns=list_columns,
             name=name,
@@ -624,7 +623,6 @@ class Catalog(HealpixDataset):
 
         if self.margin is not None:
             catalog.margin = self.margin.nest_lists(
-                # self.margin._ddf,
                 base_columns=base_columns,
                 list_columns=list_columns,
                 name=name,

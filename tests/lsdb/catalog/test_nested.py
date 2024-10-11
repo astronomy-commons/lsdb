@@ -48,15 +48,18 @@ def test_nest_lists(small_sky_with_nested_sources):
     small_sky_with_nested_sources._ddf = smallsky_lists
     cat_ndf_renested = small_sky_with_nested_sources.nest_lists(base_columns=["id", "ra", "dec"])
 
-    # try a compute call
-    cat_ndf_renested.compute()
-
     # check column structure
     assert "nested" in cat_ndf_renested.columns
     assert "id" in cat_ndf_renested.columns
     assert "ra" in cat_ndf_renested.columns
     assert "dec" in cat_ndf_renested.columns
     assert cat_ndf_renested._ddf["nested"].nest.fields == cat_ndf["sources"].nest.fields
+
+    # try a compute call
+    renested_flat = cat_ndf_renested.compute()["nested"].nest.to_flat()
+    original_flat = cat_ndf.compute()["sources"].nest.to_flat()
+
+    pd.testing.assert_frame_equal(renested_flat, original_flat)
 
 
 def test_reduce(small_sky_with_nested_sources):
