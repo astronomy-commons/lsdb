@@ -1,4 +1,3 @@
-import hipscat as hc
 import nested_dask as nd
 import nested_pandas as npd
 import numpy as np
