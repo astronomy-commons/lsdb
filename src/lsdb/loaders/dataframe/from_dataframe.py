@@ -12,6 +12,8 @@ from lsdb.loaders.dataframe.margin_catalog_generator import MarginCatalogGenerat
 def from_dataframe(
     dataframe: pd.DataFrame,
     *,
+    ra_column: str = "ra",
+    dec_column: str = "dec",
     lowest_order: int = 0,
     highest_order: int = 7,
     drop_empty_siblings: bool = False,
@@ -33,6 +35,8 @@ def from_dataframe(
 
     Args:
         dataframe (pd.Dataframe): The catalog Pandas Dataframe.
+        ra_column (str): The name of the right ascension column. Defaults to ra.
+        dec_column (str): The name of the declination column. Defaults to dec.
         lowest_order (int): The lowest partition order. Defaults to 0.
         highest_order (int): The highest partition order. Defaults to 7.
         drop_empty_siblings (bool): When determining final partitionining,
@@ -57,6 +61,8 @@ def from_dataframe(
     """
     catalog = DataframeCatalogLoader(
         dataframe,
+        ra_column=ra_column,
+        dec_column=dec_column,
         lowest_order=lowest_order,
         highest_order=highest_order,
         drop_empty_siblings=drop_empty_siblings,
