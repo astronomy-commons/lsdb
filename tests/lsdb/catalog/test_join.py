@@ -1,9 +1,12 @@
+import hipscat as hc
 import nested_dask as nd
 import nested_pandas as npd
 import numpy as np
 import pandas as pd
 import pytest
 from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN, hipscat_id_to_healpix
+
+from lsdb.dask.merge_catalog_functions import align_catalogs
 
 
 def test_small_sky_join_small_sky_order1(
@@ -21,6 +24,9 @@ def test_small_sky_join_small_sky_order1(
         assert (col_name + suffixes[1], dtype) in joined.dtypes.items()
     assert joined._ddf.index.name == HIPSCAT_ID_COLUMN
     assert joined._ddf.index.dtype == np.uint64
+    alignment = align_catalogs(small_sky_catalog, small_sky_order1_catalog)
+    assert joined.hc_structure.moc == alignment.moc
+    assert joined.get_healpix_pixels() == alignment.pixel_tree.get_healpix_pixels()
 
     joined_compute = joined.compute()
     assert isinstance(joined_compute, npd.NestedFrame)
@@ -46,6 +52,11 @@ def test_small_sky_join_small_sky_order1_source(
         assert (col_name + suffixes[0], dtype) in joined.dtypes.items()
     for col_name, dtype in small_sky_order1_source_with_margin.dtypes.items():
         assert (col_name + suffixes[1], dtype) in joined.dtypes.items()
+
+    alignment = align_catalogs(small_sky_catalog, small_sky_order1_source_with_margin)
+    assert joined.hc_structure.moc == alignment.moc
+    assert joined.get_healpix_pixels() == alignment.pixel_tree.get_healpix_pixels()
+
     joined_compute = joined.compute()
     small_sky_order1_compute = small_sky_order1_source_with_margin.compute()
     assert len(joined_compute) == len(small_sky_order1_compute)
@@ -74,6 +85,10 @@ def test_join_association(small_sky_catalog, small_sky_xmatch_catalog, small_sky
         )
         assert isinstance(joined._ddf, nd.NestedFrame)
     assert joined._ddf.npartitions == len(small_sky_to_xmatch_catalog.hc_structure.join_info.data_frame)
+    alignment = align_catalogs(small_sky_catalog, small_sky_xmatch_catalog)
+    assert joined.hc_structure.moc == alignment.moc
+    assert joined.get_healpix_pixels() == alignment.pixel_tree.get_healpix_pixels()
+
     joined_data = joined.compute()
     assert isinstance(joined_data, npd.NestedFrame)
     association_data = small_sky_to_xmatch_catalog.compute()
@@ -120,6 +135,10 @@ def test_join_association_source_margin(
         small_sky_order1_source_with_margin, through=small_sky_to_o1source_catalog, suffixes=suffixes
     )
     assert joined._ddf.npartitions == len(small_sky_to_o1source_catalog.hc_structure.join_info.data_frame)
+    alignment = align_catalogs(small_sky_catalog, small_sky_order1_source_with_margin)
+    assert joined.hc_structure.moc == alignment.moc
+    assert joined.get_healpix_pixels() == alignment.pixel_tree.get_healpix_pixels()
+
     joined_data = joined.compute()
     association_data = small_sky_to_o1source_catalog.compute()
     assert len(joined_data) == 17161
@@ -156,6 +175,9 @@ def test_join_association_soft(small_sky_catalog, small_sky_xmatch_catalog, smal
             small_sky_xmatch_catalog, through=small_sky_to_xmatch_soft_catalog, suffixes=suffixes
         )
     assert joined._ddf.npartitions == len(small_sky_to_xmatch_soft_catalog.hc_structure.join_info.data_frame)
+    alignment = align_catalogs(small_sky_catalog, small_sky_xmatch_catalog)
+    assert joined.hc_structure.moc == alignment.moc
+    assert joined.get_healpix_pixels() == alignment.pixel_tree.get_healpix_pixels()
 
     with pytest.warns(match="margin"):
         joined_on = small_sky_catalog.join(
@@ -177,6 +199,9 @@ def test_join_source_margin_soft(
     assert joined._ddf.npartitions == len(
         small_sky_to_o1source_soft_catalog.hc_structure.join_info.data_frame
     )
+    alignment = align_catalogs(small_sky_catalog, small_sky_order1_source_with_margin)
+    assert joined.hc_structure.moc == alignment.moc
+    assert joined.get_healpix_pixels() == alignment.pixel_tree.get_healpix_pixels()
 
     joined_on = small_sky_catalog.join(
         small_sky_order1_source_with_margin,
@@ -200,6 +225,10 @@ def test_join_nested(small_sky_catalog, small_sky_order1_source_with_margin, ass
         if col_name != "object_id":
             assert (col_name, dtype.pyarrow_dtype) in joined["sources"].dtypes.fields.items()
     assert_divisions_are_correct(joined)
+    alignment = align_catalogs(small_sky_catalog, small_sky_order1_source_with_margin)
+    assert joined.hc_structure.moc == alignment.moc
+    assert joined.get_healpix_pixels() == alignment.pixel_tree.get_healpix_pixels()
+
     joined_compute = joined.compute()
     source_compute = small_sky_order1_source_with_margin.compute()
     assert isinstance(joined_compute, npd.NestedFrame)
@@ -224,6 +253,10 @@ def test_merge_asof(small_sky_catalog, small_sky_xmatch_catalog, assert_division
         )
         assert isinstance(joined._ddf, nd.NestedFrame)
         assert_divisions_are_correct(joined)
+        alignment = align_catalogs(small_sky_catalog, small_sky_xmatch_catalog)
+        assert joined.hc_structure.moc == alignment.moc
+        assert joined.get_healpix_pixels() == alignment.pixel_tree.get_healpix_pixels()
+
         joined_compute = joined.compute()
         assert isinstance(joined_compute, npd.NestedFrame)
         small_sky_compute = small_sky_catalog.compute().rename(

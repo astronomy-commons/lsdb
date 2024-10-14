@@ -223,7 +223,9 @@ class Catalog(HealpixDataset):
             dec_column=self.hc_structure.catalog_info.dec_column + suffixes[0],
             total_rows=None,
         )
-        hc_catalog = hc.catalog.Catalog(new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(ddf))
+        hc_catalog = hc.catalog.Catalog(
+            new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(ddf), moc=alignment.moc
+        )
         return Catalog(ddf, ddf_map, hc_catalog)
 
     def cone_search(self, ra: float, dec: float, radius_arcsec: float, fine: bool = True) -> Catalog:
@@ -441,7 +443,9 @@ class Catalog(HealpixDataset):
             dec_column=self.hc_structure.catalog_info.dec_column + suffixes[0],
             total_rows=None,
         )
-        hc_catalog = hc.catalog.Catalog(new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(ddf))
+        hc_catalog = hc.catalog.Catalog(
+            new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(ddf), moc=alignment.moc
+        )
         return Catalog(ddf, ddf_map, hc_catalog)
 
     def join(
@@ -492,7 +496,7 @@ class Catalog(HealpixDataset):
                 total_rows=None,
             )
             hc_catalog = hc.catalog.Catalog(
-                new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(ddf)
+                new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(ddf), moc=alignment.moc
             )
             return Catalog(ddf, ddf_map, hc_catalog)
         if left_on is None or right_on is None:
@@ -515,7 +519,9 @@ class Catalog(HealpixDataset):
             dec_column=self.hc_structure.catalog_info.dec_column + suffixes[0],
             total_rows=None,
         )
-        hc_catalog = hc.catalog.Catalog(new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(ddf))
+        hc_catalog = hc.catalog.Catalog(
+            new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(ddf), moc=alignment.moc
+        )
         return Catalog(ddf, ddf_map, hc_catalog)
 
     def join_nested(
@@ -573,7 +579,9 @@ class Catalog(HealpixDataset):
             catalog_name=output_catalog_name,
             total_rows=None,
         )
-        hc_catalog = hc.catalog.Catalog(new_catalog_info, alignment.pixel_tree)
+        hc_catalog = hc.catalog.Catalog(
+            new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(ddf), moc=alignment.moc
+        )
         return Catalog(ddf, ddf_map, hc_catalog)
 
     def nest_lists(
