@@ -45,7 +45,6 @@ class MarginCatalogGenerator:
         self.margin_threshold = margin_threshold
         self.margin_order = self._set_margin_order(margin_order)
         self.use_pyarrow_types = use_pyarrow_types
-        self.schema = catalog.hc_structure.schema
 
     def _set_margin_order(self, margin_order: int | None) -> int:
         """Calculate the order of the margin cache to be generated. If not provided
@@ -81,7 +80,9 @@ class MarginCatalogGenerator:
         ddf, ddf_pixel_map, total_rows = self._generate_dask_df_and_map(pixels, partitions)
         margin_pixels = list(ddf_pixel_map.keys())
         margin_catalog_info = self._create_catalog_info(total_rows)
-        margin_structure = hc.catalog.MarginCatalog(margin_catalog_info, margin_pixels, schema=self.schema)
+        margin_structure = hc.catalog.MarginCatalog(
+            margin_catalog_info, margin_pixels, schema=self.hc_structure.schema
+        )
         return MarginCatalog(ddf, ddf_pixel_map, margin_structure)
 
     def _get_margins(self) -> Tuple[List[HealpixPixel], List[npd.NestedFrame]]:
@@ -220,6 +221,8 @@ class MarginCatalogGenerator:
         return MarginCacheCatalogInfo(
             catalog_name=f"{catalog_name}_margin",
             catalog_type=CatalogType.MARGIN,
+            ra_column=self.hc_structure.catalog_info.ra_column,
+            dec_column=self.hc_structure.catalog_info.dec_column,
             total_rows=total_rows,
             primary_catalog=catalog_name,
             margin_threshold=self.margin_threshold,

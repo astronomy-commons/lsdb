@@ -40,6 +40,28 @@ def test_dropna_on_nested(small_sky_with_nested_sources):
     )
 
 
+def test_nest_lists(small_sky_with_nested_sources):
+    """Test the behavior of catalog.nest_lists"""
+    cat_ndf = small_sky_with_nested_sources._ddf
+    catlists_ndf = cat_ndf.sources.nest.to_lists()
+    smallsky_lists = cat_ndf[["id", "ra", "dec"]].join(catlists_ndf)
+    small_sky_with_nested_sources._ddf = smallsky_lists
+    cat_ndf_renested = small_sky_with_nested_sources.nest_lists(base_columns=["id", "ra", "dec"])
+
+    # check column structure
+    assert "nested" in cat_ndf_renested.columns
+    assert "id" in cat_ndf_renested.columns
+    assert "ra" in cat_ndf_renested.columns
+    assert "dec" in cat_ndf_renested.columns
+    assert cat_ndf_renested._ddf["nested"].nest.fields == cat_ndf["sources"].nest.fields
+
+    # try a compute call
+    renested_flat = cat_ndf_renested.compute()["nested"].nest.to_flat()
+    original_flat = cat_ndf.compute()["sources"].nest.to_flat()
+
+    pd.testing.assert_frame_equal(renested_flat, original_flat)
+
+
 def test_reduce(small_sky_with_nested_sources):
     def mean_mag(ra, dec, mag):
         return {"ra": ra, "dec": dec, "mean_mag": np.mean(mag)}

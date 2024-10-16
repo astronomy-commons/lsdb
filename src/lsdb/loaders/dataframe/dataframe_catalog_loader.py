@@ -37,6 +37,9 @@ class DataframeCatalogLoader:
     def __init__(
         self,
         dataframe: pd.DataFrame,
+        *,
+        ra_column: str = "ra",
+        dec_column: str = "dec",
         lowest_order: int = 0,
         highest_order: int = 7,
         drop_empty_siblings: bool = False,
@@ -52,6 +55,8 @@ class DataframeCatalogLoader:
 
         Args:
             dataframe (pd.Dataframe): Catalog Pandas Dataframe.
+            ra_column (str): The name of the right ascension column. Defaults to ra.
+            dec_column (str): The name of the declination column. Defaults to dec.
             lowest_order (int): The lowest partition order. Defaults to 3.
             highest_order (int): The highest partition order. Defaults to 7.
             drop_empty_siblings (bool): When determining final partitionining,
@@ -73,7 +78,7 @@ class DataframeCatalogLoader:
         self.highest_order = highest_order
         self.drop_empty_siblings = drop_empty_siblings
         self.threshold = self._calculate_threshold(partition_size, threshold)
-        self.catalog_info = self._create_catalog_info(**kwargs)
+        self.catalog_info = self._create_catalog_info(ra_column=ra_column, dec_column=dec_column, **kwargs)
         self.should_generate_moc = should_generate_moc
         self.moc_max_order = moc_max_order
         self.use_pyarrow_types = use_pyarrow_types
