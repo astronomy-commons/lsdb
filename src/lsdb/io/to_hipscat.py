@@ -13,7 +13,7 @@ import nested_pandas as npd
 import numpy as np
 from hipscat.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
 from hipscat.pixel_math import HealpixPixel, hipscat_id_to_healpix
-from hipscat_import.catalog.sparse_histogram import SparseHistogram
+from hipscat.pixel_math.sparse_histogram import SparseHistogram
 from upath import UPath
 
 from lsdb.types import HealpixInfo
