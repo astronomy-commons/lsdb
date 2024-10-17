@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from typing import List, Tuple
 
 import nested_dask as nd
@@ -6,10 +7,11 @@ import numpy as np
 import pandas as pd
 import pyarrow as pa
 from dask import delayed
-from hipscat.catalog import PartitionInfo
-from hipscat.pixel_math import HealpixPixel
-from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
+from hats.io import paths
+from hats.pixel_math import HealpixPixel
+from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 
+import lsdb
 from lsdb.dask.divisions import get_pixels_divisions
 
 
@@ -45,7 +47,7 @@ def _convert_dtypes_to_pyarrow(df: pd.DataFrame) -> pd.DataFrame:
         shallow copy of the initial DataFrame to avoid copying the data.
     """
     new_series = {}
-    df_index = df.index.astype(pd.ArrowDtype(pa.uint64()))
+    df_index = df.index.astype(pd.ArrowDtype(pa.int64()))
     for column in df.columns:
         pa_array = pa.array(df[column], from_pandas=True)
         series = pd.Series(pa_array, dtype=pd.ArrowDtype(pa_array.type), copy=False, index=df_index)
@@ -66,14 +68,14 @@ def _append_partition_information_to_dataframe(
         The dataframe for a HEALPix, with data points and respective partition information.
     """
     columns_to_assign = {
-        PartitionInfo.METADATA_ORDER_COLUMN_NAME: pixel.order,
-        PartitionInfo.METADATA_DIR_COLUMN_NAME: pixel.dir,
-        PartitionInfo.METADATA_PIXEL_COLUMN_NAME: pixel.pixel,
+        paths.PARTITION_ORDER: pixel.order,
+        paths.PARTITION_DIR: pixel.dir,
+        paths.PARTITION_PIXEL: pixel.pixel,
     }
     column_types = {
-        PartitionInfo.METADATA_ORDER_COLUMN_NAME: np.uint8,
-        PartitionInfo.METADATA_DIR_COLUMN_NAME: np.uint64,
-        PartitionInfo.METADATA_PIXEL_COLUMN_NAME: np.uint64,
+        paths.PARTITION_ORDER: np.uint8,
+        paths.PARTITION_DIR: np.uint64,
+        paths.PARTITION_PIXEL: np.uint64,
     }
     dataframe = dataframe.assign(**columns_to_assign).astype(column_types)
     return _order_partition_dataframe_columns(dataframe)
@@ -91,25 +93,23 @@ def _format_margin_partition_dataframe(dataframe: npd.NestedFrame) -> npd.Nested
     """
     dataframe = dataframe.drop(columns=["margin_pixel"])
     rename_columns = {
-        PartitionInfo.METADATA_ORDER_COLUMN_NAME: f"margin_{PartitionInfo.METADATA_ORDER_COLUMN_NAME}",
-        PartitionInfo.METADATA_DIR_COLUMN_NAME: f"margin_{PartitionInfo.METADATA_DIR_COLUMN_NAME}",
-        PartitionInfo.METADATA_PIXEL_COLUMN_NAME: f"margin_{PartitionInfo.METADATA_PIXEL_COLUMN_NAME}",
-        "partition_order": PartitionInfo.METADATA_ORDER_COLUMN_NAME,
-        "partition_pixel": PartitionInfo.METADATA_PIXEL_COLUMN_NAME,
+        paths.PARTITION_ORDER: f"margin_{paths.PARTITION_ORDER}",
+        paths.PARTITION_DIR: f"margin_{paths.PARTITION_DIR}",
+        paths.PARTITION_PIXEL: f"margin_{paths.PARTITION_PIXEL}",
+        "partition_order": paths.PARTITION_ORDER,
+        "partition_pixel": paths.PARTITION_PIXEL,
     }
     dataframe.rename(columns=rename_columns, inplace=True)
-    dir_column = (
-        np.floor_divide(dataframe[PartitionInfo.METADATA_PIXEL_COLUMN_NAME].to_numpy(), 10000) * 10000
-    )
-    dataframe[PartitionInfo.METADATA_DIR_COLUMN_NAME] = dir_column
+    dir_column = np.floor_divide(dataframe[paths.PARTITION_PIXEL].to_numpy(), 10000) * 10000
+    dataframe[paths.PARTITION_DIR] = dir_column
     dataframe = dataframe.astype(
         {
-            PartitionInfo.METADATA_ORDER_COLUMN_NAME: np.uint8,
-            PartitionInfo.METADATA_DIR_COLUMN_NAME: np.uint64,
-            PartitionInfo.METADATA_PIXEL_COLUMN_NAME: np.uint64,
+            paths.PARTITION_ORDER: np.uint8,
+            paths.PARTITION_DIR: np.uint64,
+            paths.PARTITION_PIXEL: np.uint64,
         }
     )
-    dataframe = dataframe.set_index(HIPSCAT_ID_COLUMN).sort_index()
+    dataframe = dataframe.set_index(SPATIAL_INDEX_COLUMN).sort_index()
     return _order_partition_dataframe_columns(dataframe)
 
 
@@ -124,13 +124,27 @@ def _order_partition_dataframe_columns(dataframe: npd.NestedFrame) -> npd.Nested
         The partition dataframe with the columns in the correct order.
     """
     order_of_columns = [
-        f"margin_{PartitionInfo.METADATA_ORDER_COLUMN_NAME}",
-        f"margin_{PartitionInfo.METADATA_DIR_COLUMN_NAME}",
-        f"margin_{PartitionInfo.METADATA_PIXEL_COLUMN_NAME}",
-        PartitionInfo.METADATA_ORDER_COLUMN_NAME,
-        PartitionInfo.METADATA_DIR_COLUMN_NAME,
-        PartitionInfo.METADATA_PIXEL_COLUMN_NAME,
+        f"margin_{paths.PARTITION_ORDER}",
+        f"margin_{paths.PARTITION_DIR}",
+        f"margin_{paths.PARTITION_PIXEL}",
+        paths.PARTITION_ORDER,
+        paths.PARTITION_DIR,
+        paths.PARTITION_PIXEL,
     ]
     unordered_columns = [col for col in dataframe.columns if col not in order_of_columns]
     ordered_columns = [col for col in order_of_columns if col in dataframe.columns]
     return dataframe[unordered_columns + ordered_columns]
+
+
+def _extra_property_dict(est_size_bytes: int):
+    """Create a dictionary of additional fields to store in the properties file."""
+    properties = {}
+    properties["hats_builder"] = f"lsdb v{lsdb.__version__}"
+
+    now = datetime.now(tz=timezone.utc)
+    properties["hats_creation_date"] = now.strftime("%Y-%m-%dT%H:%M%Z")
+    properties["hats_estsize"] = f"{int(est_size_bytes / 1024)}"
+    properties["hats_release_date"] = "2024-09-18"
+    properties["hats_version"] = "v0.1"
+
+    return properties

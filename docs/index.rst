@@ -11,7 +11,7 @@ large astronomical catalogs (e.g. querying and crossmatching O(1B) sources). It 
 data processing challenges, in particular those brought up by `LSST <https://www.lsst.org/about>`_.
 
 Built on top of Dask to efficiently scale and parallelize operations across multiple distributed workers, it
-uses the `HiPSCat <https://hipscat.readthedocs.io/en/stable/>`_ data format to efficiently perform spatial
+uses the `HATS <https://hats.readthedocs.io/en/stable/>`_ data format to efficiently perform spatial
 operations.
 
 .. figure:: _static/gaia.png

@@ -4,7 +4,7 @@ Performance
 LSDB is a high-performance package built to support the analysis of large-scale astronomical datasets.
 One of the performance goals of LSDB is to add as little overhead over the input-output operations as possible.
 We achieve this aim for catalog cross-matching, spatial and data filtering operations by using
-the `HiPSCat <https://github.com/astronomy-commons/hipscat>`_ data format,
+the `HATS <https://github.com/astronomy-commons/hats>`_ data format,
 efficient algorithms,
 and `Dask <https://dask.org/>`_ framework for parallel computing.
 
@@ -44,7 +44,7 @@ increasing the radius from 1 arcminute to 25 degrees.
 
 The analysis has the following steps:
 
-* Load the data from the HiPSCat format, selecting the subset of the data with ``lsdb.read_hipscat(PATH, columns=[RA_COL, DEC_COL]).cone_search(ra, dec, radius).compute()``.
+* Load the data from the HATS format, selecting the subset of the data with ``lsdb.read_hats(PATH, columns=[RA_COL, DEC_COL]).cone_search(ra, dec, radius).compute()``.
 * Perform the cross-matching with the selected algorithm
 
   * LSDB: ``ztf.crossmatch(gaia, radius_arcsec=1, n_neighbors=1).compute()``

@@ -2,19 +2,19 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Callable, List, Sequence, Tuple
 
-import hipscat.pixel_math.healpix_shim as hp
+import hats.pixel_math.healpix_shim as hp
 import nested_dask as nd
 import nested_pandas as npd
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
 from dask.delayed import Delayed, delayed
-from hipscat.catalog import PartitionInfo
-from hipscat.pixel_math import HealpixPixel
-from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN, healpix_to_hipscat_id
-from hipscat.pixel_tree import PixelAlignment, PixelAlignmentType, align_trees
-from hipscat.pixel_tree.moc_utils import copy_moc
-from hipscat.pixel_tree.pixel_alignment import align_with_mocs
+from hats.io import paths
+from hats.pixel_math import HealpixPixel
+from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN, healpix_to_spatial_index
+from hats.pixel_tree import PixelAlignment, PixelAlignmentType, align_trees
+from hats.pixel_tree.moc_utils import copy_moc
+from hats.pixel_tree.pixel_alignment import align_with_mocs
 
 from lsdb.dask.divisions import get_pixels_divisions
 from lsdb.types import DaskDFPixelMap
@@ -39,18 +39,14 @@ def concat_partition_and_margin(
     if margin is None:
         return partition
 
-    hive_columns = [
-        PartitionInfo.METADATA_ORDER_COLUMN_NAME,
-        PartitionInfo.METADATA_DIR_COLUMN_NAME,
-        PartitionInfo.METADATA_PIXEL_COLUMN_NAME,
-    ]
+    hive_columns = [paths.PARTITION_ORDER, paths.PARTITION_DIR, paths.PARTITION_PIXEL]
     # Remove the Norder/Dir/Npix columns (used only for partitioning the margin itself),
     # and rename the margin_Norder/Dir/Npix to take their place.
     margin_columns_no_hive = [col for col in margin.columns if col not in hive_columns]
     rename_columns = {
-        f"margin_{PartitionInfo.METADATA_ORDER_COLUMN_NAME}": PartitionInfo.METADATA_ORDER_COLUMN_NAME,
-        f"margin_{PartitionInfo.METADATA_DIR_COLUMN_NAME}": PartitionInfo.METADATA_DIR_COLUMN_NAME,
-        f"margin_{PartitionInfo.METADATA_PIXEL_COLUMN_NAME}": PartitionInfo.METADATA_PIXEL_COLUMN_NAME,
+        f"margin_{paths.PARTITION_ORDER}": paths.PARTITION_ORDER,
+        f"margin_{paths.PARTITION_DIR}": paths.PARTITION_DIR,
+        f"margin_{paths.PARTITION_PIXEL}": paths.PARTITION_PIXEL,
     }
     margin_renamed = margin[margin_columns_no_hive].rename(columns=rename_columns)
     margin_filtered = margin_renamed[right_columns]
@@ -159,8 +155,8 @@ def align_and_apply(
     return resulting_partitions
 
 
-def filter_by_hipscat_index_to_pixel(dataframe: npd.NestedFrame, order: int, pixel: int) -> npd.NestedFrame:
-    """Filters a catalog dataframe to the points within a specified HEALPix pixel using the hipscat index
+def filter_by_spatial_index_to_pixel(dataframe: npd.NestedFrame, order: int, pixel: int) -> npd.NestedFrame:
+    """Filters a catalog dataframe to the points within a specified HEALPix pixel using the spatial index
 
     Args:
         dataframe (npd.NestedFrame): The dataframe to filter
@@ -170,8 +166,8 @@ def filter_by_hipscat_index_to_pixel(dataframe: npd.NestedFrame, order: int, pix
     Returns:
         The filtered dataframe with only the rows that are within the specified HEALPix pixel
     """
-    lower_bound = healpix_to_hipscat_id(order, pixel)
-    upper_bound = healpix_to_hipscat_id(order, pixel + 1)
+    lower_bound = healpix_to_spatial_index(order, pixel)
+    upper_bound = healpix_to_spatial_index(order, pixel + 1)
     filtered_df = dataframe[(dataframe.index >= lower_bound) & (dataframe.index < upper_bound)]
     return filtered_df
 
@@ -227,8 +223,8 @@ def generate_meta_df_for_joined_tables(
     catalogs: Sequence[Catalog],
     suffixes: Sequence[str],
     extra_columns: pd.DataFrame | None = None,
-    index_name: str = HIPSCAT_ID_COLUMN,
-    index_type: npt.DTypeLike = np.uint64,
+    index_name: str = SPATIAL_INDEX_COLUMN,
+    index_type: npt.DTypeLike = np.int64,
 ) -> npd.NestedFrame:
     """Generates a Dask meta DataFrame that would result from joining two catalogs
 
@@ -265,8 +261,8 @@ def generate_meta_df_for_nested_tables(
     nested_column_name: str,
     join_column_name: str,
     extra_columns: pd.DataFrame | None = None,
-    index_name: str = HIPSCAT_ID_COLUMN,
-    index_type: npt.DTypeLike = np.uint64,
+    index_name: str = SPATIAL_INDEX_COLUMN,
+    index_type: npt.DTypeLike = np.int64,
 ) -> npd.NestedFrame:
     """Generates a Dask meta DataFrame that would result from joining two catalogs, adding the right as a
     nested frame

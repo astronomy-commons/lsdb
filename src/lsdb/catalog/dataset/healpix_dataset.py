@@ -2,22 +2,23 @@ from __future__ import annotations
 
 import warnings
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, List, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Tuple, cast
 
 import dask
 import dask.dataframe as dd
-import hipscat as hc
-import hipscat.pixel_math.healpix_shim as hp
+import hats as hc
+import hats.pixel_math.healpix_shim as hp
 import nested_dask as nd
 import nested_pandas as npd
 import numpy as np
 import pandas as pd
 from dask.delayed import Delayed, delayed
-from hipscat.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
-from hipscat.inspection import plot_pixel_list
-from hipscat.inspection.visualize_catalog import get_projection_method
-from hipscat.pixel_math import HealpixPixel
-from hipscat.pixel_math.healpix_pixel_function import get_pixel_argsort
+from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
+from hats.inspection import plot_pixel_list
+from hats.inspection.visualize_catalog import get_projection_method
+from hats.pixel_math import HealpixPixel
+from hats.pixel_math.healpix_pixel_function import get_pixel_argsort
+from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 from pandas._libs import lib
 from pandas._typing import AnyAll, Axis, IndexLabel
 from pandas.api.extensions import no_default
@@ -37,8 +38,8 @@ class HealpixDataset(Dataset):
     spatial operations.
 
     Attributes:
-        hc_structure: `hipscat.Dataset` object representing the structure
-                      and metadata of the HiPSCat catalog
+        hc_structure: `hats.Dataset` object representing the structure
+                      and metadata of the HATS catalog
     """
 
     hc_structure: HCHealpixDataset
@@ -57,7 +58,7 @@ class HealpixDataset(Dataset):
         Args:
             ddf: Dask DataFrame with the source data of the catalog
             ddf_pixel_map: Dictionary mapping HEALPix order and pixel to partition index of ddf
-            hc_structure: `hipscat.Catalog` object with hipscat metadata of the catalog
+            hc_structure: `hats.Catalog` object with hats metadata of the catalog
         """
         super().__init__(ddf, hc_structure)
         self._ddf_pixel_map = ddf_pixel_map
@@ -143,7 +144,7 @@ class HealpixDataset(Dataset):
 
         Args:
             metadata (hc.catalog.Catalog | hc.catalog.MarginCatalog): The metadata of
-                the hipscat catalog after the coarse filtering is applied. The partitions
+                the hats catalog after the coarse filtering is applied. The partitions
                 it contains are only those that overlap with the spatial region.
             search (AbstractSearch): Instance of AbstractSearch.
 
@@ -411,14 +412,14 @@ class HealpixDataset(Dataset):
         """
         plot_pixel_list(self.get_healpix_pixels(), projection, **kwargs)
 
-    def to_hipscat(
+    def to_hats(
         self,
         base_catalog_path: str | Path | UPath,
         catalog_name: str | None = None,
         overwrite: bool = False,
         **kwargs,
     ):
-        """Saves the catalog to disk in HiPSCat format
+        """Saves the catalog to disk in HATS format
 
         Args:
             base_catalog_path (str): Location where catalog is saved to
@@ -426,7 +427,7 @@ class HealpixDataset(Dataset):
             overwrite (bool): If True existing catalog is overwritten
             **kwargs: Arguments to pass to the parquet write operations
         """
-        io.to_hipscat(self, base_catalog_path, catalog_name, overwrite, **kwargs)
+        io.to_hats(self, base_catalog_path, catalog_name, overwrite, **kwargs)
 
     def dropna(
         self,
@@ -491,7 +492,24 @@ class HealpixDataset(Dataset):
         to a single layer, multi-layer operations are not supported at this
         time.
         """
-        ndf = self._ddf.dropna(
-            axis=axis, how=how, thresh=thresh, on_nested=on_nested, subset=subset, ignore_index=ignore_index
-        )
+
+        def drop_na_part(df: npd.NestedFrame):
+            if df.index.name == SPATIAL_INDEX_COLUMN:
+                df = df.reset_index()
+            df = cast(
+                npd.NestedFrame,
+                df.dropna(
+                    axis=axis,
+                    how=how,
+                    thresh=thresh,
+                    on_nested=on_nested,
+                    subset=subset,
+                    ignore_index=ignore_index,
+                ),
+            )
+            if SPATIAL_INDEX_COLUMN in df.columns:
+                df = df.set_index(SPATIAL_INDEX_COLUMN)
+            return df
+
+        ndf = self._ddf.map_partitions(drop_na_part, meta=self._ddf._meta)
         return self.__class__(ndf, self._ddf_pixel_map, self.hc_structure)

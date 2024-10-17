@@ -55,7 +55,7 @@ the GitHub repository. The next steps assume the creation of branches and PRs ar
     If you are (or expect to be) a frequent contributor, you should consider requesting
     access to the `hipscat-friends <https://github.com/orgs/astronomy-commons/teams/hipscat-friends>`_
     working group. Members of this GitHub group should be able to create branches and PRs directly
-    on LSDB, hipscat and hipscat-import, without the need of a fork.
+    on LSDB, hats and hats-import, without the need of a fork.
 
 Create a branch
 -------------------------------------------------------------------------------

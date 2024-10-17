@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from typing import Any, Callable, Dict
 
-import hipscat.pixel_math.healpix_shim as hp
+import hats.pixel_math.healpix_shim as hp
 import nested_pandas as npd
 import numpy as np
 from dask import delayed
-from hipscat.pixel_math import HealpixPixel, hipscat_id_to_healpix
+from hats.pixel_math import HealpixPixel, spatial_index_to_healpix
 
 
 @delayed
@@ -19,12 +19,12 @@ def perform_inner_skymap(
     **kwargs,
 ) -> np.ndarray:
     """Splits a partition into pixels at a target order and performs a given function on the new pixels"""
-    hipscat_index = partition.index.to_numpy()
-    order_pixels = hipscat_id_to_healpix(hipscat_index, target_order=target_order)
+    spatial_index = partition.index.to_numpy()
+    order_pixels = spatial_index_to_healpix(spatial_index, target_order=target_order)
 
     def apply_func(df):
-        # gets the healpix pixel of the partition using the hipscat_id
-        p = hipscat_id_to_healpix([df.index.to_numpy()[0]], target_order=target_order)[0]
+        # gets the healpix pixel of the partition using the spatial index
+        p = spatial_index_to_healpix([df.index.to_numpy()[0]], target_order=target_order)[0]
         return func(df, HealpixPixel(target_order, p), **kwargs)
 
     gb = partition.groupby(order_pixels, sort=False).apply(apply_func)

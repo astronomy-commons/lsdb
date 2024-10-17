@@ -1,0 +1,14 @@
+#HATS catalog
+obs_collection=small_sky
+dataproduct_type=object
+hats_nrows=131
+hats_col_ra=ra
+hats_col_dec=dec
+hats_max_rows=1000000
+hats_order=0
+moc_sky_fraction=0.08333
+hats_builder=hats-import v0.3.6.dev26+g40366b4
+hats_creation_date=2024-10-15T14\:47UTC
+hats_estsize=17
+hats_release_date=2024-09-18
+hats_version=v0.1
