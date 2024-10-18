@@ -57,7 +57,6 @@ Using this Guide
    :hidden:
 
    Home page <self>
-   Installation <installation>
    Getting Started <getting-started>
    Tutorials <tutorials>
    API Reference <autoapi/index>
