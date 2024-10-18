@@ -26,6 +26,7 @@ A more in-depth look into how LSDB works
     :name: Advanced Topics
 
     Topic: Import catalogs <tutorials/import_catalogs>
+    Topic: Accessing Remote Data <tutorials/remote_data>
     Topic: Margins <tutorials/margins>
     Topic: Performance Testing <tutorials/performance>
 
