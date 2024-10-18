@@ -65,6 +65,7 @@ def to_hats(
         **kwargs: Arguments to pass to the parquet write operations
     """
     # Create the output directory for the catalog
+    base_catalog_path = hc.io.file_io.get_upath(base_catalog_path)
     if hc.io.file_io.directory_has_contents(base_catalog_path):
         if not overwrite:
             raise ValueError(
