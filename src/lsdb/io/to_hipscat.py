@@ -8,9 +8,12 @@ from typing import TYPE_CHECKING, Dict, Union
 
 import dask
 import hipscat as hc
+import hipscat.pixel_math.healpix_shim as hp
 import nested_pandas as npd
+import numpy as np
 from hipscat.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
-from hipscat.pixel_math import HealpixPixel
+from hipscat.pixel_math import HealpixPixel, hipscat_id_to_healpix
+from hipscat.pixel_math.sparse_histogram import SparseHistogram
 from upath import UPath
 
 from lsdb.types import HealpixInfo
@@ -24,28 +27,48 @@ def perform_write(
     df: npd.NestedFrame,
     hp_pixel: HealpixPixel,
     base_catalog_dir: str | Path | UPath,
+    *,
+    histogram_order: int,
     **kwargs,
-) -> int:
-    """Performs a write of a pandas dataframe to a single parquet file, following the hipscat structure.
-
-    To be used as a dask delayed method as part of a dask task graph.
+) -> tuple[int, SparseHistogram]:
+    """Writes a pandas dataframe to a single parquet file and returns the total count
+    for the partition as well as a count histogram at the specified order.
 
     Args:
-        df (npd.NestedFrame): dataframe to write to file
+        df (npd.NestedFrame): Partition data frame to write to file
         hp_pixel (HealpixPixel): HEALPix pixel of file to be written
         base_catalog_dir (path-like): Location of the base catalog directory to write to
+        histogram_order (int): Order of the count histogram
         **kwargs: other kwargs to pass to pd.to_parquet method
 
     Returns:
-        number of rows written to disk
+        The total number of points on the partition and the sparse count histogram
+        at the specified order.
     """
     if len(df) == 0:
-        return 0
+        return 0, SparseHistogram.make_empty(histogram_order)
     pixel_dir = hc.io.pixel_directory(base_catalog_dir, hp_pixel.order, hp_pixel.pixel)
     hc.io.file_io.make_directory(pixel_dir, exist_ok=True)
     pixel_path = hc.io.paths.pixel_catalog_file(base_catalog_dir, hp_pixel)
     hc.io.file_io.write_dataframe_to_parquet(df, pixel_path, **kwargs)
-    return len(df)
+    return len(df), calculate_histogram(df, histogram_order)
+
+
+def calculate_histogram(df: npd.NestedFrame, histogram_order: int) -> SparseHistogram:
+    """Splits a partition into pixels at a specified order and computes
+    the sparse histogram with the respective counts.
+
+    Args:
+        df (npd.NestedFrame): Partition data frame
+        histogram_order (int): Order of the count histogram
+
+    Returns:
+        The sparse count histogram for the partition, at the specified order.
+    """
+    order_pixels = hipscat_id_to_healpix(df.index.to_numpy(), target_order=histogram_order)
+    gb = df.groupby(order_pixels, sort=False).apply(len)
+    indexes, counts_at_indexes = gb.index.to_numpy(), gb.to_numpy(na_value=0)
+    return SparseHistogram.make_from_counts(indexes, counts_at_indexes, histogram_order)
 
 
 # pylint: disable=W0212
@@ -56,9 +79,12 @@ def to_hipscat(
     overwrite: bool = False,
     **kwargs,
 ):
-    """Writes a catalog to disk, in HiPSCat format. The output catalog comprises
-    partition parquet files and respective metadata, as well as JSON files detailing
-    partition, catalog and provenance info.
+    """Writes a catalog to disk, in HiPSCat format.
+
+    The output catalog includes partition parquet files and respective metadata,
+    JSON files detailing partition, catalog and provenance info, as well as a
+    point distribution map in FITS format. The latter consists of a histogram
+    of order 8 or the maximum pixel order in the catalog, whichever is greater.
 
     Args:
         catalog (HealpixDataset): A catalog to export
@@ -67,6 +93,10 @@ def to_hipscat(
         overwrite (bool): If True existing catalog is overwritten
         **kwargs: Arguments to pass to the parquet write operations
     """
+    default_histogram_order = hp.nside2order(256)
+    max_catalog_depth = catalog.hc_structure.pixel_tree.get_max_depth()
+    histogram_order = max(max_catalog_depth, default_histogram_order)
+
     # Create the output directory for the catalog
     if hc.io.file_io.directory_has_contents(base_catalog_path):
         if not overwrite:
@@ -76,21 +106,32 @@ def to_hipscat(
             )
         hc.io.file_io.remove_directory(base_catalog_path)
     hc.io.file_io.make_directory(base_catalog_path, exist_ok=True)
+
     # Save partition parquet files
-    pixel_to_partition_size_map = write_partitions(catalog, base_catalog_path, **kwargs)
+    pixels, counts, histograms = write_partitions(
+        catalog, base_catalog_dir_fp=base_catalog_path, histogram_order=histogram_order, **kwargs
+    )
+
+    # Check that the catalog is not empty
+    if len(pixels) == 0:
+        raise RuntimeError("The output catalog is empty")
+
     # Save parquet metadata
     hc.io.write_parquet_metadata(base_catalog_path)
+
     # Save partition info
-    partition_info = _get_partition_info_dict(pixel_to_partition_size_map)
+    partition_info = _get_partition_info_dict(pixels, counts)
     hc.io.write_partition_info(base_catalog_path, partition_info)
+
     # Save catalog info
     new_hc_structure = create_modified_catalog_structure(
         catalog.hc_structure,
         base_catalog_path,
         catalog_name if catalog_name else catalog.hc_structure.catalog_name,
-        total_rows=sum(pi[0] for pi in partition_info.values()),
+        total_rows=np.sum(counts),
     )
     hc.io.write_catalog_info(catalog_base_dir=base_catalog_path, dataset_info=new_hc_structure.catalog_info)
+
     # Save provenance info
     hc.io.write_metadata.write_provenance_info(
         catalog_base_dir=base_catalog_path,
@@ -98,63 +139,69 @@ def to_hipscat(
         tool_args=_get_provenance_info(new_hc_structure),
     )
 
+    # Save the point distribution map
+    full_histogram = np.zeros(hp.order2npix(histogram_order))
+    for partition_hist in histograms:
+        full_histogram += partition_hist.to_array()
+    hc.io.write_metadata.write_fits_map(base_catalog_path, full_histogram)
+
 
 def write_partitions(
-    catalog: HealpixDataset, base_catalog_dir_fp: str | Path | UPath, **kwargs
-) -> Dict[HealpixPixel, int]:
-    """Saves catalog partitions as parquet to disk
+    catalog: HealpixDataset, base_catalog_dir_fp: str | Path | UPath, histogram_order: int, **kwargs
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Saves catalog partitions as parquet to disk and computes the sparse
+    count histogram for each partition. The histogram is either of order 8
+    or the maximum pixel order in the catalog, whichever is greater.
 
     Args:
         catalog (HealpixDataset): A catalog to export
-        base_catalog_dir_fp (UPath): Path to the base directory of the catalog
+        base_catalog_dir_fp (path-like): Path to the base directory of the catalog
+        histogram_order: The order of the count histogram to generate
         **kwargs: Arguments to pass to the parquet write operations
 
     Returns:
-        A dictionary mapping each HEALPix pixel to the number of data points in it.
+        A tuple with the array of non-empty pixels, the array with the total counts
+        as well as the array with the sparse count histograms.
     """
-    results = []
-    pixel_to_result_index = {}
-
+    results, pixels = [], []
     partitions = catalog._ddf.to_delayed()
 
-    for index, (pixel, partition_index) in enumerate(catalog._ddf_pixel_map.items()):
+    for pixel, partition_index in catalog._ddf_pixel_map.items():
         results.append(
             perform_write(
                 partitions[partition_index],
                 pixel,
                 base_catalog_dir_fp,
+                histogram_order=histogram_order,
                 **kwargs,
             )
         )
-        pixel_to_result_index[pixel] = index
+        pixels.append(pixel)
 
-    partition_sizes = dask.compute(*results)
+    results = dask.compute(*results)
+    counts, histograms = list(zip(*results))
 
-    if all(size == 0 for size in partition_sizes):
-        raise RuntimeError("The output catalog is empty")
+    non_empty_indices = np.nonzero(counts)
+    non_empty_pixels = np.array(pixels)[non_empty_indices]
+    non_empty_counts = np.array(counts)[non_empty_indices]
+    non_empty_hists = np.array(histograms)[non_empty_indices]
 
-    pixel_to_partition_size_map = {
-        pixel: partition_sizes[index]
-        for pixel, index in pixel_to_result_index.items()
-        if partition_sizes[index] > 0
-    }
-
-    return pixel_to_partition_size_map
+    return non_empty_pixels, non_empty_counts, non_empty_hists
 
 
-def _get_partition_info_dict(ddf_points_map: Dict[HealpixPixel, int]) -> Dict[HealpixPixel, HealpixInfo]:
+def _get_partition_info_dict(pixels: np.ndarray, counts: np.ndarray) -> Dict[HealpixPixel, HealpixInfo]:
     """Creates the partition info dictionary
 
     Args:
-        ddf_points_map (Dict[HealpixPix,int]): Dictionary mapping each HealpixPixel
-            to the respective number of points inside its partition
+        pixels (np.ndarray): Array of partitions.
+        counts (np.ndarray): Array of counts per partition.
 
     Returns:
         A partition info dictionary, where the keys are the HEALPix pixels and
         the values are pairs where the first element is the number of points
         inside the pixel, and the second is the list of destination pixel numbers.
     """
-    return {pixel: (length, [pixel.pixel]) for pixel, length in ddf_points_map.items()}
+    return {pixel: (count, [pixel.pixel]) for pixel, count in zip(pixels, counts)}
 
 
 def create_modified_catalog_structure(
