@@ -9,6 +9,7 @@ import pandas as pd
 import pytest
 from hats.catalog.index.index_catalog import IndexCatalog
 from hats.pixel_math import HealpixPixel
+from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 from pandas.core.dtypes.base import ExtensionDtype
 
 import lsdb
@@ -26,10 +27,27 @@ def test_read_hats(small_sky_order1_dir, small_sky_order1_hats_catalog, assert_d
     assert_divisions_are_correct(catalog)
 
 
+def test_read_hats_no_pandas(small_sky_order1_no_pandas_dir, assert_divisions_are_correct):
+    catalog = lsdb.read_hats(small_sky_order1_no_pandas_dir)
+    assert isinstance(catalog, lsdb.Catalog)
+    assert isinstance(catalog._ddf, nd.NestedFrame)
+    assert len(catalog.compute().columns) == 8
+    assert isinstance(catalog.compute(), npd.NestedFrame)
+    assert_divisions_are_correct(catalog)
+
+
 def test_read_hats_with_columns(small_sky_order1_dir):
     filter_columns = ["ra", "dec"]
     catalog = lsdb.read_hats(small_sky_order1_dir, columns=filter_columns)
     assert isinstance(catalog, lsdb.Catalog)
+    npt.assert_array_equal(catalog.compute().columns.to_numpy(), filter_columns)
+
+
+def test_read_hats_no_pandas_with_columns(small_sky_order1_no_pandas_dir):
+    filter_columns = ["ra", "dec"]
+    catalog = lsdb.read_hats(small_sky_order1_no_pandas_dir, columns=filter_columns)
+    assert isinstance(catalog, lsdb.Catalog)
+    assert catalog._ddf.index.name == SPATIAL_INDEX_COLUMN
     npt.assert_array_equal(catalog.compute().columns.to_numpy(), filter_columns)
 
 
