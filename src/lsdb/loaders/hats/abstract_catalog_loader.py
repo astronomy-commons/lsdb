@@ -85,14 +85,15 @@ class AbstractCatalogLoader(Generic[CatalogTypeVar]):
     def _create_dask_meta_schema(self, schema: pa.Schema) -> npd.NestedFrame:
         """Creates the Dask meta DataFrame from the HATS catalog schema."""
         dask_meta_schema = schema.empty_table().to_pandas(types_mapper=self.config.get_dtype_mapper())
-        if self.config.columns is not None:
-            dask_meta_schema = dask_meta_schema[self.config.columns]
-
         if (
             dask_meta_schema.index.name != SPATIAL_INDEX_COLUMN
             and SPATIAL_INDEX_COLUMN in dask_meta_schema.columns
         ):
             dask_meta_schema = dask_meta_schema.set_index(SPATIAL_INDEX_COLUMN)
+            if self.config.columns is not None and SPATIAL_INDEX_COLUMN in self.config.columns:
+                self.config.columns.remove(SPATIAL_INDEX_COLUMN)
+        if self.config.columns is not None:
+            dask_meta_schema = dask_meta_schema[self.config.columns]
         return npd.NestedFrame(dask_meta_schema)
 
     def _get_kwargs(self) -> dict:
@@ -106,13 +107,25 @@ class AbstractCatalogLoader(Generic[CatalogTypeVar]):
 def read_pixel(
     pixel: HealpixPixel,
     catalog: HCHealpixDataset,
+    *,
     query_url_params: dict | None = None,
     columns=None,
+    schema=None,
     **kwargs,
 ):
     """Utility method to read a single pixel's parquet file from disk."""
+    if (
+        columns is not None
+        and schema is not None
+        and SPATIAL_INDEX_COLUMN in schema.names
+        and SPATIAL_INDEX_COLUMN not in columns
+    ):
+        columns = columns + [SPATIAL_INDEX_COLUMN]
     dataframe = file_io.read_parquet_file_to_pandas(
-        hc.io.pixel_catalog_file(catalog.catalog_base_dir, pixel, query_url_params), columns=columns, **kwargs
+        hc.io.pixel_catalog_file(catalog.catalog_base_dir, pixel, query_url_params),
+        columns=columns,
+        schema=schema,
+        **kwargs,
     )
 
     if dataframe.index.name != SPATIAL_INDEX_COLUMN and SPATIAL_INDEX_COLUMN in dataframe.columns:
