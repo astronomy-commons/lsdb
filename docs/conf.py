@@ -74,8 +74,8 @@ html_context = {"default_mode": "light"}
 
 pygments_style = "sphinx"
 
-# Cross-link hipscat documentation from the API reference:
+# Cross-link hats documentation from the API reference:
 # https://docs.readthedocs.io/en/stable/guides/intersphinx.html
 intersphinx_mapping = {
-    "hipscat": ("http://hipscat.readthedocs.io/en/stable/", None),
+    "hats": ("http://hats.readthedocs.io/en/stable/", None),
 }

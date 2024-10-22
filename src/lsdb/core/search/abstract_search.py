@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
 import nested_pandas as npd
-from hipscat.catalog.catalog_info import CatalogInfo
+from hats.catalog import TableProperties
 from mocpy import MOC
 
 if TYPE_CHECKING:
@@ -26,7 +26,7 @@ class AbstractSearch(ABC):
         self.fine = fine
 
     def filter_hc_catalog(self, hc_structure: HCCatalogTypeVar) -> HCCatalogTypeVar:
-        """Filters the hispcat catalog object to the partitions included in the search"""
+        """Filters the hats catalog object to the partitions included in the search"""
         if len(hc_structure.get_healpix_pixels()) == 0:
             return hc_structure
         max_order = hc_structure.get_max_coverage_order()
@@ -40,5 +40,5 @@ class AbstractSearch(ABC):
         )
 
     @abstractmethod
-    def search_points(self, frame: npd.NestedFrame, metadata: CatalogInfo) -> npd.NestedFrame:
+    def search_points(self, frame: npd.NestedFrame, metadata: TableProperties) -> npd.NestedFrame:
         """Determine the search results within a data frame"""

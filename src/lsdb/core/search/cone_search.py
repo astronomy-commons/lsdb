@@ -1,8 +1,8 @@
 import nested_pandas as npd
 from astropy.coordinates import SkyCoord
-from hipscat.catalog.catalog_info import CatalogInfo
-from hipscat.pixel_math.cone_filter import generate_cone_moc
-from hipscat.pixel_math.validators import validate_declination_values, validate_radius
+from hats.catalog import TableProperties
+from hats.pixel_math.cone_filter import generate_cone_moc
+from hats.pixel_math.validators import validate_declination_values, validate_radius
 from mocpy import MOC
 
 from lsdb.core.search.abstract_search import AbstractSearch
@@ -26,12 +26,12 @@ class ConeSearch(AbstractSearch):
     def generate_search_moc(self, max_order: int) -> MOC:
         return generate_cone_moc(self.ra, self.dec, self.radius_arcsec, max_order)
 
-    def search_points(self, frame: npd.NestedFrame, metadata: CatalogInfo) -> npd.NestedFrame:
+    def search_points(self, frame: npd.NestedFrame, metadata: TableProperties) -> npd.NestedFrame:
         """Determine the search results within a data frame"""
         return cone_filter(frame, self.ra, self.dec, self.radius_arcsec, metadata)
 
 
-def cone_filter(data_frame: npd.NestedFrame, ra, dec, radius_arcsec, metadata: CatalogInfo):
+def cone_filter(data_frame: npd.NestedFrame, ra, dec, radius_arcsec, metadata: TableProperties):
     """Filters a dataframe to only include points within the specified cone
 
     Args:
@@ -39,7 +39,7 @@ def cone_filter(data_frame: npd.NestedFrame, ra, dec, radius_arcsec, metadata: C
         ra (float): Right Ascension of the center of the cone in degrees
         dec (float): Declination of the center of the cone in degrees
         radius_arcsec (float): Radius of the cone in arcseconds
-        metadata (hc.CatalogInfo): hipscat `CatalogInfo` with metadata that matches `data_frame`
+        metadata (hc.TableProperties): hats `TableProperties` with metadata that matches `data_frame`
 
     Returns:
         A new DataFrame with the rows from `data_frame` filtered to only the points inside the cone

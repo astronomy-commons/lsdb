@@ -4,8 +4,8 @@ import numpy as np
 import pandas as pd
 import pyarrow as pa
 import pytest
-from hipscat.pixel_math import HealpixPixel
-from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN
+from hats.pixel_math import HealpixPixel
+from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 
 import lsdb
 from lsdb import Catalog
@@ -77,7 +77,7 @@ class TestCrossmatch:
     def test_kdtree_crossmatch_multiple_neighbors_margin(
         algo, small_sky_catalog, small_sky_xmatch_dir, small_sky_xmatch_margin_catalog, xmatch_correct_3n_2t
     ):
-        small_sky_xmatch_catalog = lsdb.read_hipscat(
+        small_sky_xmatch_catalog = lsdb.read_hats(
             small_sky_xmatch_dir, margin_cache=small_sky_xmatch_margin_catalog
         )
         xmatched = small_sky_catalog.crossmatch(
@@ -101,7 +101,7 @@ class TestCrossmatch:
         small_sky_xmatch_margin_catalog,
         xmatch_correct_3n_2t_negative,
     ):
-        small_sky_xmatch_catalog = lsdb.read_hipscat(
+        small_sky_xmatch_catalog = lsdb.read_hats(
             small_sky_xmatch_dir, margin_cache=small_sky_xmatch_margin_catalog
         )
         xmatched = small_sky_left_xmatch_catalog.crossmatch(
@@ -157,7 +157,7 @@ class TestBoundedCrossmatch:
         small_sky_xmatch_margin_catalog,
         xmatch_correct_05_2_3n_margin,
     ):
-        small_sky_xmatch_catalog = lsdb.read_hipscat(
+        small_sky_xmatch_catalog = lsdb.read_hats(
             small_sky_xmatch_dir, margin_cache=small_sky_xmatch_margin_catalog
         )
         xmatched = small_sky_catalog.crossmatch(
@@ -217,7 +217,7 @@ class TestBoundedCrossmatch:
     @staticmethod
     def test_self_crossmatch(algo, small_sky_catalog, small_sky_dir):
         # Read a second small sky catalog to not have duplicate labels
-        small_sky_catalog_2 = lsdb.read_hipscat(small_sky_dir)
+        small_sky_catalog_2 = lsdb.read_hats(small_sky_dir)
         small_sky_catalog_2.hc_structure.catalog_name = "small_sky_2"
         with pytest.warns(RuntimeWarning, match="Results may be incomplete and/or inaccurate"):
             xmatched = small_sky_catalog.crossmatch(
@@ -250,7 +250,7 @@ class TestBoundedCrossmatch:
     def test_crossmatch_empty_right_partition(algo, small_sky_order1_catalog, small_sky_xmatch_catalog):
         ra = 300
         dec = -60
-        radius_arcsec = 3 * 3600
+        radius_arcsec = 3.4 * 3600
         cone = small_sky_xmatch_catalog.cone_search(ra, dec, radius_arcsec)
         assert len(cone.get_healpix_pixels()) == 2
         assert len(cone.get_partition(1, 44)) == 5
@@ -342,7 +342,7 @@ class MockCrossmatchAlgorithmOverwrite(AbstractCrossmatchAlgorithm):
             ],
             axis=1,
         )
-        out.set_index(HIPSCAT_ID_COLUMN, inplace=True)
+        out.set_index(SPATIAL_INDEX_COLUMN, inplace=True)
         extra_columns = pd.DataFrame({"_DIST": mock_results["dist"]})
         self._append_extra_columns(out, extra_columns)
         return out

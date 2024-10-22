@@ -1,0 +1,11 @@
+#HATS catalog
+obs_collection=small_sky_order1_id_index
+dataproduct_type=index
+hats_nrows=131
+hats_primary_table_url=./small_sky_order1
+hats_index_column=id
+hats_builder=hats-import v0.3.6.dev26+g40366b4
+hats_creation_date=2024-10-15T14\:47UTC
+hats_estsize=3
+hats_release_date=2024-09-18
+hats_version=v0.1

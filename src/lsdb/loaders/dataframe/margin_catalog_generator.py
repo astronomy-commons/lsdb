@@ -2,28 +2,28 @@ from __future__ import annotations
 
 from typing import Dict, List, Tuple
 
-import hipscat as hc
-import hipscat.pixel_math.healpix_shim as hp
+import hats as hc
+import hats.pixel_math.healpix_shim as hp
 import nested_dask as nd
 import nested_pandas as npd
 import numpy as np
 import pandas as pd
-from hipscat import pixel_math
-from hipscat.catalog import CatalogType
-from hipscat.catalog.margin_cache import MarginCacheCatalogInfo
-from hipscat.pixel_math import HealpixPixel
-from hipscat.pixel_math.healpix_pixel_function import get_pixel_argsort
+from hats import pixel_math
+from hats.catalog import CatalogType, TableProperties
+from hats.pixel_math import HealpixPixel
+from hats.pixel_math.healpix_pixel_function import get_pixel_argsort
 
 from lsdb import Catalog
 from lsdb.catalog.margin_catalog import MarginCatalog
 from lsdb.loaders.dataframe.from_dataframe_utils import (
+    _extra_property_dict,
     _format_margin_partition_dataframe,
     _generate_dask_dataframe,
 )
 
 
 class MarginCatalogGenerator:
-    """Creates a HiPSCat formatted margin catalog"""
+    """Creates a HATS formatted margin catalog"""
 
     def __init__(
         self,
@@ -31,6 +31,7 @@ class MarginCatalogGenerator:
         margin_order: int | None = -1,
         margin_threshold: float = 5.0,
         use_pyarrow_types: bool = True,
+        **kwargs,
     ) -> None:
         """Initialize a MarginCatalogGenerator
 
@@ -45,6 +46,7 @@ class MarginCatalogGenerator:
         self.margin_threshold = margin_threshold
         self.margin_order = self._set_margin_order(margin_order)
         self.use_pyarrow_types = use_pyarrow_types
+        self.catalog_info = self._create_catalog_info(**kwargs)
 
     def _set_margin_order(self, margin_order: int | None) -> int:
         """Calculate the order of the margin cache to be generated. If not provided
@@ -79,9 +81,9 @@ class MarginCatalogGenerator:
             return None
         ddf, ddf_pixel_map, total_rows = self._generate_dask_df_and_map(pixels, partitions)
         margin_pixels = list(ddf_pixel_map.keys())
-        margin_catalog_info = self._create_catalog_info(total_rows)
+        self.catalog_info.total_rows = total_rows
         margin_structure = hc.catalog.MarginCatalog(
-            margin_catalog_info, margin_pixels, schema=self.hc_structure.schema
+            self.catalog_info, margin_pixels, schema=self.hc_structure.schema
         )
         return MarginCatalog(ddf, ddf_pixel_map, margin_structure)
 
@@ -116,7 +118,7 @@ class MarginCatalogGenerator:
             Tuple containing the Dask Dataframe, the mapping of margin HEALPix
             to the respective partitions and the total number of rows.
         """
-        # Generate pixel map ordered by _hipscat_index
+        # Generate pixel map ordered by _healpix_29
         pixel_order = get_pixel_argsort(pixels)
         ordered_pixels = np.asarray(pixels)[pixel_order]
         ordered_partitions = [partitions[i] for i in pixel_order]
@@ -208,22 +210,31 @@ class MarginCatalogGenerator:
         )
         return partition_df.iloc[margin_mask]
 
-    def _create_catalog_info(self, total_rows: int) -> MarginCacheCatalogInfo:
+    def _create_catalog_info(self, catalog_name: str | None = None, **kwargs) -> TableProperties:
         """Create the margin catalog info object
 
         Args:
-            total_rows (int): The number of elements in the margin catalog
+            catalog_name (str): name of the PRIMARY catalog being created. this margin
+                catalog will take on a name like `<catalog_name>_margin`.
+            **kwargs: Arguments to pass to the creation of the catalog info.
 
         Returns:
             The margin catalog info object.
         """
-        catalog_name = self.hc_structure.catalog_info.catalog_name
-        return MarginCacheCatalogInfo(
+        if kwargs is None:
+            kwargs = {}
+        kwargs.pop("catalog_type", None)
+        kwargs = kwargs | _extra_property_dict(0)
+        if not catalog_name:
+            catalog_name = self.hc_structure.catalog_info.catalog_name
+
+        return TableProperties(
             catalog_name=f"{catalog_name}_margin",
             catalog_type=CatalogType.MARGIN,
             ra_column=self.hc_structure.catalog_info.ra_column,
             dec_column=self.hc_structure.catalog_info.dec_column,
-            total_rows=total_rows,
+            total_rows=self.hc_structure.catalog_info.total_rows,
             primary_catalog=catalog_name,
             margin_threshold=self.margin_threshold,
+            **kwargs,
         )

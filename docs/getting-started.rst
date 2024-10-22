@@ -62,14 +62,14 @@ for more information.
 Loading a Catalog
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Let's start by loading a HiPSCat formatted Catalog into LSDB. Use the :func:`lsdb.read_hipscat` function to
+Let's start by loading a HATS formatted Catalog into LSDB. Use the :func:`lsdb.read_hats` function to
 lazy load a catalog object. We'll pass in the URL to load the Zwicky Transient Facility Data Release 14
 Catalog, and specify which columns we want to use from it.
 
 .. code-block:: python
 
     import lsdb
-    ztf = lsdb.read_hipscat(
+    ztf = lsdb.read_hats(
         'https://data.lsdb.io/unstable/ztf/ztf_dr14/',
         columns=["ra", "dec", "ps1_objid", "nobs_r", "mean_mag_r"],
     )
@@ -94,7 +94,7 @@ usually see values).
 
 Where to get Catalogs
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
-LSDB can load any catalogs in the HiPSCat format, locally or from remote sources. There are a number of
+LSDB can load any catalogs in the HATS format, locally or from remote sources. There are a number of
 catalogs available publicly to use from the cloud. You can see them with their URLs to load in LSDB at our
 website `data.lsdb.io <https://data.lsdb.io>`_
 
@@ -107,7 +107,7 @@ If you have your own data not in this format, you can import it by following the
 Performing Filters
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-LSDB can perform spatial filters fast, taking advantage of HiPSCat's spatial partitioning. These optimized
+LSDB can perform spatial filters fast, taking advantage of HATS's spatial partitioning. These optimized
 filters have their own methods, such as :func:`cone_search <lsdb.catalog.Catalog.cone_search>`. For the list
 of these methods see the full docs for the :func:`Catalog <lsdb.catalog.Catalog>` class.
 
@@ -132,7 +132,7 @@ get accurate results. This should be provided with the catalog by the catalog's 
 
 .. code-block:: python
 
-    gaia = lsdb.read_hipscat(
+    gaia = lsdb.read_hats(
         'https://data.lsdb.io/unstable/gaia_dr3/gaia/',
         columns=["ra", "dec", "phot_g_n_obs", "phot_g_mean_flux", "pm"],
         margin_cache="https://data.lsdb.io/unstable/gaia_dr3/gaia_10arcs/",
@@ -166,13 +166,13 @@ Saving the Result
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 For large results, it won't be possible to ``compute()`` since the full result won't be able to fit into memory.
-So instead, we can run the computation and save the results directly to disk in hipscat format.
+So instead, we can run the computation and save the results directly to disk in hats format.
 
 .. code-block:: python
 
-    ztf_x_gaia.to_hipscat("./ztf_x_gaia")
+    ztf_x_gaia.to_hats("./ztf_x_gaia")
 
-This creates the following HiPSCat Catalog on disk:
+This creates the following HATS Catalog on disk:
 
 .. code-block::
 
@@ -182,11 +182,10 @@ This creates the following HiPSCat Catalog on disk:
     │   │   ├── Npix=57.parquet
     │   │   └── ...
     │   └── ...
-    ├── _metadata
     ├── _common_metadata
-    ├── catalog_info.json
-    ├── partition_info.csv
-    └── provenance_info.json
+    ├── _metadata
+    ├── properties
+    └── partition_info.csv
 
 Creation of Jupyter Kernel
 --------------------------

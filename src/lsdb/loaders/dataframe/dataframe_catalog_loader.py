@@ -1,28 +1,31 @@
 from __future__ import annotations
 
-import dataclasses
 import math
 import warnings
 from typing import Dict, List, Tuple
 
 import astropy.units as u
-import hipscat as hc
+import hats as hc
 import nested_dask as nd
 import nested_pandas as npd
 import numpy as np
 import pandas as pd
 import pyarrow as pa
-from hipscat.catalog import CatalogType
-from hipscat.catalog.catalog_info import CatalogInfo
-from hipscat.pixel_math import HealpixPixel, generate_histogram
-from hipscat.pixel_math.healpix_pixel_function import get_pixel_argsort
-from hipscat.pixel_math.hipscat_id import HIPSCAT_ID_COLUMN, compute_hipscat_id, healpix_to_hipscat_id
+from hats.catalog import CatalogType, TableProperties
+from hats.pixel_math import HealpixPixel, generate_histogram
+from hats.pixel_math.healpix_pixel_function import get_pixel_argsort
+from hats.pixel_math.spatial_index import (
+    SPATIAL_INDEX_COLUMN,
+    compute_spatial_index,
+    healpix_to_spatial_index,
+)
 from mocpy import MOC
 
 from lsdb.catalog.catalog import Catalog
 from lsdb.io.schema import get_arrow_schema
 from lsdb.loaders.dataframe.from_dataframe_utils import (
     _append_partition_information_to_dataframe,
+    _extra_property_dict,
     _generate_dask_dataframe,
 )
 from lsdb.types import DaskDFPixelMap
@@ -31,7 +34,7 @@ pd.options.mode.chained_assignment = None  # default='warn'
 
 
 class DataframeCatalogLoader:
-    """Creates a HiPSCat formatted Catalog from a Pandas Dataframe"""
+    """Creates a HATS formatted Catalog from a Pandas Dataframe"""
 
     # pylint: disable=too-many-arguments
     def __init__(
@@ -65,7 +68,7 @@ class DataframeCatalogLoader:
             threshold (int): The maximum number of data points per pixel.
             should_generate_moc (bool): should we generate a MOC (multi-order coverage map)
                 of the data. can improve performance when joining/crossmatching to
-                other hipscatted datasets.
+                other hats-sharded datasets.
             moc_max_order (int): if generating a MOC, what to use as the max order. Defaults to 10.
             use_pyarrow_types (bool): If True, the data is backed by pyarrow, otherwise we keep the
                 original data types. Defaults to True.
@@ -78,7 +81,9 @@ class DataframeCatalogLoader:
         self.highest_order = highest_order
         self.drop_empty_siblings = drop_empty_siblings
         self.threshold = self._calculate_threshold(partition_size, threshold)
-        self.catalog_info = self._create_catalog_info(ra_column=ra_column, dec_column=dec_column, **kwargs)
+        self.catalog_info = self._create_catalog_info(
+            ra_column=ra_column, dec_column=dec_column, total_rows=len(self.dataframe), **kwargs
+        )
         self.should_generate_moc = should_generate_moc
         self.moc_max_order = moc_max_order
         self.use_pyarrow_types = use_pyarrow_types
@@ -95,11 +100,11 @@ class DataframeCatalogLoader:
         Returns:
             The HEALPix pixel threshold
         """
-        df_total_memory = self.dataframe.memory_usage(deep=True).sum()
-        if df_total_memory > (1 << 30) or len(self.dataframe) > 1_000_000:
+        self.df_total_memory = self.dataframe.memory_usage(deep=True).sum()
+        if self.df_total_memory > (1 << 30) or len(self.dataframe) > 1_000_000:
             warnings.warn(
                 "from_dataframe is not intended for large datasets. "
-                "Consider using hipscat-import: https://hipscat-import.readthedocs.io/",
+                "Consider using hats-import: https://hats-import.readthedocs.io/",
                 RuntimeWarning,
             )
         if threshold is not None and partition_size is not None:
@@ -112,25 +117,40 @@ class DataframeCatalogLoader:
                 threshold = len(self.dataframe) // num_partitions
             else:
                 # Each partition in memory will be of roughly 1Gib
-                partition_memory = df_total_memory / len(self.dataframe)
+                partition_memory = self.df_total_memory / len(self.dataframe)
                 threshold = math.ceil((1 << 30) / partition_memory)
         return threshold
 
-    @staticmethod
-    def _create_catalog_info(**kwargs) -> CatalogInfo:
+    def _create_catalog_info(
+        self,
+        catalog_name: str = "from_lsdb_dataframe",
+        ra_column: str = "ra",
+        dec_column: str = "dec",
+        catalog_type: CatalogType = CatalogType.OBJECT,
+        **kwargs,
+    ) -> TableProperties:
         """Creates the catalog info object
 
         Args:
+            catalog_name: it is recommended to provide a new name for your catalog
+            ra_column: column to find right ascension coordinate
+            dec_column: column to find declination coordinate
+            catalog_type: type of table being created (e.g. OBJECT, MARGIN, INDEX)
             **kwargs: Arguments to pass to the creation of the catalog info
 
         Returns:
             The catalog info object
         """
-        valid_catalog_types = [CatalogType.OBJECT, CatalogType.SOURCE]
-        catalog_info = CatalogInfo(**kwargs)
-        if catalog_info.catalog_type not in valid_catalog_types:
-            raise ValueError("Catalog must be of type OBJECT or SOURCE")
-        return catalog_info
+        if kwargs is None:
+            kwargs = {}
+        kwargs = kwargs | _extra_property_dict(self.df_total_memory)
+        return TableProperties(
+            catalog_name=catalog_name,
+            ra_column=ra_column,
+            dec_column=dec_column,
+            catalog_type=catalog_type,
+            **kwargs,
+        )
 
     def load_catalog(self) -> Catalog:
         """Load a catalog from a Pandas Dataframe, in CSV format
@@ -138,27 +158,27 @@ class DataframeCatalogLoader:
         Returns:
             Catalog object with data from the source given at loader initialization
         """
-        self._set_hipscat_index()
+        self._set_spatial_index()
         pixel_list = self._compute_pixel_list()
         ddf, ddf_pixel_map, total_rows = self._generate_dask_df_and_map(pixel_list)
-        self.catalog_info = dataclasses.replace(self.catalog_info, total_rows=total_rows)
+        self.catalog_info.total_rows = total_rows
         moc = self._generate_moc() if self.should_generate_moc else None
         schema = self.schema if self.schema is not None else get_arrow_schema(ddf)
         hc_structure = hc.catalog.Catalog(self.catalog_info, pixel_list, moc=moc, schema=schema)
         return Catalog(ddf, ddf_pixel_map, hc_structure)
 
-    def _set_hipscat_index(self):
-        """Generates the hipscat indices for each data point and assigns
-        the hipscat index column as the Dataframe index."""
-        self.dataframe[HIPSCAT_ID_COLUMN] = compute_hipscat_id(
+    def _set_spatial_index(self):
+        """Generates the spatial indices for each data point and assigns
+        the spatial index column as the Dataframe index."""
+        self.dataframe[SPATIAL_INDEX_COLUMN] = compute_spatial_index(
             ra_values=self.dataframe[self.catalog_info.ra_column].to_numpy(),
             dec_values=self.dataframe[self.catalog_info.dec_column].to_numpy(),
         )
-        self.dataframe.set_index(HIPSCAT_ID_COLUMN, inplace=True)
+        self.dataframe.set_index(SPATIAL_INDEX_COLUMN, inplace=True)
 
     def _compute_pixel_list(self) -> List[HealpixPixel]:
         """Compute object histogram and generate the sorted list of
-        HEALPix pixels. The pixels are sorted by ascending hipscat_id.
+        HEALPix pixels. The pixels are sorted by ascending spatial index.
 
         Returns:
             List of HEALPix pixels for the final partitioning.
@@ -204,8 +224,8 @@ class DataframeCatalogLoader:
             # Store HEALPix pixel in map
             ddf_pixel_map[hp_pixel] = hp_pixel_index
             # Obtain Dataframe for current HEALPix pixel, using NESTED characteristics.
-            left_bound = healpix_to_hipscat_id(hp_pixel.order, hp_pixel.pixel)
-            right_bound = healpix_to_hipscat_id(hp_pixel.order, hp_pixel.pixel + 1)
+            left_bound = healpix_to_spatial_index(hp_pixel.order, hp_pixel.pixel)
+            right_bound = healpix_to_spatial_index(hp_pixel.order, hp_pixel.pixel + 1)
             pixel_df = self.dataframe.loc[
                 (self.dataframe.index >= left_bound) & (self.dataframe.index < right_bound)
             ]

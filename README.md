@@ -17,17 +17,17 @@
 
 A framework to facilitate and enable spatial analysis for extremely large astronomical databases 
 (i.e. querying and crossmatching O(1B) sources). This package uses dask to parallelize operations across
-multiple HiPSCat partitioned surveys.
+multiple HATS partitioned surveys.
 
 Check out our [ReadTheDocs site](https://lsdb.readthedocs.io/en/stable/)
 for more information on partitioning, installation, and contributing.
 
 See related projects:
 
-* HiPSCat ([on GitHub](https://github.com/astronomy-commons/hipscat))
-  ([on ReadTheDocs](https://hipscat.readthedocs.io/en/stable/))
-* HiPSCat Import ([on GitHub](https://github.com/astronomy-commons/hipscat-import))
-  ([on ReadTheDocs](https://hipscat-import.readthedocs.io/en/stable/))
+* HATS ([on GitHub](https://github.com/astronomy-commons/hats))
+  ([on ReadTheDocs](https://hats.readthedocs.io/en/stable/))
+* HATS Import ([on GitHub](https://github.com/astronomy-commons/hats-import))
+  ([on ReadTheDocs](https://hats-import.readthedocs.io/en/stable/))
 
 ## Contributing
 

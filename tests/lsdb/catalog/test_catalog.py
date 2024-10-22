@@ -2,25 +2,23 @@ from pathlib import Path
 
 import dask.array as da
 import dask.dataframe as dd
+import hats.pixel_math.healpix_shim as hp
 import healpy
-import hipscat.pixel_math.healpix_shim as hp
 import nested_dask as nd
 import nested_pandas as npd
 import numpy as np
 import pandas as pd
 import pytest
-from hipscat import read_from_hipscat
-from hipscat.pixel_math import HealpixPixel, hipscat_id_to_healpix
+from hats import read_hats
+from hats.pixel_math import HealpixPixel, spatial_index_to_healpix
 
 import lsdb
 from lsdb import Catalog
-from lsdb.dask.merge_catalog_functions import filter_by_hipscat_index_to_pixel
+from lsdb.dask.merge_catalog_functions import filter_by_spatial_index_to_pixel
 
 
-def test_catalog_pixels_equals_hc_catalog_pixels(small_sky_order1_catalog, small_sky_order1_hipscat_catalog):
-    assert (
-        small_sky_order1_catalog.get_healpix_pixels() == small_sky_order1_hipscat_catalog.get_healpix_pixels()
-    )
+def test_catalog_pixels_equals_hc_catalog_pixels(small_sky_order1_catalog, small_sky_order1_hats_catalog):
+    assert small_sky_order1_catalog.get_healpix_pixels() == small_sky_order1_hats_catalog.get_healpix_pixels()
 
 
 def test_catalog_repr_equals_ddf_repr(small_sky_order1_catalog):
@@ -30,8 +28,8 @@ def test_catalog_repr_equals_ddf_repr(small_sky_order1_catalog):
 def test_catalog_html_repr_equals_ddf_html_repr(small_sky_order1_catalog):
     full_html = small_sky_order1_catalog._repr_html_()
     assert small_sky_order1_catalog.name in full_html
-    # this is a _hipscat_index that's in the data
-    assert "12682136550675316736" in full_html
+    # this is a _healpix_29 that's in the data
+    assert "3170534137668829184" in full_html
 
 
 def test_catalog_compute_equals_ddf_compute(small_sky_order1_catalog):
@@ -195,8 +193,8 @@ def test_assign_with_invalid_arguments(small_sky_order1_catalog):
 def test_save_catalog(small_sky_catalog, tmp_path):
     new_catalog_name = "small_sky"
     base_catalog_path = Path(tmp_path) / new_catalog_name
-    small_sky_catalog.to_hipscat(base_catalog_path, catalog_name=new_catalog_name)
-    expected_catalog = lsdb.read_hipscat(base_catalog_path)
+    small_sky_catalog.to_hats(base_catalog_path, catalog_name=new_catalog_name)
+    expected_catalog = lsdb.read_hats(base_catalog_path)
     assert expected_catalog.hc_structure.catalog_name == new_catalog_name
     assert expected_catalog.hc_structure.catalog_info == small_sky_catalog.hc_structure.catalog_info
     assert expected_catalog.get_healpix_pixels() == small_sky_catalog.get_healpix_pixels()
@@ -206,13 +204,13 @@ def test_save_catalog(small_sky_catalog, tmp_path):
 def test_save_catalog_overwrite(small_sky_catalog, tmp_path):
     base_catalog_path = tmp_path / "small_sky"
     # Saving a catalog to disk when the directory does not yet exist
-    small_sky_catalog.to_hipscat(base_catalog_path)
+    small_sky_catalog.to_hats(base_catalog_path)
     # The output directory exists and it has content. Overwrite is
     # set to False and, as such, the operation fails.
     with pytest.raises(ValueError, match="set overwrite to True"):
-        small_sky_catalog.to_hipscat(base_catalog_path)
+        small_sky_catalog.to_hats(base_catalog_path)
     # With overwrite it succeeds because the directory is recreated
-    small_sky_catalog.to_hipscat(base_catalog_path, overwrite=True)
+    small_sky_catalog.to_hats(base_catalog_path, overwrite=True)
 
 
 def test_save_catalog_when_catalog_is_empty(small_sky_order1_catalog, tmp_path):
@@ -230,7 +228,7 @@ def test_save_catalog_when_catalog_is_empty(small_sky_order1_catalog, tmp_path):
 
     # The catalog is not written to disk
     with pytest.raises(RuntimeError, match="The output catalog is empty"):
-        cone_search_catalog.to_hipscat(base_catalog_path)
+        cone_search_catalog.to_hats(base_catalog_path)
 
 
 def test_save_catalog_with_some_empty_partitions(small_sky_order1_catalog, tmp_path):
@@ -246,11 +244,11 @@ def test_save_catalog_with_some_empty_partitions(small_sky_order1_catalog, tmp_p
             non_empty_pixels.append(pixel)
     assert len(non_empty_pixels) == 1
 
-    cone_search_catalog.to_hipscat(base_catalog_path)
+    cone_search_catalog.to_hats(base_catalog_path)
 
     # Confirm that we can read the catalog from disk, and that it was
     # written with no empty partitions
-    catalog = lsdb.read_hipscat(base_catalog_path)
+    catalog = lsdb.read_hats(base_catalog_path)
     assert catalog._ddf.npartitions == 1
     assert len(catalog._ddf.partitions[0]) > 0
     assert list(catalog._ddf_pixel_map.keys()) == non_empty_pixels
@@ -329,7 +327,7 @@ def test_skymap_data_order(small_sky_order1_catalog):
         for i in range(expected_array_length):
             p = pixels[i]
             expected_value = func(
-                filter_by_hipscat_index_to_pixel(partition, order, p), HealpixPixel(order, p)
+                filter_by_spatial_index_to_pixel(partition, order, p), HealpixPixel(order, p)
             )
             assert value[i] == expected_value
 
@@ -378,7 +376,7 @@ def test_skymap_histogram_order_default(small_sky_order1_catalog):
         return len(df) / hp.nside2pixarea(hp.order2nside(order), degrees=True)
 
     computed_catalog = small_sky_order1_catalog.compute()
-    order_3_pixels = hipscat_id_to_healpix(computed_catalog.index.to_numpy(), order)
+    order_3_pixels = spatial_index_to_healpix(computed_catalog.index.to_numpy(), order)
     pixel_map = computed_catalog.groupby(order_3_pixels).apply(lambda x: func(x, None))
 
     img = np.full(hp.order2npix(order), default)
@@ -628,7 +626,7 @@ def test_filtered_catalog_has_undetermined_len(small_sky_order1_catalog, small_s
     with pytest.raises(ValueError, match="undetermined"):
         len(small_sky_order1_catalog.order_search(max_order=2))
     with pytest.raises(ValueError, match="undetermined"):
-        catalog_index = read_from_hipscat(small_sky_order1_id_index_dir)
+        catalog_index = read_hats(small_sky_order1_id_index_dir)
         len(small_sky_order1_catalog.index_search([900], catalog_index))
     with pytest.raises(ValueError, match="undetermined"):
         len(small_sky_order1_catalog.pixel_search([(0, 11)]))

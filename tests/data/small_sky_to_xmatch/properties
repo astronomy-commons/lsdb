@@ -1,0 +1,18 @@
+#HATS catalog
+obs_collection=small_sky_to_xmatch
+dataproduct_type=association
+hats_nrows=111
+hats_primary_table_url=small_sky
+hats_col_assn_primary=id
+hats_col_assn_primary_assn=object_id
+hats_assn_join_table_url=small_sky_xmatch
+hats_col_assn_join=id
+hats_col_assn_join_assn=source_id
+hats_assn_leaf_files=True
+hats_order=0
+moc_sky_fraction=0.08333
+hats_builder=hats-import v0.3.6.dev26+g40366b4
+hats_creation_date=2024-10-15T14\:48UTC
+hats_estsize=20
+hats_release_date=2024-09-18
+hats_version=v0.1

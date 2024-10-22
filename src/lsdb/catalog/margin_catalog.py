@@ -1,4 +1,4 @@
-import hipscat as hc
+import hats as hc
 import nested_dask as nd
 
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
@@ -7,12 +7,12 @@ from lsdb.types import DaskDFPixelMap
 
 
 class MarginCatalog(HealpixDataset):
-    """LSDB Catalog DataFrame to contain the "margin" of another HiPSCat catalog.
+    """LSDB Catalog DataFrame to contain the "margin" of another HATS catalog.
     spatial operations.
 
     Attributes:
-        hc_structure: `hipscat.MarginCatalog` object representing the structure
-                      and metadata of the HiPSCat catalog
+        hc_structure: `hats.MarginCatalog` object representing the structure
+                      and metadata of the HATS catalog
     """
 
     hc_structure: hc.catalog.MarginCatalog

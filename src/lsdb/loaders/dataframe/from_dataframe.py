@@ -31,7 +31,7 @@ def from_dataframe(
 
     Note that this is only suitable for small datasets (< 1million rows and
     < 1GB dataframe in-memory). If you need to deal with large datasets, consider
-    using the hipscat-import package: https://hipscat-import.readthedocs.io/
+    using the hats-import package: https://hats-import.readthedocs.io/
 
     Args:
         dataframe (pd.Dataframe): The catalog Pandas Dataframe.
@@ -48,7 +48,7 @@ def from_dataframe(
             the margin cache is not generated. Defaults to 5 arcseconds.
         should_generate_moc (bool): should we generate a MOC (multi-order coverage map)
             of the data. can improve performance when joining/crossmatching to
-            other hipscatted datasets.
+            other hats-sharded datasets.
         moc_max_order (int): if generating a MOC, what to use as the max order. Defaults to 10.
         use_pyarrow_types (bool): If True, the data is backed by pyarrow, otherwise we keep the
             original data types. Defaults to True.
@@ -80,5 +80,6 @@ def from_dataframe(
             margin_order,
             margin_threshold,
             use_pyarrow_types,
+            **kwargs,
         ).create_catalog()
     return catalog

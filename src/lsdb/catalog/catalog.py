@@ -1,14 +1,13 @@
 from __future__ import annotations
 
-import dataclasses
 from typing import List, Tuple, Type
 
-import hipscat as hc
+import hats as hc
 import nested_dask as nd
 import nested_pandas as npd
 import pandas as pd
-from hipscat.catalog.index.index_catalog import IndexCatalog as HCIndexCatalog
-from hipscat.pixel_math.polygon_filter import SphericalCoordinates
+from hats.catalog.index.index_catalog import IndexCatalog as HCIndexCatalog
+from hats.pixel_math.polygon_filter import SphericalCoordinates
 from pandas._libs import lib
 from pandas._typing import AnyAll, Axis, IndexLabel
 from pandas.api.extensions import no_default
@@ -39,8 +38,8 @@ class Catalog(HealpixDataset):
     spatial operations.
 
     Attributes:
-        hc_structure: `hipscat.Catalog` object representing the structure
-                      and metadata of the HiPSCat catalog
+        hc_structure: `hats.Catalog` object representing the structure
+                      and metadata of the HATS catalog
     """
 
     hc_structure: hc.catalog.Catalog
@@ -60,7 +59,7 @@ class Catalog(HealpixDataset):
         Args:
             ddf: Dask DataFrame with the source data of the catalog
             ddf_pixel_map: Dictionary mapping HEALPix order and pixel to partition index of ddf
-            hc_structure: `hipscat.Catalog` object with hipscat metadata of the catalog
+            hc_structure: `hats.Catalog` object with hats metadata of the catalog
         """
         super().__init__(ddf, ddf_pixel_map, hc_structure)
         self.margin = margin
@@ -216,12 +215,11 @@ class Catalog(HealpixDataset):
         ddf, ddf_map, alignment = crossmatch_catalog_data(
             self, other, suffixes, algorithm=algorithm, **kwargs
         )
-        new_catalog_info = dataclasses.replace(
-            self.hc_structure.catalog_info,
+        new_catalog_info = self.hc_structure.catalog_info.copy_and_update(
             catalog_name=output_catalog_name,
             ra_column=self.hc_structure.catalog_info.ra_column + suffixes[0],
             dec_column=self.hc_structure.catalog_info.dec_column + suffixes[0],
-            total_rows=None,
+            total_rows=0,
         )
         hc_catalog = hc.catalog.Catalog(
             new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(ddf), moc=alignment.moc
@@ -295,7 +293,7 @@ class Catalog(HealpixDataset):
 
         Args:
             ids: Values to search for.
-            catalog_index (HCIndexCatalog): A pre-computed hipscat index catalog.
+            catalog_index (HCIndexCatalog): A pre-computed hats index catalog.
             fine (bool): True if points are to be filtered, False if not. Defaults to True.
 
         Returns:
@@ -436,12 +434,11 @@ class Catalog(HealpixDataset):
                 f"{other.hc_structure.catalog_info.catalog_name}"
             )
 
-        new_catalog_info = dataclasses.replace(
-            self.hc_structure.catalog_info,
+        new_catalog_info = self.hc_structure.catalog_info.copy_and_update(
             catalog_name=output_catalog_name,
             ra_column=self.hc_structure.catalog_info.ra_column + suffixes[0],
             dec_column=self.hc_structure.catalog_info.dec_column + suffixes[0],
-            total_rows=None,
+            total_rows=0,
         )
         hc_catalog = hc.catalog.Catalog(
             new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(ddf), moc=alignment.moc
@@ -488,12 +485,11 @@ class Catalog(HealpixDataset):
             if output_catalog_name is None:
                 output_catalog_name = self.hc_structure.catalog_info.catalog_name
 
-            new_catalog_info = dataclasses.replace(
-                self.hc_structure.catalog_info,
+            new_catalog_info = self.hc_structure.catalog_info.copy_and_update(
                 catalog_name=output_catalog_name,
                 ra_column=self.hc_structure.catalog_info.ra_column + suffixes[0],
                 dec_column=self.hc_structure.catalog_info.dec_column + suffixes[0],
-                total_rows=None,
+                total_rows=0,
             )
             hc_catalog = hc.catalog.Catalog(
                 new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(ddf), moc=alignment.moc
@@ -512,12 +508,11 @@ class Catalog(HealpixDataset):
         if output_catalog_name is None:
             output_catalog_name = self.hc_structure.catalog_info.catalog_name
 
-        new_catalog_info = dataclasses.replace(
-            self.hc_structure.catalog_info,
+        new_catalog_info = self.hc_structure.catalog_info.copy_and_update(
             catalog_name=output_catalog_name,
             ra_column=self.hc_structure.catalog_info.ra_column + suffixes[0],
             dec_column=self.hc_structure.catalog_info.dec_column + suffixes[0],
-            total_rows=None,
+            total_rows=0,
         )
         hc_catalog = hc.catalog.Catalog(
             new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(ddf), moc=alignment.moc
@@ -574,10 +569,8 @@ class Catalog(HealpixDataset):
         if output_catalog_name is None:
             output_catalog_name = self.hc_structure.catalog_info.catalog_name
 
-        new_catalog_info = dataclasses.replace(
-            self.hc_structure.catalog_info,
-            catalog_name=output_catalog_name,
-            total_rows=None,
+        new_catalog_info = self.hc_structure.catalog_info.copy_and_update(
+            catalog_name=output_catalog_name, total_rows=0
         )
         hc_catalog = hc.catalog.Catalog(
             new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(ddf), moc=alignment.moc
