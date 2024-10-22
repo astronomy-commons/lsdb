@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import copy
 import warnings
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Tuple, cast
@@ -82,6 +81,20 @@ class HealpixDataset(Dataset):
         """
         return len(self.hc_structure)
 
+    def _create_modified_hc_structure(self) -> HCHealpixDataset:
+        """Copy the catalog structure and invalidate the number of rows.
+
+        Returns:
+            A copy of the catalog's structure with the total number of rows set to None.
+        """
+        return self.hc_structure.__class__(
+            catalog_info=self.hc_structure.catalog_info.copy_and_update(total_rows=0),
+            pixels=self.hc_structure.pixel_tree,
+            catalog_path=self.hc_structure.catalog_path,
+            schema=self.hc_structure.schema,
+            moc=self.hc_structure.moc,
+        )
+
     def get_healpix_pixels(self) -> List[HealpixPixel]:
         """Get all HEALPix pixels that are contained in the catalog
 
@@ -146,8 +159,7 @@ class HealpixDataset(Dataset):
             with the query expression
         """
         ndf = self._ddf.query(expr)
-        hc_structure = copy.copy(self.hc_structure)
-        hc_structure.catalog_info.total_rows = 0
+        hc_structure = self._create_modified_hc_structure()
         return self.__class__(ndf, self._ddf_pixel_map, hc_structure)
 
     def _perform_search(
@@ -527,8 +539,7 @@ class HealpixDataset(Dataset):
             return df
 
         ndf = self._ddf.map_partitions(drop_na_part, meta=self._ddf._meta)
-        hc_structure = copy.copy(self.hc_structure)
-        hc_structure.catalog_info.total_rows = 0
+        hc_structure = self._create_modified_hc_structure()
         return self.__class__(ndf, self._ddf_pixel_map, hc_structure)
 
     def nest_lists(
@@ -574,9 +585,7 @@ class HealpixDataset(Dataset):
             list_columns=list_columns,
             name=name,
         )
-
-        hc_structure = copy.copy(self.hc_structure)
-        hc_structure.catalog_info.total_rows = 0
+        hc_structure = self._create_modified_hc_structure()
         return self.__class__(new_ddf, self._ddf_pixel_map, hc_structure)
 
     def reduce(self, func, *args, meta=None, append_columns=False, **kwargs) -> Self:
