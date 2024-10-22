@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import warnings
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Tuple, cast
@@ -29,6 +30,8 @@ from lsdb import io
 from lsdb.catalog.dataset.dataset import Dataset
 from lsdb.core.plotting.skymap import compute_skymap, perform_inner_skymap
 from lsdb.core.search.abstract_search import AbstractSearch
+from lsdb.dask.merge_catalog_functions import concat_metas
+from lsdb.io.schema import get_arrow_schema
 from lsdb.types import DaskDFPixelMap
 
 
@@ -68,6 +71,16 @@ class HealpixDataset(Dataset):
         if isinstance(result, nd.NestedFrame):
             return self.__class__(result, self._ddf_pixel_map, self.hc_structure)
         return result
+
+    def __len__(self):
+        """The number of rows in the catalog.
+
+        Returns:
+            The number of rows in the catalog, as specified in its metadata.
+            This value is undetermined when the catalog is modified, and
+            therefore an error is raised.
+        """
+        return len(self.hc_structure)
 
     def get_healpix_pixels(self) -> List[HealpixPixel]:
         """Get all HEALPix pixels that are contained in the catalog
@@ -133,7 +146,9 @@ class HealpixDataset(Dataset):
             with the query expression
         """
         ndf = self._ddf.query(expr)
-        return self.__class__(ndf, self._ddf_pixel_map, self.hc_structure)
+        hc_structure = copy.copy(self.hc_structure)
+        hc_structure.catalog_info.total_rows = 0
+        return self.__class__(ndf, self._ddf_pixel_map, hc_structure)
 
     def _perform_search(
         self,
@@ -512,4 +527,129 @@ class HealpixDataset(Dataset):
             return df
 
         ndf = self._ddf.map_partitions(drop_na_part, meta=self._ddf._meta)
-        return self.__class__(ndf, self._ddf_pixel_map, self.hc_structure)
+        hc_structure = copy.copy(self.hc_structure)
+        hc_structure.catalog_info.total_rows = 0
+        return self.__class__(ndf, self._ddf_pixel_map, hc_structure)
+
+    def nest_lists(
+        self,
+        base_columns: list[str] | None,
+        list_columns: list[str] | None = None,
+        name: str = "nested",
+    ) -> Self:  # type: ignore[name-defined] # noqa: F821:
+        """Creates a new catalog with a set of list columns packed into a
+        nested column.
+
+        Args:
+            base_columns (list-like or None): Any columns that have non-list values in the input catalog.
+            These will simply be kept as identical columns in the result
+        list_columns (list-like or None): The list-value columns that should be packed into a nested column.
+            All columns in the list will attempt to be packed into a single
+                nested column with the name provided in `nested_name`. All columns
+                in list_columns must have pyarrow list dtypes, otherwise the
+                operation will fail. If None, is defined as all columns not in
+                `base_columns`.
+        name (str): The name of the output column the `nested_columns` are packed into.
+
+        Returns:
+            A new catalog with specified list columns nested into a new nested column.
+
+        Note:
+            As noted above, all columns in `list_columns` must have a pyarrow
+            ListType dtype. This is needed for proper meta propagation. To convert
+            a list column to this dtype, you can use this command structure:
+            `nf= nf.astype({"colname": pd.ArrowDtype(pa.list_(pa.int64()))})`
+            Where pa.int64 above should be replaced with the correct dtype of the
+            underlying data accordingly.
+            Additionally, it's a known issue in Dask
+            (https://github.com/dask/dask/issues/10139) that columns with list
+            values will by default be converted to the string type. This will
+            interfere with the ability to recast these to pyarrow lists. We
+            recommend setting the following dask config setting to prevent this:
+            `dask.config.set({"dataframe.convert-string":False})`
+        """
+        new_ddf = nd.NestedFrame.from_lists(
+            self._ddf,
+            base_columns=base_columns,
+            list_columns=list_columns,
+            name=name,
+        )
+
+        hc_structure = copy.copy(self.hc_structure)
+        hc_structure.catalog_info.total_rows = 0
+        return self.__class__(new_ddf, self._ddf_pixel_map, hc_structure)
+
+    def reduce(self, func, *args, meta=None, append_columns=False, **kwargs) -> Self:
+        """
+        Takes a function and applies it to each top-level row of the Catalog.
+
+        docstring copied from nested-pandas
+
+        The user may specify which columns the function is applied to, with
+        columns from the 'base' layer being passsed to the function as
+        scalars and columns from the nested layers being passed as numpy arrays.
+
+        Parameters
+        ----------
+        func : callable
+            Function to apply to each nested dataframe. The first arguments to `func` should be which
+            columns to apply the function to. See the Notes for recommendations
+            on writing func outputs.
+        args : positional arguments
+            Positional arguments to pass to the function, the first *args should be the names of the
+            columns to apply the function to.
+        meta : dataframe or series-like, optional
+            The dask meta of the output. If append_columns is True, the meta should specify just the
+            additional columns output by func.
+        append_columns : bool
+            If the output columns should be appended to the orignal dataframe.
+        kwargs : keyword arguments, optional
+            Keyword arguments to pass to the function.
+
+        Returns
+        -------
+        `HealpixDataset`
+            `HealpixDataset` with the results of the function applied to the columns of the frame.
+
+        Notes
+        -----
+        By default, `reduce` will produce a `NestedFrame` with enumerated
+        column names for each returned value of the function. For more useful
+        naming, it's recommended to have `func` return a dictionary where each
+        key is an output column of the dataframe returned by `reduce`.
+
+        Example User Function:
+
+        >>> def my_sum(col1, col2):
+        >>>    '''reduce will return a NestedFrame with two columns'''
+        >>>    return {"sum_col1": sum(col1), "sum_col2": sum(col2)}
+        >>>
+        >>> catalog.reduce(my_sum, 'sources.col1', 'sources.col2')
+
+        """
+
+        if append_columns:
+            meta = concat_metas([self._ddf._meta.copy(), meta])
+
+        catalog_info = self.hc_structure.catalog_info
+
+        def reduce_part(df):
+            reduced_result = npd.NestedFrame(df).reduce(func, *args, **kwargs)
+            if append_columns:
+                if catalog_info.ra_column in reduced_result or catalog_info.dec_column in reduced_result:
+                    raise ValueError("ra and dec columns can not be modified using reduce")
+                return npd.NestedFrame(pd.concat([df, reduced_result], axis=1))
+            return reduced_result
+
+        ndf = nd.NestedFrame.from_dask_dataframe(self._ddf.map_partitions(reduce_part, meta=meta))
+
+        hc_catalog = self.hc_structure
+        if not append_columns:
+            new_catalog_info = self.hc_structure.catalog_info.copy_and_update(ra_column="", dec_column="")
+            hc_catalog = self.hc_structure.__class__(
+                new_catalog_info,
+                self.hc_structure.pixel_tree,
+                schema=get_arrow_schema(ndf),
+                moc=self.hc_structure.moc,
+            )
+        return self.__class__(ndf, self._ddf_pixel_map, hc_catalog)

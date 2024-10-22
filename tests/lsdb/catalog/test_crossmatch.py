@@ -12,6 +12,7 @@ from lsdb import Catalog
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
 from lsdb.core.crossmatch.bounded_kdtree_match import BoundedKdTreeCrossmatch
 from lsdb.core.crossmatch.kdtree_match import KdTreeCrossmatch
+from lsdb.dask.merge_catalog_functions import align_catalogs
 
 
 @pytest.mark.parametrize("algo", [KdTreeCrossmatch])
@@ -24,6 +25,10 @@ class TestCrossmatch:
             )
             assert isinstance(xmatched_cat._ddf, nd.NestedFrame)
             xmatched = xmatched_cat.compute()
+        alignment = align_catalogs(small_sky_catalog, small_sky_xmatch_catalog)
+        assert xmatched_cat.hc_structure.moc == alignment.moc
+        assert xmatched_cat.get_healpix_pixels() == alignment.pixel_tree.get_healpix_pixels()
+
         assert isinstance(xmatched, npd.NestedFrame)
         assert len(xmatched) == len(xmatch_correct)
         for _, correct_row in xmatch_correct.iterrows():
