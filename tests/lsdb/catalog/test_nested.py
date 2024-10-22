@@ -39,7 +39,9 @@ def test_dropna_on_nested(small_sky_with_nested_sources):
 
 def test_nest_lists(small_sky_with_nested_sources):
     """Test the behavior of catalog.nest_lists"""
-    cat_ndf = small_sky_with_nested_sources._ddf
+    cat_ndf = small_sky_with_nested_sources._ddf.map_partitions(
+        lambda df: df.set_index(df.index.to_numpy() + np.arange(len(df)))
+    )
     catlists_ndf = cat_ndf.sources.nest.to_lists()
     smallsky_lists = cat_ndf[["id", "ra", "dec"]].join(catlists_ndf)
     small_sky_with_nested_sources._ddf = smallsky_lists

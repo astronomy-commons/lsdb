@@ -40,6 +40,7 @@ class MarginCatalogGenerator:
             margin_order (int): The order at which to generate the margin cache
             margin_threshold (float): The size of the margin cache boundary, in arcseconds
             use_pyarrow_types (bool): If True, use pyarrow types. Defaults to True.
+            **kwargs: Arguments to pass to the creation of the catalog info.
         """
         self.dataframe: npd.NestedFrame = catalog.compute().copy()
         self.hc_structure = catalog.hc_structure
@@ -80,8 +81,8 @@ class MarginCatalogGenerator:
         if len(pixels) == 0:
             return None
         ddf, ddf_pixel_map, total_rows = self._generate_dask_df_and_map(pixels, partitions)
-        margin_pixels = list(ddf_pixel_map.keys())
         self.catalog_info.total_rows = total_rows
+        margin_pixels = list(ddf_pixel_map.keys())
         margin_structure = hc.catalog.MarginCatalog(
             self.catalog_info, margin_pixels, schema=self.hc_structure.schema
         )
