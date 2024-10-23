@@ -49,7 +49,7 @@ class MarginCatalogGenerator:
         self.use_pyarrow_types = use_pyarrow_types
         self.catalog_info = self._create_catalog_info(**kwargs)
 
-    def _resolve_margin_order(self) -> int:
+    def _resolve_margin_order(self):
         """Calculate the order of the margin cache to be generated. If not provided
         the margin will be calculated based on the smallest pixel possible for the threshold.
 
@@ -67,9 +67,7 @@ class MarginCatalogGenerator:
                 "margin_order must be of a higher order than the highest order catalog partition pixel."
             )
 
-        margin_pixel_nside = hp.order2nside(self.margin_order)
-        margin_pixel_avgsize = hp.nside2resol(margin_pixel_nside, arcmin=True)
-        margin_pixel_mindist = hp.avgsize2mindist(margin_pixel_avgsize)
+        margin_pixel_mindist = hp.order2mindist(self.margin_order)
         if margin_pixel_mindist * 60.0 < self.margin_threshold:
             raise ValueError("margin pixels must be larger than margin_threshold")
 
