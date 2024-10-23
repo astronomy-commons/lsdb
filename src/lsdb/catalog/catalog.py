@@ -92,6 +92,19 @@ class Catalog(HealpixDataset):
         return self._ddf._meta
 
     def query(self, expr: str) -> Catalog:
+        """Filters catalog and respective margin, if it exists, using a complex query expression
+
+        Args:
+            expr (str): Query expression to evaluate. The column names that are not valid Python
+                variables names should be wrapped in backticks, and any variable values can be
+                injected using f-strings. The use of '@' to reference variables is not supported.
+                More information about pandas query strings is available
+                `here <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.query.html>`__.
+
+        Returns:
+            A catalog that contains the data from the original catalog that complies with the query
+            expression. If a margin exists, it is filtered according to the same query expression.
+        """
         catalog = super().query(expr)
         if self.margin is not None:
             catalog.margin = self.margin.query(expr)
@@ -206,8 +219,11 @@ class Catalog(HealpixDataset):
             catalog_name=output_catalog_name,
             ra_column=self.hc_structure.catalog_info.ra_column + suffixes[0],
             dec_column=self.hc_structure.catalog_info.dec_column + suffixes[0],
+            total_rows=0,
         )
-        hc_catalog = hc.catalog.Catalog(new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(ddf))
+        hc_catalog = hc.catalog.Catalog(
+            new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(ddf), moc=alignment.moc
+        )
         return Catalog(ddf, ddf_map, hc_catalog)
 
     def cone_search(self, ra: float, dec: float, radius_arcsec: float, fine: bool = True) -> Catalog:
@@ -422,9 +438,11 @@ class Catalog(HealpixDataset):
             catalog_name=output_catalog_name,
             ra_column=self.hc_structure.catalog_info.ra_column + suffixes[0],
             dec_column=self.hc_structure.catalog_info.dec_column + suffixes[0],
+            total_rows=0,
         )
-
-        hc_catalog = hc.catalog.Catalog(new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(ddf))
+        hc_catalog = hc.catalog.Catalog(
+            new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(ddf), moc=alignment.moc
+        )
         return Catalog(ddf, ddf_map, hc_catalog)
 
     def join(
@@ -471,10 +489,10 @@ class Catalog(HealpixDataset):
                 catalog_name=output_catalog_name,
                 ra_column=self.hc_structure.catalog_info.ra_column + suffixes[0],
                 dec_column=self.hc_structure.catalog_info.dec_column + suffixes[0],
+                total_rows=0,
             )
-
             hc_catalog = hc.catalog.Catalog(
-                new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(ddf)
+                new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(ddf), moc=alignment.moc
             )
             return Catalog(ddf, ddf_map, hc_catalog)
         if left_on is None or right_on is None:
@@ -494,9 +512,11 @@ class Catalog(HealpixDataset):
             catalog_name=output_catalog_name,
             ra_column=self.hc_structure.catalog_info.ra_column + suffixes[0],
             dec_column=self.hc_structure.catalog_info.dec_column + suffixes[0],
+            total_rows=0,
         )
-
-        hc_catalog = hc.catalog.Catalog(new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(ddf))
+        hc_catalog = hc.catalog.Catalog(
+            new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(ddf), moc=alignment.moc
+        )
         return Catalog(ddf, ddf_map, hc_catalog)
 
     def join_nested(
@@ -549,10 +569,67 @@ class Catalog(HealpixDataset):
         if output_catalog_name is None:
             output_catalog_name = self.hc_structure.catalog_info.catalog_name
 
-        new_catalog_info = self.hc_structure.catalog_info.copy_and_update(catalog_name=output_catalog_name)
-
-        hc_catalog = hc.catalog.Catalog(new_catalog_info, alignment.pixel_tree)
+        new_catalog_info = self.hc_structure.catalog_info.copy_and_update(
+            catalog_name=output_catalog_name, total_rows=0
+        )
+        hc_catalog = hc.catalog.Catalog(
+            new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(ddf), moc=alignment.moc
+        )
         return Catalog(ddf, ddf_map, hc_catalog)
+
+    def nest_lists(
+        self,
+        base_columns: list[str] | None,
+        list_columns: list[str] | None = None,
+        name: str = "nested",
+    ) -> Catalog:
+        """Creates a new catalog with a set of list columns packed into a
+        nested column.
+
+        Args:
+            base_columns (list-like or None): Any columns that have non-list values in the input catalog.
+            These will simply be kept as identical columns in the result
+        list_columns (list-like or None): The list-value columns that should be packed into a nested column.
+            All columns in the list will attempt to be packed into a single
+                nested column with the name provided in `nested_name`. All columns
+                in list_columns must have pyarrow list dtypes, otherwise the
+                operation will fail. If None, is defined as all columns not in
+                `base_columns`.
+        name (str): The name of the output column the `nested_columns` are packed into.
+
+        Returns:
+            A new catalog with specified list columns nested into a new nested column.
+
+        Note:
+            As noted above, all columns in `list_columns` must have a pyarrow
+            ListType dtype. This is needed for proper meta propagation. To convert
+            a list column to this dtype, you can use this command structure:
+            `nf= nf.astype({"colname": pd.ArrowDtype(pa.list_(pa.int64()))})`
+            Where pa.int64 above should be replaced with the correct dtype of the
+            underlying data accordingly.
+            Additionally, it's a known issue in Dask
+            (https://github.com/dask/dask/issues/10139) that columns with list
+            values will by default be converted to the string type. This will
+            interfere with the ability to recast these to pyarrow lists. We
+            recommend setting the following dask config setting to prevent this:
+            `dask.config.set({"dataframe.convert-string":False})`
+        """
+        new_ddf = super().nest_lists(
+            base_columns=base_columns,
+            list_columns=list_columns,
+            name=name,
+        )
+
+        catalog = Catalog(new_ddf._ddf, self._ddf_pixel_map, self.hc_structure)
+
+        if self.margin is not None:
+            catalog.margin = self.margin.nest_lists(
+                base_columns=base_columns,
+                list_columns=list_columns,
+                name=name,
+            )
+
+        return catalog
 
     def dropna(
         self,
@@ -564,6 +641,58 @@ class Catalog(HealpixDataset):
         subset: IndexLabel | None = None,
         ignore_index: bool = False,
     ) -> Catalog:
+        """Remove missing values for one layer of nested columns in the catalog.
+
+        Parameters
+        ----------
+        axis : {0 or 'index', 1 or 'columns'}, default 0
+            Determine if rows or columns which contain missing values are
+            removed.
+
+            * 0, or 'index' : Drop rows which contain missing values.
+            * 1, or 'columns' : Drop columns which contain missing value.
+
+            Only a single axis is allowed.
+
+        how : {'any', 'all'}, default 'any'
+            Determine if row or column is removed from catalog, when we have
+            at least one NA or all NA.
+
+            * 'any' : If any NA values are present, drop that row or column.
+            * 'all' : If all values are NA, drop that row or column.
+        thresh : int, optional
+            Require that many non-NA values. Cannot be combined with how.
+        on_nested : str or bool, optional
+            If not False, applies the call to the nested dataframe in the
+            column with label equal to the provided string. If specified,
+            the nested dataframe should align with any columns given in
+            `subset`.
+        subset : column label or sequence of labels, optional
+            Labels along other axis to consider, e.g. if you are dropping rows
+            these would be a list of columns to include.
+
+            Access nested columns using `nested_df.nested_col` (where
+            `nested_df` refers to a particular nested dataframe and
+            `nested_col` is a column of that nested dataframe).
+        ignore_index : bool, default ``False``
+            If ``True``, the resulting axis will be labeled 0, 1, …, n - 1.
+
+            .. versionadded:: 2.0.0
+
+        Returns
+        -------
+        Catalog
+            Catalog with NA entries dropped from it.
+
+        Notes
+        -----
+        Operations that target a particular nested structure return a dataframe
+        with rows of that particular nested structure affected.
+
+        Values for `on_nested` and `subset` should be consistent in pointing
+        to a single layer, multi-layer operations are not supported at this
+        time.
+        """
         catalog = super().dropna(
             axis=axis, how=how, thresh=thresh, on_nested=on_nested, subset=subset, ignore_index=ignore_index
         )
@@ -576,4 +705,10 @@ class Catalog(HealpixDataset):
                 subset=subset,
                 ignore_index=ignore_index,
             )
+        return catalog
+
+    def reduce(self, func, *args, meta=None, **kwargs) -> Catalog:
+        catalog = super().reduce(func, *args, meta=meta, **kwargs)
+        if self.margin is not None:
+            catalog.margin = self.margin.reduce(func, *args, meta=meta, **kwargs)
         return catalog
