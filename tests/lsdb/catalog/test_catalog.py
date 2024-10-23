@@ -2,14 +2,15 @@ from pathlib import Path
 
 import dask.array as da
 import dask.dataframe as dd
+import hats as hc
 import hats.pixel_math.healpix_shim as hp
 import healpy
 import nested_dask as nd
 import nested_pandas as npd
 import numpy as np
+import numpy.testing as npt
 import pandas as pd
 import pytest
-from hats import read_hats
 from hats.pixel_math import HealpixPixel, spatial_index_to_healpix
 
 import lsdb
@@ -199,6 +200,29 @@ def test_save_catalog(small_sky_catalog, tmp_path):
     assert expected_catalog.hc_structure.catalog_info == small_sky_catalog.hc_structure.catalog_info
     assert expected_catalog.get_healpix_pixels() == small_sky_catalog.get_healpix_pixels()
     pd.testing.assert_frame_equal(expected_catalog.compute(), small_sky_catalog._ddf.compute())
+
+
+def test_save_catalog_point_map(small_sky_order1_catalog, tmp_path):
+    new_catalog_name = "small_sky_order1"
+    base_catalog_path = Path(tmp_path) / new_catalog_name
+    small_sky_order1_catalog.to_hats(base_catalog_path, catalog_name=new_catalog_name)
+
+    point_map_path = base_catalog_path / "point_map.fits"
+    assert hc.io.file_io.does_file_or_directory_exist(point_map_path)
+    map_fits_image = hp.read_map(point_map_path, nest=True, h=True)
+    histogram, header_dict = map_fits_image[0], dict(map_fits_image[1])
+
+    # The histogram and the sky map histogram match
+    assert len(small_sky_order1_catalog) == np.sum(histogram)
+    expected_histogram = small_sky_order1_catalog.skymap_histogram(lambda df, _: len(df), order=8)
+    npt.assert_array_equal(expected_histogram, histogram)
+
+    # Check the fits file metadata
+    assert header_dict["PIXTYPE"] == "HEALPIX"
+    assert header_dict["ORDERING"] == "NESTED"
+    assert header_dict["INDXSCHM"] == "IMPLICIT"
+    assert header_dict["OBJECT"] == "FULLSKY"
+    assert header_dict["NSIDE"] == 256
 
 
 def test_save_catalog_overwrite(small_sky_catalog, tmp_path):
@@ -626,7 +650,7 @@ def test_filtered_catalog_has_undetermined_len(small_sky_order1_catalog, small_s
     with pytest.raises(ValueError, match="undetermined"):
         len(small_sky_order1_catalog.order_search(max_order=2))
     with pytest.raises(ValueError, match="undetermined"):
-        catalog_index = read_hats(small_sky_order1_id_index_dir)
+        catalog_index = hc.read_hats(small_sky_order1_id_index_dir)
         len(small_sky_order1_catalog.index_search([900], catalog_index))
     with pytest.raises(ValueError, match="undetermined"):
         len(small_sky_order1_catalog.pixel_search([(0, 11)]))
