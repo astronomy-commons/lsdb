@@ -658,3 +658,27 @@ def test_joined_catalog_has_undetermined_len(
         )
     with pytest.raises(ValueError, match="undetermined"):
         len(small_sky_order1_catalog.merge_asof(small_sky_xmatch_catalog))
+
+
+def test_modified_hc_structure_is_a_deep_copy(small_sky_order1_catalog):
+    assert small_sky_order1_catalog.hc_structure.pixel_tree is not None
+    assert small_sky_order1_catalog.hc_structure.catalog_path is not None
+    assert small_sky_order1_catalog.hc_structure.schema is not None
+    assert small_sky_order1_catalog.hc_structure.moc is not None
+    assert small_sky_order1_catalog.hc_structure.catalog_info.total_rows == 131
+
+    modified_hc_structure = small_sky_order1_catalog._create_modified_hc_structure(total_rows=0)
+    modified_hc_structure.pixel_tree = None
+    modified_hc_structure.catalog_path = None
+    modified_hc_structure.schema = None
+    modified_hc_structure.moc = None
+
+    # The original catalog structure is not modified
+    assert small_sky_order1_catalog.hc_structure.pixel_tree is not None
+    assert small_sky_order1_catalog.hc_structure.catalog_path is not None
+    assert small_sky_order1_catalog.hc_structure.schema is not None
+    assert small_sky_order1_catalog.hc_structure.moc is not None
+    assert small_sky_order1_catalog.hc_structure.catalog_info.total_rows == 131
+
+    # The rows of the new structure are invalidated
+    assert modified_hc_structure.catalog_info.total_rows == 0
