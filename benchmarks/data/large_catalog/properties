@@ -1,0 +1,6 @@
+#HATS catalog
+obs_collection=large_catalog
+dataproduct_type=object
+hats_nrows=196608
+hats_col_ra=
+hats_col_dec=

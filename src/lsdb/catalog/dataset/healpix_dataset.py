@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import copy
 import warnings
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Tuple, cast
@@ -82,6 +81,20 @@ class HealpixDataset(Dataset):
         """
         return len(self.hc_structure)
 
+    def _create_modified_hc_structure(self, **kwargs) -> HCHealpixDataset:
+        """Copy the catalog structure and override the specified catalog info parameters.
+
+        Returns:
+            A copy of the catalog's structure with updated info parameters.
+        """
+        return self.hc_structure.__class__(
+            catalog_info=self.hc_structure.catalog_info.copy_and_update(**kwargs),
+            pixels=self.hc_structure.pixel_tree,
+            catalog_path=self.hc_structure.catalog_path,
+            schema=self.hc_structure.schema,
+            moc=self.hc_structure.moc,
+        )
+
     def get_healpix_pixels(self) -> List[HealpixPixel]:
         """Get all HEALPix pixels that are contained in the catalog
 
@@ -146,8 +159,7 @@ class HealpixDataset(Dataset):
             with the query expression
         """
         ndf = self._ddf.query(expr)
-        hc_structure = copy.copy(self.hc_structure)
-        hc_structure.catalog_info.total_rows = 0
+        hc_structure = self._create_modified_hc_structure(total_rows=0)
         return self.__class__(ndf, self._ddf_pixel_map, hc_structure)
 
     def _perform_search(
@@ -527,8 +539,7 @@ class HealpixDataset(Dataset):
             return df
 
         ndf = self._ddf.map_partitions(drop_na_part, meta=self._ddf._meta)
-        hc_structure = copy.copy(self.hc_structure)
-        hc_structure.catalog_info.total_rows = 0
+        hc_structure = self._create_modified_hc_structure(total_rows=0)
         return self.__class__(ndf, self._ddf_pixel_map, hc_structure)
 
     def nest_lists(
@@ -574,9 +585,7 @@ class HealpixDataset(Dataset):
             list_columns=list_columns,
             name=name,
         )
-
-        hc_structure = copy.copy(self.hc_structure)
-        hc_structure.catalog_info.total_rows = 0
+        hc_structure = self._create_modified_hc_structure(total_rows=0)
         return self.__class__(new_ddf, self._ddf_pixel_map, hc_structure)
 
     def reduce(self, func, *args, meta=None, append_columns=False, **kwargs) -> Self:
@@ -643,13 +652,10 @@ class HealpixDataset(Dataset):
 
         ndf = nd.NestedFrame.from_dask_dataframe(self._ddf.map_partitions(reduce_part, meta=meta))
 
-        hc_catalog = self.hc_structure
+        hc_updates: dict = {"total_rows": 0}
         if not append_columns:
-            new_catalog_info = self.hc_structure.catalog_info.copy_and_update(ra_column="", dec_column="")
-            hc_catalog = self.hc_structure.__class__(
-                new_catalog_info,
-                self.hc_structure.pixel_tree,
-                schema=get_arrow_schema(ndf),
-                moc=self.hc_structure.moc,
-            )
+            hc_updates = {**hc_updates, "ra_column": "", "dec_column": ""}
+
+        hc_catalog = self._create_modified_hc_structure(**hc_updates)
+        hc_catalog.schema = get_arrow_schema(ndf)
         return self.__class__(ndf, self._ddf_pixel_map, hc_catalog)

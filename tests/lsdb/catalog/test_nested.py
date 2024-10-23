@@ -72,6 +72,9 @@ def test_reduce(small_sky_with_nested_sources):
     assert isinstance(reduced_cat, Catalog)
     assert isinstance(reduced_cat._ddf, nd.NestedFrame)
 
+    assert reduced_cat.hc_structure.catalog_info.ra_column == ""
+    assert reduced_cat.hc_structure.catalog_info.dec_column == ""
+
     reduced_cat_compute = reduced_cat.compute()
     assert isinstance(reduced_cat_compute, npd.NestedFrame)
 

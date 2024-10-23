@@ -59,7 +59,7 @@ def time_box_filter_on_partition():
     mock_partition_df = pd.DataFrame(
         np.linspace(-1000, 1000, 100_000), columns=[metadata.catalog_info.ra_column]
     )
-    box_filter(mock_partition_df, ra=(-20, 40), dec=None, metadata=metadata.catalog_info).compute()
+    box_filter(mock_partition_df, ra=(-20, 40), dec=None, metadata=metadata.catalog_info)
 
 
 def time_create_midsize_catalog():
