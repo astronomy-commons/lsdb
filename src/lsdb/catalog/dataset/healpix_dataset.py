@@ -442,6 +442,7 @@ class HealpixDataset(Dataset):
     def to_hats(
         self,
         base_catalog_path: str | Path | UPath,
+        *,
         catalog_name: str | None = None,
         overwrite: bool = False,
         **kwargs,
@@ -454,7 +455,17 @@ class HealpixDataset(Dataset):
             overwrite (bool): If True existing catalog is overwritten
             **kwargs: Arguments to pass to the parquet write operations
         """
-        io.to_hats(self, base_catalog_path, catalog_name, overwrite, **kwargs)
+        default_histogram_order = 8
+        max_catalog_depth = self.hc_structure.pixel_tree.get_max_depth()
+        histogram_order = max(max_catalog_depth, default_histogram_order)
+        io.to_hats(
+            self,
+            base_catalog_path=base_catalog_path,
+            catalog_name=catalog_name,
+            histogram_order=histogram_order,
+            overwrite=overwrite,
+            **kwargs,
+        )
 
     def dropna(
         self,
