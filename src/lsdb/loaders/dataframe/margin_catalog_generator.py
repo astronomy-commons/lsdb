@@ -8,9 +8,8 @@ import nested_dask as nd
 import nested_pandas as npd
 import numpy as np
 import pandas as pd
-from hats import pixel_math
 from hats.catalog import CatalogType, TableProperties
-from hats.pixel_math import HealpixPixel
+from hats.pixel_math import HealpixPixel, get_margin
 from hats.pixel_math.healpix_pixel_function import get_pixel_argsort
 
 from lsdb import Catalog
@@ -45,31 +44,32 @@ class MarginCatalogGenerator:
         self.dataframe: npd.NestedFrame = catalog.compute().copy()
         self.hc_structure = catalog.hc_structure
         self.margin_threshold = margin_threshold
-        self.margin_order = self._set_margin_order(margin_order)
+        self.margin_order = margin_order
+        self._resolve_margin_order()
         self.use_pyarrow_types = use_pyarrow_types
         self.catalog_info = self._create_catalog_info(**kwargs)
 
-    def _set_margin_order(self, margin_order: int | None) -> int:
+    def _resolve_margin_order(self):
         """Calculate the order of the margin cache to be generated. If not provided
-        the margin will be greater than that of the original catalog by 1.
-
-        Args:
-            margin_order (int): The order to generate the margin cache with
-
-        Returns:
-            The validated order of the margin catalog.
+        the margin will be calculated based on the smallest pixel possible for the threshold.
 
         Raises:
-            ValueError: if the provided margin order is lower than that of the catalog.
+            ValueError: if the margin order and thresholds are incompatible with the catalog.
         """
-        margin_pixel_k = self.hc_structure.partition_info.get_highest_order() + 1
-        if margin_order is None or margin_order == -1:
-            margin_order = margin_pixel_k
-        elif margin_order < margin_pixel_k:
+
+        highest_order = int(self.hc_structure.partition_info.get_highest_order())
+
+        if self.margin_order < 0:
+            self.margin_order = hp.margin2order(margin_thr_arcmin=self.margin_threshold / 60.0)
+
+        if self.margin_order < highest_order + 1:
             raise ValueError(
                 "margin_order must be of a higher order than the highest order catalog partition pixel."
             )
-        return margin_order
+
+        margin_pixel_mindist = hp.order2mindist(self.margin_order)
+        if margin_pixel_mindist * 60.0 < self.margin_threshold:
+            raise ValueError("margin pixels must be larger than margin_threshold")
 
     def create_catalog(self) -> MarginCatalog | None:
         """Create a margin catalog for another pre-computed catalog
@@ -147,7 +147,7 @@ class MarginCatalogGenerator:
             order = pixel.order
             pix = pixel.pixel
             d_order = self.margin_order - order
-            margins = pixel_math.get_margin(order, pix, d_order)
+            margins = get_margin(order, pix, d_order)
             for m_p in margins:
                 n_orders.append(order)
                 part_pix.append(pix)
@@ -182,34 +182,8 @@ class MarginCatalogGenerator:
                 ["partition_order", "partition_pixel"]
             ):
                 margin_pixel = HealpixPixel(partition_group[0], partition_group[1])
-                df = self._get_data_in_margin(partition_df, margin_pixel)
-                if len(df):
-                    df = _format_margin_partition_dataframe(df)
-                    margin_pixel_df_map[margin_pixel] = df
+                margin_pixel_df_map[margin_pixel] = _format_margin_partition_dataframe(partition_df)
         return margin_pixel_df_map
-
-    def _get_data_in_margin(
-        self, partition_df: npd.NestedFrame, margin_pixel: HealpixPixel
-    ) -> npd.NestedFrame:
-        """Calculate the margin boundaries for the HEALPix and include the points
-        on the margin according to the specified threshold
-
-        Args:
-            partition_df (pd.DataFrame): The margin pixel data
-            margin_pixel (HealpixPixel): The margin HEALPix
-
-        Returns:
-            A Pandas Dataframe with the points of the partition that are within
-            the specified threshold in the margin.
-        """
-        margin_mask = pixel_math.check_margin_bounds(
-            partition_df[self.hc_structure.catalog_info.ra_column].to_numpy(),
-            partition_df[self.hc_structure.catalog_info.dec_column].to_numpy(),
-            margin_pixel.order,
-            margin_pixel.pixel,
-            self.margin_threshold,
-        )
-        return partition_df.iloc[margin_mask]
 
     def _create_catalog_info(self, catalog_name: str | None = None, **kwargs) -> TableProperties:
         """Create the margin catalog info object
