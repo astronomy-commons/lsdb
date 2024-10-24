@@ -22,15 +22,15 @@ BENCH_DATA_DIR = Path(__file__).parent / "data"
 
 
 def load_small_sky():
-    return lsdb.read_hats(TEST_DIR / DATA_DIR_NAME / SMALL_SKY_DIR_NAME, catalog_type=lsdb.Catalog)
+    return lsdb.read_hats(TEST_DIR / DATA_DIR_NAME / SMALL_SKY_DIR_NAME)
 
 
 def load_small_sky_order1():
-    return lsdb.read_hats(TEST_DIR / DATA_DIR_NAME / SMALL_SKY_ORDER1, catalog_type=lsdb.Catalog)
+    return lsdb.read_hats(TEST_DIR / DATA_DIR_NAME / SMALL_SKY_ORDER1)
 
 
 def load_small_sky_xmatch():
-    return lsdb.read_hats(TEST_DIR / DATA_DIR_NAME / SMALL_SKY_XMATCH_NAME, catalog_type=lsdb.Catalog)
+    return lsdb.read_hats(TEST_DIR / DATA_DIR_NAME / SMALL_SKY_XMATCH_NAME)
 
 
 def time_kdtree_crossmatch():

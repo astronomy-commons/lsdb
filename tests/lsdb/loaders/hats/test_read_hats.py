@@ -106,18 +106,13 @@ def test_parquet_data_in_partitions_match_files(small_sky_order1_dir, small_sky_
 
 
 def test_read_hats_specify_catalog_type(small_sky_catalog, small_sky_dir):
-    catalog = lsdb.read_hats(small_sky_dir, catalog_type=lsdb.Catalog)
+    catalog = lsdb.read_hats(small_sky_dir)
     assert isinstance(catalog, lsdb.Catalog)
     assert isinstance(catalog._ddf, nd.NestedFrame)
     pd.testing.assert_frame_equal(catalog.compute(), small_sky_catalog.compute())
     assert catalog.get_healpix_pixels() == small_sky_catalog.get_healpix_pixels()
     assert catalog.hc_structure.catalog_info == small_sky_catalog.hc_structure.catalog_info
     assert isinstance(catalog.compute(), npd.NestedFrame)
-
-
-def test_read_hats_specify_wrong_catalog_type(small_sky_dir):
-    with pytest.raises(ValueError):
-        lsdb.read_hats(small_sky_dir, catalog_type=int)
 
 
 def test_catalog_with_margin_object(small_sky_xmatch_dir, small_sky_xmatch_margin_catalog):

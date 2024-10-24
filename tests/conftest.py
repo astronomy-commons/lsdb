@@ -123,7 +123,7 @@ def small_sky_order1_id_index_dir(test_data_dir):
 
 @pytest.fixture
 def small_sky_catalog(small_sky_dir):
-    return lsdb.read_hats(small_sky_dir, catalog_type=lsdb.catalog.Catalog)
+    return lsdb.read_hats(small_sky_dir)
 
 
 @pytest.fixture
