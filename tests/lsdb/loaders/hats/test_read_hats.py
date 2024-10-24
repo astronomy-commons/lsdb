@@ -7,7 +7,6 @@ import numpy as np
 import numpy.testing as npt
 import pandas as pd
 import pytest
-from hats.catalog.index.index_catalog import IndexCatalog
 from hats.pixel_math import HealpixPixel
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN, compute_spatial_index
 from pandas.core.dtypes.base import ExtensionDtype
@@ -188,7 +187,7 @@ def test_read_hats_subset_with_index_search(
     small_sky_order1_catalog,
     small_sky_order1_id_index_dir,
 ):
-    catalog_index = IndexCatalog.read_hats(small_sky_order1_id_index_dir)
+    catalog_index = hc.read_hats(small_sky_order1_id_index_dir)
     # Filtering using catalog's index_search
     index_search_catalog = small_sky_order1_catalog.index_search([700], catalog_index)
     # Filtering when calling `read_hats`
@@ -212,7 +211,7 @@ def test_read_hats_subset_with_order_search(small_sky_source_catalog, small_sky_
 
 def test_read_hats_subset_no_partitions(small_sky_order1_dir, small_sky_order1_id_index_dir):
     with pytest.raises(ValueError, match="no coverage"):
-        catalog_index = IndexCatalog.read_hats(small_sky_order1_id_index_dir)
+        catalog_index = hc.read_hats(small_sky_order1_id_index_dir)
         index_search = IndexSearch([900], catalog_index)
         lsdb.read_hats(small_sky_order1_dir, search_filter=index_search)
 

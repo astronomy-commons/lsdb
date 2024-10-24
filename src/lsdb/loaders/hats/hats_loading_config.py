@@ -65,3 +65,10 @@ class HatsLoadingConfig:
                 url_params["filters"].append(f"{filtr[0]}{filtr[1]}{filtr[2]}")
 
         return url_params
+
+    def get_read_kwargs(self):
+        """Clumps existing kwargs and `dtype_backend`, if specified."""
+        kwargs = dict(self.kwargs)
+        if self.dtype_backend is not None:
+            kwargs["dtype_backend"] = self.dtype_backend
+        return kwargs

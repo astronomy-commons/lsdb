@@ -113,7 +113,7 @@ def small_sky_to_order1_source_soft_dir(test_data_dir):
 
 @pytest.fixture
 def small_sky_hats_catalog(small_sky_dir):
-    return hc.catalog.Catalog.read_hats(small_sky_dir)
+    return hc.read_hats(small_sky_dir)
 
 
 @pytest.fixture
@@ -158,7 +158,7 @@ def small_sky_to_xmatch_soft_catalog(small_sky_to_xmatch_soft_dir):
 
 @pytest.fixture
 def small_sky_order1_hats_catalog(small_sky_order1_dir):
-    return hc.catalog.Catalog.read_hats(small_sky_order1_dir)
+    return hc.read_hats(small_sky_order1_dir)
 
 
 @pytest.fixture
