@@ -58,10 +58,8 @@ class HatsCatalogLoader(AbstractCatalogLoader[Catalog]):
                 str(self.config.margin_cache),
                 HatsLoadingConfig(
                     search_filter=self.config.search_filter,
-                    columns=self.config.columns,
                     margin_cache=None,
-                    dtype_backend=self.config.dtype_backend,
-                    **self.config.kwargs,
+                    parquet_config=self.config.parquet_config,
                 ),
             ).load_catalog()
         return margin_catalog

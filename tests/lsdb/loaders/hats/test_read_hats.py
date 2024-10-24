@@ -79,6 +79,20 @@ def test_read_hats_with_extra_kwargs(small_sky_order1_dir):
     assert np.greater(catalog.compute()["ra"].to_numpy(), 300).all()
 
 
+def test_read_hats_with_margin_extra_kwargs(small_sky_xmatch_dir, small_sky_xmatch_margin_dir):
+    catalog = lsdb.read_hats(
+        small_sky_xmatch_dir,
+        margin_cache=small_sky_xmatch_margin_dir,
+        columns=["ra", "dec"],
+        filters=[("ra", ">", 300)],
+        engine="pyarrow",
+    )
+    assert isinstance(catalog, lsdb.Catalog)
+    filtered_cat = catalog.compute()
+    assert all(catalog.columns == ["ra", "dec"])
+    assert np.all(filtered_cat["ra"] > 300)
+
+
 def test_pixels_in_map_equal_catalog_pixels(small_sky_order1_dir, small_sky_order1_hats_catalog):
     catalog = lsdb.read_hats(small_sky_order1_dir)
     for healpix_pixel in small_sky_order1_hats_catalog.get_healpix_pixels():

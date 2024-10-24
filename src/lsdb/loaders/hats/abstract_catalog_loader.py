@@ -68,40 +68,35 @@ class AbstractCatalogLoader(Generic[CatalogTypeVar]):
         self, catalog: HCHealpixDataset, ordered_pixels: List[HealpixPixel], divisions: Tuple[int, ...] | None
     ) -> nd.NestedFrame:
         dask_meta_schema = self._create_dask_meta_schema(catalog.schema)
+        parquet_config = self.config.parquet_config
         if len(ordered_pixels) > 0:
             return nd.NestedFrame.from_map(
                 read_pixel,
                 ordered_pixels,
                 catalog=catalog,
-                query_url_params=self.config.make_query_url_params(),
-                columns=self.config.columns,
+                query_url_params=parquet_config.make_query_url_params(),
                 divisions=divisions,
                 meta=dask_meta_schema,
                 schema=catalog.schema,
-                **self._get_kwargs(),
+                **parquet_config.generate_kwargs(),
             )
         return nd.NestedFrame.from_pandas(dask_meta_schema, npartitions=1)
 
     def _create_dask_meta_schema(self, schema: pa.Schema) -> npd.NestedFrame:
         """Creates the Dask meta DataFrame from the HATS catalog schema."""
-        dask_meta_schema = schema.empty_table().to_pandas(types_mapper=self.config.get_dtype_mapper())
+        columns = self.config.parquet_config.columns
+        type_mapper = self.config.parquet_config.get_dtype_mapper()
+        dask_meta_schema = schema.empty_table().to_pandas(types_mapper=type_mapper)
         if (
             dask_meta_schema.index.name != SPATIAL_INDEX_COLUMN
             and SPATIAL_INDEX_COLUMN in dask_meta_schema.columns
         ):
             dask_meta_schema = dask_meta_schema.set_index(SPATIAL_INDEX_COLUMN)
-            if self.config.columns is not None and SPATIAL_INDEX_COLUMN in self.config.columns:
-                self.config.columns.remove(SPATIAL_INDEX_COLUMN)
-        if self.config.columns is not None:
-            dask_meta_schema = dask_meta_schema[self.config.columns]
+            if columns is not None and SPATIAL_INDEX_COLUMN in columns:
+                columns.remove(SPATIAL_INDEX_COLUMN)
+        if columns is not None:
+            dask_meta_schema = dask_meta_schema[columns]
         return npd.NestedFrame(dask_meta_schema)
-
-    def _get_kwargs(self) -> dict:
-        """Constructs additional arguments for the `read_parquet` call"""
-        kwargs = dict(self.config.kwargs)
-        if self.config.dtype_backend is not None:
-            kwargs["dtype_backend"] = self.config.dtype_backend
-        return kwargs
 
 
 def read_pixel(

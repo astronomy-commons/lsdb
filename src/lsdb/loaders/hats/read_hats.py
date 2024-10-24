@@ -16,6 +16,7 @@ from lsdb.core.search.abstract_search import AbstractSearch
 from lsdb.loaders.hats.abstract_catalog_loader import CatalogTypeVar
 from lsdb.loaders.hats.hats_loader_factory import get_loader_for_type
 from lsdb.loaders.hats.hats_loading_config import HatsLoadingConfig
+from lsdb.loaders.hats.parquet_config import ParquetConfig
 
 dataset_class_for_catalog_type: Dict[CatalogType, Type[Dataset]] = {
     CatalogType.OBJECT: Catalog,
@@ -28,12 +29,14 @@ dataset_class_for_catalog_type: Dict[CatalogType, Type[Dataset]] = {
 # pylint: disable=unused-argument
 def read_hats(
     path: str | Path | UPath,
+    *,
     catalog_type: Type[CatalogTypeVar] | None = None,
     search_filter: AbstractSearch | None = None,
-    columns: List[str] | None = None,
     margin_cache: MarginCatalog | str | Path | UPath | None = None,
+    columns: List[str] | None = None,
+    filters: List[tuple] | List[list[tuple]] | None = None,
     dtype_backend: str | None = "pyarrow",
-    **kwargs,
+    **parquet_kwargs,
 ) -> CatalogTypeVar | None:
     """Load a catalog from a HATS formatted catalog.
 
@@ -58,28 +61,48 @@ def read_hats(
             type for type checking, the type of the catalog can be specified here. Use by specifying
             the lsdb class for that catalog.
         search_filter (Type[AbstractSearch]): Default `None`. The filter method to be applied.
-        columns (List[str]): Default `None`. The set of columns to filter the catalog on.
         margin_cache (MarginCatalog or path-like): The margin cache for the main catalog,
             provided as a path on disk or as an instance of the MarginCatalog object. Defaults to None.
+        columns (List[str]): Default `None`. The set of columns to filter the catalog on.
+        filters (List[tuple] | List[list[tuple]]): Filters to pass to the parquet reader.
         dtype_backend (str): Backend data type to apply to the catalog.
             Defaults to "pyarrow". If None, no type conversion is performed.
-        **kwargs: Arguments to pass to the pandas parquet file reader
+        **parquet_kwargs: Additional arguments to pass to the pandas parquet file reader.
 
     Returns:
         Catalog object loaded from the given parameters
     """
     # Creates a config object to store loading parameters from all keyword arguments.
-    kwd_args = locals().copy()
-    config_args = {field.name: kwd_args[field.name] for field in dataclasses.fields(HatsLoadingConfig)}
-    config = HatsLoadingConfig(**config_args)
-
+    all_kwargs = locals().copy()
+    hats_kwargs = _extract_hats_kwargs(**all_kwargs)
+    parquet_kwargs = _extract_parquet_kwargs(**all_kwargs)
+    config = HatsLoadingConfig.create(hats_kwargs, parquet_kwargs)
     catalog_type_to_use = _get_dataset_class_from_catalog_info(path)
-
     if catalog_type is not None:
         catalog_type_to_use = catalog_type
-
     loader = get_loader_for_type(catalog_type_to_use, path, config)
     return loader.load_catalog()
+
+
+def _extract_hats_kwargs(**all_kwargs):
+    """Create a dictionary with the HATS specific configuration fields"""
+    hats_valid_fields = [
+        field for field in dataclasses.fields(HatsLoadingConfig) if field.name != "parquet_config"
+    ]
+    return _extract_kwargs(hats_valid_fields, **all_kwargs)
+
+
+def _extract_parquet_kwargs(**all_kwargs):
+    """Create a dictionary with the parquet-reader specific configuration fields"""
+    parquet_valid_fields = dataclasses.fields(ParquetConfig)
+    explicit_kwargs = _extract_kwargs(parquet_valid_fields, **all_kwargs)
+    implicit_kwargs = _extract_kwargs(parquet_valid_fields, **all_kwargs["parquet_kwargs"])
+    return {**explicit_kwargs, **implicit_kwargs}
+
+
+def _extract_kwargs(valid_fields: list, **kwargs):
+    """Extract keyword arguments from a set of valid configuration fields"""
+    return {field.name: kwargs[field.name] for field in valid_fields if field.name in kwargs}
 
 
 def _get_dataset_class_from_catalog_info(base_catalog_path: str | Path | UPath) -> Type[Dataset]:
