@@ -204,7 +204,10 @@ def read_pixel(
     schema=None,
     **kwargs,
 ):
-    """Utility method to read a single pixel's parquet file from disk."""
+    """Utility method to read a single pixel's parquet file from disk.
+
+    NB: `columns` is necessary as an argument, even if None, so that dask-expr
+    optimizes the execution plan."""
     if (
         columns is not None
         and schema is not None
