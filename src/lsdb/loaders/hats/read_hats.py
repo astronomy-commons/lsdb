@@ -82,12 +82,12 @@ def read_hats(
     if catalog_type == CatalogType.MARGIN:
         return _load_margin_catalog(hc_catalog, config)
     if catalog_type == CatalogType.ASSOCIATION:
-        return _load_assocation_catalog(hc_catalog, config)
+        return _load_association_catalog(hc_catalog, config)
 
     raise NotImplementedError(f"Cannot load catalog of type {catalog_type}")
 
 
-def _load_assocation_catalog(hc_catalog, config):
+def _load_association_catalog(hc_catalog, config):
     """Load a catalog from the configuration specified when the loader was created
 
     Returns:

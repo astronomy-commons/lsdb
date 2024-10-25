@@ -48,6 +48,20 @@ def test_read_hats_no_pandas(small_sky_order1_no_pandas_dir, assert_divisions_ar
     assert_index_correct(catalog)
 
 
+def test_read_hats_with_margin_extra_kwargs(small_sky_xmatch_dir, small_sky_xmatch_margin_dir):
+    catalog = lsdb.read_hats(
+        small_sky_xmatch_dir,
+        margin_cache=small_sky_xmatch_margin_dir,
+        columns=["ra", "dec"],
+        filters=[("ra", ">", 300)],
+        engine="pyarrow",
+    )
+    assert isinstance(catalog, lsdb.Catalog)
+    filtered_cat = catalog.compute()
+    assert all(catalog.columns == ["ra", "dec"])
+    assert np.all(filtered_cat["ra"] > 300)
+
+
 def test_read_hats_with_columns(small_sky_order1_dir):
     filter_columns = ["ra", "dec"]
     catalog = lsdb.read_hats(small_sky_order1_dir, columns=filter_columns)
