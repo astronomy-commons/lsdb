@@ -3,8 +3,8 @@ from pathlib import Path
 import dask.array as da
 import dask.dataframe as dd
 import hats as hc
+import hats
 import hats.pixel_math.healpix_shim as hp
-import healpy
 import nested_dask as nd
 import nested_pandas as npd
 import numpy as np
@@ -483,11 +483,14 @@ def test_skymap_plot(small_sky_order1_catalog, mocker):
 
 # pylint: disable=no-member
 def test_plot_pixels(small_sky_order1_catalog, mocker):
-    mocker.patch("hc.inspection.visualize_catalog.plot_healpix_map")
+    mocker.patch("hats.catalog.healpix_dataset.healpix_dataset.plot_pixels")
     small_sky_order1_catalog.plot_pixels()
 
-    # hats.inspection.visualize_catalog.plot_healpix_map.assert_called_once()
-    # assert (hats.inspection.visualize_catalog.plot_healpix_map.call_args[0][0] == [1, 1, 1, 1]).all()
+    hats.catalog.healpix_dataset.healpix_dataset.plot_pixels.assert_called_once()
+    assert (
+        hats.catalog.healpix_dataset.healpix_dataset.plot_pixels.call_args[0][0]
+        == small_sky_order1_catalog.hc_structure
+    )
 
 
 def test_square_bracket_columns(small_sky_order1_catalog):
