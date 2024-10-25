@@ -4,7 +4,6 @@ import dask.array as da
 import dask.dataframe as dd
 import hats as hc
 import hats.pixel_math.healpix_shim as hp
-import healpy
 import nested_dask as nd
 import nested_pandas as npd
 import numpy as np
@@ -461,7 +460,7 @@ def test_skymap_histogram_null_values_order(small_sky_order1_catalog):
 
 # pylint: disable=no-member
 def test_skymap_plot(small_sky_order1_catalog, mocker):
-    mocker.patch("healpy.mollview")
+    mocker.patch("lsdb.catalog.dataset.healpix_dataset.plot_healpix_map")
 
     def func(df, healpix):
         return len(df) / hp.nside2pixarea(hp.order2nside(healpix.order), degrees=True)
@@ -470,29 +469,27 @@ def test_skymap_plot(small_sky_order1_catalog, mocker):
     pixel_map = small_sky_order1_catalog.skymap_data(func)
     pixel_map = {pixel: value.compute() for pixel, value in pixel_map.items()}
     max_order = max(pixel_map.keys(), key=lambda x: x.order).order
-    img = np.full(hp.order2npix(max_order), hp.unseen_pixel())
+    img = np.full(hp.order2npix(max_order), 0)
     for pixel, value in pixel_map.items():
         dorder = max_order - pixel.order
         start = pixel.pixel * (4**dorder)
         end = (pixel.pixel + 1) * (4**dorder)
         img_order_pixels = np.arange(start, end)
         img[img_order_pixels] = value
-    healpy.mollview.assert_called_once()
-    assert (healpy.mollview.call_args[0][0] == img).all()
+    lsdb.catalog.dataset.healpix_dataset.plot_healpix_map.assert_called_once()
+    assert (lsdb.catalog.dataset.healpix_dataset.plot_healpix_map.call_args[0][0] == img).all()
 
 
 # pylint: disable=no-member
 def test_plot_pixels(small_sky_order1_catalog, mocker):
-    mocker.patch("healpy.mollview")
-
+    mocker.patch("hats.catalog.healpix_dataset.healpix_dataset.plot_pixels")
     small_sky_order1_catalog.plot_pixels()
 
-    # Everything will be empty, except the four pixels at order 1.
-    img = np.full(48, hp.unseen_pixel())
-    img[[44, 45, 46, 47]] = 1
-
-    healpy.mollview.assert_called_once()
-    assert (healpy.mollview.call_args[0][0] == img).all()
+    hc.catalog.healpix_dataset.healpix_dataset.plot_pixels.assert_called_once()
+    assert (
+        hc.catalog.healpix_dataset.healpix_dataset.plot_pixels.call_args[0][0]
+        == small_sky_order1_catalog.hc_structure
+    )
 
 
 def test_square_bracket_columns(small_sky_order1_catalog):

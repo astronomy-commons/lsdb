@@ -7,15 +7,13 @@ from typing import Any, Callable, Dict, Iterable, List, Tuple, cast
 import dask
 import dask.dataframe as dd
 import hats as hc
-import hats.pixel_math.healpix_shim as hp
 import nested_dask as nd
 import nested_pandas as npd
 import numpy as np
 import pandas as pd
 from dask.delayed import Delayed, delayed
 from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
-from hats.inspection import plot_pixel_list
-from hats.inspection.visualize_catalog import get_projection_method
+from hats.inspection.visualize_catalog import plot_healpix_map
 from hats.pixel_math import HealpixPixel
 from hats.pixel_math.healpix_pixel_function import get_pixel_argsort
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
@@ -396,8 +394,8 @@ class HealpixDataset(Dataset):
         self,
         func: Callable[[npd.NestedFrame, HealpixPixel], Any],
         order: int | None = None,
-        default_value: Any = hp.unseen_pixel(),
-        projection="moll",
+        default_value: Any = 0,
+        projection="MOL",
         plotting_args: Dict | None = None,
         **kwargs,
     ):
@@ -421,12 +419,11 @@ class HealpixDataset(Dataset):
         """
 
         img = self.skymap_histogram(func, order, default_value, **kwargs)
-        projection_method = get_projection_method(projection)
         if plotting_args is None:
             plotting_args = {}
-        projection_method(img, nest=True, **plotting_args)
+        return plot_healpix_map(img, projection=projection, **plotting_args)
 
-    def plot_pixels(self, projection: str = "moll", **kwargs):
+    def plot_pixels(self, projection: str = "MOL", **kwargs):
         """Create a visual map of the pixel density of the catalog.
 
         Args:
@@ -437,7 +434,7 @@ class HealpixDataset(Dataset):
                 - orth - Orthographic projection
             kwargs (dict): additional keyword arguments to pass to plotting call.
         """
-        plot_pixel_list(self.get_healpix_pixels(), projection, **kwargs)
+        return self.hc_structure.plot_pixels(projection=projection, **kwargs)
 
     def to_hats(
         self,
