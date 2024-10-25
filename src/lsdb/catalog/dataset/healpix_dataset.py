@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import copy
 import warnings
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Tuple, cast
@@ -8,15 +7,13 @@ from typing import Any, Callable, Dict, Iterable, List, Tuple, cast
 import dask
 import dask.dataframe as dd
 import hats as hc
-import hats.pixel_math.healpix_shim as hp
 import nested_dask as nd
 import nested_pandas as npd
 import numpy as np
 import pandas as pd
 from dask.delayed import Delayed, delayed
 from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
-from hats.inspection import plot_pixel_list
-from hats.inspection.visualize_catalog import get_projection_method
+from hats.inspection.visualize_catalog import plot_healpix_map
 from hats.pixel_math import HealpixPixel
 from hats.pixel_math.healpix_pixel_function import get_pixel_argsort
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
@@ -82,6 +79,20 @@ class HealpixDataset(Dataset):
         """
         return len(self.hc_structure)
 
+    def _create_modified_hc_structure(self, **kwargs) -> HCHealpixDataset:
+        """Copy the catalog structure and override the specified catalog info parameters.
+
+        Returns:
+            A copy of the catalog's structure with updated info parameters.
+        """
+        return self.hc_structure.__class__(
+            catalog_info=self.hc_structure.catalog_info.copy_and_update(**kwargs),
+            pixels=self.hc_structure.pixel_tree,
+            catalog_path=self.hc_structure.catalog_path,
+            schema=self.hc_structure.schema,
+            moc=self.hc_structure.moc,
+        )
+
     def get_healpix_pixels(self) -> List[HealpixPixel]:
         """Get all HEALPix pixels that are contained in the catalog
 
@@ -146,8 +157,7 @@ class HealpixDataset(Dataset):
             with the query expression
         """
         ndf = self._ddf.query(expr)
-        hc_structure = copy.copy(self.hc_structure)
-        hc_structure.catalog_info.total_rows = 0
+        hc_structure = self._create_modified_hc_structure(total_rows=0)
         return self.__class__(ndf, self._ddf_pixel_map, hc_structure)
 
     def _perform_search(
@@ -384,8 +394,8 @@ class HealpixDataset(Dataset):
         self,
         func: Callable[[npd.NestedFrame, HealpixPixel], Any],
         order: int | None = None,
-        default_value: Any = hp.unseen_pixel(),
-        projection="moll",
+        default_value: Any = 0,
+        projection="MOL",
         plotting_args: Dict | None = None,
         **kwargs,
     ):
@@ -409,12 +419,11 @@ class HealpixDataset(Dataset):
         """
 
         img = self.skymap_histogram(func, order, default_value, **kwargs)
-        projection_method = get_projection_method(projection)
         if plotting_args is None:
             plotting_args = {}
-        projection_method(img, nest=True, **plotting_args)
+        return plot_healpix_map(img, projection=projection, **plotting_args)
 
-    def plot_pixels(self, projection: str = "moll", **kwargs):
+    def plot_pixels(self, projection: str = "MOL", **kwargs):
         """Create a visual map of the pixel density of the catalog.
 
         Args:
@@ -425,11 +434,12 @@ class HealpixDataset(Dataset):
                 - orth - Orthographic projection
             kwargs (dict): additional keyword arguments to pass to plotting call.
         """
-        plot_pixel_list(self.get_healpix_pixels(), projection, **kwargs)
+        return self.hc_structure.plot_pixels(projection=projection, **kwargs)
 
     def to_hats(
         self,
         base_catalog_path: str | Path | UPath,
+        *,
         catalog_name: str | None = None,
         overwrite: bool = False,
         **kwargs,
@@ -442,7 +452,17 @@ class HealpixDataset(Dataset):
             overwrite (bool): If True existing catalog is overwritten
             **kwargs: Arguments to pass to the parquet write operations
         """
-        io.to_hats(self, base_catalog_path, catalog_name, overwrite, **kwargs)
+        default_histogram_order = 8
+        max_catalog_depth = self.hc_structure.pixel_tree.get_max_depth()
+        histogram_order = max(max_catalog_depth, default_histogram_order)
+        io.to_hats(
+            self,
+            base_catalog_path=base_catalog_path,
+            catalog_name=catalog_name,
+            histogram_order=histogram_order,
+            overwrite=overwrite,
+            **kwargs,
+        )
 
     def dropna(
         self,
@@ -527,8 +547,7 @@ class HealpixDataset(Dataset):
             return df
 
         ndf = self._ddf.map_partitions(drop_na_part, meta=self._ddf._meta)
-        hc_structure = copy.copy(self.hc_structure)
-        hc_structure.catalog_info.total_rows = 0
+        hc_structure = self._create_modified_hc_structure(total_rows=0)
         return self.__class__(ndf, self._ddf_pixel_map, hc_structure)
 
     def nest_lists(
@@ -574,9 +593,7 @@ class HealpixDataset(Dataset):
             list_columns=list_columns,
             name=name,
         )
-
-        hc_structure = copy.copy(self.hc_structure)
-        hc_structure.catalog_info.total_rows = 0
+        hc_structure = self._create_modified_hc_structure(total_rows=0)
         return self.__class__(new_ddf, self._ddf_pixel_map, hc_structure)
 
     def reduce(self, func, *args, meta=None, append_columns=False, **kwargs) -> Self:
@@ -643,13 +660,10 @@ class HealpixDataset(Dataset):
 
         ndf = nd.NestedFrame.from_dask_dataframe(self._ddf.map_partitions(reduce_part, meta=meta))
 
-        hc_catalog = self.hc_structure
+        hc_updates: dict = {"total_rows": 0}
         if not append_columns:
-            new_catalog_info = self.hc_structure.catalog_info.copy_and_update(ra_column="", dec_column="")
-            hc_catalog = self.hc_structure.__class__(
-                new_catalog_info,
-                self.hc_structure.pixel_tree,
-                schema=get_arrow_schema(ndf),
-                moc=self.hc_structure.moc,
-            )
+            hc_updates = {**hc_updates, "ra_column": "", "dec_column": ""}
+
+        hc_catalog = self._create_modified_hc_structure(**hc_updates)
+        hc_catalog.schema = get_arrow_schema(ndf)
         return self.__class__(ndf, self._ddf_pixel_map, hc_catalog)

@@ -230,32 +230,36 @@ def test_from_dataframe_small_sky_source_with_margins(small_sky_source_df, small
         lowest_order=0,
         highest_order=2,
         threshold=3000,
-        margin_order=8,
         margin_threshold=180,
         **kwargs,
     )
 
     assert catalog.margin is not None
-    assert isinstance(catalog.margin, MarginCatalog)
-    assert isinstance(catalog.margin._ddf, nd.NestedFrame)
-    assert catalog.margin.get_healpix_pixels() == small_sky_source_margin_catalog.get_healpix_pixels()
+    margin = catalog.margin
+    assert isinstance(margin, MarginCatalog)
+    assert isinstance(margin._ddf, nd.NestedFrame)
+    assert margin.get_healpix_pixels() == small_sky_source_margin_catalog.get_healpix_pixels()
 
-    # The points of this margin catalog are present in one partition only
-    # so we are able to perform the comparison between the computed results
-    pd.testing.assert_frame_equal(
-        catalog.margin.compute().sort_index(),
-        small_sky_source_margin_catalog.compute().sort_index(),
-        check_like=True,
-    )
-    assert isinstance(catalog.margin.compute(), npd.NestedFrame)
+    # The points of this margin catalog will be a superset of the hats-imported one,
+    # as fine filtering is not enabled here.
+    for hp_pixel in margin.hc_structure.get_healpix_pixels():
+        partition_from_df = margin.get_partition(hp_pixel.order, hp_pixel.pixel)
+        expected_df = small_sky_source_margin_catalog.get_partition(hp_pixel.order, hp_pixel.pixel)
+        assert len(expected_df) <= len(partition_from_df)
+
+        margin_source_ids = set(partition_from_df["source_id"])
+        expected_source_ids = set(expected_df["source_id"])
+        assert len(expected_source_ids - margin_source_ids) == 0
+
+    assert isinstance(margin.compute(), npd.NestedFrame)
 
     assert catalog.hc_structure.catalog_info.__pydantic_extra__["obs_regime"] == "Optical"
-    assert catalog.margin.hc_structure.catalog_info.__pydantic_extra__["obs_regime"] == "Optical"
+    assert margin.hc_structure.catalog_info.__pydantic_extra__["obs_regime"] == "Optical"
 
     assert catalog.hc_structure.catalog_info.__pydantic_extra__["hats_builder"].startswith("lsdb")
-    assert catalog.margin.hc_structure.catalog_info.__pydantic_extra__["hats_builder"].startswith("lsdb")
+    assert margin.hc_structure.catalog_info.__pydantic_extra__["hats_builder"].startswith("lsdb")
     # The margin and main catalog's schemas are the same
-    assert catalog.margin.hc_structure.schema is catalog.hc_structure.schema
+    assert margin.hc_structure.schema is catalog.hc_structure.schema
 
 
 def test_from_dataframe_invalid_margin_order(small_sky_source_df):

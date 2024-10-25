@@ -2,14 +2,14 @@ from pathlib import Path
 
 import dask.array as da
 import dask.dataframe as dd
+import hats as hc
 import hats.pixel_math.healpix_shim as hp
-import healpy
 import nested_dask as nd
 import nested_pandas as npd
 import numpy as np
+import numpy.testing as npt
 import pandas as pd
 import pytest
-from hats import read_hats
 from hats.pixel_math import HealpixPixel, spatial_index_to_healpix
 
 import lsdb
@@ -199,6 +199,29 @@ def test_save_catalog(small_sky_catalog, tmp_path):
     assert expected_catalog.hc_structure.catalog_info == small_sky_catalog.hc_structure.catalog_info
     assert expected_catalog.get_healpix_pixels() == small_sky_catalog.get_healpix_pixels()
     pd.testing.assert_frame_equal(expected_catalog.compute(), small_sky_catalog._ddf.compute())
+
+
+def test_save_catalog_point_map(small_sky_order1_catalog, tmp_path):
+    new_catalog_name = "small_sky_order1"
+    base_catalog_path = Path(tmp_path) / new_catalog_name
+    small_sky_order1_catalog.to_hats(base_catalog_path, catalog_name=new_catalog_name)
+
+    point_map_path = base_catalog_path / "point_map.fits"
+    assert hc.io.file_io.does_file_or_directory_exist(point_map_path)
+    map_fits_image = hp.read_map(point_map_path, nest=True, h=True)
+    histogram, header_dict = map_fits_image[0], dict(map_fits_image[1])
+
+    # The histogram and the sky map histogram match
+    assert len(small_sky_order1_catalog) == np.sum(histogram)
+    expected_histogram = small_sky_order1_catalog.skymap_histogram(lambda df, _: len(df), order=8)
+    npt.assert_array_equal(expected_histogram, histogram)
+
+    # Check the fits file metadata
+    assert header_dict["PIXTYPE"] == "HEALPIX"
+    assert header_dict["ORDERING"] == "NESTED"
+    assert header_dict["INDXSCHM"] == "IMPLICIT"
+    assert header_dict["OBJECT"] == "FULLSKY"
+    assert header_dict["NSIDE"] == 256
 
 
 def test_save_catalog_overwrite(small_sky_catalog, tmp_path):
@@ -437,7 +460,7 @@ def test_skymap_histogram_null_values_order(small_sky_order1_catalog):
 
 # pylint: disable=no-member
 def test_skymap_plot(small_sky_order1_catalog, mocker):
-    mocker.patch("healpy.mollview")
+    mocker.patch("lsdb.catalog.dataset.healpix_dataset.plot_healpix_map")
 
     def func(df, healpix):
         return len(df) / hp.nside2pixarea(hp.order2nside(healpix.order), degrees=True)
@@ -446,29 +469,27 @@ def test_skymap_plot(small_sky_order1_catalog, mocker):
     pixel_map = small_sky_order1_catalog.skymap_data(func)
     pixel_map = {pixel: value.compute() for pixel, value in pixel_map.items()}
     max_order = max(pixel_map.keys(), key=lambda x: x.order).order
-    img = np.full(hp.order2npix(max_order), hp.unseen_pixel())
+    img = np.full(hp.order2npix(max_order), 0)
     for pixel, value in pixel_map.items():
         dorder = max_order - pixel.order
         start = pixel.pixel * (4**dorder)
         end = (pixel.pixel + 1) * (4**dorder)
         img_order_pixels = np.arange(start, end)
         img[img_order_pixels] = value
-    healpy.mollview.assert_called_once()
-    assert (healpy.mollview.call_args[0][0] == img).all()
+    lsdb.catalog.dataset.healpix_dataset.plot_healpix_map.assert_called_once()
+    assert (lsdb.catalog.dataset.healpix_dataset.plot_healpix_map.call_args[0][0] == img).all()
 
 
 # pylint: disable=no-member
 def test_plot_pixels(small_sky_order1_catalog, mocker):
-    mocker.patch("healpy.mollview")
-
+    mocker.patch("hats.catalog.healpix_dataset.healpix_dataset.plot_pixels")
     small_sky_order1_catalog.plot_pixels()
 
-    # Everything will be empty, except the four pixels at order 1.
-    img = np.full(48, hp.unseen_pixel())
-    img[[44, 45, 46, 47]] = 1
-
-    healpy.mollview.assert_called_once()
-    assert (healpy.mollview.call_args[0][0] == img).all()
+    hc.catalog.healpix_dataset.healpix_dataset.plot_pixels.assert_called_once()
+    assert (
+        hc.catalog.healpix_dataset.healpix_dataset.plot_pixels.call_args[0][0]
+        == small_sky_order1_catalog.hc_structure
+    )
 
 
 def test_square_bracket_columns(small_sky_order1_catalog):
@@ -626,7 +647,7 @@ def test_filtered_catalog_has_undetermined_len(small_sky_order1_catalog, small_s
     with pytest.raises(ValueError, match="undetermined"):
         len(small_sky_order1_catalog.order_search(max_order=2))
     with pytest.raises(ValueError, match="undetermined"):
-        catalog_index = read_hats(small_sky_order1_id_index_dir)
+        catalog_index = hc.read_hats(small_sky_order1_id_index_dir)
         len(small_sky_order1_catalog.index_search([900], catalog_index))
     with pytest.raises(ValueError, match="undetermined"):
         len(small_sky_order1_catalog.pixel_search([(0, 11)]))
@@ -658,3 +679,27 @@ def test_joined_catalog_has_undetermined_len(
         )
     with pytest.raises(ValueError, match="undetermined"):
         len(small_sky_order1_catalog.merge_asof(small_sky_xmatch_catalog))
+
+
+def test_modified_hc_structure_is_a_deep_copy(small_sky_order1_catalog):
+    assert small_sky_order1_catalog.hc_structure.pixel_tree is not None
+    assert small_sky_order1_catalog.hc_structure.catalog_path is not None
+    assert small_sky_order1_catalog.hc_structure.schema is not None
+    assert small_sky_order1_catalog.hc_structure.moc is not None
+    assert small_sky_order1_catalog.hc_structure.catalog_info.total_rows == 131
+
+    modified_hc_structure = small_sky_order1_catalog._create_modified_hc_structure(total_rows=0)
+    modified_hc_structure.pixel_tree = None
+    modified_hc_structure.catalog_path = None
+    modified_hc_structure.schema = None
+    modified_hc_structure.moc = None
+
+    # The original catalog structure is not modified
+    assert small_sky_order1_catalog.hc_structure.pixel_tree is not None
+    assert small_sky_order1_catalog.hc_structure.catalog_path is not None
+    assert small_sky_order1_catalog.hc_structure.schema is not None
+    assert small_sky_order1_catalog.hc_structure.moc is not None
+    assert small_sky_order1_catalog.hc_structure.catalog_info.total_rows == 131
+
+    # The rows of the new structure are invalidated
+    assert modified_hc_structure.catalog_info.total_rows == 0
