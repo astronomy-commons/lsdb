@@ -2,7 +2,6 @@ from pathlib import Path
 
 import dask.array as da
 import dask.dataframe as dd
-import hats
 import hats as hc
 import hats.pixel_math.healpix_shim as hp
 import nested_dask as nd
@@ -486,9 +485,9 @@ def test_plot_pixels(small_sky_order1_catalog, mocker):
     mocker.patch("hats.catalog.healpix_dataset.healpix_dataset.plot_pixels")
     small_sky_order1_catalog.plot_pixels()
 
-    hats.catalog.healpix_dataset.healpix_dataset.plot_pixels.assert_called_once()
+    hc.catalog.healpix_dataset.healpix_dataset.plot_pixels.assert_called_once()
     assert (
-        hats.catalog.healpix_dataset.healpix_dataset.plot_pixels.call_args[0][0]
+        hc.catalog.healpix_dataset.healpix_dataset.plot_pixels.call_args[0][0]
         == small_sky_order1_catalog.hc_structure
     )
 
