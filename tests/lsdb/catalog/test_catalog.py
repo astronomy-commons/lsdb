@@ -2,8 +2,8 @@ from pathlib import Path
 
 import dask.array as da
 import dask.dataframe as dd
-import hats as hc
 import hats
+import hats as hc
 import hats.pixel_math.healpix_shim as hp
 import nested_dask as nd
 import nested_pandas as npd
