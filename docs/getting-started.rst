@@ -59,7 +59,7 @@ advanced installation instructions in the :doc:`contribution guide </developer/c
 
     .. code-block:: console
 
-        python -m pip install lsdb[full]
+        python -m pip install 'lsdb[full]'
 
 Quickstart
 --------------------------
