@@ -21,7 +21,7 @@ dependencies = [
     # dask diagnostics is required to spin up the dashboard for profiling.
     "dask[complete]",
     "deprecated",
-    "hats>=0.4",
+    "hats>=0.4.2",
     "lsst-sphgeom", # To handle spherical sky polygons
     "nested-dask",
     "nested-pandas",
@@ -44,6 +44,11 @@ dev = [
     "pytest",
     "pytest-cov", # Used to report total code coverage
     "pytest-mock", # Used to mock objects in tests
+]
+full = [
+    "fsspec[full]", # complete file system specs.
+    "ipykernel", # Support for Jupyter notebooks
+    "ipywidgets", # useful for tqdm in notebooks.
 ]
 
 [build-system]

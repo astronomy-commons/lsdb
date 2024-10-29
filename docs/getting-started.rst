@@ -49,6 +49,18 @@ The latest release version of LSDB is available to install with `pip <https://py
 LSDB can also be installed from source on `GitHub <https://github.com/astronomy-commons/lsdb>`_. See our
 advanced installation instructions in the :doc:`contribution guide </developer/contributing>`.
 
+.. tip::
+    Installing optional dependencies
+
+    There are some extra dependencies that can make running LSDB in a jupyter
+    environment easier, or connecting to a variety of remote file systems.
+
+    These can be installed with the ``full`` extra.
+
+    .. code-block:: console
+
+        python -m pip install 'lsdb[full]'
+
 Quickstart
 --------------------------
 
