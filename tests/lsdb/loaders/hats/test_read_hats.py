@@ -134,7 +134,7 @@ def test_read_hats_specify_catalog_type(small_sky_catalog, small_sky_dir):
     assert isinstance(catalog.compute(), npd.NestedFrame)
 
 
-def test_catalog_with_margin_path(
+def test_catalog_with_margin(
     small_sky_xmatch_dir, small_sky_xmatch_margin_dir, small_sky_xmatch_margin_catalog
 ):
     assert isinstance(small_sky_xmatch_margin_dir, Path)
@@ -154,6 +154,11 @@ def test_catalog_without_margin_is_none(small_sky_xmatch_dir):
     catalog = lsdb.read_hats(small_sky_xmatch_dir)
     assert isinstance(catalog, lsdb.Catalog)
     assert catalog.margin is None
+
+
+def test_catalog_with_wrong_margin(small_sky_order1_dir, small_sky_order1_source_margin_dir):
+    with pytest.raises(ValueError, match="must have the same schema"):
+        lsdb.read_hats(small_sky_order1_dir, margin_cache=small_sky_order1_source_margin_dir)
 
 
 def test_read_hats_subset_with_cone_search(small_sky_order1_dir, small_sky_order1_catalog):
