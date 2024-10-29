@@ -10,6 +10,7 @@ import numpy as np
 import pyarrow as pa
 from hats.catalog import CatalogType
 from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
+from hats.io import paths
 from hats.io.file_io import file_io
 from hats.pixel_math import HealpixPixel
 from hats.pixel_math.healpix_pixel_function import get_pixel_argsort
@@ -28,7 +29,7 @@ def read_hats(
     path: str | Path | UPath,
     search_filter: AbstractSearch | None = None,
     columns: List[str] | None = None,
-    margin_cache: MarginCatalog | str | Path | UPath | None = None,
+    margin_cache: str | Path | UPath | None = None,
     dtype_backend: str | None = "pyarrow",
     **kwargs,
 ) -> CatalogTypeVar | None:
@@ -50,8 +51,7 @@ def read_hats(
         path (UPath | Path): The path that locates the root of the HATS catalog
         search_filter (Type[AbstractSearch]): Default `None`. The filter method to be applied.
         columns (List[str]): Default `None`. The set of columns to filter the catalog on.
-        margin_cache (MarginCatalog or path-like): The margin cache for the main catalog,
-            provided as a path on disk or as an instance of the MarginCatalog object. Defaults to None.
+        margin_cache (path-like): Default `None`. The margin for the main catalog, provided as a path.
         dtype_backend (str): Backend data type to apply to the catalog.
             Defaults to "pyarrow". If None, no type conversion is performed.
         **kwargs: Arguments to pass to the pandas parquet file reader
@@ -146,15 +146,24 @@ def _load_object_catalog(hc_catalog, config):
     catalog = Catalog(dask_df, dask_df_pixel_map, hc_catalog)
     if config.search_filter is not None:
         catalog = catalog.search(config.search_filter)
-    if isinstance(config.margin_cache, MarginCatalog):
-        catalog.margin = config.margin_cache
-        if config.search_filter is not None:
-            # pylint: disable=protected-access
-            catalog.margin = catalog.margin.search(config.search_filter)
-    elif config.margin_cache is not None:
-        hc_catalog = hc.read_hats(config.margin_cache)
-        catalog.margin = _load_margin_catalog(hc_catalog, config)
+    if config.margin_cache is not None:
+        margin_hc_catalog = hc.read_hats(config.margin_cache)
+        margin = _load_margin_catalog(margin_hc_catalog, config)
+        _validate_margin_catalog(margin_hc_catalog, hc_catalog)
+        catalog.margin = margin
     return catalog
+
+
+def _validate_margin_catalog(margin_hc_catalog, hc_catalog):
+    """Validate that the margin catalog and the main catalog are compatible"""
+    pixel_columns = [paths.PARTITION_ORDER, paths.PARTITION_DIR, paths.PARTITION_PIXEL]
+    margin_pixel_columns = pixel_columns + ["margin_" + column for column in pixel_columns]
+    catalog_schema = pa.schema([field for field in hc_catalog.schema if field.name not in pixel_columns])
+    margin_schema = pa.schema(
+        [field for field in margin_hc_catalog.schema if field.name not in margin_pixel_columns]
+    )
+    if not catalog_schema.equals(margin_schema):
+        raise ValueError("The margin catalog and the main catalog must have the same schema")
 
 
 def _create_dask_meta_schema(schema: pa.Schema, config) -> npd.NestedFrame:

@@ -28,7 +28,7 @@ def read_hats(
     path: str | Path | UPath,
     search_filter: AbstractSearch | None = None,
     columns: List[str] | None = None,
-    margin_cache: MarginCatalog | str | Path | UPath | None = None,
+    margin_cache: str | Path | UPath | None = None,
     dtype_backend: str | None = "pyarrow",
     **kwargs,
 ) -> Dataset | None: ...
@@ -38,7 +38,7 @@ def read_hats(
     catalog_type: Type[CatalogTypeVar],
     search_filter: AbstractSearch | None = None,
     columns: List[str] | None = None,
-    margin_cache: MarginCatalog | str | Path | UPath | None = None,
+    margin_cache: str | Path | UPath | None = None,
     dtype_backend: str | None = "pyarrow",
     **kwargs,
 ) -> CatalogTypeVar | None: ...

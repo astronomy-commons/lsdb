@@ -8,7 +8,6 @@ import pandas as pd
 from pandas.io._util import _arrow_dtype_mapping
 from upath import UPath
 
-from lsdb.catalog.margin_catalog import MarginCatalog
 from lsdb.core.search.abstract_search import AbstractSearch
 
 
@@ -25,9 +24,8 @@ class HatsLoadingConfig:
     columns: List[str] | None = None
     """Columns to load from the catalog. If not specified, all columns are loaded"""
 
-    margin_cache: MarginCatalog | str | Path | UPath | None = None
-    """Margin cache for the catalog. It can be provided as a path for the margin on disk,
-    or as a margin object instance. By default, it is None."""
+    margin_cache: str | Path | UPath | None = None
+    """Path to the margin cache catalog. Defaults to None."""
 
     dtype_backend: str | None = "pyarrow"
     """The backend data type to apply to the catalog. It defaults to "pyarrow" and 

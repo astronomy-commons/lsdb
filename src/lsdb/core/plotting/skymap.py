@@ -19,6 +19,12 @@ def perform_inner_skymap(
     **kwargs,
 ) -> np.ndarray:
     """Splits a partition into pixels at a target order and performs a given function on the new pixels"""
+    delta_order = target_order - pixel.order
+    img = np.full(1 << 2 * delta_order, fill_value=default_value)
+
+    if len(partition) == 0:
+        return img
+
     spatial_index = partition.index.to_numpy()
     order_pixels = spatial_index_to_healpix(spatial_index, target_order=target_order)
 
@@ -28,8 +34,6 @@ def perform_inner_skymap(
         return func(df, HealpixPixel(target_order, p), **kwargs)
 
     gb = partition.groupby(order_pixels, sort=False).apply(apply_func)
-    delta_order = target_order - pixel.order
-    img = np.full(1 << 2 * delta_order, fill_value=default_value)
     min_pixel_value = pixel.pixel << 2 * delta_order
     img[gb.index.to_numpy() - min_pixel_value] = gb.to_numpy(na_value=default_value)
     return img

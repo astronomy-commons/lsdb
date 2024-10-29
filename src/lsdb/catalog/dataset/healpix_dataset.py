@@ -336,13 +336,14 @@ class HealpixDataset(Dataset):
             have the default_value as its result, as well as any pixels for which the aggregate
             function returns None.
         """
+        results = {}
         partitions = self.to_delayed()
         if order is None:
             results = {
                 pixel: delayed(func)(partitions[index], pixel, **kwargs)
                 for pixel, index in self._ddf_pixel_map.items()
             }
-        else:
+        elif len(self.hc_structure.pixel_tree) > 0:
             if order < self.hc_structure.pixel_tree.get_max_depth():
                 raise ValueError(
                     f"order must be greater than or equal to max order in catalog "
