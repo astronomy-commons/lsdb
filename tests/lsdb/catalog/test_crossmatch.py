@@ -75,10 +75,10 @@ class TestCrossmatch:
 
     @staticmethod
     def test_kdtree_crossmatch_multiple_neighbors_margin(
-        algo, small_sky_catalog, small_sky_xmatch_dir, small_sky_xmatch_margin_catalog, xmatch_correct_3n_2t
+        algo, small_sky_catalog, small_sky_xmatch_dir, small_sky_xmatch_margin_dir, xmatch_correct_3n_2t
     ):
         small_sky_xmatch_catalog = lsdb.read_hats(
-            small_sky_xmatch_dir, margin_cache=small_sky_xmatch_margin_catalog
+            small_sky_xmatch_dir, margin_cache=small_sky_xmatch_margin_dir
         )
         xmatched = small_sky_catalog.crossmatch(
             small_sky_xmatch_catalog, n_neighbors=3, radius_arcsec=2 * 3600, algorithm=algo
@@ -98,11 +98,11 @@ class TestCrossmatch:
         algo,
         small_sky_left_xmatch_catalog,
         small_sky_xmatch_dir,
-        small_sky_xmatch_margin_catalog,
+        small_sky_xmatch_margin_dir,
         xmatch_correct_3n_2t_negative,
     ):
         small_sky_xmatch_catalog = lsdb.read_hats(
-            small_sky_xmatch_dir, margin_cache=small_sky_xmatch_margin_catalog
+            small_sky_xmatch_dir, margin_cache=small_sky_xmatch_margin_dir
         )
         xmatched = small_sky_left_xmatch_catalog.crossmatch(
             small_sky_xmatch_catalog, n_neighbors=3, radius_arcsec=2 * 3600, algorithm=algo
@@ -154,11 +154,11 @@ class TestBoundedCrossmatch:
         algo,
         small_sky_catalog,
         small_sky_xmatch_dir,
-        small_sky_xmatch_margin_catalog,
+        small_sky_xmatch_margin_dir,
         xmatch_correct_05_2_3n_margin,
     ):
         small_sky_xmatch_catalog = lsdb.read_hats(
-            small_sky_xmatch_dir, margin_cache=small_sky_xmatch_margin_catalog
+            small_sky_xmatch_dir, margin_cache=small_sky_xmatch_margin_dir
         )
         xmatched = small_sky_catalog.crossmatch(
             small_sky_xmatch_catalog,

@@ -134,16 +134,7 @@ def test_read_hats_specify_catalog_type(small_sky_catalog, small_sky_dir):
     assert isinstance(catalog.compute(), npd.NestedFrame)
 
 
-def test_catalog_with_margin_object(small_sky_xmatch_dir, small_sky_xmatch_margin_catalog):
-    catalog = lsdb.read_hats(small_sky_xmatch_dir, margin_cache=small_sky_xmatch_margin_catalog)
-    assert isinstance(catalog, lsdb.Catalog)
-    assert isinstance(catalog.margin, lsdb.MarginCatalog)
-    assert isinstance(catalog._ddf, nd.NestedFrame)
-    assert catalog.margin is small_sky_xmatch_margin_catalog
-    assert isinstance(catalog.margin._ddf, nd.NestedFrame)
-
-
-def test_catalog_with_margin_path(
+def test_catalog_with_margin(
     small_sky_xmatch_dir, small_sky_xmatch_margin_dir, small_sky_xmatch_margin_catalog
 ):
     assert isinstance(small_sky_xmatch_margin_dir, Path)
@@ -163,6 +154,11 @@ def test_catalog_without_margin_is_none(small_sky_xmatch_dir):
     catalog = lsdb.read_hats(small_sky_xmatch_dir)
     assert isinstance(catalog, lsdb.Catalog)
     assert catalog.margin is None
+
+
+def test_catalog_with_wrong_margin(small_sky_order1_dir, small_sky_order1_source_margin_dir):
+    with pytest.raises(ValueError, match="must have the same schema"):
+        lsdb.read_hats(small_sky_order1_dir, margin_cache=small_sky_order1_source_margin_dir)
 
 
 def test_read_hats_subset_with_cone_search(small_sky_order1_dir, small_sky_order1_catalog):
@@ -237,7 +233,7 @@ def test_read_hats_subset_no_partitions(small_sky_order1_dir, small_sky_order1_i
 
 
 def test_read_hats_with_margin_subset(
-    small_sky_order1_source_dir, small_sky_order1_source_with_margin, small_sky_order1_source_margin_catalog
+    small_sky_order1_source_dir, small_sky_order1_source_with_margin, small_sky_order1_source_margin_dir
 ):
     cone_search = ConeSearch(ra=315, dec=-66, radius_arcsec=20)
     # Filtering using catalog's cone_search
@@ -246,7 +242,7 @@ def test_read_hats_with_margin_subset(
     cone_search_catalog_2 = lsdb.read_hats(
         small_sky_order1_source_dir,
         search_filter=cone_search,
-        margin_cache=small_sky_order1_source_margin_catalog,
+        margin_cache=small_sky_order1_source_margin_dir,
     )
     assert isinstance(cone_search_catalog_2, lsdb.Catalog)
     # The partitions of the catalogs are equivalent
