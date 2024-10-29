@@ -12,7 +12,7 @@ def test_read_margin_catalog(small_sky_xmatch_margin_dir):
     margin = lsdb.read_hats(small_sky_xmatch_margin_dir)
     assert isinstance(margin, MarginCatalog)
     assert isinstance(margin._ddf, nd.NestedFrame)
-    hc_margin = hc.catalog.MarginCatalog.read_hats(small_sky_xmatch_margin_dir)
+    hc_margin = hc.read_hats(small_sky_xmatch_margin_dir)
     assert margin.hc_structure.catalog_info == hc_margin.catalog_info
     assert margin.hc_structure.get_healpix_pixels() == hc_margin.get_healpix_pixels()
     assert margin.get_healpix_pixels() == margin.hc_structure.get_healpix_pixels()

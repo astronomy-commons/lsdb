@@ -7,7 +7,6 @@ import numpy as np
 import numpy.testing as npt
 import pandas as pd
 import pytest
-from hats.catalog.index.index_catalog import IndexCatalog
 from hats.pixel_math import HealpixPixel
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN, compute_spatial_index
 from pandas.core.dtypes.base import ExtensionDtype
@@ -47,6 +46,26 @@ def test_read_hats_no_pandas(small_sky_order1_no_pandas_dir, assert_divisions_ar
     assert isinstance(catalog.compute(), npd.NestedFrame)
     assert_divisions_are_correct(catalog)
     assert_index_correct(catalog)
+
+
+def test_read_hats_with_margin_extra_kwargs(small_sky_xmatch_dir, small_sky_xmatch_margin_dir):
+    catalog = lsdb.read_hats(
+        small_sky_xmatch_dir,
+        margin_cache=small_sky_xmatch_margin_dir,
+        columns=["ra", "dec"],
+        filters=[("ra", ">", 300)],
+        engine="pyarrow",
+    )
+    assert isinstance(catalog, lsdb.Catalog)
+    filtered_cat = catalog.compute()
+    assert all(catalog.columns == ["ra", "dec"])
+    assert np.all(filtered_cat["ra"] > 300)
+
+    margin = catalog.margin
+    assert isinstance(margin, lsdb.MarginCatalog)
+    filtered_margin = margin.compute()
+    assert all(margin.columns == ["ra", "dec"])
+    assert np.all(filtered_margin["ra"] > 300)
 
 
 def test_read_hats_with_columns(small_sky_order1_dir):
@@ -106,18 +125,13 @@ def test_parquet_data_in_partitions_match_files(small_sky_order1_dir, small_sky_
 
 
 def test_read_hats_specify_catalog_type(small_sky_catalog, small_sky_dir):
-    catalog = lsdb.read_hats(small_sky_dir, catalog_type=lsdb.Catalog)
+    catalog = lsdb.read_hats(small_sky_dir)
     assert isinstance(catalog, lsdb.Catalog)
     assert isinstance(catalog._ddf, nd.NestedFrame)
     pd.testing.assert_frame_equal(catalog.compute(), small_sky_catalog.compute())
     assert catalog.get_healpix_pixels() == small_sky_catalog.get_healpix_pixels()
     assert catalog.hc_structure.catalog_info == small_sky_catalog.hc_structure.catalog_info
     assert isinstance(catalog.compute(), npd.NestedFrame)
-
-
-def test_read_hats_specify_wrong_catalog_type(small_sky_dir):
-    with pytest.raises(ValueError):
-        lsdb.read_hats(small_sky_dir, catalog_type=int)
 
 
 def test_catalog_with_margin_object(small_sky_xmatch_dir, small_sky_xmatch_margin_catalog):
@@ -193,7 +207,7 @@ def test_read_hats_subset_with_index_search(
     small_sky_order1_catalog,
     small_sky_order1_id_index_dir,
 ):
-    catalog_index = IndexCatalog.read_hats(small_sky_order1_id_index_dir)
+    catalog_index = hc.read_hats(small_sky_order1_id_index_dir)
     # Filtering using catalog's index_search
     index_search_catalog = small_sky_order1_catalog.index_search([700], catalog_index)
     # Filtering when calling `read_hats`
@@ -217,7 +231,7 @@ def test_read_hats_subset_with_order_search(small_sky_source_catalog, small_sky_
 
 def test_read_hats_subset_no_partitions(small_sky_order1_dir, small_sky_order1_id_index_dir):
     with pytest.raises(ValueError, match="no coverage"):
-        catalog_index = IndexCatalog.read_hats(small_sky_order1_id_index_dir)
+        catalog_index = hc.read_hats(small_sky_order1_id_index_dir)
         index_search = IndexSearch([900], catalog_index)
         lsdb.read_hats(small_sky_order1_dir, search_filter=index_search)
 
