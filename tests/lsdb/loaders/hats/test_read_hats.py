@@ -61,6 +61,12 @@ def test_read_hats_with_margin_extra_kwargs(small_sky_xmatch_dir, small_sky_xmat
     assert all(catalog.columns == ["ra", "dec"])
     assert np.all(filtered_cat["ra"] > 300)
 
+    margin = catalog.margin
+    assert isinstance(margin, lsdb.MarginCatalog)
+    filtered_margin = margin.compute()
+    assert all(margin.columns == ["ra", "dec"])
+    assert np.all(filtered_margin["ra"] > 300)
+
 
 def test_read_hats_with_columns(small_sky_order1_dir):
     filter_columns = ["ra", "dec"]

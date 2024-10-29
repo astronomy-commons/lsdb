@@ -115,6 +115,7 @@ def _load_margin_catalog(hc_catalog, config):
             filtered_catalog.pixel_tree,
             catalog_path=hc_catalog.catalog_path,
             schema=filtered_catalog.schema,
+            moc=filtered_catalog.moc,
         )
     dask_df, dask_df_pixel_map = _load_dask_df_and_map(hc_catalog, config)
     margin = MarginCatalog(dask_df, dask_df_pixel_map, hc_catalog)
