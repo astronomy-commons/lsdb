@@ -1,10 +1,10 @@
 import nested_dask as nd
 import nested_pandas as npd
-from hats.catalog.index.index_catalog import IndexCatalog
+from hats import read_hats
 
 
 def test_index_search(small_sky_order1_catalog, small_sky_order1_id_index_dir, assert_divisions_are_correct):
-    catalog_index = IndexCatalog.read_hats(small_sky_order1_id_index_dir)
+    catalog_index = read_hats(small_sky_order1_id_index_dir)
     # Searching for an object that does not exist
     index_search_catalog = small_sky_order1_catalog.index_search([900], catalog_index)
     assert isinstance(index_search_catalog._ddf, nd.NestedFrame)
@@ -20,7 +20,7 @@ def test_index_search(small_sky_order1_catalog, small_sky_order1_id_index_dir, a
 
 
 def test_index_search_coarse_versus_fine(small_sky_order1_catalog, small_sky_order1_id_index_dir):
-    catalog_index = IndexCatalog.read_hats(small_sky_order1_id_index_dir)
+    catalog_index = read_hats(small_sky_order1_id_index_dir)
     coarse_index_search = small_sky_order1_catalog.index_search([700], catalog_index, fine=False)
     fine_index_search = small_sky_order1_catalog.index_search([700], catalog_index)
     assert coarse_index_search.get_healpix_pixels() == fine_index_search.get_healpix_pixels()
