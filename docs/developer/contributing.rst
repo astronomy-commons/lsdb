@@ -2,7 +2,7 @@ Contributing to LSDB
 ===============================================================================
 
 Installation from Source
----------------------
+------------------------
 
 To install the latest development version of LSDB you will want to build it from source. First, with your virtual environment activated, type in your terminal:
 
