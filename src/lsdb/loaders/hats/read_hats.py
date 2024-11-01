@@ -83,6 +83,8 @@ def read_hats(
         return _load_margin_catalog(hc_catalog, config)
     if catalog_type == CatalogType.ASSOCIATION:
         return _load_association_catalog(hc_catalog, config)
+    if catalog_type == CatalogType.MAP:
+        return _load_map_catalog(hc_catalog, config)
 
     raise NotImplementedError(f"Cannot load catalog of type {catalog_type}")
 
@@ -152,6 +154,16 @@ def _load_object_catalog(hc_catalog, config):
         _validate_margin_catalog(margin_hc_catalog, hc_catalog)
         catalog.margin = margin
     return catalog
+
+
+def _load_map_catalog(hc_catalog, config):
+    """Load a catalog from the configuration specified when the loader was created
+
+    Returns:
+        Catalog object with data from the source given at loader initialization
+    """
+    dask_df, dask_df_pixel_map = _load_dask_df_and_map(hc_catalog, config)
+    return AssociationCatalog(dask_df, dask_df_pixel_map, hc_catalog)
 
 
 def _validate_margin_catalog(margin_hc_catalog, hc_catalog):

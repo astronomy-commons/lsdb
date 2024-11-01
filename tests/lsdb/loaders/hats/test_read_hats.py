@@ -306,6 +306,14 @@ def test_read_hats_margin_catalog_subset_is_empty(small_sky_order1_source_margin
     assert len(margin_catalog.hc_structure.pixel_tree) == 0
 
 
+def test_read_hats_map_catalog(test_data_dir):
+    margin_catalog = lsdb.read_hats(test_data_dir / "square_map")
+    assert len(margin_catalog.get_healpix_pixels()) == 12
+    assert len(margin_catalog._ddf_pixel_map) == 12
+    assert len(margin_catalog.compute()) == 12
+    assert len(margin_catalog.hc_structure.pixel_tree) == 12
+
+
 def test_read_hats_schema_not_found(small_sky_no_metadata_dir):
     with pytest.raises(ValueError, match="catalog schema could not be loaded"):
         lsdb.read_hats(small_sky_no_metadata_dir)
