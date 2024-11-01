@@ -68,7 +68,7 @@ def read_hats(
         kwargs=kwargs,
     )
 
-    hc_catalog = hc.read_hats(path)
+    hc_catalog = hc.read_hats(path, **kwargs)
     if hc_catalog.schema is None:
         raise ValueError(
             "The catalog schema could not be loaded from metadata."
