@@ -1,3 +1,4 @@
+import hipscat as hc
 from pathlib import Path
 
 import dask.array as da
@@ -528,6 +529,30 @@ def test_plot_pixels(small_sky_order1_catalog, mocker):
     assert (
         hc.catalog.healpix_dataset.healpix_dataset.plot_pixels.call_args[0][0]
         == small_sky_order1_catalog.hc_structure
+    )
+
+
+# pylint: disable=no-member
+def test_plot_moc(small_sky_order1_catalog, mocker):
+    mocker.patch("hats.catalog.healpix_dataset.healpix_dataset.plot_moc")
+    small_sky_order1_catalog.plot_moc()
+
+    hc.catalog.healpix_dataset.healpix_dataset.plot_moc.assert_called_once()
+    assert (
+        hc.catalog.healpix_dataset.healpix_dataset.plot_moc.call_args[0][0]
+        == small_sky_order1_catalog.hc_structure.moc
+    )
+
+
+# pylint: disable=no-member
+def test_plot_coverage(small_sky_order1_catalog, mocker):
+    mocker.patch("hats.catalog.healpix_dataset.healpix_dataset.plot_moc")
+    small_sky_order1_catalog.plot_coverage()
+
+    hc.catalog.healpix_dataset.healpix_dataset.plot_moc.assert_called_once()
+    assert (
+        hc.catalog.healpix_dataset.healpix_dataset.plot_moc.call_args[0][0]
+        == small_sky_order1_catalog.hc_structure.moc
     )
 
 

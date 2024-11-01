@@ -428,14 +428,27 @@ class HealpixDataset(Dataset):
         """Create a visual map of the pixel density of the catalog.
 
         Args:
-            projection (str) The map projection to use. Valid values include:
-                - moll - Molleweide projection (default)
-                - gnom - Gnomonic projection
-                - cart - Cartesian projection
-                - orth - Orthographic projection
+            projection (str) The map projection to use. Available projections listed at
+            https://docs.astropy.org/en/stable/wcs/supported_projections.html
             kwargs (dict): additional keyword arguments to pass to plotting call.
         """
         return self.hc_structure.plot_pixels(projection=projection, **kwargs)
+
+    def plot_moc(self, **kwargs):
+        """Create a visual map of the coverage of the catalog.
+
+        Args:
+            kwargs: additional keyword arguments to pass to hats.Catalog.plot_moc
+        """
+        self.hc_structure.plot_moc(**kwargs)
+
+    def plot_coverage(self, **kwargs):
+        """Create a visual map of the coverage of the catalog.
+
+        Args:
+            kwargs: additional keyword arguments to pass to hats.Catalog.plot_moc
+        """
+        self.plot_moc(**kwargs)
 
     def to_hats(
         self,
