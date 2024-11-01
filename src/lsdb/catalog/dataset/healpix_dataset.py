@@ -11,12 +11,14 @@ import nested_dask as nd
 import nested_pandas as npd
 import numpy as np
 import pandas as pd
+from astropy.visualization.wcsaxes import WCSAxes
 from dask.delayed import Delayed, delayed
 from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
 from hats.inspection.visualize_catalog import plot_healpix_map
 from hats.pixel_math import HealpixPixel
 from hats.pixel_math.healpix_pixel_function import get_pixel_argsort
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
+from matplotlib.figure import Figure
 from pandas._libs import lib
 from pandas._typing import AnyAll, Axis, IndexLabel
 from pandas.api.extensions import no_default
@@ -399,7 +401,7 @@ class HealpixDataset(Dataset):
         projection="MOL",
         plotting_args: Dict | None = None,
         **kwargs,
-    ):
+    ) -> tuple[Figure, WCSAxes]:
         """Plot a skymap of an aggregate function applied over each partition
 
         Args:
@@ -424,7 +426,7 @@ class HealpixDataset(Dataset):
             plotting_args = {}
         return plot_healpix_map(img, projection=projection, **plotting_args)
 
-    def plot_pixels(self, projection: str = "MOL", **kwargs):
+    def plot_pixels(self, projection: str = "MOL", **kwargs) -> tuple[Figure, WCSAxes]:
         """Create a visual map of the pixel density of the catalog.
 
         Args:
@@ -434,7 +436,7 @@ class HealpixDataset(Dataset):
         """
         return self.hc_structure.plot_pixels(projection=projection, **kwargs)
 
-    def plot_moc(self, **kwargs):
+    def plot_moc(self, **kwargs) -> tuple[Figure, WCSAxes]:
         """Create a visual map of the coverage of the catalog.
 
         Args:
@@ -442,7 +444,7 @@ class HealpixDataset(Dataset):
         """
         return self.hc_structure.plot_moc(**kwargs)
 
-    def plot_coverage(self, **kwargs):
+    def plot_coverage(self, **kwargs) -> tuple[Figure, WCSAxes]:
         """Create a visual map of the coverage of the catalog.
 
         Args:
