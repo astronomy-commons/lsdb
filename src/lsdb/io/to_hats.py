@@ -112,7 +112,7 @@ def to_hats(
         catalog.hc_structure,
         base_catalog_path,
         catalog_name if catalog_name else catalog.hc_structure.catalog_name,
-        total_rows=np.sum(counts),
+        total_rows=int(np.sum(counts)),
     )
     new_hc_structure.catalog_info.to_properties_file(base_catalog_path)
     # Save the point distribution map
