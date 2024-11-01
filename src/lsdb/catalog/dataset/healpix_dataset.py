@@ -440,7 +440,7 @@ class HealpixDataset(Dataset):
         Args:
             kwargs: additional keyword arguments to pass to hats.Catalog.plot_moc
         """
-        self.hc_structure.plot_moc(**kwargs)
+        return self.hc_structure.plot_moc(**kwargs)
 
     def plot_coverage(self, **kwargs):
         """Create a visual map of the coverage of the catalog.
@@ -448,7 +448,7 @@ class HealpixDataset(Dataset):
         Args:
             kwargs: additional keyword arguments to pass to hats.Catalog.plot_moc
         """
-        self.plot_moc(**kwargs)
+        return self.plot_moc(**kwargs)
 
     def to_hats(
         self,
