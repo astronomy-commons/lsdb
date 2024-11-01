@@ -4,12 +4,11 @@ import hats.pixel_math.healpix_shim as hp
 import nested_pandas as npd
 import numpy as np
 from hats.catalog import TableProperties
-from hats.pixel_math.polygon_filter import CartesianCoordinates, SphericalCoordinates, generate_polygon_moc
-from hats.pixel_math.validators import validate_declination_values, validate_polygon
+from hats.pixel_math.validators import validate_polygon
 from lsst.sphgeom import ConvexPolygon, UnitVector3d
-from mocpy import MOC
 
 from lsdb.core.search.abstract_search import AbstractSearch
+from lsdb.types import HCCatalogTypeVar
 
 
 class PolygonSearch(AbstractSearch):
@@ -19,19 +18,18 @@ class PolygonSearch(AbstractSearch):
     Filters partitions in the catalog to those that have some overlap with the region.
     """
 
-    def __init__(self, vertices: List[SphericalCoordinates], fine: bool = True):
+    def __init__(self, vertices: list[tuple[float, float]], fine: bool = True):
         super().__init__(fine)
-        _, dec = np.array(vertices).T
-        validate_declination_values(dec)
-        self.vertices = np.array(vertices)
-        self.polygon, self.vertices_xyz = get_cartesian_polygon(vertices)
+        self.vertices = vertices
 
-    def generate_search_moc(self, max_order: int) -> MOC:
-        return generate_polygon_moc(self.vertices_xyz, max_order)
+    def filter_hc_catalog(self, hc_structure: HCCatalogTypeVar) -> HCCatalogTypeVar:
+        """Filters catalog pixels according to the polygon"""
+        return hc_structure.filter_by_polygon(self.vertices)
 
     def search_points(self, frame: npd.NestedFrame, metadata: TableProperties) -> npd.NestedFrame:
         """Determine the search results within a data frame"""
-        return polygon_filter(frame, self.polygon, metadata)
+        polygon = get_cartesian_polygon(self.vertices)
+        return polygon_filter(frame, polygon, metadata)
 
 
 def polygon_filter(
@@ -54,21 +52,20 @@ def polygon_filter(
     return data_frame
 
 
-def get_cartesian_polygon(
-    vertices: List[SphericalCoordinates],
-) -> Tuple[ConvexPolygon, List[CartesianCoordinates]]:
-    """Creates the convex polygon to filter pixels with. It transforms the vertices, provided
-    in sky coordinates of ra and dec, to their respective cartesian representation on the unit sphere.
+def get_cartesian_polygon(vertices: List[tuple[float, float]]) -> Tuple[ConvexPolygon]:
+    """Creates the convex polygon to filter pixels with. It transforms the
+    vertices, provided in sky coordinates of ra and dec, to their respective
+    cartesian representation on the unit sphere.
 
     Args:
-        vertices (List[Tuple[float, float]): The list of vertices of the polygon to
-            filter pixels with, as a list of (ra,dec) coordinates, in degrees.
+        vertices (List[Tuple[float, float]): The list of vertices
+            of the polygon to filter pixels with, as a list of (ra,dec)
+            coordinates, in degrees.
 
     Returns:
-        A tuple, where the first element is the convex polygon object and the second is the
-        list of cartesian coordinates of its vertices.
+        The convex polygon object.
     """
+    validate_polygon(vertices)
     vertices_xyz = hp.ang2vec(*np.array(vertices).T, lonlat=True)
-    validate_polygon(vertices_xyz)
     edge_vectors = [UnitVector3d(x, y, z) for x, y, z in vertices_xyz]
-    return ConvexPolygon(edge_vectors), vertices_xyz
+    return ConvexPolygon(edge_vectors)

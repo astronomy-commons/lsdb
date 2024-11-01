@@ -12,7 +12,7 @@ from lsdb.core.search.polygon_search import get_cartesian_polygon
 
 def test_polygon_search_filters_correct_points(small_sky_order1_catalog, assert_divisions_are_correct):
     vertices = [(300, -50), (300, -55), (272, -55), (272, -50)]
-    polygon, _ = get_cartesian_polygon(vertices)
+    polygon = get_cartesian_polygon(vertices)
     polygon_search_catalog = small_sky_order1_catalog.polygon_search(vertices)
     assert isinstance(polygon_search_catalog._ddf, nd.NestedFrame)
     polygon_search_df = polygon_search_catalog.compute()
@@ -31,7 +31,7 @@ def test_polygon_search_filters_correct_points_margin(
     small_sky_order1_source_with_margin, assert_divisions_are_correct
 ):
     vertices = [(300, -50), (300, -55), (272, -55), (272, -50)]
-    polygon, _ = get_cartesian_polygon(vertices)
+    polygon = get_cartesian_polygon(vertices)
     polygon_search_catalog = small_sky_order1_source_with_margin.polygon_search(vertices)
     polygon_search_df = polygon_search_catalog.compute()
     ra_values_radians = np.radians(
@@ -57,8 +57,7 @@ def test_polygon_search_filters_correct_points_margin(
 
 def test_polygon_search_filters_partitions(small_sky_order1_catalog):
     vertices = [(300, -50), (300, -55), (272, -55), (272, -50)]
-    _, vertices_xyz = get_cartesian_polygon(vertices)
-    hc_polygon_search = small_sky_order1_catalog.hc_structure.filter_by_polygon(vertices_xyz)
+    hc_polygon_search = small_sky_order1_catalog.hc_structure.filter_by_polygon(vertices)
     polygon_search_catalog = small_sky_order1_catalog.polygon_search(vertices, fine=False)
     assert len(hc_polygon_search.get_healpix_pixels()) == len(polygon_search_catalog.get_healpix_pixels())
     assert len(hc_polygon_search.get_healpix_pixels()) == polygon_search_catalog._ddf.npartitions
@@ -134,10 +133,10 @@ def test_polygon_search_wrapped_right_ascension():
         [(-20.1, 1), (-380.2, -1), (380.3, -1)],
         [(-20.1, 1), (-380.2, -1), (-339.7, -1)],
     ]
-    _, vertices_xyz = get_cartesian_polygon(vertices)
+    polygon = get_cartesian_polygon(vertices)
     for v in all_vertices_combinations:
-        _, wrapped_v_xyz = get_cartesian_polygon(v)
-        npt.assert_allclose(vertices_xyz, wrapped_v_xyz, rtol=1e-7)
+        polygon_2 = get_cartesian_polygon(v)
+        npt.assert_allclose(polygon.getVertices(), polygon_2.getVertices(), rtol=1e-7)
 
 
 def test_empty_polygon_search_with_margin(small_sky_order1_source_with_margin):

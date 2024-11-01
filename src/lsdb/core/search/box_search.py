@@ -5,11 +5,11 @@ from typing import Tuple
 import nested_pandas as npd
 import numpy as np
 from hats.catalog import TableProperties
-from hats.pixel_math.box_filter import generate_box_moc, wrap_ra_angles
-from hats.pixel_math.validators import validate_box_search
+from hats.pixel_math.box_filter import wrap_ra_angles
 from mocpy import MOC
 
 from lsdb.core.search.abstract_search import AbstractSearch
+from lsdb.types import HCCatalogTypeVar
 
 
 class BoxSearch(AbstractSearch):
@@ -28,11 +28,11 @@ class BoxSearch(AbstractSearch):
     ):
         super().__init__(fine)
         ra = tuple(wrap_ra_angles(ra)) if ra else None
-        validate_box_search(ra, dec)
         self.ra, self.dec = ra, dec
 
-    def generate_search_moc(self, max_order: int) -> MOC:
-        return generate_box_moc(self.ra, self.dec, max_order)
+    def filter_hc_catalog(self, hc_structure: HCCatalogTypeVar) -> MOC:
+        """Filters catalog pixels according to the box"""
+        return hc_structure.filter_by_box(self.ra, self.dec)
 
     def search_points(self, frame: npd.NestedFrame, metadata: TableProperties) -> npd.NestedFrame:
         """Determine the search results within a data frame"""

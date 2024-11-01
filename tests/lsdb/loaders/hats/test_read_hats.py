@@ -299,11 +299,8 @@ def test_read_hats_margin_catalog_subset(
 
 def test_read_hats_margin_catalog_subset_is_empty(small_sky_order1_source_margin_dir):
     search_filter = ConeSearch(ra=100, dec=80, radius_arcsec=1)
-    margin_catalog = lsdb.read_hats(small_sky_order1_source_margin_dir, search_filter=search_filter)
-    assert len(margin_catalog.get_healpix_pixels()) == 0
-    assert len(margin_catalog._ddf_pixel_map) == 0
-    assert len(margin_catalog.compute()) == 0
-    assert len(margin_catalog.hc_structure.pixel_tree) == 0
+    with pytest.raises(ValueError, match="filter empty catalog"):
+        lsdb.read_hats(small_sky_order1_source_margin_dir, search_filter=search_filter)
 
 
 def test_read_hats_schema_not_found(small_sky_no_metadata_dir):
