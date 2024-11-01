@@ -436,21 +436,13 @@ class HealpixDataset(Dataset):
         """
         return self.hc_structure.plot_pixels(projection=projection, **kwargs)
 
-    def plot_moc(self, **kwargs) -> tuple[Figure, WCSAxes]:
-        """Create a visual map of the coverage of the catalog.
-
-        Args:
-            kwargs: additional keyword arguments to pass to hats.Catalog.plot_moc
-        """
-        return self.hc_structure.plot_moc(**kwargs)
-
     def plot_coverage(self, **kwargs) -> tuple[Figure, WCSAxes]:
         """Create a visual map of the coverage of the catalog.
 
         Args:
             kwargs: additional keyword arguments to pass to hats.Catalog.plot_moc
         """
-        return self.plot_moc(**kwargs)
+        return self.hc_structure.plot_moc(**kwargs)
 
     def to_hats(
         self,
