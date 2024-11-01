@@ -29,6 +29,7 @@ A more in-depth look into how LSDB works
     Topic: Manual catalog verification <tutorials/manual_verification>
     Topic: Accessing Remote Data <tutorials/remote_data>
     Topic: Margins <tutorials/margins>
+    Topic: Index Tables <tutorials/index_table>
     Topic: Performance Testing <tutorials/performance>
 
 Example Science Use Cases
