@@ -5,6 +5,7 @@ import pandas as pd
 import pytest
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN, spatial_index_to_healpix
 
+from lsdb import read_hats
 from lsdb.dask.merge_catalog_functions import align_catalogs
 
 
@@ -277,3 +278,19 @@ def test_merge_asof(small_sky_catalog, small_sky_xmatch_catalog, assert_division
             ]
         )
         pd.testing.assert_frame_equal(joined_compute, correct_result)
+
+
+def merging_function(input_frame, map_input, *args, **kwargs):
+    print("input frame", input_frame)
+    print("map frame", map_input)
+    print("positional arguments", args)
+    print("keyword arguments", kwargs)
+    return input_frame
+
+
+def test_merge_map(small_sky_catalog, test_data_dir):
+    map_catalog = read_hats(test_data_dir / "square_map")
+    merge_lazy = small_sky_catalog.merge_map(map_catalog, merging_function)
+
+    merge_result = merge_lazy.compute()
+    assert len(merge_result) == small_sky_catalog.hc_structure.catalog_info.total_rows
