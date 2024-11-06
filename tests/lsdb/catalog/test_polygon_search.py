@@ -1,5 +1,3 @@
-import sys
-
 import nested_dask as nd
 import nested_pandas as npd
 import numpy as np
@@ -81,10 +79,9 @@ def test_polygon_search_invalid_dec(small_sky_order1_catalog):
         small_sky_order1_catalog.polygon_search(vertices)
 
 
-@pytest.mark.skipif(sys.platform == "darwin", reason="Test skipped on macOS")
 def test_polygon_search_invalid_shape(small_sky_order1_catalog):
     """The polygon is not convex, so the shape is invalid"""
-    with pytest.raises(RuntimeError):
+    with pytest.raises(ValueError, match=ValidatorsErrors.INVALID_CONCAVE_SHAPE):
         vertices = [(45, 30), (60, 60), (90, 45), (60, 50)]
         small_sky_order1_catalog.polygon_search(vertices)
 
@@ -103,6 +100,9 @@ def test_polygon_search_invalid_polygon(small_sky_order1_catalog):
         small_sky_order1_catalog.polygon_search(vertices)
     with pytest.raises(ValueError, match=ValidatorsErrors.DEGENERATE_POLYGON):
         vertices = [(50.1, 0), (100.1, 0), (150.1, 0), (200.1, 0)]
+        small_sky_order1_catalog.polygon_search(vertices)
+    with pytest.raises(ValueError, match=ValidatorsErrors.INVALID_CONCAVE_SHAPE):
+        vertices = [(45, 30), (60, 60), (90, 45), (60, 50)]
         small_sky_order1_catalog.polygon_search(vertices)
 
 
