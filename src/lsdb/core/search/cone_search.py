@@ -1,6 +1,7 @@
 import nested_pandas as npd
 from astropy.coordinates import SkyCoord
 from hats.catalog import TableProperties
+from hats.pixel_math.validators import validate_declination_values, validate_radius
 from mocpy import MOC
 
 from lsdb.core.search.abstract_search import AbstractSearch
@@ -16,6 +17,8 @@ class ConeSearch(AbstractSearch):
 
     def __init__(self, ra: float, dec: float, radius_arcsec: float, fine: bool = True):
         super().__init__(fine)
+        validate_radius(radius_arcsec)
+        validate_declination_values(dec)
         self.ra = ra
         self.dec = dec
         self.radius_arcsec = radius_arcsec

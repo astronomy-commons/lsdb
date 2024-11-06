@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-from typing import Tuple
-
 import nested_pandas as npd
 import numpy as np
 from hats.catalog import TableProperties
 from hats.pixel_math.box_filter import wrap_ra_angles
+from hats.pixel_math.validators import validate_box
 from mocpy import MOC
 
 from lsdb.core.search.abstract_search import AbstractSearch
@@ -22,12 +21,13 @@ class BoxSearch(AbstractSearch):
 
     def __init__(
         self,
-        ra: Tuple[float, float] | None = None,
-        dec: Tuple[float, float] | None = None,
+        ra: tuple[float, float] | None = None,
+        dec: tuple[float, float] | None = None,
         fine: bool = True,
     ):
         super().__init__(fine)
         ra = tuple(wrap_ra_angles(ra)) if ra else None
+        validate_box(ra, dec)
         self.ra, self.dec = ra, dec
 
     def filter_hc_catalog(self, hc_structure: HCCatalogTypeVar) -> MOC:
@@ -41,16 +41,16 @@ class BoxSearch(AbstractSearch):
 
 def box_filter(
     data_frame: npd.NestedFrame,
-    ra: Tuple[float, float] | None,
-    dec: Tuple[float, float] | None,
+    ra: tuple[float, float] | None,
+    dec: tuple[float, float] | None,
     metadata: TableProperties,
 ) -> npd.NestedFrame:
     """Filters a dataframe to only include points within the specified box region.
 
     Args:
         data_frame (npd.NestedFrame): DataFrame containing points in the sky
-        ra (Tuple[float, float]): Right ascension range, in degrees
-        dec (Tuple[float, float]): Declination range, in degrees
+        ra (tuple[float, float]): Right ascension range, in degrees
+        dec (tuple[float, float]): Declination range, in degrees
         metadata (hc.catalog.Catalog): hats `Catalog` with catalog_info that matches `data_frame`
 
     Returns:
@@ -70,7 +70,7 @@ def box_filter(
     return data_frame
 
 
-def _create_ra_mask(ra: Tuple[float, float], values: np.ndarray) -> np.ndarray:
+def _create_ra_mask(ra: tuple[float, float], values: np.ndarray) -> np.ndarray:
     """Creates the mask to filter right ascension values. If this range crosses
     the discontinuity line (0 degrees), we have a branched logical operation."""
     if ra[0] <= ra[1]:

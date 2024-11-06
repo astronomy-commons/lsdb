@@ -1,5 +1,3 @@
-from typing import List, Tuple
-
 import hats.pixel_math.healpix_shim as hp
 import nested_pandas as npd
 import numpy as np
@@ -20,7 +18,9 @@ class PolygonSearch(AbstractSearch):
 
     def __init__(self, vertices: list[tuple[float, float]], fine: bool = True):
         super().__init__(fine)
+        validate_polygon(vertices)
         self.vertices = vertices
+        self.polygon = get_cartesian_polygon(vertices)
 
     def filter_hc_catalog(self, hc_structure: HCCatalogTypeVar) -> HCCatalogTypeVar:
         """Filters catalog pixels according to the polygon"""
@@ -28,8 +28,7 @@ class PolygonSearch(AbstractSearch):
 
     def search_points(self, frame: npd.NestedFrame, metadata: TableProperties) -> npd.NestedFrame:
         """Determine the search results within a data frame"""
-        polygon = get_cartesian_polygon(self.vertices)
-        return polygon_filter(frame, polygon, metadata)
+        return polygon_filter(frame, self.polygon, metadata)
 
 
 def polygon_filter(
@@ -52,20 +51,18 @@ def polygon_filter(
     return data_frame
 
 
-def get_cartesian_polygon(vertices: List[tuple[float, float]]) -> Tuple[ConvexPolygon]:
+def get_cartesian_polygon(vertices: list[tuple[float, float]]) -> ConvexPolygon:
     """Creates the convex polygon to filter pixels with. It transforms the
     vertices, provided in sky coordinates of ra and dec, to their respective
     cartesian representation on the unit sphere.
 
     Args:
-        vertices (List[Tuple[float, float]): The list of vertices
-            of the polygon to filter pixels with, as a list of (ra,dec)
-            coordinates, in degrees.
+        vertices (list[tuple[float, float]): The list of vertices of the polygon
+            to filter pixels with, as a list of (ra,dec) coordinates, in degrees.
 
     Returns:
         The convex polygon object.
     """
-    validate_polygon(vertices)
     vertices_xyz = hp.ang2vec(*np.array(vertices).T, lonlat=True)
     edge_vectors = [UnitVector3d(x, y, z) for x, y, z in vertices_xyz]
     return ConvexPolygon(edge_vectors)
