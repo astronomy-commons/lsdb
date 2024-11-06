@@ -23,7 +23,7 @@ dependencies = [
     "deprecated",
     "hats>=0.4.2",
     "lsst-sphgeom", # To handle spherical sky polygons
-    "nested-dask",
+    "nested-dask>=0.3.0",
     "nested-pandas",
     "pyarrow",
     "scipy", # kdtree
