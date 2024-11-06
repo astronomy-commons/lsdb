@@ -1,9 +1,7 @@
 #HATS catalog
 obs_collection=square_map
-dataproduct_type=object
+dataproduct_type=map
 hats_nrows=12
-hats_col_ra=ra
-hats_col_dec=dec
 hats_max_rows=1000000
 hats_order=0
 moc_sky_fraction=1.00000

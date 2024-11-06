@@ -19,6 +19,7 @@ from upath import UPath
 
 from lsdb.catalog.association_catalog import AssociationCatalog
 from lsdb.catalog.catalog import Catalog, DaskDFPixelMap, MarginCatalog
+from lsdb.catalog.map_catalog import MapCatalog
 from lsdb.core.search.abstract_search import AbstractSearch
 from lsdb.dask.divisions import get_pixels_divisions
 from lsdb.loaders.hats.hats_loading_config import HatsLoadingConfig
@@ -163,7 +164,7 @@ def _load_map_catalog(hc_catalog, config):
         Catalog object with data from the source given at loader initialization
     """
     dask_df, dask_df_pixel_map = _load_dask_df_and_map(hc_catalog, config)
-    return AssociationCatalog(dask_df, dask_df_pixel_map, hc_catalog)
+    return MapCatalog(dask_df, dask_df_pixel_map, hc_catalog)
 
 
 def _validate_margin_catalog(margin_hc_catalog, hc_catalog):

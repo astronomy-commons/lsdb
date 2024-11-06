@@ -1,19 +1,18 @@
 # pylint: disable=duplicate-code
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable, Dict, Iterable, Tuple
+from typing import TYPE_CHECKING, Callable, Tuple
 
 import dask
 import nested_dask as nd
 import nested_pandas as npd
-import pandas as pd
 from hats.catalog import TableProperties
 from hats.pixel_math import HealpixPixel
-from hats.pixel_tree import PixelAlignment
+from hats.pixel_tree import PixelAlignment, PixelAlignmentType
+from hats.pixel_tree.pixel_alignment import align_with_mocs
 
 from lsdb.dask.merge_catalog_functions import (
     align_and_apply,
-    align_catalogs,
     construct_catalog_args,
     filter_by_spatial_index_to_pixel,
     get_healpix_pixels_from_alignment,
@@ -21,7 +20,7 @@ from lsdb.dask.merge_catalog_functions import (
 from lsdb.types import DaskDFPixelMap
 
 if TYPE_CHECKING:
-    from lsdb.catalog.catalog import Catalog
+    from lsdb.catalog import Catalog, MapCatalog
 
 
 # pylint: disable=too-many-arguments, unused-argument
@@ -63,12 +62,13 @@ def perform_merge_map(
     return func(catalog_partition, map_partition, catalog_pixel, map_pixel, *args, **kwargs)
 
 
+# pylint: disable=protected-access
 def merge_map_catalog_data(
     point_catalog: Catalog,
-    map_catalog: Catalog,
+    map_catalog: MapCatalog,
     func: Callable[..., npd.NestedFrame],
     *args,
-    meta: pd.DataFrame | pd.Series | Dict | Iterable | Tuple | None = None,
+    meta: npd.NestedFrame | None = None,
     **kwargs,
 ) -> Tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]:
     """Uses the pandas `merge_asof` function to merge two catalogs on their indices by distance of keys
@@ -90,8 +90,26 @@ def merge_map_catalog_data(
         pixel to partition index within the dataframe, and the PixelAlignment of the two input
         catalogs.
     """
-
-    alignment = align_catalogs(point_catalog, map_catalog)
+    if meta is None:
+        meta = func(
+            point_catalog._ddf._meta.copy(),
+            map_catalog._ddf._meta.copy(),
+            HealpixPixel(0, 0),
+            HealpixPixel(0, 0),
+        )
+        if meta is None:
+            raise ValueError(
+                "func returned None for empty DataFrame input. The function must return a value, changing"
+                " the partitions in place will not work. If the function does not work for empty inputs, "
+                "please specify a `meta` argument."
+            )
+    alignment = align_with_mocs(
+        point_catalog.hc_structure.pixel_tree,
+        map_catalog.hc_structure.pixel_tree,
+        point_catalog.hc_structure.moc,
+        map_catalog.hc_structure.moc,
+        alignment_type=PixelAlignmentType.INNER,
+    )
 
     left_pixels, right_pixels = get_healpix_pixels_from_alignment(alignment)
 
