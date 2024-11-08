@@ -50,9 +50,7 @@ LSDB can also be installed from source on `GitHub <https://github.com/astronomy-
 advanced installation instructions in the :doc:`contribution guide </developer/contributing>`.
 
 .. tip::
-    Installing optional dependencies
-
-    There are some extra dependencies that can make running LSDB in a jupyter
+    There are some extra dependencies that can make running LSDB in a Jupyter
     environment easier, or connecting to a variety of remote file systems.
 
     These can be installed with the ``full`` extra.
@@ -64,8 +62,8 @@ advanced installation instructions in the :doc:`contribution guide </developer/c
 Quickstart
 --------------------------
 
-LSDB is built on top of `Dask DataFrame <https://docs.dask.org/en/stable/dataframe.html>`_ which allows workflows
-to run in parallel on distributed environments, and scale to large, out of memory datasets. For this to work,
+LSDB is built on top of `Dask DataFrame <https://docs.dask.org/en/stable/dataframe.html>`_, which allows workflows
+to run in parallel on distributed environments and scale to large, out-of-memory datasets. For this to work,
 Catalogs are loaded **lazily**, meaning that only the metadata is loaded at first. This way, LSDB can plan
 how tasks will be executed in the future without actually doing any computation. See our :doc:`tutorials </tutorials>`
 for more information.
@@ -94,8 +92,8 @@ Catalog, and specify which columns we want to use from it.
 
 
 Here we can see the lazy representation of an LSDB catalog object, showing its metadata such as the column
-names and their types without loading any data (See the ellipsis in the table as placeholders where you would
-usually see values).
+names and their types without loading any data. The ellipses in the table act as placeholders where you would
+usually see values.
 
 .. important::
 
