@@ -25,19 +25,9 @@ class AbstractSearch(ABC):
     def __init__(self, fine: bool = True):
         self.fine = fine
 
-    def filter_hc_catalog(self, hc_structure: HCCatalogTypeVar) -> HCCatalogTypeVar:
-        """Filters the hats catalog object to the partitions included in the search"""
-        if len(hc_structure.get_healpix_pixels()) == 0:
-            return hc_structure
-        max_order = hc_structure.get_max_coverage_order()
-        search_moc = self.generate_search_moc(max_order)
-        return hc_structure.filter_by_moc(search_moc)
-
-    def generate_search_moc(self, max_order: int) -> MOC:
+    def filter_hc_catalog(self, hc_structure: HCCatalogTypeVar) -> MOC:
         """Determine the target partitions for further filtering."""
-        raise NotImplementedError(
-            "Search Class must implement `generate_search_moc` method or overwrite `filter_hc_catalog`"
-        )
+        raise NotImplementedError("Search Class must implement `filter_hc_catalog` method")
 
     @abstractmethod
     def search_points(self, frame: npd.NestedFrame, metadata: TableProperties) -> npd.NestedFrame:

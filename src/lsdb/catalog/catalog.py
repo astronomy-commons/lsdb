@@ -7,7 +7,6 @@ import nested_dask as nd
 import nested_pandas as npd
 import pandas as pd
 from hats.catalog.index.index_catalog import IndexCatalog as HCIndexCatalog
-from hats.pixel_math.polygon_filter import SphericalCoordinates
 from pandas._libs import lib
 from pandas._typing import AnyAll, Axis, IndexLabel
 from pandas.api.extensions import no_default
@@ -266,14 +265,14 @@ class Catalog(HealpixDataset):
         """
         return self.search(BoxSearch(ra, dec, fine))
 
-    def polygon_search(self, vertices: List[SphericalCoordinates], fine: bool = True) -> Catalog:
+    def polygon_search(self, vertices: list[tuple[float, float]], fine: bool = True) -> Catalog:
         """Perform a polygonal search to filter the catalog.
 
         Filters to points within the polygonal region specified in ra and dec, in degrees.
         Filters partitions in the catalog to those that have some overlap with the region.
 
         Args:
-            vertices (List[Tuple[float, float]): The list of vertices of the polygon to
+            vertices (list[tuple[float, float]]): The list of vertices of the polygon to
                 filter pixels with, as a list of (ra,dec) coordinates, in degrees.
             fine (bool): True if points are to be filtered, False if not. Defaults to True.
 
