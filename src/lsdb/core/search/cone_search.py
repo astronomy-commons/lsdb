@@ -1,11 +1,11 @@
 import nested_pandas as npd
 from astropy.coordinates import SkyCoord
 from hats.catalog import TableProperties
-from hats.pixel_math.cone_filter import generate_cone_moc
 from hats.pixel_math.validators import validate_declination_values, validate_radius
 from mocpy import MOC
 
 from lsdb.core.search.abstract_search import AbstractSearch
+from lsdb.types import HCCatalogTypeVar
 
 
 class ConeSearch(AbstractSearch):
@@ -23,8 +23,9 @@ class ConeSearch(AbstractSearch):
         self.dec = dec
         self.radius_arcsec = radius_arcsec
 
-    def generate_search_moc(self, max_order: int) -> MOC:
-        return generate_cone_moc(self.ra, self.dec, self.radius_arcsec, max_order)
+    def filter_hc_catalog(self, hc_structure: HCCatalogTypeVar) -> MOC:
+        """Filters catalog pixels according to the cone"""
+        return hc_structure.filter_by_cone(self.ra, self.dec, self.radius_arcsec)
 
     def search_points(self, frame: npd.NestedFrame, metadata: TableProperties) -> npd.NestedFrame:
         """Determine the search results within a data frame"""
