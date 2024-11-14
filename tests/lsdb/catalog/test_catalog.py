@@ -100,7 +100,6 @@ def test_head_empty_catalog(small_sky_order1_catalog):
     assert len(empty_catalog.head()) == 0
 
 
-@pytest.mark.skip(reason="lincc-frameworks/nested-pandas#174")
 def test_query(small_sky_order1_catalog):
     expected_ddf = small_sky_order1_catalog._ddf.copy()[
         (small_sky_order1_catalog._ddf["ra"] > 300) & (small_sky_order1_catalog._ddf["dec"] < -50)
