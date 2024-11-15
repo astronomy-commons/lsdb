@@ -44,3 +44,4 @@ Notebooks going over some more scientific example use cases
 
     Science Notebook: Cross-match ZTF BTS and NGC <tutorials/pre_executed/ztf_bts-ngc>
     Science Notebook: Import and cross-match DES and Gaia <tutorials/pre_executed/des-gaia>
+    Science Notebook: Search for Supernovae in ZTF alerts <tutorials/pre_executed/ztf-alerts-sne>
