@@ -1,6 +1,6 @@
-import pandas as pd
 import astropy.units as u
 import numpy as np
+import pandas as pd
 from hats.pixel_math import HealpixPixel
 from mocpy import MOC
 
