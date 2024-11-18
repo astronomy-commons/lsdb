@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-import astropy.units as u
-
 from typing import TYPE_CHECKING
 
+import astropy.units as u
 import nested_pandas as npd
 from hats.catalog import TableProperties
 from mocpy import MOC
