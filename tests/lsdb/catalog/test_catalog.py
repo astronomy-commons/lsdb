@@ -694,7 +694,7 @@ def test_filtered_catalog_has_undetermined_len(small_sky_order1_catalog, small_s
         vertices = [(300, -50), (300, -55), (272, -55), (272, -50)]
         len(small_sky_order1_catalog.polygon_search(vertices))
     with pytest.raises(ValueError, match="undetermined"):
-        len(small_sky_order1_catalog.box_search(ra=(280, 300)))
+        len(small_sky_order1_catalog.box_search(ra=(280, 300), dec=(0, 30)))
     with pytest.raises(ValueError, match="undetermined"):
         len(small_sky_order1_catalog.order_search(max_order=2))
     with pytest.raises(ValueError, match="undetermined"):

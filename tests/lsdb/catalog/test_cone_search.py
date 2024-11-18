@@ -1,3 +1,5 @@
+import re
+
 import nested_dask as nd
 import nested_pandas as npd
 import pandas as pd
@@ -109,9 +111,9 @@ def test_cone_search_coarse_versus_fine(small_sky_order1_catalog):
 
 
 def test_invalid_dec_and_negative_radius(small_sky_order1_catalog):
-    with pytest.raises(ValueError, match=ValidatorsErrors.INVALID_DEC):
+    with pytest.raises(ValueError, match=re.escape(ValidatorsErrors.INVALID_DEC)):
         small_sky_order1_catalog.cone_search(0, -100.3, 1.2)
-    with pytest.raises(ValueError, match=ValidatorsErrors.INVALID_DEC):
+    with pytest.raises(ValueError, match=re.escape(ValidatorsErrors.INVALID_DEC)):
         small_sky_order1_catalog.cone_search(0, 100.4, 1.3)
     with pytest.raises(ValueError, match=ValidatorsErrors.INVALID_RADIUS):
         small_sky_order1_catalog.cone_search(0, 0, -1.5)

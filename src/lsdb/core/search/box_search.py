@@ -13,18 +13,14 @@ from lsdb.types import HCCatalogTypeVar
 
 class BoxSearch(AbstractSearch):
     """Perform a box search to filter the catalog. This type of search is used for a
-    range of ra or dec (one or the other). If both, a polygonal search should be used.
+    range of right ascension or declination, where the right ascension edges follow
+    great arc circles and the declination edges follow small arc circles.
 
     Filters to points within the ra / dec region, specified in degrees.
     Filters partitions in the catalog to those that have some overlap with the region.
     """
 
-    def __init__(
-        self,
-        ra: tuple[float, float] | None = None,
-        dec: tuple[float, float] | None = None,
-        fine: bool = True,
-    ):
+    def __init__(self, ra: tuple[float, float], dec: tuple[float, float], fine: bool = True):
         super().__init__(fine)
         ra = tuple(wrap_ra_angles(ra)) if ra else None
         validate_box(ra, dec)
@@ -41,8 +37,8 @@ class BoxSearch(AbstractSearch):
 
 def box_filter(
     data_frame: npd.NestedFrame,
-    ra: tuple[float, float] | None,
-    dec: tuple[float, float] | None,
+    ra: tuple[float, float],
+    dec: tuple[float, float],
     metadata: TableProperties,
 ) -> npd.NestedFrame:
     """Filters a dataframe to only include points within the specified box region.
