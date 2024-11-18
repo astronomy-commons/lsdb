@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import warnings
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, List, Tuple, cast
+from typing import Any, Callable, Dict, Iterable, List, Tuple, cast, Type
 
+import astropy
 import dask
 import dask.dataframe as dd
 import hats as hc
@@ -11,13 +12,17 @@ import nested_dask as nd
 import nested_pandas as npd
 import numpy as np
 import pandas as pd
+from astropy.coordinates import SkyCoord
+from astropy.units import Quantity
 from astropy.visualization.wcsaxes import WCSAxes
+from astropy.visualization.wcsaxes.frame import BaseFrame
 from dask.delayed import Delayed, delayed
 from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
-from hats.inspection.visualize_catalog import plot_healpix_map
+from hats.inspection.visualize_catalog import plot_healpix_map, initialize_wcs_axes, get_fov_moc_from_wcs
 from hats.pixel_math import HealpixPixel
 from hats.pixel_math.healpix_pixel_function import get_pixel_argsort
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
+from jedi.inference.value.iterable import Sequence
 from matplotlib.figure import Figure
 from pandas._libs import lib
 from pandas._typing import AnyAll, Axis, IndexLabel
@@ -27,8 +32,10 @@ from upath import UPath
 
 from lsdb import io
 from lsdb.catalog.dataset.dataset import Dataset
+from lsdb.core.plotting.plot_points import plot_points
 from lsdb.core.plotting.skymap import compute_skymap, perform_inner_skymap
 from lsdb.core.search.abstract_search import AbstractSearch
+from lsdb.core.search.moc_search import MOCSearch
 from lsdb.dask.merge_catalog_functions import concat_metas
 from lsdb.io.schema import get_arrow_schema
 from lsdb.types import DaskDFPixelMap
@@ -691,3 +698,60 @@ class HealpixDataset(Dataset):
         hc_catalog = self._create_modified_hc_structure(**hc_updates)
         hc_catalog.schema = get_arrow_schema(ndf)
         return self.__class__(ndf, self._ddf_pixel_map, hc_catalog)
+
+    def plot_points(
+        self,
+        *,
+        ra_column: str = None,
+        dec_column: str = None,
+        color_col: str | None = None,
+        projection: str = "MOL",
+        title: str = None,
+        fov: Quantity | Tuple[Quantity, Quantity] = None,
+        center: SkyCoord | None = None,
+        wcs: astropy.wcs.WCS = None,
+        frame_class: Type[BaseFrame] | None = None,
+        ax: WCSAxes | None = None,
+        fig: Figure | None = None,
+        **kwargs,
+    ):
+        fig, ax, wcs = initialize_wcs_axes(
+            projection=projection,
+            fov=fov,
+            center=center,
+            wcs=wcs,
+            frame_class=frame_class,
+            ax=ax,
+            fig=fig,
+            figsize=(9, 5),
+        )
+
+        fov_moc = get_fov_moc_from_wcs(wcs)
+
+        computed_catalog = (
+            self.search(MOCSearch(fov_moc)).compute() if fov_moc is not None else self.compute()
+        )
+
+        if ra_column is None:
+            ra_column = self.hc_structure.catalog_info.ra_column
+        if dec_column is None:
+            dec_column = self.hc_structure.catalog_info.dec_column
+
+        if title is None:
+            title = f"Points in the {self.name} catalog"
+
+        return plot_points(
+            computed_catalog,
+            ra_column,
+            dec_column,
+            color_col=color_col,
+            projection=projection,
+            title=title,
+            fov=fov,
+            center=center,
+            wcs=wcs,
+            frame_class=frame_class,
+            ax=ax,
+            fig=fig,
+            **kwargs,
+        )

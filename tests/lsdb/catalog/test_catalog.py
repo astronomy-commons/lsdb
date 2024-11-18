@@ -1,3 +1,5 @@
+import astropy.units as u
+import matplotlib.pyplot as plt
 from pathlib import Path
 
 import dask.array as da
@@ -10,6 +12,7 @@ import numpy as np
 import numpy.testing as npt
 import pandas as pd
 import pytest
+from astropy.coordinates import SkyCoord
 from hats.pixel_math import HealpixPixel, spatial_index_to_healpix
 
 import lsdb
@@ -754,3 +757,8 @@ def test_modified_hc_structure_is_a_deep_copy(small_sky_order1_catalog):
 
     # The rows of the new structure are invalidated
     assert modified_hc_structure.catalog_info.total_rows == 0
+
+
+def test_plot_points(small_sky_order1_catalog):
+    small_sky_order1_catalog.plot_points(fov=20 * u.deg, center=SkyCoord(330, -70, unit="deg"), marker="+")
+    plt.show()
