@@ -7,6 +7,7 @@ import nested_dask as nd
 import nested_pandas as npd
 import pandas as pd
 from hats.catalog.index.index_catalog import IndexCatalog as HCIndexCatalog
+from mocpy import MOC
 from pandas._libs import lib
 from pandas._typing import AnyAll, Axis, IndexLabel
 from pandas.api.extensions import no_default
@@ -18,6 +19,7 @@ from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatc
 from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorithm
 from lsdb.core.search import BoxSearch, ConeSearch, IndexSearch, OrderSearch, PolygonSearch
 from lsdb.core.search.abstract_search import AbstractSearch
+from lsdb.core.search.moc_search import MOCSearch
 from lsdb.core.search.pixel_search import PixelSearch
 from lsdb.dask.crossmatch_catalog_data import crossmatch_catalog_data
 from lsdb.dask.join_catalog_data import (
@@ -323,6 +325,18 @@ class Catalog(HealpixDataset):
             A new Catalog containing only the pixels that overlap with the requested pixel set.
         """
         return self.search(PixelSearch(pixels))
+
+    def moc_search(self, moc: MOC, fine: bool = True) -> Catalog:
+        """Finds all catalog points that are contained within a moc.
+
+        Args:
+            moc (mocpy.MOC): The moc that defines the region for the search.
+            fine (bool): True if points are to be filtered, False if only partitions. Defaults to True.
+
+        Returns:
+            A new Catalog containing only the points that are within the moc.
+        """
+        return self.search(MOCSearch(moc, fine=fine))
 
     def search(self, search: AbstractSearch):
         """Find rows by reusable search algorithm.
