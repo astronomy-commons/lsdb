@@ -1,5 +1,3 @@
-import re
-
 import numpy as np
 import pytest
 from hats.pixel_math.validators import ValidatorsErrors
@@ -88,7 +86,7 @@ def test_box_search_coarse_versus_fine(small_sky_order1_catalog):
 
 def test_box_search_invalid_args(small_sky_order1_catalog):
     # Some declination values are out of the [-90,90] bounds
-    with pytest.raises(ValueError, match=re.escape(ValidatorsErrors.INVALID_DEC)):
+    with pytest.raises(ValueError, match=ValidatorsErrors.INVALID_DEC):
         small_sky_order1_catalog.box_search(ra=(0, 30), dec=(-100, -70))
     # Declination values should be in ascending order
     with pytest.raises(ValueError, match=ValidatorsErrors.INVALID_RADEC_RANGE):
