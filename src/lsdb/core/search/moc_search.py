@@ -14,10 +14,9 @@ if TYPE_CHECKING:
 
 
 class MOCSearch(AbstractSearch):
-    """Filter the catalog by HEALPix pixels.
+    """Filter the catalog by a MOC.
 
-    Filters partitions in the catalog to those that are in a specified pixel set.
-    Does not filter points inside those partitions.
+    Filters partitions in the catalog to those that are in a specified moc.
     """
 
     def __init__(self, moc: MOC, fine: bool = True):
