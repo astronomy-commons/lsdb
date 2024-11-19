@@ -16,6 +16,7 @@ from astropy.coordinates import SkyCoord
 from astropy.units import Quantity
 from astropy.visualization.wcsaxes import WCSAxes
 from astropy.visualization.wcsaxes.frame import BaseFrame
+from dask.dataframe.core import _repr_data_series
 from dask.delayed import Delayed, delayed
 from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
 from hats.inspection.visualize_catalog import get_fov_moc_from_wcs, initialize_wcs_axes, plot_healpix_map
@@ -86,6 +87,22 @@ class HealpixDataset(Dataset):
             therefore an error is raised.
         """
         return len(self.hc_structure)
+
+    def _repr_data(self):
+        meta = self._ddf._meta
+        index = self._repr_divisions
+        cols = meta.columns
+        if len(cols) == 0:
+            series_df = pd.DataFrame([[]] * len(index), columns=cols, index=index)
+        else:
+            series_df = pd.concat([_repr_data_series(s, index=index) for _, s in meta.items()], axis=1)
+        return series_df
+
+    @property
+    def _repr_divisions(self):
+        name = f"npartitions={self._ddf.npartitions}"
+        divisions = pd.Index(self.get_ordered_healpix_pixels(), name=name)
+        return divisions
 
     def _create_modified_hc_structure(self, **kwargs) -> HCHealpixDataset:
         """Copy the catalog structure and override the specified catalog info parameters.

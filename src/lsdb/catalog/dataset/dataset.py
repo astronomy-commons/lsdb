@@ -31,8 +31,11 @@ class Dataset:
 
     def _repr_html_(self):
         # pylint: disable=protected-access
-        data = self._ddf._repr_data().to_html(max_rows=5, show_dimensions=False, notebook=True)
-        return f"<div><strong>lsdb Catalog {self.name}:</strong></div>{data}"
+        data = self._repr_data().to_html(max_rows=5, show_dimensions=False, notebook=True)
+        return f"<div><strong>lsdb Catalog {self.name}:</strong></div>{data}<div>The catalog has been loaded <strong>lazily</strong>, meaning no data has been read, only the catalog schema</div>"
+
+    def _repr_data(self):
+        return self._ddf._repr_data()
 
     def compute(self) -> npd.NestedFrame:
         """Compute dask distributed dataframe to pandas dataframe"""
