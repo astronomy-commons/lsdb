@@ -32,3 +32,7 @@ class AbstractSearch(ABC):
     @abstractmethod
     def search_points(self, frame: npd.NestedFrame, metadata: TableProperties) -> npd.NestedFrame:
         """Determine the search results within a data frame"""
+
+    def plot_search_region(self, **kwargs):
+        """Plot the search region"""
+        raise NotImplementedError("Plotting not implemented for this search")
