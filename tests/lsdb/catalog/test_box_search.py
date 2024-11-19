@@ -20,15 +20,19 @@ def test_box_search_filters_correct_points_margin(
     ra_search_catalog = small_sky_order1_source_with_margin.box_search(ra=(280, 300), dec=(-90, 30))
     ra_search_df = ra_search_catalog.compute()
     ra_values = ra_search_df[small_sky_order1_source_with_margin.hc_structure.catalog_info.ra_column]
+    dec_values = ra_search_df[small_sky_order1_source_with_margin.hc_structure.catalog_info.dec_column]
     assert len(ra_search_df) < len(small_sky_order1_source_with_margin.compute())
     assert all(280 <= ra <= 300 for ra in ra_values)
+    assert all(-90 <= dec <= 30 for dec in dec_values)
     assert_divisions_are_correct(ra_search_catalog)
 
     assert ra_search_catalog.margin is not None
     ra_margin_search_df = ra_search_catalog.margin.compute()
     ra_values = ra_margin_search_df[small_sky_order1_source_with_margin.hc_structure.catalog_info.ra_column]
+    dec_values = ra_margin_search_df[small_sky_order1_source_with_margin.hc_structure.catalog_info.dec_column]
     assert len(ra_margin_search_df) < len(small_sky_order1_source_with_margin.margin.compute())
     assert all(280 <= ra <= 300 for ra in ra_values)
+    assert all(-90 <= dec <= 30 for dec in dec_values)
     assert_divisions_are_correct(ra_search_catalog.margin)
 
 
