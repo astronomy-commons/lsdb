@@ -49,32 +49,6 @@ class MarginCatalogGenerator:
         self.catalog_info = self._create_catalog_info(**kwargs)
         self.margin_schema = _create_margin_schema(catalog.hc_structure.schema)
 
-    def create_catalog(self) -> MarginCatalog:
-        """Create a margin catalog for another pre-computed catalog
-
-        Returns:
-            Margin catalog object, or None if the margin is empty.
-        """
-        if self.margin_threshold == 0:
-            return self.create_empty_catalog()
-        self._resolve_margin_order()
-        pixels, partitions = self._get_margins()
-        ddf, ddf_pixel_map, total_rows = self._generate_dask_df_and_map(pixels, partitions)
-        self.catalog_info.total_rows = total_rows
-        margin_pixels = list(ddf_pixel_map.keys())
-        margin_structure = hc.catalog.MarginCatalog(
-            self.catalog_info, margin_pixels, schema=self.margin_schema
-        )
-        return MarginCatalog(ddf, ddf_pixel_map, margin_structure)
-
-    def create_empty_catalog(self) -> MarginCatalog:
-        """Create an empty margin catalog"""
-        dask_meta_schema = self.margin_schema.empty_table().to_pandas()
-        ddf = nd.NestedFrame.from_pandas(dask_meta_schema, npartitions=1)
-        self.catalog_info.total_rows = 0
-        margin_structure = hc.catalog.MarginCatalog(self.catalog_info, [], schema=self.margin_schema)
-        return MarginCatalog(ddf, {}, margin_structure)
-
     def _resolve_margin_order(self):
         """Calculate the order of the margin cache to be generated. If not provided
         the margin will be calculated based on the smallest pixel possible for the threshold.
@@ -96,6 +70,34 @@ class MarginCatalogGenerator:
         margin_pixel_mindist = hp.order2mindist(self.margin_order)
         if margin_pixel_mindist * 60.0 < self.margin_threshold:
             raise ValueError("margin pixels must be larger than margin_threshold")
+
+    def create_catalog(self) -> MarginCatalog:
+        """Create a margin catalog for another pre-computed catalog
+
+        Returns:
+            Margin catalog object, or None if the margin is empty.
+        """
+        if self.margin_order < 0 and self.margin_threshold <= 0:
+            return self.create_empty_margin_catalog()
+        self._resolve_margin_order()
+        pixels, partitions = self._get_margins()
+        if len(pixels) == 0:
+            return self.create_empty_margin_catalog()
+        ddf, ddf_pixel_map, total_rows = self._generate_dask_df_and_map(pixels, partitions)
+        self.catalog_info.total_rows = total_rows
+        margin_pixels = list(ddf_pixel_map.keys())
+        margin_structure = hc.catalog.MarginCatalog(
+            self.catalog_info, margin_pixels, schema=self.margin_schema
+        )
+        return MarginCatalog(ddf, ddf_pixel_map, margin_structure)
+
+    def create_empty_margin_catalog(self) -> MarginCatalog:
+        """Create an empty margin catalog"""
+        dask_meta_schema = self.margin_schema.empty_table().to_pandas()
+        ddf = nd.NestedFrame.from_pandas(dask_meta_schema, npartitions=1)
+        self.catalog_info.total_rows = 0
+        margin_structure = hc.catalog.MarginCatalog(self.catalog_info, [], schema=self.margin_schema)
+        return MarginCatalog(ddf, {}, margin_structure)
 
     def _get_margins(self) -> Tuple[List[HealpixPixel], List[npd.NestedFrame]]:
         """Generates the list of pixels that have margin data, and the dataframes with the margin data for
@@ -131,14 +133,7 @@ class MarginCatalogGenerator:
         pixel_order = get_pixel_argsort(pixels)
         ordered_pixels = np.asarray(pixels)[pixel_order]
         ordered_partitions = [partitions[i] for i in pixel_order]
-        if len(pixels) > 0:
-            ddf, total_rows = _generate_dask_dataframe(
-                ordered_partitions, ordered_pixels, self.use_pyarrow_types
-            )
-        else:
-            dask_meta_schema = self.margin_schema.empty_table().to_pandas()
-            ddf = nd.NestedFrame.from_pandas(dask_meta_schema, npartitions=1)
-            total_rows = 0
+        ddf, total_rows = _generate_dask_dataframe(ordered_partitions, ordered_pixels, self.use_pyarrow_types)
         pixel_to_index_map = {pixel: index for index, pixel in enumerate(ordered_pixels)}
         return ddf, pixel_to_index_map, total_rows
 
