@@ -57,6 +57,5 @@ def plot_points(
     plt.xlabel("RA")
     plt.title(title)
     if color_col is not None and collection is not None:
-        plt.colorbar(collection)
-
+        plt.colorbar(collection, label=color_col)
     return fig, ax
