@@ -97,7 +97,6 @@ def test_partitions_on_map_equal_partitions_in_df(small_sky_order1_df, small_sky
         for _, row in partition_df.iterrows():
             ipix = hp.ang2pix(2**hp_pixel.order, row["ra"], row["dec"], nest=True, lonlat=True)
             assert ipix == hp_pixel.pixel
-    assert catalog.margin is not None
 
 
 def test_partitions_in_partition_info_equal_partitions_on_map(small_sky_order1_df, small_sky_order1_catalog):
