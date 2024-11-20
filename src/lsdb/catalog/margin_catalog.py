@@ -28,10 +28,12 @@ class MarginCatalog(HealpixDataset):
 
 
 def _validate_margin_catalog(margin_hc_catalog, hc_catalog):
-    """Validate that the margin and main catalogs have compatible schemas"""
-    full_schema = _create_margin_schema(hc_catalog.schema)
-    if not full_schema.equals(margin_hc_catalog.schema):
-        raise ValueError("The margin catalog and the main catalog must have the same schema")
+    """Validate that the margin and main catalogs have compatible schemas. The order of
+    the pyarrow fields should not matter."""
+    expected_margin_schema = _create_margin_schema(hc_catalog.schema)
+    # Compare the field set for the schemas. They should match.
+    if set(margin_hc_catalog.schema) != set(expected_margin_schema):
+        raise ValueError("The margin catalog and the main catalog must have the same schema.")
 
 
 def _create_margin_schema(main_catalog_schema: pa.Schema) -> pa.Schema:
