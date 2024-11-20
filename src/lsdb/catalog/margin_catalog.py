@@ -4,7 +4,6 @@ import pyarrow as pa
 from hats.io import paths
 
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
-from lsdb.core.search.abstract_search import AbstractSearch
 from lsdb.types import DaskDFPixelMap
 
 
@@ -26,22 +25,6 @@ class MarginCatalog(HealpixDataset):
         hc_structure: hc.catalog.MarginCatalog,
     ):
         super().__init__(ddf, ddf_pixel_map, hc_structure)
-
-    def search(self, search: AbstractSearch):
-        """Find rows by reusable search algorithm.
-
-        Filters partitions in the catalog to those that match some rough criteria and their neighbors.
-        Filters to points that match some finer criteria.
-
-        Args:
-            search (AbstractSearch): Instance of AbstractSearch.
-
-        Returns:
-            A new Catalog containing the points filtered to those matching the search parameters.
-        """
-        filtered_hc_structure = search.filter_hc_catalog(self.hc_structure)
-        ddf_partition_map, search_ndf = self._perform_search(filtered_hc_structure, search)
-        return self.__class__(search_ndf, ddf_partition_map, filtered_hc_structure)
 
 
 def _validate_margin_catalog(margin_hc_catalog, hc_catalog):

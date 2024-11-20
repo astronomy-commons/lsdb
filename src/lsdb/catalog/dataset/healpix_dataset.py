@@ -194,6 +194,22 @@ class HealpixDataset(Dataset):
         ddf_partition_map = {pixel: i for i, pixel in enumerate(filtered_pixels)}
         return ddf_partition_map, filtered_partitions_ddf
 
+    def search(self, search: AbstractSearch):
+        """Find rows by reusable search algorithm.
+
+        Filters partitions in the catalog to those that match some rough criteria.
+        Filters to points that match some finer criteria.
+
+        Args:
+            search (AbstractSearch): Instance of AbstractSearch.
+
+        Returns:
+            A new Catalog containing the points filtered to those matching the search parameters.
+        """
+        filtered_hc_structure = search.filter_hc_catalog(self.hc_structure)
+        ddf_partition_map, search_ndf = self._perform_search(filtered_hc_structure, search)
+        return self.__class__(search_ndf, ddf_partition_map, filtered_hc_structure)
+
     def map_partitions(
         self,
         func: Callable[..., npd.NestedFrame],
