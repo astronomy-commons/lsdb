@@ -324,7 +324,7 @@ def test_prune_empty_partitions_all_are_removed(small_sky_order1_catalog):
 
 def test_skymap_data(small_sky_order1_catalog):
     def func(df, healpix):
-        return len(df) / hp.nside2pixarea(hp.order2nside(healpix.order), degrees=True)
+        return len(df) / hp.order2pixarea(healpix.order, degrees=True)
 
     skymap = small_sky_order1_catalog.skymap_data(func)
     for pixel in skymap.keys():
@@ -335,7 +335,7 @@ def test_skymap_data(small_sky_order1_catalog):
 
 def test_skymap_data_order(small_sky_order1_catalog):
     def func(df, healpix):
-        return len(df) / hp.nside2pixarea(hp.order2nside(healpix.order), degrees=True)
+        return len(df) / hp.order2pixarea(healpix.order, degrees=True)
 
     order = 3
 
@@ -357,7 +357,7 @@ def test_skymap_data_order(small_sky_order1_catalog):
 
 def test_skymap_data_wrong_order(small_sky_order1_catalog):
     def func(df, healpix):
-        return len(df) / hp.nside2pixarea(hp.order2nside(healpix.order), degrees=True)
+        return len(df) / hp.order2pixarea(healpix.order, degrees=True)
 
     order = 0
 
@@ -367,7 +367,7 @@ def test_skymap_data_wrong_order(small_sky_order1_catalog):
 
 def test_skymap_histogram(small_sky_order1_catalog):
     def func(df, healpix):
-        return len(df) / hp.nside2pixarea(hp.order2nside(healpix.order), degrees=True)
+        return len(df) / hp.order2pixarea(healpix.order, degrees=True)
 
     pixel_map = small_sky_order1_catalog.skymap_data(func)
     pixel_map = {pixel: value.compute() for pixel, value in pixel_map.items()}
@@ -384,7 +384,7 @@ def test_skymap_histogram(small_sky_order1_catalog):
 
 def test_skymap_histogram_empty(small_sky_order1_catalog):
     def func(df, healpix):
-        return len(df) / hp.nside2pixarea(hp.order2nside(healpix.order), degrees=True)
+        return len(df) / hp.order2pixarea(healpix.order, degrees=True)
 
     expected_img = np.full(12, 1)
     img = small_sky_order1_catalog.cone_search(0, 0, 1).skymap_histogram(func, default_value=1)
@@ -396,7 +396,7 @@ def test_skymap_histogram_order_default(small_sky_order1_catalog):
     default = -1.0
 
     def func(df, _):
-        return len(df) / hp.nside2pixarea(hp.order2nside(order), degrees=True)
+        return len(df) / hp.order2pixarea(order, degrees=True)
 
     computed_catalog = small_sky_order1_catalog.compute()
     order_3_pixels = spatial_index_to_healpix(computed_catalog.index.to_numpy(), order)
@@ -412,7 +412,7 @@ def test_skymap_histogram_null_values_order_default(small_sky_order1_catalog):
     default = -1.0
 
     def func(df, healpix):
-        density = len(df) / hp.nside2pixarea(hp.order2nside(healpix.order), degrees=True)
+        density = len(df) / hp.order2pixarea(healpix.order, degrees=True)
         return density if healpix.pixel % 2 == 0 else None
 
     pixels = list(small_sky_order1_catalog._ddf_pixel_map.keys())
@@ -438,7 +438,7 @@ def test_skymap_histogram_null_values_order(small_sky_order1_catalog):
     default = -1.0
 
     def func(df, healpix):
-        density = len(df) / hp.nside2pixarea(hp.order2nside(healpix.order), degrees=True)
+        density = len(df) / hp.order2pixarea(healpix.order, degrees=True)
         return density if healpix.pixel % 2 == 0 else None
 
     pixels = list(small_sky_order1_catalog._ddf_pixel_map.keys())
@@ -462,7 +462,7 @@ def test_skymap_histogram_order_empty(small_sky_order1_catalog):
     order = 3
 
     def func(df, healpix):
-        return len(df) / hp.nside2pixarea(hp.order2nside(healpix.order), degrees=True)
+        return len(df) / hp.order2pixarea(healpix.order, degrees=True)
 
     catalog = small_sky_order1_catalog.cone_search(0, 0, 1)
     _, non_empty_partitions = catalog._get_non_empty_partitions()
@@ -477,7 +477,7 @@ def test_skymap_histogram_order_some_partitions_empty(small_sky_order1_catalog):
     order = 3
 
     def func(df, healpix):
-        return len(df) / hp.nside2pixarea(hp.order2nside(healpix.order), degrees=True)
+        return len(df) / hp.order2pixarea(healpix.order, degrees=True)
 
     catalog = small_sky_order1_catalog.query("ra > 350 and dec < -50")
     _, non_empty_partitions = catalog._get_non_empty_partitions()
@@ -502,7 +502,7 @@ def test_skymap_plot(small_sky_order1_catalog, mocker):
     mocker.patch("lsdb.catalog.dataset.healpix_dataset.plot_healpix_map")
 
     def func(df, healpix):
-        return len(df) / hp.nside2pixarea(hp.order2nside(healpix.order), degrees=True)
+        return len(df) / hp.order2pixarea(healpix.order, degrees=True)
 
     small_sky_order1_catalog.skymap(func)
     pixel_map = small_sky_order1_catalog.skymap_data(func)
@@ -600,9 +600,7 @@ def test_map_partitions_include_pixel(small_sky_order1_catalog):
     assert isinstance(mapped, Catalog)
     assert "pix" in mapped.columns
     mapcomp = mapped.compute()
-    pix_col = hp.ang2pix(
-        hp.order2nside(1), mapcomp["ra"].to_numpy(), mapcomp["dec"].to_numpy(), lonlat=True, nest=True
-    )
+    pix_col = hp.radec2pix(1, mapcomp["ra"].to_numpy(), mapcomp["dec"].to_numpy())
     assert np.all(mapcomp["pix"] == pix_col)
 
 

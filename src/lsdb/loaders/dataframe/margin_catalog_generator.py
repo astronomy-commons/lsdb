@@ -169,12 +169,10 @@ class MarginCatalogGenerator:
             A dictionary mapping each margin pixel to the respective DataFrame.
         """
         margin_pixel_df_map: Dict[HealpixPixel, npd.NestedFrame] = {}
-        self.dataframe["margin_pixel"] = hp.ang2pix(
-            2**self.margin_order,
+        self.dataframe["margin_pixel"] = hp.radec2pix(
+            self.margin_order,
             self.dataframe[self.hc_structure.catalog_info.ra_column].to_numpy(),
             self.dataframe[self.hc_structure.catalog_info.dec_column].to_numpy(),
-            lonlat=True,
-            nest=True,
         )
         constrained_data = self.dataframe.reset_index().merge(margin_pairs_df, on="margin_pixel")
         if len(constrained_data):
