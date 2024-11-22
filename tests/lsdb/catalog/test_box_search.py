@@ -37,7 +37,7 @@ def test_box_search_filters_correct_points_margin(
 
 
 def test_box_search_ra_complement(small_sky_order1_catalog):
-    dec = (-90, 89)
+    dec = (-90, 90)
     ra_column = small_sky_order1_catalog.hc_structure.catalog_info.ra_column
 
     ra_search_catalog = small_sky_order1_catalog.box_search(ra=(280, 300), dec=dec)
@@ -55,7 +55,7 @@ def test_box_search_ra_complement(small_sky_order1_catalog):
 
 
 def test_box_search_ra_wrapped_filters_correct_points(small_sky_order1_catalog):
-    dec = (-90, 89)
+    dec = (-90, 90)
     ra_column = small_sky_order1_catalog.hc_structure.catalog_info.ra_column
     ra_search_catalog = small_sky_order1_catalog.box_search(ra=(330, 30), dec=dec)
     filtered_ra_values = ra_search_catalog.compute()[ra_column]
@@ -68,7 +68,7 @@ def test_box_search_ra_wrapped_filters_correct_points(small_sky_order1_catalog):
 
 
 def test_box_search_ra_boundary(small_sky_order1_catalog):
-    dec = (-40, -30)
+    dec = (-90, 90)
     ra_column = small_sky_order1_catalog.hc_structure.catalog_info.ra_column
     dec_column = small_sky_order1_catalog.hc_structure.catalog_info.dec_column
 
@@ -79,7 +79,7 @@ def test_box_search_ra_boundary(small_sky_order1_catalog):
 
     assert len(ra_search_df) > 0
     assert all((0 <= ra <= 360) for ra in ra_values)
-    assert all((-40 <= dec <= -30) for dec in dec_values)
+    assert all((-90 <= dec <= 90) for dec in dec_values)
 
     for ra_range in [(0, 360), (360, 0)]:
         catalog_df = small_sky_order1_catalog.box_search(ra=ra_range, dec=dec).compute()

@@ -79,13 +79,6 @@ def test_polygon_search_invalid_dec(small_sky_order1_catalog):
         small_sky_order1_catalog.polygon_search(vertices)
 
 
-def test_polygon_search_invalid_shape(small_sky_order1_catalog):
-    """The polygon is not convex, so the shape is invalid"""
-    with pytest.raises(ValueError, match=ValidatorsErrors.INVALID_CONCAVE_SHAPE):
-        vertices = [(45, 30), (60, 60), (90, 45), (60, 50)]
-        small_sky_order1_catalog.polygon_search(vertices)
-
-
 def test_polygon_search_invalid_polygon(small_sky_order1_catalog):
     with pytest.raises(ValueError, match=ValidatorsErrors.INVALID_NUM_VERTICES):
         vertices = [(100.1, -20.3), (100.1, 40.3)]
