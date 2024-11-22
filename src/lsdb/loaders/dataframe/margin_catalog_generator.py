@@ -27,7 +27,7 @@ class MarginCatalogGenerator:
     def __init__(
         self,
         catalog: Catalog,
-        margin_order: int | None = -1,
+        margin_order: int = -1,
         margin_threshold: float = 5.0,
         use_pyarrow_types: bool = True,
         **kwargs,
