@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import warnings
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, List, Tuple, cast, Type
+from typing import Any, Callable, Dict, Iterable, List, Tuple, Type, cast
 
 import astropy
 import dask
@@ -18,11 +18,10 @@ from astropy.visualization.wcsaxes import WCSAxes
 from astropy.visualization.wcsaxes.frame import BaseFrame
 from dask.delayed import Delayed, delayed
 from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
-from hats.inspection.visualize_catalog import plot_healpix_map, initialize_wcs_axes, get_fov_moc_from_wcs
+from hats.inspection.visualize_catalog import get_fov_moc_from_wcs, initialize_wcs_axes, plot_healpix_map
 from hats.pixel_math import HealpixPixel
 from hats.pixel_math.healpix_pixel_function import get_pixel_argsort
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
-from jedi.inference.value.iterable import Sequence
 from matplotlib.figure import Figure
 from pandas._libs import lib
 from pandas._typing import AnyAll, Axis, IndexLabel
@@ -702,8 +701,8 @@ class HealpixDataset(Dataset):
     def plot_points(
         self,
         *,
-        ra_column: str = None,
-        dec_column: str = None,
+        ra_column: str | None = None,
+        dec_column: str | None = None,
         color_col: str | None = None,
         projection: str = "MOL",
         title: str = None,
@@ -715,6 +714,45 @@ class HealpixDataset(Dataset):
         fig: Figure | None = None,
         **kwargs,
     ):
+        """Plots the points in the catalog as a scatter plot
+
+        Performs a scatter plot on a WCSAxes after computing the points of the catalog.
+        This will perform compute on the catalog, and so may be slow/resource intensive.
+        If the fov or wcs args are set, only the partitions in the catalog visible to the plot will be
+        computed.
+        The scatter points can be colored by a column of the catalog by using the `color_col` kwarg
+
+        Args:
+            ra_column (str | None): The column to use as the RA of the points to plot. Defaults to the
+                catalog's default RA column. Useful for plotting joined or cross-matched points
+            dec_column (str | None): The column to use as the Declination of the points to plot. Defaults to
+                the catalog's default Declination column. Useful for plotting joined or cross-matched points
+            color_col (str | None): The column to use as the color array for the scatter plot. Allows coloring
+                of the points by the values of a given column.
+            projection (str): The projection to use in the WCS. Available projections listed at
+                https://docs.astropy.org/en/stable/wcs/supported_projections.html
+            title (str): The title of the plot
+            fov (Quantity or Sequence[Quantity, Quantity] | None): The Field of View of the WCS. Must be an
+                astropy Quantity with an angular unit, or a tuple of quantities for different longitude and \
+                latitude FOVs (Default covers the full sky)
+            center (SkyCoord | None): The center of the projection in the WCS (Default: SkyCoord(0, 0))
+            wcs (WCS | None): The WCS to specify the projection of the plot. If used, all other WCS parameters
+                are ignored and the parameters from the WCS object is used.
+            frame_class (Type[BaseFrame] | None): The class of the frame for the WCSAxes to be initialized
+                with. if the `ax` kwarg is used, this value is ignored (By Default uses EllipticalFrame for
+                full sky projection. If FOV is set, RectangularFrame is used)
+            ax (WCSAxes | None): The matplotlib axes to plot onto. If None, an axes will be created to be
+                used. If specified, the axes must be an astropy WCSAxes, and the `wcs` parameter must be set
+                with the WCS object used in the axes. (Default: None)
+            fig (Figure | None): The matplotlib figure to add the axes to. If None, one will be created,
+                unless ax is specified (Default: None)
+            **kwargs: Additional kwargs to pass to creating the matplotlib `scatter` function. These include
+                `c` for color, `s` for the size of hte points, `marker` for the maker type, `cmap` and `norm`
+                if `color_col` is used
+
+        Returns:
+            Tuple[Figure, WCSAxes] - The figure and axes used for the plot
+        """
         fig, ax, wcs = initialize_wcs_axes(
             projection=projection,
             fov=fov,

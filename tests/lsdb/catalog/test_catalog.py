@@ -1,11 +1,11 @@
-import astropy.units as u
-import matplotlib.pyplot as plt
 from pathlib import Path
 
+import astropy.units as u
 import dask.array as da
 import dask.dataframe as dd
 import hats as hc
 import hats.pixel_math.healpix_shim as hp
+import matplotlib.pyplot as plt
 import nested_dask as nd
 import nested_pandas as npd
 import numpy as np
