@@ -12,10 +12,10 @@ import numpy as np
 import numpy.testing as npt
 import pandas as pd
 import pytest
-from hats.io.file_io import read_fits_image
 from astropy.coordinates import SkyCoord
 from astropy.visualization.wcsaxes import WCSAxes
 from hats.inspection.visualize_catalog import get_fov_moc_from_wcs
+from hats.io.file_io import read_fits_image
 from hats.pixel_math import HealpixPixel, spatial_index_to_healpix
 from mocpy import WCS
 
@@ -23,6 +23,12 @@ import lsdb
 from lsdb import Catalog
 from lsdb.core.search.moc_search import MOCSearch
 from lsdb.dask.merge_catalog_functions import filter_by_spatial_index_to_pixel
+
+
+@pytest.fixture(autouse=True)
+def reset_matplotlib():
+    yield
+    plt.close("all")
 
 
 def test_catalog_pixels_equals_hc_catalog_pixels(small_sky_order1_catalog, small_sky_order1_hats_catalog):

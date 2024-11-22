@@ -705,7 +705,7 @@ class HealpixDataset(Dataset):
         dec_column: str | None = None,
         color_col: str | None = None,
         projection: str = "MOL",
-        title: str = None,
+        title: str | None = None,
         fov: Quantity | Tuple[Quantity, Quantity] = None,
         center: SkyCoord | None = None,
         wcs: astropy.wcs.WCS = None,
@@ -774,6 +774,12 @@ class HealpixDataset(Dataset):
             ra_column = self.hc_structure.catalog_info.ra_column
         if dec_column is None:
             dec_column = self.hc_structure.catalog_info.dec_column
+
+        if ra_column is None:
+            raise ValueError("Catalog has no RA Column")
+
+        if dec_column is None:
+            raise ValueError("Catalog has no DEC Column")
 
         if title is None:
             title = f"Points in the {self.name} catalog"
