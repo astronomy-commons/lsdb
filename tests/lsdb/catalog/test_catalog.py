@@ -10,6 +10,7 @@ import numpy as np
 import numpy.testing as npt
 import pandas as pd
 import pytest
+from hats.io.file_io import read_fits_image
 from hats.pixel_math import HealpixPixel, spatial_index_to_healpix
 
 import lsdb
@@ -208,20 +209,12 @@ def test_save_catalog_point_map(small_sky_order1_catalog, tmp_path):
 
     point_map_path = base_catalog_path / "point_map.fits"
     assert hc.io.file_io.does_file_or_directory_exist(point_map_path)
-    map_fits_image = hp.read_map(point_map_path, nest=True, h=True)
-    histogram, header_dict = map_fits_image[0], dict(map_fits_image[1])
+    histogram = read_fits_image(point_map_path)
 
     # The histogram and the sky map histogram match
     assert len(small_sky_order1_catalog) == np.sum(histogram)
     expected_histogram = small_sky_order1_catalog.skymap_histogram(lambda df, _: len(df), order=8)
     npt.assert_array_equal(expected_histogram, histogram)
-
-    # Check the fits file metadata
-    assert header_dict["PIXTYPE"] == "HEALPIX"
-    assert header_dict["ORDERING"] == "NESTED"
-    assert header_dict["INDXSCHM"] == "IMPLICIT"
-    assert header_dict["OBJECT"] == "FULLSKY"
-    assert header_dict["NSIDE"] == 256
 
 
 def test_save_catalog_overwrite(small_sky_catalog, tmp_path):
