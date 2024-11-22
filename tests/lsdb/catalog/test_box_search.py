@@ -67,6 +67,26 @@ def test_box_search_ra_wrapped_filters_correct_points(small_sky_order1_catalog):
         assert np.array_equal(ra_values, filtered_ra_values)
 
 
+def test_box_search_ra_boundary(small_sky_order1_catalog):
+    dec = (-40, -30)
+    ra_column = small_sky_order1_catalog.hc_structure.catalog_info.ra_column
+    dec_column = small_sky_order1_catalog.hc_structure.catalog_info.dec_column
+
+    ra_search_catalog = small_sky_order1_catalog.box_search(ra=(0, 0), dec=dec)
+    ra_search_df = ra_search_catalog.compute()
+    ra_values = ra_search_df[ra_column]
+    dec_values = ra_search_df[dec_column]
+
+    assert len(ra_search_df) > 0
+    assert all((0 <= ra <= 360) for ra in ra_values)
+    assert all((-40 <= dec <= -30) for dec in dec_values)
+
+    for ra_range in [(0, 360), (360, 0)]:
+        catalog_df = small_sky_order1_catalog.box_search(ra=ra_range, dec=dec).compute()
+        assert np.array_equal(catalog_df[ra_column], ra_values)
+        assert np.array_equal(catalog_df[dec_column], dec_values)
+
+
 def test_box_search_filters_partitions(small_sky_order1_catalog):
     ra = (280, 300)
     dec = (-40, -30)
@@ -100,11 +120,6 @@ def test_box_search_invalid_args(small_sky_order1_catalog):
         small_sky_order1_catalog.box_search(ra=(0, 30), dec=(-40, -30, 10))
     with pytest.raises(ValueError, match=ValidatorsErrors.INVALID_RADEC_RANGE):
         small_sky_order1_catalog.box_search(ra=(0, 30, 40), dec=(-40, 10))
-    # The range values coincide (for ra, values are wrapped)
-    with pytest.raises(ValueError, match=ValidatorsErrors.INVALID_RADEC_RANGE):
-        small_sky_order1_catalog.box_search(ra=(100, 100), dec=(-40, -30))
-    with pytest.raises(ValueError, match=ValidatorsErrors.INVALID_RADEC_RANGE):
-        small_sky_order1_catalog.box_search(ra=(0, 360), dec=(-40, -30))
     with pytest.raises(ValueError, match=ValidatorsErrors.INVALID_RADEC_RANGE):
         small_sky_order1_catalog.box_search(ra=(0, 50), dec=(50, 50))
     # No range values were provided
