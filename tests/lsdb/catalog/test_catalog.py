@@ -14,10 +14,14 @@ import pandas as pd
 import pytest
 from hats.io.file_io import read_fits_image
 from astropy.coordinates import SkyCoord
+from astropy.visualization.wcsaxes import WCSAxes
+from hats.inspection.visualize_catalog import get_fov_moc_from_wcs
 from hats.pixel_math import HealpixPixel, spatial_index_to_healpix
+from mocpy import WCS
 
 import lsdb
 from lsdb import Catalog
+from lsdb.core.search.moc_search import MOCSearch
 from lsdb.dask.merge_catalog_functions import filter_by_spatial_index_to_pixel
 
 
@@ -750,6 +754,54 @@ def test_modified_hc_structure_is_a_deep_copy(small_sky_order1_catalog):
     assert modified_hc_structure.catalog_info.total_rows == 0
 
 
-def test_plot_points(small_sky_order1_catalog):
-    small_sky_order1_catalog.plot_points(fov=20 * u.deg, center=SkyCoord(330, -70, unit="deg"), marker="+")
-    plt.show()
+def test_plot_points(small_sky_order1_catalog, mocker):
+    mocker.patch("astropy.visualization.wcsaxes.WCSAxes.scatter")
+    _, ax = small_sky_order1_catalog.plot_points()
+    comp_cat = small_sky_order1_catalog.compute()
+    WCSAxes.scatter.assert_called_once()
+    npt.assert_array_equal(WCSAxes.scatter.call_args[0][0], comp_cat["ra"])
+    npt.assert_array_equal(WCSAxes.scatter.call_args[0][1], comp_cat["dec"])
+    assert WCSAxes.scatter.call_args.kwargs["transform"] == ax.get_transform("icrs")
+
+
+def test_plot_points_fov(small_sky_order1_catalog, mocker):
+    mocker.patch("astropy.visualization.wcsaxes.WCSAxes.scatter")
+    fig = plt.figure(figsize=(10, 6))
+    center = SkyCoord(350, -80, unit="deg")
+    fov = 10 * u.deg
+    wcs = WCS(fig=fig, fov=fov, center=center, projection="MOL").w
+    wcs_moc = get_fov_moc_from_wcs(wcs)
+    _, ax = small_sky_order1_catalog.plot_points(fov=fov, center=center)
+    comp_cat = small_sky_order1_catalog.search(MOCSearch(wcs_moc)).compute()
+    WCSAxes.scatter.assert_called_once()
+    npt.assert_array_equal(WCSAxes.scatter.call_args[0][0], comp_cat["ra"])
+    npt.assert_array_equal(WCSAxes.scatter.call_args[0][1], comp_cat["dec"])
+    assert WCSAxes.scatter.call_args.kwargs["transform"] == ax.get_transform("icrs")
+
+
+def test_plot_points_wcs(small_sky_order1_catalog, mocker):
+    mocker.patch("astropy.visualization.wcsaxes.WCSAxes.scatter")
+    fig = plt.figure(figsize=(10, 6))
+    center = SkyCoord(350, -80, unit="deg")
+    fov = 10 * u.deg
+    wcs = WCS(fig=fig, fov=fov, center=center).w
+    wcs_moc = get_fov_moc_from_wcs(wcs)
+    _, ax = small_sky_order1_catalog.plot_points(wcs=wcs)
+    comp_cat = small_sky_order1_catalog.search(MOCSearch(wcs_moc)).compute()
+    WCSAxes.scatter.assert_called_once()
+    npt.assert_array_equal(WCSAxes.scatter.call_args[0][0], comp_cat["ra"])
+    npt.assert_array_equal(WCSAxes.scatter.call_args[0][1], comp_cat["dec"])
+    assert WCSAxes.scatter.call_args.kwargs["transform"] == ax.get_transform("icrs")
+
+
+def test_plot_points_colorcol(small_sky_order1_catalog, mocker):
+    mocker.patch("astropy.visualization.wcsaxes.WCSAxes.scatter")
+    mocker.patch("matplotlib.pyplot.colorbar")
+    _, ax = small_sky_order1_catalog.plot_points(color_col="id")
+    comp_cat = small_sky_order1_catalog.compute()
+    WCSAxes.scatter.assert_called_once()
+    npt.assert_array_equal(WCSAxes.scatter.call_args[0][0], comp_cat["ra"])
+    npt.assert_array_equal(WCSAxes.scatter.call_args[0][1], comp_cat["dec"])
+    npt.assert_array_equal(WCSAxes.scatter.call_args.kwargs["c"], comp_cat["id"])
+    assert WCSAxes.scatter.call_args.kwargs["transform"] == ax.get_transform("icrs")
+    plt.colorbar.assert_called_once()
