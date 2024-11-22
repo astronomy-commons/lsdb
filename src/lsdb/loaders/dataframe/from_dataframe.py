@@ -19,7 +19,7 @@ def from_dataframe(
     drop_empty_siblings: bool = False,
     partition_size: int | None = None,
     threshold: int | None = None,
-    margin_order: int | None = -1,
+    margin_order: int = -1,
     margin_threshold: float | None = 5.0,
     should_generate_moc: bool = True,
     moc_max_order: int = 10,
