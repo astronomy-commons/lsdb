@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN, spatial_index_to_healpix
+from hats.pixel_math import HealpixPixel
 
 from lsdb import read_hats
 from lsdb.dask.merge_catalog_functions import align_catalogs
@@ -281,16 +282,20 @@ def test_merge_asof(small_sky_catalog, small_sky_xmatch_catalog, assert_division
 
 
 def merging_function(input_frame, map_input, *args, **kwargs):
-    print("input frame", input_frame)
-    print("map frame", map_input)
-    print("positional arguments", args)
-    print("keyword arguments", kwargs)
+    if len(input_frame) == 0:
+        ## this is the empty call to infer meta
+        return input_frame
+    assert len(input_frame) == 131
+    assert len(map_input) == 1
+    assert args[0] == HealpixPixel(0, 11)
+    assert args[1] == HealpixPixel(0, 11)
+    assert kwargs == {"unused_kwarg": "ignored"}
     return input_frame
 
 
 def test_merge_map(small_sky_catalog, test_data_dir):
     map_catalog = read_hats(test_data_dir / "square_map")
-    merge_lazy = small_sky_catalog.merge_map(map_catalog, merging_function)
+    merge_lazy = small_sky_catalog.merge_map(map_catalog, merging_function, unused_kwarg="ignored")
 
     merge_result = merge_lazy.compute()
     assert len(merge_result) == small_sky_catalog.hc_structure.catalog_info.total_rows
