@@ -3,8 +3,8 @@ import nested_pandas as npd
 import numpy as np
 import pandas as pd
 import pytest
-from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN, spatial_index_to_healpix
 from hats.pixel_math import HealpixPixel
+from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN, spatial_index_to_healpix
 
 from lsdb import read_hats
 from lsdb.dask.merge_catalog_functions import align_catalogs
