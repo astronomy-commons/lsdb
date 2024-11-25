@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import warnings
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, List, Tuple, cast
+from typing import Any, Callable, Dict, Iterable, List, Tuple, Type, cast
 
+import astropy
 import dask
 import dask.dataframe as dd
 import hats as hc
@@ -11,10 +12,13 @@ import nested_dask as nd
 import nested_pandas as npd
 import numpy as np
 import pandas as pd
+from astropy.coordinates import SkyCoord
+from astropy.units import Quantity
 from astropy.visualization.wcsaxes import WCSAxes
+from astropy.visualization.wcsaxes.frame import BaseFrame
 from dask.delayed import Delayed, delayed
 from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
-from hats.inspection.visualize_catalog import plot_healpix_map
+from hats.inspection.visualize_catalog import get_fov_moc_from_wcs, initialize_wcs_axes, plot_healpix_map
 from hats.pixel_math import HealpixPixel
 from hats.pixel_math.healpix_pixel_function import get_pixel_argsort
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
@@ -27,8 +31,10 @@ from upath import UPath
 
 from lsdb import io
 from lsdb.catalog.dataset.dataset import Dataset
+from lsdb.core.plotting.plot_points import plot_points
 from lsdb.core.plotting.skymap import compute_skymap, perform_inner_skymap
 from lsdb.core.search.abstract_search import AbstractSearch
+from lsdb.core.search.moc_search import MOCSearch
 from lsdb.dask.merge_catalog_functions import concat_metas
 from lsdb.io.schema import get_arrow_schema
 from lsdb.types import DaskDFPixelMap
@@ -691,3 +697,105 @@ class HealpixDataset(Dataset):
         hc_catalog = self._create_modified_hc_structure(**hc_updates)
         hc_catalog.schema = get_arrow_schema(ndf)
         return self.__class__(ndf, self._ddf_pixel_map, hc_catalog)
+
+    def plot_points(
+        self,
+        *,
+        ra_column: str | None = None,
+        dec_column: str | None = None,
+        color_col: str | None = None,
+        projection: str = "MOL",
+        title: str | None = None,
+        fov: Quantity | Tuple[Quantity, Quantity] | None = None,
+        center: SkyCoord | None = None,
+        wcs: astropy.wcs.WCS | None = None,
+        frame_class: Type[BaseFrame] | None = None,
+        ax: WCSAxes | None = None,
+        fig: Figure | None = None,
+        **kwargs,
+    ):
+        """Plots the points in the catalog as a scatter plot
+
+        Performs a scatter plot on a WCSAxes after computing the points of the catalog.
+        This will perform compute on the catalog, and so may be slow/resource intensive.
+        If the fov or wcs args are set, only the partitions in the catalog visible to the plot will be
+        computed.
+        The scatter points can be colored by a column of the catalog by using the `color_col` kwarg
+
+        Args:
+            ra_column (str | None): The column to use as the RA of the points to plot. Defaults to the
+                catalog's default RA column. Useful for plotting joined or cross-matched points
+            dec_column (str | None): The column to use as the Declination of the points to plot. Defaults to
+                the catalog's default Declination column. Useful for plotting joined or cross-matched points
+            color_col (str | None): The column to use as the color array for the scatter plot. Allows coloring
+                of the points by the values of a given column.
+            projection (str): The projection to use in the WCS. Available projections listed at
+                https://docs.astropy.org/en/stable/wcs/supported_projections.html
+            title (str): The title of the plot
+            fov (Quantity or Sequence[Quantity, Quantity] | None): The Field of View of the WCS. Must be an
+                astropy Quantity with an angular unit, or a tuple of quantities for different longitude and \
+                latitude FOVs (Default covers the full sky)
+            center (SkyCoord | None): The center of the projection in the WCS (Default: SkyCoord(0, 0))
+            wcs (WCS | None): The WCS to specify the projection of the plot. If used, all other WCS parameters
+                are ignored and the parameters from the WCS object is used.
+            frame_class (Type[BaseFrame] | None): The class of the frame for the WCSAxes to be initialized
+                with. if the `ax` kwarg is used, this value is ignored (By Default uses EllipticalFrame for
+                full sky projection. If FOV is set, RectangularFrame is used)
+            ax (WCSAxes | None): The matplotlib axes to plot onto. If None, an axes will be created to be
+                used. If specified, the axes must be an astropy WCSAxes, and the `wcs` parameter must be set
+                with the WCS object used in the axes. (Default: None)
+            fig (Figure | None): The matplotlib figure to add the axes to. If None, one will be created,
+                unless ax is specified (Default: None)
+            **kwargs: Additional kwargs to pass to creating the matplotlib `scatter` function. These include
+                `c` for color, `s` for the size of hte points, `marker` for the maker type, `cmap` and `norm`
+                if `color_col` is used
+
+        Returns:
+            Tuple[Figure, WCSAxes] - The figure and axes used for the plot
+        """
+        fig, ax, wcs = initialize_wcs_axes(
+            projection=projection,
+            fov=fov,
+            center=center,
+            wcs=wcs,
+            frame_class=frame_class,
+            ax=ax,
+            fig=fig,
+            figsize=(9, 5),
+        )
+
+        fov_moc = get_fov_moc_from_wcs(wcs)
+
+        computed_catalog = (
+            self.search(MOCSearch(fov_moc)).compute() if fov_moc is not None else self.compute()
+        )
+
+        if ra_column is None:
+            ra_column = self.hc_structure.catalog_info.ra_column
+        if dec_column is None:
+            dec_column = self.hc_structure.catalog_info.dec_column
+
+        if ra_column is None:
+            raise ValueError("Catalog has no RA Column")
+
+        if dec_column is None:
+            raise ValueError("Catalog has no DEC Column")
+
+        if title is None:
+            title = f"Points in the {self.name} catalog"
+
+        return plot_points(
+            computed_catalog,
+            ra_column,
+            dec_column,
+            color_col=color_col,
+            projection=projection,
+            title=title,
+            fov=fov,
+            center=center,
+            wcs=wcs,
+            frame_class=frame_class,
+            ax=ax,
+            fig=fig,
+            **kwargs,
+        )
