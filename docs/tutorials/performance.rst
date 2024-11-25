@@ -3,14 +3,14 @@ Performance
 
 LSDB is a high-performance package built to support the analysis of large-scale astronomical datasets.
 One of the performance goals of LSDB is to add as little overhead over the input-output operations as possible.
-We achieve this aim for catalog cross-matching, spatial and data filtering operations by using
+We achieve this for catalog cross-matching and spatial- and data-filtering operations by using
 the `HATS <https://github.com/astronomy-commons/hats>`_ data format,
 efficient algorithms,
 and `Dask <https://dask.org/>`_ framework for parallel computing.
 
-Here we demonstrate the results of the performance tests of LSDB for cross-matching operations,
-performed on `Bridges2 cluster at Pittsburgh Supercomputing Center <https://www.psc.edu/resources/bridges-2/>`_ 
-using a asingle node with 128 cores and 256 GB of memory.
+Here, we demonstrate the results of LSDB performance tests for cross-matching operations,
+performed on the `Bridges2 cluster at Pittsburgh Supercomputing Center <https://www.psc.edu/resources/bridges-2/>`_ 
+using a single node with 128 cores and 256 GB of memory.
 
 Cross-matching performance overhead
 -----------------------------------
@@ -18,11 +18,13 @@ Cross-matching performance overhead
 We compare I/O speed and cross-matching performance of LSDB on an example cross-matching of
 ZTF DR14 (metadata only, 1.2B rows, 60GB)
 and Gaia DR3 (1.8B rows, 972GB) catalogs.
-The cross-matching took 46 minutes and produced a catalog of 498GB.
-LSDB would read more data than it would write, so to get a lower boundary estimate we would use the output size, which gives us 185MB/s of the cross-matching speed.
 
-We compare it to just copying both catalogs with ``cp -r`` command, which took 86 minutes and produced 1030GB of data,
-which corresponds to 204MB/s of the copy speed.
+The cross-matching took 46 minutes and produced a catalog of 498GB.
+LSDB would read more data than it would write in this case, so to get a lower boundary estimate, we use the output size, which gives us 185MB/s as the cross-matching speed.
+
+We compare this to just copying both catalogs with ``cp -r`` command, which took 86 minutes and produced 1030GB of data,
+which corresponds to 204MB/s as the copy speed.
+
 These allow us to conclude that LSDB cross-matching overhead is 5-15% compared to the I/O operations.
 
 The details of this analysis are given in
@@ -65,13 +67,13 @@ The results of the analysis are shown in the following plot:
 
 Some observations from the plot:
 
-* Construction of the ``SkyCoord`` objects in astropy is the most time-consuming step; in this step spherical coordinates are converted to Cartesian, so ``match_coordinates_sky()`` has less work to do comparing to other algorithms. So if your analysis doesn't require the ``SkyCoord`` objects anywhere else, it would be more fair to add up the time of the ``SkyCoord`` objects construction and the ``match_coordinates_sky()`` execution.
+* Construction of the ``SkyCoord`` objects in astropy is the most time-consuming step; in this step, spherical coordinates are converted to Cartesian, so ``match_coordinates_sky()`` has less work to do compared to other algorithms. So if your analysis doesn't require the ``SkyCoord`` objects anywhere else, it would be more fair to add up the time of the ``SkyCoord`` objects construction and the ``match_coordinates_sky()`` execution.
 * All algorithms but LSDB have a nearly linear dependency on the number of rows in the input catalogs starting from a small number of rows. LSDB has a constant overhead associated with the graph construction and Dask overhead, which is negligible for large catalogs, where the time starts to grow linearly.
-* LSDB is the only method allowing to parallelize the cross-matching operation, so we run it with 1, 4, 16, and 64 workers.
-* 16 and 64-worker cases show the same performance, which shows the limits of the parallelization, at least with the hardware setup used in the analysis.
+* LSDB is the only method allowing users to parallelize the cross-matching operation, so we run it with 1, 4, 16, and 64 workers.
+* 16 and 64-worker cases show the same performance, which demonstrates the limits of the parallelization, at least with the hardware setup used in the analysis.
 * Despite the fact that LSDB's crossmatching algorithm does similar work converting spherical coordinates to Cartesian, it's getting faster than astropy's algorithm for larger catalogs, even with a single worker. This is probably due to the fact that LSDB utilises a batching approach, which constructs shallower k-D trees for each partition of the data, and thus less time is spent on the tree traversal.
 
 Summarizing, the cross-matching approach implemented in LSDB is competitive with the existing tools and is more efficient for large catalogs, starting with roughly one million rows.
-Also, LSDB allows work with out-of-memory datasets, which is not possible with astropy and smatch, and not demonstrated in the analysis.
+Also, LSDB enables the use of out-of-memory datasets, which is not possible with astropy and smatch, and not demonstrated in the analysis.
 
 The complete code of the analysis is available `here <https://github.com/lincc-frameworks/notebooks_lf/tree/main/sprints/2024/05_30/xmatch_bench>`_.
