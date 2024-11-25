@@ -30,11 +30,16 @@ class Dataset:
         return self._ddf.__repr__()
 
     def _repr_html_(self):
-        # pylint: disable=protected-access
         data = self._repr_data().to_html(max_rows=5, show_dimensions=False, notebook=True)
-        return f"<div><strong>lsdb Catalog {self.name}:</strong></div>{data}<div>The catalog has been loaded <strong>lazily</strong>, meaning no data has been read, only the catalog schema</div>"
+        return (
+            f"<div><strong>lsdb Catalog {self.name}:</strong></div>"
+            f"{data}"
+            f"<div>The catalog has been loaded <strong>lazily</strong>, meaning no data has been read, only "
+            f"the catalog schema</div>"
+        )
 
     def _repr_data(self):
+        # pylint: disable=protected-access
         return self._ddf._repr_data()
 
     def compute(self) -> npd.NestedFrame:
