@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import warnings
 from typing import Dict, List, Tuple
 
 import hats as hc
@@ -61,6 +62,9 @@ class MarginCatalogGenerator:
 
         if self.margin_order < 0:
             self.margin_order = hp.margin2order(margin_thr_arcmin=self.margin_threshold / 60.0)
+        else:
+            self.margin_threshold = hp.order2mindist(self.margin_order) * 60.0
+            warnings.warn("Ignoring margin_threshold because margin_order was specified.", RuntimeWarning)
 
         if self.margin_order < highest_order + 1:
             raise ValueError(
@@ -81,8 +85,6 @@ class MarginCatalogGenerator:
         Returns:
             Margin catalog object or None if the margin is not generated.
         """
-        if self.margin_order > 0 and self.margin_threshold:
-            raise ValueError("Only one of margin_order or margin_threshold can be specified.")
         if self.margin_order < 0:
             if self.margin_threshold is None:
                 return None

@@ -263,17 +263,26 @@ def test_from_dataframe_small_sky_source_with_margins(small_sky_source_df, small
     _validate_margin_catalog(margin.hc_structure, catalog.hc_structure)
 
 
-def test_from_dataframe_invalid_margin_args(small_sky_source_df):
-    # Both margin order and threshold were specified
-    with pytest.raises(ValueError, match="Only one of"):
-        lsdb.from_dataframe(
+def test_from_dataframe_margin_threshold_from_order(small_sky_source_df):
+    # By default, the threshold is set to 5 arcsec, triggering a warning
+    with pytest.warns(RuntimeWarning, match="Ignoring margin_threshold"):
+        catalog = lsdb.from_dataframe(
             small_sky_source_df,
             ra_column="source_ra",
             dec_column="source_dec",
-            lowest_order=2,
+            lowest_order=0,
+            highest_order=2,
+            threshold=3000,
             margin_order=3,
-            margin_threshold=4,
         )
+    assert len(catalog.margin.get_healpix_pixels()) == 17
+    margin_threshold_order3 = hp.order2mindist(3) * 60.0
+    assert catalog.margin.hc_structure.catalog_info.margin_threshold == margin_threshold_order3
+    assert catalog.margin._ddf.index.name == catalog._ddf.index.name
+    _validate_margin_catalog(catalog.margin.hc_structure, catalog.hc_structure)
+
+
+def test_from_dataframe_invalid_margin_args(small_sky_source_df):
     # The provided margin threshold is negative
     with pytest.raises(ValueError, match="positive"):
         lsdb.from_dataframe(
