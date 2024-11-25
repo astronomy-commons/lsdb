@@ -245,13 +245,9 @@ class Catalog(HealpixDataset):
         """
         return self.search(ConeSearch(ra, dec, radius_arcsec, fine))
 
-    def box_search(
-        self,
-        ra: Tuple[float, float] | None = None,
-        dec: Tuple[float, float] | None = None,
-        fine: bool = True,
-    ) -> Catalog:
-        """Performs filtering according to right ascension and declination ranges.
+    def box_search(self, ra: Tuple[float, float], dec: Tuple[float, float], fine: bool = True) -> Catalog:
+        """Performs filtering according to right ascension and declination ranges. The right ascension
+        edges follow great arc circles and the declination edges follow small arc circles.
 
         Filters to points within the region specified in degrees.
         Filters partitions in the catalog to those that have some overlap with the region.

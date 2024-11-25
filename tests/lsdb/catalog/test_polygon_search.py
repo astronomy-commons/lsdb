@@ -73,16 +73,9 @@ def test_polygon_search_coarse_versus_fine(small_sky_order1_catalog):
 
 
 def test_polygon_search_invalid_dec(small_sky_order1_catalog):
-    # Some declination values are out of the [-90,90] bounds
-    vertices = [(-20, 100), (-20, -1), (20, -1), (20, 100)]
+    # Some declination values are out of the [-90,90[ bounds
     with pytest.raises(ValueError, match=ValidatorsErrors.INVALID_DEC):
-        small_sky_order1_catalog.polygon_search(vertices)
-
-
-def test_polygon_search_invalid_shape(small_sky_order1_catalog):
-    """The polygon is not convex, so the shape is invalid"""
-    with pytest.raises(ValueError, match=ValidatorsErrors.INVALID_CONCAVE_SHAPE):
-        vertices = [(45, 30), (60, 60), (90, 45), (60, 50)]
+        vertices = [(-20, 100), (-20, -1), (20, -1), (20, 100)]
         small_sky_order1_catalog.polygon_search(vertices)
 
 

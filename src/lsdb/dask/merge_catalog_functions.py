@@ -86,7 +86,7 @@ def align_catalogs(left: Catalog, right: Catalog, add_right_margin: bool = True)
         else right.hc_structure.pixel_tree.to_moc()
     )
     if right_added_radius is not None:
-        right_moc_depth_resol = hp.nside2resol(hp.order2nside(right_moc.max_order), arcmin=True) * 60
+        right_moc_depth_resol = hp.order2resol(right_moc.max_order, arcmin=True) * 60
         if right_added_radius < right_moc_depth_resol:
             right_moc = copy_moc(right_moc).add_neighbours()
         else:
