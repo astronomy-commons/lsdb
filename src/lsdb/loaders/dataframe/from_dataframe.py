@@ -44,7 +44,7 @@ def from_dataframe(
         partition_size (int): The desired partition size, in number of bytes in-memory.
         threshold (int): The maximum number of data points per pixel.
         margin_order (int): The order at which to generate the margin cache.
-        margin_threshold (float): The size of the margin cache boundary, in arcseconds. If zero, and
+        margin_threshold (float): The size of the margin cache boundary, in arcseconds. If None, and
             margin order is not specified, the margin cache is not generated. Defaults to 5 arcseconds.
         should_generate_moc (bool): should we generate a MOC (multi-order coverage map)
             of the data. can improve performance when joining/crossmatching to
