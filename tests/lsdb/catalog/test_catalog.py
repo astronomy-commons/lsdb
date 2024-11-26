@@ -1,20 +1,34 @@
 from pathlib import Path
 
+import astropy.units as u
 import dask.array as da
 import dask.dataframe as dd
 import hats as hc
 import hats.pixel_math.healpix_shim as hp
+import matplotlib.pyplot as plt
 import nested_dask as nd
 import nested_pandas as npd
 import numpy as np
 import numpy.testing as npt
 import pandas as pd
 import pytest
+from astropy.coordinates import SkyCoord
+from astropy.visualization.wcsaxes import WCSAxes
+from hats.inspection.visualize_catalog import get_fov_moc_from_wcs
+from hats.io.file_io import read_fits_image
 from hats.pixel_math import HealpixPixel, spatial_index_to_healpix
+from mocpy import WCS
 
 import lsdb
 from lsdb import Catalog
+from lsdb.core.search.moc_search import MOCSearch
 from lsdb.dask.merge_catalog_functions import filter_by_spatial_index_to_pixel
+
+
+@pytest.fixture(autouse=True)
+def reset_matplotlib():
+    yield
+    plt.close("all")
 
 
 def test_catalog_pixels_equals_hc_catalog_pixels(small_sky_order1_catalog, small_sky_order1_hats_catalog):
@@ -208,20 +222,12 @@ def test_save_catalog_point_map(small_sky_order1_catalog, tmp_path):
 
     point_map_path = base_catalog_path / "point_map.fits"
     assert hc.io.file_io.does_file_or_directory_exist(point_map_path)
-    map_fits_image = hp.read_map(point_map_path, nest=True, h=True)
-    histogram, header_dict = map_fits_image[0], dict(map_fits_image[1])
+    histogram = read_fits_image(point_map_path)
 
     # The histogram and the sky map histogram match
     assert len(small_sky_order1_catalog) == np.sum(histogram)
     expected_histogram = small_sky_order1_catalog.skymap_histogram(lambda df, _: len(df), order=8)
     npt.assert_array_equal(expected_histogram, histogram)
-
-    # Check the fits file metadata
-    assert header_dict["PIXTYPE"] == "HEALPIX"
-    assert header_dict["ORDERING"] == "NESTED"
-    assert header_dict["INDXSCHM"] == "IMPLICIT"
-    assert header_dict["OBJECT"] == "FULLSKY"
-    assert header_dict["NSIDE"] == 256
 
 
 def test_save_catalog_overwrite(small_sky_catalog, tmp_path):
@@ -324,7 +330,7 @@ def test_prune_empty_partitions_all_are_removed(small_sky_order1_catalog):
 
 def test_skymap_data(small_sky_order1_catalog):
     def func(df, healpix):
-        return len(df) / hp.nside2pixarea(hp.order2nside(healpix.order), degrees=True)
+        return len(df) / hp.order2pixarea(healpix.order, degrees=True)
 
     skymap = small_sky_order1_catalog.skymap_data(func)
     for pixel in skymap.keys():
@@ -335,7 +341,7 @@ def test_skymap_data(small_sky_order1_catalog):
 
 def test_skymap_data_order(small_sky_order1_catalog):
     def func(df, healpix):
-        return len(df) / hp.nside2pixarea(hp.order2nside(healpix.order), degrees=True)
+        return len(df) / hp.order2pixarea(healpix.order, degrees=True)
 
     order = 3
 
@@ -357,7 +363,7 @@ def test_skymap_data_order(small_sky_order1_catalog):
 
 def test_skymap_data_wrong_order(small_sky_order1_catalog):
     def func(df, healpix):
-        return len(df) / hp.nside2pixarea(hp.order2nside(healpix.order), degrees=True)
+        return len(df) / hp.order2pixarea(healpix.order, degrees=True)
 
     order = 0
 
@@ -367,7 +373,7 @@ def test_skymap_data_wrong_order(small_sky_order1_catalog):
 
 def test_skymap_histogram(small_sky_order1_catalog):
     def func(df, healpix):
-        return len(df) / hp.nside2pixarea(hp.order2nside(healpix.order), degrees=True)
+        return len(df) / hp.order2pixarea(healpix.order, degrees=True)
 
     pixel_map = small_sky_order1_catalog.skymap_data(func)
     pixel_map = {pixel: value.compute() for pixel, value in pixel_map.items()}
@@ -384,7 +390,7 @@ def test_skymap_histogram(small_sky_order1_catalog):
 
 def test_skymap_histogram_empty(small_sky_order1_catalog):
     def func(df, healpix):
-        return len(df) / hp.nside2pixarea(hp.order2nside(healpix.order), degrees=True)
+        return len(df) / hp.order2pixarea(healpix.order, degrees=True)
 
     expected_img = np.full(12, 1)
     img = small_sky_order1_catalog.cone_search(0, 0, 1).skymap_histogram(func, default_value=1)
@@ -396,7 +402,7 @@ def test_skymap_histogram_order_default(small_sky_order1_catalog):
     default = -1.0
 
     def func(df, _):
-        return len(df) / hp.nside2pixarea(hp.order2nside(order), degrees=True)
+        return len(df) / hp.order2pixarea(order, degrees=True)
 
     computed_catalog = small_sky_order1_catalog.compute()
     order_3_pixels = spatial_index_to_healpix(computed_catalog.index.to_numpy(), order)
@@ -412,7 +418,7 @@ def test_skymap_histogram_null_values_order_default(small_sky_order1_catalog):
     default = -1.0
 
     def func(df, healpix):
-        density = len(df) / hp.nside2pixarea(hp.order2nside(healpix.order), degrees=True)
+        density = len(df) / hp.order2pixarea(healpix.order, degrees=True)
         return density if healpix.pixel % 2 == 0 else None
 
     pixels = list(small_sky_order1_catalog._ddf_pixel_map.keys())
@@ -438,7 +444,7 @@ def test_skymap_histogram_null_values_order(small_sky_order1_catalog):
     default = -1.0
 
     def func(df, healpix):
-        density = len(df) / hp.nside2pixarea(hp.order2nside(healpix.order), degrees=True)
+        density = len(df) / hp.order2pixarea(healpix.order, degrees=True)
         return density if healpix.pixel % 2 == 0 else None
 
     pixels = list(small_sky_order1_catalog._ddf_pixel_map.keys())
@@ -462,7 +468,7 @@ def test_skymap_histogram_order_empty(small_sky_order1_catalog):
     order = 3
 
     def func(df, healpix):
-        return len(df) / hp.nside2pixarea(hp.order2nside(healpix.order), degrees=True)
+        return len(df) / hp.order2pixarea(healpix.order, degrees=True)
 
     catalog = small_sky_order1_catalog.cone_search(0, 0, 1)
     _, non_empty_partitions = catalog._get_non_empty_partitions()
@@ -477,7 +483,7 @@ def test_skymap_histogram_order_some_partitions_empty(small_sky_order1_catalog):
     order = 3
 
     def func(df, healpix):
-        return len(df) / hp.nside2pixarea(hp.order2nside(healpix.order), degrees=True)
+        return len(df) / hp.order2pixarea(healpix.order, degrees=True)
 
     catalog = small_sky_order1_catalog.query("ra > 350 and dec < -50")
     _, non_empty_partitions = catalog._get_non_empty_partitions()
@@ -502,7 +508,7 @@ def test_skymap_plot(small_sky_order1_catalog, mocker):
     mocker.patch("lsdb.catalog.dataset.healpix_dataset.plot_healpix_map")
 
     def func(df, healpix):
-        return len(df) / hp.nside2pixarea(hp.order2nside(healpix.order), degrees=True)
+        return len(df) / hp.order2pixarea(healpix.order, degrees=True)
 
     small_sky_order1_catalog.skymap(func)
     pixel_map = small_sky_order1_catalog.skymap_data(func)
@@ -600,9 +606,7 @@ def test_map_partitions_include_pixel(small_sky_order1_catalog):
     assert isinstance(mapped, Catalog)
     assert "pix" in mapped.columns
     mapcomp = mapped.compute()
-    pix_col = hp.ang2pix(
-        hp.order2nside(1), mapcomp["ra"].to_numpy(), mapcomp["dec"].to_numpy(), lonlat=True, nest=True
-    )
+    pix_col = hp.radec2pix(1, mapcomp["ra"].to_numpy(), mapcomp["dec"].to_numpy())
     assert np.all(mapcomp["pix"] == pix_col)
 
 
@@ -694,7 +698,7 @@ def test_filtered_catalog_has_undetermined_len(small_sky_order1_catalog, small_s
         vertices = [(300, -50), (300, -55), (272, -55), (272, -50)]
         len(small_sky_order1_catalog.polygon_search(vertices))
     with pytest.raises(ValueError, match="undetermined"):
-        len(small_sky_order1_catalog.box_search(ra=(280, 300)))
+        len(small_sky_order1_catalog.box_search(ra=(280, 300), dec=(0, 30)))
     with pytest.raises(ValueError, match="undetermined"):
         len(small_sky_order1_catalog.order_search(max_order=2))
     with pytest.raises(ValueError, match="undetermined"):
@@ -754,3 +758,56 @@ def test_modified_hc_structure_is_a_deep_copy(small_sky_order1_catalog):
 
     # The rows of the new structure are invalidated
     assert modified_hc_structure.catalog_info.total_rows == 0
+
+
+def test_plot_points(small_sky_order1_catalog, mocker):
+    mocker.patch("astropy.visualization.wcsaxes.WCSAxes.scatter")
+    _, ax = small_sky_order1_catalog.plot_points()
+    comp_cat = small_sky_order1_catalog.compute()
+    WCSAxes.scatter.assert_called_once()
+    npt.assert_array_equal(WCSAxes.scatter.call_args[0][0], comp_cat["ra"])
+    npt.assert_array_equal(WCSAxes.scatter.call_args[0][1], comp_cat["dec"])
+    assert WCSAxes.scatter.call_args.kwargs["transform"] == ax.get_transform("icrs")
+
+
+def test_plot_points_fov(small_sky_order1_catalog, mocker):
+    mocker.patch("astropy.visualization.wcsaxes.WCSAxes.scatter")
+    fig = plt.figure(figsize=(10, 6))
+    center = SkyCoord(350, -80, unit="deg")
+    fov = 10 * u.deg
+    wcs = WCS(fig=fig, fov=fov, center=center, projection="MOL").w
+    wcs_moc = get_fov_moc_from_wcs(wcs)
+    _, ax = small_sky_order1_catalog.plot_points(fov=fov, center=center)
+    comp_cat = small_sky_order1_catalog.search(MOCSearch(wcs_moc)).compute()
+    WCSAxes.scatter.assert_called_once()
+    npt.assert_array_equal(WCSAxes.scatter.call_args[0][0], comp_cat["ra"])
+    npt.assert_array_equal(WCSAxes.scatter.call_args[0][1], comp_cat["dec"])
+    assert WCSAxes.scatter.call_args.kwargs["transform"] == ax.get_transform("icrs")
+
+
+def test_plot_points_wcs(small_sky_order1_catalog, mocker):
+    mocker.patch("astropy.visualization.wcsaxes.WCSAxes.scatter")
+    fig = plt.figure(figsize=(10, 6))
+    center = SkyCoord(350, -80, unit="deg")
+    fov = 10 * u.deg
+    wcs = WCS(fig=fig, fov=fov, center=center).w
+    wcs_moc = get_fov_moc_from_wcs(wcs)
+    _, ax = small_sky_order1_catalog.plot_points(wcs=wcs)
+    comp_cat = small_sky_order1_catalog.search(MOCSearch(wcs_moc)).compute()
+    WCSAxes.scatter.assert_called_once()
+    npt.assert_array_equal(WCSAxes.scatter.call_args[0][0], comp_cat["ra"])
+    npt.assert_array_equal(WCSAxes.scatter.call_args[0][1], comp_cat["dec"])
+    assert WCSAxes.scatter.call_args.kwargs["transform"] == ax.get_transform("icrs")
+
+
+def test_plot_points_colorcol(small_sky_order1_catalog, mocker):
+    mocker.patch("astropy.visualization.wcsaxes.WCSAxes.scatter")
+    mocker.patch("matplotlib.pyplot.colorbar")
+    _, ax = small_sky_order1_catalog.plot_points(color_col="id")
+    comp_cat = small_sky_order1_catalog.compute()
+    WCSAxes.scatter.assert_called_once()
+    npt.assert_array_equal(WCSAxes.scatter.call_args[0][0], comp_cat["ra"])
+    npt.assert_array_equal(WCSAxes.scatter.call_args[0][1], comp_cat["dec"])
+    npt.assert_array_equal(WCSAxes.scatter.call_args.kwargs["c"], comp_cat["id"])
+    assert WCSAxes.scatter.call_args.kwargs["transform"] == ax.get_transform("icrs")
+    plt.colorbar.assert_called_once()
