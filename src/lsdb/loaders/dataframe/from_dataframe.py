@@ -44,8 +44,8 @@ def from_dataframe(
         partition_size (int): The desired partition size, in number of bytes in-memory.
         threshold (int): The maximum number of data points per pixel.
         margin_order (int): The order at which to generate the margin cache.
-        margin_threshold (float): The size of the margin cache boundary, in arcseconds. If None,
-            the margin cache is not generated. Defaults to 5 arcseconds.
+        margin_threshold (float): The size of the margin cache boundary, in arcseconds. If None, and
+            margin order is not specified, the margin cache is not generated. Defaults to 5 arcseconds.
         should_generate_moc (bool): should we generate a MOC (multi-order coverage map)
             of the data. can improve performance when joining/crossmatching to
             other hats-sharded datasets.
@@ -74,12 +74,11 @@ def from_dataframe(
         schema=schema,
         **kwargs,
     ).load_catalog()
-    if margin_threshold:
-        catalog.margin = MarginCatalogGenerator(
-            catalog,
-            margin_order,
-            margin_threshold,
-            use_pyarrow_types,
-            **kwargs,
-        ).create_catalog()
+    catalog.margin = MarginCatalogGenerator(
+        catalog,
+        margin_order,
+        margin_threshold,
+        use_pyarrow_types,
+        **kwargs,
+    ).create_catalog()
     return catalog

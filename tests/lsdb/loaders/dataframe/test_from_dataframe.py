@@ -15,7 +15,7 @@ from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 from mocpy import MOC
 
 import lsdb
-from lsdb.catalog.margin_catalog import MarginCatalog
+from lsdb.catalog.margin_catalog import MarginCatalog, _validate_margin_catalog
 
 
 def get_catalog_kwargs(catalog, **kwargs):
@@ -258,11 +258,41 @@ def test_from_dataframe_small_sky_source_with_margins(small_sky_source_df, small
 
     assert catalog.hc_structure.catalog_info.__pydantic_extra__["hats_builder"].startswith("lsdb")
     assert margin.hc_structure.catalog_info.__pydantic_extra__["hats_builder"].startswith("lsdb")
-    # The margin and main catalog's schemas are the same
-    assert margin.hc_structure.schema is catalog.hc_structure.schema
+
+    # The margin and main catalog's schemas are valid
+    _validate_margin_catalog(margin.hc_structure, catalog.hc_structure)
 
 
-def test_from_dataframe_invalid_margin_order(small_sky_source_df):
+def test_from_dataframe_margin_threshold_from_order(small_sky_source_df):
+    # By default, the threshold is set to 5 arcsec, triggering a warning
+    with pytest.warns(RuntimeWarning, match="Ignoring margin_threshold"):
+        catalog = lsdb.from_dataframe(
+            small_sky_source_df,
+            ra_column="source_ra",
+            dec_column="source_dec",
+            lowest_order=0,
+            highest_order=2,
+            threshold=3000,
+            margin_order=3,
+        )
+    assert len(catalog.margin.get_healpix_pixels()) == 17
+    margin_threshold_order3 = hp.order2mindist(3) * 60.0
+    assert catalog.margin.hc_structure.catalog_info.margin_threshold == margin_threshold_order3
+    assert catalog.margin._ddf.index.name == catalog._ddf.index.name
+    _validate_margin_catalog(catalog.margin.hc_structure, catalog.hc_structure)
+
+
+def test_from_dataframe_invalid_margin_args(small_sky_source_df):
+    # The provided margin threshold is negative
+    with pytest.raises(ValueError, match="positive"):
+        lsdb.from_dataframe(
+            small_sky_source_df,
+            ra_column="source_ra",
+            dec_column="source_dec",
+            lowest_order=2,
+            margin_threshold=-1,
+        )
+    # Margin order is inferior to the main catalog's highest order
     with pytest.raises(ValueError, match="margin_order"):
         lsdb.from_dataframe(
             small_sky_source_df,
@@ -281,7 +311,27 @@ def test_from_dataframe_margin_is_empty(small_sky_order1_df):
         highest_order=5,
         threshold=100,
     )
-    assert catalog.margin is None
+    assert len(catalog.margin.get_healpix_pixels()) == 0
+    assert catalog.margin._ddf_pixel_map == {}
+    assert catalog.margin._ddf.index.name == catalog._ddf.index.name
+    assert catalog.margin.hc_structure.catalog_info.margin_threshold == 5.0
+    _validate_margin_catalog(catalog.margin.hc_structure, catalog.hc_structure)
+
+
+def test_from_dataframe_margin_threshold_zero(small_sky_order1_df):
+    catalog = lsdb.from_dataframe(
+        small_sky_order1_df,
+        catalog_name="small_sky_order1",
+        catalog_type="object",
+        highest_order=5,
+        threshold=100,
+        margin_threshold=0,
+    )
+    assert len(catalog.margin.get_healpix_pixels()) == 0
+    assert catalog.margin._ddf_pixel_map == {}
+    assert catalog.margin._ddf.index.name == catalog._ddf.index.name
+    assert catalog.margin.hc_structure.catalog_info.margin_threshold == 0
+    _validate_margin_catalog(catalog.margin.hc_structure, catalog.hc_structure)
 
 
 def test_from_dataframe_moc(small_sky_order1_catalog):
