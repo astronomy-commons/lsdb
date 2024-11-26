@@ -21,7 +21,7 @@ dependencies = [
     # dask diagnostics is required to spin up the dashboard for profiling.
     "dask[complete]",
     "deprecated",
-    "hats>=0.4.3",
+    "hats>=0.4.4",
     "lsst-sphgeom", # To handle spherical sky polygons
     "nested-dask>=0.3.0",
     "nested-pandas",
