@@ -1,7 +1,16 @@
+from typing import Tuple, Type
+
+import astropy
+import astropy.units as u
 import nested_pandas as npd
 from astropy.coordinates import SkyCoord
+from astropy.units import Quantity
+from astropy.visualization.wcsaxes import SphericalCircle, WCSAxes
+from astropy.visualization.wcsaxes.frame import BaseFrame
 from hats.catalog import TableProperties
+from hats.inspection.visualize_catalog import initialize_wcs_axes
 from hats.pixel_math.validators import validate_declination_values, validate_radius
+from matplotlib.figure import Figure
 from mocpy import MOC
 
 from lsdb.core.search.abstract_search import AbstractSearch
@@ -30,6 +39,15 @@ class ConeSearch(AbstractSearch):
     def search_points(self, frame: npd.NestedFrame, metadata: TableProperties) -> npd.NestedFrame:
         """Determine the search results within a data frame"""
         return cone_filter(frame, self.ra, self.dec, self.radius_arcsec, metadata)
+
+    def _perform_plot(self, ax: WCSAxes, **kwargs):
+        circle = SphericalCircle(
+            (self.ra * u.deg, self.dec * u.deg),
+            self.radius_arcsec * u.arcsec,
+            transform=ax.get_transform("icrs"),
+            **kwargs,
+        )
+        ax.add_patch(circle)
 
 
 def cone_filter(data_frame: npd.NestedFrame, ra, dec, radius_arcsec, metadata: TableProperties):
