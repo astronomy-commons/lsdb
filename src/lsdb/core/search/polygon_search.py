@@ -63,6 +63,6 @@ def get_cartesian_polygon(vertices: list[tuple[float, float]]) -> ConvexPolygon:
     Returns:
         The convex polygon object.
     """
-    vertices_xyz = hp.ang2vec(*np.array(vertices).T, lonlat=True)
+    vertices_xyz = hp.ang2vec(*np.array(vertices).T)
     edge_vectors = [UnitVector3d(x, y, z) for x, y, z in vertices_xyz]
     return ConvexPolygon(edge_vectors)

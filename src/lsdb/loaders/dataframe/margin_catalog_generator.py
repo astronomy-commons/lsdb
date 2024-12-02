@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import warnings
 from typing import Dict, List, Tuple
 
 import hats as hc
@@ -13,7 +14,7 @@ from hats.pixel_math import HealpixPixel, get_margin
 from hats.pixel_math.healpix_pixel_function import get_pixel_argsort
 
 from lsdb import Catalog
-from lsdb.catalog.margin_catalog import MarginCatalog
+from lsdb.catalog.margin_catalog import MarginCatalog, _create_margin_schema
 from lsdb.loaders.dataframe.from_dataframe_utils import (
     _extra_property_dict,
     _format_margin_partition_dataframe,
@@ -27,8 +28,8 @@ class MarginCatalogGenerator:
     def __init__(
         self,
         catalog: Catalog,
-        margin_order: int | None = -1,
-        margin_threshold: float = 5.0,
+        margin_order: int = -1,
+        margin_threshold: float | None = 5.0,
         use_pyarrow_types: bool = True,
         **kwargs,
     ) -> None:
@@ -45,9 +46,9 @@ class MarginCatalogGenerator:
         self.hc_structure = catalog.hc_structure
         self.margin_threshold = margin_threshold
         self.margin_order = margin_order
-        self._resolve_margin_order()
         self.use_pyarrow_types = use_pyarrow_types
-        self.catalog_info = self._create_catalog_info(**kwargs)
+        self.catalog_info_kwargs = kwargs
+        self.margin_schema = _create_margin_schema(catalog.hc_structure.schema)
 
     def _resolve_margin_order(self):
         """Calculate the order of the margin cache to be generated. If not provided
@@ -61,6 +62,9 @@ class MarginCatalogGenerator:
 
         if self.margin_order < 0:
             self.margin_order = hp.margin2order(margin_thr_arcmin=self.margin_threshold / 60.0)
+        else:
+            self.margin_threshold = hp.order2mindist(self.margin_order) * 60.0
+            warnings.warn("Ignoring margin_threshold because margin_order was specified.", RuntimeWarning)
 
         if self.margin_order < highest_order + 1:
             raise ValueError(
@@ -72,21 +76,43 @@ class MarginCatalogGenerator:
             raise ValueError("margin pixels must be larger than margin_threshold")
 
     def create_catalog(self) -> MarginCatalog | None:
-        """Create a margin catalog for another pre-computed catalog
+        """Create a margin catalog for another pre-computed catalog.
+
+        Only one of margin order / threshold can be specified. If the margin order
+        is not specified: if the threshold is zero the margin is an empty catalog;
+        if the threshold is None, the margin is not generated (it is None).
 
         Returns:
-            Margin catalog object, or None if the margin is empty.
+            Margin catalog object or None if the margin is not generated.
         """
+        if self.margin_order < 0:
+            if self.margin_threshold is None:
+                return None
+            if self.margin_threshold < 0:
+                raise ValueError("margin_threshold must be positive.")
+            if self.margin_threshold == 0:
+                return self._create_empty_catalog()
+        return self._create_catalog()
+
+    def _create_catalog(self) -> MarginCatalog:
+        """Create a non-empty margin catalog"""
+        self._resolve_margin_order()
         pixels, partitions = self._get_margins()
         if len(pixels) == 0:
-            return None
+            return self._create_empty_catalog()
         ddf, ddf_pixel_map, total_rows = self._generate_dask_df_and_map(pixels, partitions)
-        self.catalog_info.total_rows = total_rows
+        catalog_info = self._create_catalog_info(**self.catalog_info_kwargs, total_rows=total_rows)
         margin_pixels = list(ddf_pixel_map.keys())
-        margin_structure = hc.catalog.MarginCatalog(
-            self.catalog_info, margin_pixels, schema=self.hc_structure.schema
-        )
+        margin_structure = hc.catalog.MarginCatalog(catalog_info, margin_pixels, schema=self.margin_schema)
         return MarginCatalog(ddf, ddf_pixel_map, margin_structure)
+
+    def _create_empty_catalog(self) -> MarginCatalog:
+        """Create an empty margin catalog"""
+        dask_meta_schema = self.margin_schema.empty_table().to_pandas()
+        ddf = nd.NestedFrame.from_pandas(dask_meta_schema, npartitions=1)
+        catalog_info = self._create_catalog_info(**self.catalog_info_kwargs, total_rows=0)
+        margin_structure = hc.catalog.MarginCatalog(catalog_info, [], schema=self.margin_schema)
+        return MarginCatalog(ddf, {}, margin_structure)
 
     def _get_margins(self) -> Tuple[List[HealpixPixel], List[npd.NestedFrame]]:
         """Generates the list of pixels that have margin data, and the dataframes with the margin data for
@@ -169,12 +195,10 @@ class MarginCatalogGenerator:
             A dictionary mapping each margin pixel to the respective DataFrame.
         """
         margin_pixel_df_map: Dict[HealpixPixel, npd.NestedFrame] = {}
-        self.dataframe["margin_pixel"] = hp.ang2pix(
-            2**self.margin_order,
+        self.dataframe["margin_pixel"] = hp.radec2pix(
+            self.margin_order,
             self.dataframe[self.hc_structure.catalog_info.ra_column].to_numpy(),
             self.dataframe[self.hc_structure.catalog_info.dec_column].to_numpy(),
-            lonlat=True,
-            nest=True,
         )
         constrained_data = self.dataframe.reset_index().merge(margin_pairs_df, on="margin_pixel")
         if len(constrained_data):
@@ -208,7 +232,6 @@ class MarginCatalogGenerator:
             catalog_type=CatalogType.MARGIN,
             ra_column=self.hc_structure.catalog_info.ra_column,
             dec_column=self.hc_structure.catalog_info.dec_column,
-            total_rows=self.hc_structure.catalog_info.total_rows,
             primary_catalog=catalog_name,
             margin_threshold=self.margin_threshold,
             **kwargs,

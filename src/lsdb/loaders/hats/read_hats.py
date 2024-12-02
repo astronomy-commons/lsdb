@@ -10,7 +10,6 @@ import numpy as np
 import pyarrow as pa
 from hats.catalog import CatalogType
 from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
-from hats.io import paths
 from hats.io.file_io import file_io
 from hats.pixel_math import HealpixPixel
 from hats.pixel_math.healpix_pixel_function import get_pixel_argsort
@@ -20,6 +19,7 @@ from upath import UPath
 from lsdb.catalog.association_catalog import AssociationCatalog
 from lsdb.catalog.catalog import Catalog, DaskDFPixelMap, MarginCatalog
 from lsdb.catalog.map_catalog import MapCatalog
+from lsdb.catalog.margin_catalog import _validate_margin_catalog
 from lsdb.core.search.abstract_search import AbstractSearch
 from lsdb.dask.divisions import get_pixels_divisions
 from lsdb.loaders.hats.hats_loading_config import HatsLoadingConfig
@@ -177,7 +177,6 @@ def _validate_margin_catalog(margin_hc_catalog, hc_catalog):
     )
     if not catalog_schema.equals(margin_schema):
         raise ValueError("The margin catalog and the main catalog must have the same schema")
-
 
 def _create_dask_meta_schema(schema: pa.Schema, config) -> npd.NestedFrame:
     """Creates the Dask meta DataFrame from the HATS catalog schema."""

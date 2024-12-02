@@ -174,9 +174,9 @@ def test_read_hats_subset_with_cone_search(small_sky_order1_dir, small_sky_order
 
 
 def test_read_hats_subset_with_box_search(small_sky_order1_dir, small_sky_order1_catalog):
-    box_search = BoxSearch(ra=(0, 10), dec=(-20, 10))
+    box_search = BoxSearch(ra=(300, 320), dec=(-40, -10))
     # Filtering using catalog's box_search
-    box_search_catalog = small_sky_order1_catalog.box_search(ra=(0, 10), dec=(-20, 10))
+    box_search_catalog = small_sky_order1_catalog.box_search(ra=(300, 320), dec=(-40, -10))
     # Filtering when calling `read_hats`
     box_search_catalog_2 = lsdb.read_hats(small_sky_order1_dir, search_filter=box_search)
     assert isinstance(box_search_catalog_2, lsdb.Catalog)

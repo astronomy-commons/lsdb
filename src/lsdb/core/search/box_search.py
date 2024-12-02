@@ -13,18 +13,14 @@ from lsdb.types import HCCatalogTypeVar
 
 class BoxSearch(AbstractSearch):
     """Perform a box search to filter the catalog. This type of search is used for a
-    range of ra or dec (one or the other). If both, a polygonal search should be used.
+    range of right ascension or declination, where the right ascension edges follow
+    great arc circles and the declination edges follow small arc circles.
 
     Filters to points within the ra / dec region, specified in degrees.
     Filters partitions in the catalog to those that have some overlap with the region.
     """
 
-    def __init__(
-        self,
-        ra: tuple[float, float] | None = None,
-        dec: tuple[float, float] | None = None,
-        fine: bool = True,
-    ):
+    def __init__(self, ra: tuple[float, float], dec: tuple[float, float], fine: bool = True):
         super().__init__(fine)
         ra = tuple(wrap_ra_angles(ra)) if ra else None
         validate_box(ra, dec)
@@ -41,8 +37,8 @@ class BoxSearch(AbstractSearch):
 
 def box_filter(
     data_frame: npd.NestedFrame,
-    ra: tuple[float, float] | None,
-    dec: tuple[float, float] | None,
+    ra: tuple[float, float],
+    dec: tuple[float, float],
     metadata: TableProperties,
 ) -> npd.NestedFrame:
     """Filters a dataframe to only include points within the specified box region.
@@ -56,28 +52,22 @@ def box_filter(
     Returns:
         A new DataFrame with the rows from `data_frame` filtered to only the points inside the box region.
     """
-    mask = np.ones(len(data_frame), dtype=bool)
-    if ra is not None:
-        ra_values = data_frame[metadata.ra_column]
-        wrapped_ra = np.asarray(wrap_ra_angles(ra_values))
-        mask_ra = _create_ra_mask(ra, wrapped_ra)
-        mask = np.logical_and(mask, mask_ra)
-    if dec is not None:
-        dec_values = data_frame[metadata.dec_column].to_numpy()
-        mask_dec = np.logical_and(dec[0] <= dec_values, dec_values <= dec[1])
-        mask = np.logical_and(mask, mask_dec)
-    data_frame = data_frame.iloc[mask]
+    ra_values = data_frame[metadata.ra_column].to_numpy()
+    dec_values = data_frame[metadata.dec_column].to_numpy()
+    wrapped_ra = wrap_ra_angles(ra_values)
+    mask_ra = _create_ra_mask(ra, wrapped_ra)
+    mask_dec = (dec[0] <= dec_values) & (dec_values <= dec[1])
+    data_frame = data_frame.iloc[mask_ra & mask_dec]
     return data_frame
 
 
 def _create_ra_mask(ra: tuple[float, float], values: np.ndarray) -> np.ndarray:
     """Creates the mask to filter right ascension values. If this range crosses
     the discontinuity line (0 degrees), we have a branched logical operation."""
-    if ra[0] <= ra[1]:
-        mask = np.logical_and(ra[0] <= values, values <= ra[1])
+    if ra[0] == ra[1]:
+        return np.ones(len(values), dtype=bool)
+    if ra[0] < ra[1]:
+        mask = (values >= ra[0]) & (values <= ra[1])
     else:
-        mask = np.logical_or(
-            np.logical_and(ra[0] <= values, values <= 360),
-            np.logical_and(0 <= values, values <= ra[1]),
-        )
+        mask = ((values >= ra[0]) & (values <= 360)) | ((values >= 0) & (values <= ra[1]))
     return mask

@@ -40,7 +40,7 @@ jobs:
     - name: Send status to Slack app
       if: ${{ failure() && github.event_name != 'workflow_dispatch' }}
       id: slack
-      uses: slackapi/slack-github-action@v1
+      uses: slackapi/slack-github-action@v2
       with:
         # For posting a rich message using Block Kit
         payload: |
