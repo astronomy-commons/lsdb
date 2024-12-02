@@ -35,7 +35,7 @@ from lsdb.io.schema import get_arrow_schema
 from lsdb.types import DaskDFPixelMap
 
 
-# pylint: disable=R0903, W0212
+# pylint: disable=protected-access,too-many-public-methods
 class Catalog(HealpixDataset):
     """LSDB Catalog DataFrame to perform analysis of sky catalogs and efficient
     spatial operations.

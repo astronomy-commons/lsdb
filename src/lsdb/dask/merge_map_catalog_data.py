@@ -36,21 +36,19 @@ def perform_merge_map(
     *args,
     **kwargs,
 ):
-    """Performs a merge_asof on two catalog partitions
+    """Applies a function to each pair of partitions in this catalog and the map catalog.
 
     Args:
-        catalog_partition (npd.NestedFrame): the left partition to merge
-        right (npd.NestedFrame): the right partition to merge
-        left_pixel (HealpixPixel): the HEALPix pixel of the left partition
-        right_pixel (HealpixPixel): the HEALPix pixel of the right partition
-        left_catalog_info (hc.TableProperties): the catalog info of the left catalog
-        right_catalog_info (hc.TableProperties): the catalog info of the right catalog
-        suffixes (Tuple[str,str]): the suffixes to apply to each partition's column names
-        direction (str): The direction to perform the merge_asof
+        catalog_partition (npd.NestedFrame): partition of the point-source catalog
+        map_partition (npd.NestedFrame): partition of the continuous map catalog
+        catalog_pixel (HealpixPixel): the HEALPix pixel of the catalog partition
+        map_pixel (HealpixPixel): the HEALPix pixel of the map partition
+        catalog_structure (hc.TableProperties): the catalog info of the catalog
+        map_structure (hc.TableProperties): the catalog info of the map
+        func (Callable): method to apply to the two partitions
 
     Returns:
-        A dataframe with the result of merging the left and right partitions on the specified columns with
-        `merge_asof`
+        A dataframe with the result of calling `func`
     """
     if map_pixel.order > catalog_pixel.order:
         catalog_partition = filter_by_spatial_index_to_pixel(
@@ -71,22 +69,37 @@ def merge_map_catalog_data(
     meta: npd.NestedFrame | None = None,
     **kwargs,
 ) -> Tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]:
-    """Uses the pandas `merge_asof` function to merge two catalogs on their indices by distance of keys
+    """Applies a function to each pair of partitions in this catalog and the map catalog.
 
-    Must be along catalog indices, and does not include margin caches, meaning results may be incomplete for
-    merging points.
-
-    This function is intended for use in special cases such as Dust Map Catalogs, for general merges,
-    the `crossmatch`and `join` functions should be used.
+    The pixels from each catalog are aligned via a `PixelAlignment`, and the respective dataframes
+    are passed to the function. The resulting catalog will have the same partitions as the point
+    source catalog.
 
     Args:
-        left (lsdb.Catalog): the left catalog to join
-        right (lsdb.Catalog): the right catalog to join
-        suffixes (Tuple[str,str]): the suffixes to apply to each partition's column names
-        direction (str): the direction to perform the merge_asof
+        point_catalog (lsdb.Catalog): the point-source catalog to apply
+        map_catalog (lsdb.MapCatalog): the continuous map catalog to apply
+        func (Callable): The function applied to each catalog partition, which will be called with:
+            `func(catalog_partition: npd.NestedFrame, map_partition: npd.NestedFrame, `
+            ` healpix_pixel: HealpixPixel, *args, **kwargs)`
+            with the additional args and kwargs passed to the `merge_map` function.
+        *args: Additional positional arguments to call `func` with.
+        meta (pd.DataFrame | pd.Series | Dict | Iterable | Tuple | None): An empty pandas DataFrame that
+            has columns matching the output of the function applied to the catalog partition. Other types
+            are accepted to describe the output dataframe format, for full details see the dask
+            documentation https://blog.dask.org/2022/08/09/understanding-meta-keyword-argument
+            If meta is None (default), LSDB will try to work out the output schema of the function by
+            calling the function with an empty DataFrame. If the function does not work with an empty
+            DataFrame, this will raise an error and meta must be set. Note that some operations in LSDB
+            will generate empty partitions, though these can be removed by calling the
+            `Catalog.prune_empty_partitions` method.
+        **kwargs: Additional keyword args to pass to the function. These are passed to the Dask DataFrame
+            `dask.dataframe.map_partitions` function, so any of the dask function's keyword args such as
+            `transform_divisions` will be passed through and work as described in the dask documentation
+            https://docs.dask.org/en/stable/generated/dask.dataframe.DataFrame.map_partitions.html
+
 
     Returns:
-        A tuple of the dask dataframe with the result of the join, the pixel map from HEALPix
+        A tuple of the dask dataframe with the result of the operation, the pixel map from HEALPix
         pixel to partition index within the dataframe, and the PixelAlignment of the two input
         catalogs.
     """

@@ -167,17 +167,6 @@ def _load_map_catalog(hc_catalog, config):
     return MapCatalog(dask_df, dask_df_pixel_map, hc_catalog)
 
 
-def _validate_margin_catalog(margin_hc_catalog, hc_catalog):
-    """Validate that the margin catalog and the main catalog are compatible"""
-    pixel_columns = [paths.PARTITION_ORDER, paths.PARTITION_DIR, paths.PARTITION_PIXEL]
-    margin_pixel_columns = pixel_columns + ["margin_" + column for column in pixel_columns]
-    catalog_schema = pa.schema([field for field in hc_catalog.schema if field.name not in pixel_columns])
-    margin_schema = pa.schema(
-        [field for field in margin_hc_catalog.schema if field.name not in margin_pixel_columns]
-    )
-    if not catalog_schema.equals(margin_schema):
-        raise ValueError("The margin catalog and the main catalog must have the same schema")
-
 def _create_dask_meta_schema(schema: pa.Schema, config) -> npd.NestedFrame:
     """Creates the Dask meta DataFrame from the HATS catalog schema."""
     dask_meta_schema = schema.empty_table().to_pandas(types_mapper=config.get_dtype_mapper())
