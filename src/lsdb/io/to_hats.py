@@ -67,7 +67,7 @@ def calculate_histogram(df: npd.NestedFrame, histogram_order: int) -> SparseHist
     return SparseHistogram.make_from_counts(indexes, counts_at_indexes, histogram_order)
 
 
-# pylint: disable=W0212
+# pylint: disable=protected-access
 def to_hats(
     catalog: HealpixDataset,
     *,
