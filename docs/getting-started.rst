@@ -123,7 +123,7 @@ of these methods see the full docs for the :func:`Catalog <lsdb.catalog.Catalog>
 
 .. code-block:: python
 
-    ztf_cone = ztf.cone_search(ra=40, dec=30, radius_arcsec=100)
+    ztf_cone = ztf.cone_search(ra=40, dec=30, radius_arcsec=1000)
 
 Other filters on columns can be performed in the same way that you would on a pandas DataFrame.
 
@@ -187,15 +187,15 @@ This creates the following HATS Catalog on disk:
 .. code-block::
 
     ztf_x_gaia/
-    ├── Norder=4/
-    │   ├── Dir=0/
-    │   │   ├── Npix=57.parquet
-    │   │   └── ...
-    │   └── ...
-    ├── _common_metadata
-    ├── _metadata
-    ├── properties
-    └── partition_info.csv
+    ├── dataset
+    │   ├── Norder=4
+    │   │   └── Dir=0
+    │   │       └── Npix=57.parquet
+    │   ├── _common_metadata
+    │   └── _metadata
+    ├── partition_info.csv
+    ├── point_map.fits
+    └── properties
 
 Creation of Jupyter Kernel
 --------------------------
