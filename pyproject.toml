@@ -22,7 +22,6 @@ dependencies = [
     "dask[complete]",
     "deprecated",
     "hats>=0.4.4",
-    "lsst-sphgeom", # To handle spherical sky polygons
     "nested-dask>=0.3.0",
     "nested-pandas",
     "pyarrow",
@@ -49,6 +48,7 @@ full = [
     "fsspec[full]", # complete file system specs.
     "ipykernel", # Support for Jupyter notebooks
     "ipywidgets", # useful for tqdm in notebooks.
+    "lsst-sphgeom", # To handle spherical sky polygons
 ]
 
 [build-system]
@@ -62,6 +62,9 @@ build-backend = "setuptools.build_meta"
 write_to = "src/lsdb/_version.py"
 
 [tool.pytest.ini_options]
+markers = [
+    "sphgeom: mark tests as having a runtime dependency on lsst-sphgeom",
+]
 testpaths = [
     "tests",
 ]
