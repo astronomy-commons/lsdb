@@ -278,13 +278,15 @@ def cone_search_margin_expected(cone_search_expected_dir):
     return pd.read_csv(cone_search_expected_dir / "margin.csv", index_col=SPATIAL_INDEX_COLUMN)
 
 
+# pylint: disable=import-outside-toplevel
 def pytest_collection_modifyitems(items):
     """Modify tests that use the `lsst-sphgeom` package to only run when that
     package has been installed in the development environment.
+
+    If we detect that we can import `lsst-sphgeom`, this method exits early
+    and does not modify any test items.
     """
     try:
-        """If we can import the package, then we shouldn't modify the
-        individual test cases. Go ahead and leave now."""
         # pylint: disable=unused-import
         from lsst.sphgeom import ConvexPolygon
 

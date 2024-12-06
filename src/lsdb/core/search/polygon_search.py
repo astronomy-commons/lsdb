@@ -48,6 +48,7 @@ def polygon_filter(data_frame: npd.NestedFrame, polygon, metadata: TableProperti
     return data_frame
 
 
+# pylint: disable=import-outside-toplevel
 def get_cartesian_polygon(vertices: list[tuple[float, float]]):
     """Creates the convex polygon to filter pixels with. It transforms the
     vertices, provided in sky coordinates of ra and dec, to their respective
