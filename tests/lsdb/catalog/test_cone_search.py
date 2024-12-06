@@ -129,11 +129,11 @@ def test_empty_cone_search_with_margin(small_sky_order1_source_with_margin):
     assert len(cone.margin._ddf_pixel_map) == 0
 
 
-def test_cone_search_plot(small_sky_order1_catalog):
+def test_cone_search_plot():
     ra = 100
     dec = 80
     radius = 60
     search = ConeSearch(ra, dec, radius)
-    fig, ax = search.plot()
+    _, ax = search.plot()
     assert len(ax.patches) == 1
-    assert type(ax.patches[0]) == SphericalCircle
+    assert isinstance(ax.patches[0], SphericalCircle)

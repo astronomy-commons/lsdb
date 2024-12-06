@@ -1,16 +1,9 @@
-from typing import Tuple, Type
-
-import astropy
 import astropy.units as u
 import nested_pandas as npd
 from astropy.coordinates import SkyCoord
-from astropy.units import Quantity
 from astropy.visualization.wcsaxes import SphericalCircle, WCSAxes
-from astropy.visualization.wcsaxes.frame import BaseFrame
 from hats.catalog import TableProperties
-from hats.inspection.visualize_catalog import initialize_wcs_axes
 from hats.pixel_math.validators import validate_declination_values, validate_radius
-from matplotlib.figure import Figure
 from mocpy import MOC
 
 from lsdb.core.search.abstract_search import AbstractSearch
