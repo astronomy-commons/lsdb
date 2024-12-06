@@ -61,7 +61,7 @@ def get_cartesian_polygon(vertices: list[tuple[float, float]]):
     Returns:
         The convex polygon object.
     """
-    from lsst.sphgeom import ConvexPolygon, UnitVector3d
+    from lsst.sphgeom import ConvexPolygon, UnitVector3d  # pylint: disable=import-error
 
     vertices_xyz = hp.ang2vec(*np.array(vertices).T)
     edge_vectors = [UnitVector3d(x, y, z) for x, y, z in vertices_xyz]
