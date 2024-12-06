@@ -3,6 +3,7 @@ ipykernel
 ipython
 ipywidgets
 jupytext
+lsst-sphgeom
 nbconvert
 nbsphinx
 sphinx

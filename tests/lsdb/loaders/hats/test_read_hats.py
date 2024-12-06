@@ -185,6 +185,7 @@ def test_read_hats_subset_with_box_search(small_sky_order1_dir, small_sky_order1
     pd.testing.assert_frame_equal(box_search_catalog.compute(), box_search_catalog_2.compute())
 
 
+@pytest.mark.sphgeom
 def test_read_hats_subset_with_polygon_search(small_sky_order1_dir, small_sky_order1_catalog):
     vertices = [(300, -50), (300, -55), (272, -55), (272, -50)]
     polygon_search = PolygonSearch(vertices)

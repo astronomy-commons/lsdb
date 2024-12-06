@@ -278,6 +278,27 @@ def cone_search_margin_expected(cone_search_expected_dir):
     return pd.read_csv(cone_search_expected_dir / "margin.csv", index_col=SPATIAL_INDEX_COLUMN)
 
 
+# pylint: disable=import-outside-toplevel
+def pytest_collection_modifyitems(items):
+    """Modify tests that use the `lsst-sphgeom` package to only run when that
+    package has been installed in the development environment.
+
+    If we detect that we can import `lsst-sphgeom`, this method exits early
+    and does not modify any test items.
+    """
+    try:
+        # pylint: disable=unused-import
+        from lsst.sphgeom import ConvexPolygon
+
+        return
+    except ImportError:
+        pass
+
+    for item in items:
+        if any(item.iter_markers(name="sphgeom")):
+            item.add_marker(pytest.mark.skip(reason="lsst-sphgeom is not installed"))
+
+
 @pytest.fixture
 def assert_divisions_are_correct():
     def assert_divisions_are_correct(catalog):

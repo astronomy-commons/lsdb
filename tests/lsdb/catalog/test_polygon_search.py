@@ -8,6 +8,7 @@ from hats.pixel_math.validators import ValidatorsErrors
 from lsdb.core.search.polygon_search import get_cartesian_polygon
 
 
+@pytest.mark.sphgeom
 def test_polygon_search_filters_correct_points(small_sky_order1_catalog, assert_divisions_are_correct):
     vertices = [(300, -50), (300, -55), (272, -55), (272, -50)]
     polygon = get_cartesian_polygon(vertices)
@@ -25,6 +26,7 @@ def test_polygon_search_filters_correct_points(small_sky_order1_catalog, assert_
     assert_divisions_are_correct(polygon_search_catalog)
 
 
+@pytest.mark.sphgeom
 def test_polygon_search_filters_correct_points_margin(
     small_sky_order1_source_with_margin, assert_divisions_are_correct
 ):
@@ -53,6 +55,7 @@ def test_polygon_search_filters_correct_points_margin(
     assert_divisions_are_correct(polygon_search_catalog.margin)
 
 
+@pytest.mark.sphgeom
 def test_polygon_search_filters_partitions(small_sky_order1_catalog):
     vertices = [(300, -50), (300, -55), (272, -55), (272, -50)]
     hc_polygon_search = small_sky_order1_catalog.hc_structure.filter_by_polygon(vertices)
@@ -63,6 +66,7 @@ def test_polygon_search_filters_partitions(small_sky_order1_catalog):
         assert pixel in polygon_search_catalog._ddf_pixel_map
 
 
+@pytest.mark.sphgeom
 def test_polygon_search_coarse_versus_fine(small_sky_order1_catalog):
     vertices = [(300, -50), (300, -55), (272, -55), (272, -50)]
     coarse_polygon_search = small_sky_order1_catalog.polygon_search(vertices, fine=False)
@@ -99,6 +103,7 @@ def test_polygon_search_invalid_polygon(small_sky_order1_catalog):
         small_sky_order1_catalog.polygon_search(vertices)
 
 
+@pytest.mark.sphgeom
 def test_polygon_search_wrapped_right_ascension():
     """Tests the scenario where the polygon edges intersect the
     discontinuity of the RA [0,360] degrees range. For the same
@@ -132,6 +137,7 @@ def test_polygon_search_wrapped_right_ascension():
         npt.assert_allclose(polygon.getVertices(), polygon_2.getVertices(), rtol=1e-7)
 
 
+@pytest.mark.sphgeom
 def test_empty_polygon_search_with_margin(small_sky_order1_source_with_margin):
     vertices = [(80, 0), (100, 30), (120, 0)]
     polygon = small_sky_order1_source_with_margin.polygon_search(vertices)

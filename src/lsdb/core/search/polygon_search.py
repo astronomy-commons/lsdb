@@ -3,7 +3,6 @@ import nested_pandas as npd
 import numpy as np
 from hats.catalog import TableProperties
 from hats.pixel_math.validators import validate_polygon
-from lsst.sphgeom import ConvexPolygon, UnitVector3d
 
 from lsdb.core.search.abstract_search import AbstractSearch
 from lsdb.types import HCCatalogTypeVar
@@ -31,9 +30,7 @@ class PolygonSearch(AbstractSearch):
         return polygon_filter(frame, self.polygon, metadata)
 
 
-def polygon_filter(
-    data_frame: npd.NestedFrame, polygon: ConvexPolygon, metadata: TableProperties
-) -> npd.NestedFrame:
+def polygon_filter(data_frame: npd.NestedFrame, polygon, metadata: TableProperties) -> npd.NestedFrame:
     """Filters a dataframe to only include points within the specified polygon.
 
     Args:
@@ -51,7 +48,8 @@ def polygon_filter(
     return data_frame
 
 
-def get_cartesian_polygon(vertices: list[tuple[float, float]]) -> ConvexPolygon:
+# pylint: disable=import-outside-toplevel
+def get_cartesian_polygon(vertices: list[tuple[float, float]]):
     """Creates the convex polygon to filter pixels with. It transforms the
     vertices, provided in sky coordinates of ra and dec, to their respective
     cartesian representation on the unit sphere.
@@ -63,6 +61,8 @@ def get_cartesian_polygon(vertices: list[tuple[float, float]]) -> ConvexPolygon:
     Returns:
         The convex polygon object.
     """
+    from lsst.sphgeom import ConvexPolygon, UnitVector3d  # pylint: disable=import-error
+
     vertices_xyz = hp.ang2vec(*np.array(vertices).T)
     edge_vectors = [UnitVector3d(x, y, z) for x, y, z in vertices_xyz]
     return ConvexPolygon(edge_vectors)
