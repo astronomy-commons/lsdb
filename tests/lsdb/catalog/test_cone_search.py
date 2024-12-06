@@ -3,7 +3,10 @@ import nested_pandas as npd
 import pandas as pd
 import pytest
 from astropy.coordinates import SkyCoord
+from astropy.visualization.wcsaxes import SphericalCircle
 from hats.pixel_math.validators import ValidatorsErrors
+
+from lsdb import ConeSearch
 
 
 def test_cone_search_filters_correct_points(small_sky_order1_catalog, assert_divisions_are_correct):
@@ -124,3 +127,13 @@ def test_empty_cone_search_with_margin(small_sky_order1_source_with_margin):
     cone = small_sky_order1_source_with_margin.cone_search(ra, dec, radius, fine=False)
     assert len(cone._ddf_pixel_map) == 0
     assert len(cone.margin._ddf_pixel_map) == 0
+
+
+def test_cone_search_plot():
+    ra = 100
+    dec = 80
+    radius = 60
+    search = ConeSearch(ra, dec, radius)
+    _, ax = search.plot()
+    assert len(ax.patches) == 1
+    assert isinstance(ax.patches[0], SphericalCircle)
