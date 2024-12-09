@@ -15,7 +15,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  PYTHON_VERSION: "3.10"
+  PYTHON_VERSION: "3.11"
   ASV_VERSION: "0.6.4"
   WORKING_DIR: ${{github.workspace}}/benchmarks
   ARTIFACTS_DIR: ${{github.workspace}}/artifacts

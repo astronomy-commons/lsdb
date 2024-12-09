@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
   
 env:
-  PYTHON_VERSION: "3.10"
+  PYTHON_VERSION: "3.11"
   ASV_VERSION: "0.6.4"
   WORKING_DIR: ${{github.workspace}}/benchmarks
   NIGHTLY_HASH_FILE: nightly-hash
