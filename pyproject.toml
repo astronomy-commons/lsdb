@@ -131,8 +131,6 @@ ignore = [
     "UP015", # Allow redundant open parameters
     "UP028", # Allow yield in for loop
 ]
-[tool.setuptools.package-data]
-lsdb = ["py.typed"]
 
 [tool.coverage.run]
 omit=["src/lsdb/_version.py"]
