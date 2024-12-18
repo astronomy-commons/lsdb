@@ -48,7 +48,7 @@ def time_polygon_search():
     catalog_dec = upsample_array(small_sky_order1["dec"].to_numpy(), 10_000)
     # Define sky polygon to use in search
     vertices = [(300, -50), (300, -55), (272, -55), (272, -50)]
-    polygon, _ = get_cartesian_polygon(vertices)
+    polygon = get_cartesian_polygon(vertices)
     # Apply vectorized filtering on the catalog points
     polygon.contains(np.radians(catalog_ra), np.radians(catalog_dec))
 
@@ -57,9 +57,12 @@ def time_box_filter_on_partition():
     """Time box search on a single partition"""
     metadata = load_small_sky_order1().hc_structure
     mock_partition_df = pd.DataFrame(
-        np.linspace(-1000, 1000, 100_000), columns=[metadata.catalog_info.ra_column]
+        {
+            metadata.catalog_info.ra_column: np.linspace(-1000, 1000, 100_000),
+            metadata.catalog_info.dec_column: np.linspace(-90, 90, 100_000),
+        }
     )
-    box_filter(mock_partition_df, ra=(-20, 40), dec=None, metadata=metadata.catalog_info)
+    box_filter(mock_partition_df, ra=(-20, 40), dec=(-90, 90), metadata=metadata.catalog_info)
 
 
 def time_create_midsize_catalog():
