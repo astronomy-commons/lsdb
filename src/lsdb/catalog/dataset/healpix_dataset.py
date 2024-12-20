@@ -470,8 +470,8 @@ class HealpixDataset(Dataset):
 
         Args:
             projection (str) The map projection to use. Available projections listed at
-            https://docs.astropy.org/en/stable/wcs/supported_projections.html
-            kwargs (dict): additional keyword arguments to pass to plotting call.
+                https://docs.astropy.org/en/stable/wcs/supported_projections.html
+                kwargs (dict): additional keyword arguments to pass to plotting call.
         """
         return self.hc_structure.plot_pixels(projection=projection, **kwargs)
 
@@ -608,14 +608,13 @@ class HealpixDataset(Dataset):
 
         Args:
             base_columns (list-like or None): Any columns that have non-list values in the input catalog.
-            These will simply be kept as identical columns in the result
-        list_columns (list-like or None): The list-value columns that should be packed into a nested column.
-            All columns in the list will attempt to be packed into a single
-                nested column with the name provided in `nested_name`. All columns
-                in list_columns must have pyarrow list dtypes, otherwise the
-                operation will fail. If None, is defined as all columns not in
+                These will simply be kept as identical columns in the result
+            list_columns (list-like or None): The list-value columns that should be packed into a nested 
+                column. All columns in the list will attempt to be packed into a single nested column 
+                with the name provided in `nested_name`. All columns in list_columns must have pyarrow 
+                list dtypes, otherwise the operation will fail. If None, is defined as all columns not in
                 `base_columns`.
-        name (str): The name of the output column the `nested_columns` are packed into.
+            name (str): The name of the output column the `nested_columns` are packed into.
 
         Returns:
             A new catalog with specified list columns nested into a new nested column.
@@ -660,7 +659,7 @@ class HealpixDataset(Dataset):
             columns to apply the function to. See the Notes for recommendations
             on writing func outputs.
         args : positional arguments
-            Positional arguments to pass to the function, the first *args should be the names of the
+            Positional arguments to pass to the function, the first ``*args`` should be the names of the
             columns to apply the function to.
         meta : dataframe or series-like, optional
             The dask meta of the output. If append_columns is True, the meta should specify just the
