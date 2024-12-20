@@ -6,13 +6,12 @@ from typing import TYPE_CHECKING
 
 import dask
 import hats as hc
-import hats.pixel_math.healpix_shim as hp
 import nested_pandas as npd
 import numpy as np
 from hats.catalog import PartitionInfo
 from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
 from hats.pixel_math import HealpixPixel, spatial_index_to_healpix
-from hats.pixel_math.sparse_histogram import SparseHistogram
+from hats.pixel_math.sparse_histogram import HistogramAggregator, SparseHistogram
 from upath import UPath
 
 if TYPE_CHECKING:
@@ -116,11 +115,11 @@ def to_hats(
     )
     new_hc_structure.catalog_info.to_properties_file(base_catalog_path)
     # Save the point distribution map
-    full_histogram = np.zeros(hp.order2npix(histogram_order))
+    total_histogram = HistogramAggregator(histogram_order)
     for partition_hist in histograms:
-        full_histogram += partition_hist.to_array()
+        total_histogram.add(partition_hist)
     point_map_path = hc.io.paths.get_point_map_file_pointer(base_catalog_path)
-    hc.io.file_io.write_fits_image(full_histogram, point_map_path)
+    hc.io.file_io.write_fits_image(total_histogram.full_histogram, point_map_path)
 
 
 def write_partitions(
