@@ -649,10 +649,11 @@ class Catalog(HealpixDataset):
         Args:
             base_columns (list-like or None): Any columns that have non-list values in the input catalog.
                 These will simply be kept as identical columns in the result
-            list_columns (list-like or None): The list-value columns that should be packed into a nested column.
-                All columns in the list will attempt to be packed into a single nested column with the name
-                provided in `nested_name`. All columns in list_columns must have pyarrow list dtypes, otherwise
-                the operation will fail. If None, is defined as all columns not in `base_columns`.
+            list_columns (list-like or None): The list-value columns that should be packed into a nested
+                column. All columns in the list will attempt to be packed into a single nested column with
+                the name provided in ``nested_name``. All columns in list_columns must have pyarrow list
+                dtypes, otherwise the operation will fail. If None, is defined as all columns not in
+                ``base_columns``.
             name (str): The name of the output column the `nested_columns` are packed into.
 
         Returns:
