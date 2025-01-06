@@ -34,16 +34,17 @@ class AbstractCrossmatchAlgorithm(ABC):
 
     The class will have been initialized with the following parameters, which the
     crossmatch function should use:
-        - left: npd.NestedFrame,
-        - right: npd.NestedFrame,
-        - left_order: int,
-        - left_pixel: int,
-        - right_order: int,
-        - right_pixel: int,
-        - left_metadata: hc.catalog.Catalog,
-        - right_metadata: hc.catalog.Catalog,
-        - right_margin_hc_structure: hc.margin.MarginCatalog,
-        - suffixes: Tuple[str, str]
+
+    - left: npd.NestedFrame,
+    - right: npd.NestedFrame,
+    - left_order: int,
+    - left_pixel: int,
+    - right_order: int,
+    - right_pixel: int,
+    - left_metadata: hc.catalog.Catalog,
+    - right_metadata: hc.catalog.Catalog,
+    - right_margin_hc_structure: hc.margin.MarginCatalog,
+    - suffixes: Tuple[str, str]
 
     You may add any additional keyword argument parameters to the crossmatch
     function definition, and the user will be able to pass them in as kwargs in the

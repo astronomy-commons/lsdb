@@ -178,16 +178,17 @@ class Catalog(HealpixDataset):
 
                     The class will have been initialized with the following parameters, which the
                     crossmatch function should use:
-                        - left: npd.NestedFrame,
-                        - right: npd.NestedFrame,
-                        - left_order: int,
-                        - left_pixel: int,
-                        - right_order: int,
-                        - right_pixel: int,
-                        - left_metadata: hc.catalog.Catalog,
-                        - right_metadata: hc.catalog.Catalog,
-                        - right_margin_hc_structure: hc.margin.MarginCatalog,
-                        - suffixes: Tuple[str, str]
+
+                    - left: npd.NestedFrame,
+                    - right: npd.NestedFrame,
+                    - left_order: int,
+                    - left_pixel: int,
+                    - right_order: int,
+                    - right_pixel: int,
+                    - left_metadata: hc.catalog.Catalog,
+                    - right_metadata: hc.catalog.Catalog,
+                    - right_margin_hc_structure: hc.margin.MarginCatalog,
+                    - suffixes: Tuple[str, str]
 
                     You may add any additional keyword argument parameters to the crossmatch
                     function definition, and the user will be able to pass them in as kwargs in the
@@ -643,19 +644,17 @@ class Catalog(HealpixDataset):
         list_columns: list[str] | None = None,
         name: str = "nested",
     ) -> Catalog:
-        """Creates a new catalog with a set of list columns packed into a
-        nested column.
+        """Creates a new catalog with a set of list columns packed into a nested column.
 
         Args:
             base_columns (list-like or None): Any columns that have non-list values in the input catalog.
-            These will simply be kept as identical columns in the result
-        list_columns (list-like or None): The list-value columns that should be packed into a nested column.
-            All columns in the list will attempt to be packed into a single
-                nested column with the name provided in `nested_name`. All columns
-                in list_columns must have pyarrow list dtypes, otherwise the
-                operation will fail. If None, is defined as all columns not in
-                `base_columns`.
-        name (str): The name of the output column the `nested_columns` are packed into.
+                These will simply be kept as identical columns in the result
+            list_columns (list-like or None): The list-value columns that should be packed into a nested
+                column. All columns in the list will attempt to be packed into a single nested column with
+                the name provided in ``nested_name``. All columns in list_columns must have pyarrow list
+                dtypes, otherwise the operation will fail. If None, is defined as all columns not in
+                ``base_columns``.
+            name (str): The name of the output column the `nested_columns` are packed into.
 
         Returns:
             A new catalog with specified list columns nested into a new nested column.
@@ -733,8 +732,6 @@ class Catalog(HealpixDataset):
         ignore_index : bool, default ``False``
             If ``True``, the resulting axis will be labeled 0, 1, …, n - 1.
 
-            .. versionadded:: 2.0.0
-
         Returns
         -------
         Catalog
@@ -780,7 +777,7 @@ class Catalog(HealpixDataset):
             columns to apply the function to. See the Notes for recommendations
             on writing func outputs.
         args : positional arguments
-            Positional arguments to pass to the function, the first *args should be the names of the
+            Positional arguments to pass to the function, the first ``*args`` should be the names of the
             columns to apply the function to.
         meta : dataframe or series-like, optional
             The dask meta of the output. If append_columns is True, the meta should specify just the
