@@ -41,7 +41,7 @@ def perform_write(
         at the specified order.
     """
     if len(df) == 0:
-        return 0, SparseHistogram.make_empty(histogram_order)
+        return 0, SparseHistogram([], [], histogram_order)
     pixel_dir = hc.io.pixel_directory(base_catalog_dir, hp_pixel.order, hp_pixel.pixel)
     hc.io.file_io.make_directory(pixel_dir, exist_ok=True)
     pixel_path = hc.io.paths.pixel_catalog_file(base_catalog_dir, hp_pixel)
@@ -63,7 +63,7 @@ def calculate_histogram(df: npd.NestedFrame, histogram_order: int) -> SparseHist
     order_pixels = spatial_index_to_healpix(df.index.to_numpy(), target_order=histogram_order)
     gb = df.groupby(order_pixels, sort=False).apply(len)
     indexes, counts_at_indexes = gb.index.to_numpy(), gb.to_numpy(na_value=0)
-    return SparseHistogram.make_from_counts(indexes, counts_at_indexes, histogram_order)
+    return SparseHistogram(indexes, counts_at_indexes, histogram_order)
 
 
 # pylint: disable=protected-access
