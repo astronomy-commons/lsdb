@@ -418,3 +418,10 @@ def test_algorithm_has_no_extra_columns_specified(small_sky_xmatch_catalog):
 def test_raise_for_unknown_kwargs(small_sky_catalog):
     with pytest.raises(TypeError, match="unexpected keyword argument"):
         small_sky_catalog.crossmatch(small_sky_catalog, unknown_kwarg="value")
+
+
+def test_raise_for_non_overlapping_catalogs(small_sky_order1_catalog, small_sky_xmatch_catalog):
+    small_sky_order1_catalog = small_sky_order1_catalog.pixel_search([HealpixPixel(1, 44)])
+    small_sky_xmatch_catalog = small_sky_xmatch_catalog.pixel_search([HealpixPixel(1, 45)])
+    with pytest.raises(RuntimeError, match="overlap"):
+        small_sky_order1_catalog.crossmatch(small_sky_xmatch_catalog)

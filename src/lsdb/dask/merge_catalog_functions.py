@@ -138,14 +138,18 @@ def align_and_apply(
         aligned partitions of the catalogs
     """
 
-    # aligns the catalog's partitions to the given pixels for each catalog
-    aligned_partitions = [align_catalog_to_partitions(cat, pixels) for (cat, pixels) in catalog_mappings]
-
     # gets the pixels and hc_structures to pass to the function
     pixels = [pixels for (_, pixels) in catalog_mappings]
+    for p in pixels:
+        if len(p) == 0:
+            raise RuntimeError("Catalogs do not overlap")
+
     catalog_infos = [
         cat.hc_structure.catalog_info if cat is not None else None for (cat, _) in catalog_mappings
     ]
+
+    # aligns the catalog's partitions to the given pixels for each catalog
+    aligned_partitions = [align_catalog_to_partitions(cat, pixels) for (cat, pixels) in catalog_mappings]
 
     # defines an inner function that can be vectorized to apply the given function to each of the partitions
     # with the additional arguments including as the hc_structures and any specified additional arguments
@@ -208,6 +212,8 @@ def get_healpix_pixels_from_alignment(
         a tuple of (primary_pixels, join_pixels) with lists of HealpixPixel objects
     """
     pixel_mapping = alignment.pixel_mapping
+    if len(pixel_mapping) == 0:
+        return ([], [])
     make_pixel = np.vectorize(HealpixPixel)
     left_pixels = make_pixel(
         pixel_mapping[PixelAlignment.PRIMARY_ORDER_COLUMN_NAME],
