@@ -153,7 +153,7 @@ class DataframeCatalogLoader:
         )
 
     def load_catalog(self) -> Catalog:
-        """Load a catalog from a Pandas Dataframe, in CSV format
+        """Load a catalog from a Pandas Dataframe
 
         Returns:
             Catalog object with data from the source given at loader initialization
