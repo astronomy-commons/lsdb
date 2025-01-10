@@ -27,7 +27,7 @@ def from_dataframe(
     schema: pa.Schema | None = None,
     **kwargs,
 ) -> Catalog:
-    """Load a catalog from a Pandas Dataframe in CSV format.
+    """Load a catalog from a Pandas Dataframe.
 
     Note that this is only suitable for small datasets (< 1million rows and
     < 1GB dataframe in-memory). If you need to deal with large datasets, consider
