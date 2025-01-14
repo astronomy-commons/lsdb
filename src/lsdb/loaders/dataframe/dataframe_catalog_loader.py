@@ -27,6 +27,7 @@ from lsdb.loaders.dataframe.from_dataframe_utils import (
     _append_partition_information_to_dataframe,
     _extra_property_dict,
     _generate_dask_dataframe,
+    _has_named_index,
 )
 from lsdb.types import DaskDFPixelMap
 
@@ -170,11 +171,12 @@ class DataframeCatalogLoader:
     def _set_spatial_index(self):
         """Generates the spatial indices for each data point and assigns
         the spatial index column as the Dataframe index."""
+        if _has_named_index(self.dataframe):
+            self.dataframe.reset_index(inplace=True)
         self.dataframe[SPATIAL_INDEX_COLUMN] = compute_spatial_index(
             ra_values=self.dataframe[self.catalog_info.ra_column].to_numpy(),
             dec_values=self.dataframe[self.catalog_info.dec_column].to_numpy(),
         )
-        self.dataframe.insert(0, self.dataframe.index.name, self.dataframe.index)
         self.dataframe.set_index(SPATIAL_INDEX_COLUMN, inplace=True)
 
     def _compute_pixel_list(self) -> List[HealpixPixel]:
