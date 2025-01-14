@@ -174,6 +174,7 @@ class DataframeCatalogLoader:
             ra_values=self.dataframe[self.catalog_info.ra_column].to_numpy(),
             dec_values=self.dataframe[self.catalog_info.dec_column].to_numpy(),
         )
+        dataframe.insert(0, dataframe.index.name, dataframe.index)
         self.dataframe.set_index(SPATIAL_INDEX_COLUMN, inplace=True)
 
     def _compute_pixel_list(self) -> List[HealpixPixel]:
