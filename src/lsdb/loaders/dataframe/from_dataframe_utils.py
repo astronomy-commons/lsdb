@@ -148,3 +148,17 @@ def _extra_property_dict(est_size_bytes: int):
     properties["hats_version"] = "v0.1"
 
     return properties
+
+
+def _has_named_index(dataframe: npd.NestedFrame) -> bool:
+    """Heuristic to determine if a dataframe has some meaningful index.
+
+    This will reject dataframes with no index name for a single index,
+    or empty names for multi-index (e.g. [] or [None]).
+    """
+    if dataframe.index.name is not None:
+        ## Single index with a given name.
+        return True
+    if len(dataframe.index.names) == 0 or all(name is None for name in dataframe.index.names):
+        return False
+    return True

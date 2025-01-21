@@ -402,3 +402,23 @@ def test_from_dataframe_with_arrow_schema(small_sky_order1_df, small_sky_order1_
     expected_schema = hc.read_hats(small_sky_order1_dir).schema
     catalog = lsdb.from_dataframe(small_sky_order1_df, schema=expected_schema)
     assert catalog.hc_structure.schema is expected_schema
+
+
+def test_from_dataframe_keeps_named_index(small_sky_order1_df):
+    assert small_sky_order1_df.index.name is None
+    small_sky_order1_df.set_index("id", inplace=True)
+    catalog = lsdb.from_dataframe(small_sky_order1_df)
+    assert catalog._ddf.index.name == "_healpix_29"
+    assert "id" in catalog.columns
+    ids = catalog["id"].compute().to_numpy()
+    expected_ids = small_sky_order1_df.index.to_numpy()
+    assert np.array_equal(ids, expected_ids)
+
+
+def test_from_dataframe_does_not_keep_unnamed_index(small_sky_order1_df):
+    assert small_sky_order1_df.index.name is None
+    range_index = pd.RangeIndex(start=0, stop=len(small_sky_order1_df), step=1)
+    assert small_sky_order1_df.index.equals(range_index)
+    catalog = lsdb.from_dataframe(small_sky_order1_df)
+    assert catalog._ddf.index.name == "_healpix_29"
+    assert "index" not in catalog.columns
