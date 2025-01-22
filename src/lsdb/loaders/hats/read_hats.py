@@ -61,6 +61,12 @@ def read_hats(
         Catalog object loaded from the given parameters
     """
     # Creates a config object to store loading parameters from all keyword arguments.
+
+    hc_catalog = hc.read_hats(path)
+
+    if columns is None and hc_catalog.catalog_info.default_columns is not None:
+        columns = hc_catalog.catalog_info.default_columns
+
     config = HatsLoadingConfig(
         search_filter=search_filter,
         columns=columns,
@@ -69,7 +75,6 @@ def read_hats(
         kwargs=kwargs,
     )
 
-    hc_catalog = hc.read_hats(path)
     if hc_catalog.schema is None:
         raise ValueError(
             "The catalog schema could not be loaded from metadata."
