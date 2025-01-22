@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Tuple, Type
+from typing import Type
 
 import astropy
 import matplotlib.pyplot as plt
@@ -22,7 +22,7 @@ def plot_points(
     color_col: str | None = None,
     projection: str = "MOL",
     title: str = "",
-    fov: Quantity | Tuple[Quantity, Quantity] | None = None,
+    fov: Quantity | tuple[Quantity, Quantity] | None = None,
     center: SkyCoord | None = None,
     wcs: astropy.wcs.WCS | None = None,
     frame_class: Type[BaseFrame] | None = None,

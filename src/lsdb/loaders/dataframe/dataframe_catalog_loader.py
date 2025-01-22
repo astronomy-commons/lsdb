@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import math
 import warnings
-from typing import Dict, List, Tuple
 
 import astropy.units as u
 import hats as hc
@@ -179,7 +178,7 @@ class DataframeCatalogLoader:
         )
         self.dataframe.set_index(SPATIAL_INDEX_COLUMN, inplace=True)
 
-    def _compute_pixel_list(self) -> List[HealpixPixel]:
+    def _compute_pixel_list(self) -> list[HealpixPixel]:
         """Compute object histogram and generate the sorted list of
         HEALPix pixels. The pixels are sorted by ascending spatial index.
 
@@ -205,8 +204,8 @@ class DataframeCatalogLoader:
         return list(np.array(pixel_list)[get_pixel_argsort(pixel_list)])
 
     def _generate_dask_df_and_map(
-        self, pixel_list: List[HealpixPixel]
-    ) -> Tuple[nd.NestedFrame, DaskDFPixelMap, int]:
+        self, pixel_list: list[HealpixPixel]
+    ) -> tuple[nd.NestedFrame, DaskDFPixelMap, int]:
         """Load Dask DataFrame from HEALPix pixel Dataframes and
         generate a mapping of HEALPix pixels to HEALPix Dataframes
 
@@ -218,10 +217,10 @@ class DataframeCatalogLoader:
             to the respective Pandas Dataframes and the total number of rows.
         """
         # Dataframes for each destination HEALPix pixel
-        pixel_dfs: List[npd.NestedFrame] = []
+        pixel_dfs: list[npd.NestedFrame] = []
 
         # Mapping HEALPix pixels to the respective Dataframe indices
-        ddf_pixel_map: Dict[HealpixPixel, int] = {}
+        ddf_pixel_map: dict[HealpixPixel, int] = {}
 
         for hp_pixel_index, hp_pixel in enumerate(pixel_list):
             # Store HEALPix pixel in map

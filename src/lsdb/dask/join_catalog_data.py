@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING, List, Tuple
+from typing import TYPE_CHECKING
 
 import dask
 import nested_dask as nd
@@ -34,7 +34,7 @@ if TYPE_CHECKING:
 NON_JOINING_ASSOCIATION_COLUMNS = ["Norder", "Dir", "Npix", "join_Norder", "join_Dir", "join_Npix"]
 
 
-def rename_columns_with_suffixes(left: npd.NestedFrame, right: npd.NestedFrame, suffixes: Tuple[str, str]):
+def rename_columns_with_suffixes(left: npd.NestedFrame, right: npd.NestedFrame, suffixes: tuple[str, str]):
     """Renames two dataframes with the suffixes specified
 
     Args:
@@ -66,8 +66,8 @@ def perform_join_on(
     right_margin_catalog_info: TableProperties,
     left_on: str,
     right_on: str,
-    suffixes: Tuple[str, str],
-    right_columns: List[str],
+    suffixes: tuple[str, str],
+    right_columns: list[str],
 ):
     """Performs a join on two catalog partitions
 
@@ -116,7 +116,7 @@ def perform_join_nested(
     right_margin_catalog_info: TableProperties,
     left_on: str,
     right_on: str,
-    right_columns: List[str],
+    right_columns: list[str],
     right_name: str,
 ):
     """Performs a join on two catalog partitions by adding the right catalog a nested column using
@@ -167,8 +167,8 @@ def perform_join_through(
     right_catalog_info: TableProperties,
     right_margin_catalog_info: TableProperties,
     assoc_catalog_info: TableProperties,
-    suffixes: Tuple[str, str],
-    right_columns: List[str],
+    suffixes: tuple[str, str],
+    right_columns: list[str],
 ):
     """Performs a join on two catalog partitions through an association catalog
 
@@ -235,7 +235,7 @@ def perform_merge_asof(
     right_pixel: HealpixPixel,
     left_catalog_info: TableProperties,
     right_catalog_info: TableProperties,
-    suffixes: Tuple[str, str],
+    suffixes: tuple[str, str],
     direction: str,
 ):
     """Performs a merge_asof on two catalog partitions
@@ -265,8 +265,8 @@ def perform_merge_asof(
 
 
 def join_catalog_data_on(
-    left: Catalog, right: Catalog, left_on: str, right_on: str, suffixes: Tuple[str, str]
-) -> Tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]:
+    left: Catalog, right: Catalog, left_on: str, right_on: str, suffixes: tuple[str, str]
+) -> tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]:
     """Joins two catalogs spatially on a specified column
 
     Args:
@@ -311,7 +311,7 @@ def join_catalog_data_nested(
     left_on: str,
     right_on: str,
     nested_column_name: str | None = None,
-) -> Tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]:
+) -> tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]:
     """Joins two catalogs spatially on a specified column, adding the right as a nested column with nested
     dask
 
@@ -356,8 +356,8 @@ def join_catalog_data_nested(
 
 
 def join_catalog_data_through(
-    left: Catalog, right: Catalog, association: AssociationCatalog, suffixes: Tuple[str, str]
-) -> Tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]:
+    left: Catalog, right: Catalog, association: AssociationCatalog, suffixes: tuple[str, str]
+) -> tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]:
     """Joins two catalogs with an association table
 
     Args:
@@ -421,8 +421,8 @@ def join_catalog_data_through(
 
 
 def merge_asof_catalog_data(
-    left: Catalog, right: Catalog, suffixes: Tuple[str, str], direction: str = "backward"
-) -> Tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]:
+    left: Catalog, right: Catalog, suffixes: tuple[str, str], direction: str = "backward"
+) -> tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]:
     """Uses the pandas `merge_asof` function to merge two catalogs on their indices by distance of keys
 
     Must be along catalog indices, and does not include margin caches, meaning results may be incomplete for

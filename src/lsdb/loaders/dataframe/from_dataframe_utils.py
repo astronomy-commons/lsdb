@@ -1,5 +1,4 @@
 from datetime import datetime, timezone
-from typing import List, Tuple
 
 import nested_dask as nd
 import nested_pandas as npd
@@ -16,8 +15,8 @@ from lsdb.dask.divisions import get_pixels_divisions
 
 
 def _generate_dask_dataframe(
-    pixel_dfs: List[npd.NestedFrame], pixels: List[HealpixPixel], use_pyarrow_types: bool = True
-) -> Tuple[nd.NestedFrame, int]:
+    pixel_dfs: list[npd.NestedFrame], pixels: list[HealpixPixel], use_pyarrow_types: bool = True
+) -> tuple[nd.NestedFrame, int]:
     """Create the Dask Dataframe from the list of HEALPix pixel Dataframes
 
     Args:

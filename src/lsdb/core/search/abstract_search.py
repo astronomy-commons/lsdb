@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Tuple, Type
+from typing import TYPE_CHECKING, Type
 
 import astropy
 import nested_pandas as npd
@@ -45,7 +45,7 @@ class AbstractSearch(ABC):
         self,
         projection: str = "MOL",
         title: str = "",
-        fov: Quantity | Tuple[Quantity, Quantity] | None = None,
+        fov: Quantity | tuple[Quantity, Quantity] | None = None,
         center: SkyCoord | None = None,
         wcs: astropy.wcs.WCS | None = None,
         frame_class: Type[BaseFrame] | None = None,

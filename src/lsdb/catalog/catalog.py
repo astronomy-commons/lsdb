@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Callable, List, Tuple, Type
+from typing import Callable, Type
 
 import hats as hc
 import nested_dask as nd
@@ -130,7 +130,7 @@ class Catalog(HealpixDataset):
     def crossmatch(
         self,
         other: Catalog,
-        suffixes: Tuple[str, str] | None = None,
+        suffixes: tuple[str, str] | None = None,
         algorithm: (
             Type[AbstractCrossmatchAlgorithm] | BuiltInCrossmatchAlgorithm
         ) = BuiltInCrossmatchAlgorithm.KD_TREE,
@@ -298,7 +298,7 @@ class Catalog(HealpixDataset):
         """
         return self.search(ConeSearch(ra, dec, radius_arcsec, fine))
 
-    def box_search(self, ra: Tuple[float, float], dec: Tuple[float, float], fine: bool = True) -> Catalog:
+    def box_search(self, ra: tuple[float, float], dec: tuple[float, float], fine: bool = True) -> Catalog:
         """Performs filtering according to right ascension and declination ranges. The right ascension
         edges follow great arc circles and the declination edges follow small arc circles.
 
@@ -363,7 +363,7 @@ class Catalog(HealpixDataset):
         """
         return self.search(OrderSearch(min_order, max_order))
 
-    def pixel_search(self, pixels: List[Tuple[int, int]]) -> Catalog:
+    def pixel_search(self, pixels: list[tuple[int, int]]) -> Catalog:
         """Finds all catalog pixels that overlap with the requested pixel set.
 
         Args:
@@ -407,12 +407,12 @@ class Catalog(HealpixDataset):
         self,
         other: Catalog,
         how: str = "inner",
-        on: str | List | None = None,
-        left_on: str | List | None = None,
-        right_on: str | List | None = None,
+        on: str | list | None = None,
+        left_on: str | list | None = None,
+        right_on: str | list | None = None,
         left_index: bool = False,
         right_index: bool = False,
-        suffixes: Tuple[str, str] | None = None,
+        suffixes: tuple[str, str] | None = None,
     ) -> nd.NestedFrame:
         """Performs the merge of two catalog Dataframes
 
@@ -461,7 +461,7 @@ class Catalog(HealpixDataset):
         self,
         other: Catalog,
         direction: str = "backward",
-        suffixes: Tuple[str, str] | None = None,
+        suffixes: tuple[str, str] | None = None,
         output_catalog_name: str | None = None,
     ):
         """Uses the pandas `merge_asof` function to merge two catalogs on their indices by distance of keys
@@ -512,7 +512,7 @@ class Catalog(HealpixDataset):
         left_on: str | None = None,
         right_on: str | None = None,
         through: AssociationCatalog | None = None,
-        suffixes: Tuple[str, str] | None = None,
+        suffixes: tuple[str, str] | None = None,
         output_catalog_name: str | None = None,
     ) -> Catalog:
         """Perform a spatial join to another catalog
