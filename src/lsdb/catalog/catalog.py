@@ -125,7 +125,7 @@ class Catalog(HealpixDataset):
             The catalog containing both the old columns and the newly created columns
 
         Examples:
-            Create a new column using a function:
+            Create a new column using a function::
 
                 catalog = Catalog(...)
                 catalog = catalog.assign(new_col=lambda df: df['existing_col'] * 2)
