@@ -20,6 +20,7 @@ SMALL_SKY_TO_XMATCH_NAME = "small_sky_to_xmatch"
 SMALL_SKY_TO_XMATCH_SOFT_NAME = "small_sky_to_xmatch_soft"
 SMALL_SKY_ORDER1_DIR_NAME = "small_sky_order1"
 SMALL_SKY_ORDER1_NO_PANDAS_DIR_NAME = "small_sky_order1_no_pandas_meta"
+SMALL_SKY_ORDER1_DEFAULT_COLS_DIR_NAME = "small_sky_order1_default_columns"
 SMALL_SKY_ORDER1_SOURCE_NAME = "small_sky_order1_source"
 SMALL_SKY_ORDER1_SOURCE_MARGIN_NAME = "small_sky_order1_source_margin"
 SMALL_SKY_TO_ORDER1_SOURCE_NAME = "small_sky_to_o1source"
@@ -74,6 +75,11 @@ def small_sky_to_xmatch_soft_dir(test_data_dir):
 @pytest.fixture
 def small_sky_order1_dir(test_data_dir):
     return test_data_dir / SMALL_SKY_ORDER1_DIR_NAME
+
+
+@pytest.fixture
+def small_sky_order1_default_cols_dir(test_data_dir):
+    return test_data_dir / SMALL_SKY_ORDER1_DEFAULT_COLS_DIR_NAME
 
 
 @pytest.fixture
