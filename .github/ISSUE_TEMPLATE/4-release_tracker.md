@@ -20,6 +20,8 @@ Please check which packages you would like to be released:
 
 e.g. major/minor/patch, deadlines, blocking issues, breaking changes, folks to notify
 
+## nested-* updates to include
+
 <!-- DON'T EDIT BELOW HERE -->
 
 
@@ -32,14 +34,15 @@ e.g. major/minor/patch, deadlines, blocking issues, breaking changes, folks to n
 
 - [ ] tag in github
 - [ ] confirm on [pypi](https://pypi.org/manage/project/hats/releases/)
-- [ ] request new conda-forge version (see [similar issue](https://github.com/conda-forge/hats-feedstock/issues/3)) and approve
+- [ ] request new conda-forge version (open [bot command issue](https://github.com/conda-forge/hats-feedstock/issues/) with title `@conda-forge-admin, please update version`)
+- [ ] approve conda-forge PR
 - [ ] confirm on [conda-forge](https://anaconda.org/conda-forge/hats)
 
 ## lsdb release
 
 - [ ] tag in github
 - [ ] confirm on [pypi](https://pypi.org/manage/project/lsdb/releases/)
-- [ ] request new conda-forge version (see [similar issue](https://github.com/conda-forge/hats-feedstock/issues/3))
+- [ ] request new conda-forge version (open [bot command issue](https://github.com/conda-forge/lsdb-feedstock/issues/) with title `@conda-forge-admin, please update version`)
 - [ ] confirm tagged hats version and approve
 - [ ] confirm on [conda-forge](https://anaconda.org/conda-forge/lsdb)
 
@@ -47,7 +50,7 @@ e.g. major/minor/patch, deadlines, blocking issues, breaking changes, folks to n
 
 - [ ] tag in github
 - [ ] confirm on [pypi](https://pypi.org/manage/project/hats-import/releases/)
-- [ ] request new conda-forge version (see [similar issue](https://github.com/conda-forge/hats-feedstock/issues/3)) and approve
+- [ ] request new conda-forge version (open [bot command issue](https://github.com/conda-forge/hats-import-feedstock/issues/) with title `@conda-forge-admin, please update version`)
 - [ ] confirm tagged hats version and approve
 - [ ] confirm on [conda-forge](https://anaconda.org/conda-forge/hats-import)
 
