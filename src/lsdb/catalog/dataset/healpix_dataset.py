@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import warnings
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, List, Tuple, Type, cast
+from typing import Any, Callable, Iterable, Type, cast
 
 import astropy
 import dask
@@ -118,7 +118,7 @@ class HealpixDataset(Dataset):
             moc=self.hc_structure.moc,
         )
 
-    def get_healpix_pixels(self) -> List[HealpixPixel]:
+    def get_healpix_pixels(self) -> list[HealpixPixel]:
         """Get all HEALPix pixels that are contained in the catalog
 
         Returns:
@@ -126,7 +126,7 @@ class HealpixDataset(Dataset):
         """
         return self.hc_structure.get_healpix_pixels()
 
-    def get_ordered_healpix_pixels(self) -> List[HealpixPixel]:
+    def get_ordered_healpix_pixels(self) -> list[HealpixPixel]:
         """Get all HEALPix pixels that are contained in the catalog,
         ordered by breadth-first nested ordering.
 
@@ -189,7 +189,7 @@ class HealpixDataset(Dataset):
         self,
         metadata: hc.catalog.Catalog | hc.catalog.MarginCatalog,
         search: AbstractSearch,
-    ) -> Tuple[DaskDFPixelMap, nd.NestedFrame]:
+    ) -> tuple[DaskDFPixelMap, nd.NestedFrame]:
         """Performs a search on the catalog from a list of pixels to search in
 
         Args:
@@ -237,7 +237,7 @@ class HealpixDataset(Dataset):
         self,
         func: Callable[..., npd.NestedFrame],
         *args,
-        meta: pd.DataFrame | pd.Series | Dict | Iterable | Tuple | None = None,
+        meta: pd.DataFrame | pd.Series | dict | Iterable | tuple | None = None,
         include_pixel: bool = False,
         **kwargs,
     ) -> Self | dd.Series:
@@ -329,7 +329,7 @@ class HealpixDataset(Dataset):
         filtered_hc_structure = self.hc_structure.filter_from_pixel_list(non_empty_pixels)
         return self.__class__(search_ddf, ddf_partition_map, filtered_hc_structure)
 
-    def _get_non_empty_partitions(self) -> Tuple[List[HealpixPixel], np.ndarray]:
+    def _get_non_empty_partitions(self) -> tuple[list[HealpixPixel], np.ndarray]:
         """Determines which pixels and partitions of a catalog are not empty
 
         Returns:
@@ -356,7 +356,7 @@ class HealpixDataset(Dataset):
         order: int | None = None,
         default_value: Any = 0.0,
         **kwargs,
-    ) -> Dict[HealpixPixel, Delayed]:
+    ) -> dict[HealpixPixel, Delayed]:
         """Perform a function on each partition of the catalog, returning a dict of values for each pixel.
 
         Args:
@@ -438,7 +438,7 @@ class HealpixDataset(Dataset):
         order: int | None = None,
         default_value: Any = 0,
         projection="MOL",
-        plotting_args: Dict | None = None,
+        plotting_args: dict | None = None,
         **kwargs,
     ) -> tuple[Figure, WCSAxes]:
         """Plot a skymap of an aggregate function applied over each partition
@@ -722,7 +722,7 @@ class HealpixDataset(Dataset):
         color_col: str | None = None,
         projection: str = "MOL",
         title: str | None = None,
-        fov: Quantity | Tuple[Quantity, Quantity] | None = None,
+        fov: Quantity | tuple[Quantity, Quantity] | None = None,
         center: SkyCoord | None = None,
         wcs: astropy.wcs.WCS | None = None,
         frame_class: Type[BaseFrame] | None = None,

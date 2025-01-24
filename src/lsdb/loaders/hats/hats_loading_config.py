@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, List
+from typing import Callable
 
 import pandas as pd
 from pandas.io._util import _arrow_dtype_mapping
@@ -21,7 +21,7 @@ class HatsLoadingConfig:
     search_filter: AbstractSearch | None = None
     """The spatial filter to apply to the catalog"""
 
-    columns: List[str] | None = None
+    columns: list[str] | None = None
     """Columns to load from the catalog. If not specified, all columns are loaded"""
 
     margin_cache: str | Path | UPath | None = None

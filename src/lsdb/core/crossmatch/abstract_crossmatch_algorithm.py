@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC
-from typing import TYPE_CHECKING, Tuple
+from typing import TYPE_CHECKING
 
 import nested_pandas as npd
 import numpy as np
@@ -66,7 +66,7 @@ class AbstractCrossmatchAlgorithm(ABC):
         left_catalog_info: TableProperties,
         right_catalog_info: TableProperties,
         right_margin_catalog_info: TableProperties | None,
-        suffixes: Tuple[str, str],
+        suffixes: tuple[str, str],
     ):
         """Initializes a crossmatch algorithm
 
@@ -107,7 +107,7 @@ class AbstractCrossmatchAlgorithm(ABC):
             )
         return self._create_crossmatch_df(l_inds, r_inds, extra_cols)
 
-    def perform_crossmatch(self) -> Tuple[np.ndarray, np.ndarray, pd.DataFrame]:
+    def perform_crossmatch(self) -> tuple[np.ndarray, np.ndarray, pd.DataFrame]:
         """Performs a crossmatch to get the indices of the matching rows and any extra columns
 
         Any additional keyword arguments needed can be added to this method in the subclass, and the user

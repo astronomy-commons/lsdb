@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable, List, Sequence, Tuple
+from typing import TYPE_CHECKING, Callable, Sequence
 
 import hats.pixel_math.healpix_shim as hp
 import nested_dask as nd
@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 
 
 def concat_partition_and_margin(
-    partition: npd.NestedFrame, margin: npd.NestedFrame | None, right_columns: List[str]
+    partition: npd.NestedFrame, margin: npd.NestedFrame | None, right_columns: list[str]
 ) -> npd.NestedFrame:
     """Concatenates a partition and margin dataframe together
 
@@ -103,8 +103,8 @@ def align_catalogs(left: Catalog, right: Catalog, add_right_margin: bool = True)
 
 
 def align_and_apply(
-    catalog_mappings: List[Tuple[HealpixDataset | None, List[HealpixPixel]]], func: Callable, *args, **kwargs
-) -> List[Delayed]:
+    catalog_mappings: list[tuple[HealpixDataset | None, list[HealpixPixel]]], func: Callable, *args, **kwargs
+) -> list[Delayed]:
     """Aligns catalogs to a given ordering of pixels and applies a function each set of aligned partitions
 
     Args:
@@ -178,8 +178,8 @@ def filter_by_spatial_index_to_pixel(dataframe: npd.NestedFrame, order: int, pix
 
 
 def construct_catalog_args(
-    partitions: List[Delayed], meta_df: npd.NestedFrame, alignment: PixelAlignment
-) -> Tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]:
+    partitions: list[Delayed], meta_df: npd.NestedFrame, alignment: PixelAlignment
+) -> tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]:
     """Constructs the arguments needed to create a catalog from a list of delayed partitions
 
     Args:
@@ -202,7 +202,7 @@ def construct_catalog_args(
 
 def get_healpix_pixels_from_alignment(
     alignment: PixelAlignment,
-) -> Tuple[List[HealpixPixel], List[HealpixPixel]]:
+) -> tuple[list[HealpixPixel], list[HealpixPixel]]:
     """Gets the list of primary and join pixels as the HealpixPixel class from a PixelAlignment
 
     Args:
@@ -347,8 +347,8 @@ def get_partition_map_from_alignment_pixels(join_pixels: pd.DataFrame) -> DaskDF
 
 
 def align_catalog_to_partitions(
-    catalog: HealpixDataset | None, pixels: List[HealpixPixel]
-) -> List[Delayed | None]:
+    catalog: HealpixDataset | None, pixels: list[HealpixPixel]
+) -> list[Delayed | None]:
     """Aligns the partitions of a Catalog to a dataframe with HEALPix pixels in each row
 
     Args:

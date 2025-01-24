@@ -1,5 +1,4 @@
 import math
-from typing import Tuple
 
 import numpy as np
 import numpy.typing as npt
@@ -12,7 +11,7 @@ def _find_crossmatch_indices(
     n_neighbors: int,
     max_distance: float,
     min_distance: float = 0,
-) -> Tuple[npt.NDArray[np.float64], npt.NDArray[np.int64], npt.NDArray[np.int64]]:
+) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.int64], npt.NDArray[np.int64]]:
     # If right catalog is empty, tree.query will raise an exception
     # Left catalog cannot be empty, as it checked in perform_crossmatch()
     if len(right_xyz) == 0:
@@ -52,7 +51,7 @@ def _query_min_max_neighbors(
     n_neighbors: int,
     min_distance: float,
     max_distance: float,
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
     """Finds `n_neighbors` within a distance range for all points in a pair of partitions"""
     left_tree = KDTree(left_xyz, compact_nodes=True, balanced_tree=True, copy_data=False)
 

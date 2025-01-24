@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Tuple
+from typing import TYPE_CHECKING
 
 import numpy as np
 import numpy.typing as npt
@@ -44,7 +44,7 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
         self,
         n_neighbors: int = 1,
         radius_arcsec: float = 1,
-    ) -> Tuple[np.ndarray, np.ndarray, pd.DataFrame]:
+    ) -> tuple[np.ndarray, np.ndarray, pd.DataFrame]:
         """Perform a cross-match between the data from two HEALPix pixels
 
         Finds the n closest neighbors in the right catalog for each point in the left catalog that
@@ -72,7 +72,7 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
         )
         return left_idx, right_idx, extra_columns
 
-    def _get_point_coordinates(self) -> Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
+    def _get_point_coordinates(self) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
         left_xyz = _lon_lat_to_xyz(
             lon=self.left[self.left_catalog_info.ra_column].to_numpy(),
             lat=self.left[self.left_catalog_info.dec_column].to_numpy(),

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import List, Tuple
 
 import hats as hc
 import nested_dask as nd
@@ -29,7 +28,7 @@ from lsdb.types import CatalogTypeVar
 def read_hats(
     path: str | Path | UPath,
     search_filter: AbstractSearch | None = None,
-    columns: List[str] | None = None,
+    columns: list[str] | None = None,
     margin_cache: str | Path | UPath | None = None,
     dtype_backend: str | None = "pyarrow",
     **kwargs,
@@ -187,7 +186,7 @@ def _create_dask_meta_schema(schema: pa.Schema, config) -> npd.NestedFrame:
     return npd.NestedFrame(dask_meta_schema)
 
 
-def _load_dask_df_and_map(catalog: HCHealpixDataset, config) -> Tuple[nd.NestedFrame, DaskDFPixelMap]:
+def _load_dask_df_and_map(catalog: HCHealpixDataset, config) -> tuple[nd.NestedFrame, DaskDFPixelMap]:
     """Load Dask DF from parquet files and make dict of HEALPix pixel to partition index"""
     pixels = catalog.get_healpix_pixels()
     ordered_pixels = np.array(pixels)[get_pixel_argsort(pixels)]
