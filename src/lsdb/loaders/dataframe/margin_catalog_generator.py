@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import warnings
-from typing import Dict, List, Tuple
 
 import hats as hc
 import hats.pixel_math.healpix_shim as hp
@@ -114,7 +113,7 @@ class MarginCatalogGenerator:
         margin_structure = hc.catalog.MarginCatalog(catalog_info, [], schema=self.margin_schema)
         return MarginCatalog(ddf, {}, margin_structure)
 
-    def _get_margins(self) -> Tuple[List[HealpixPixel], List[npd.NestedFrame]]:
+    def _get_margins(self) -> tuple[list[HealpixPixel], list[npd.NestedFrame]]:
         """Generates the list of pixels that have margin data, and the dataframes with the margin data for
         each partition
 
@@ -131,8 +130,8 @@ class MarginCatalogGenerator:
         return pixels, partitions
 
     def _generate_dask_df_and_map(
-        self, pixels: List[HealpixPixel], partitions: List[pd.DataFrame]
-    ) -> Tuple[nd.NestedFrame, Dict[HealpixPixel, int], int]:
+        self, pixels: list[HealpixPixel], partitions: list[pd.DataFrame]
+    ) -> tuple[nd.NestedFrame, dict[HealpixPixel, int], int]:
         """Create the Dask Dataframe containing the data points in the margins
         for the catalog as well as the mapping of those HEALPix to Dataframes
 
@@ -154,7 +153,7 @@ class MarginCatalogGenerator:
         ddf, total_rows = _generate_dask_dataframe(ordered_partitions, ordered_pixels, self.use_pyarrow_types)
         return ddf, ddf_pixel_map, total_rows
 
-    def _find_margin_pixel_pairs(self, pixels: List[HealpixPixel]) -> pd.DataFrame:
+    def _find_margin_pixel_pairs(self, pixels: list[HealpixPixel]) -> pd.DataFrame:
         """Calculate the pairs of catalog pixels and their margin pixels
 
         Args:
@@ -184,7 +183,7 @@ class MarginCatalogGenerator:
             columns=["partition_order", "partition_pixel", "margin_pixel"],
         )
 
-    def _create_margins(self, margin_pairs_df: pd.DataFrame) -> Dict[HealpixPixel, pd.DataFrame]:
+    def _create_margins(self, margin_pairs_df: pd.DataFrame) -> dict[HealpixPixel, pd.DataFrame]:
         """Compute the margins for all the pixels in the catalog
 
         Args:
@@ -194,7 +193,7 @@ class MarginCatalogGenerator:
         Returns:
             A dictionary mapping each margin pixel to the respective DataFrame.
         """
-        margin_pixel_df_map: Dict[HealpixPixel, npd.NestedFrame] = {}
+        margin_pixel_df_map: dict[HealpixPixel, npd.NestedFrame] = {}
         self.dataframe["margin_pixel"] = hp.radec2pix(
             self.margin_order,
             self.dataframe[self.hc_structure.catalog_info.ra_column].to_numpy(),

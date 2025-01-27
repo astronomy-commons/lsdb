@@ -1,5 +1,3 @@
-from typing import List
-
 import hats as hc
 import nested_dask as nd
 import nested_pandas as npd
@@ -46,7 +44,7 @@ class Dataset:
         """Compute dask distributed dataframe to pandas dataframe"""
         return self._ddf.compute()
 
-    def to_delayed(self, optimize_graph: bool = True) -> List[Delayed]:
+    def to_delayed(self, optimize_graph: bool = True) -> list[Delayed]:
         """Get a list of Dask Delayed objects for each partition in the dataset
 
         Used for more advanced custom operations, but to use again with LSDB, the delayed objects

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Tuple
+from typing import TYPE_CHECKING
 
 import nested_pandas as npd
 from hats.pixel_math import HealpixPixel
@@ -18,7 +18,7 @@ class PixelSearch(AbstractSearch):
     Does not filter points inside those partitions.
     """
 
-    def __init__(self, pixels: List[Tuple[int, int]]):
+    def __init__(self, pixels: list[tuple[int, int]]):
         super().__init__(fine=False)
         self.pixels = [HealpixPixel(o, p) for o, p in set(pixels)]
 

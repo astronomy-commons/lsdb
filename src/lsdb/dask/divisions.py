@@ -1,14 +1,12 @@
 from __future__ import annotations
 
-from typing import List, Tuple
-
 import numpy as np
 from hats.pixel_math import HealpixPixel
 from hats.pixel_math.healpix_pixel_function import get_pixel_argsort
 from hats.pixel_math.spatial_index import healpix_to_spatial_index
 
 
-def get_pixels_divisions(healpix_pixels: List[HealpixPixel]) -> Tuple[int, ...] | None:
+def get_pixels_divisions(healpix_pixels: list[HealpixPixel]) -> tuple[int, ...] | None:
     """Calculates the Dask Dataframe divisions for a list of HEALPix pixels.
 
     Divisions include the minimum value of every HEALPix pixel spatial_index

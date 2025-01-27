@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Tuple
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
@@ -36,7 +36,7 @@ class BoundedKdTreeCrossmatch(KdTreeCrossmatch):
         n_neighbors: int = 1,
         radius_arcsec: float = 1,
         min_radius_arcsec: float = 0,
-    ) -> Tuple[np.ndarray, np.ndarray, pd.DataFrame]:
+    ) -> tuple[np.ndarray, np.ndarray, pd.DataFrame]:
         """Perform a cross-match between the data from two HEALPix pixels
 
         Finds the n closest neighbors in the right catalog for each point in the left catalog that

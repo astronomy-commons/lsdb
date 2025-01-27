@@ -1,7 +1,7 @@
 # pylint: disable=duplicate-code
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable, Tuple
+from typing import TYPE_CHECKING, Callable
 
 import dask
 import nested_dask as nd
@@ -68,7 +68,7 @@ def merge_map_catalog_data(
     *args,
     meta: npd.NestedFrame | None = None,
     **kwargs,
-) -> Tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]:
+) -> tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]:
     """Applies a function to each pair of partitions in this catalog and the map catalog.
 
     The pixels from each catalog are aligned via a `PixelAlignment`, and the respective dataframes

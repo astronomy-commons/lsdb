@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Callable, Dict
+from typing import Any, Callable
 
 import hats.pixel_math.healpix_shim as hp
 import nested_pandas as npd
@@ -40,7 +40,7 @@ def perform_inner_skymap(
 
 
 def compute_skymap(
-    pixel_map: Dict[HealpixPixel, Any], order: int | None = None, default_value: Any = 0.0
+    pixel_map: dict[HealpixPixel, Any], order: int | None = None, default_value: Any = 0.0
 ) -> np.ndarray:
     """Returns a histogram map of healpix_pixels to values.
 

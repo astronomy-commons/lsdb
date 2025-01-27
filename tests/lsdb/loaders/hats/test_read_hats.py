@@ -38,6 +38,31 @@ def test_read_hats(small_sky_order1_dir, small_sky_order1_hats_catalog, assert_d
     assert_index_correct(catalog)
 
 
+def test_read_hats_default_cols(small_sky_order1_default_cols_dir, assert_divisions_are_correct):
+    catalog = lsdb.read_hats(small_sky_order1_default_cols_dir)
+    assert isinstance(catalog, lsdb.Catalog)
+    assert isinstance(catalog._ddf, nd.NestedFrame)
+    assert catalog.hc_structure.catalog_info.default_columns is not None
+    assert np.all(catalog.columns == catalog.hc_structure.catalog_info.default_columns)
+    assert np.all(catalog.compute().columns == catalog.hc_structure.catalog_info.default_columns)
+    assert isinstance(catalog.compute(), npd.NestedFrame)
+    assert_divisions_are_correct(catalog)
+    assert_index_correct(catalog)
+
+
+def test_read_hats_default_cols_specify_cols(small_sky_order1_default_cols_dir, assert_divisions_are_correct):
+    filter_columns = ["ra", "dec"]
+    catalog = lsdb.read_hats(small_sky_order1_default_cols_dir, columns=filter_columns)
+    assert isinstance(catalog, lsdb.Catalog)
+    assert isinstance(catalog._ddf, nd.NestedFrame)
+    assert catalog.hc_structure.catalog_info.default_columns is not None
+    assert np.all(catalog.columns == filter_columns)
+    assert np.all(catalog.compute().columns == filter_columns)
+    assert isinstance(catalog.compute(), npd.NestedFrame)
+    assert_divisions_are_correct(catalog)
+    assert_index_correct(catalog)
+
+
 def test_read_hats_no_pandas(small_sky_order1_no_pandas_dir, assert_divisions_are_correct):
     catalog = lsdb.read_hats(small_sky_order1_no_pandas_dir)
     assert isinstance(catalog, lsdb.Catalog)

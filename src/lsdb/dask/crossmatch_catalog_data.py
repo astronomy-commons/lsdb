@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING, Tuple, Type
+from typing import TYPE_CHECKING, Type
 
 import dask
 import nested_dask as nd
@@ -76,12 +76,12 @@ def perform_crossmatch(
 def crossmatch_catalog_data(
     left: Catalog,
     right: Catalog,
-    suffixes: Tuple[str, str],
+    suffixes: tuple[str, str],
     algorithm: (
         Type[AbstractCrossmatchAlgorithm] | BuiltInCrossmatchAlgorithm
     ) = BuiltInCrossmatchAlgorithm.KD_TREE,
     **kwargs,
-) -> Tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]:
+) -> tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]:
     """Cross-matches the data from two catalogs
 
     Args:
