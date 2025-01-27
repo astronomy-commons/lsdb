@@ -130,7 +130,7 @@ class Catalog(HealpixDataset):
                 catalog = Catalog(...)
                 catalog = catalog.assign(new_col=lambda df: df['existing_col'] * 2)
 
-            Add a column from a 1-D Dask array:
+            Add a column from a 1-D Dask array::
 
                 import dask.array as da
                 new_data = da.arange(...)
