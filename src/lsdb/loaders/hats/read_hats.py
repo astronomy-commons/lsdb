@@ -28,7 +28,7 @@ from lsdb.types import CatalogTypeVar
 def read_hats(
     path: str | Path | UPath,
     search_filter: AbstractSearch | None = None,
-    columns: list[str] | None = None,
+    columns: list[str] | str | None = None,
     margin_cache: str | Path | UPath | None = None,
     dtype_backend: str | None = "pyarrow",
     **kwargs,
@@ -50,7 +50,8 @@ def read_hats(
     Args:
         path (UPath | Path): The path that locates the root of the HATS catalog
         search_filter (Type[AbstractSearch]): Default `None`. The filter method to be applied.
-        columns (List[str]): Default `None`. The set of columns to filter the catalog on.
+        columns (List[str]): Default `None`. The set of columns to filter the catalog on. If None, the
+            catalog's default columns will be loaded. To load all catalog columns, use `columns="all"`
         margin_cache (path-like): Default `None`. The margin for the main catalog, provided as a path.
         dtype_backend (str): Backend data type to apply to the catalog.
             Defaults to "pyarrow". If None, no type conversion is performed.
@@ -65,6 +66,9 @@ def read_hats(
 
     if columns is None and hc_catalog.catalog_info.default_columns is not None:
         columns = hc_catalog.catalog_info.default_columns
+
+    if columns == "all":
+        columns = None
 
     config = HatsLoadingConfig(
         search_filter=search_filter,
