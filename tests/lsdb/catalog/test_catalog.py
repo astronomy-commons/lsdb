@@ -612,11 +612,11 @@ def test_square_bracket_filter(small_sky_order1_catalog):
 
 
 def test_map_partitions(small_sky_order1_catalog):
-    def add_col(df):
-        df["a"] = df["ra"] + 1
+    def add_col(df, new_col_name, *, increment_value):
+        df[new_col_name] = df["ra"] + increment_value
         return df
 
-    mapped = small_sky_order1_catalog.map_partitions(add_col)
+    mapped = small_sky_order1_catalog.map_partitions(add_col, "a", increment_value=1)
     assert isinstance(mapped, Catalog)
     assert isinstance(mapped._ddf, nd.NestedFrame)
     assert "a" in mapped.columns
@@ -627,15 +627,15 @@ def test_map_partitions(small_sky_order1_catalog):
 
 
 def test_map_partitions_include_pixel(small_sky_order1_catalog):
-    def add_col(df, pixel):
-        df["pix"] = pixel.pixel
+    def add_col(df, pixel, new_col_name, *, increment_value):
+        df[new_col_name] = pixel.pixel + increment_value
         return df
 
-    mapped = small_sky_order1_catalog.map_partitions(add_col, include_pixel=True)
+    mapped = small_sky_order1_catalog.map_partitions(add_col, "pix", increment_value=1, include_pixel=True)
     assert isinstance(mapped, Catalog)
     assert "pix" in mapped.columns
     mapcomp = mapped.compute()
-    pix_col = hp.radec2pix(1, mapcomp["ra"].to_numpy(), mapcomp["dec"].to_numpy())
+    pix_col = hp.radec2pix(1, mapcomp["ra"].to_numpy(), mapcomp["dec"].to_numpy()) + 1
     assert np.all(mapcomp["pix"] == pix_col)
 
 
