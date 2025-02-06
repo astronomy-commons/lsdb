@@ -70,6 +70,9 @@ def read_hats(
     if columns == "all":
         columns = None
 
+    if isinstance(columns, str):
+        raise TypeError("`columns` argument must be a list of strings, None, or 'all'")
+
     config = HatsLoadingConfig(
         search_filter=search_filter,
         columns=columns,
