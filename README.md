@@ -16,7 +16,7 @@
 ## LSDB - Large Survey DataBase
 
 A framework to facilitate and enable spatial analysis for extremely large astronomical databases 
-(i.e. querying and crossmatching O(1B) sources). This package uses dask to parallelize operations across
+(i.e. querying and crossmatching ~10⁹ sources). This package uses dask to parallelize operations across
 multiple HATS partitioned surveys.
 
 Check out our [ReadTheDocs site](https://lsdb.readthedocs.io/en/stable/)
