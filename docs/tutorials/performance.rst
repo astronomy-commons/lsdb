@@ -66,12 +66,13 @@ The results of the analysis are shown in the following plot:
 
 Some observations from the plot:
 
-* LSDB is the only method allowing users to parallelize the cross-matching operation, so we run it with 1, 4, and 16 workers.
+* LSDB is the only method allowing users to easily parallelize the cross-matching operation, so we run it with 1, 4, and 16 workers.
 * LSDB enables the use of out-of-memory datasets, which is not possible with astropy and smatch, meaning we can perform cross-matching with larger datasets after the other algorithms run out of memory, up to the full ZTF and Gaia catalogs.
 * Despite the fact that LSDB's crossmatching algorithm does similar work converting spherical coordinates to Cartesian, it's faster than astropy's algorithm for larger catalogs, even with a single worker. This is probably due to the fact that LSDB utilises a batching approach, which constructs shallower k-D trees for each partition of the data, and thus less time is spent on the tree traversal.
 * All algorithms have a nearly linear dependency on the number of rows in the input catalogs aside from when cross-matching a low number of rows where I/O overhead dominates. LSDB has a slightly larger constant overhead of 1-2 seconds associated with the graph construction and Dask overhead, which is negligible for large catalogs, where the time starts to grow linearly.
+* We test LSDB while using only the RA and DEC columns from each catalog to show the benefits of the parquet format used in HATS. Since the stored data is columnar on disk, much less I/O time is taken to load just 2 columns of each catalog. Even with large catalogs, loading data is slower than cross-matching, since we see a dramatic reduction in overall time from reducing the amount of I/O time.
 
 Summarizing, the cross-matching approach implemented in LSDB is competitive with the existing tools and is more efficient for large catalogs, starting with roughly one million rows.
-Also, LSDB enables the use of out-of-memory datasets, which is not possible with astropy and smatch, and not demonstrated in the analysis.
+Also, LSDB enables the use of out-of-memory datasets to perform cross-matching with large catalogs, which is not possible with astropy and smatch.
 
-The complete code of the analysis is available `here <https://github.com/smcguire-cmu/lsdb_benchmark>`_.
+The complete code of the analysis is available `here <https://github.com/lincc-frameworks/notebooks_lf/tree/main/lsdb_crossmatch_benchmarking>`__.
