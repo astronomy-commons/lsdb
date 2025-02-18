@@ -123,6 +123,18 @@ class Catalog(HealpixDataset):
 
         Returns:
             The catalog containing both the old columns and the newly created columns
+
+        Examples:
+            Create a new column using a function::
+
+                catalog = Catalog(...)
+                catalog = catalog.assign(new_col=lambda df: df['existing_col'] * 2)
+
+            Add a column from a 1-D Dask array::
+
+                import dask.array as da
+                new_data = da.arange(...)
+                catalog = catalog.assign(new_col=new_data)
         """
         ddf = self._ddf.assign(**kwargs)
         return Catalog(ddf, self._ddf_pixel_map, self.hc_structure)
