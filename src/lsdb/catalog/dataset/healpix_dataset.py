@@ -275,9 +275,9 @@ class HealpixDataset(Dataset):
         """
         if meta is None:
             if include_pixel:
-                meta = func(self._ddf._meta.copy(), HealpixPixel(0, 0))
+                meta = func(self._ddf._meta.copy(), HealpixPixel(0, 0), *args, **kwargs)
             else:
-                meta = func(self._ddf._meta.copy())
+                meta = func(self._ddf._meta.copy(), *args, **kwargs)
             if meta is None:
                 raise ValueError(
                     "func returned None for empty DataFrame input. The function must return a value, changing"

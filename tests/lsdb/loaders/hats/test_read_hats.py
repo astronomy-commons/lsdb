@@ -63,6 +63,19 @@ def test_read_hats_default_cols_specify_cols(small_sky_order1_default_cols_dir, 
     assert_index_correct(catalog)
 
 
+def test_read_hats_default_cols_all_cols(small_sky_order1_default_cols_dir, assert_divisions_are_correct):
+    expected_all_cols = ["id", "ra", "dec", "ra_error", "dec_error", "Norder", "Dir", "Npix"]
+    catalog = lsdb.read_hats(small_sky_order1_default_cols_dir, columns="all")
+    assert isinstance(catalog, lsdb.Catalog)
+    assert isinstance(catalog._ddf, nd.NestedFrame)
+    assert catalog.hc_structure.catalog_info.default_columns is not None
+    assert np.all(catalog.columns == expected_all_cols)
+    assert np.all(catalog.compute().columns == expected_all_cols)
+    assert isinstance(catalog.compute(), npd.NestedFrame)
+    assert_divisions_are_correct(catalog)
+    assert_index_correct(catalog)
+
+
 def test_read_hats_no_pandas(small_sky_order1_no_pandas_dir, assert_divisions_are_correct):
     catalog = lsdb.read_hats(small_sky_order1_no_pandas_dir)
     assert isinstance(catalog, lsdb.Catalog)
