@@ -38,22 +38,22 @@ astropy's `match_coordinates_sky <https://docs.astropy.org/en/stable/api/astropy
 and `smatch <https://github.com/esheldon/smatch>`_ package.
 All three approaches use scipy's k-D tree implementation to find the nearest neighbor on a 3-D unit sphere.
 
-We use the same ZTF DR14 and Gaia DR3 catalogs as in the previous test, but we only use coordinate columns for the cross-matching.
+We use the same ZTF DR14 and Gaia DR3 catalogs as in the previous test, loaded with the default columns (15 ZTF columns and 27 Gaia columns) for the cross-matching.
 With each algorithm, we perform the cross-matching of the catalogs within a 1 arcsecond radius, selecting the closest match.
 To compare the performance on different scales,
-we select subsets of the catalogs with a cone search around an arbitrary point,
-increasing the radius from 1 arcminute to 25 degrees.
+we select subsets of the catalogs by filtering with HEALPix pixels,
+increasing the data volume from ~100 rows, to the full catalogs.
 
 The analysis has the following steps:
 
-* Load the data from the HATS format, selecting the subset of the data with ``lsdb.read_hats(PATH, columns=[RA_COL, DEC_COL]).cone_search(ra, dec, radius).compute()``.
+* Load the data from the HATS format, selecting the subset of the data.
 * Perform the cross-matching with the selected algorithm
 
   * LSDB: ``ztf.crossmatch(gaia, radius_arcsec=1, n_neighbors=1).compute()``
   * Astropy analysis is two-step:
 
     * Initialize the ``SkyCoord`` objects for both catalogs
-    * Perform the cross-matching with ``match_coordinates_sky(ztf, gaia, nthneighbor=1)``, filter the results by 1-arcsencod radius, and compute distances
+    * Perform the cross-matching with ``match_coordinates_sky(ztf, gaia, nthneighbor=1)``, filter the results by 1-arcsecond radius, and compute distances
 
   * Smatch: ``smatch.match(ztf_ra, ztf_dec, 1/3600, gaia_ra, gaia_dec)``, and convert distances from cosines of the angles to arcseconds
 
@@ -61,19 +61,18 @@ The results of the analysis are shown in the following plot:
 
 .. figure:: _static/crossmatching-performance.png
    :class: no-scaled-link
-   :scale: 100 %
    :align: center
    :alt: Cross-matching performance comparison between LSDB, astropy, and smatch
 
 Some observations from the plot:
 
-* Construction of the ``SkyCoord`` objects in astropy is the most time-consuming step; in this step, spherical coordinates are converted to Cartesian, so ``match_coordinates_sky()`` has less work to do compared to other algorithms. So if your analysis doesn't require the ``SkyCoord`` objects anywhere else, it would be more fair to add up the time of the ``SkyCoord`` objects construction and the ``match_coordinates_sky()`` execution.
-* All algorithms but LSDB have a nearly linear dependency on the number of rows in the input catalogs starting from a small number of rows. LSDB has a constant overhead associated with the graph construction and Dask overhead, which is negligible for large catalogs, where the time starts to grow linearly.
-* LSDB is the only method allowing users to parallelize the cross-matching operation, so we run it with 1, 4, 16, and 64 workers.
-* 16 and 64-worker cases show the same performance, which demonstrates the limits of the parallelization, at least with the hardware setup used in the analysis.
-* Despite the fact that LSDB's crossmatching algorithm does similar work converting spherical coordinates to Cartesian, it's getting faster than astropy's algorithm for larger catalogs, even with a single worker. This is probably due to the fact that LSDB utilises a batching approach, which constructs shallower k-D trees for each partition of the data, and thus less time is spent on the tree traversal.
+* LSDB is the only method allowing users to easily parallelize the cross-matching operation, so we run it with 1, 4, and 16 workers.
+* LSDB enables the use of out-of-memory datasets, which is not possible with astropy and smatch, meaning we can perform cross-matching with larger datasets after the other algorithms run out of memory, up to the full ZTF and Gaia catalogs.
+* Despite the fact that LSDB's crossmatching algorithm does similar work converting spherical coordinates to Cartesian, it's faster than astropy's algorithm for larger catalogs, even with a single worker. This is probably due to the fact that LSDB utilises a batching approach, which constructs shallower k-D trees for each partition of the data, and thus less time is spent on the tree traversal.
+* All algorithms have a nearly linear dependency on the number of rows in the input catalogs aside from when cross-matching a low number of rows where I/O overhead dominates. LSDB has a slightly larger constant overhead of 1-2 seconds associated with the graph construction and Dask overhead, which is negligible for large catalogs, where the time starts to grow linearly.
+* We test LSDB while using only the RA and DEC columns from each catalog to show the benefits of the parquet format used in HATS. Since the stored data is columnar on disk, much less I/O time is taken to load just 2 columns of each catalog. Even with large catalogs, loading data is slower than cross-matching, since we see a dramatic reduction in overall time from reducing the amount of I/O time.
 
 Summarizing, the cross-matching approach implemented in LSDB is competitive with the existing tools and is more efficient for large catalogs, starting with roughly one million rows.
-Also, LSDB enables the use of out-of-memory datasets, which is not possible with astropy and smatch, and not demonstrated in the analysis.
+Also, LSDB enables the use of out-of-memory datasets to perform cross-matching with large catalogs, which is not possible with astropy and smatch.
 
-The complete code of the analysis is available `here <https://github.com/lincc-frameworks/notebooks_lf/tree/main/sprints/2024/05_30/xmatch_bench>`_.
+The complete code of the analysis is available `here <https://github.com/lincc-frameworks/notebooks_lf/tree/main/lsdb_crossmatch_benchmarking>`__.
