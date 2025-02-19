@@ -47,11 +47,11 @@ Using this Guide
 
        The detailed API documentation
 
-   .. grid-item-card:: Contribution Guide
-       :link: developer/contributing
+   .. grid-item-card:: Example Science Notebooks
+       :link: science-notebooks
        :link-type: doc
 
-       For developers, learn more about contributing to this repository
+       Jupyter notebooks going over some example scientific use cases
 
 .. toctree::
    :hidden:
@@ -59,6 +59,8 @@ Using this Guide
    Home page <self>
    Getting Started <getting-started>
    Tutorials <tutorials>
+   Advanced Topics<advanced-topics>
+   Example Science Notebooks<science-notebooks>
    API Reference <autoapi/index>
 
 .. toctree::
