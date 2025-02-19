@@ -1,7 +1,7 @@
 Example Science Use Cases
 ========================================================================================
 
-Here we have a selection Jupyter notebooks going over some example scientific use cases
+Here we have some Jupyter notebooks demonstrating how LSDB can be used to perform example scientific use cases
 
 .. toctree::
     :maxdepth: 1
