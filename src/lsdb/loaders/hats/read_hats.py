@@ -59,6 +59,12 @@ def read_hats(
 
     Returns:
         Catalog object loaded from the given parameters
+
+    Examples:
+        To read a catalog from a public S3 bucket, call it as follows::
+
+            from upath import UPath
+            catalog = lsdb.read_hats(UPath(..., anon=True))
     """
     # Creates a config object to store loading parameters from all keyword arguments.
 
