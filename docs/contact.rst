@@ -10,7 +10,7 @@ making our products better, or pretty much anything else, reach out!
     * https://github.com/astronomy-commons/lsdb/issues/new
 * Start a new github discussion
     * https://github.com/astronomy-commons/lsdb/discussions/new/choose
-* If you're on LSSTC slack, so are we!
+* If you're on LSST Discovery Alliance slack, so are we!
     * `#lincc-frameworks-qa <https://lsstc.slack.com/archives/C062LG1AK1S>`_
     * `#lincc-frameworks-lsdb <https://lsstc.slack.com/archives/C04610PQW9F>`_
 * Join the working group, where we discuss HATS standardization and early results
