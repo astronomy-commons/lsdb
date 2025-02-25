@@ -8,6 +8,8 @@ import dask
 import hats as hc
 import nested_pandas as npd
 import numpy as np
+import pyarrow as pa
+import pyarrow.parquet as pq
 from hats.catalog import PartitionInfo
 from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
 from hats.pixel_math import HealpixPixel, spatial_index_to_healpix
@@ -34,7 +36,7 @@ def perform_write(
         hp_pixel (HealpixPixel): HEALPix pixel of file to be written
         base_catalog_dir (path-like): Location of the base catalog directory to write to
         histogram_order (int): Order of the count histogram
-        **kwargs: other kwargs to pass to pd.to_parquet method
+        **kwargs: other kwargs to pass to pq.write_table method
 
     Returns:
         The total number of points on the partition and the sparse count histogram
@@ -45,7 +47,8 @@ def perform_write(
     pixel_dir = hc.io.pixel_directory(base_catalog_dir, hp_pixel.order, hp_pixel.pixel)
     hc.io.file_io.make_directory(pixel_dir, exist_ok=True)
     pixel_path = hc.io.paths.pixel_catalog_file(base_catalog_dir, hp_pixel)
-    hc.io.file_io.write_dataframe_to_parquet(df, pixel_path, **kwargs)
+    pixel_data = pa.Table.from_pandas(df).replace_schema_metadata()
+    pq.write_table(pixel_data, pixel_path.path, filesystem=pixel_path.fs, **kwargs)
     return len(df), calculate_histogram(df, histogram_order)
 
 
