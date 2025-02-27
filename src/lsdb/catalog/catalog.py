@@ -32,6 +32,7 @@ from lsdb.dask.join_catalog_data import (
 from lsdb.dask.merge_map_catalog_data import merge_map_catalog_data
 from lsdb.dask.partition_indexer import PartitionIndexer
 from lsdb.io.schema import get_arrow_schema
+from lsdb.loaders.dataframe.from_dataframe import from_dataframe
 from lsdb.types import DaskDFPixelMap
 
 
@@ -241,6 +242,26 @@ class Catalog(HealpixDataset):
             new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(ddf), moc=alignment.moc
         )
         return Catalog(ddf, ddf_map, hc_catalog)
+
+    def crossmatch_df(
+        self,
+        other: pd.DataFrame,
+        suffixes: tuple[str, str] | None = None,
+        algorithm: (
+            Type[AbstractCrossmatchAlgorithm] | BuiltInCrossmatchAlgorithm
+        ) = BuiltInCrossmatchAlgorithm.KD_TREE,
+        output_catalog_name: str | None = None,
+        require_right_margin: bool = False,
+        **kwargs,
+    ) -> Catalog:
+        """Perform a cross-match between a catalog and a DataFrame."""
+        # Convert the given DataFrame to a Catalog. Pass along any additional keyword arguments.
+        other_catalog = from_dataframe(other, **kwargs)
+
+        # Call the crossmatch method with the newly generated Catalog.
+        return self.crossmatch(
+            other_catalog, suffixes, algorithm, output_catalog_name, require_right_margin, **kwargs
+        )
 
     def merge_map(
         self,
