@@ -17,6 +17,23 @@ from lsdb.dask.merge_catalog_functions import align_catalogs
 
 @pytest.mark.parametrize("algo", [KdTreeCrossmatch])
 class TestCrossmatch:
+    # TODO move below later
+    @staticmethod
+    def test_dataframe_crossmatch(algo, small_sky_catalog, small_sky_xmatch_catalog, xmatch_correct):
+        # Convert small_sky_xmatch_catalog to a DataFrame
+        small_sky_xmatch_df = small_sky_xmatch_catalog  # .compute()
+        with pytest.warns(RuntimeWarning, match="Results may be incomplete and/or inaccurate"):
+            xmatched = small_sky_catalog.crossmatch(
+                small_sky_xmatch_df, algorithm=algo, radius_arcsec=0.01 * 3600
+            ).compute()
+        assert isinstance(xmatched, npd.NestedFrame)
+        assert len(xmatched) == len(xmatch_correct)
+        for _, correct_row in xmatch_correct.iterrows():
+            assert correct_row["ss_id"] in xmatched["id_small_sky"].to_numpy()
+            xmatch_row = xmatched[xmatched["id_small_sky"] == correct_row["ss_id"]]
+            assert xmatch_row["id_small_sky_xmatch"].to_numpy() == correct_row["xmatch_id"]
+            assert xmatch_row["_dist_arcsec"].to_numpy() == pytest.approx(correct_row["dist"] * 3600)
+
     @staticmethod
     def test_kdtree_crossmatch(algo, small_sky_catalog, small_sky_xmatch_catalog, xmatch_correct):
         with pytest.warns(RuntimeWarning, match="Results may be incomplete and/or inaccurate"):
@@ -126,7 +143,9 @@ class TestCrossmatch:
     def test_right_margin_missing(algo, small_sky_catalog, small_sky_xmatch_catalog):
         small_sky_xmatch_catalog.margin = None
         with pytest.raises(ValueError, match="Right catalog margin"):
-            small_sky_catalog.crossmatch(small_sky_xmatch_catalog, algorithm=algo, require_right_margin=True)
+            small_sky_catalog.crossmatch(
+                small_sky_xmatch_catalog, algorithm=algo, require_right_margin=True, testing_line_length=True
+            )
 
 
 @pytest.mark.parametrize("algo", [BoundedKdTreeCrossmatch])
