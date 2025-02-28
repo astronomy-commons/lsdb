@@ -33,7 +33,7 @@ class AbstractSearch(ABC):
     def __init__(self, fine: bool = True):
         self.fine = fine
 
-    def filter_hc_catalog(self, hc_structure: HCCatalogTypeVar) -> MOC:
+    def filter_hc_catalog(self, hc_structure: HCCatalogTypeVar) -> HCCatalogTypeVar:
         """Determine the target partitions for further filtering."""
         raise NotImplementedError("Search Class must implement `filter_hc_catalog` method")
 

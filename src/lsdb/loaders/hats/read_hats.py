@@ -95,16 +95,20 @@ def read_hats(
 
     catalog_type = hc_catalog.catalog_info.catalog_type
 
-    if catalog_type in (CatalogType.OBJECT, CatalogType.SOURCE):
-        return _load_object_catalog(hc_catalog, config)
-    if catalog_type == CatalogType.MARGIN:
-        return _load_margin_catalog(hc_catalog, config)
-    if catalog_type == CatalogType.ASSOCIATION:
-        return _load_association_catalog(hc_catalog, config)
-    if catalog_type == CatalogType.MAP:
-        return _load_map_catalog(hc_catalog, config)
+    catalog = None
 
-    raise NotImplementedError(f"Cannot load catalog of type {catalog_type}")
+    if catalog_type in (CatalogType.OBJECT, CatalogType.SOURCE):
+        catalog = _load_object_catalog(hc_catalog, config)
+    elif catalog_type == CatalogType.MARGIN:
+        catalog = _load_margin_catalog(hc_catalog, config)
+    elif catalog_type == CatalogType.ASSOCIATION:
+        catalog = _load_association_catalog(hc_catalog, config)
+    elif catalog_type == CatalogType.MAP:
+        catalog = _load_map_catalog(hc_catalog, config)
+    else:
+        raise NotImplementedError(f"Cannot load catalog of type {catalog_type}")
+
+    return catalog._create_updated_dataset()
 
 
 def _load_association_catalog(hc_catalog, config):

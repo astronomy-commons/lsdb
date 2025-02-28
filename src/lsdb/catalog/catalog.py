@@ -29,8 +29,8 @@ from lsdb.dask.join_catalog_data import (
     join_catalog_data_through,
     merge_asof_catalog_data,
 )
+from lsdb.dask.merge_catalog_functions import create_merged_catalog_info
 from lsdb.dask.merge_map_catalog_data import merge_map_catalog_data
-from lsdb.dask.partition_indexer import PartitionIndexer
 from lsdb.io.schema import get_arrow_schema
 from lsdb.types import DaskDFPixelMap
 
@@ -66,33 +66,6 @@ class Catalog(HealpixDataset):
         """
         super().__init__(ddf, ddf_pixel_map, hc_structure)
         self.margin = margin
-
-    @property
-    def partitions(self):
-        """Returns the partitions of the catalog"""
-        return PartitionIndexer(self)
-
-    def head(self, n: int = 5) -> npd.NestedFrame:
-        """Returns a few rows of data for previewing purposes.
-
-        Args:
-            n (int): The number of desired rows.
-
-        Returns:
-            A pandas DataFrame with up to `n` of data.
-        """
-        dfs = []
-        remaining_rows = n
-        for partition in self._ddf.partitions:
-            if remaining_rows == 0:
-                break
-            partition_head = partition.head(remaining_rows)
-            if len(partition_head) > 0:
-                dfs.append(partition_head)
-                remaining_rows -= len(partition_head)
-        if len(dfs) > 0:
-            return npd.NestedFrame(pd.concat(dfs))
-        return self._ddf._meta
 
     def query(self, expr: str) -> Catalog:
         """Filters catalog and respective margin, if it exists, using a complex query expression
@@ -137,7 +110,7 @@ class Catalog(HealpixDataset):
                 catalog = catalog.assign(new_col=new_data)
         """
         ddf = self._ddf.assign(**kwargs)
-        return Catalog(ddf, self._ddf_pixel_map, self.hc_structure)
+        return self._create_updated_dataset(ddf=ddf)
 
     def crossmatch(
         self,
@@ -231,16 +204,13 @@ class Catalog(HealpixDataset):
         ddf, ddf_map, alignment = crossmatch_catalog_data(
             self, other, suffixes, algorithm=algorithm, **kwargs
         )
-        new_catalog_info = self.hc_structure.catalog_info.copy_and_update(
-            catalog_name=output_catalog_name,
-            ra_column=self.hc_structure.catalog_info.ra_column + suffixes[0],
-            dec_column=self.hc_structure.catalog_info.dec_column + suffixes[0],
-            total_rows=0,
+        new_catalog_info = create_merged_catalog_info(
+            self.hc_structure.catalog_info, other.hc_structure.catalog_info, output_catalog_name, suffixes
         )
-        hc_catalog = hc.catalog.Catalog(
+        hc_catalog = self.hc_structure.__class__(
             new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(ddf), moc=alignment.moc
         )
-        return Catalog(ddf, ddf_map, hc_catalog)
+        return self.__class__(ddf, ddf_map, hc_catalog)
 
     def merge_map(
         self,
@@ -286,11 +256,13 @@ class Catalog(HealpixDataset):
             crossmatch algorithm.
         """
         ddf, ddf_map, alignment = merge_map_catalog_data(self, map_catalog, func, *args, meta=meta, **kwargs)
-        new_catalog_info = self.hc_structure.catalog_info.copy_and_update(total_rows=0)
-        hc_catalog = hc.catalog.Catalog(
-            new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(ddf), moc=alignment.moc
+        hc_catalog = self.hc_structure.__class__(
+            self.hc_structure.catalog_info,
+            alignment.pixel_tree,
+            schema=get_arrow_schema(ddf),
+            moc=alignment.moc,
         )
-        return Catalog(ddf, ddf_map, hc_catalog)
+        return self._create_updated_dataset(ddf=ddf, ddf_pixel_map=ddf_map, hc_structure=hc_catalog)
 
     def cone_search(self, ra: float, dec: float, radius_arcsec: float, fine: bool = True) -> Catalog:
         """Perform a cone search to filter the catalog
@@ -507,11 +479,8 @@ class Catalog(HealpixDataset):
                 f"{other.hc_structure.catalog_info.catalog_name}"
             )
 
-        new_catalog_info = self.hc_structure.catalog_info.copy_and_update(
-            catalog_name=output_catalog_name,
-            ra_column=self.hc_structure.catalog_info.ra_column + suffixes[0],
-            dec_column=self.hc_structure.catalog_info.dec_column + suffixes[0],
-            total_rows=0,
+        new_catalog_info = create_merged_catalog_info(
+            self.hc_structure.catalog_info, other.hc_structure.catalog_info, output_catalog_name, suffixes
         )
         hc_catalog = hc.catalog.Catalog(
             new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(ddf), moc=alignment.moc
@@ -558,11 +527,8 @@ class Catalog(HealpixDataset):
             if output_catalog_name is None:
                 output_catalog_name = self.hc_structure.catalog_info.catalog_name
 
-            new_catalog_info = self.hc_structure.catalog_info.copy_and_update(
-                catalog_name=output_catalog_name,
-                ra_column=self.hc_structure.catalog_info.ra_column + suffixes[0],
-                dec_column=self.hc_structure.catalog_info.dec_column + suffixes[0],
-                total_rows=0,
+            new_catalog_info = create_merged_catalog_info(
+                self.hc_structure.catalog_info, other.hc_structure.catalog_info, output_catalog_name, suffixes
             )
             hc_catalog = hc.catalog.Catalog(
                 new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(ddf), moc=alignment.moc
@@ -581,11 +547,8 @@ class Catalog(HealpixDataset):
         if output_catalog_name is None:
             output_catalog_name = self.hc_structure.catalog_info.catalog_name
 
-        new_catalog_info = self.hc_structure.catalog_info.copy_and_update(
-            catalog_name=output_catalog_name,
-            ra_column=self.hc_structure.catalog_info.ra_column + suffixes[0],
-            dec_column=self.hc_structure.catalog_info.dec_column + suffixes[0],
-            total_rows=0,
+        new_catalog_info = create_merged_catalog_info(
+            self.hc_structure.catalog_info, other.hc_structure.catalog_info, output_catalog_name, suffixes
         )
         hc_catalog = hc.catalog.Catalog(
             new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(ddf), moc=alignment.moc

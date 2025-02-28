@@ -10,6 +10,7 @@ import numpy.typing as npt
 import pandas as pd
 from dask.dataframe.dispatch import make_meta
 from dask.delayed import Delayed, delayed
+from hats.catalog import TableProperties
 from hats.io import paths
 from hats.pixel_math import HealpixPixel
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN, healpix_to_spatial_index
@@ -372,3 +373,24 @@ def align_catalog_to_partitions(
     )
     partitions = get_partition(pixels)
     return list(partitions)
+
+
+def create_merged_catalog_info(
+    left_info: TableProperties, right_info: TableProperties, updated_name: str, suffixes: tuple[str, str]
+) -> TableProperties:
+    default_cols = (
+        [c + suffixes[0] for c in left_info.default_columns] if left_info.default_columns is not None else []
+    )
+    default_cols = (
+        default_cols + [c + suffixes[1] for c in right_info.default_columns]
+        if right_info.default_columns is not None
+        else default_cols
+    )
+    default_cols = default_cols if len(default_cols) > 0 else None
+    return left_info.copy_and_update(
+        catalog_name=updated_name,
+        ra_column=left_info.ra_column + suffixes[0],
+        dec_column=left_info.dec_column + suffixes[0],
+        total_rows=0,
+        default_columns=default_cols,
+    )
