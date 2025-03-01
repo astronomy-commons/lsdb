@@ -18,7 +18,7 @@ from lsdb.dask.merge_catalog_functions import align_catalogs
 @pytest.mark.parametrize("algo", [KdTreeCrossmatch])
 class TestCrossmatch:
     @staticmethod
-    def test_kdtree_crossmatch(algo, small_sky_catalog, small_sky_xmatch_catalog, xmatch_correct):
+    def test_kdtree_crossmatch(algo, small_sky_catalog, small_sky_xmatch_catalog, xmatch_correct, helpers):
         with pytest.warns(RuntimeWarning, match="Results may be incomplete and/or inaccurate"):
             xmatched_cat = small_sky_catalog.crossmatch(
                 small_sky_xmatch_catalog, algorithm=algo, radius_arcsec=0.01 * 3600
@@ -28,12 +28,37 @@ class TestCrossmatch:
         alignment = align_catalogs(small_sky_catalog, small_sky_xmatch_catalog)
         assert xmatched_cat.hc_structure.moc == alignment.moc
         assert xmatched_cat.get_healpix_pixels() == alignment.pixel_tree.get_healpix_pixels()
+        helpers.assert_schema_correct(xmatched_cat)
 
         assert isinstance(xmatched, npd.NestedFrame)
         assert len(xmatched) == len(xmatch_correct)
         for _, correct_row in xmatch_correct.iterrows():
             assert correct_row["ss_id"] in xmatched["id_small_sky"].to_numpy()
             xmatch_row = xmatched[xmatched["id_small_sky"] == correct_row["ss_id"]]
+            assert xmatch_row["id_small_sky_xmatch"].to_numpy() == correct_row["xmatch_id"]
+            assert xmatch_row["_dist_arcsec"].to_numpy() == pytest.approx(correct_row["dist"] * 3600)
+
+    @staticmethod
+    def test_kdtree_crossmatch_default_cols(
+        algo, small_sky_order1_default_cols_catalog, small_sky_xmatch_catalog, xmatch_correct, helpers
+    ):
+        with pytest.warns(RuntimeWarning, match="Results may be incomplete and/or inaccurate"):
+            xmatched_cat = small_sky_order1_default_cols_catalog.crossmatch(
+                small_sky_xmatch_catalog, algorithm=algo, radius_arcsec=0.01 * 3600
+            )
+            assert isinstance(xmatched_cat._ddf, nd.NestedFrame)
+            xmatched = xmatched_cat.compute()
+        helpers.assert_schema_correct(xmatched_cat)
+        helpers.assert_default_columns_in_columns(xmatched_cat)
+        alignment = align_catalogs(small_sky_order1_default_cols_catalog, small_sky_xmatch_catalog)
+        assert xmatched_cat.hc_structure.moc == alignment.moc
+        assert xmatched_cat.get_healpix_pixels() == alignment.pixel_tree.get_healpix_pixels()
+
+        assert isinstance(xmatched, npd.NestedFrame)
+        assert len(xmatched) == len(xmatch_correct)
+        for _, correct_row in xmatch_correct.iterrows():
+            assert correct_row["ss_id"] in xmatched["id_small_sky_order1_default_columns"].to_numpy()
+            xmatch_row = xmatched[xmatched["id_small_sky_order1_default_columns"] == correct_row["ss_id"]]
             assert xmatch_row["id_small_sky_xmatch"].to_numpy() == correct_row["xmatch_id"]
             assert xmatch_row["_dist_arcsec"].to_numpy() == pytest.approx(correct_row["dist"] * 3600)
 

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Callable, Type
+from typing import Callable, Type, Self
 
 import hats as hc
 import nested_dask as nd
@@ -66,6 +66,18 @@ class Catalog(HealpixDataset):
         """
         super().__init__(ddf, ddf_pixel_map, hc_structure)
         self.margin = margin
+
+    def _create_updated_dataset(
+        self,
+        ddf: nd.NestedFrame = None,
+        ddf_pixel_map: DaskDFPixelMap = None,
+        hc_structure: hc.catalog.Catalog = None,
+        updated_catalog_info_params: dict = None,
+        margin: MarginCatalog | None = None,
+    ) -> Self:
+        cat = super()._create_updated_dataset(ddf, ddf_pixel_map, hc_structure, updated_catalog_info_params)
+        cat.margin = margin
+        return cat
 
     def query(self, expr: str) -> Catalog:
         """Filters catalog and respective margin, if it exists, using a complex query expression

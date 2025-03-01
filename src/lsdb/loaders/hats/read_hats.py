@@ -21,6 +21,7 @@ from lsdb.catalog.map_catalog import MapCatalog
 from lsdb.catalog.margin_catalog import _validate_margin_catalog
 from lsdb.core.search.abstract_search import AbstractSearch
 from lsdb.dask.divisions import get_pixels_divisions
+from lsdb.io.schema import get_arrow_schema
 from lsdb.loaders.hats.hats_loading_config import HatsLoadingConfig
 from lsdb.types import CatalogTypeVar
 
@@ -95,8 +96,6 @@ def read_hats(
 
     catalog_type = hc_catalog.catalog_info.catalog_type
 
-    catalog = None
-
     if catalog_type in (CatalogType.OBJECT, CatalogType.SOURCE):
         catalog = _load_object_catalog(hc_catalog, config)
     elif catalog_type == CatalogType.MARGIN:
@@ -108,7 +107,15 @@ def read_hats(
     else:
         raise NotImplementedError(f"Cannot load catalog of type {catalog_type}")
 
-    return catalog._create_updated_dataset()
+    catalog.hc_structure = catalog._create_modified_hc_structure(
+        updated_schema=get_arrow_schema(catalog._ddf),
+        default_columns=(
+            [col for col in catalog.hc_structure.catalog_info.default_columns if col in catalog._ddf.columns]
+            if catalog.hc_structure.catalog_info.default_columns is not None
+            else None
+        ),
+    )
+    return catalog
 
 
 def _load_association_catalog(hc_catalog, config):

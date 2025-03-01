@@ -232,7 +232,7 @@ def generate_meta_df_for_joined_tables(
     suffixes: Sequence[str],
     extra_columns: pd.DataFrame | None = None,
     index_name: str = SPATIAL_INDEX_COLUMN,
-    index_type: npt.DTypeLike = np.int64,
+    index_type: npt.DTypeLike | None = None,
 ) -> npd.NestedFrame:
     """Generates a Dask meta DataFrame that would result from joining two catalogs
 
@@ -244,7 +244,8 @@ def generate_meta_df_for_joined_tables(
         suffixes (Sequence[Str]): The column suffixes to apply each catalog
         extra_columns (pd.Dataframe): Any additional columns to the merged catalogs
         index_name (str): The name of the index in the resulting DataFrame
-        index_type (npt.DTypeLike): The type of the index in the resulting DataFrame
+        index_type (npt.DTypeLike): The type of the index in the resulting DataFrame.
+            Default: type of index in the first catalog
 
     Returns:
         An empty dataframe with the columns of each catalog with their respective suffix, and any extra
@@ -258,6 +259,8 @@ def generate_meta_df_for_joined_tables(
     # Construct meta for crossmatch result columns
     if extra_columns is not None:
         meta.update(extra_columns)
+    if index_type is None:
+        index_type = catalogs[0]._ddf._meta.index.dtype
     index = pd.Index(pd.Series(dtype=index_type), name=index_name)
     meta_df = pd.DataFrame(meta, index)
     return npd.NestedFrame(meta_df)

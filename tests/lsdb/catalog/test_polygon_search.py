@@ -9,7 +9,7 @@ from lsdb.core.search.polygon_search import get_cartesian_polygon
 
 
 @pytest.mark.sphgeom
-def test_polygon_search_filters_correct_points(small_sky_order1_catalog, assert_divisions_are_correct):
+def test_polygon_search_filters_correct_points(small_sky_order1_catalog, helpers):
     vertices = [(300, -50), (300, -55), (272, -55), (272, -50)]
     polygon = get_cartesian_polygon(vertices)
     polygon_search_catalog = small_sky_order1_catalog.polygon_search(vertices)
@@ -23,13 +23,11 @@ def test_polygon_search_filters_correct_points(small_sky_order1_catalog, assert_
         polygon_search_df[small_sky_order1_catalog.hc_structure.catalog_info.dec_column]
     )
     assert all(polygon.contains(ra_values_radians, dec_values_radians))
-    assert_divisions_are_correct(polygon_search_catalog)
+    helpers.assert_divisions_are_correct(polygon_search_catalog)
 
 
 @pytest.mark.sphgeom
-def test_polygon_search_filters_correct_points_margin(
-    small_sky_order1_source_with_margin, assert_divisions_are_correct
-):
+def test_polygon_search_filters_correct_points_margin(small_sky_order1_source_with_margin, helpers):
     vertices = [(300, -50), (300, -55), (272, -55), (272, -50)]
     polygon = get_cartesian_polygon(vertices)
     polygon_search_catalog = small_sky_order1_source_with_margin.polygon_search(vertices)
@@ -41,7 +39,7 @@ def test_polygon_search_filters_correct_points_margin(
         polygon_search_df[small_sky_order1_source_with_margin.hc_structure.catalog_info.dec_column]
     )
     assert all(polygon.contains(ra_values_radians, dec_values_radians))
-    assert_divisions_are_correct(polygon_search_catalog)
+    helpers.assert_divisions_are_correct(polygon_search_catalog)
 
     assert polygon_search_catalog.margin is not None
     polygon_search_margin_df = polygon_search_catalog.margin.compute()
@@ -52,7 +50,7 @@ def test_polygon_search_filters_correct_points_margin(
         polygon_search_margin_df[small_sky_order1_source_with_margin.hc_structure.catalog_info.dec_column]
     )
     assert all(polygon.contains(ra_values_radians, dec_values_radians))
-    assert_divisions_are_correct(polygon_search_catalog.margin)
+    helpers.assert_divisions_are_correct(polygon_search_catalog.margin)
 
 
 @pytest.mark.sphgeom

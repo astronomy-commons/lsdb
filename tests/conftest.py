@@ -4,7 +4,13 @@ import hats as hc
 import pandas as pd
 import pytest
 from hats.pixel_math import spatial_index_to_healpix
-from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN, healpix_to_spatial_index
+from hats.pixel_math.spatial_index import (
+    SPATIAL_INDEX_COLUMN,
+    healpix_to_spatial_index,
+    compute_spatial_index,
+)
+import numpy.testing as npt
+
 
 import lsdb
 
@@ -173,6 +179,11 @@ def small_sky_order1_catalog(small_sky_order1_dir):
 
 
 @pytest.fixture
+def small_sky_order1_default_cols_catalog(small_sky_order1_default_cols_dir):
+    return lsdb.read_hats(small_sky_order1_default_cols_dir)
+
+
+@pytest.fixture
 def small_sky_order1_source_with_margin(small_sky_order1_source_dir, small_sky_order1_source_margin_dir):
     return lsdb.read_hats(small_sky_order1_source_dir, margin_cache=small_sky_order1_source_margin_dir)
 
@@ -305,8 +316,9 @@ def pytest_collection_modifyitems(items):
             item.add_marker(pytest.mark.skip(reason="lsst-sphgeom is not installed"))
 
 
-@pytest.fixture
-def assert_divisions_are_correct():
+class Helpers:
+
+    @staticmethod
     def assert_divisions_are_correct(catalog):
         # Check that number of divisions == number of pixels + 1
         hp_pixels = [None] * len(catalog._ddf_pixel_map)
@@ -328,4 +340,29 @@ def assert_divisions_are_correct():
             hp_pixels[-1].order, hp_pixels[-1].pixel + 1
         )
 
-    return assert_divisions_are_correct
+    @staticmethod
+    def assert_index_correct(cat):
+        assert cat._ddf.index.name == SPATIAL_INDEX_COLUMN
+        cat_comp = cat.compute()
+        assert cat_comp.index.name == SPATIAL_INDEX_COLUMN
+        npt.assert_array_equal(
+            cat_comp.index.to_numpy(),
+            compute_spatial_index(cat_comp["ra"].to_numpy(), cat_comp["dec"].to_numpy()),
+        )
+
+    @staticmethod
+    def assert_schema_correct(cat, types_mapper=pd.ArrowDtype):
+        pd.testing.assert_frame_equal(
+            cat._ddf._meta, cat.hc_structure.schema.empty_table().to_pandas(types_mapper=types_mapper)
+        )
+
+    @staticmethod
+    def assert_default_columns_in_columns(cat):
+        if cat.hc_structure.catalog_info.default_columns is not None:
+            for col in cat.hc_structure.catalog_info.default_columns:
+                assert col in cat._ddf.columns
+
+
+@pytest.fixture
+def helpers():
+    return Helpers()
