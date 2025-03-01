@@ -260,6 +260,7 @@ def generate_meta_df_for_joined_tables(
     if extra_columns is not None:
         meta.update(extra_columns)
     if index_type is None:
+        # pylint: disable=protected-access
         index_type = catalogs[0]._ddf._meta.index.dtype
     index = pd.Index(pd.Series(dtype=index_type), name=index_name)
     meta_df = pd.DataFrame(meta, index)
@@ -381,6 +382,17 @@ def align_catalog_to_partitions(
 def create_merged_catalog_info(
     left_info: TableProperties, right_info: TableProperties, updated_name: str, suffixes: tuple[str, str]
 ) -> TableProperties:
+    """Creates the catalog info of the resulting catalog from merging two catalogs
+
+    Updates the ra and dec columns names, and any default columns by adding the correct suffixes, updates the
+    catalog name, and sets the total rows to 0
+
+    Args:
+        left_info (TableProperties): The catalog_info of the left catalog
+        right_info (TableProperties): The catalog_info of the right catalog
+        updated_name (str): The updated name of the catalog
+        suffixes (tuple[str, str]): The suffixes of the catalogs in the merged result
+    """
     default_cols = (
         [c + suffixes[0] for c in left_info.default_columns] if left_info.default_columns is not None else []
     )
@@ -389,11 +401,11 @@ def create_merged_catalog_info(
         if right_info.default_columns is not None
         else default_cols
     )
-    default_cols = default_cols if len(default_cols) > 0 else None
+    default_cols_to_use = default_cols if len(default_cols) > 0 else None
     return left_info.copy_and_update(
         catalog_name=updated_name,
         ra_column=left_info.ra_column + suffixes[0],
         dec_column=left_info.dec_column + suffixes[0],
         total_rows=0,
-        default_columns=default_cols,
+        default_columns=default_cols_to_use,
     )

@@ -107,6 +107,7 @@ def read_hats(
     else:
         raise NotImplementedError(f"Cannot load catalog of type {catalog_type}")
 
+    # pylint: disable=protected-access
     catalog.hc_structure = catalog._create_modified_hc_structure(
         updated_schema=get_arrow_schema(catalog._ddf),
         default_columns=(

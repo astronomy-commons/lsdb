@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from typing import Callable, Type, Self
+from typing import Callable, Self, Type
 
 import hats as hc
 import nested_dask as nd
 import nested_pandas as npd
-import pandas as pd
+from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
 from hats.catalog.index.index_catalog import IndexCatalog as HCIndexCatalog
 from mocpy import MOC
 from pandas._libs import lib
@@ -69,10 +69,10 @@ class Catalog(HealpixDataset):
 
     def _create_updated_dataset(
         self,
-        ddf: nd.NestedFrame = None,
-        ddf_pixel_map: DaskDFPixelMap = None,
-        hc_structure: hc.catalog.Catalog = None,
-        updated_catalog_info_params: dict = None,
+        ddf: nd.NestedFrame | None = None,
+        ddf_pixel_map: DaskDFPixelMap | None = None,
+        hc_structure: HCHealpixDataset | None = None,
+        updated_catalog_info_params: dict | None = None,
         margin: MarginCatalog | None = None,
     ) -> Self:
         cat = super()._create_updated_dataset(ddf, ddf_pixel_map, hc_structure, updated_catalog_info_params)

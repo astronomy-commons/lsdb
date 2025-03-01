@@ -13,7 +13,6 @@ from hats.catalog import TableProperties
 from hats.inspection.visualize_catalog import initialize_wcs_axes
 from matplotlib import pyplot as plt
 from matplotlib.figure import Figure
-from mocpy import MOC
 
 if TYPE_CHECKING:
     from lsdb.types import HCCatalogTypeVar

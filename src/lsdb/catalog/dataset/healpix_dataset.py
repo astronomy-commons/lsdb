@@ -7,7 +7,6 @@ from typing import Any, Callable, Iterable, Type, cast
 import astropy
 import dask
 import dask.dataframe as dd
-import hats as hc
 import nested_dask as nd
 import nested_pandas as npd
 import numpy as np
@@ -125,11 +124,12 @@ class HealpixDataset(Dataset):
 
     def _create_updated_dataset(
         self,
-        ddf: nd.NestedFrame = None,
-        ddf_pixel_map: DaskDFPixelMap = None,
-        hc_structure: HCHealpixDataset = None,
-        updated_catalog_info_params: dict = None,
+        ddf: nd.NestedFrame | None = None,
+        ddf_pixel_map: DaskDFPixelMap | None = None,
+        hc_structure: HCHealpixDataset | None = None,
+        updated_catalog_info_params: dict | None = None,
     ) -> Self:
+        """Creates an"""
         if ddf is None:
             ddf = self._ddf
         if ddf_pixel_map is None:
@@ -248,7 +248,7 @@ class HealpixDataset(Dataset):
 
     def _perform_search(
         self,
-        metadata: hc.catalog.Catalog | hc.catalog.MarginCatalog,
+        metadata: HCHealpixDataset,
         search: AbstractSearch,
     ) -> tuple[DaskDFPixelMap, nd.NestedFrame]:
         """Performs a search on the catalog from a list of pixels to search in

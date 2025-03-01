@@ -1,16 +1,15 @@
 from pathlib import Path
 
 import hats as hc
+import numpy.testing as npt
 import pandas as pd
 import pytest
 from hats.pixel_math import spatial_index_to_healpix
 from hats.pixel_math.spatial_index import (
     SPATIAL_INDEX_COLUMN,
-    healpix_to_spatial_index,
     compute_spatial_index,
+    healpix_to_spatial_index,
 )
-import numpy.testing as npt
-
 
 import lsdb
 
@@ -317,7 +316,6 @@ def pytest_collection_modifyitems(items):
 
 
 class Helpers:
-
     @staticmethod
     def assert_divisions_are_correct(catalog):
         # Check that number of divisions == number of pixels + 1
