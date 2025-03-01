@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Callable, Self, Type
+from typing import Callable, Type
 
 import hats as hc
 import nested_dask as nd
@@ -11,6 +11,7 @@ from mocpy import MOC
 from pandas._libs import lib
 from pandas._typing import AnyAll, Axis, IndexLabel
 from pandas.api.extensions import no_default
+from typing_extensions import Self
 
 from lsdb.catalog.association_catalog import AssociationCatalog
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
