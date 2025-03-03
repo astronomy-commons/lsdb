@@ -3,6 +3,7 @@ import nested_pandas as npd
 import numpy as np
 import pandas as pd
 import pytest
+import pyarrow as pa
 from hats.pixel_math import HealpixPixel
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN, spatial_index_to_healpix
 
@@ -22,7 +23,7 @@ def test_small_sky_join_small_sky_order1(small_sky_catalog, small_sky_order1_cat
     for col_name, dtype in small_sky_order1_catalog.dtypes.items():
         assert (col_name + suffixes[1], dtype) in joined.dtypes.items()
     assert joined._ddf.index.name == SPATIAL_INDEX_COLUMN
-    assert joined._ddf.index.dtype == np.int64
+    assert joined._ddf.index.dtype == pd.ArrowDtype(pa.int64())
     alignment = align_catalogs(small_sky_catalog, small_sky_order1_catalog)
     assert joined.hc_structure.moc == alignment.moc
     assert joined.get_healpix_pixels() == alignment.pixel_tree.get_healpix_pixels()
@@ -126,7 +127,7 @@ def test_join_association(small_sky_catalog, small_sky_xmatch_catalog, small_sky
     for col in small_sky_xmatch_catalog._ddf.columns:
         assert col + suffixes[1] in joined._ddf.columns
     assert joined._ddf.index.name == SPATIAL_INDEX_COLUMN
-    assert joined._ddf.index.dtype == np.int64
+    assert joined._ddf.index.dtype == pd.ArrowDtype(pa.int64())
 
     small_sky_compute = small_sky_catalog.compute()
     small_sky_xmatch_compute = small_sky_xmatch_catalog.compute()
