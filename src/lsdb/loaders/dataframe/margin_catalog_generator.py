@@ -11,6 +11,7 @@ import pandas as pd
 from hats.catalog import CatalogType, TableProperties
 from hats.pixel_math import HealpixPixel, get_margin
 from hats.pixel_math.healpix_pixel_function import get_pixel_argsort
+from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 
 from lsdb import Catalog
 from lsdb.catalog.margin_catalog import MarginCatalog, _create_margin_schema
@@ -107,7 +108,7 @@ class MarginCatalogGenerator:
 
     def _create_empty_catalog(self) -> MarginCatalog:
         """Create an empty margin catalog"""
-        dask_meta_schema = self.margin_schema.empty_table().to_pandas()
+        dask_meta_schema = self.margin_schema.empty_table().to_pandas().set_index(SPATIAL_INDEX_COLUMN)
         ddf = nd.NestedFrame.from_pandas(dask_meta_schema, npartitions=1)
         catalog_info = self._create_catalog_info(**self.catalog_info_kwargs, total_rows=0)
         margin_structure = hc.catalog.MarginCatalog(catalog_info, [], schema=self.margin_schema)
