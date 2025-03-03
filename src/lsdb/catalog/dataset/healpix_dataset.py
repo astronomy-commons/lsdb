@@ -130,8 +130,7 @@ class HealpixDataset(Dataset):
         updated_catalog_info_params: dict | None = None,
     ) -> Self:
         """Creates an"""
-        if ddf is None:
-            ddf = self._ddf
+        ddf = ddf or self._ddf
         if ddf_pixel_map is None:
             ddf_pixel_map = self._ddf_pixel_map
         if hc_structure is None:
