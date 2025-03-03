@@ -2,8 +2,8 @@ import nested_dask as nd
 import nested_pandas as npd
 import numpy as np
 import pandas as pd
-import pytest
 import pyarrow as pa
+import pytest
 from hats.pixel_math import HealpixPixel
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN, spatial_index_to_healpix
 
