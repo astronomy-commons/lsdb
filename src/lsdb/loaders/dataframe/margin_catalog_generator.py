@@ -108,7 +108,9 @@ class MarginCatalogGenerator:
 
     def _create_empty_catalog(self) -> MarginCatalog:
         """Create an empty margin catalog"""
-        dask_meta_schema = self.margin_schema.empty_table().to_pandas().set_index(SPATIAL_INDEX_COLUMN)
+        dask_meta_schema = self.margin_schema.empty_table().to_pandas()
+        if SPATIAL_INDEX_COLUMN in dask_meta_schema.columns:
+            dask_meta_schema = dask_meta_schema.set_index(SPATIAL_INDEX_COLUMN)
         ddf = nd.NestedFrame.from_pandas(dask_meta_schema, npartitions=1)
         catalog_info = self._create_catalog_info(**self.catalog_info_kwargs, total_rows=0)
         margin_structure = hc.catalog.MarginCatalog(catalog_info, [], schema=self.margin_schema)
