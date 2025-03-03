@@ -350,9 +350,10 @@ class Helpers:
 
     @staticmethod
     def assert_schema_correct(cat, types_mapper=pd.ArrowDtype):
-        pd.testing.assert_frame_equal(
-            cat._ddf._meta, cat.hc_structure.schema.empty_table().to_pandas(types_mapper=types_mapper)
-        )
+        schema_to_pandas = cat.hc_structure.schema.empty_table().to_pandas(types_mapper=types_mapper)
+        if SPATIAL_INDEX_COLUMN in schema_to_pandas.columns:
+            schema_to_pandas = schema_to_pandas.set_index(SPATIAL_INDEX_COLUMN)
+        pd.testing.assert_frame_equal(cat._ddf._meta, schema_to_pandas)
 
     @staticmethod
     def assert_default_columns_in_columns(cat):
