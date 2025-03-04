@@ -1,4 +1,3 @@
-import hats as hc
 from __future__ import annotations
 
 import warnings
