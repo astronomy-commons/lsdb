@@ -126,9 +126,7 @@ class TestCrossmatch:
     def test_right_margin_missing(algo, small_sky_catalog, small_sky_xmatch_catalog):
         small_sky_xmatch_catalog.margin = None
         with pytest.raises(ValueError, match="Right catalog margin"):
-            small_sky_catalog.crossmatch(
-                small_sky_xmatch_catalog, algorithm=algo, require_right_margin=True, testing_line_length=True
-            )
+            small_sky_catalog.crossmatch(small_sky_xmatch_catalog, algorithm=algo, require_right_margin=True)
 
     @staticmethod
     def test_dataframe_crossmatch(algo, small_sky_catalog, small_sky_xmatch_catalog, xmatch_correct):
