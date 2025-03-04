@@ -115,7 +115,7 @@ def test_head_empty_catalog(small_sky_order1_catalog):
     assert len(empty_catalog.head()) == 0
 
 
-def test_query(small_sky_order1_catalog):
+def test_query(small_sky_order1_catalog, helpers):
     expected_ddf = small_sky_order1_catalog._ddf.copy()[
         (small_sky_order1_catalog._ddf["ra"] > 300) & (small_sky_order1_catalog._ddf["dec"] < -50)
     ]
@@ -135,6 +135,7 @@ def test_query(small_sky_order1_catalog):
     result_catalog = small_sky_order1_catalog.query("`right ascension` > 300 and dec < -50")
     assert isinstance(result_catalog._ddf, nd.NestedFrame)
     pd.testing.assert_frame_equal(result_catalog._ddf.compute(), expected_ddf.compute())
+    helpers.assert_schema_correct(result_catalog)
 
 
 def test_query_margin(small_sky_xmatch_with_margin):
@@ -226,6 +227,59 @@ def test_save_catalog_initializes_upath_once(small_sky_catalog, tmp_path, mocker
     small_sky_catalog.to_hats(base_catalog_path, catalog_name=new_catalog_name)
 
     mocked_upath_call.assert_called_once_with(base_catalog_path)
+
+
+def test_save_catalog_default_columns(small_sky_order1_default_cols_catalog, tmp_path, helpers):
+    cat = small_sky_order1_default_cols_catalog[["ra", "dec"]]
+    new_catalog_name = "small_sky_order1"
+    base_catalog_path = Path(tmp_path) / new_catalog_name
+    cat.to_hats(base_catalog_path, catalog_name=new_catalog_name)
+    expected_catalog = lsdb.read_hats(base_catalog_path)
+    assert expected_catalog.hc_structure.catalog_name == new_catalog_name
+    assert expected_catalog.get_healpix_pixels() == cat.get_healpix_pixels()
+    pd.testing.assert_frame_equal(expected_catalog.compute(), cat._ddf.compute())
+    helpers.assert_schema_correct(expected_catalog)
+    helpers.assert_default_columns_in_columns(expected_catalog)
+
+
+def test_save_catalog_empty_default_columns(small_sky_order1_default_cols_catalog, tmp_path, helpers):
+    cat = small_sky_order1_default_cols_catalog[["ra", "dec"]]
+    cat.hc_structure.catalog_info.default_columns = []
+    new_catalog_name = "small_sky_order1"
+    base_catalog_path = Path(tmp_path) / new_catalog_name
+    cat.to_hats(base_catalog_path, catalog_name=new_catalog_name)
+    expected_catalog = lsdb.read_hats(base_catalog_path)
+    assert expected_catalog.hc_structure.catalog_info.default_columns is None
+    assert expected_catalog.hc_structure.catalog_name == new_catalog_name
+    assert expected_catalog.get_healpix_pixels() == cat.get_healpix_pixels()
+    pd.testing.assert_frame_equal(expected_catalog.compute(), cat._ddf.compute())
+    helpers.assert_schema_correct(expected_catalog)
+    helpers.assert_default_columns_in_columns(expected_catalog)
+
+
+def test_save_catalog_default_columns_cross_matched(
+    small_sky_order1_default_cols_catalog, small_sky_xmatch_catalog, tmp_path, helpers
+):
+    cat = small_sky_order1_default_cols_catalog.crossmatch(
+        small_sky_xmatch_catalog, radius_arcsec=0.01 * 3600
+    )
+    new_catalog_name = "small_sky_order1"
+    base_catalog_path = Path(tmp_path) / new_catalog_name
+    cat.to_hats(base_catalog_path, catalog_name=new_catalog_name)
+    expected_catalog = lsdb.read_hats(base_catalog_path)
+    assert expected_catalog.hc_structure.catalog_name == new_catalog_name
+    assert expected_catalog.get_healpix_pixels() == cat.get_healpix_pixels()
+    pd.testing.assert_frame_equal(
+        expected_catalog.compute(), cat._ddf.compute()[cat.hc_structure.catalog_info.default_columns]
+    )
+    helpers.assert_schema_correct(expected_catalog)
+    helpers.assert_default_columns_in_columns(expected_catalog)
+    expected_catalog_all_cols = lsdb.read_hats(base_catalog_path, columns="all")
+    assert expected_catalog_all_cols.hc_structure.catalog_name == new_catalog_name
+    assert expected_catalog_all_cols.get_healpix_pixels() == cat.get_healpix_pixels()
+    pd.testing.assert_frame_equal(expected_catalog_all_cols.compute(), cat._ddf.compute())
+    helpers.assert_schema_correct(expected_catalog_all_cols)
+    helpers.assert_default_columns_in_columns(expected_catalog_all_cols)
 
 
 def test_save_catalog_point_map(small_sky_order1_catalog, tmp_path):
@@ -590,7 +644,7 @@ def test_plot_coverage(small_sky_order1_catalog, mocker):
     )
 
 
-def test_square_bracket_columns(small_sky_order1_catalog):
+def test_square_bracket_columns(small_sky_order1_catalog, helpers):
     columns = ["ra", "dec", "id"]
     column_subset = small_sky_order1_catalog[columns]
     assert all(column_subset.columns == columns)
@@ -601,6 +655,25 @@ def test_square_bracket_columns(small_sky_order1_catalog):
     assert np.all(
         column_subset.compute().index.to_numpy() == small_sky_order1_catalog.compute().index.to_numpy()
     )
+    helpers.assert_schema_correct(column_subset)
+
+
+def test_square_bracket_columns_default_columns(small_sky_order1_default_cols_catalog, helpers):
+    columns = ["ra", "dec"]
+    column_subset = small_sky_order1_default_cols_catalog[columns]
+    assert all(column_subset.columns == columns)
+    assert isinstance(column_subset, Catalog)
+    assert isinstance(column_subset._ddf, nd.NestedFrame)
+    assert isinstance(column_subset.compute(), npd.NestedFrame)
+    pd.testing.assert_frame_equal(
+        column_subset.compute(), small_sky_order1_default_cols_catalog.compute()[columns]
+    )
+    assert np.all(
+        column_subset.compute().index.to_numpy()
+        == small_sky_order1_default_cols_catalog.compute().index.to_numpy()
+    )
+    helpers.assert_schema_correct(column_subset)
+    helpers.assert_default_columns_in_columns(column_subset)
 
 
 def test_square_bracket_column(small_sky_order1_catalog):
@@ -611,7 +684,7 @@ def test_square_bracket_column(small_sky_order1_catalog):
     assert isinstance(column, dd.Series)
 
 
-def test_square_bracket_filter(small_sky_order1_catalog):
+def test_square_bracket_filter(small_sky_order1_catalog, helpers):
     filtered_id = small_sky_order1_catalog[small_sky_order1_catalog["id"] > 750]
     assert isinstance(filtered_id, Catalog)
     assert isinstance(filtered_id._ddf, nd.NestedFrame)
@@ -621,6 +694,7 @@ def test_square_bracket_filter(small_sky_order1_catalog):
     assert np.all(
         filtered_id.compute().index.to_numpy() == ss_computed[ss_computed["id"] > 750].index.to_numpy()
     )
+    helpers.assert_schema_correct(filtered_id)
 
 
 def test_map_partitions(small_sky_order1_catalog):

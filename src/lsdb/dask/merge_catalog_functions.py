@@ -10,6 +10,7 @@ import numpy.typing as npt
 import pandas as pd
 from dask.dataframe.dispatch import make_meta
 from dask.delayed import Delayed, delayed
+from hats.catalog import TableProperties
 from hats.io import paths
 from hats.pixel_math import HealpixPixel
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN, healpix_to_spatial_index
@@ -231,7 +232,7 @@ def generate_meta_df_for_joined_tables(
     suffixes: Sequence[str],
     extra_columns: pd.DataFrame | None = None,
     index_name: str = SPATIAL_INDEX_COLUMN,
-    index_type: npt.DTypeLike = np.int64,
+    index_type: npt.DTypeLike | None = None,
 ) -> npd.NestedFrame:
     """Generates a Dask meta DataFrame that would result from joining two catalogs
 
@@ -243,7 +244,8 @@ def generate_meta_df_for_joined_tables(
         suffixes (Sequence[Str]): The column suffixes to apply each catalog
         extra_columns (pd.Dataframe): Any additional columns to the merged catalogs
         index_name (str): The name of the index in the resulting DataFrame
-        index_type (npt.DTypeLike): The type of the index in the resulting DataFrame
+        index_type (npt.DTypeLike): The type of the index in the resulting DataFrame.
+            Default: type of index in the first catalog
 
     Returns:
         An empty dataframe with the columns of each catalog with their respective suffix, and any extra
@@ -257,6 +259,9 @@ def generate_meta_df_for_joined_tables(
     # Construct meta for crossmatch result columns
     if extra_columns is not None:
         meta.update(extra_columns)
+    if index_type is None:
+        # pylint: disable=protected-access
+        index_type = catalogs[0]._ddf._meta.index.dtype
     index = pd.Index(pd.Series(dtype=index_type), name=index_name)
     meta_df = pd.DataFrame(meta, index)
     return npd.NestedFrame(meta_df)
@@ -372,3 +377,35 @@ def align_catalog_to_partitions(
     )
     partitions = get_partition(pixels)
     return list(partitions)
+
+
+def create_merged_catalog_info(
+    left_info: TableProperties, right_info: TableProperties, updated_name: str, suffixes: tuple[str, str]
+) -> TableProperties:
+    """Creates the catalog info of the resulting catalog from merging two catalogs
+
+    Updates the ra and dec columns names, and any default columns by adding the correct suffixes, updates the
+    catalog name, and sets the total rows to 0
+
+    Args:
+        left_info (TableProperties): The catalog_info of the left catalog
+        right_info (TableProperties): The catalog_info of the right catalog
+        updated_name (str): The updated name of the catalog
+        suffixes (tuple[str, str]): The suffixes of the catalogs in the merged result
+    """
+    default_cols = (
+        [c + suffixes[0] for c in left_info.default_columns] if left_info.default_columns is not None else []
+    )
+    default_cols = (
+        default_cols + [c + suffixes[1] for c in right_info.default_columns]
+        if right_info.default_columns is not None
+        else default_cols
+    )
+    default_cols_to_use = default_cols if len(default_cols) > 0 else None
+    return left_info.copy_and_update(
+        catalog_name=updated_name,
+        ra_column=left_info.ra_column + suffixes[0],
+        dec_column=left_info.dec_column + suffixes[0],
+        total_rows=0,
+        default_columns=default_cols_to_use,
+    )

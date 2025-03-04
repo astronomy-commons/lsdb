@@ -33,9 +33,7 @@ def get_catalog_kwargs(catalog, **kwargs):
     return kwargs
 
 
-def test_from_dataframe(
-    small_sky_order1_dir, small_sky_order1_df, small_sky_order1_catalog, assert_divisions_are_correct
-):
+def test_from_dataframe(small_sky_order1_dir, small_sky_order1_df, small_sky_order1_catalog, helpers):
     """Tests that we can initialize a catalog from a Pandas Dataframe and
     that the loaded content is correct"""
     kwargs = get_catalog_kwargs(small_sky_order1_catalog)
@@ -56,7 +54,7 @@ def test_from_dataframe(
         small_sky_order1_catalog.compute().sort_values([SPATIAL_INDEX_COLUMN, "id"]),
     )
     # Divisions belong to the respective HEALPix pixels
-    assert_divisions_are_correct(catalog)
+    helpers.assert_divisions_are_correct(catalog)
     # The arrow schema was automatically inferred
     expected_schema = hc.read_hats(small_sky_order1_dir).schema
     assert catalog.hc_structure.schema.equals(expected_schema)
@@ -152,7 +150,7 @@ def test_partitions_obey_threshold(small_sky_order1_df, small_sky_order1_catalog
     assert all(num_pixels <= threshold for num_pixels in num_partition_pixels)
 
 
-def test_from_dataframe_large_input(small_sky_order1_catalog, assert_divisions_are_correct):
+def test_from_dataframe_large_input(small_sky_order1_catalog, helpers):
     """Tests that we can initialize a catalog from a LARGE Pandas Dataframe and
     that we're warned about the catalog's size"""
     original_catalog_info = small_sky_order1_catalog.hc_structure.catalog_info
@@ -177,7 +175,7 @@ def test_from_dataframe_large_input(small_sky_order1_catalog, assert_divisions_a
     # Index is set to spatial index
     assert catalog._ddf.index.name == SPATIAL_INDEX_COLUMN
     # Divisions belong to the respective HEALPix pixels
-    assert_divisions_are_correct(catalog)
+    helpers.assert_divisions_are_correct(catalog)
 
 
 def test_partitions_obey_default_threshold_when_no_arguments_specified(
