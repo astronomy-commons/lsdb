@@ -53,7 +53,6 @@ def rename_columns_with_suffixes(left: npd.NestedFrame, right: npd.NestedFrame, 
 
 
 # pylint: disable=too-many-arguments, unused-argument
-@dask.delayed
 def perform_join_on(
     left: npd.NestedFrame,
     right: npd.NestedFrame,
@@ -103,7 +102,6 @@ def perform_join_on(
 
 
 # pylint: disable=too-many-arguments, unused-argument
-@dask.delayed
 def perform_join_nested(
     left: npd.NestedFrame,
     right: npd.NestedFrame,
@@ -153,7 +151,6 @@ def perform_join_nested(
 
 
 # pylint: disable=too-many-arguments, unused-argument
-@dask.delayed
 def perform_join_through(
     left: npd.NestedFrame,
     right: npd.NestedFrame,
@@ -205,7 +202,9 @@ def perform_join_through(
     if assoc_catalog_info.join_column_association != assoc_catalog_info.primary_column_association:
         join_columns.append(assoc_catalog_info.join_column_association)
 
-    through = through.drop(NON_JOINING_ASSOCIATION_COLUMNS, axis=1)
+    cols_to_drop = [c for c in NON_JOINING_ASSOCIATION_COLUMNS if c in through.columns]
+
+    through = through.drop(cols_to_drop, axis=1)
 
     merged = (
         left.reset_index()
@@ -227,7 +226,6 @@ def perform_join_through(
 
 
 # pylint: disable=too-many-arguments, unused-argument
-@dask.delayed
 def perform_merge_asof(
     left: npd.NestedFrame,
     right: npd.NestedFrame,

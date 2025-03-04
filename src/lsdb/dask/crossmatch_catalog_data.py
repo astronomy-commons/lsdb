@@ -28,7 +28,6 @@ if TYPE_CHECKING:
 
 
 # pylint: disable=too-many-arguments, unused-argument
-@dask.delayed
 def perform_crossmatch(
     left_df,
     right_df,

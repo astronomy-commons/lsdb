@@ -24,7 +24,6 @@ if TYPE_CHECKING:
 
 
 # pylint: disable=too-many-arguments, unused-argument
-@dask.delayed
 def perform_merge_map(
     catalog_partition: npd.NestedFrame,
     map_partition: npd.NestedFrame,
