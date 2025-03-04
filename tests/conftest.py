@@ -1,10 +1,10 @@
-import pyarrow as pa
-import numpy as np
 from pathlib import Path
 
 import hats as hc
+import numpy as np
 import numpy.testing as npt
 import pandas as pd
+import pyarrow as pa
 import pytest
 from hats.io import paths
 from hats.pixel_math import spatial_index_to_healpix

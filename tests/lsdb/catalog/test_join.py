@@ -8,7 +8,7 @@ from hats.pixel_math import HealpixPixel
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN, spatial_index_to_healpix
 
 from lsdb import read_hats
-from lsdb.dask.merge_catalog_functions import align_catalogs, HIVE_COLUMNS
+from lsdb.dask.merge_catalog_functions import HIVE_COLUMNS, align_catalogs
 
 
 def test_small_sky_join_small_sky_order1(small_sky_catalog, small_sky_order1_catalog, helpers):

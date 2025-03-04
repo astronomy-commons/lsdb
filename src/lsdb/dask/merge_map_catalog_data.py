@@ -3,7 +3,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Callable
 
-import dask
 import nested_dask as nd
 import nested_pandas as npd
 from hats.catalog import TableProperties

@@ -4,7 +4,6 @@ from __future__ import annotations
 import warnings
 from typing import TYPE_CHECKING
 
-import dask
 import nested_dask as nd
 import nested_pandas as npd
 import pandas as pd
@@ -91,7 +90,7 @@ def perform_join_on(
     if right_pixel.order > left_pixel.order:
         left = filter_by_spatial_index_to_pixel(left, right_pixel.order, right_pixel.pixel)
 
-    right_joined_df = concat_partition_and_margin(right, right_margin, right_columns)
+    right_joined_df = concat_partition_and_margin(right, right_margin)
 
     left, right_joined_df = rename_columns_with_suffixes(left, right_joined_df, suffixes)
     merged = left.reset_index().merge(
@@ -141,7 +140,7 @@ def perform_join_nested(
     if right_pixel.order > left_pixel.order:
         left = filter_by_spatial_index_to_pixel(left, right_pixel.order, right_pixel.pixel)
 
-    right_joined_df = concat_partition_and_margin(right, right_margin, right_columns)
+    right_joined_df = concat_partition_and_margin(right, right_margin)
 
     right_joined_df = pack_flat(npd.NestedFrame(right_joined_df.set_index(right_on))).rename(right_name)
 
@@ -194,7 +193,7 @@ def perform_join_through(
     if right_pixel.order > left_pixel.order:
         left = filter_by_spatial_index_to_pixel(left, right_pixel.order, right_pixel.pixel)
 
-    right_joined_df = concat_partition_and_margin(right, right_margin, right_columns)
+    right_joined_df = concat_partition_and_margin(right, right_margin)
 
     left, right_joined_df = rename_columns_with_suffixes(left, right_joined_df, suffixes)
 

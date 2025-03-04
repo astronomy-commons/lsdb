@@ -38,7 +38,7 @@ HIVE_COLUMNS = {
 
 
 def concat_partition_and_margin(
-    partition: npd.NestedFrame, margin: npd.NestedFrame | None, right_columns: list[str]
+    partition: npd.NestedFrame, margin: npd.NestedFrame | None
 ) -> npd.NestedFrame:
     """Concatenates a partition and margin dataframe together
 
@@ -57,6 +57,14 @@ def concat_partition_and_margin(
 
 
 def remove_hips_columns(df: npd.NestedFrame | None):
+    """Removes any HIPS Norder, Dir, and Npix columns from a dataframe
+
+    Args:
+        df (npd.NestedFrame): The catalog dataframe
+
+    Returns:
+        The dataframe with the columns removed
+    """
     if df is None:
         return None
     hive_columns_in_df = [c for c in HIVE_COLUMNS if c in df.columns]
@@ -64,6 +72,15 @@ def remove_hips_columns(df: npd.NestedFrame | None):
 
 
 def add_hive_columns(df: npd.NestedFrame, pixel: HealpixPixel):
+    """Adds the HIPS Norder, Dir, and Npix columns to a dataframe
+
+    Args:
+        df (npd.NestedFrame): The catalog dataframe
+        pixel (HealpixPixel): The HEALPix pixel of the dataframe partition
+
+    Returns:
+        The dataframe with the columns added
+    """
     order_series = pd.Series(np.full(len(df), fill_value=pixel.order), dtype=pd.ArrowDtype(pa.uint8()))
     dir_series = pd.Series(np.full(len(df), fill_value=pixel.dir), dtype=pd.ArrowDtype(pa.int64()))
     pixel_series = pd.Series(np.full(len(df), fill_value=pixel.pixel), dtype=pd.ArrowDtype(pa.int64()))
@@ -312,7 +329,7 @@ def generate_meta_df_for_nested_tables(
     join_column_name: str,
     extra_columns: pd.DataFrame | None = None,
     index_name: str = SPATIAL_INDEX_COLUMN,
-    index_type: npt.DTypeLike = np.int64,
+    index_type: npt.DTypeLike | None = None,
 ) -> npd.NestedFrame:
     """Generates a Dask meta DataFrame that would result from joining two catalogs, adding the right as a
     nested frame
@@ -343,6 +360,10 @@ def generate_meta_df_for_nested_tables(
     # Construct meta for crossmatch result columns
     if extra_columns is not None:
         meta.update(extra_columns)
+
+    if index_type is None:
+        # pylint: disable=protected-access
+        index_type = catalogs[0]._ddf._meta.index.dtype
     index = pd.Index(pd.Series(dtype=index_type), name=index_name)
     meta_df = pd.DataFrame(meta, index)
 

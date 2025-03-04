@@ -3,7 +3,6 @@ from __future__ import annotations
 import warnings
 from typing import TYPE_CHECKING, Type
 
-import dask
 import nested_dask as nd
 from hats.pixel_tree import PixelAlignment
 
@@ -55,7 +54,7 @@ def perform_crossmatch(
     if len(left_df) == 0:
         return meta_df
 
-    right_joined_df = concat_partition_and_margin(right_df, right_margin_df, right_columns)
+    right_joined_df = concat_partition_and_margin(right_df, right_margin_df)
 
     return algorithm(
         left_df,
