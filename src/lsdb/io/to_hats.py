@@ -89,7 +89,7 @@ def to_hats(
         base_catalog_path (str): Location where catalog is saved to
         catalog_name (str): The name of the output catalog
         default_columns (list[str]): A metadata property with the list of the columns in the catalog to be
-            loaded by default. By default, uses the default columns from the original hats catalogs if they
+            loaded by default. Uses the default columns from the original hats catalogs if they
             exist.
         histogram_order (int): The default order for the count histogram. Defaults to 8.
         overwrite (bool): If True existing catalog is overwritten
