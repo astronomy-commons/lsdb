@@ -261,33 +261,24 @@ class Catalog(HealpixDataset):
 
         See `crossmatch` for details on the cross-matching process.
 
-        Parameters
-        ----------
-        other : pd.DataFrame
-            The DataFrame to cross-match against the catalog.
-        suffixes : tuple[str, str], optional
-            A pair of suffixes to be appended to each column name when they are joined.
-            Defaults to using the catalog name as the suffix.
-        algorithm : BuiltInCrossmatchAlgorithm | Type[AbstractCrossmatchAlgorithm], optional
-            The algorithm used for cross-matching. Can be either a string to specify one of
-                the built-in cross-matching methods, or a custom method defined by subclassing
+        Args:
+            other (pd.DataFrame): The DataFrame to cross-match against the catalog.
+            suffixes (Tuple[str, str], optional): A pair of suffixes to be appended to each column
+                name when they are joined. Defaults to using the catalog name as the suffix.
+            algorithm (BuiltInCrossmatchAlgorithm | Type[AbstractCrossmatchAlgorithm], optional): The
+                algorithm used for cross-matching. Can be either a string to specify one of the
+                built-in cross-matching methods, or a custom method defined by subclassing
                 AbstractCrossmatchAlgorithm. Defaults to `BuiltInCrossmatchAlgorithm.KD_TREE`.
-        output_catalog_name : str, optional
-            The name of the resulting catalog. Defaults to `{left_name}_x_{right_name}`.
-        **kwargs
-            Additional keyword arguments for both `from_dataframe` and `crossmatch`.
-            Any arguments recognized by `from_dataframe` will be passed accordingly.
+            output_catalog_name (str, optional): The name of the resulting catalog.
+                Default: `{left_name}_x_{right_name}`
+            require_right_margin (bool, optional): If `True`, raises an error if the right margin is missing,
+                which could lead to incomplete crossmatches. Default: `False`.
+            **kwargs: Additional keyword arguments for both `from_dataframe` and `crossmatch`.
+                Any arguments recognized by `from_dataframe` will be passed accordingly.
 
-        Returns
-        -------
-        Catalog
-            A `Catalog` with data from the input catalog and DataFrame, cross-matched
+        Returns:
+            Catalog: A `Catalog` with data from the input catalog and DataFrame, cross-matched
             according to the specified algorithm.
-
-        See Also
-        --------
-        crossmatch : Performs cross-matching between two `Catalog` objects.
-        from_dataframe : Converts a DataFrame into a `Catalog` with spatial partitioning.
         """
         # Lazy import to avoid circular dependencies.
         # pylint: disable=C0415
