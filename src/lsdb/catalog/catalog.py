@@ -32,7 +32,6 @@ from lsdb.dask.join_catalog_data import (
 from lsdb.dask.merge_map_catalog_data import merge_map_catalog_data
 from lsdb.dask.partition_indexer import PartitionIndexer
 from lsdb.io.schema import get_arrow_schema
-from lsdb.loaders.dataframe.from_dataframe import from_dataframe
 from lsdb.types import DaskDFPixelMap
 
 
@@ -243,7 +242,7 @@ class Catalog(HealpixDataset):
         )
         return Catalog(ddf, ddf_map, hc_catalog)
 
-    def crossmatch_df(
+    def crossmatch_dataframe(
         self,
         other: pd.DataFrame,
         suffixes: tuple[str, str] | None = None,
@@ -254,9 +253,69 @@ class Catalog(HealpixDataset):
         require_right_margin: bool = False,
         **kwargs,
     ) -> Catalog:
-        """Perform a cross-match between a catalog and a DataFrame."""
-        # Convert the given DataFrame to a Catalog. Pass along any additional keyword arguments.
-        other_catalog = from_dataframe(other, **kwargs)
+        """Perform a cross-match between a catalog and a DataFrame.
+
+        This function converts the given DataFrame into a `Catalog` using `from_dataframe`
+        before calling `crossmatch`. It allows additional keyword arguments to be passed
+        to `from_dataframe` for customization.
+
+        See `crossmatch` for details on the cross-matching process.
+
+        Parameters
+        ----------
+        other : pd.DataFrame
+            The DataFrame to cross-match against the catalog.
+        suffixes : tuple[str, str], optional
+            A pair of suffixes to be appended to each column name when they are joined.
+            Defaults to using the catalog name as the suffix.
+        algorithm : BuiltInCrossmatchAlgorithm | Type[AbstractCrossmatchAlgorithm], optional
+            The algorithm used for cross-matching. Can be either a string to specify one of
+                the built-in cross-matching methods, or a custom method defined by subclassing
+                AbstractCrossmatchAlgorithm. Defaults to `BuiltInCrossmatchAlgorithm.KD_TREE`.
+        output_catalog_name : str, optional
+            The name of the resulting catalog. Defaults to `{left_name}_x_{right_name}`.
+        **kwargs
+            Additional keyword arguments for both `from_dataframe` and `crossmatch`.
+            Any arguments recognized by `from_dataframe` will be passed accordingly.
+
+        Returns
+        -------
+        Catalog
+            A `Catalog` with data from the input catalog and DataFrame, cross-matched
+            according to the specified algorithm.
+
+        See Also
+        --------
+        crossmatch : Performs cross-matching between two `Catalog` objects.
+        from_dataframe : Converts a DataFrame into a `Catalog` with spatial partitioning.
+        """
+        # Lazy import to avoid circular dependencies.
+        # pylint: disable=C0415
+        from lsdb.loaders.dataframe.from_dataframe import from_dataframe
+
+        # Separate kwargs for from_dataframe and crossmatch
+        from_dataframe_kwargs = {
+            k: kwargs.pop(k)
+            for k in (
+                "ra_column",
+                "dec_column",
+                "lowest_order",
+                "highest_order",
+                "drop_empty_siblings",
+                "partition_size",
+                "threshold",
+                "margin_order",
+                "margin_threshold",
+                "should_generate_moc",
+                "moc_max_order",
+                "use_pyarrow_types",
+                "schema",
+            )
+            if k in kwargs
+        }
+
+        # Convert the given DataFrame to a Catalog.
+        other_catalog = from_dataframe(other, **from_dataframe_kwargs)
 
         # Call the crossmatch method with the newly generated Catalog.
         return self.crossmatch(
