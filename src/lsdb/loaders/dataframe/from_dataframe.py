@@ -1,15 +1,11 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 import pandas as pd
 import pyarrow as pa
 
+from lsdb.catalog import Catalog
 from lsdb.loaders.dataframe.dataframe_catalog_loader import DataframeCatalogLoader
 from lsdb.loaders.dataframe.margin_catalog_generator import MarginCatalogGenerator
-
-if TYPE_CHECKING:
-    from lsdb.catalog import Catalog
 
 
 # pylint: disable=too-many-arguments
