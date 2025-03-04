@@ -1,3 +1,4 @@
+import hats as hc
 from __future__ import annotations
 
 import warnings
@@ -129,14 +130,26 @@ class HealpixDataset(Dataset):
         hc_structure: HCHealpixDataset | None = None,
         updated_catalog_info_params: dict | None = None,
     ) -> Self:
-        """Creates an"""
+        """Creates a new copy of the catalog, updating any provided arguments
+
+        Shallow copies the ddf and ddf_pixel_map if not provided. Creates a new hc_structure if not provided.
+        Updates the hc_structure with any provided catalog info parameters, resets the total rows, removes
+        any default columns that don't exist, and updates the pyarrow schema to reflect the new ddf.
+
+        Args:
+            ddf (nd.NestedFrame): The catalog ddf to update in the new catalog
+            ddf_pixel_map (DaskDFPixelMap): The partition to healpix pixel map to update in the new catalog
+            hc_structure (hats.HealpixDataset): The hats HealpixDataset object to update in the new catalog
+            updated_catalog_info_params (dict): The dictionary of updates to the parameters of the hats
+                dataset object's catalog_info
+        Returns:
+            A new dataset object with the arguments updated to those provided to the function, and the
+            hc_structure metadata updated to match the new ddf
+        """
         ddf = ddf or self._ddf
-        if ddf_pixel_map is None:
-            ddf_pixel_map = self._ddf_pixel_map
-        if hc_structure is None:
-            hc_structure = self.hc_structure
-        if updated_catalog_info_params is None:
-            updated_catalog_info_params = {}
+        ddf_pixel_map = ddf_pixel_map or self._ddf_pixel_map
+        hc_structure = hc_structure or self.hc_structure
+        updated_catalog_info_params = updated_catalog_info_params or {}
         if (
             "default_columns" not in updated_catalog_info_params
             and hc_structure.catalog_info.default_columns is not None
