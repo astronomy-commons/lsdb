@@ -8,24 +8,13 @@ import numpy.testing as npt
 import pandas as pd
 import pytest
 from hats.pixel_math import HealpixPixel
-from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN, compute_spatial_index
 from pandas.core.dtypes.base import ExtensionDtype
 
 import lsdb
 from lsdb.core.search import BoxSearch, ConeSearch, IndexSearch, OrderSearch, PolygonSearch
 
 
-def assert_index_correct(cat):
-    assert cat._ddf.index.name == SPATIAL_INDEX_COLUMN
-    cat_comp = cat.compute()
-    assert cat_comp.index.name == SPATIAL_INDEX_COLUMN
-    npt.assert_array_equal(
-        cat_comp.index.to_numpy(),
-        compute_spatial_index(cat_comp["ra"].to_numpy(), cat_comp["dec"].to_numpy()),
-    )
-
-
-def test_read_hats(small_sky_order1_dir, small_sky_order1_hats_catalog, assert_divisions_are_correct):
+def test_read_hats(small_sky_order1_dir, small_sky_order1_hats_catalog, helpers):
     catalog = lsdb.read_hats(small_sky_order1_dir)
     assert isinstance(catalog, lsdb.Catalog)
     assert isinstance(catalog._ddf, nd.NestedFrame)
@@ -34,11 +23,12 @@ def test_read_hats(small_sky_order1_dir, small_sky_order1_hats_catalog, assert_d
     assert catalog.get_healpix_pixels() == small_sky_order1_hats_catalog.get_healpix_pixels()
     assert len(catalog.compute().columns) == 8
     assert isinstance(catalog.compute(), npd.NestedFrame)
-    assert_divisions_are_correct(catalog)
-    assert_index_correct(catalog)
+    helpers.assert_divisions_are_correct(catalog)
+    helpers.assert_index_correct(catalog)
+    helpers.assert_schema_correct(catalog)
 
 
-def test_read_hats_default_cols(small_sky_order1_default_cols_dir, assert_divisions_are_correct):
+def test_read_hats_default_cols(small_sky_order1_default_cols_dir, helpers):
     catalog = lsdb.read_hats(small_sky_order1_default_cols_dir)
     assert isinstance(catalog, lsdb.Catalog)
     assert isinstance(catalog._ddf, nd.NestedFrame)
@@ -46,11 +36,13 @@ def test_read_hats_default_cols(small_sky_order1_default_cols_dir, assert_divisi
     assert np.all(catalog.columns == catalog.hc_structure.catalog_info.default_columns)
     assert np.all(catalog.compute().columns == catalog.hc_structure.catalog_info.default_columns)
     assert isinstance(catalog.compute(), npd.NestedFrame)
-    assert_divisions_are_correct(catalog)
-    assert_index_correct(catalog)
+    helpers.assert_divisions_are_correct(catalog)
+    helpers.assert_index_correct(catalog)
+    helpers.assert_schema_correct(catalog)
+    helpers.assert_default_columns_in_columns(catalog)
 
 
-def test_read_hats_default_cols_specify_cols(small_sky_order1_default_cols_dir, assert_divisions_are_correct):
+def test_read_hats_default_cols_specify_cols(small_sky_order1_default_cols_dir, helpers):
     filter_columns = ["ra", "dec"]
     catalog = lsdb.read_hats(small_sky_order1_default_cols_dir, columns=filter_columns)
     assert isinstance(catalog, lsdb.Catalog)
@@ -59,11 +51,13 @@ def test_read_hats_default_cols_specify_cols(small_sky_order1_default_cols_dir, 
     assert np.all(catalog.columns == filter_columns)
     assert np.all(catalog.compute().columns == filter_columns)
     assert isinstance(catalog.compute(), npd.NestedFrame)
-    assert_divisions_are_correct(catalog)
-    assert_index_correct(catalog)
+    helpers.assert_divisions_are_correct(catalog)
+    helpers.assert_index_correct(catalog)
+    helpers.assert_schema_correct(catalog)
+    helpers.assert_default_columns_in_columns(catalog)
 
 
-def test_read_hats_default_cols_all_cols(small_sky_order1_default_cols_dir, assert_divisions_are_correct):
+def test_read_hats_default_cols_all_cols(small_sky_order1_default_cols_dir, helpers):
     expected_all_cols = ["id", "ra", "dec", "ra_error", "dec_error", "Norder", "Dir", "Npix"]
     catalog = lsdb.read_hats(small_sky_order1_default_cols_dir, columns="all")
     assert isinstance(catalog, lsdb.Catalog)
@@ -72,18 +66,19 @@ def test_read_hats_default_cols_all_cols(small_sky_order1_default_cols_dir, asse
     assert np.all(catalog.columns == expected_all_cols)
     assert np.all(catalog.compute().columns == expected_all_cols)
     assert isinstance(catalog.compute(), npd.NestedFrame)
-    assert_divisions_are_correct(catalog)
-    assert_index_correct(catalog)
+    helpers.assert_divisions_are_correct(catalog)
+    helpers.assert_index_correct(catalog)
 
 
-def test_read_hats_no_pandas(small_sky_order1_no_pandas_dir, assert_divisions_are_correct):
+def test_read_hats_no_pandas(small_sky_order1_no_pandas_dir, helpers):
     catalog = lsdb.read_hats(small_sky_order1_no_pandas_dir)
     assert isinstance(catalog, lsdb.Catalog)
     assert isinstance(catalog._ddf, nd.NestedFrame)
     assert len(catalog.compute().columns) == 8
     assert isinstance(catalog.compute(), npd.NestedFrame)
-    assert_divisions_are_correct(catalog)
-    assert_index_correct(catalog)
+    helpers.assert_divisions_are_correct(catalog)
+    helpers.assert_index_correct(catalog)
+    helpers.assert_schema_correct(catalog)
 
 
 def test_read_hats_with_margin_extra_kwargs(small_sky_xmatch_dir, small_sky_xmatch_margin_dir):
@@ -106,28 +101,31 @@ def test_read_hats_with_margin_extra_kwargs(small_sky_xmatch_dir, small_sky_xmat
     assert np.all(filtered_margin["ra"] > 300)
 
 
-def test_read_hats_with_columns(small_sky_order1_dir):
+def test_read_hats_with_columns(small_sky_order1_dir, helpers):
     filter_columns = ["ra", "dec"]
     catalog = lsdb.read_hats(small_sky_order1_dir, columns=filter_columns)
     assert isinstance(catalog, lsdb.Catalog)
     npt.assert_array_equal(catalog.compute().columns.to_numpy(), filter_columns)
-    assert_index_correct(catalog)
+    helpers.assert_index_correct(catalog)
+    helpers.assert_schema_correct(catalog)
 
 
-def test_read_hats_no_pandas_with_columns(small_sky_order1_no_pandas_dir):
+def test_read_hats_no_pandas_with_columns(small_sky_order1_no_pandas_dir, helpers):
     filter_columns = ["ra", "dec"]
     catalog = lsdb.read_hats(small_sky_order1_no_pandas_dir, columns=filter_columns)
     assert isinstance(catalog, lsdb.Catalog)
     npt.assert_array_equal(catalog.compute().columns.to_numpy(), filter_columns)
-    assert_index_correct(catalog)
+    helpers.assert_index_correct(catalog)
+    helpers.assert_schema_correct(catalog)
 
 
-def test_read_hats_no_pandas_with_index_column(small_sky_order1_no_pandas_dir):
+def test_read_hats_no_pandas_with_index_column(small_sky_order1_no_pandas_dir, helpers):
     filter_columns = ["ra", "dec", "_healpix_29"]
     catalog = lsdb.read_hats(small_sky_order1_no_pandas_dir, columns=filter_columns)
     assert isinstance(catalog, lsdb.Catalog)
-    assert_index_correct(catalog)
+    helpers.assert_index_correct(catalog)
     npt.assert_array_equal(catalog.compute().columns.to_numpy(), filter_columns)
+    helpers.assert_schema_correct(catalog)
 
 
 def test_read_hats_with_extra_kwargs(small_sky_order1_dir):
@@ -173,7 +171,7 @@ def test_read_hats_specify_catalog_type(small_sky_catalog, small_sky_dir):
 
 
 def test_catalog_with_margin(
-    small_sky_xmatch_dir, small_sky_xmatch_margin_dir, small_sky_xmatch_margin_catalog
+    small_sky_xmatch_dir, small_sky_xmatch_margin_dir, small_sky_xmatch_margin_catalog, helpers
 ):
     assert isinstance(small_sky_xmatch_margin_dir, Path)
     catalog = lsdb.read_hats(small_sky_xmatch_dir, margin_cache=small_sky_xmatch_margin_dir)
@@ -186,6 +184,8 @@ def test_catalog_with_margin(
     )
     assert catalog.margin.get_healpix_pixels() == small_sky_xmatch_margin_catalog.get_healpix_pixels()
     pd.testing.assert_frame_equal(catalog.margin.compute(), small_sky_xmatch_margin_catalog.compute())
+    helpers.assert_schema_correct(catalog)
+    helpers.assert_schema_correct(catalog.margin)
 
 
 def test_catalog_without_margin_is_none(small_sky_xmatch_dir):
@@ -315,7 +315,7 @@ def test_read_hats_with_invalid_backend(small_sky_dir):
 
 
 def test_read_hats_margin_catalog_subset(
-    small_sky_order1_source_margin_dir, small_sky_order1_source_margin_catalog, assert_divisions_are_correct
+    small_sky_order1_source_margin_dir, small_sky_order1_source_margin_catalog, helpers
 ):
     search_filter = ConeSearch(ra=315, dec=-60, radius_arcsec=10)
     margin = lsdb.read_hats(small_sky_order1_source_margin_dir, search_filter=search_filter)
@@ -333,7 +333,7 @@ def test_read_hats_margin_catalog_subset(
         HealpixPixel(1, 46),
         HealpixPixel(1, 47),
     ]
-    assert_divisions_are_correct(margin)
+    helpers.assert_divisions_are_correct(margin)
 
 
 def test_read_hats_margin_catalog_subset_is_empty(small_sky_order1_source_margin_dir):

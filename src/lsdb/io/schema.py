@@ -14,4 +14,4 @@ def get_arrow_schema(ddf: dd.DataFrame) -> pa.Schema:
         The arrow schema for the provided Dask DataFrame.
     """
     # pylint: disable=protected-access
-    return pa.Schema.from_pandas(ddf._meta)
+    return pa.Schema.from_pandas(ddf._meta).remove_metadata()

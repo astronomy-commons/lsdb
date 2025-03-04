@@ -75,6 +75,7 @@ def to_hats(
     *,
     base_catalog_path: str | Path | UPath,
     catalog_name: str | None = None,
+    default_columns: list[str] | None = None,
     histogram_order: int = 8,
     overwrite: bool = False,
     **kwargs,
@@ -87,6 +88,9 @@ def to_hats(
         catalog (HealpixDataset): A catalog to export
         base_catalog_path (str): Location where catalog is saved to
         catalog_name (str): The name of the output catalog
+        default_columns (list[str]): A metadata property with the list of the columns in the catalog to be
+            loaded by default. Uses the default columns from the original hats catalogs if they
+            exist.
         histogram_order (int): The default order for the count histogram. Defaults to 8.
         overwrite (bool): If True existing catalog is overwritten
         **kwargs: Arguments to pass to the parquet write operations
@@ -110,11 +114,16 @@ def to_hats(
     # Save partition info
     PartitionInfo(pixels.tolist()).write_to_file(base_catalog_path / "partition_info.csv")
     # Save catalog info
+    if default_columns is None:
+        default_columns = catalog.hc_structure.catalog_info.default_columns
+    if default_columns is not None and len(default_columns) == 0:
+        default_columns = None
     new_hc_structure = create_modified_catalog_structure(
         catalog.hc_structure,
         base_catalog_path,
         catalog_name if catalog_name else catalog.hc_structure.catalog_name,
         total_rows=int(np.sum(counts)),
+        default_columns=default_columns,
     )
     new_hc_structure.catalog_info.to_properties_file(base_catalog_path)
     # Save the point distribution map

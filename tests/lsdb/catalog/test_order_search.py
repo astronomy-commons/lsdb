@@ -5,27 +5,27 @@ import pytest
 from lsdb.core.search import OrderSearch
 
 
-def test_order_search_filters_correct_pixels(small_sky_source_catalog, assert_divisions_are_correct):
+def test_order_search_filters_correct_pixels(small_sky_source_catalog, helpers):
     order_search_catalog = small_sky_source_catalog.order_search(min_order=1, max_order=1)
     assert isinstance(order_search_catalog._ddf, nd.NestedFrame)
     pixel_orders = [pixel.order for pixel in order_search_catalog.get_healpix_pixels()]
     assert all(order == 1 for order in pixel_orders)
-    assert_divisions_are_correct(order_search_catalog)
+    helpers.assert_divisions_are_correct(order_search_catalog)
 
     order_search_catalog = small_sky_source_catalog.order_search(min_order=1, max_order=2)
     pixel_orders = [pixel.order for pixel in order_search_catalog.get_healpix_pixels()]
     assert all(1 <= order <= 2 for order in pixel_orders)
-    assert_divisions_are_correct(order_search_catalog)
+    helpers.assert_divisions_are_correct(order_search_catalog)
 
     order_search_catalog = small_sky_source_catalog.order_search(min_order=1)
     pixel_orders = [pixel.order for pixel in order_search_catalog.get_healpix_pixels()]
     assert all(1 <= order <= 2 for order in pixel_orders)
-    assert_divisions_are_correct(order_search_catalog)
+    helpers.assert_divisions_are_correct(order_search_catalog)
 
     order_search_catalog = small_sky_source_catalog.order_search(max_order=1)
     pixel_orders = [pixel.order for pixel in order_search_catalog.get_healpix_pixels()]
     assert all(0 <= order <= 1 for order in pixel_orders)
-    assert_divisions_are_correct(order_search_catalog)
+    helpers.assert_divisions_are_correct(order_search_catalog)
 
 
 def test_order_search_keeps_all_points(small_sky_source_catalog):
