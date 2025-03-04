@@ -145,9 +145,9 @@ class HealpixDataset(Dataset):
             A new dataset object with the arguments updated to those provided to the function, and the
             hc_structure metadata updated to match the new ddf
         """
-        ddf = ddf or self._ddf
-        ddf_pixel_map = ddf_pixel_map or self._ddf_pixel_map
-        hc_structure = hc_structure or self.hc_structure
+        ddf = ddf if ddf is not None else self._ddf
+        ddf_pixel_map = ddf_pixel_map if ddf_pixel_map is not None else self._ddf_pixel_map
+        hc_structure = hc_structure if hc_structure is not None else self.hc_structure
         updated_catalog_info_params = updated_catalog_info_params or {}
         if (
             "default_columns" not in updated_catalog_info_params
