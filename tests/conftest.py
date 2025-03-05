@@ -391,9 +391,9 @@ class Helpers:
             assert np.all(partition[paths.PARTITION_ORDER] == pixel.order)
             assert partition[paths.PARTITION_ORDER].dtype == pd.ArrowDtype(pa.uint8())
             assert np.all(partition[paths.PARTITION_DIR] == pixel.dir)
-            assert partition[paths.PARTITION_DIR].dtype == pd.ArrowDtype(pa.int64())
+            assert partition[paths.PARTITION_DIR].dtype == pd.ArrowDtype(pa.uint64())
             assert np.all(partition[paths.PARTITION_PIXEL] == pixel.pixel)
-            assert partition[paths.PARTITION_PIXEL].dtype == pd.ArrowDtype(pa.int64())
+            assert partition[paths.PARTITION_PIXEL].dtype == pd.ArrowDtype(pa.uint64())
 
 
 @pytest.fixture
