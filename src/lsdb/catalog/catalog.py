@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 from typing import Callable, Type
 
 import hats as hc
@@ -285,25 +286,9 @@ class Catalog(HealpixDataset):
         from lsdb.loaders.dataframe.from_dataframe import from_dataframe
 
         # Separate kwargs for from_dataframe and crossmatch
-        from_dataframe_kwargs = {
-            k: kwargs.pop(k)
-            for k in (
-                "ra_column",
-                "dec_column",
-                "lowest_order",
-                "highest_order",
-                "drop_empty_siblings",
-                "partition_size",
-                "threshold",
-                "margin_order",
-                "margin_threshold",
-                "should_generate_moc",
-                "moc_max_order",
-                "use_pyarrow_types",
-                "schema",
-            )
-            if k in kwargs
-        }
+        sig = inspect.signature(from_dataframe)
+        from_dataframe_arg_names = list(sig.parameters.keys())
+        from_dataframe_kwargs = {k: kwargs.pop(k) for k in kwargs if k in from_dataframe_arg_names}
 
         # Convert the given DataFrame to a Catalog.
         other_catalog = from_dataframe(other, **from_dataframe_kwargs)
