@@ -15,7 +15,7 @@ import pytest
 from astropy.coordinates import SkyCoord
 from astropy.visualization.wcsaxes import WCSAxes
 from hats.inspection.visualize_catalog import get_fov_moc_from_wcs
-from hats.io.file_io import read_fits_image
+from hats.io.file_io import get_upath_for_protocol, read_fits_image
 from hats.pixel_math import HealpixPixel, spatial_index_to_healpix
 from mocpy import WCS
 
@@ -216,6 +216,17 @@ def test_save_catalog(small_sky_catalog, tmp_path):
     assert expected_catalog.hc_structure.catalog_info == small_sky_catalog.hc_structure.catalog_info
     assert expected_catalog.get_healpix_pixels() == small_sky_catalog.get_healpix_pixels()
     pd.testing.assert_frame_equal(expected_catalog.compute(), small_sky_catalog._ddf.compute())
+
+
+def test_save_catalog_initializes_upath_once(small_sky_catalog, tmp_path, mocker):
+    mock_method = "hats.io.file_io.file_pointer.get_upath_for_protocol"
+    mocked_upath_call = mocker.patch(mock_method, side_effect=get_upath_for_protocol)
+
+    new_catalog_name = "small_sky"
+    base_catalog_path = Path(tmp_path) / new_catalog_name
+    small_sky_catalog.to_hats(base_catalog_path, catalog_name=new_catalog_name)
+
+    mocked_upath_call.assert_called_once_with(base_catalog_path)
 
 
 def test_save_catalog_default_columns(small_sky_order1_default_cols_catalog, tmp_path, helpers):
