@@ -244,7 +244,7 @@ class Catalog(HealpixDataset):
 
     def crossmatch_dataframe(
         self,
-        other: pd.DataFrame,
+        other: npd.NestedFrame,
         suffixes: tuple[str, str] | None = None,
         algorithm: (
             Type[AbstractCrossmatchAlgorithm] | BuiltInCrossmatchAlgorithm
