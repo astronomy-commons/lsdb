@@ -256,7 +256,9 @@ def read_pixel(
     ):
         columns = columns + [SPATIAL_INDEX_COLUMN]
     dataframe = file_io.read_parquet_file_to_pandas(
-        hc.io.pixel_catalog_file(catalog.catalog_base_dir, pixel, query_url_params),
+        hc.io.pixel_catalog_file(
+            catalog.catalog_base_dir, pixel, query_url_params, npix_suffix=catalog.catalog_info.npix_suffix
+        ),
         columns=columns,
         schema=schema,
         **kwargs,
