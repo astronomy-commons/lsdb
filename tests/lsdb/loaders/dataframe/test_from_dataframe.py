@@ -33,7 +33,7 @@ def get_catalog_kwargs(catalog, **kwargs):
     return kwargs
 
 
-def test_from_dataframe(small_sky_order1_dir, small_sky_order1_df, small_sky_order1_catalog, helpers):
+def test_from_dataframe(small_sky_order1_df, small_sky_order1_catalog, helpers):
     """Tests that we can initialize a catalog from a Pandas Dataframe and
     that the loaded content is correct"""
     kwargs = get_catalog_kwargs(small_sky_order1_catalog)
@@ -56,8 +56,7 @@ def test_from_dataframe(small_sky_order1_dir, small_sky_order1_df, small_sky_ord
     # Divisions belong to the respective HEALPix pixels
     helpers.assert_divisions_are_correct(catalog)
     # The arrow schema was automatically inferred
-    expected_schema = hc.read_hats(small_sky_order1_dir).schema
-    assert catalog.hc_structure.schema.equals(expected_schema)
+    helpers.assert_schema_correct(catalog)
 
     assert isinstance(catalog.compute(), npd.NestedFrame)
 
@@ -229,6 +228,7 @@ def test_from_dataframe_small_sky_source_with_margins(small_sky_source_df, small
         highest_order=2,
         threshold=3000,
         margin_threshold=180,
+        margin_order=8,
         **kwargs,
     )
 

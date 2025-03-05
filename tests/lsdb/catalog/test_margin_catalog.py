@@ -31,7 +31,7 @@ def test_margin_catalog_partitions_correct(small_sky_xmatch_margin_dir):
             pixel=healpix_pixel,
         )
         partition = margin.get_partition(hp_order, hp_pixel)
-        data = pd.read_parquet(path, dtype_backend="pyarrow")
+        data = pd.read_parquet(path, dtype_backend="pyarrow").set_index("_healpix_29")
         pd.testing.assert_frame_equal(partition.compute(), data)
 
 
