@@ -81,9 +81,15 @@ def add_hive_columns(df: npd.NestedFrame, pixel: HealpixPixel):
     Returns:
         The dataframe with the columns added
     """
-    order_series = pd.Series(np.full(len(df), fill_value=pixel.order), dtype=pd.ArrowDtype(pa.uint8()))
-    dir_series = pd.Series(np.full(len(df), fill_value=pixel.dir), dtype=pd.ArrowDtype(pa.uint64()))
-    pixel_series = pd.Series(np.full(len(df), fill_value=pixel.pixel), dtype=pd.ArrowDtype(pa.uint64()))
+    order_series = pd.Series(
+        np.full(len(df), fill_value=pixel.order), dtype=pd.ArrowDtype(pa.uint8()), index=df.index
+    )
+    dir_series = pd.Series(
+        np.full(len(df), fill_value=pixel.dir), dtype=pd.ArrowDtype(pa.uint64()), index=df.index
+    )
+    pixel_series = pd.Series(
+        np.full(len(df), fill_value=pixel.pixel), dtype=pd.ArrowDtype(pa.uint64()), index=df.index
+    )
     return df.assign(
         **{
             paths.PARTITION_ORDER: order_series,

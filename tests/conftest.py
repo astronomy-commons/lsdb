@@ -389,10 +389,13 @@ class Helpers:
         for pixel in cat.get_healpix_pixels():
             partition = cat.get_partition(pixel.order, pixel.pixel).compute()
             assert np.all(partition[paths.PARTITION_ORDER] == pixel.order)
+            assert np.any(partition[paths.PARTITION_ORDER].isna()) == False
             assert partition[paths.PARTITION_ORDER].dtype == pd.ArrowDtype(pa.uint8())
             assert np.all(partition[paths.PARTITION_DIR] == pixel.dir)
+            assert np.any(partition[paths.PARTITION_DIR].isna()) == False
             assert partition[paths.PARTITION_DIR].dtype == pd.ArrowDtype(pa.uint64())
             assert np.all(partition[paths.PARTITION_PIXEL] == pixel.pixel)
+            assert np.any(partition[paths.PARTITION_PIXEL].isna()) == False
             assert partition[paths.PARTITION_PIXEL].dtype == pd.ArrowDtype(pa.uint64())
 
 
