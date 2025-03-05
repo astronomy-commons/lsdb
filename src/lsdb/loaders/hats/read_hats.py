@@ -21,6 +21,7 @@ from lsdb.catalog.map_catalog import MapCatalog
 from lsdb.catalog.margin_catalog import _validate_margin_catalog
 from lsdb.core.search.abstract_search import AbstractSearch
 from lsdb.dask.divisions import get_pixels_divisions
+from lsdb.io.schema import get_arrow_schema
 from lsdb.loaders.hats.hats_loading_config import HatsLoadingConfig
 from lsdb.types import CatalogTypeVar
 
@@ -96,15 +97,26 @@ def read_hats(
     catalog_type = hc_catalog.catalog_info.catalog_type
 
     if catalog_type in (CatalogType.OBJECT, CatalogType.SOURCE):
-        return _load_object_catalog(hc_catalog, config)
-    if catalog_type == CatalogType.MARGIN:
-        return _load_margin_catalog(hc_catalog, config)
-    if catalog_type == CatalogType.ASSOCIATION:
-        return _load_association_catalog(hc_catalog, config)
-    if catalog_type == CatalogType.MAP:
-        return _load_map_catalog(hc_catalog, config)
+        catalog = _load_object_catalog(hc_catalog, config)
+    elif catalog_type == CatalogType.MARGIN:
+        catalog = _load_margin_catalog(hc_catalog, config)
+    elif catalog_type == CatalogType.ASSOCIATION:
+        catalog = _load_association_catalog(hc_catalog, config)
+    elif catalog_type == CatalogType.MAP:
+        catalog = _load_map_catalog(hc_catalog, config)
+    else:
+        raise NotImplementedError(f"Cannot load catalog of type {catalog_type}")
 
-    raise NotImplementedError(f"Cannot load catalog of type {catalog_type}")
+    # pylint: disable=protected-access
+    catalog.hc_structure = catalog._create_modified_hc_structure(
+        updated_schema=get_arrow_schema(catalog._ddf),
+        default_columns=(
+            [col for col in catalog.hc_structure.catalog_info.default_columns if col in catalog._ddf.columns]
+            if catalog.hc_structure.catalog_info.default_columns is not None
+            else None
+        ),
+    )
+    return catalog
 
 
 def _load_association_catalog(hc_catalog, config):

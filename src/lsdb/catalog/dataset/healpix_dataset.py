@@ -7,7 +7,6 @@ from typing import Any, Callable, Iterable, Type, cast
 import astropy
 import dask
 import dask.dataframe as dd
-import hats as hc
 import nested_dask as nd
 import nested_pandas as npd
 import numpy as np
@@ -37,6 +36,7 @@ from lsdb.core.plotting.skymap import compute_skymap, perform_inner_skymap
 from lsdb.core.search.abstract_search import AbstractSearch
 from lsdb.core.search.moc_search import MOCSearch
 from lsdb.dask.merge_catalog_functions import concat_metas
+from lsdb.dask.partition_indexer import PartitionIndexer
 from lsdb.io.schema import get_arrow_schema
 from lsdb.types import DaskDFPixelMap
 
@@ -75,7 +75,7 @@ class HealpixDataset(Dataset):
     def __getitem__(self, item):
         result = self._ddf.__getitem__(item)
         if isinstance(result, nd.NestedFrame):
-            return self.__class__(result, self._ddf_pixel_map, self.hc_structure)
+            return self._create_updated_dataset(ddf=result)
         return result
 
     def __len__(self):
@@ -104,19 +104,65 @@ class HealpixDataset(Dataset):
         divisions = pd.Index(self.get_ordered_healpix_pixels(), name=name)
         return divisions
 
-    def _create_modified_hc_structure(self, **kwargs) -> HCHealpixDataset:
+    def _create_modified_hc_structure(
+        self, hc_structure=None, updated_schema=None, **kwargs
+    ) -> HCHealpixDataset:
         """Copy the catalog structure and override the specified catalog info parameters.
 
         Returns:
             A copy of the catalog's structure with updated info parameters.
         """
-        return self.hc_structure.__class__(
-            catalog_info=self.hc_structure.catalog_info.copy_and_update(**kwargs),
-            pixels=self.hc_structure.pixel_tree,
-            catalog_path=self.hc_structure.catalog_path,
-            schema=self.hc_structure.schema,
-            moc=self.hc_structure.moc,
+        if hc_structure is None:
+            hc_structure = self.hc_structure
+        return hc_structure.__class__(
+            catalog_info=hc_structure.catalog_info.copy_and_update(**kwargs),
+            pixels=hc_structure.pixel_tree,
+            catalog_path=hc_structure.catalog_path,
+            schema=hc_structure.schema if updated_schema is None else updated_schema,
+            moc=hc_structure.moc,
         )
+
+    def _create_updated_dataset(
+        self,
+        ddf: nd.NestedFrame | None = None,
+        ddf_pixel_map: DaskDFPixelMap | None = None,
+        hc_structure: HCHealpixDataset | None = None,
+        updated_catalog_info_params: dict | None = None,
+    ) -> Self:
+        """Creates a new copy of the catalog, updating any provided arguments
+
+        Shallow copies the ddf and ddf_pixel_map if not provided. Creates a new hc_structure if not provided.
+        Updates the hc_structure with any provided catalog info parameters, resets the total rows, removes
+        any default columns that don't exist, and updates the pyarrow schema to reflect the new ddf.
+
+        Args:
+            ddf (nd.NestedFrame): The catalog ddf to update in the new catalog
+            ddf_pixel_map (DaskDFPixelMap): The partition to healpix pixel map to update in the new catalog
+            hc_structure (hats.HealpixDataset): The hats HealpixDataset object to update in the new catalog
+            updated_catalog_info_params (dict): The dictionary of updates to the parameters of the hats
+                dataset object's catalog_info
+        Returns:
+            A new dataset object with the arguments updated to those provided to the function, and the
+            hc_structure metadata updated to match the new ddf
+        """
+        ddf = ddf if ddf is not None else self._ddf
+        ddf_pixel_map = ddf_pixel_map if ddf_pixel_map is not None else self._ddf_pixel_map
+        hc_structure = hc_structure if hc_structure is not None else self.hc_structure
+        updated_catalog_info_params = updated_catalog_info_params or {}
+        if (
+            "default_columns" not in updated_catalog_info_params
+            and hc_structure.catalog_info.default_columns is not None
+        ):
+            updated_catalog_info_params["default_columns"] = [
+                col for col in hc_structure.catalog_info.default_columns if col in ddf.columns
+            ]
+        if "total_rows" not in updated_catalog_info_params:
+            updated_catalog_info_params["total_rows"] = 0
+        updated_schema = get_arrow_schema(ddf)
+        hc_structure = self._create_modified_hc_structure(
+            hc_structure=hc_structure, updated_schema=updated_schema, **updated_catalog_info_params
+        )
+        return self.__class__(ddf, ddf_pixel_map, hc_structure)
 
     def get_healpix_pixels(self) -> list[HealpixPixel]:
         """Get all HEALPix pixels that are contained in the catalog
@@ -167,6 +213,33 @@ class HealpixDataset(Dataset):
         partition_index = self._ddf_pixel_map[hp_pixel]
         return partition_index
 
+    @property
+    def partitions(self):
+        """Returns the partitions of the catalog"""
+        return PartitionIndexer(self)
+
+    def head(self, n: int = 5) -> npd.NestedFrame:
+        """Returns a few rows of data for previewing purposes.
+
+        Args:
+            n (int): The number of desired rows.
+
+        Returns:
+            A pandas DataFrame with up to `n` of data.
+        """
+        dfs = []
+        remaining_rows = n
+        for partition in self._ddf.partitions:
+            if remaining_rows == 0:
+                break
+            partition_head = partition.head(remaining_rows)
+            if len(partition_head) > 0:
+                dfs.append(partition_head)
+                remaining_rows -= len(partition_head)
+        if len(dfs) > 0:
+            return npd.NestedFrame(pd.concat(dfs))
+        return self._ddf._meta
+
     def query(self, expr: str) -> Self:
         """Filters catalog using a complex query expression
 
@@ -182,12 +255,11 @@ class HealpixDataset(Dataset):
             with the query expression
         """
         ndf = self._ddf.query(expr)
-        hc_structure = self._create_modified_hc_structure(total_rows=0)
-        return self.__class__(ndf, self._ddf_pixel_map, hc_structure)
+        return self._create_updated_dataset(ddf=ndf)
 
     def _perform_search(
         self,
-        metadata: hc.catalog.Catalog | hc.catalog.MarginCatalog,
+        metadata: HCHealpixDataset,
         search: AbstractSearch,
     ) -> tuple[DaskDFPixelMap, nd.NestedFrame]:
         """Performs a search on the catalog from a list of pixels to search in
@@ -231,7 +303,9 @@ class HealpixDataset(Dataset):
         """
         filtered_hc_structure = search.filter_hc_catalog(self.hc_structure)
         ddf_partition_map, search_ndf = self._perform_search(filtered_hc_structure, search)
-        return self.__class__(search_ndf, ddf_partition_map, filtered_hc_structure)
+        return self._create_updated_dataset(
+            ddf=search_ndf, ddf_pixel_map=ddf_partition_map, hc_structure=filtered_hc_structure
+        )
 
     def map_partitions(
         self,
@@ -297,9 +371,7 @@ class HealpixDataset(Dataset):
             output_ddf = self._ddf.map_partitions(func, *args, meta=meta, **kwargs)
 
         if isinstance(output_ddf, nd.NestedFrame) | isinstance(output_ddf, dd.DataFrame):
-            return self.__class__(
-                nd.NestedFrame.from_dask_dataframe(output_ddf), self._ddf_pixel_map, self.hc_structure
-            )
+            return self._create_updated_dataset(ddf=nd.NestedFrame.from_dask_dataframe(output_ddf))
         warnings.warn(
             "output of the function must be a DataFrame to generate an LSDB `Catalog`. `map_partitions` "
             "will return a dask object instead of a Catalog.",
@@ -327,7 +399,9 @@ class HealpixDataset(Dataset):
         )
         ddf_partition_map = {pixel: i for i, pixel in enumerate(non_empty_pixels)}
         filtered_hc_structure = self.hc_structure.filter_from_pixel_list(non_empty_pixels)
-        return self.__class__(search_ddf, ddf_partition_map, filtered_hc_structure)
+        return self._create_updated_dataset(
+            ddf=search_ddf, ddf_pixel_map=ddf_partition_map, hc_structure=filtered_hc_structure
+        )
 
     def _get_non_empty_partitions(self) -> tuple[list[HealpixPixel], np.ndarray]:
         """Determines which pixels and partitions of a catalog are not empty
@@ -488,6 +562,7 @@ class HealpixDataset(Dataset):
         base_catalog_path: str | Path | UPath,
         *,
         catalog_name: str | None = None,
+        default_columns: list[str] | None = None,
         overwrite: bool = False,
         **kwargs,
     ):
@@ -496,6 +571,9 @@ class HealpixDataset(Dataset):
         Args:
             base_catalog_path (str): Location where catalog is saved to
             catalog_name (str): The name of the catalog to be saved
+            default_columns (list[str]): A metadata property with the list of the columns in the catalog to
+                be loaded by default. By default, uses the default columns from the original hats catalogs if
+                they exist.
             overwrite (bool): If True existing catalog is overwritten
             **kwargs: Arguments to pass to the parquet write operations
         """
@@ -506,6 +584,7 @@ class HealpixDataset(Dataset):
             self,
             base_catalog_path=base_catalog_path,
             catalog_name=catalog_name,
+            default_columns=default_columns,
             histogram_order=histogram_order,
             overwrite=overwrite,
             **kwargs,
@@ -594,8 +673,7 @@ class HealpixDataset(Dataset):
             return df
 
         ndf = self._ddf.map_partitions(drop_na_part, meta=self._ddf._meta)
-        hc_structure = self._create_modified_hc_structure(total_rows=0)
-        return self.__class__(ndf, self._ddf_pixel_map, hc_structure)
+        return self._create_updated_dataset(ddf=ndf)
 
     def nest_lists(
         self,
@@ -639,8 +717,7 @@ class HealpixDataset(Dataset):
             list_columns=list_columns,
             name=name,
         )
-        hc_structure = self._create_modified_hc_structure(total_rows=0)
-        return self.__class__(new_ddf, self._ddf_pixel_map, hc_structure)
+        return self._create_updated_dataset(ddf=new_ddf)
 
     def reduce(self, func, *args, meta=None, append_columns=False, **kwargs) -> Self:
         """
@@ -706,13 +783,10 @@ class HealpixDataset(Dataset):
 
         ndf = nd.NestedFrame.from_dask_dataframe(self._ddf.map_partitions(reduce_part, meta=meta))
 
-        hc_updates: dict = {"total_rows": 0}
+        hc_updates = {}
         if not append_columns:
-            hc_updates = {**hc_updates, "ra_column": "", "dec_column": ""}
-
-        hc_catalog = self._create_modified_hc_structure(**hc_updates)
-        hc_catalog.schema = get_arrow_schema(ndf)
-        return self.__class__(ndf, self._ddf_pixel_map, hc_catalog)
+            hc_updates = {"ra_column": "", "dec_column": ""}
+        return self._create_updated_dataset(ddf=ndf, updated_catalog_info_params=hc_updates)
 
     def plot_points(
         self,

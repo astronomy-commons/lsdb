@@ -13,7 +13,6 @@ from hats.catalog import TableProperties
 from hats.inspection.visualize_catalog import initialize_wcs_axes
 from matplotlib import pyplot as plt
 from matplotlib.figure import Figure
-from mocpy import MOC
 
 if TYPE_CHECKING:
     from lsdb.types import HCCatalogTypeVar
@@ -33,7 +32,7 @@ class AbstractSearch(ABC):
     def __init__(self, fine: bool = True):
         self.fine = fine
 
-    def filter_hc_catalog(self, hc_structure: HCCatalogTypeVar) -> MOC:
+    def filter_hc_catalog(self, hc_structure: HCCatalogTypeVar) -> HCCatalogTypeVar:
         """Determine the target partitions for further filtering."""
         raise NotImplementedError("Search Class must implement `filter_hc_catalog` method")
 

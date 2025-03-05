@@ -2,6 +2,7 @@ import nested_dask as nd
 import nested_pandas as npd
 import numpy as np
 import pandas as pd
+import pyarrow as pa
 import pytest
 from hats.pixel_math import HealpixPixel
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN, spatial_index_to_healpix
@@ -10,9 +11,7 @@ from lsdb import read_hats
 from lsdb.dask.merge_catalog_functions import align_catalogs
 
 
-def test_small_sky_join_small_sky_order1(
-    small_sky_catalog, small_sky_order1_catalog, assert_divisions_are_correct
-):
+def test_small_sky_join_small_sky_order1(small_sky_catalog, small_sky_order1_catalog, helpers):
     suffixes = ("_a", "_b")
     with pytest.warns(match="margin"):
         joined = small_sky_catalog.join(
@@ -24,7 +23,7 @@ def test_small_sky_join_small_sky_order1(
     for col_name, dtype in small_sky_order1_catalog.dtypes.items():
         assert (col_name + suffixes[1], dtype) in joined.dtypes.items()
     assert joined._ddf.index.name == SPATIAL_INDEX_COLUMN
-    assert joined._ddf.index.dtype == np.int64
+    assert joined._ddf.index.dtype == pd.ArrowDtype(pa.int64())
     alignment = align_catalogs(small_sky_catalog, small_sky_order1_catalog)
     assert joined.hc_structure.moc == alignment.moc
     assert joined.get_healpix_pixels() == alignment.pixel_tree.get_healpix_pixels()
@@ -39,11 +38,12 @@ def test_small_sky_join_small_sky_order1(
         joined_row = joined_compute.query(f"id{suffixes[0]} == {row['id']}")
         assert joined_row.index.to_numpy()[0] == index
         assert joined_row[f"id{suffixes[1]}"].to_numpy()[0] == row["id"]
-    assert_divisions_are_correct(joined)
+    helpers.assert_divisions_are_correct(joined)
+    helpers.assert_schema_correct(joined)
 
 
 def test_small_sky_join_small_sky_order1_source(
-    small_sky_catalog, small_sky_order1_source_with_margin, assert_divisions_are_correct
+    small_sky_catalog, small_sky_order1_source_with_margin, helpers
 ):
     suffixes = ("_a", "_b")
     joined = small_sky_catalog.join(
@@ -63,7 +63,34 @@ def test_small_sky_join_small_sky_order1_source(
     assert len(joined_compute) == len(small_sky_order1_compute)
     joined_test = small_sky_order1_compute.merge(joined_compute, left_on="object_id", right_on="object_id_b")
     assert (joined_test["id_a"].to_numpy() == joined_test["object_id"].to_numpy()).all()
-    assert_divisions_are_correct(joined)
+    helpers.assert_divisions_are_correct(joined)
+    helpers.assert_schema_correct(joined)
+
+
+def test_small_sky_join_default_columns(
+    small_sky_order1_default_cols_catalog, small_sky_order1_source_with_margin, helpers
+):
+    suffixes = ("_a", "_b")
+    joined = small_sky_order1_default_cols_catalog.join(
+        small_sky_order1_source_with_margin, left_on="id", right_on="object_id", suffixes=suffixes
+    )
+    for col_name, dtype in small_sky_order1_default_cols_catalog.dtypes.items():
+        assert (col_name + suffixes[0], dtype) in joined.dtypes.items()
+    for col_name, dtype in small_sky_order1_source_with_margin.dtypes.items():
+        assert (col_name + suffixes[1], dtype) in joined.dtypes.items()
+
+    alignment = align_catalogs(small_sky_order1_default_cols_catalog, small_sky_order1_source_with_margin)
+    assert joined.hc_structure.moc == alignment.moc
+    assert joined.get_healpix_pixels() == alignment.pixel_tree.get_healpix_pixels()
+
+    joined_compute = joined.compute()
+    small_sky_order1_compute = small_sky_order1_source_with_margin.compute()
+    assert len(joined_compute) == len(small_sky_order1_compute)
+    joined_test = small_sky_order1_compute.merge(joined_compute, left_on="object_id", right_on="object_id_b")
+    assert (joined_test["id_a"].to_numpy() == joined_test["object_id"].to_numpy()).all()
+    helpers.assert_divisions_are_correct(joined)
+    helpers.assert_schema_correct(joined)
+    helpers.assert_default_columns_in_columns(joined)
 
 
 def test_join_wrong_columns(small_sky_catalog, small_sky_order1_catalog):
@@ -100,7 +127,7 @@ def test_join_association(small_sky_catalog, small_sky_xmatch_catalog, small_sky
     for col in small_sky_xmatch_catalog._ddf.columns:
         assert col + suffixes[1] in joined._ddf.columns
     assert joined._ddf.index.name == SPATIAL_INDEX_COLUMN
-    assert joined._ddf.index.dtype == np.int64
+    assert joined._ddf.index.dtype == pd.ArrowDtype(pa.int64())
 
     small_sky_compute = small_sky_catalog.compute()
     small_sky_xmatch_compute = small_sky_xmatch_catalog.compute()
@@ -213,7 +240,7 @@ def test_join_source_margin_soft(
     pd.testing.assert_frame_equal(joined.compute(), joined_on.compute())
 
 
-def test_join_nested(small_sky_catalog, small_sky_order1_source_with_margin, assert_divisions_are_correct):
+def test_join_nested(small_sky_catalog, small_sky_order1_source_with_margin, helpers):
     joined = small_sky_catalog.join_nested(
         small_sky_order1_source_with_margin,
         left_on="id",
@@ -225,7 +252,7 @@ def test_join_nested(small_sky_catalog, small_sky_order1_source_with_margin, ass
     for col_name, dtype in small_sky_order1_source_with_margin.dtypes.items():
         if col_name != "object_id":
             assert (col_name, dtype.pyarrow_dtype) in joined["sources"].dtypes.fields.items()
-    assert_divisions_are_correct(joined)
+    helpers.assert_divisions_are_correct(joined)
     alignment = align_catalogs(small_sky_catalog, small_sky_order1_source_with_margin)
     assert joined.hc_structure.moc == alignment.moc
     assert joined.get_healpix_pixels() == alignment.pixel_tree.get_healpix_pixels()
@@ -246,14 +273,14 @@ def test_join_nested(small_sky_catalog, small_sky_order1_source_with_margin, ass
         )
 
 
-def test_merge_asof(small_sky_catalog, small_sky_xmatch_catalog, assert_divisions_are_correct):
+def test_merge_asof(small_sky_catalog, small_sky_xmatch_catalog, helpers):
     suffixes = ("_a", "_b")
     for direction in ["backward", "forward", "nearest"]:
         joined = small_sky_catalog.merge_asof(
             small_sky_xmatch_catalog, direction=direction, suffixes=suffixes
         )
         assert isinstance(joined._ddf, nd.NestedFrame)
-        assert_divisions_are_correct(joined)
+        helpers.assert_divisions_are_correct(joined)
         alignment = align_catalogs(small_sky_catalog, small_sky_xmatch_catalog)
         assert joined.hc_structure.moc == alignment.moc
         assert joined.get_healpix_pixels() == alignment.pixel_tree.get_healpix_pixels()
