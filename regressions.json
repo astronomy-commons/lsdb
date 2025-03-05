@@ -1,1 +1,1 @@
-{"regressions": []}
+{"regressions": [["benchmarks.time_kdtree_crossmatch", "graphs/Cython/branch-HEAD/build/machine-gh-runner/packaging/python-3.11/benchmarks.time_kdtree_crossmatch.json", {"python": "3.11"}, null, 0.09146036149999759, 0.07881961049997699, [[null, 913, 0.08243148700000802, 0.09146036149999759]]]]}
