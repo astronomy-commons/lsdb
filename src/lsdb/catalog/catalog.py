@@ -288,7 +288,7 @@ class Catalog(HealpixDataset):
         # Separate kwargs for from_dataframe and crossmatch
         sig = inspect.signature(from_dataframe)
         from_dataframe_arg_names = list(sig.parameters.keys())
-        from_dataframe_kwargs = {k: kwargs.pop(k) for k in kwargs if k in from_dataframe_arg_names}
+        from_dataframe_kwargs = {k: kwargs.pop(k) for k in from_dataframe_arg_names if k in kwargs}
 
         # Convert the given DataFrame to a Catalog.
         other_catalog = from_dataframe(other, **from_dataframe_kwargs)
