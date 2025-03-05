@@ -195,8 +195,9 @@ def align_and_apply(
         @delayed
         def perform_func(*partitions_and_pixels):
             filtered_parts = []
+            partitions = partitions_and_pixels[: len(aligned_partitions)]
             pixels = partitions_and_pixels[len(aligned_partitions) :]
-            for df in partitions_and_pixels[: len(aligned_partitions)]:
+            for df in partitions:
                 filtered_parts.append(remove_hips_columns(df))
             result_df = func(
                 *filtered_parts,

@@ -65,7 +65,6 @@ def perform_join_on(
     left_on: str,
     right_on: str,
     suffixes: tuple[str, str],
-    right_columns: list[str],
 ):
     """Performs a join on two catalog partitions
 
@@ -82,7 +81,6 @@ def perform_join_on(
         left_on (str): the column to join on from the left partition
         right_on (str): the column to join on from the right partition
         suffixes (Tuple[str,str]): the suffixes to apply to each partition's column names
-        right_columns (List[str]): the columns to include from the right margin partition
 
     Returns:
         A dataframe with the result of merging the left and right partitions on the specified columns
@@ -113,7 +111,6 @@ def perform_join_nested(
     right_margin_catalog_info: TableProperties,
     left_on: str,
     right_on: str,
-    right_columns: list[str],
     right_name: str,
 ):
     """Performs a join on two catalog partitions by adding the right catalog a nested column using
@@ -131,7 +128,6 @@ def perform_join_nested(
         right_margin_catalog_info (hc.TableProperties): the catalog info of the right margin catalog
         left_on (str): the column to join on from the left partition
         right_on (str): the column to join on from the right partition
-        right_columns (List[str]): the columns to include from the right margin partition
         right_name (str): the name of the nested column in the resulting df to join the right catalog into
 
     Returns:
@@ -164,7 +160,6 @@ def perform_join_through(
     right_margin_catalog_info: TableProperties,
     assoc_catalog_info: TableProperties,
     suffixes: tuple[str, str],
-    right_columns: list[str],
 ):
     """Performs a join on two catalog partitions through an association catalog
 
@@ -183,7 +178,6 @@ def perform_join_through(
             catalog
         assoc_catalog_info (hc.TableProperties): the hats structure of the association catalog
         suffixes (Tuple[str,str]): the suffixes to apply to each partition's column names
-        right_columns (List[str]): the columns to include from the right margin partition
 
     Returns:
         A dataframe with the result of merging the left and right partitions on the specified columns
@@ -294,7 +288,6 @@ def join_catalog_data_on(
         left_on,
         right_on,
         suffixes,
-        right.columns,
     )
 
     meta_df = generate_meta_df_for_joined_tables([left, right], suffixes)
@@ -343,7 +336,6 @@ def join_catalog_data_nested(
         perform_join_nested,
         left_on,
         right_on,
-        right.columns,
         nested_column_name,
     )
 
@@ -403,7 +395,6 @@ def join_catalog_data_through(
         ],
         perform_join_through,
         suffixes,
-        right.columns,
     )
 
     association_join_columns = [

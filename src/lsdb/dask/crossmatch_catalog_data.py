@@ -39,7 +39,6 @@ def perform_crossmatch(
     right_margin_catalog_info,
     algorithm,
     suffixes,
-    right_columns,
     meta_df,
     **kwargs,
 ):
@@ -125,7 +124,6 @@ def crossmatch_catalog_data(
         perform_crossmatch,
         crossmatch_algorithm,
         suffixes,
-        right.columns,
         meta_df,
         **kwargs,
     )
