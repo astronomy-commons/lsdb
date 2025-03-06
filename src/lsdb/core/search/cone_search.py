@@ -34,11 +34,15 @@ class ConeSearch(AbstractSearch):
         return cone_filter(frame, self.ra, self.dec, self.radius_arcsec, metadata)
 
     def _perform_plot(self, ax: WCSAxes, **kwargs):
+
+        default_kwargs = {"ec": "#00000000"}
+        kwargs_to_use = default_kwargs.update(kwargs)
+
         circle = SphericalCircle(
             (self.ra * u.deg, self.dec * u.deg),
             self.radius_arcsec * u.arcsec,
             transform=ax.get_transform("icrs"),
-            **kwargs,
+            **kwargs_to_use,
         )
         ax.add_patch(circle)
 
