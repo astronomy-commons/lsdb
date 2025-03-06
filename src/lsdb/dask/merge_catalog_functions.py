@@ -208,6 +208,7 @@ def align_and_apply(
 
 @delayed
 def perform_align_and_apply_func(num_partitions, func, *args, **kwargs):
+    """Performs the function inside `align_and_apply` and updates hive columns"""
     filtered_parts = []
     partitions = args[:num_partitions]
     pixels = args[num_partitions : 2 * num_partitions]
