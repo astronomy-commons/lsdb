@@ -4,7 +4,6 @@ from __future__ import annotations
 import warnings
 from typing import TYPE_CHECKING
 
-import dask
 import nested_dask as nd
 import nested_pandas as npd
 import pandas as pd
@@ -53,7 +52,6 @@ def rename_columns_with_suffixes(left: npd.NestedFrame, right: npd.NestedFrame, 
 
 
 # pylint: disable=too-many-arguments, unused-argument
-@dask.delayed
 def perform_join_on(
     left: npd.NestedFrame,
     right: npd.NestedFrame,
@@ -67,7 +65,6 @@ def perform_join_on(
     left_on: str,
     right_on: str,
     suffixes: tuple[str, str],
-    right_columns: list[str],
 ):
     """Performs a join on two catalog partitions
 
@@ -84,7 +81,6 @@ def perform_join_on(
         left_on (str): the column to join on from the left partition
         right_on (str): the column to join on from the right partition
         suffixes (Tuple[str,str]): the suffixes to apply to each partition's column names
-        right_columns (List[str]): the columns to include from the right margin partition
 
     Returns:
         A dataframe with the result of merging the left and right partitions on the specified columns
@@ -92,7 +88,7 @@ def perform_join_on(
     if right_pixel.order > left_pixel.order:
         left = filter_by_spatial_index_to_pixel(left, right_pixel.order, right_pixel.pixel)
 
-    right_joined_df = concat_partition_and_margin(right, right_margin, right_columns)
+    right_joined_df = concat_partition_and_margin(right, right_margin)
 
     left, right_joined_df = rename_columns_with_suffixes(left, right_joined_df, suffixes)
     merged = left.reset_index().merge(
@@ -103,7 +99,6 @@ def perform_join_on(
 
 
 # pylint: disable=too-many-arguments, unused-argument
-@dask.delayed
 def perform_join_nested(
     left: npd.NestedFrame,
     right: npd.NestedFrame,
@@ -116,7 +111,6 @@ def perform_join_nested(
     right_margin_catalog_info: TableProperties,
     left_on: str,
     right_on: str,
-    right_columns: list[str],
     right_name: str,
 ):
     """Performs a join on two catalog partitions by adding the right catalog a nested column using
@@ -134,7 +128,6 @@ def perform_join_nested(
         right_margin_catalog_info (hc.TableProperties): the catalog info of the right margin catalog
         left_on (str): the column to join on from the left partition
         right_on (str): the column to join on from the right partition
-        right_columns (List[str]): the columns to include from the right margin partition
         right_name (str): the name of the nested column in the resulting df to join the right catalog into
 
     Returns:
@@ -143,7 +136,7 @@ def perform_join_nested(
     if right_pixel.order > left_pixel.order:
         left = filter_by_spatial_index_to_pixel(left, right_pixel.order, right_pixel.pixel)
 
-    right_joined_df = concat_partition_and_margin(right, right_margin, right_columns)
+    right_joined_df = concat_partition_and_margin(right, right_margin)
 
     right_joined_df = pack_flat(npd.NestedFrame(right_joined_df.set_index(right_on))).rename(right_name)
 
@@ -153,7 +146,6 @@ def perform_join_nested(
 
 
 # pylint: disable=too-many-arguments, unused-argument
-@dask.delayed
 def perform_join_through(
     left: npd.NestedFrame,
     right: npd.NestedFrame,
@@ -168,7 +160,6 @@ def perform_join_through(
     right_margin_catalog_info: TableProperties,
     assoc_catalog_info: TableProperties,
     suffixes: tuple[str, str],
-    right_columns: list[str],
 ):
     """Performs a join on two catalog partitions through an association catalog
 
@@ -187,7 +178,6 @@ def perform_join_through(
             catalog
         assoc_catalog_info (hc.TableProperties): the hats structure of the association catalog
         suffixes (Tuple[str,str]): the suffixes to apply to each partition's column names
-        right_columns (List[str]): the columns to include from the right margin partition
 
     Returns:
         A dataframe with the result of merging the left and right partitions on the specified columns
@@ -197,7 +187,7 @@ def perform_join_through(
     if right_pixel.order > left_pixel.order:
         left = filter_by_spatial_index_to_pixel(left, right_pixel.order, right_pixel.pixel)
 
-    right_joined_df = concat_partition_and_margin(right, right_margin, right_columns)
+    right_joined_df = concat_partition_and_margin(right, right_margin)
 
     left, right_joined_df = rename_columns_with_suffixes(left, right_joined_df, suffixes)
 
@@ -205,7 +195,9 @@ def perform_join_through(
     if assoc_catalog_info.join_column_association != assoc_catalog_info.primary_column_association:
         join_columns.append(assoc_catalog_info.join_column_association)
 
-    through = through.drop(NON_JOINING_ASSOCIATION_COLUMNS, axis=1)
+    cols_to_drop = [c for c in NON_JOINING_ASSOCIATION_COLUMNS if c in through.columns]
+
+    through = through.drop(cols_to_drop, axis=1)
 
     merged = (
         left.reset_index()
@@ -227,7 +219,6 @@ def perform_join_through(
 
 
 # pylint: disable=too-many-arguments, unused-argument
-@dask.delayed
 def perform_merge_asof(
     left: npd.NestedFrame,
     right: npd.NestedFrame,
@@ -297,7 +288,6 @@ def join_catalog_data_on(
         left_on,
         right_on,
         suffixes,
-        right.columns,
     )
 
     meta_df = generate_meta_df_for_joined_tables([left, right], suffixes)
@@ -346,7 +336,6 @@ def join_catalog_data_nested(
         perform_join_nested,
         left_on,
         right_on,
-        right.columns,
         nested_column_name,
     )
 
@@ -406,7 +395,6 @@ def join_catalog_data_through(
         ],
         perform_join_through,
         suffixes,
-        right.columns,
     )
 
     association_join_columns = [

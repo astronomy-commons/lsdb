@@ -3,7 +3,6 @@ from __future__ import annotations
 import warnings
 from typing import TYPE_CHECKING, Type
 
-import dask
 import nested_dask as nd
 from hats.pixel_tree import PixelAlignment
 
@@ -28,7 +27,6 @@ if TYPE_CHECKING:
 
 
 # pylint: disable=too-many-arguments, unused-argument
-@dask.delayed
 def perform_crossmatch(
     left_df,
     right_df,
@@ -41,7 +39,6 @@ def perform_crossmatch(
     right_margin_catalog_info,
     algorithm,
     suffixes,
-    right_columns,
     meta_df,
     **kwargs,
 ):
@@ -56,7 +53,7 @@ def perform_crossmatch(
     if len(left_df) == 0:
         return meta_df
 
-    right_joined_df = concat_partition_and_margin(right_df, right_margin_df, right_columns)
+    right_joined_df = concat_partition_and_margin(right_df, right_margin_df)
 
     return algorithm(
         left_df,
@@ -127,7 +124,6 @@ def crossmatch_catalog_data(
         perform_crossmatch,
         crossmatch_algorithm,
         suffixes,
-        right.columns,
         meta_df,
         **kwargs,
     )
