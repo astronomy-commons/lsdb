@@ -128,10 +128,17 @@ def test_read_hats_no_pandas_with_index_column(small_sky_order1_no_pandas_dir, h
     helpers.assert_schema_correct(catalog)
 
 
-def test_read_hats_with_extra_kwargs(small_sky_order1_dir):
+def test_read_hats_with_extra_kwargs(small_sky_order1_dir):  # TODO
     catalog = lsdb.read_hats(small_sky_order1_dir, filters=[("ra", ">", 300)], engine="pyarrow")
     assert isinstance(catalog, lsdb.Catalog)
     assert np.greater(catalog.compute()["ra"].to_numpy(), 300).all()
+
+
+def test_read_hats_with_wrong_kwargs(small_sky_order1_dir):  # TODO
+    catalog = lsdb.read_hats(small_sky_order1_dir)  # Should pass
+    assert isinstance(catalog, lsdb.Catalog)
+    with pytest.raises(ValueError):
+        _ = lsdb.read_hats(small_sky_order1_dir, maaargin=42.0)  # Should fail
 
 
 def test_pixels_in_map_equal_catalog_pixels(small_sky_order1_dir, small_sky_order1_hats_catalog):
