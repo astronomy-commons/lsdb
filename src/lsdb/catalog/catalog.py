@@ -246,7 +246,7 @@ class Catalog(HealpixDataset):
         See `crossmatch` for details on the cross-matching process.
 
         Args:
-            other (pd.DataFrame): The DataFrame to cross-match against the catalog.
+            other (npd.NestedFrame): The frame to cross-match against the catalog.
             suffixes (Tuple[str, str], optional): A pair of suffixes to be appended to each column
                 name when they are joined. Defaults to using the catalog name as the suffix.
             algorithm (BuiltInCrossmatchAlgorithm | Type[AbstractCrossmatchAlgorithm], optional): The
