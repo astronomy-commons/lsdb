@@ -126,9 +126,8 @@ def test_box_search_invalid_args(small_sky_order1_catalog):
 
 
 def test_empty_box_search_with_margin(small_sky_order1_source_with_margin):
-    ra = (80, 100)
+    ra = (100, 120)
     dec = (0, 10)
     box = small_sky_order1_source_with_margin.box_search(ra, dec, fine=False)
-    small_sky_order1_source_with_margin.plot_pixels()
     assert len(box._ddf_pixel_map) == 0
     assert len(box.margin._ddf_pixel_map) == 0

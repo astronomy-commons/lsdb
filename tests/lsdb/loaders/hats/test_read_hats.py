@@ -208,7 +208,7 @@ def test_parquet_data_in_partitions_match_files(small_sky_order1_dir, small_sky_
         parquet_path = hc.io.paths.pixel_catalog_file(
             small_sky_order1_hats_catalog.catalog_base_dir, healpix_pixel
         )
-        loaded_df = pd.read_parquet(parquet_path, dtype_backend="pyarrow")
+        loaded_df = pd.read_parquet(parquet_path, dtype_backend="pyarrow").set_index("_healpix_29")
         pd.testing.assert_frame_equal(partition_df, loaded_df)
 
 
@@ -380,6 +380,7 @@ def test_read_hats_margin_catalog_subset(
     assert margin_info.primary_catalog == small_sky_order1_source_margin_info.primary_catalog
     assert margin_info.margin_threshold == small_sky_order1_source_margin_info.margin_threshold
     assert margin.get_healpix_pixels() == [
+        HealpixPixel(0, 8),
         HealpixPixel(1, 44),
         HealpixPixel(1, 45),
         HealpixPixel(1, 46),
