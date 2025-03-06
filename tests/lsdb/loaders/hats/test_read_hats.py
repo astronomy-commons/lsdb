@@ -118,6 +118,41 @@ def test_read_hats_with_margin_extra_kwargs(small_sky_xmatch_dir, small_sky_xmat
     assert np.all(filtered_margin["ra"] > 300)
 
 
+def test_read_hats_npix_alt_suffix(
+    small_sky_npix_alt_suffix_dir, small_sky_npix_alt_suffix_hats_catalog, helpers
+):
+    catalog = lsdb.read_hats(small_sky_npix_alt_suffix_dir)
+    # Show that npix_suffix is not the standard ".parquet" but is still valid.
+    catalog_npix_suffix = catalog.hc_structure.catalog_info.npix_suffix
+    assert isinstance(catalog_npix_suffix, str)
+    assert catalog_npix_suffix != ".parquet"
+    assert catalog_npix_suffix == small_sky_npix_alt_suffix_hats_catalog.catalog_info.npix_suffix
+    # Show that the catalog can be read as expected.
+    assert isinstance(catalog, lsdb.Catalog)
+    assert isinstance(catalog._ddf, nd.NestedFrame)
+    assert catalog.hc_structure.catalog_info.total_rows == len(catalog)
+    assert len(catalog.compute().columns) == 8
+    assert isinstance(catalog.compute(), npd.NestedFrame)
+    helpers.assert_divisions_are_correct(catalog)
+    helpers.assert_index_correct(catalog)
+
+
+def test_read_hats_npix_as_dir(small_sky_npix_as_dir_dir, small_sky_npix_as_dir_hats_catalog, helpers):
+    catalog = lsdb.read_hats(small_sky_npix_as_dir_dir)
+    # Show that npix_suffix indicates that Npix are directories and also matches the hats property.
+    catalog_npix_suffix = catalog.hc_structure.catalog_info.npix_suffix
+    assert catalog_npix_suffix == "/"
+    assert catalog_npix_suffix == small_sky_npix_as_dir_hats_catalog.catalog_info.npix_suffix
+    # Show that the catalog can be read as expected.
+    assert isinstance(catalog, lsdb.Catalog)
+    assert isinstance(catalog._ddf, nd.NestedFrame)
+    assert catalog.hc_structure.catalog_info.total_rows == len(catalog)
+    assert len(catalog.compute().columns) == 8
+    assert isinstance(catalog.compute(), npd.NestedFrame)
+    helpers.assert_divisions_are_correct(catalog)
+    helpers.assert_index_correct(catalog)
+
+
 def test_read_hats_with_columns(small_sky_order1_dir, helpers):
     filter_columns = ["ra", "dec"]
     catalog = lsdb.read_hats(small_sky_order1_dir, columns=filter_columns)
