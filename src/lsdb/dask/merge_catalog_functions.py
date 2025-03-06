@@ -8,6 +8,7 @@ import nested_pandas as npd
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
+import pyarrow as pa
 from dask.dataframe.dispatch import make_meta
 from dask.delayed import Delayed, delayed
 from hats.catalog import TableProperties
@@ -26,8 +27,18 @@ if TYPE_CHECKING:
     from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
 
 
+HIVE_COLUMNS = {
+    paths.PARTITION_ORDER,
+    paths.PARTITION_DIR,
+    paths.PARTITION_PIXEL,
+    paths.MARGIN_ORDER,
+    paths.MARGIN_DIR,
+    paths.MARGIN_PIXEL,
+}
+
+
 def concat_partition_and_margin(
-    partition: npd.NestedFrame, margin: npd.NestedFrame | None, right_columns: list[str]
+    partition: npd.NestedFrame, margin: npd.NestedFrame | None
 ) -> npd.NestedFrame:
     """Concatenates a partition and margin dataframe together
 
@@ -41,19 +52,51 @@ def concat_partition_and_margin(
     if margin is None:
         return partition
 
-    hive_columns = [paths.PARTITION_ORDER, paths.PARTITION_DIR, paths.PARTITION_PIXEL]
-    # Remove the Norder/Dir/Npix columns (used only for partitioning the margin itself),
-    # and rename the margin_Norder/Dir/Npix to take their place.
-    margin_columns_no_hive = [col for col in margin.columns if col not in hive_columns]
-    rename_columns = {
-        f"margin_{paths.PARTITION_ORDER}": paths.PARTITION_ORDER,
-        f"margin_{paths.PARTITION_DIR}": paths.PARTITION_DIR,
-        f"margin_{paths.PARTITION_PIXEL}": paths.PARTITION_PIXEL,
-    }
-    margin_renamed = margin[margin_columns_no_hive].rename(columns=rename_columns)
-    margin_filtered = margin_renamed[right_columns]
-    joined_df = pd.concat([partition, margin_filtered]) if margin_filtered is not None else partition
+    joined_df = pd.concat([partition, margin])
     return npd.NestedFrame(joined_df)
+
+
+def remove_hips_columns(df: npd.NestedFrame | None):
+    """Removes any HIPS Norder, Dir, and Npix columns from a dataframe
+
+    Args:
+        df (npd.NestedFrame): The catalog dataframe
+
+    Returns:
+        The dataframe with the columns removed
+    """
+    if df is None:
+        return None
+    hive_columns_in_df = [c for c in HIVE_COLUMNS if c in df.columns]
+    return df.drop(columns=hive_columns_in_df)
+
+
+def add_hive_columns(df: npd.NestedFrame, pixel: HealpixPixel):
+    """Adds the HIPS Norder, Dir, and Npix columns to a dataframe
+
+    Args:
+        df (npd.NestedFrame): The catalog dataframe
+        pixel (HealpixPixel): The HEALPix pixel of the dataframe partition
+
+    Returns:
+        The dataframe with the columns added
+    """
+    order_series = pd.Series(
+        np.full(len(df), fill_value=pixel.order), dtype=pd.ArrowDtype(pa.uint8()), index=df.index
+    )
+    dir_series = pd.Series(
+        np.full(len(df), fill_value=pixel.dir), dtype=pd.ArrowDtype(pa.uint64()), index=df.index
+    )
+    pixel_series = pd.Series(
+        np.full(len(df), fill_value=pixel.pixel), dtype=pd.ArrowDtype(pa.uint64()), index=df.index
+    )
+    return df.assign(
+        **{
+            paths.PARTITION_ORDER: order_series,
+            paths.PARTITION_DIR: dir_series,
+            paths.PARTITION_PIXEL: pixel_series,
+        }
+    )
 
 
 def align_catalogs(left: Catalog, right: Catalog, add_right_margin: bool = True) -> PixelAlignment:
@@ -155,7 +198,24 @@ def align_and_apply(
     # defines an inner function that can be vectorized to apply the given function to each of the partitions
     # with the additional arguments including as the hc_structures and any specified additional arguments
     def apply_func(*partitions_and_pixels):
-        return func(*partitions_and_pixels, *catalog_infos, *args, **kwargs)
+        @delayed
+        def perform_func(*partitions_and_pixels):
+            filtered_parts = []
+            partitions = partitions_and_pixels[: len(aligned_partitions)]
+            pixels = partitions_and_pixels[len(aligned_partitions) :]
+            for df in partitions:
+                filtered_parts.append(remove_hips_columns(df))
+            result_df = func(
+                *filtered_parts,
+                *pixels,
+                *catalog_infos,
+                *args,
+                **kwargs,
+            )
+            aligned_pixel = max(pixels, key=lambda p: p.order)
+            return add_hive_columns(result_df, aligned_pixel)
+
+        return perform_func(*partitions_and_pixels)
 
     resulting_partitions = np.vectorize(apply_func)(*aligned_partitions, *pixels)
     return resulting_partitions
@@ -255,7 +315,8 @@ def generate_meta_df_for_joined_tables(
     # Construct meta for crossmatched catalog columns
     for table, suffix in zip(catalogs, suffixes):
         for name, col_type in table.dtypes.items():
-            meta[name + suffix] = pd.Series(dtype=col_type)
+            if name not in HIVE_COLUMNS:
+                meta[name + suffix] = pd.Series(dtype=col_type)
     # Construct meta for crossmatch result columns
     if extra_columns is not None:
         meta.update(extra_columns)
@@ -263,8 +324,9 @@ def generate_meta_df_for_joined_tables(
         # pylint: disable=protected-access
         index_type = catalogs[0]._ddf._meta.index.dtype
     index = pd.Index(pd.Series(dtype=index_type), name=index_name)
-    meta_df = pd.DataFrame(meta, index)
-    return npd.NestedFrame(meta_df)
+    meta_df = npd.NestedFrame(pd.DataFrame(meta, index))
+    meta_df = add_hive_columns(meta_df, HealpixPixel(0, 0))
+    return meta_df
 
 
 def generate_meta_df_for_nested_tables(
@@ -274,7 +336,7 @@ def generate_meta_df_for_nested_tables(
     join_column_name: str,
     extra_columns: pd.DataFrame | None = None,
     index_name: str = SPATIAL_INDEX_COLUMN,
-    index_type: npt.DTypeLike = np.int64,
+    index_type: npt.DTypeLike | None = None,
 ) -> npd.NestedFrame:
     """Generates a Dask meta DataFrame that would result from joining two catalogs, adding the right as a
     nested frame
@@ -300,10 +362,15 @@ def generate_meta_df_for_nested_tables(
     # Construct meta for crossmatched catalog columns
     for table in catalogs:
         for name, col_type in table.dtypes.items():
-            meta[name] = pd.Series(dtype=col_type)
+            if name not in HIVE_COLUMNS:
+                meta[name] = pd.Series(dtype=col_type)
     # Construct meta for crossmatch result columns
     if extra_columns is not None:
         meta.update(extra_columns)
+
+    if index_type is None:
+        # pylint: disable=protected-access
+        index_type = catalogs[0]._ddf._meta.index.dtype
     index = pd.Index(pd.Series(dtype=index_type), name=index_name)
     meta_df = pd.DataFrame(meta, index)
 
@@ -311,9 +378,14 @@ def generate_meta_df_for_nested_tables(
     # the eventual dataframe)
     # pylint: disable=protected-access
     nested_catalog_meta = nested_catalog._ddf._meta.copy().iloc[:0].drop(join_column_name, axis=1)
+    hive_cols_to_drop = [c for c in HIVE_COLUMNS if c in nested_catalog_meta.columns]
+    nested_catalog_meta = nested_catalog_meta.drop(columns=hive_cols_to_drop)
+
+    meta_df = npd.NestedFrame(meta_df).add_nested(nested_catalog_meta, nested_column_name)
+    meta_df = add_hive_columns(meta_df, HealpixPixel(0, 0))
 
     # Use nested-pandas to make the resulting meta with the nested catalog meta as a nested column
-    return npd.NestedFrame(meta_df).add_nested(nested_catalog_meta, nested_column_name)
+    return meta_df
 
 
 def concat_metas(metas: Sequence[npd.NestedFrame | dict]):

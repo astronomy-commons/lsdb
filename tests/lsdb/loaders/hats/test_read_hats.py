@@ -1,4 +1,5 @@
 from pathlib import Path
+from unittest.mock import call
 
 import hats as hc
 import nested_dask as nd
@@ -7,6 +8,7 @@ import numpy as np
 import numpy.testing as npt
 import pandas as pd
 import pytest
+from hats.io.file_io import get_upath_for_protocol
 from hats.pixel_math import HealpixPixel
 from pandas.core.dtypes.base import ExtensionDtype
 
@@ -26,6 +28,21 @@ def test_read_hats(small_sky_order1_dir, small_sky_order1_hats_catalog, helpers)
     helpers.assert_divisions_are_correct(catalog)
     helpers.assert_index_correct(catalog)
     helpers.assert_schema_correct(catalog)
+
+
+def test_read_hats_initializes_upath_once(
+    small_sky_order1_source_dir, small_sky_order1_source_margin_dir, mocker
+):
+    mock_method = "hats.io.file_io.file_pointer.get_upath_for_protocol"
+    mocked_upath_call = mocker.patch(mock_method, side_effect=get_upath_for_protocol)
+
+    lsdb.read_hats(small_sky_order1_source_dir, margin_cache=small_sky_order1_source_margin_dir).compute()
+
+    expected_calls = [
+        call.get_upath_for_protocol(small_sky_order1_source_dir),
+        call.get_upath_for_protocol(small_sky_order1_source_margin_dir),
+    ]
+    mocked_upath_call.assert_has_calls(expected_calls)
 
 
 def test_read_hats_default_cols(small_sky_order1_default_cols_dir, helpers):

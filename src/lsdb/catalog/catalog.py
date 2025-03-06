@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 from typing import Callable, Type
 
 import hats as hc
@@ -224,6 +225,61 @@ class Catalog(HealpixDataset):
             new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(ddf), moc=alignment.moc
         )
         return self.__class__(ddf, ddf_map, hc_catalog)
+
+    def crossmatch_dataframe(
+        self,
+        other: npd.NestedFrame,
+        suffixes: tuple[str, str] | None = None,
+        algorithm: (
+            Type[AbstractCrossmatchAlgorithm] | BuiltInCrossmatchAlgorithm
+        ) = BuiltInCrossmatchAlgorithm.KD_TREE,
+        output_catalog_name: str | None = None,
+        require_right_margin: bool = False,
+        **kwargs,
+    ) -> Catalog:
+        """Perform a cross-match between a catalog and a DataFrame.
+
+        This function converts the given DataFrame into a `Catalog` using `from_dataframe`
+        before calling `crossmatch`. It allows additional keyword arguments to be passed
+        to `from_dataframe` for customization.
+
+        See `crossmatch` for details on the cross-matching process.
+
+        Args:
+            other (npd.NestedFrame): The frame to cross-match against the catalog.
+            suffixes (Tuple[str, str], optional): A pair of suffixes to be appended to each column
+                name when they are joined. Defaults to using the catalog name as the suffix.
+            algorithm (BuiltInCrossmatchAlgorithm | Type[AbstractCrossmatchAlgorithm], optional): The
+                algorithm used for cross-matching. Can be either a string to specify one of the
+                built-in cross-matching methods, or a custom method defined by subclassing
+                AbstractCrossmatchAlgorithm. Defaults to `BuiltInCrossmatchAlgorithm.KD_TREE`.
+            output_catalog_name (str, optional): The name of the resulting catalog.
+                Default: `{left_name}_x_{right_name}`
+            require_right_margin (bool, optional): If `True`, raises an error if the right margin is missing,
+                which could lead to incomplete crossmatches. Default: `False`.
+            **kwargs: Additional keyword arguments for both `from_dataframe` and `crossmatch`.
+                Any arguments recognized by `from_dataframe` will be passed accordingly.
+
+        Returns:
+            Catalog: A `Catalog` with data from the input catalog and DataFrame, cross-matched
+            according to the specified algorithm.
+        """
+        # Lazy import to avoid circular dependencies.
+        # pylint: disable=C0415
+        from lsdb.loaders.dataframe.from_dataframe import from_dataframe
+
+        # Separate kwargs for from_dataframe and crossmatch
+        sig = inspect.signature(from_dataframe)
+        from_dataframe_arg_names = list(sig.parameters.keys())
+        from_dataframe_kwargs = {k: kwargs.pop(k) for k in from_dataframe_arg_names if k in kwargs}
+
+        # Convert the given DataFrame to a Catalog.
+        other_catalog = from_dataframe(other, **from_dataframe_kwargs)
+
+        # Call the crossmatch method with the newly generated Catalog.
+        return self.crossmatch(
+            other_catalog, suffixes, algorithm, output_catalog_name, require_right_margin, **kwargs
+        )
 
     def merge_map(
         self,

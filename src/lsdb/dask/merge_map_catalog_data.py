@@ -3,7 +3,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Callable
 
-import dask
 import nested_dask as nd
 import nested_pandas as npd
 from hats.catalog import TableProperties
@@ -24,7 +23,6 @@ if TYPE_CHECKING:
 
 
 # pylint: disable=too-many-arguments, unused-argument
-@dask.delayed
 def perform_merge_map(
     catalog_partition: npd.NestedFrame,
     map_partition: npd.NestedFrame,
