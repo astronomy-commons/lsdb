@@ -12,4 +12,5 @@ A more in-depth look into how LSDB works
     Accessing remote data <tutorials/remote_data>
     Margins <tutorials/margins>
     Index tables <tutorials/pre_executed/index_table>
+    Dask cluster configuration <tutorials/dask-cluster-tips>
     Performance testing <tutorials/performance>
