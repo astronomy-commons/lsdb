@@ -198,27 +198,30 @@ def align_and_apply(
     # defines an inner function that can be vectorized to apply the given function to each of the partitions
     # with the additional arguments including as the hc_structures and any specified additional arguments
     def apply_func(*partitions_and_pixels):
-        @delayed
-        def perform_func(*partitions_and_pixels):
-            filtered_parts = []
-            partitions = partitions_and_pixels[: len(aligned_partitions)]
-            pixels = partitions_and_pixels[len(aligned_partitions) :]
-            for df in partitions:
-                filtered_parts.append(remove_hips_columns(df))
-            result_df = func(
-                *filtered_parts,
-                *pixels,
-                *catalog_infos,
-                *args,
-                **kwargs,
-            )
-            aligned_pixel = max(pixels, key=lambda p: p.order)
-            return add_hive_columns(result_df, aligned_pixel)
-
-        return perform_func(*partitions_and_pixels)
+        return perform_align_and_apply_func(
+            len(aligned_partitions), func, *partitions_and_pixels, *catalog_infos, *args, **kwargs
+        )
 
     resulting_partitions = np.vectorize(apply_func)(*aligned_partitions, *pixels)
     return resulting_partitions
+
+
+@delayed
+def perform_align_and_apply_func(num_partitions, func, *args, **kwargs):
+    """Performs the function inside `align_and_apply` and updates hive columns"""
+    filtered_parts = []
+    partitions = args[:num_partitions]
+    pixels = args[num_partitions : 2 * num_partitions]
+    for df in partitions:
+        filtered_parts.append(remove_hips_columns(df))
+    result_df = func(
+        *filtered_parts,
+        *pixels,
+        *args[2 * num_partitions :],
+        **kwargs,
+    )
+    aligned_pixel = max(pixels, key=lambda p: p.order)
+    return add_hive_columns(result_df, aligned_pixel)
 
 
 def filter_by_spatial_index_to_pixel(dataframe: npd.NestedFrame, order: int, pixel: int) -> npd.NestedFrame:
