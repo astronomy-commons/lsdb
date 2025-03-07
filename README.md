@@ -13,6 +13,8 @@
 [![Read the Docs](https://img.shields.io/readthedocs/lsdb)](https://lsdb.readthedocs.io/)
 [![benchmarks](https://img.shields.io/github/actions/workflow/status/astronomy-commons/lsdb/asv-main.yml?label=benchmarks)](https://astronomy-commons.github.io/lsdb/)
 
+[![DOI:10.3847/2515-5172/ad4da1](https://zenodo.org/badge/DOI/10.48550/arXiv.2501.02103.svg)](https://ui.adsabs.harvard.edu/abs/2025arXiv250102103C)
+
 ## LSDB - Large Survey DataBase
 
 A framework to facilitate and enable spatial analysis for extremely large astronomical databases 
@@ -35,6 +37,11 @@ See related projects:
 
 See the [contribution guide](https://lsdb.readthedocs.io/en/stable/developer/contributing.html)
 for complete installation instructions and contribution best practices.
+
+## Citation
+
+If you use LSDB in your work, we ask the you cite the proceedings 
+["Using LSDB to enable large-scale catalog distribution, cross-matching, and analytics"](https://ui.adsabs.harvard.edu/abs/2025arXiv250102103C). Find full citation information [here](./CITATION.bib).
 
 ## Acknowledgements
 
