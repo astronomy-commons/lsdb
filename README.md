@@ -40,8 +40,9 @@ for complete installation instructions and contribution best practices.
 
 ## Citation
 
-If you use LSDB in your work, we ask the you cite the proceedings 
-["Using LSDB to enable large-scale catalog distribution, cross-matching, and analytics"](https://ui.adsabs.harvard.edu/abs/2025arXiv250102103C). Find full citation information [here](./CITATION.bib).
+If you use LSDB in your work, we ask the you cite the conference proceedings 
+["Using LSDB to enable large-scale catalog distribution, cross-matching, and analytics"](https://ui.adsabs.harvard.edu/abs/2025arXiv250102103C). 
+Find full citation information [here](./CITATION.bib).
 
 ## Acknowledgements
 

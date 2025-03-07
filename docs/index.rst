@@ -55,6 +55,7 @@ Using this Guide
 
 .. toctree::
    :hidden:
+   :caption: Using LSDB
 
    Home page <self>
    Getting Started <getting-started>
@@ -65,12 +66,8 @@ Using this Guide
 
 .. toctree::
    :hidden:
+   :caption: Project
 
    About <citation>
    Contact us <contact>
-
-.. toctree::
-   :hidden:
-   :caption: Developers
-
    Contribution Guide <developer/contributing>
