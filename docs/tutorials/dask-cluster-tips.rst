@@ -1,7 +1,7 @@
 Dask cluster configuration tips
 ===============================
 
-LSDB uses `Dask <https://dask.org/>`_ framework for parallel and out-of-memory computing.
+LSDB uses the `Dask <https://dask.org/>`_ framework for parallel and out-of-memory computing.
 Dask is a flexible library for parallel computing in Python that scales from single machines to large clusters.
 When using LSDB, it is usually worth setting up a Dask cluster to take advantage of parallel computing.
 With no Dask cluster, LSDB would use a single CPU core for the computations, which is prohibitive for large datasets.
