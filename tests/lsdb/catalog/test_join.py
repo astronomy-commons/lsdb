@@ -38,6 +38,7 @@ def test_small_sky_join_small_sky_order1(small_sky_catalog, small_sky_order1_cat
     helpers.assert_divisions_are_correct(joined)
     helpers.assert_schema_correct(joined)
     helpers.assert_hive_columns_correct(joined)
+    assert not joined.hc_structure.on_disk
 
 
 def test_small_sky_join_small_sky_order1_source(

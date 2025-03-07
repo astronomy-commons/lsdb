@@ -53,6 +53,7 @@ class TestCrossmatch:
         alignment = align_catalogs(small_sky_order1_default_cols_catalog, small_sky_xmatch_catalog)
         assert xmatched_cat.hc_structure.moc == alignment.moc
         assert xmatched_cat.get_healpix_pixels() == alignment.pixel_tree.get_healpix_pixels()
+        assert not xmatched_cat.hc_structure.on_disk
 
         assert isinstance(xmatched, npd.NestedFrame)
         assert len(xmatched) == len(xmatch_correct)
