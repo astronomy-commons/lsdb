@@ -28,6 +28,7 @@ def test_cone_search_filters_correct_points(small_sky_order1_catalog, helpers):
         else:
             assert len(cone_search_df.loc[cone_search_df["id"] == row["id"]]) == 0
     helpers.assert_divisions_are_correct(cone_search_catalog)
+    assert cone_search_catalog.hc_structure.catalog_path is not None
 
 
 def test_cone_search_filters_correct_points_margin(

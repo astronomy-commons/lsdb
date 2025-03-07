@@ -136,6 +136,7 @@ def test_query(small_sky_order1_catalog, helpers):
     assert isinstance(result_catalog._ddf, nd.NestedFrame)
     pd.testing.assert_frame_equal(result_catalog._ddf.compute(), expected_ddf.compute())
     helpers.assert_schema_correct(result_catalog)
+    assert result_catalog.hc_structure.catalog_path is not None
 
 
 def test_query_margin(small_sky_xmatch_with_margin):
@@ -710,6 +711,7 @@ def test_map_partitions(small_sky_order1_catalog):
     mapcomp = mapped.compute()
     assert isinstance(mapcomp, npd.NestedFrame)
     assert np.all(mapcomp["a"] == mapcomp["ra"] + 1)
+    assert mapped.hc_structure.catalog_path is not None
 
 
 def test_map_partitions_include_pixel(small_sky_order1_catalog):
