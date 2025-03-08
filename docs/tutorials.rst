@@ -15,6 +15,7 @@ An introduction to LSDB's core features and functionality
     Getting data into LSDB <tutorials/getting_data>
     Filtering large catalogs <tutorials/filtering_large_catalogs>
     Joining catalogs <tutorials/join_catalogs>
+    Plotting results <tutorials/pre_executed/plotting>
     Exporting results <tutorials/exporting_results>
 
 :doc:`Advanced Topics<advanced-topics>`
