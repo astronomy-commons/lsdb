@@ -46,10 +46,10 @@ by creating a new GitHub issue.
 Note that you may need to make changes in multiple repos to fully implement new
 features or bug fixes! See related projects:
 
-* HATS (`on GitHub <https://github.com/astronomy-commons/hats>`_ 
-  and `on ReadTheDocs <https://hats.readthedocs.io/en/stable/>`_)
-* HATS Import (`on GitHub <https://github.com/astronomy-commons/hats-import>`_
-  and `on ReadTheDocs <https://hats-import.readthedocs.io/en/stable/>`_)
+* HATS (`on GitHub <https://github.com/astronomy-commons/hats>`__ 
+  and `on ReadTheDocs <https://hats.readthedocs.io/en/stable/>`__)
+* HATS Import (`on GitHub <https://github.com/astronomy-commons/hats-import>`__
+  and `on ReadTheDocs <https://hats-import.readthedocs.io/en/stable/>`__)
 
 Fork the repository
 -------------------------------------------------------------------------------

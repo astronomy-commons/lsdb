@@ -18,11 +18,11 @@ An introduction to LSDB's core features and functionality
     Exporting results <tutorials/exporting_results>
 
 :doc:`Advanced Topics<advanced-topics>`
----------------------------
+------------------------------------------------------
 
 A more in-depth look into how LSDB works.
 
 :doc:`Example Science Use Cases<science-notebooks>`
----------------------------
+------------------------------------------------------
 
 Notebooks going over some more scientific example use cases
