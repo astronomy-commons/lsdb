@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import warnings
 from pathlib import Path
-from typing import Any, Callable, Iterable, Type, cast
+from typing import Any, Callable, Iterable, Literal, Mapping, Type, cast
 
 import astropy
 import dask
@@ -41,7 +41,7 @@ from lsdb.io.schema import get_arrow_schema
 from lsdb.types import DaskDFPixelMap
 
 
-# pylint: disable=protected-access
+# pylint: disable=protected-access,too-many-public-methods
 class HealpixDataset(Dataset):
     """LSDB Catalog DataFrame to perform analysis of sky catalogs and efficient
     spatial operations.
@@ -889,3 +889,77 @@ class HealpixDataset(Dataset):
             fig=fig,
             **kwargs,
         )
+
+    def sort_values(
+        self,
+        by: str | list[str],
+        npartitions: int | None = None,
+        ascending: bool | list[bool] = True,
+        na_position: Literal["first"] | Literal["last"] = "last",
+        partition_size: float = 128e6,
+        sort_function: Callable[[pd.DataFrame], pd.DataFrame] | None = None,
+        sort_function_kwargs: Mapping[str, Any] | None = None,
+        upsample: float = 1.0,
+        ignore_index: bool | None = False,
+        shuffle_method: str | None = None,
+        **options,
+    ) -> Self:
+        """Sort the catalog by column.
+
+        Sorting a parallel dataset requires expensive shuffles and is generally
+        not recommended. See 'set_index' for implementation details.
+
+        Args:
+            by: str or list[str]
+                Column(s) to sort by.
+            npartitions: int, None, or ‘auto’
+                The ideal number of output partitions. If None, use the same as the
+                input. If ‘auto’ then decide by memory use. Not used when sorting
+                nested layers.
+            ascending: bool or list[bool], optional
+                Sort ascending vs. descending. Defaults to True. Specify list for
+                multiple sort orders. If this is a list of bools, must match the
+                length of the by.
+            na_position: {‘last’, ‘first’}, optional
+                Puts NaNs at the beginning if ‘first’, puts NaN at the end if
+                ‘last’. Defaults to ‘last’.
+            partition_size: float, optional
+                The desired size of each partition in bytes. Defaults to 128e6
+                (128 MB). Not used in nested sorting.
+            sort_function: function, optional
+                Sorting function to use when sorting underlying partitions. If
+                None, defaults to M.sort_values (the partition library’s
+                implementation of sort_values). Not used when sorting nested
+                layers.
+            sort_function_kwargs: dict, optional
+                Additional keyword arguments to pass to the partition sorting
+                function. By default, by, ascending, and na_position are provided.
+            upsample: float, optional
+                Used to increase the number of samples for quantiles. Not used
+                in nested sorting
+            ignore_index: bool, optional
+                If True, the resulting axis will be labeled 0, 1, …, n - 1.
+                Defaults to False.
+            shuffle_method: str, optional
+                The method to use for shuffling data. Defaults to None. Not used
+                in nested sorting
+            **options: keyword arguments, optional
+                Additional options to pass to the sorting function.
+
+        Returns:
+            A new catalog with sorted values.
+        """
+        ndf = self._ddf.sort_values(
+            by=by,
+            npartitions=npartitions,
+            ascending=ascending,
+            na_position=na_position,
+            partition_size=partition_size,
+            sort_function=sort_function,
+            sort_function_kwargs=sort_function_kwargs,
+            upsample=upsample,
+            ignore_index=ignore_index,
+            shuffle_method=shuffle_method,
+            **options,
+        )
+        return self._create_updated_dataset(ddf=ndf)
