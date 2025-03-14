@@ -269,46 +269,43 @@ def test_join_nested(small_sky_catalog, small_sky_order1_source_with_margin, hel
         )
 
 
-def test_merge_asof(small_sky_catalog, small_sky_xmatch_catalog, helpers):
+@pytest.mark.parametrize("direction", ["backward", "forward", "nearest"])
+def test_merge_asof(small_sky_catalog, small_sky_xmatch_catalog, direction, helpers):
     suffixes = ("_a", "_b")
-    for direction in ["backward", "forward", "nearest"]:
-        joined = small_sky_catalog.merge_asof(
-            small_sky_xmatch_catalog, direction=direction, suffixes=suffixes
-        )
-        assert isinstance(joined._ddf, nd.NestedFrame)
-        helpers.assert_divisions_are_correct(joined)
-        alignment = align_catalogs(small_sky_catalog, small_sky_xmatch_catalog)
-        assert joined.hc_structure.moc == alignment.moc
-        assert joined.get_healpix_pixels() == alignment.pixel_tree.get_healpix_pixels()
+    joined = small_sky_catalog.merge_asof(small_sky_xmatch_catalog, direction=direction, suffixes=suffixes)
+    assert isinstance(joined._ddf, nd.NestedFrame)
+    helpers.assert_divisions_are_correct(joined)
+    alignment = align_catalogs(small_sky_catalog, small_sky_xmatch_catalog)
+    assert joined.hc_structure.moc == alignment.moc
+    assert joined.get_healpix_pixels() == alignment.pixel_tree.get_healpix_pixels()
 
-        joined_compute = joined.compute()
-        assert isinstance(joined_compute, npd.NestedFrame)
+    joined_compute = joined.compute()
+    assert isinstance(joined_compute, npd.NestedFrame)
 
-        drop_cols = [c for c in HIVE_COLUMNS if c in small_sky_catalog.columns]
-        small_sky_compute = (
-            small_sky_catalog.compute()
-            .drop(columns=drop_cols)
-            .rename(columns={c: c + suffixes[0] for c in small_sky_catalog.columns})
-        )
-        order_1_partition = spatial_index_to_healpix(small_sky_compute.index.to_numpy(), 1)
-        left_partitions = [
-            small_sky_compute[order_1_partition == p.pixel]
-            for p in small_sky_xmatch_catalog.get_healpix_pixels()
+    drop_cols = [c for c in HIVE_COLUMNS if c in small_sky_catalog.columns]
+    small_sky_compute = (
+        small_sky_catalog.compute()
+        .drop(columns=drop_cols)
+        .rename(columns={c: c + suffixes[0] for c in small_sky_catalog.columns})
+    )
+    order_1_partition = spatial_index_to_healpix(small_sky_compute.index.to_numpy(), 1)
+    left_partitions = [
+        small_sky_compute[order_1_partition == p.pixel] for p in small_sky_xmatch_catalog.get_healpix_pixels()
+    ]
+    small_sky_order1_partitions = [
+        p.compute()
+        .drop(columns=drop_cols)
+        .rename(columns={c: c + suffixes[1] for c in small_sky_xmatch_catalog.columns})
+        for p in small_sky_xmatch_catalog.partitions
+    ]
+    correct_result = pd.concat(
+        [
+            pd.merge_asof(lp, rp, direction=direction, left_index=True, right_index=True)
+            for lp, rp in zip(left_partitions, small_sky_order1_partitions)
         ]
-        small_sky_order1_partitions = [
-            p.compute()
-            .drop(columns=drop_cols)
-            .rename(columns={c: c + suffixes[1] for c in small_sky_xmatch_catalog.columns})
-            for p in small_sky_xmatch_catalog.partitions
-        ]
-        correct_result = pd.concat(
-            [
-                pd.merge_asof(lp, rp, direction=direction, left_index=True, right_index=True)
-                for lp, rp in zip(left_partitions, small_sky_order1_partitions)
-            ]
-        )
-        pd.testing.assert_frame_equal(joined_compute.drop(columns=drop_cols), correct_result)
-        helpers.assert_hive_columns_correct(joined)
+    )
+    pd.testing.assert_frame_equal(joined_compute.drop(columns=drop_cols), correct_result)
+    helpers.assert_hive_columns_correct(joined)
 
 
 def merging_function(input_frame, map_input, *args, **kwargs):
