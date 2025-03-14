@@ -867,6 +867,8 @@ class Catalog(HealpixDataset):
     ) -> Catalog:
         # pylint: disable=duplicate-code
         """Sort nested columns for each row in the catalog.
+        
+        Note that this does NOT sort rows, only nested values within rows.
 
         Args:
             by: str or list[str]
@@ -874,7 +876,7 @@ class Catalog(HealpixDataset):
             ascending: bool or list[bool], optional
                 Sort ascending vs. descending. Defaults to True. Specify list for
                 multiple sort orders. If this is a list of bools, must match the
-                length of the by.
+                length of the `by`.
             na_position: {‘last’, ‘first’}, optional
                 Puts NaNs at the beginning if ‘first’, puts NaN at the end if
                 ‘last’. Defaults to ‘last’.
