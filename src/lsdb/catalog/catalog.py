@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import inspect
-from typing import Callable, Literal, Type
+from typing import Callable, Iterable, Literal, Type
 
+import dask.dataframe as dd
 import hats as hc
 import nested_dask as nd
 import nested_pandas as npd
+import pandas as pd
 from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
 from hats.catalog.index.index_catalog import IndexCatalog as HCIndexCatalog
 from mocpy import MOC
@@ -456,6 +458,65 @@ class Catalog(HealpixDataset):
         cat.margin = self.margin.search(search) if self.margin is not None else None
         return cat
 
+    def map_partitions(
+        self,
+        func: Callable[..., npd.NestedFrame],
+        *args,
+        meta: pd.DataFrame | pd.Series | dict | Iterable | tuple | None = None,
+        include_pixel: bool = False,
+        **kwargs,
+    ) -> Catalog | dd.Series:
+        """Applies a function to each partition in the catalog and respective margin.
+
+        The ra and dec of each row is assumed to remain unchanged. If the function returns a DataFrame,
+        an LSDB Catalog is constructed and its respective margin is updated accordingly, if it exists.
+        Otherwise, only the main catalog Dask object is returned.
+
+        Args:
+            func (Callable): The function applied to each partition, which will be called with:
+                `func(partition: npd.NestedFrame, *args, **kwargs)` with the additional args and kwargs passed
+                to the `map_partitions` function. If the `include_pixel` parameter is set, the function will
+                be called with the `healpix_pixel` as the second positional argument set to the healpix pixel
+                of the partition as
+                `func(partition: npd.NestedFrame, healpix_pixel: HealpixPixel, *args, **kwargs)`
+            *args: Additional positional arguments to call `func` with.
+            meta (pd.DataFrame | pd.Series | Dict | Iterable | Tuple | None): An empty pandas DataFrame that
+                has columns matching the output of the function applied to a partition. Other types are
+                accepted to describe the output dataframe format, for full details see the dask documentation
+                https://blog.dask.org/2022/08/09/understanding-meta-keyword-argument
+                If meta is None (default), LSDB will try to work out the output schema of the function by
+                calling the function with an empty DataFrame. If the function does not work with an empty
+                DataFrame, this will raise an error and meta must be set. Note that some operations in LSDB
+                will generate empty partitions, though these can be removed by calling the
+                `Catalog.prune_empty_partitions` method.
+            include_pixel (bool): Whether to pass the Healpix Pixel of the partition as a `HealpixPixel`
+                object to the second positional argument of the function
+            **kwargs: Additional keyword args to pass to the function. These are passed to the Dask DataFrame
+                `dask.dataframe.map_partitions` function, so any of the dask function's keyword args such as
+                `transform_divisions` will be passed through and work as described in the dask documentation
+                https://docs.dask.org/en/stable/generated/dask.dataframe.DataFrame.map_partitions.html
+
+        Returns:
+            A new catalog with each partition replaced with the output of the function applied to the original
+            partition. If the function returns a non dataframe output, a dask Series will be returned.
+        """
+        catalog = super().map_partitions(
+            func,
+            *args,
+            meta=meta,
+            include_pixel=include_pixel,
+            **kwargs,
+        )
+        if isinstance(catalog, Catalog) and self.margin is not None:
+            catalog.margin = self.margin.map_partitions(
+                func,
+                *args,
+                meta=meta,
+                include_pixel=include_pixel,
+                **kwargs,
+            )  # type: ignore[assignment]
+        return catalog
+
     def merge(
         self,
         other: Catalog,
@@ -867,7 +928,7 @@ class Catalog(HealpixDataset):
     ) -> Catalog:
         # pylint: disable=duplicate-code
         """Sort nested columns for each row in the catalog.
-        
+
         Note that this does NOT sort rows, only nested values within rows.
 
         Args:

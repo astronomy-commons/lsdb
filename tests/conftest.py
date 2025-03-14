@@ -278,14 +278,9 @@ def small_sky_with_nested_sources(small_sky_with_nested_sources_dir):
 def small_sky_with_nested_sources_with_margin(
     small_sky_with_nested_sources_dir, small_sky_with_nested_sources_margin_dir
 ):
-    nested_catalog = lsdb.read_hats(small_sky_with_nested_sources_dir).map_partitions(
-        cast_nested, columns=["sources"]
-    )
-    nested_catalog_margin = lsdb.read_hats(small_sky_with_nested_sources_margin_dir).map_partitions(
-        cast_nested, columns=["sources"]
-    )
-    nested_catalog.margin = nested_catalog_margin
-    return nested_catalog
+    return lsdb.read_hats(
+        small_sky_with_nested_sources_dir, margin_cache=small_sky_with_nested_sources_margin_dir
+    ).map_partitions(cast_nested, columns=["sources"])
 
 
 @pytest.fixture

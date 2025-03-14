@@ -20,7 +20,7 @@ from hats.pixel_math import HealpixPixel, spatial_index_to_healpix
 from mocpy import WCS
 
 import lsdb
-from lsdb import Catalog
+from lsdb import Catalog, MarginCatalog
 from lsdb.core.search.moc_search import MOCSearch
 from lsdb.dask.merge_catalog_functions import filter_by_spatial_index_to_pixel
 
@@ -764,6 +764,22 @@ def test_non_working_empty_raises(small_sky_order1_catalog):
 
     with pytest.raises(ValueError):
         small_sky_order1_catalog.map_partitions(add_col)
+
+
+def test_map_partitions_updates_margin(small_sky_order1_source_with_margin):
+    def add_col(df, new_col_name, *, increment_value):
+        df[new_col_name] = df["source_ra"] + increment_value
+        return df
+
+    mapped = small_sky_order1_source_with_margin.map_partitions(add_col, "a", increment_value=1)
+    assert isinstance(mapped, Catalog)
+    assert isinstance(mapped.margin, MarginCatalog)
+    assert "a" in mapped.margin.columns
+    assert mapped.margin.dtypes["a"] == mapped.margin.dtypes["source_ra"]
+    mapped_margin_comp = mapped.margin.compute()
+    assert isinstance(mapped_margin_comp, npd.NestedFrame)
+    assert np.all(mapped_margin_comp["a"] == mapped_margin_comp["source_ra"] + 1)
+    assert mapped.margin.hc_structure.catalog_path is not None
 
 
 def test_square_bracket_single_partition(small_sky_order1_catalog):
