@@ -13,6 +13,7 @@ from hats.pixel_math.spatial_index import (
     compute_spatial_index,
     healpix_to_spatial_index,
 )
+from nested_pandas import NestedDtype
 
 import lsdb
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
@@ -31,6 +32,8 @@ SMALL_SKY_TO_XMATCH_SOFT_NAME = "small_sky_to_xmatch_soft"
 SMALL_SKY_NPIX_ALT_SUFFIX_NAME = "small_sky_npix_alt_suffix"
 SMALL_SKY_NPIX_AS_DIR_NAME = "small_sky_npix_as_dir"
 SMALL_SKY_ORDER1_DIR_NAME = "small_sky_order1"
+SMALL_SKY_ORDER1_NESTED_SOURCES_NAME = "small_sky_order1_nested_sources"
+SMALL_SKY_ORDER1_NESTED_SOURCES_MARGIN_NAME = "small_sky_order1_nested_sources_margin"
 SMALL_SKY_ORDER1_NO_PANDAS_DIR_NAME = "small_sky_order1_no_pandas_meta"
 SMALL_SKY_ORDER1_DEFAULT_COLS_DIR_NAME = "small_sky_order1_default_columns"
 SMALL_SKY_ORDER1_SOURCE_NAME = "small_sky_order1_source"
@@ -47,6 +50,13 @@ XMATCH_CORRECT_3N_2T_NO_MARGIN_FILE = "xmatch_correct_3n_2t_no_margin.csv"
 XMATCH_CORRECT_3N_2T_NEGATIVE_FILE = "xmatch_correct_3n_2t_negative.csv"
 XMATCH_MOCK_FILE = "xmatch_mock.csv"
 TEST_DIR = Path(__file__).parent
+
+
+def cast_nested(df, columns):
+    """Helper function to cast nested columns to the correct type."""
+    return df.assign(
+        **{col: df[col].astype(NestedDtype.from_pandas_arrow_dtype(df.dtypes[col])) for col in columns},
+    )
 
 
 @pytest.fixture
@@ -137,6 +147,16 @@ def small_sky_to_order1_source_dir(test_data_dir):
 @pytest.fixture
 def small_sky_to_order1_source_soft_dir(test_data_dir):
     return test_data_dir / SMALL_SKY_TO_ORDER1_SOURCE_SOFT_NAME
+
+
+@pytest.fixture
+def small_sky_with_nested_sources_dir(test_data_dir):
+    return test_data_dir / SMALL_SKY_ORDER1_NESTED_SOURCES_NAME
+
+
+@pytest.fixture
+def small_sky_with_nested_sources_margin_dir(test_data_dir):
+    return test_data_dir / SMALL_SKY_ORDER1_NESTED_SOURCES_MARGIN_NAME
 
 
 @pytest.fixture
@@ -250,10 +270,17 @@ def small_sky_order3_source_margin_catalog(test_data_dir):
 
 
 @pytest.fixture
-def small_sky_with_nested_sources(small_sky_order1_catalog, small_sky_order1_source_with_margin):
-    return small_sky_order1_catalog.join_nested(
-        small_sky_order1_source_with_margin, left_on="id", right_on="object_id", nested_column_name="sources"
-    )
+def small_sky_with_nested_sources(small_sky_with_nested_sources_dir):
+    return lsdb.read_hats(small_sky_with_nested_sources_dir).map_partitions(cast_nested, columns=["sources"])
+
+
+@pytest.fixture
+def small_sky_with_nested_sources_with_margin(
+    small_sky_with_nested_sources_dir, small_sky_with_nested_sources_margin_dir
+):
+    return lsdb.read_hats(
+        small_sky_with_nested_sources_dir, margin_cache=small_sky_with_nested_sources_margin_dir
+    ).map_partitions(cast_nested, columns=["sources"])
 
 
 @pytest.fixture

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import warnings
 from pathlib import Path
-from typing import Any, Callable, Iterable, Type, cast
+from typing import Any, Callable, Iterable, Literal, Type, cast
 
 import astropy
 import dask
@@ -41,7 +41,7 @@ from lsdb.io.schema import get_arrow_schema
 from lsdb.types import DaskDFPixelMap
 
 
-# pylint: disable=protected-access
+# pylint: disable=protected-access,too-many-public-methods
 class HealpixDataset(Dataset):
     """LSDB Catalog DataFrame to perform analysis of sky catalogs and efficient
     spatial operations.
@@ -889,3 +889,47 @@ class HealpixDataset(Dataset):
             fig=fig,
             **kwargs,
         )
+
+    def sort_nested_values(
+        self,
+        by: str | list[str],
+        ascending: bool | list[bool] = True,
+        na_position: Literal["first"] | Literal["last"] = "last",
+        ignore_index: bool | None = False,
+        **options,
+    ) -> Self:
+        """Sort nested columns for each row in the catalog.
+
+        Args:
+            by: str or list[str]
+                Column(s) to sort by.
+            ascending: bool or list[bool], optional
+                Sort ascending vs. descending. Defaults to True. Specify list for
+                multiple sort orders. If this is a list of bools, must match the
+                length of the by.
+            na_position: {‘last’, ‘first’}, optional
+                Puts NaNs at the beginning if ‘first’, puts NaN at the end if
+                ‘last’. Defaults to ‘last’.
+            ignore_index: bool, optional
+                If True, the resulting axis will be labeled 0, 1, …, n - 1.
+                Defaults to False.
+            **options: keyword arguments, optional
+                Additional options to pass to the sorting function.
+
+        Returns:
+            A new catalog where the specified nested columns are sorted.
+        """
+        if isinstance(by, str):
+            by = [by]
+        # Check "by" columns for hierarchical references
+        for col in by:
+            if not self._ddf._is_known_hierarchical_column(col):
+                raise ValueError(f"{col} not found in nested columns")
+        ndf = self._ddf.sort_values(
+            by=by,
+            ascending=ascending,
+            na_position=na_position,
+            ignore_index=ignore_index,
+            **options,
+        )
+        return self._create_updated_dataset(ddf=ndf)

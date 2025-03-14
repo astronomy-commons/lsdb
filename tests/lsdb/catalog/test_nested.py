@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from lsdb import Catalog
+from lsdb import Catalog, MarginCatalog
 
 
 def test_dropna(small_sky_with_nested_sources):
@@ -157,3 +157,37 @@ def test_reduce_append_columns_raises_error(small_sky_with_nested_sources):
             meta={"ra": float, "dec": float, "mean_mag": float},
             append_columns=True,
         ).compute()
+
+
+def test_sort_nested_values(small_sky_with_nested_sources):
+    # Sorting on nested "mjd" source column, in descending order
+    sorted_nested = small_sky_with_nested_sources.sort_nested_values(by="sources.mjd", ascending=False)
+    assert isinstance(sorted_nested, Catalog)
+    unsorted_source = small_sky_with_nested_sources["sources"].compute()
+    sorted_source = sorted_nested["sources"].compute()
+    for i in range(len(unsorted_source)):
+        expected_mjd = sorted(unsorted_source.iloc[i]["mjd"], reverse=True)
+        assert expected_mjd == sorted_source.iloc[i]["mjd"].values.tolist()
+    expected_schema = small_sky_with_nested_sources.hc_structure.schema
+    assert expected_schema.equals(sorted_nested.hc_structure.schema)
+
+
+def test_sort_nested_values_with_margin(small_sky_with_nested_sources_with_margin):
+    # Sorting values in nested column also sorts catalog margin
+    sorted_nested = small_sky_with_nested_sources_with_margin.sort_nested_values(
+        by="sources.mjd", ascending=False
+    )
+    assert isinstance(sorted_nested, Catalog)
+    assert isinstance(sorted_nested.margin, MarginCatalog)
+    unsorted_source = small_sky_with_nested_sources_with_margin.margin["sources"].compute()
+    sorted_source = sorted_nested.margin["sources"].compute()
+    for i in range(len(unsorted_source)):
+        expected_mjd = sorted(unsorted_source.iloc[i]["mjd"], reverse=True)
+        assert expected_mjd == sorted_source.iloc[i]["mjd"].values.tolist()
+    expected_schema = small_sky_with_nested_sources_with_margin.margin.hc_structure.schema
+    assert expected_schema.equals(sorted_nested.margin.hc_structure.schema)
+
+
+def test_sort_nested_values_using_base_column(small_sky_with_nested_sources):
+    with pytest.raises(ValueError, match="nested columns"):
+        small_sky_with_nested_sources.sort_nested_values(by="ra")

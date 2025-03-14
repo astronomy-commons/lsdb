@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import inspect
-from typing import Callable, Iterable, Type
+from typing import Callable, Iterable, Literal, Type
 
 import dask.dataframe as dd
 import hats as hc
@@ -916,4 +916,53 @@ class Catalog(HealpixDataset):
         catalog = super().reduce(func, *args, meta=meta, **kwargs)
         if self.margin is not None:
             catalog.margin = self.margin.reduce(func, *args, meta=meta, **kwargs)
+        return catalog
+
+    def sort_nested_values(
+        self,
+        by: str | list[str],
+        ascending: bool | list[bool] = True,
+        na_position: Literal["first"] | Literal["last"] = "last",
+        ignore_index: bool | None = False,
+        **options,
+    ) -> Catalog:
+        # pylint: disable=duplicate-code
+        """Sort nested columns for each row in the catalog.
+
+        Note that this does NOT sort rows, only nested values within rows.
+
+        Args:
+            by: str or list[str]
+                Column(s) to sort by.
+            ascending: bool or list[bool], optional
+                Sort ascending vs. descending. Defaults to True. Specify list for
+                multiple sort orders. If this is a list of bools, must match the
+                length of the `by`.
+            na_position: {‘last’, ‘first’}, optional
+                Puts NaNs at the beginning if ‘first’, puts NaN at the end if
+                ‘last’. Defaults to ‘last’.
+            ignore_index: bool, optional
+                If True, the resulting axis will be labeled 0, 1, …, n - 1.
+                Defaults to False.
+            **options: keyword arguments, optional
+                Additional options to pass to the sorting function.
+
+        Returns:
+            A new catalog where the specified nested columns are sorted.
+        """
+        catalog = super().sort_nested_values(
+            by=by,
+            ascending=ascending,
+            na_position=na_position,
+            ignore_index=ignore_index,
+            **options,
+        )
+        if self.margin is not None:
+            catalog.margin = self.margin.sort_nested_values(
+                by=by,
+                ascending=ascending,
+                na_position=na_position,
+                ignore_index=ignore_index,
+                **options,
+            )
         return catalog
