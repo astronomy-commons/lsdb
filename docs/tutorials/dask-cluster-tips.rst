@@ -115,7 +115,7 @@ about how to run Dask on multiple nodes.
 High-Performance Computing Cluster with SLURM
 .............................................
 
-Dask ecosystem has a `dask-jobqueue <https://jobqueue.dask.org/en/latest/>`_ package that allows to run Dask on HPC clusters.
+The Dask ecosystem has a `dask-jobqueue <https://jobqueue.dask.org/en/latest/>`_ package that allows users to run Dask on HPC clusters.
 It provides a way to submit Dask workers as SLURM jobs, and to scale the number of workers dynamically.
 Unfortunately, ``dask-jobqueue`` does not support selecting both the number of SLURM job cores
 and Dask threads per worker separately.
