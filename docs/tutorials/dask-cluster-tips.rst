@@ -269,7 +269,7 @@ task needs 8GB, you can start a cluster with this command:
     client = Client(n_workers=8, memory_limit='8GB', threads_per_worker=1)
 
 
-This approach can also help to speed up the computations, because it enables the run with more workers.
+This approach can also help to speed up the computations, because it enables running with more workers.
 
 
 I shout ``.compute()``, but Dask Dashboard is empty for a long while
