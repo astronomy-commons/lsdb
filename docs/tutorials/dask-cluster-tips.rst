@@ -248,7 +248,7 @@ and logs will show messages like the following:
 
 You can solve this issue by increasing the memory limit per worker, which would usually mean
 that you also need to reduce the number of workers.
-If it is not possible, you can also try to reduce the amount of data loaded into the memory per partition,
+If that is not possible, you can also try to reduce the amount of data loaded into memory per partition,
 for example, by specifying which columns to use when loading data with ``lsdb.read_hats(columns=...)``.
 
 All workers are being killed in the middle/end
