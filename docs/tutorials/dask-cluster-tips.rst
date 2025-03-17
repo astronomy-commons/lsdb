@@ -175,7 +175,7 @@ so we ask for 32GB of RAM and 16 cores per job.
 So this configuration would allocate 60 SLURM jobs, with 60 Dask workers, which would create 180 Python threads,
 run on 960 CPU cores, and use 1920 GB of RAM in total.
 As you see, the number of CPU cores is significantly larger than the number of Python threads.
-This is a trick we make to get more RAM per each task, which is crucial for LSDB pipelines.
+This is a trick we use to get more RAM per each task, which is crucial for LSDB pipelines.
 As was mentioned earlier, LSDB pipeline may still utilize multiple CPU cores per a single Python thread,
 thanks to internal multithreading of underlying libraries, such as NumPy and PyArrow.
 
