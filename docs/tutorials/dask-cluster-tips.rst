@@ -254,7 +254,7 @@ for example, by specifying which columns to use when loading data with ``lsdb.re
 All workers are being killed in the middle/end
 ..............................................
 
-Some workflows can have very unbalanced memory load,
+Some workflows can have a very unbalanced memory load,
 so just one or few tasks would use much more memory than others.
 You can diagnose this by looking at the memory usage chart in Dask Dashboard,
 it would show that the only one worker is using much more memory than others.
