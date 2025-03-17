@@ -108,7 +108,7 @@ With multiple nodes, you would usually have a scheduler running on one node and 
 In this case each computational node would run one or more Dask workers,
 while each worker may take few Dask tasks (usually one per LSDB partition) and use multiple threads.
 
-Please see `Dask <https://docs.dask.org/en/stable/deploying.html>`_
+Please see the `Dask <https://docs.dask.org/en/stable/deploying.html>`_
 and `dask-jobqueue <https://jobqueue.dask.org/en/latest/>`_ documentation for more details
 about how to run Dask on multiple nodes.
 
