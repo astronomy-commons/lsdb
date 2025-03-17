@@ -272,7 +272,7 @@ task needs 8GB, you can start a cluster with this command:
 This approach can also help to speed up the computations, because it enables running with more workers.
 
 
-I shout ``.compute()``, but Dask Dashboard is empty for a long while
+I run ``.compute()``, but the Dask Dashboard is empty for a long time
 ....................................................................
 
 For large tasks, such as cross-matching or joining multiple dozen-terabyte scale catalogs,
