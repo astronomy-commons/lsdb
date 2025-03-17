@@ -12,6 +12,7 @@ from lsdb import Catalog
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
 from lsdb.core.crossmatch.bounded_kdtree_match import BoundedKdTreeCrossmatch
 from lsdb.core.crossmatch.kdtree_match import KdTreeCrossmatch
+from lsdb.core.crossmatch.crossmatch_dataframes import crossmatch
 from lsdb.dask.merge_catalog_functions import align_catalogs
 
 
@@ -155,7 +156,7 @@ class TestCrossmatch:
             small_sky_catalog.crossmatch(small_sky_xmatch_catalog, algorithm=algo, require_right_margin=True)
 
     @staticmethod
-    def test_dataframe_crossmatch(algo, small_sky_catalog, small_sky_xmatch_catalog, xmatch_correct):
+    def test_catalog_dataframe_crossmatch(algo, small_sky_catalog, small_sky_xmatch_catalog, xmatch_correct):
         small_sky_xmatch_dataframe = small_sky_xmatch_catalog.compute()
         xmatched = small_sky_catalog.crossmatch_dataframe(
             small_sky_xmatch_dataframe, algorithm=algo, radius_arcsec=0.01 * 3600, margin_threshold=100
@@ -465,3 +466,20 @@ def test_raise_for_non_overlapping_catalogs(small_sky_order1_catalog, small_sky_
     small_sky_xmatch_catalog = small_sky_xmatch_catalog.pixel_search([HealpixPixel(1, 45)])
     with pytest.raises(RuntimeError, match="overlap"):
         small_sky_order1_catalog.crossmatch(small_sky_xmatch_catalog)
+
+
+@pytest.mark.parametrize("algo", [KdTreeCrossmatch])
+class TestDataframeCrossmatch:
+    @staticmethod
+    def test_dataframe_crossmatch(algo, small_sky_catalog, small_sky_xmatch_catalog, xmatch_correct):
+        small_sky_xmatch_dataframe = small_sky_xmatch_catalog.compute()
+        xmatched = crossmatch(small_sky_catalog,
+            small_sky_xmatch_dataframe, algorithm=algo, radius_arcsec=0.01 * 3600, margin_threshold=100
+        ).compute()
+        assert isinstance(xmatched, npd.NestedFrame)
+        assert len(xmatched) == len(xmatch_correct)
+        for _, correct_row in xmatch_correct.iterrows():
+            assert correct_row["ss_id"] in xmatched["id_small_sky"].to_numpy()
+            xmatch_row = xmatched[xmatched["id_small_sky"] == correct_row["ss_id"]]
+            assert xmatch_row["id_from_lsdb_dataframe"].to_numpy() == correct_row["xmatch_id"]
+            assert xmatch_row["_dist_arcsec"].to_numpy() == pytest.approx(correct_row["dist"] * 3600)
