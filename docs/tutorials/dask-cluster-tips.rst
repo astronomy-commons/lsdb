@@ -257,7 +257,7 @@ All workers are being killed in the middle/end
 Some workflows can have a very unbalanced memory load,
 so just one or few tasks would use much more memory than others.
 You can diagnose this by looking at the memory usage chart in Dask Dashboard,
-it would show that the only one worker is using much more memory than others.
+it would show that only one worker is using much more memory than others.
 In such cases you may set the total memory limit ``memory_limit * n_workers`` larger than the actual amount of
 memory on your system.
 For example, if you have 16GB of RAM and you see that almost all of the tasks need 1GB, while a single
