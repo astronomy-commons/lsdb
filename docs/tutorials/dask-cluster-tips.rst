@@ -182,7 +182,7 @@ thanks to internal multithreading of underlying libraries, such as NumPy and PyA
 Dask Dashboard
 --------------
 
-Dask output logs and Dask Dashboard are both great ways to monitor and debug the pipeline.
+Dask output logs and the Dask Dashboard are both great ways to monitor and debug the pipeline.
 The dashboard is run automatically by Dask.
 Typically, the dashboard would be accessible at `<http://127.0.0.1:8787/status>`_, but if port 8787 is already in use,
 Dask will automatically choose a different port.
