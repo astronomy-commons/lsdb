@@ -183,7 +183,7 @@ Dask Dashboard
 --------------
 
 Dask output logs and Dask Dashboard are both great ways to monitor and debug the pipeline.
-Dashboard is being run automatically by Dask.
+The dashboard is run automatically by Dask.
 Typically, the dashboard would be accessible at `<http://127.0.0.1:8787/status>`_, but if port 8787 is already in use,
 Dask will automatically choose a different port.
 
@@ -195,7 +195,7 @@ Here is how you can get the Dashboard link using the `Client` object:
     print(client.dashboard_link)
 
 
-In Jupyter Notebook you can also display the client object, by making it the last line of your code
+In a Jupyter Notebook you can also display the client object, by making it the last line of your code
 or using the `display` function:
 
 .. code-block:: python
@@ -206,21 +206,21 @@ or using the `display` function:
 .. figure:: _static/dask-client-local-cluster.png
 
 
-Dashboard shows many useful information, such as task progress (bar-charts on the right-hand side),
+The Dashboard shows a lot of useful information, such as task progress (bar-charts on the right-hand side),
 number of tasks per worker (bottom left) and memory usage (top and center left).
 
 .. figure:: _static/dask-dashboard-status.png
 
 If you see that memory bars are colored red, it means that the workers are running out of memory.
 
-**Workers** page shows the status of each worker, including their memory, CPU, and network usage.
+The **Workers** page shows the status of each worker, including their memory, CPU, and network usage.
 
 .. figure:: _static/dask-dashboard-workers.png
 
 If you see that the total number of workers is less than the number of workers you requested,
 it means that the workers were killed or died.
-This may happen if workers overused their memory limit or, in the multiple-node cluster, because of the network issues.
-Increasing memory limit and network timeouts may help keep workers alive.
+This may happen if workers overused their memory limit or, in multiple-node clusters, because of network issues.
+Increasing the memory limit and network timeouts may help keep workers alive.
 
 Receipts for Frequent Problems
 ------------------------------
