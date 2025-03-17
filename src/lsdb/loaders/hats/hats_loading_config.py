@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
@@ -64,9 +65,27 @@ class HatsLoadingConfig:
 
         return url_params
 
-    def get_read_kwargs(self):
-        """Clumps existing kwargs and `dtype_backend`, if specified."""
+    def get_read_kwargs(self, kwargs_must_match_signature=None):
+        """Clumps existing kwargs and `dtype_backend`, if specified.
+        
+        If `kwargs_must_match_signature` is specified, it will be used to filter through the kwargs
+        and raise an error if any of the keys are not in the signature.
+        """
         kwargs = dict(self.kwargs)
+
+        if kwargs_must_match_signature:
+            standard_params = ["engine", "filters"]
+
+            signature = inspect.signature(kwargs_must_match_signature)
+            signature_params = list(signature.parameters.keys())
+            # I liked the theory of this, but the params are just:
+            # ['func', 'iterables', 'args', 'meta', 'divisions', 'label', 'enforce_metadata', 'kwargs']
+            # so it's not really useful. What kind of kwargs would we even be passing?
+
+            for key in kwargs:
+                if key not in standard_params and key not in signature_params:
+                    raise ValueError(f"Key {key} is not a recognized parameter for type {kwargs_must_match_signature}") 
+
         if self.dtype_backend is not None:
             kwargs["dtype_backend"] = self.dtype_backend
         return kwargs

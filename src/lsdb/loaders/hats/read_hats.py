@@ -215,27 +215,27 @@ def _create_dask_meta_schema(schema: pa.Schema, config) -> npd.NestedFrame:
     return npd.NestedFrame(dask_meta_schema)
 
 
+def _check_valid_kwargs(config) -> bool:
+    """TODO write a docstring"""
+    # Check out what kwargs are accepted by nd.NestedFrame/dask dataframe's from_map
+    sig = inspect.signature(nd.NestedFrame.from_map)
+    from_map_arg_names = list(sig.parameters.keys())
+    
+    #print(from_map_arg_names)
+
+    for k in config.get_read_kwargs():
+        if k not in from_map_arg_names and k not in ["dtype_backend", "filters"]:
+            raise ValueError(f"Unrecognized kwarg used in read_hats: {k}")
+
+    return True
+
+
 def _load_dask_df_and_map(catalog: HCHealpixDataset, config) -> tuple[nd.NestedFrame, DaskDFPixelMap]:
     """Load Dask DF from parquet files and make dict of HEALPix pixel to partition index"""
     pixels = catalog.get_healpix_pixels()
     ordered_pixels = np.array(pixels)[get_pixel_argsort(pixels)]
     divisions = get_pixels_divisions(ordered_pixels)
     dask_meta_schema = _create_dask_meta_schema(catalog.schema, config)
-
-    # TODO a little torn--would want to fail right away, but want this logic to be really close to
-    # where we're actually calling the method in question, from_map
-    # Considering how we can just straight up use inspect to jump through nd.NestedFrame and get at the dask
-    # dataframe args that are used, we could probably actually use this higher up on a more generic function.
-    # Maybe all the way in read_hats? At the least, the next step should be to try calling it on
-    # _load_dask_df_and_map
-
-    # Check out what kwargs are accepted by nd.NestedFrame/dask dataframe's from_map
-    sig = inspect.signature(nd.NestedFrame.from_map)
-    from_map_arg_names = list(sig.parameters.keys())
-    print(from_map_arg_names)
-    for k in config.get_read_kwargs():
-        if k not in from_map_arg_names and k != "dtype_backend":
-            raise ValueError(f"Unrecognized kwarg used in read_hats: {k}")
 
     if len(ordered_pixels) > 0:
         ddf = nd.NestedFrame.from_map(
@@ -247,7 +247,7 @@ def _load_dask_df_and_map(catalog: HCHealpixDataset, config) -> tuple[nd.NestedF
             divisions=divisions,
             meta=dask_meta_schema,
             schema=catalog.schema,
-            **config.get_read_kwargs(),
+            **config.get_read_kwargs(kwargs_must_match_signature=nd.NestedFrame.from_map),
         )
     else:
         ddf = nd.NestedFrame.from_pandas(dask_meta_schema, npartitions=1)

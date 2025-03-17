@@ -135,8 +135,12 @@ def test_read_hats_with_extra_kwargs(small_sky_order1_dir):  # TODO
 
 
 def test_read_hats_with_wrong_kwargs(small_sky_order1_dir):  # TODO
-    catalog = lsdb.read_hats(small_sky_order1_dir)  # Should pass
+    catalog = lsdb.read_hats(small_sky_order1_dir)
     assert isinstance(catalog, lsdb.Catalog)
+
+    catalog = lsdb.read_hats(small_sky_order1_dir, columns=["ra", "dec"])
+    assert isinstance(catalog, lsdb.Catalog)
+
     with pytest.raises(ValueError):
         _ = lsdb.read_hats(small_sky_order1_dir, maaargin=42.0)  # Should fail
 
