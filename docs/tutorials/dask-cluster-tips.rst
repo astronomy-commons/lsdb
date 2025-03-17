@@ -122,7 +122,7 @@ and Dask threads per worker separately.
 We found it may be a problem for some SLURM clusters that require to specify the exact number of cores and memory per job.
 
 The following configuration is an example that was run on `Pittsburgh Supercomputing Center <https://www.psc.edu/>`_,
-and contains some specific settings useful for its hardware of that cluster.
+and contains some specific settings useful for the hardware of that cluster.
 This configuration runs 60 SLURM jobs, each with a single Dask worker (``processes`` variable below),
 and each worker uses 3 threads (``worker_process_threads`` variable below).
 On this particular SLURM queue (sometimes called "partition" or "allocation") each node has 2GB of RAM per core,
