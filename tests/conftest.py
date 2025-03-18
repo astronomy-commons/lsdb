@@ -1,10 +1,8 @@
 from pathlib import Path
 
 import hats as hc
-import numpy as np
 import numpy.testing as npt
 import pandas as pd
-import pyarrow as pa
 import pytest
 from hats.io import paths
 from hats.pixel_math import spatial_index_to_healpix
@@ -16,8 +14,6 @@ from hats.pixel_math.spatial_index import (
 from nested_pandas import NestedDtype
 
 import lsdb
-from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
-from lsdb.dask.merge_catalog_functions import HIVE_COLUMNS
 
 DATA_DIR_NAME = "data"
 SMALL_SKY_DIR_NAME = "small_sky"
@@ -419,7 +415,7 @@ class Helpers:
     def assert_columns_in_joined_catalog(joined_cat, cats, suffixes):
         for cat, suffix in zip(cats, suffixes):
             for col_name, dtype in cat.dtypes.items():
-                if col_name not in HIVE_COLUMNS:
+                if col_name not in paths.HIVE_COLUMNS:
                     assert (col_name + suffix, dtype) in joined_cat.dtypes.items()
 
     @staticmethod
@@ -427,25 +423,11 @@ class Helpers:
         joined_cat, left_cat, right_cat, right_ignore_columns, nested_colname
     ):
         for col_name, dtype in left_cat.dtypes.items():
-            if col_name not in HIVE_COLUMNS:
+            if col_name not in paths.HIVE_COLUMNS:
                 assert (col_name, dtype) in joined_cat.dtypes.items()
         for col_name, dtype in right_cat.dtypes.items():
-            if col_name not in right_ignore_columns and col_name not in HIVE_COLUMNS:
+            if col_name not in right_ignore_columns and col_name not in paths.HIVE_COLUMNS:
                 assert (col_name, dtype.pyarrow_dtype) in joined_cat[nested_colname].dtypes.fields.items()
-
-    @staticmethod
-    def assert_hive_columns_correct(cat: HealpixDataset):
-        for pixel in cat.get_healpix_pixels():
-            partition = cat.get_partition(pixel.order, pixel.pixel).compute()
-            assert np.all(partition[paths.PARTITION_ORDER] == pixel.order)
-            assert not np.any(partition[paths.PARTITION_ORDER].isna())
-            assert partition[paths.PARTITION_ORDER].dtype == pd.ArrowDtype(pa.uint8())
-            assert np.all(partition[paths.PARTITION_DIR] == pixel.dir)
-            assert not np.any(partition[paths.PARTITION_DIR].isna())
-            assert partition[paths.PARTITION_DIR].dtype == pd.ArrowDtype(pa.uint64())
-            assert np.all(partition[paths.PARTITION_PIXEL] == pixel.pixel)
-            assert not np.any(partition[paths.PARTITION_PIXEL].isna())
-            assert partition[paths.PARTITION_PIXEL].dtype == pd.ArrowDtype(pa.uint64())
 
 
 @pytest.fixture

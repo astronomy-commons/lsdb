@@ -23,7 +23,6 @@ from mocpy import MOC
 from lsdb.catalog.catalog import Catalog
 from lsdb.io.schema import get_arrow_schema
 from lsdb.loaders.dataframe.from_dataframe_utils import (
-    _append_partition_information_to_dataframe,
     _extra_property_dict,
     _generate_dask_dataframe,
     _has_named_index,
@@ -231,7 +230,7 @@ class DataframeCatalogLoader:
             pixel_df = self.dataframe.loc[
                 (self.dataframe.index >= left_bound) & (self.dataframe.index < right_bound)
             ]
-            pixel_dfs.append(_append_partition_information_to_dataframe(pixel_df, hp_pixel))
+            pixel_dfs.append(pixel_df)
 
         # Generate Dask Dataframe with the original schema and desired backend
         ddf, total_rows = _generate_dask_dataframe(pixel_dfs, pixel_list, self.use_pyarrow_types)

@@ -14,7 +14,7 @@ from hats.pixel_math.healpix_pixel_function import get_pixel_argsort
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 
 from lsdb import Catalog
-from lsdb.catalog.margin_catalog import MarginCatalog, _create_margin_schema
+from lsdb.catalog.margin_catalog import MarginCatalog
 from lsdb.loaders.dataframe.from_dataframe_utils import (
     _extra_property_dict,
     _format_margin_partition_dataframe,
@@ -48,7 +48,6 @@ class MarginCatalogGenerator:
         self.margin_order = margin_order
         self.use_pyarrow_types = use_pyarrow_types
         self.catalog_info_kwargs = kwargs
-        self.margin_schema = _create_margin_schema(catalog.hc_structure.schema)
 
     def _resolve_margin_order(self):
         """Calculate the order of the margin cache to be generated. If not provided
@@ -103,17 +102,22 @@ class MarginCatalogGenerator:
         ddf, ddf_pixel_map, total_rows = self._generate_dask_df_and_map(pixels, partitions)
         catalog_info = self._create_catalog_info(**self.catalog_info_kwargs, total_rows=total_rows)
         margin_pixels = list(ddf_pixel_map.keys())
-        margin_structure = hc.catalog.MarginCatalog(catalog_info, margin_pixels, schema=self.margin_schema)
+        margin_structure = hc.catalog.MarginCatalog(
+            catalog_info, margin_pixels, schema=self.hc_structure.schema
+        )
         return MarginCatalog(ddf, ddf_pixel_map, margin_structure)
 
     def _create_empty_catalog(self) -> MarginCatalog:
         """Create an empty margin catalog"""
-        dask_meta_schema = self.margin_schema.empty_table().to_pandas()
+        if self.hc_structure.schema:
+            dask_meta_schema = self.hc_structure.schema.empty_table().to_pandas()
+        else:
+            dask_meta_schema = pd.DataFrame()
         if SPATIAL_INDEX_COLUMN in dask_meta_schema.columns:
             dask_meta_schema = dask_meta_schema.set_index(SPATIAL_INDEX_COLUMN)
         ddf = nd.NestedFrame.from_pandas(dask_meta_schema, npartitions=1)
         catalog_info = self._create_catalog_info(**self.catalog_info_kwargs, total_rows=0)
-        margin_structure = hc.catalog.MarginCatalog(catalog_info, [], schema=self.margin_schema)
+        margin_structure = hc.catalog.MarginCatalog(catalog_info, [], schema=self.hc_structure.schema)
         return MarginCatalog(ddf, {}, margin_structure)
 
     def _get_margins(self) -> tuple[list[HealpixPixel], list[npd.NestedFrame]]:
