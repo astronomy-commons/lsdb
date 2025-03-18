@@ -2,11 +2,12 @@
 obs_collection=square_map
 dataproduct_type=map
 hats_nrows=12
+hats_npix_suffix=.parquet
 hats_max_rows=1000000
 hats_order=0
 moc_sky_fraction=1.00000
-hats_builder=hats-import v0.4.6.dev1+gf00cd7a
-hats_creation_date=2025-03-05T19\:01UTC
-hats_estsize=34
+hats_builder=hats-import v0.4.6.dev3+g8f5e4fd
+hats_creation_date=2025-03-18T13\:41UTC
+hats_estsize=21
 hats_release_date=2024-09-18
 hats_version=v0.1
