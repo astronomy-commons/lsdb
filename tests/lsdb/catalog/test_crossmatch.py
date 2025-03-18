@@ -461,6 +461,9 @@ def test_raise_for_non_overlapping_catalogs(small_sky_order1_catalog, small_sky_
         ("dataframe", "dataframe"),
         ("dataframe", "catalog"),
         ("catalog", "dataframe"),
+        ("catalog", "catalog"),
+        ("catalog", "invalid"),
+        ("invalid", "catalog"),
     ],
 )
 class TestDataframeCrossmatch:
@@ -468,6 +471,16 @@ class TestDataframeCrossmatch:
     def test_dataframe_crossmatch(
         algo, left, right, small_sky_catalog, small_sky_xmatch_catalog, xmatch_correct
     ):
+        # Raise error if the type of left or right is invalid
+        if left == "invalid":
+            with pytest.raises(TypeError, match="Left argument must be"):
+                crossmatch(np.array([1, 2, 3]), small_sky_xmatch_catalog, algorithm=algo)
+            return
+        if right == "invalid":
+            with pytest.raises(TypeError, match="Right argument must be"):
+                crossmatch(small_sky_catalog, np.array([1, 2, 3]), algorithm=algo)
+            return
+
         # Determine which inputs need to be computed
         left_data = small_sky_catalog.compute() if left == "dataframe" else small_sky_catalog
         right_data = small_sky_xmatch_catalog.compute() if right == "dataframe" else small_sky_xmatch_catalog
