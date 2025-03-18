@@ -18,12 +18,14 @@ def crossmatch(
     ) = BuiltInCrossmatchAlgorithm.KD_TREE,
     output_catalog_name: str | None = None,
     require_right_margin: bool = False,
+    left_args: dict | None = None,
+    right_args: dict | None = None,
     **kwargs,
 ) -> Catalog:
-    """Perform a cross-match between two frames, or a catalog and a frame (either order).
+    """Perform a cross-match between two frames, a catalog and a frame, or a frame and a catalog.
 
     See Catalog.crossmatch for more information.
-    
+
     Args:
         left (Catalog | NestedFrame): The left catalog or frame to crossmatch.
         right (Catalog | NestedFrame): The right catalog or frame to crossmatch.
@@ -33,33 +35,41 @@ def crossmatch(
             crossmatch algorithm to use. Defaults to BuiltInCrossmatchAlgorithm.KD_TREE.
         output_catalog_name (str, optional): The name of the output catalog. Defaults to None.
         require_right_margin (bool, optional): Whether to require a right margin. Defaults to False.
+        left_args (dict, optional): Additional keyword arguments to pass to from_dataframe for the
+            left catalog. Will override any **kwargs given after (for left catalog only). Defaults
+            to None.
+        right_args (dict, optional): Additional keyword arguments to pass to from_dataframe for the
+            right catalog. Will override any **kwargs given after (for right catalog only). Defaults
+            to None.
         **kwargs: Additional keyword arguments to pass to Catalog.crossmatch.
 
     Returns:
         Catalog: The crossmatched catalog.
     """
-    # Separate kwargs for from_dataframe and crossmatch
+    # Separate kwargs for from_dataframe and crossmatch.
     sig = inspect.signature(from_dataframe)
     from_dataframe_arg_names = list(sig.parameters.keys())
     from_dataframe_kwargs = {k: kwargs.pop(k) for k in from_dataframe_arg_names if k in kwargs}
 
-    # Check if the left dataframe is a NestedFrame, and if so, convert it to a Catalog.
+    left_args = from_dataframe_kwargs | (left_args or {})
+    right_args = from_dataframe_kwargs | (right_args or {})
+
+    # Check for conflicting right margin arguments.
+    if require_right_margin and right_args.get("margin_threshold") is None:
+        raise ValueError("If require_right_margin is True, margin_threshold must not be None.")
+
+    # Check if either given data set is a dataframe, and if so, convert it to a Catalog.
     if not isinstance(left, Catalog):
         if not isinstance(left, npd.NestedFrame):
             raise TypeError(f"Left argument must be a NestedFrame or Catalog, not {type(left)}.")
-        # Convert the left DataFrame to a Catalog.
-        left = from_dataframe(left, **from_dataframe_kwargs)
+        left = from_dataframe(left, **left_args)
 
-    # Check if the right dataframe is a NestedFrame, and if so, convert it to a Catalog.
     if not isinstance(right, Catalog):
         if not isinstance(right, npd.NestedFrame):
             raise TypeError(f"Right argument must be a NestedFrame or Catalog, not {type(right)}.")
-        # Convert the right DataFrame to a Catalog.
+        right = from_dataframe(right, **right_args)
 
-        # TODO: consider how require_right_margin should be handled here.
-        right = from_dataframe(right, **from_dataframe_kwargs)
-
-    # Call the crossmatch method with the newly generated Catalog.
+    # Call the crossmatch method with the given or newly generated Catalogs.
     return Catalog.crossmatch(
         left, right, suffixes, algorithm, output_catalog_name, require_right_margin, **kwargs
     )
