@@ -1,6 +1,5 @@
 import hats as hc
 import nested_dask as nd
-import pyarrow as pa
 from hats.io import paths
 
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
@@ -30,17 +29,14 @@ class MarginCatalog(HealpixDataset):
 def _validate_margin_catalog(margin_hc_catalog, hc_catalog):
     """Validate that the margin and main catalogs have compatible schemas. The order of
     the pyarrow fields should not matter."""
-    expected_margin_schema = _create_margin_schema(hc_catalog.schema)
-    # Compare the fields for the schemas (allowing duplicates). They should match.
-    margin_catalog_fields = sorted((f.name, f.type) for f in margin_hc_catalog.schema)
-    expected_margin_fields = sorted((f.name, f.type) for f in expected_margin_schema)
-    if margin_catalog_fields != expected_margin_fields:
+    margin_catalog_fields = set((f.name, f.type) for f in margin_hc_catalog.schema)
+    main_catalog_fields = set((f.name, f.type) for f in hc_catalog.schema)
+
+    dropped_fields = main_catalog_fields - margin_catalog_fields
+    dropped_fields = [f for f in dropped_fields if f[0] not in paths.HIVE_COLUMNS]
+
+    added_fields = margin_catalog_fields - main_catalog_fields
+    added_fields = [f for f in added_fields if f[0] not in paths.HIVE_COLUMNS]
+
+    if len(dropped_fields) or len(added_fields):
         raise ValueError("The margin catalog and the main catalog must have the same schema.")
-
-
-def _create_margin_schema(main_catalog_schema: pa.Schema) -> pa.Schema:
-    """Create a pyarrow schema for the margin catalog from the main catalog schema."""
-    order_field = pa.field(f"margin_{paths.PARTITION_ORDER}", pa.uint8())
-    dir_field = pa.field(f"margin_{paths.PARTITION_DIR}", pa.uint64())
-    pixel_field = pa.field(f"margin_{paths.PARTITION_PIXEL}", pa.uint64())
-    return main_catalog_schema.append(order_field).append(dir_field).append(pixel_field)

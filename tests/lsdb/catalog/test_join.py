@@ -4,11 +4,12 @@ import numpy as np
 import pandas as pd
 import pyarrow as pa
 import pytest
+from hats.io import paths
 from hats.pixel_math import HealpixPixel
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN, spatial_index_to_healpix
 
 from lsdb import read_hats
-from lsdb.dask.merge_catalog_functions import HIVE_COLUMNS, align_catalogs
+from lsdb.dask.merge_catalog_functions import align_catalogs
 
 
 def test_small_sky_join_small_sky_order1(small_sky_catalog, small_sky_order1_catalog, helpers):
@@ -37,7 +38,6 @@ def test_small_sky_join_small_sky_order1(small_sky_catalog, small_sky_order1_cat
         assert joined_row[f"id{suffixes[1]}"].to_numpy()[0] == row["id"]
     helpers.assert_divisions_are_correct(joined)
     helpers.assert_schema_correct(joined)
-    helpers.assert_hive_columns_correct(joined)
     assert not joined.hc_structure.on_disk
 
 
@@ -63,7 +63,6 @@ def test_small_sky_join_small_sky_order1_source(
     assert (joined_test["id_a"].to_numpy() == joined_test["object_id"].to_numpy()).all()
     helpers.assert_divisions_are_correct(joined)
     helpers.assert_schema_correct(joined)
-    helpers.assert_hive_columns_correct(joined)
 
 
 def test_small_sky_join_default_columns(
@@ -89,7 +88,6 @@ def test_small_sky_join_default_columns(
     helpers.assert_divisions_are_correct(joined)
     helpers.assert_schema_correct(joined)
     helpers.assert_default_columns_in_columns(joined)
-    helpers.assert_hive_columns_correct(joined)
 
 
 def test_join_wrong_columns(small_sky_catalog, small_sky_order1_catalog):
@@ -124,7 +122,6 @@ def test_join_association(small_sky_catalog, small_sky_xmatch_catalog, small_sky
     helpers.assert_columns_in_joined_catalog(joined, [small_sky_catalog, small_sky_xmatch_catalog], suffixes)
     assert joined._ddf.index.name == SPATIAL_INDEX_COLUMN
     assert joined._ddf.index.dtype == pd.ArrowDtype(pa.int64())
-    helpers.assert_hive_columns_correct(joined)
 
     small_sky_compute = small_sky_catalog.compute()
     small_sky_xmatch_compute = small_sky_xmatch_catalog.compute()
@@ -139,13 +136,13 @@ def test_join_association(small_sky_catalog, small_sky_xmatch_catalog, small_sky
         small_sky_col = small_sky_to_xmatch_catalog.hc_structure.catalog_info.primary_column
         left_row = small_sky_compute.query(f"{small_sky_col}=={left_id}")
         for col in left_row.columns:
-            if col not in HIVE_COLUMNS:
+            if col not in paths.HIVE_COLUMNS:
                 assert joined_row[col + suffixes[0]].to_numpy() == left_row[col].to_numpy()
 
         small_sky_xmatch_col = small_sky_to_xmatch_catalog.hc_structure.catalog_info.join_column
         right_row = small_sky_xmatch_compute.query(f"{small_sky_xmatch_col}=={right_id}")
         for col in right_row.columns:
-            if col not in HIVE_COLUMNS:
+            if col not in paths.HIVE_COLUMNS:
                 assert joined_row[col + suffixes[1]].to_numpy() == right_row[col].to_numpy()
 
         left_index = left_row.index
@@ -262,7 +259,7 @@ def test_join_nested(small_sky_catalog, small_sky_order1_source_with_margin, hel
             pd.DataFrame(source_compute[source_compute["object_id"] == row_id].set_index("object_id"))
             .sort_values("source_ra")
             .reset_index(drop=True)
-            .drop(columns=[c for c in HIVE_COLUMNS if c in source_compute.columns]),
+            .drop(columns=[c for c in paths.HIVE_COLUMNS if c in source_compute.columns]),
             check_dtype=False,
             check_column_type=False,
             check_index_type=False,
@@ -282,7 +279,7 @@ def test_merge_asof(small_sky_catalog, small_sky_xmatch_catalog, direction, help
     joined_compute = joined.compute()
     assert isinstance(joined_compute, npd.NestedFrame)
 
-    drop_cols = [c for c in HIVE_COLUMNS if c in small_sky_catalog.columns]
+    drop_cols = [c for c in paths.HIVE_COLUMNS if c in small_sky_catalog.columns]
     small_sky_compute = (
         small_sky_catalog.compute()
         .drop(columns=drop_cols)
@@ -305,7 +302,6 @@ def test_merge_asof(small_sky_catalog, small_sky_xmatch_catalog, direction, help
         ]
     )
     pd.testing.assert_frame_equal(joined_compute.drop(columns=drop_cols), correct_result)
-    helpers.assert_hive_columns_correct(joined)
 
 
 def merging_function(input_frame, map_input, *args, **kwargs):
