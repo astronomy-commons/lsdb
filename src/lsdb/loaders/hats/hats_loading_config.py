@@ -38,6 +38,13 @@ class HatsLoadingConfig:
         if self.dtype_backend not in ["pyarrow", "numpy_nullable", None]:
             raise ValueError("The data type backend must be either 'pyarrow' or 'numpy_nullable'")
 
+        # Check for commonly misspelled or mistaken keys
+        for nonused_kwarg in ["margin", "maargin", "margins", "cache", "margincache"]:
+            if nonused_kwarg in self.kwargs:
+                raise ValueError(
+                    f"Invalid keyword argument '{nonused_kwarg}' found. Did you mean 'margin_cache'?"
+                )
+
     def get_dtype_mapper(self) -> Callable | None:
         """Returns a mapper for pyarrow or numpy types, mirroring Pandas behaviour."""
         mapper = None
