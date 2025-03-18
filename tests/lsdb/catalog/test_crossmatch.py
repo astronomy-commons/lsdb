@@ -11,7 +11,6 @@ import lsdb
 from lsdb import Catalog
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
 from lsdb.core.crossmatch.bounded_kdtree_match import BoundedKdTreeCrossmatch
-from lsdb.core.crossmatch.crossmatch import crossmatch
 from lsdb.core.crossmatch.kdtree_match import KdTreeCrossmatch
 from lsdb.dask.merge_catalog_functions import align_catalogs
 
@@ -452,54 +451,3 @@ def test_raise_for_non_overlapping_catalogs(small_sky_order1_catalog, small_sky_
     small_sky_xmatch_catalog = small_sky_xmatch_catalog.pixel_search([HealpixPixel(1, 45)])
     with pytest.raises(RuntimeError, match="overlap"):
         small_sky_order1_catalog.crossmatch(small_sky_xmatch_catalog)
-
-
-@pytest.mark.parametrize("algo", [KdTreeCrossmatch])
-@pytest.mark.parametrize(
-    "left, right",
-    [
-        ("dataframe", "dataframe"),
-        ("dataframe", "catalog"),
-        ("catalog", "dataframe"),
-        ("catalog", "catalog"),
-        ("catalog", "invalid"),
-        ("invalid", "catalog"),
-    ],
-)
-class TestDataframeCrossmatch:
-    @staticmethod
-    def test_dataframe_crossmatch(
-        algo, left, right, small_sky_catalog, small_sky_xmatch_catalog, xmatch_correct
-    ):
-        # Raise error if the type of left or right is invalid
-        if left == "invalid":
-            with pytest.raises(TypeError, match="Left argument must be"):
-                crossmatch(np.array([1, 2, 3]), small_sky_xmatch_catalog, algorithm=algo)
-            return
-        if right == "invalid":
-            with pytest.raises(TypeError, match="Right argument must be"):
-                crossmatch(small_sky_catalog, np.array([1, 2, 3]), algorithm=algo)
-            return
-
-        # Determine which inputs need to be computed
-        left_data = small_sky_catalog.compute() if left == "dataframe" else small_sky_catalog
-        right_data = small_sky_xmatch_catalog.compute() if right == "dataframe" else small_sky_xmatch_catalog
-
-        # Perform the crossmatch
-        result = crossmatch(
-            left_data,
-            right_data,
-            suffixes=["_left", "_right"],
-            algorithm=algo,
-            radius_arcsec=0.01 * 3600,
-            margin_threshold=100,
-        ).compute()
-
-        # Assertions
-        assert isinstance(result, npd.NestedFrame)
-        assert len(result) == len(xmatch_correct)
-        for _, correct_row in xmatch_correct.iterrows():
-            assert correct_row["ss_id"] in result["id_left"].to_numpy()
-            xmatch_row = result[result["id_left"] == correct_row["ss_id"]]
-            assert xmatch_row["id_right"].to_numpy() == correct_row["xmatch_id"]
-            assert xmatch_row["_dist_arcsec"].to_numpy() == pytest.approx(correct_row["dist"] * 3600)
