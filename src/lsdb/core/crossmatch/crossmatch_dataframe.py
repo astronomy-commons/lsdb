@@ -12,8 +12,8 @@ from lsdb.loaders.dataframe.from_dataframe import from_dataframe
 
 
 def crossmatch(
-        left: npd.NestedFrame,
-        right: npd.NestedFrame,
+        left: Catalog | npd.NestedFrame,
+        right: Catalog | npd.NestedFrame,
         suffixes: tuple[str, str] | None = None,
         algorithm: (
             Type[AbstractCrossmatchAlgorithm] | BuiltInCrossmatchAlgorithm
@@ -31,6 +31,7 @@ def crossmatch(
     sig = inspect.signature(from_dataframe)
     from_dataframe_arg_names = list(sig.parameters.keys())
     from_dataframe_kwargs = {k: kwargs.pop(k) for k in from_dataframe_arg_names if k in kwargs}
+
 
     # Check if the left dataframe is a NestedFrame, and if so, convert it to a Catalog.
     if not isinstance(left, Catalog):
