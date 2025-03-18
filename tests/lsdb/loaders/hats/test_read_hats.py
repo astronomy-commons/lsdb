@@ -23,7 +23,7 @@ def test_read_hats(small_sky_order1_dir, small_sky_order1_hats_catalog, helpers)
     assert catalog.hc_structure.catalog_base_dir == small_sky_order1_hats_catalog.catalog_base_dir
     assert catalog.hc_structure.catalog_info.total_rows == len(catalog)
     assert catalog.get_healpix_pixels() == small_sky_order1_hats_catalog.get_healpix_pixels()
-    assert len(catalog.compute().columns) == 8
+    assert len(catalog.compute().columns) == 5
     assert isinstance(catalog.compute(), npd.NestedFrame)
     helpers.assert_divisions_are_correct(catalog)
     helpers.assert_index_correct(catalog)
@@ -75,7 +75,7 @@ def test_read_hats_default_cols_specify_cols(small_sky_order1_default_cols_dir, 
 
 
 def test_read_hats_default_cols_all_cols(small_sky_order1_default_cols_dir, helpers):
-    expected_all_cols = ["id", "ra", "dec", "ra_error", "dec_error", "Norder", "Dir", "Npix"]
+    expected_all_cols = ["id", "ra", "dec", "ra_error", "dec_error"]
     catalog = lsdb.read_hats(small_sky_order1_default_cols_dir, columns="all")
     assert isinstance(catalog, lsdb.Catalog)
     assert isinstance(catalog._ddf, nd.NestedFrame)
@@ -91,7 +91,7 @@ def test_read_hats_no_pandas(small_sky_order1_no_pandas_dir, helpers):
     catalog = lsdb.read_hats(small_sky_order1_no_pandas_dir)
     assert isinstance(catalog, lsdb.Catalog)
     assert isinstance(catalog._ddf, nd.NestedFrame)
-    assert len(catalog.compute().columns) == 8
+    assert len(catalog.compute().columns) == 5
     assert isinstance(catalog.compute(), npd.NestedFrame)
     helpers.assert_divisions_are_correct(catalog)
     helpers.assert_index_correct(catalog)
@@ -131,7 +131,7 @@ def test_read_hats_npix_alt_suffix(
     assert isinstance(catalog, lsdb.Catalog)
     assert isinstance(catalog._ddf, nd.NestedFrame)
     assert catalog.hc_structure.catalog_info.total_rows == len(catalog)
-    assert len(catalog.compute().columns) == 8
+    assert len(catalog.compute().columns) == 5
     assert isinstance(catalog.compute(), npd.NestedFrame)
     helpers.assert_divisions_are_correct(catalog)
     helpers.assert_index_correct(catalog)
@@ -147,7 +147,7 @@ def test_read_hats_npix_as_dir(small_sky_npix_as_dir_dir, small_sky_npix_as_dir_
     assert isinstance(catalog, lsdb.Catalog)
     assert isinstance(catalog._ddf, nd.NestedFrame)
     assert catalog.hc_structure.catalog_info.total_rows == len(catalog)
-    assert len(catalog.compute().columns) == 8
+    assert len(catalog.compute().columns) == 5
     assert isinstance(catalog.compute(), npd.NestedFrame)
     helpers.assert_divisions_are_correct(catalog)
     helpers.assert_index_correct(catalog)
