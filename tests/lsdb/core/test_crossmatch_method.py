@@ -54,7 +54,7 @@ def test_dataframe_or_catalog_crossmatch(
 def test_invalid_type_crossmatch(
     algo, left, right, small_sky_catalog, small_sky_xmatch_catalog, xmatch_correct
 ):
-    # Raise error if the type of left or right is invalid
+    """Raise error if the type of left or right is invalid."""
     if left == "invalid":
         with pytest.raises(TypeError, match="Left argument must be"):
             lsdb.crossmatch(np.array([1, 2, 3]), small_sky_xmatch_catalog, algorithm=algo)
@@ -66,10 +66,8 @@ def test_invalid_type_crossmatch(
 
 
 @pytest.mark.parametrize("algo", [KdTreeCrossmatch])
-def test_invalid_margin_args_crossmatch(
-    algo, left, right, small_sky_catalog, small_sky_xmatch_catalog, xmatch_correct
-):
-    # Raise an error if impossible margin argument combinations are given
+def test_invalid_margin_args_crossmatch(algo, small_sky_catalog, small_sky_xmatch_catalog):
+    """Raise an error if impossible margin argument combinations are given."""
     with pytest.raises(
         ValueError, match="If require_right_margin is True, margin_threshold must not be None."
     ):
