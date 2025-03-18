@@ -39,6 +39,8 @@ class HatsLoadingConfig:
         if self.dtype_backend not in ["pyarrow", "numpy_nullable", None]:
             raise ValueError("The data type backend must be either 'pyarrow' or 'numpy_nullable'")
 
+        # Or the check
+
     def get_dtype_mapper(self) -> Callable | None:
         """Returns a mapper for pyarrow or numpy types, mirroring Pandas behaviour."""
         mapper = None
@@ -65,26 +67,31 @@ class HatsLoadingConfig:
 
         return url_params
 
-    def get_read_kwargs(self, kwargs_must_match_signature=None):
+    def get_read_kwargs(self, kwargs_must_exist_in_signatures=None):
         """Clumps existing kwargs and `dtype_backend`, if specified.
-        
-        If `kwargs_must_match_signature` is specified, it will be used to filter through the kwargs
-        and raise an error if any of the keys are not in the signature.
+
+        If `kwargs_must_exist_in_signatures` is specified, an error will be thrown if a kwarg is
+        given that could not be used in any of the function signatures specified.
+
+        For example, TODO
         """
         kwargs = dict(self.kwargs)
 
-        if kwargs_must_match_signature:
+        if kwargs_must_exist_in_signatures:
             standard_params = ["engine", "filters"]
 
-            signature = inspect.signature(kwargs_must_match_signature)
-            signature_params = list(signature.parameters.keys())
-            # I liked the theory of this, but the params are just:
-            # ['func', 'iterables', 'args', 'meta', 'divisions', 'label', 'enforce_metadata', 'kwargs']
-            # so it's not really useful. What kind of kwargs would we even be passing?
+            signature_params = []
+            for func in kwargs_must_exist_in_signatures:
+                signature = inspect.signature(func)
+                signature_params.extend(list(signature.parameters.keys()))
+            print(signature_params)
 
             for key in kwargs:
                 if key not in standard_params and key not in signature_params:
-                    raise ValueError(f"Key {key} is not a recognized parameter for type {kwargs_must_match_signature}") 
+                    raise ValueError(
+                        f"Key {key} is not a recognized parameter for type"
+                        f"{kwargs_must_exist_in_signatures}"
+                    )
 
         if self.dtype_backend is not None:
             kwargs["dtype_backend"] = self.dtype_backend

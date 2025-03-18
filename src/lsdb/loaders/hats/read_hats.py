@@ -3,6 +3,7 @@ from __future__ import annotations
 import inspect
 from pathlib import Path
 
+import dask
 import hats as hc
 import nested_dask as nd
 import nested_pandas as npd
@@ -80,9 +81,6 @@ def read_hats(
 
     if isinstance(columns, str):
         raise TypeError("`columns` argument must be a list of strings, None, or 'all'")
-
-    # TODO
-    # Probably here would be where we filter the kwargs
 
     config = HatsLoadingConfig(
         search_filter=search_filter,
@@ -215,21 +213,6 @@ def _create_dask_meta_schema(schema: pa.Schema, config) -> npd.NestedFrame:
     return npd.NestedFrame(dask_meta_schema)
 
 
-def _check_valid_kwargs(config) -> bool:
-    """TODO write a docstring"""
-    # Check out what kwargs are accepted by nd.NestedFrame/dask dataframe's from_map
-    sig = inspect.signature(nd.NestedFrame.from_map)
-    from_map_arg_names = list(sig.parameters.keys())
-    
-    #print(from_map_arg_names)
-
-    for k in config.get_read_kwargs():
-        if k not in from_map_arg_names and k not in ["dtype_backend", "filters"]:
-            raise ValueError(f"Unrecognized kwarg used in read_hats: {k}")
-
-    return True
-
-
 def _load_dask_df_and_map(catalog: HCHealpixDataset, config) -> tuple[nd.NestedFrame, DaskDFPixelMap]:
     """Load Dask DF from parquet files and make dict of HEALPix pixel to partition index"""
     pixels = catalog.get_healpix_pixels()
@@ -247,7 +230,7 @@ def _load_dask_df_and_map(catalog: HCHealpixDataset, config) -> tuple[nd.NestedF
             divisions=divisions,
             meta=dask_meta_schema,
             schema=catalog.schema,
-            **config.get_read_kwargs(kwargs_must_match_signature=nd.NestedFrame.from_map),
+            **config.get_read_kwargs(kwargs_must_exist_in_signatures=[nd.NestedFrame.from_map, read_pixel]),
         )
     else:
         ddf = nd.NestedFrame.from_pandas(dask_meta_schema, npartitions=1)
