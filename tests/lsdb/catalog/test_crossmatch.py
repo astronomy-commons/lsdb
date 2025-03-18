@@ -11,7 +11,7 @@ import lsdb
 from lsdb import Catalog
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
 from lsdb.core.crossmatch.bounded_kdtree_match import BoundedKdTreeCrossmatch
-from lsdb.core.crossmatch.crossmatch_dataframe import crossmatch
+from lsdb.core.crossmatch.crossmatch import crossmatch
 from lsdb.core.crossmatch.kdtree_match import KdTreeCrossmatch
 from lsdb.dask.merge_catalog_functions import align_catalogs
 
@@ -154,20 +154,6 @@ class TestCrossmatch:
         small_sky_xmatch_catalog.margin = None
         with pytest.raises(ValueError, match="Right catalog margin"):
             small_sky_catalog.crossmatch(small_sky_xmatch_catalog, algorithm=algo, require_right_margin=True)
-
-    @staticmethod
-    def test_catalog_dataframe_crossmatch(algo, small_sky_catalog, small_sky_xmatch_catalog, xmatch_correct):
-        small_sky_xmatch_dataframe = small_sky_xmatch_catalog.compute()
-        xmatched = small_sky_catalog.crossmatch_dataframe(
-            small_sky_xmatch_dataframe, algorithm=algo, radius_arcsec=0.01 * 3600, margin_threshold=100
-        ).compute()
-        assert isinstance(xmatched, npd.NestedFrame)
-        assert len(xmatched) == len(xmatch_correct)
-        for _, correct_row in xmatch_correct.iterrows():
-            assert correct_row["ss_id"] in xmatched["id_small_sky"].to_numpy()
-            xmatch_row = xmatched[xmatched["id_small_sky"] == correct_row["ss_id"]]
-            assert xmatch_row["id_from_lsdb_dataframe"].to_numpy() == correct_row["xmatch_id"]
-            assert xmatch_row["_dist_arcsec"].to_numpy() == pytest.approx(correct_row["dist"] * 3600)
 
 
 @pytest.mark.parametrize("algo", [BoundedKdTreeCrossmatch])

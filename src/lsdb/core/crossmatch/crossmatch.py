@@ -2,6 +2,7 @@ import inspect
 from typing import Type
 
 import nested_pandas as npd
+import pandas as pd
 
 from lsdb.catalog import Catalog
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
@@ -10,8 +11,8 @@ from lsdb.loaders.dataframe.from_dataframe import from_dataframe
 
 
 def crossmatch(
-    left: Catalog | npd.NestedFrame,
-    right: Catalog | npd.NestedFrame,
+    left: Catalog | npd.NestedFrame | pd.DataFrame,
+    right: Catalog | npd.NestedFrame | pd.DataFrame,
     suffixes: tuple[str, str] | None = None,
     algorithm: (
         Type[AbstractCrossmatchAlgorithm] | BuiltInCrossmatchAlgorithm
@@ -58,15 +59,17 @@ def crossmatch(
     if require_right_margin and right_args.get("margin_threshold") is None:
         raise ValueError("If require_right_margin is True, margin_threshold must not be None.")
 
-    # Check if either given data set is a dataframe, and if so, convert it to a Catalog.
+    # Check if either given data set is a frame, and if so, convert it to a Catalog.
     if not isinstance(left, Catalog):
-        if not isinstance(left, npd.NestedFrame):
-            raise TypeError(f"Left argument must be a NestedFrame or Catalog, not {type(left)}.")
+        if not isinstance(left, (pd.DataFrame, npd.NestedFrame)):
+            raise TypeError(f"Left argument must be a DataFrame, NestedFrame, or Catalog, not {type(left)}.")
         left = from_dataframe(left, **left_args)
 
     if not isinstance(right, Catalog):
-        if not isinstance(right, npd.NestedFrame):
-            raise TypeError(f"Right argument must be a NestedFrame or Catalog, not {type(right)}.")
+        if not isinstance(right, (pd.DataFrame, npd.NestedFrame)):
+            raise TypeError(
+                f"Right argument must be a DataFrame, NestedFrame, or Catalog, not {type(right)}."
+            )
         right = from_dataframe(right, **right_args)
 
     # Call the crossmatch method with the given or newly generated Catalogs.
