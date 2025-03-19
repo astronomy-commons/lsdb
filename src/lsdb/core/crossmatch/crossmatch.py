@@ -1,4 +1,3 @@
-import inspect
 from typing import Type
 
 import nested_pandas as npd
@@ -13,6 +12,7 @@ from lsdb.loaders.dataframe.from_dataframe import from_dataframe
 def _validate_and_convert_to_catalog(
     data: npd.NestedFrame | pd.DataFrame, data_args: dict, suffix: str | None, default_suffix: str
 ) -> Catalog:
+    """Validate arguments and convert a DataFrame or NestedFrame to a Catalog."""
     if not isinstance(data, Catalog):
         if not isinstance(data, (pd.DataFrame, npd.NestedFrame)):
             raise TypeError(f"Argument must be a DataFrame, NestedFrame, or Catalog, not {type(data)}.")
