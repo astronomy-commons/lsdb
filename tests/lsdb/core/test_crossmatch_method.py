@@ -23,6 +23,10 @@ def test_dataframe_or_catalog_crossmatch(
     left_data = small_sky_catalog.compute() if left == "dataframe" else small_sky_catalog
     right_data = small_sky_xmatch_catalog.compute() if right == "dataframe" else small_sky_xmatch_catalog
 
+    # Determine which args to pass
+    left_args = {} if left == "catalog" else {"margin_threshold": 100}
+    right_args = {} if right == "catalog" else {"margin_threshold": 100}
+
     # Perform the crossmatch
     result = lsdb.crossmatch(
         left_data,
@@ -30,7 +34,8 @@ def test_dataframe_or_catalog_crossmatch(
         suffixes=["_left", "_right"],
         algorithm=algo,
         radius_arcsec=0.01 * 3600,
-        margin_threshold=100,
+        left_args=left_args,
+        right_args=right_args,
     ).compute()
 
     # Assertions
@@ -51,9 +56,7 @@ def test_dataframe_or_catalog_crossmatch(
         ("invalid", "catalog"),
     ],
 )
-def test_invalid_type_crossmatch(
-    algo, left, right, small_sky_catalog, small_sky_xmatch_catalog, xmatch_correct
-):
+def test_invalid_type_crossmatch(algo, left, right, small_sky_catalog, small_sky_xmatch_catalog):
     """Raise error if the type of left or right is invalid."""
     if left == "invalid":
         with pytest.raises(TypeError, match="Left argument must be"):
