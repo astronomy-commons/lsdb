@@ -1,0 +1,152 @@
+import nested_pandas as npd
+import numpy as np
+import pytest
+
+import lsdb
+from lsdb.core.crossmatch.kdtree_match import KdTreeCrossmatch
+
+
+@pytest.mark.parametrize("algo", [KdTreeCrossmatch])
+@pytest.mark.parametrize(
+    "left, right",
+    [
+        ("dataframe", "dataframe"),
+        ("dataframe", "catalog"),
+        ("catalog", "dataframe"),
+        ("catalog", "catalog"),
+    ],
+)
+def test_dataframe_or_catalog_crossmatch(
+    algo, left, right, small_sky_catalog, small_sky_xmatch_catalog, xmatch_correct
+):
+    # Determine which inputs need to be computed
+    left_data = small_sky_catalog.compute() if left == "dataframe" else small_sky_catalog
+    right_data = small_sky_xmatch_catalog.compute() if right == "dataframe" else small_sky_xmatch_catalog
+
+    # Determine which args to pass
+    left_args = {} if left == "catalog" else {"margin_threshold": 100}
+    right_args = {} if right == "catalog" else {"margin_threshold": 100}
+
+    # Perform the crossmatch
+    result = lsdb.crossmatch(
+        left_data,
+        right_data,
+        suffixes=["_left", "_right"],
+        algorithm=algo,
+        radius_arcsec=0.01 * 3600,
+        left_args=left_args,
+        right_args=right_args,
+    ).compute()
+
+    # Assertions
+    assert isinstance(result, npd.NestedFrame)
+    assert len(result) == len(xmatch_correct)
+    for _, correct_row in xmatch_correct.iterrows():
+        assert correct_row["ss_id"] in result["id_left"].to_numpy()
+        xmatch_row = result[result["id_left"] == correct_row["ss_id"]]
+        assert xmatch_row["id_right"].to_numpy() == correct_row["xmatch_id"]
+        assert xmatch_row["_dist_arcsec"].to_numpy() == pytest.approx(correct_row["dist"] * 3600)
+
+
+@pytest.mark.parametrize("algo", [KdTreeCrossmatch])
+@pytest.mark.parametrize(
+    "left, right",
+    [
+        ("catalog", "invalid"),
+        ("invalid", "catalog"),
+    ],
+)
+def test_invalid_type_crossmatch(algo, left, right, small_sky_catalog, small_sky_xmatch_catalog):
+    """Raise error if the type of left or right is invalid."""
+    if left == "invalid":
+        with pytest.raises(TypeError, match="Argument must be"):
+            lsdb.crossmatch(np.array([1, 2, 3]), small_sky_xmatch_catalog, algorithm=algo)
+        return
+    if right == "invalid":
+        with pytest.raises(TypeError, match="Argument must be"):
+            lsdb.crossmatch(small_sky_catalog, np.array([1, 2, 3]), algorithm=algo)
+        return
+
+
+@pytest.mark.parametrize("algo", [KdTreeCrossmatch])
+def test_invalid_margin_args_crossmatch(algo, small_sky_catalog, small_sky_xmatch_catalog):
+    """Raise an error if an impossible margin argument combination is given."""
+    with pytest.raises(
+        ValueError, match="If require_right_margin is True, margin_threshold must not be None."
+    ):
+        lsdb.crossmatch(
+            small_sky_catalog,
+            small_sky_xmatch_catalog,
+            algorithm=algo,
+            require_right_margin=True,
+            right_args={"margin_threshold": None},
+        )
+
+
+@pytest.mark.parametrize("algo", [KdTreeCrossmatch])
+def test_ra_dec_columns_crossmatch(algo, small_sky_catalog, small_sky_xmatch_catalog, xmatch_correct):
+    """Raise an error if an impossible margin argument combination is given."""
+
+    # Compute dataframes
+    left_dataframe = small_sky_catalog.compute()
+    right_dataframe = small_sky_xmatch_catalog.compute()
+
+    # Rename ra and dec columns to all caps
+    right_dataframe_caps_ra_col = right_dataframe.rename(columns={"ra": "RA"})
+    right_dataframe_caps_dec_col = right_dataframe.rename(columns={"dec": "DEC"})
+
+    result = lsdb.crossmatch(
+        left_dataframe,
+        right_dataframe_caps_ra_col,
+        algorithm=algo,
+        radius_arcsec=0.01 * 3600,
+        right_args={"margin_threshold": 100},
+    ).compute()
+    assert isinstance(result, npd.NestedFrame)
+    assert len(result) == len(xmatch_correct)
+
+    result = lsdb.crossmatch(
+        left_dataframe,
+        right_dataframe_caps_dec_col,
+        algorithm=algo,
+        radius_arcsec=0.01 * 3600,
+        right_args={"margin_threshold": 100},
+    ).compute()
+    assert isinstance(result, npd.NestedFrame)
+    assert len(result) == len(xmatch_correct)
+
+    # Rename ra and dec columns to unknown names
+    right_dataframe_abnormal_ra_col = right_dataframe.rename(columns={"ra": "ra_col"})
+    right_dataframe_abnormal_dec_col = right_dataframe.rename(columns={"dec": "dec_col"})
+
+    # Try crossmatch
+    with pytest.raises(ValueError, match="No 'ra' or 'RA' column found"):
+        lsdb.crossmatch(
+            left_dataframe,
+            right_dataframe_abnormal_ra_col,
+            algorithm=algo,
+        )
+
+    with pytest.raises(ValueError, match="No 'dec' or 'DEC' column found"):
+        lsdb.crossmatch(
+            left_dataframe,
+            right_dataframe_abnormal_dec_col,
+            algorithm=algo,
+        )
+
+    # Rename ra and dec columns to unknown names
+    left_dataframe_abnormal_ra_dec_cols = left_dataframe.rename(columns={"ra": "ra_col", "dec": "dec_col"})
+    right_dataframe_abnormal_ra_dec_cols = right_dataframe.rename(columns={"ra": "ra_col", "dec": "dec_col"})
+
+    # Try crossmatch with specified ra and dec columns
+    result = lsdb.crossmatch(
+        left_dataframe_abnormal_ra_dec_cols,
+        right_dataframe_abnormal_ra_dec_cols,
+        ra_column="ra_col",
+        dec_column="dec_col",
+        algorithm=algo,
+        radius_arcsec=0.01 * 3600,
+        right_args={"margin_threshold": 100},
+    ).compute()
+    assert isinstance(result, npd.NestedFrame)
+    assert len(result) == len(xmatch_correct)
