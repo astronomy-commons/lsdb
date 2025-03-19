@@ -116,20 +116,37 @@ def test_ra_dec_columns_crossmatch(algo, small_sky_catalog, small_sky_xmatch_cat
     assert len(result) == len(xmatch_correct)
 
     # Rename ra and dec columns to unknown names
-    right_dataframe_unknown_ra_col = right_dataframe.rename(columns={"ra": "ra_col"})
-    right_dataframe_unknown_dec_col = right_dataframe.rename(columns={"dec": "dec_col"})
+    right_dataframe_abnormal_ra_col = right_dataframe.rename(columns={"ra": "ra_col"})
+    right_dataframe_abnormal_dec_col = right_dataframe.rename(columns={"dec": "dec_col"})
 
     # Try crossmatch
     with pytest.raises(ValueError, match="No 'ra' or 'RA' column found"):
         lsdb.crossmatch(
             left_dataframe,
-            right_dataframe_unknown_ra_col,
+            right_dataframe_abnormal_ra_col,
             algorithm=algo,
         )
 
     with pytest.raises(ValueError, match="No 'dec' or 'DEC' column found"):
         lsdb.crossmatch(
             left_dataframe,
-            right_dataframe_unknown_dec_col,
+            right_dataframe_abnormal_dec_col,
             algorithm=algo,
         )
+
+    # Rename ra and dec columns to unknown names
+    left_dataframe_abnormal_ra_dec_cols = left_dataframe.rename(columns={"ra": "ra_col", "dec": "dec_col"})
+    right_dataframe_abnormal_ra_dec_cols = right_dataframe.rename(columns={"ra": "ra_col", "dec": "dec_col"})
+
+    # Try crossmatch with specified ra and dec columns
+    result = lsdb.crossmatch(
+        left_dataframe_abnormal_ra_dec_cols,
+        right_dataframe_abnormal_ra_dec_cols,
+        ra_column="ra_col",
+        dec_column="dec_col",
+        algorithm=algo,
+        radius_arcsec=0.01 * 3600,
+        right_args={"margin_threshold": 100},
+    ).compute()
+    assert isinstance(result, npd.NestedFrame)
+    assert len(result) == len(xmatch_correct)

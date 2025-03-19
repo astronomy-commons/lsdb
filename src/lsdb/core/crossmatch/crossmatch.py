@@ -44,22 +44,11 @@ def _validate_and_convert_to_catalog(
     return data
 
 
-def _update_args_with_given_key(kwargs: dict, left_args: dict, right_args: dict, given_key: str) -> None:
-    """Update 'left_args' and 'right_args' with the given key if it is present in 'kwargs'.
-
-    Note that this function removes the key from 'kwargs' if it is present.
-    """
-    column_value = kwargs.pop(given_key, None)
-    if column_value:
-        if given_key not in left_args:
-            left_args[given_key] = column_value
-        if given_key not in right_args:
-            right_args[given_key] = column_value
-
-
 def crossmatch(
     left: Catalog | npd.NestedFrame | pd.DataFrame,
     right: Catalog | npd.NestedFrame | pd.DataFrame,
+    ra_column: str | None = None,
+    dec_column: str | None = None,
     suffixes: tuple[str, str] | None = None,
     algorithm: (
         Type[AbstractCrossmatchAlgorithm] | BuiltInCrossmatchAlgorithm
@@ -78,6 +67,10 @@ def crossmatch(
     Args:
         left (Catalog | NestedFrame): The left catalog or frame to crossmatch.
         right (Catalog | NestedFrame): The right catalog or frame to crossmatch.
+        ra_column (str, optional): The name of the right ascension column for both catalogs.
+            Defaults to None.
+        dec_column (str, optional): The name of the declination column for both catalogs. Defaults
+            to None.
         suffixes (tuple[str, str], optional): Suffixes to append to overlapping column names.
             Defaults to None.
         algorithm (Type[AbstractCrossmatchAlgorithm] | BuiltInCrossmatchAlgorithm, optional): The
@@ -101,9 +94,13 @@ def crossmatch(
     if require_right_margin and right_args.get("margin_threshold") is None:
         raise ValueError("If require_right_margin is True, margin_threshold must not be None.")
 
-    # Check if 'ra_column' and 'dec_column' are in kwargs, and update 'left_args' and 'right_args' accordingly.
-    _update_args_with_given_key(kwargs, left_args, right_args, "ra_column")
-    _update_args_with_given_key(kwargs, left_args, right_args, "dec_column")
+    # Update left_args and right_args with ra_column and dec_column if given.
+    if ra_column:
+        left_args["ra_column"] = ra_column
+        right_args["ra_column"] = ra_column
+    if dec_column:
+        left_args["dec_column"] = dec_column
+        right_args["dec_column"] = dec_column
 
     # Validate and convert left and right to Catalogs if necessary.
     left = _validate_and_convert_to_catalog(left, left_args, suffixes[0] if suffixes else None, "left")
