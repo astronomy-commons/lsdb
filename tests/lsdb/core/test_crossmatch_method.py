@@ -81,3 +81,55 @@ def test_invalid_margin_args_crossmatch(algo, small_sky_catalog, small_sky_xmatc
             require_right_margin=True,
             right_args={"margin_threshold": None},
         )
+
+
+@pytest.mark.parametrize("algo", [KdTreeCrossmatch])
+def test_ra_dec_columns_crossmatch(algo, small_sky_catalog, small_sky_xmatch_catalog, xmatch_correct):
+    """Raise an error if an impossible margin argument combination is given."""
+
+    # Compute dataframes
+    left_dataframe = small_sky_catalog.compute()
+    right_dataframe = small_sky_xmatch_catalog.compute()
+
+    # Rename ra and dec columns to all caps
+    right_dataframe_caps_ra_col = right_dataframe.rename(columns={"ra": "RA"})
+    right_dataframe_caps_dec_col = right_dataframe.rename(columns={"dec": "DEC"})
+
+    result = lsdb.crossmatch(
+        left_dataframe,
+        right_dataframe_caps_ra_col,
+        algorithm=algo,
+        radius_arcsec=0.01 * 3600,
+        right_args={"margin_threshold": 100},
+    ).compute()
+    assert isinstance(result, npd.NestedFrame)
+    assert len(result) == len(xmatch_correct)
+
+    result = lsdb.crossmatch(
+        left_dataframe,
+        right_dataframe_caps_dec_col,
+        algorithm=algo,
+        radius_arcsec=0.01 * 3600,
+        right_args={"margin_threshold": 100},
+    ).compute()
+    assert isinstance(result, npd.NestedFrame)
+    assert len(result) == len(xmatch_correct)
+
+    # Rename ra and dec columns to unknown names
+    right_dataframe_unknown_ra_col = right_dataframe.rename(columns={"ra": "ra_col"})
+    right_dataframe_unknown_dec_col = right_dataframe.rename(columns={"dec": "dec_col"})
+
+    # Try crossmatch
+    with pytest.raises(ValueError, match="No 'ra' or 'RA' column found"):
+        lsdb.crossmatch(
+            left_dataframe,
+            right_dataframe_unknown_ra_col,
+            algorithm=algo,
+        )
+
+    with pytest.raises(ValueError, match="No 'dec' or 'DEC' column found"):
+        lsdb.crossmatch(
+            left_dataframe,
+            right_dataframe_unknown_dec_col,
+            algorithm=algo,
+        )
