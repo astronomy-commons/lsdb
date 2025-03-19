@@ -22,34 +22,47 @@ e.g. major/minor/patch, deadlines, blocking issues, breaking changes, folks to n
 
 ## nested-* updates to include
 
-<!-- DON'T EDIT BELOW HERE -->
-
-
+<!-- DEAR SUBMITTER -- DON'T EDIT BELOW HERE -->
 
 <!-- ================= -->
 <!-- PROCESS CHECKLIST -->
 <!-- ================= -->
 
-## hats release
+## github and pypi steps
+
+### hats 
 
 - [ ] tag in github
 - [ ] confirm on [pypi](https://pypi.org/manage/project/hats/releases/)
+
+### lsdb
+
+- [ ] update pinned versions (e.g. hats and nested) (or confirm no updates to pins)
+- [ ] tag in github
+- [ ] confirm on [pypi](https://pypi.org/manage/project/lsdb/releases/)
+
+### hats-import
+
+- [ ] update pinned versions (e.g. hats) (or confirm no updates to pins)
+- [ ] tag in github
+- [ ] confirm on [pypi](https://pypi.org/manage/project/hats-import/releases/)
+
+## conda-forge steps
+
+### hats 
+
 - [ ] request new conda-forge version (open [bot command issue](https://github.com/conda-forge/hats-feedstock/issues/) with title `@conda-forge-admin, please update version`)
 - [ ] approve conda-forge PR
 - [ ] confirm on [conda-forge](https://anaconda.org/conda-forge/hats)
 
-## lsdb release
+### lsdb
 
-- [ ] tag in github
-- [ ] confirm on [pypi](https://pypi.org/manage/project/lsdb/releases/)
 - [ ] request new conda-forge version (open [bot command issue](https://github.com/conda-forge/lsdb-feedstock/issues/) with title `@conda-forge-admin, please update version`)
 - [ ] confirm tagged hats version and approve
 - [ ] confirm on [conda-forge](https://anaconda.org/conda-forge/lsdb)
 
-## hats-import release
+### hats-import
 
-- [ ] tag in github
-- [ ] confirm on [pypi](https://pypi.org/manage/project/hats-import/releases/)
 - [ ] request new conda-forge version (open [bot command issue](https://github.com/conda-forge/hats-import-feedstock/issues/) with title `@conda-forge-admin, please update version`)
 - [ ] confirm tagged hats version and approve
 - [ ] confirm on [conda-forge](https://anaconda.org/conda-forge/hats-import)
