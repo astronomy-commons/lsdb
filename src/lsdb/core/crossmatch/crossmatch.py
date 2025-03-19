@@ -13,34 +13,48 @@ def _validate_and_convert_to_catalog(
     data: npd.NestedFrame | pd.DataFrame, data_args: dict, suffix: str | None, default_suffix: str
 ) -> Catalog:
     """Validate arguments and convert a DataFrame or NestedFrame to a Catalog."""
-    if not isinstance(data, Catalog):
-        if not isinstance(data, (pd.DataFrame, npd.NestedFrame)):
-            raise TypeError(f"Argument must be a DataFrame, NestedFrame, or Catalog, not {type(data)}.")
+    if isinstance(data, Catalog):
+        return data
+    if not isinstance(data, (pd.DataFrame, npd.NestedFrame)):
+        raise TypeError(f"Argument must be a DataFrame, NestedFrame, or Catalog, not {type(data)}.")
 
-        # Check for "ra" and "dec" columns. If they do not exist, try "RA" and "DEC" before raising an error.
-        if "ra_column" not in data_args:
-            if "ra" in data.columns:
-                data_args["ra_column"] = "ra"
-            elif "RA" in data.columns:
-                data_args["ra_column"] = "RA"
-            else:
-                raise ValueError("No 'ra' or 'RA' column found in DataFrame; specify 'ra_column' param.")
+    # Check for "ra" and "dec" columns. If they do not exist, try "RA" and "DEC" before raising an error.
+    if "ra_column" not in data_args:
+        if "ra" in data.columns:
+            data_args["ra_column"] = "ra"
+        elif "RA" in data.columns:
+            data_args["ra_column"] = "RA"
+        else:
+            raise ValueError("No 'ra' or 'RA' column found in DataFrame; specify 'ra_column' param.")
 
-        if "dec_column" not in data_args:
-            if "dec" in data.columns:
-                data_args["dec_column"] = "dec"
-            elif "DEC" in data.columns:
-                data_args["dec_column"] = "DEC"
-            else:
-                raise ValueError("No 'dec' or 'DEC' column found in DataFrame; specify 'dec_column' param.")
+    if "dec_column" not in data_args:
+        if "dec" in data.columns:
+            data_args["dec_column"] = "dec"
+        elif "DEC" in data.columns:
+            data_args["dec_column"] = "DEC"
+        else:
+            raise ValueError("No 'dec' or 'DEC' column found in DataFrame; specify 'dec_column' param.")
 
-        # Pick catalog name: either use the user-specified suffixes, or default to "left" or "right".
-        if "catalog_name" not in data_args:
-            data_args["catalog_name"] = suffix if suffix else default_suffix
+    # Pick catalog name: either use the user-specified suffixes, or default to "left" or "right".
+    if "catalog_name" not in data_args:
+        data_args["catalog_name"] = suffix if suffix else default_suffix
 
-        # Convert the DataFrame to a Catalog.
-        data = from_dataframe(data, **data_args)
+    # Convert the DataFrame to a Catalog.
+    data = from_dataframe(data, **data_args)
     return data
+
+
+def _update_args_with_given_key(kwargs: dict, left_args: dict, right_args: dict, given_key: str) -> None:
+    """Update 'left_args' and 'right_args' with the given key if it is present in 'kwargs'.
+
+    Note that this function removes the key from 'kwargs' if it is present.
+    """
+    column_value = kwargs.pop(given_key, None)
+    if column_value:
+        if given_key not in left_args:
+            left_args[given_key] = column_value
+        if given_key not in right_args:
+            right_args[given_key] = column_value
 
 
 def crossmatch(
@@ -86,6 +100,10 @@ def crossmatch(
     # Check for conflicting right margin arguments.
     if require_right_margin and right_args.get("margin_threshold") is None:
         raise ValueError("If require_right_margin is True, margin_threshold must not be None.")
+
+    # Check if 'ra_column' and 'dec_column' are in kwargs, and update 'left_args' and 'right_args' accordingly.
+    _update_args_with_given_key(kwargs, left_args, right_args, "ra_column")
+    _update_args_with_given_key(kwargs, left_args, right_args, "dec_column")
 
     # Validate and convert left and right to Catalogs if necessary.
     left = _validate_and_convert_to_catalog(left, left_args, suffixes[0] if suffixes else None, "left")
