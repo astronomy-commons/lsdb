@@ -22,8 +22,8 @@ dependencies = [
     # dask diagnostics is required to spin up the dashboard for profiling.
     "dask[complete]",
     "deprecated",
-    "hats>=0.4.6",
-    "nested-dask>=0.3.0",
+    "hats>=0.5.0",
+    "nested-dask>=0.3.4",
     "nested-pandas",
     "pyarrow",
     "scipy", # kdtree
