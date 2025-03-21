@@ -67,8 +67,8 @@ def crossmatch(
     Args:
         left (Catalog | NestedFrame): The left catalog or frame to crossmatch.
         right (Catalog | NestedFrame): The right catalog or frame to crossmatch.
-        ra_column (str, optional): The name of the right ascension column for both catalogs, if passing dataframes.
-            Defaults to None.
+        ra_column (str, optional): The name of the right ascension column for both catalogs,
+            if passing dataframes. Defaults to None.
         dec_column (str, optional): The name of the declination column for both catalogs. Defaults
             to None.
         suffixes (tuple[str, str], optional): Suffixes to append to overlapping column names.
