@@ -219,13 +219,13 @@ class HealpixDataset(Dataset):
         return PartitionIndexer(self)
 
     def head(self, n: int = 5) -> npd.NestedFrame:
-        """Returns a few rows of data for previewing purposes.
+        """Returns a few rows of initial data for previewing purposes.
 
         Args:
             n (int): The number of desired rows.
 
         Returns:
-            A pandas DataFrame with up to `n` of data.
+            A pandas DataFrame with up to `n` rows of data.
         """
         dfs = []
         remaining_rows = n
@@ -236,6 +236,28 @@ class HealpixDataset(Dataset):
             if len(partition_head) > 0:
                 dfs.append(partition_head)
                 remaining_rows -= len(partition_head)
+        if len(dfs) > 0:
+            return npd.NestedFrame(pd.concat(dfs))
+        return self._ddf._meta
+
+    def tail(self, n: int = 5) -> npd.NestedFrame:
+        """Returns a few rows of data from the end of the catalog for previewing purposes.
+
+        Args:
+            n (int): The number of desired rows.
+
+        Returns:
+            A pandas DataFrame with up to `n` rows of data.
+        """
+        dfs = []
+        remaining_rows = n
+        for partition in self._ddf.partitions:
+            if remaining_rows == 0:
+                break
+            partition_tail = partition.tail(remaining_rows)
+            if len(partition_tail) > 0:
+                dfs.append(partition_tail)
+                remaining_rows -= len(partition_tail)
         if len(dfs) > 0:
             return npd.NestedFrame(pd.concat(dfs))
         return self._ddf._meta
