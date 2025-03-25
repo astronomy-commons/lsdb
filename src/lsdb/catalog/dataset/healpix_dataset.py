@@ -219,13 +219,13 @@ class HealpixDataset(Dataset):
         return PartitionIndexer(self)
 
     def head(self, n: int = 5) -> npd.NestedFrame:
-        """Returns a few rows of data for previewing purposes.
+        """Returns a few rows of initial data for previewing purposes.
 
         Args:
             n (int): The number of desired rows.
 
         Returns:
-            A pandas DataFrame with up to `n` of data.
+            A pandas DataFrame with up to `n` rows of data.
         """
         dfs = []
         remaining_rows = n
@@ -238,6 +238,82 @@ class HealpixDataset(Dataset):
                 remaining_rows -= len(partition_head)
         if len(dfs) > 0:
             return npd.NestedFrame(pd.concat(dfs))
+        return self._ddf._meta
+
+    def tail(self, n: int = 5) -> npd.NestedFrame:
+        """Returns a few rows of data from the end of the catalog for previewing purposes.
+
+        Args:
+            n (int): The number of desired rows.
+
+        Returns:
+            A pandas DataFrame with up to `n` rows of data.
+        """
+        dfs = []
+        remaining_rows = n
+        for partition in self._ddf.partitions:
+            if remaining_rows == 0:
+                break
+            partition_tail = partition.tail(remaining_rows)
+            if len(partition_tail) > 0:
+                dfs.append(partition_tail)
+                remaining_rows -= len(partition_tail)
+        if len(dfs) > 0:
+            return npd.NestedFrame(pd.concat(dfs))
+        return self._ddf._meta
+
+    def sample(self, partition_id: int, n: int = 5) -> npd.NestedFrame:
+        """Returns a few randomly sampled rows from a given partition.
+
+        Args:
+            partition_id (int): the partition to sample.
+            n (int): the number of desired rows.
+
+        Returns:
+            A pandas DataFrame with up to `n` rows of data.
+        """
+        dfs = []
+        remaining_rows = n
+        partition = self._ddf.partitions[partition_id]
+        # Get the count of rows in the partition.
+        pixel_rows = len(partition)
+        fraction = n / pixel_rows
+        print(f"Getting {n} / {pixel_rows} = {fraction}")
+        dfs.append(partition.sample(frac=fraction).compute())
+        if len(dfs) > 0:
+            return npd.NestedFrame(pd.concat(dfs))
+        return self._ddf._meta
+
+    def random_sample(self, n: int = 5) -> npd.NestedFrame:
+        """Returns a few randomly sampled rows, like self.sample(),
+        except that it randomly samples all partitions in order to
+        fulfill the rows.
+
+        Args:
+            n (int): the number of desired rows.
+
+        Returns:
+            A pandas DataFrame with up to `n` rows of data.
+        """
+        dfs = []
+        row_counts = np.array(dask.compute(*[dp.shape[0].to_delayed() for dp in self._ddf.partitions]))
+        npartitions = len(row_counts)
+        rows_per_partition = np.random.multinomial(n, row_counts / row_counts.sum())
+        # With this breakdown, we randomly sample rows from each partition
+        # to collect the entire sampling.
+        # Logic is borrowed from self.sample(), but we already have a full list
+        # of row counts, so we can avoid a lot of overhead.
+        for i, (rows, part, part_rows) in enumerate(
+            zip(rows_per_partition, self._ddf.partitions, row_counts)
+        ):
+            if not rows:
+                continue
+            fraction = rows / part_rows
+            print(f"Sampling {rows} / {part_rows} rows from partition {i}")
+            selection = part.sample(frac=fraction)
+            dfs += selection.to_delayed()
+        if len(dfs) > 0:
+            return npd.NestedFrame(pd.concat(dask.compute(*dfs)))
         return self._ddf._meta
 
     def query(self, expr: str) -> Self:
