@@ -788,6 +788,7 @@ class HealpixDataset(Dataset):
             hc_updates = {"ra_column": "", "dec_column": ""}
         return self._create_updated_dataset(ddf=ndf, updated_catalog_info_params=hc_updates)
 
+    # pylint: disable=duplicate-code
     def plot_points(
         self,
         *,
