@@ -262,6 +262,41 @@ class HealpixDataset(Dataset):
             return npd.NestedFrame(pd.concat(dfs))
         return self._ddf._meta
 
+    def sample(self, partition_id: int, n: int = 5) -> npd.NestedFrame:
+        """Returns a few randomly sampled rows from a given partition.
+        """
+        dfs = []
+        remaining_rows = n
+        # Using `.partitions` instead of `._ddf.partitions` so that we
+        # can have the partition info.
+        partition = self.partitions[partition_id]
+        pixel = partition.hc_structure.partition_info.pixel_list[0]
+        print(f"Sampling partition: {pixel}")
+        # This appears to be an expensive way to get the length of the
+        # partition.  Anything cheaper?
+        stats = partition.hc_structure.per_pixel_statistics(
+            include_pixels=[pixel],
+            include_stats=["row_count"])
+        # This seems like a lot of trouble and not reliable, either, not
+        # if the first column is nested.  Why *is* this so much trouble?
+        pixel_rows = int(stats[stats.columns[0]].iloc[0])
+        # With this uncertain number, we can now perhaps guess at the
+        # fraction we should use.
+        # TODO: why aren't we using self._ddf.partitions here?
+        fraction = n / pixel_rows
+        # TODO: Now this is just silly, isn't it?
+        dfs.append(partition._ddf.partitions[0].sample(frac=fraction).compute())
+        # TODO: what if it's not enough or too many?
+        if len(dfs) > 0:
+            return npd.NestedFrame(pd.concat(dfs))
+        return self._ddf._meta
+
+    def random_sample(self, n: int = 5) -> npd.NestedFrame:
+        """Returns a few randomly sampled rows, like self.sample(),
+        except that it also randomly samples all partitions.
+        """
+        pass
+
     def query(self, expr: str) -> Self:
         """Filters catalog using a complex query expression
 
