@@ -296,7 +296,16 @@ class HealpixDataset(Dataset):
             A pandas DataFrame with up to `n` rows of data.
         """
         dfs = []
-        row_counts = np.array(dask.compute(*[dp.shape[0].to_delayed() for dp in self._ddf.partitions]))
+        if self.hc_structure.catalog_info.total_rows > 0:
+            stats = self.hc_structure.per_pixel_statistics()
+            # These stats are one *row* per pixel.  The number of
+            # columns is permuted, with names like "colname:
+            # row_count".  We only need one representative column.
+            # Assume the first column is satisfactory.
+            rep_col = self.columns[0]
+            row_counts = stats[f"{rep_col}: row_count"].map(int)
+        else:
+            row_counts = np.array(dask.compute(*[dp.shape[0].to_delayed() for dp in self._ddf.partitions]))
         npartitions = len(row_counts)
         rows_per_partition = np.random.multinomial(n, row_counts / row_counts.sum())
         # With this breakdown, we randomly sample rows from each partition
