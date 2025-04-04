@@ -287,6 +287,10 @@ class HealpixDataset(Dataset):
         partition = self._ddf.partitions[partition_id]
         # Get the count of rows in the partition.
         pixel_rows = len(partition)
+        if pixel_rows == 0:
+            fraction = 0.0
+            logging.debug("Zero rows in partition %d, returning empty", partition_id)
+            return partition._meta
         fraction = n / pixel_rows
         logging.debug("Getting %d / %d = %f", n, pixel_rows, fraction)
         return partition.sample(frac=fraction).compute()
