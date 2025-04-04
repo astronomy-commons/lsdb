@@ -41,7 +41,7 @@ from lsdb.io.schema import get_arrow_schema
 from lsdb.types import DaskDFPixelMap
 
 
-# pylint: disable=protected-access,too-many-public-methods
+# pylint: disable=protected-access,too-many-public-methods,too-many-lines
 class HealpixDataset(Dataset):
     """LSDB Catalog DataFrame to perform analysis of sky catalogs and efficient
     spatial operations.
@@ -273,7 +273,6 @@ class HealpixDataset(Dataset):
             A pandas DataFrame with up to `n` rows of data.
         """
         dfs = []
-        remaining_rows = n
         partition = self._ddf.partitions[partition_id]
         # Get the count of rows in the partition.
         pixel_rows = len(partition)
@@ -306,7 +305,6 @@ class HealpixDataset(Dataset):
             row_counts = stats[f"{rep_col}: row_count"].map(int)
         else:
             row_counts = np.array(dask.compute(*[dp.shape[0].to_delayed() for dp in self._ddf.partitions]))
-        npartitions = len(row_counts)
         rows_per_partition = np.random.multinomial(n, row_counts / row_counts.sum())
         # With this breakdown, we randomly sample rows from each partition
         # to collect the entire sampling.
