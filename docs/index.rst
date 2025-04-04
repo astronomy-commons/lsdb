@@ -47,11 +47,11 @@ Using this Guide
 
        The detailed API documentation
 
-   .. grid-item-card:: Example Science Notebooks
-       :link: science-notebooks
+   .. grid-item-card:: Contact us
+       :link: contact
        :link-type: doc
 
-       Jupyter notebooks going over some example scientific use cases
+       Reach out for more help
 
 .. toctree::
    :hidden:
