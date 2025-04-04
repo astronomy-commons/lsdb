@@ -6,9 +6,9 @@
 LSDB
 ========================================================================================
 
-LSDB (Large Survey DataBase) is a python framework that enables simple, fast spatial analysis of extremely
-large astronomical catalogs (e.g. querying and crossmatching ~10⁹ sources). It aims to address large-scale
-data processing challenges, in particular those brought up by `LSST <https://www.lsst.org/about>`_.
+LSDB is a python tool for scalable analysis of large catalogs (e.g. querying 
+and crossmatching ~10⁹ sources). It aims to address large-scale data processing 
+challenges, in particular those brought up by `LSST <https://www.lsst.org/about>`_.
 
 Built on top of Dask to efficiently scale and parallelize operations across multiple distributed workers, it
 uses the `HATS <https://hats.readthedocs.io/en/stable/>`_ data format to efficiently perform spatial
@@ -60,8 +60,6 @@ Using this Guide
    Home page <self>
    Getting Started <getting-started>
    Tutorials <tutorials>
-   Advanced Topics<advanced-topics>
-   Example Science Notebooks<science-notebooks>
    API Reference <autoapi/index>
 
 .. toctree::

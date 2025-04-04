@@ -12,7 +12,6 @@ TODO - numbering is weird.
 An introduction to LSDB's core features
 
 .. toctree::
-    :numbered:
     :maxdepth: 1
 
     Catalog <todo>
@@ -26,7 +25,6 @@ An introduction to LSDB's core features
 An introduction to the most common Catalog operations
 
 .. toctree::
-    :numbered:
     :maxdepth: 1
 
     Getting data into LSDB  <tutorials/getting_data>
@@ -39,15 +37,18 @@ An introduction to the most common Catalog operations
     Plotting results <tutorials/pre_executed/plotting>
     Exporting results (e.g. to_hats) <tutorials/exporting_results>
 
-3 - Nested data manipulation
+3 - Less common operations
 ------------------------------------------------------
-THINGS
+
+.. toctree::
+    :maxdepth: 1
+
+    Joining catalogs <tutorials/pre_executed/join_catalogs>
 
 4 - HATS creation and reading
 ------------------------------------------------------
 
 .. toctree::
-    :numbered:
     :maxdepth: 1
 
     Import catalogs <tutorials/import_catalogs>
@@ -59,7 +60,6 @@ THINGS
 ------------------------------------------------------
 
 .. toctree::
-    :numbered:
     :maxdepth: 1
 
     Index tables <tutorials/pre_executed/index_table>
@@ -72,7 +72,6 @@ THINGS
 Notebooks going over specific, contributed scientific example use cases
 
 .. toctree::
-    :numbered:
     :maxdepth: 1
 
     Cross-match ZTF BTS and NGC <tutorials/pre_executed/ztf_bts-ngc>
