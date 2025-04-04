@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+import random
 import warnings
 from pathlib import Path
 from typing import Any, Callable, Iterable, Literal, Type, cast
@@ -262,38 +264,50 @@ class HealpixDataset(Dataset):
             return npd.NestedFrame(pd.concat(dfs))
         return self._ddf._meta
 
-    def sample(self, partition_id: int, n: int = 5) -> npd.NestedFrame:
+    def sample(self, partition_id: int, n: int = 5, seed: int | None = None) -> npd.NestedFrame:
         """Returns a few randomly sampled rows from a given partition.
 
         Args:
             partition_id (int): the partition to sample.
             n (int): the number of desired rows.
+            seed (int): random seed
+
+        The `seed` argument is passed directly to `random.seed` in order
+        to assist with creating predictable outputs when wanted, such
+        as in unit tests.
 
         Returns:
             A pandas DataFrame with up to `n` rows of data.
         """
-        dfs = []
+        random.seed(seed)
+        # Get the number of partitions so that we can range-check the input argument
+        npartitions = len(self.get_healpix_pixels())
+        if not 0 <= partition_id < npartitions:
+            raise IndexError(f"{partition_id} is out of range [0, {npartitions})")
         partition = self._ddf.partitions[partition_id]
         # Get the count of rows in the partition.
         pixel_rows = len(partition)
         fraction = n / pixel_rows
-        print(f"Getting {n} / {pixel_rows} = {fraction}")
-        dfs.append(partition.sample(frac=fraction).compute())
-        if len(dfs) > 0:
-            return npd.NestedFrame(pd.concat(dfs))
-        return self._ddf._meta
+        logging.debug("Getting %d / %d = %f", n, pixel_rows, fraction)
+        return partition.sample(frac=fraction).compute()
 
-    def random_sample(self, n: int = 5) -> npd.NestedFrame:
+    def random_sample(self, n: int = 5, seed: int | None = None) -> npd.NestedFrame:
         """Returns a few randomly sampled rows, like self.sample(),
         except that it randomly samples all partitions in order to
         fulfill the rows.
 
         Args:
             n (int): the number of desired rows.
+            seed (int): random seed
+
+        The `seed` argument is passed directly to `random.seed` in order
+        to assist with creating predictable outputs when wanted, such
+        as in unit tests.
 
         Returns:
             A pandas DataFrame with up to `n` rows of data.
         """
+        random.seed(seed)
         dfs = []
         if self.hc_structure.catalog_info.total_rows > 0:
             stats = self.hc_structure.per_pixel_statistics()
@@ -316,7 +330,7 @@ class HealpixDataset(Dataset):
             if not rows:
                 continue
             fraction = rows / part_rows
-            print(f"Sampling {rows} / {part_rows} rows from partition {i}")
+            logging.debug("Sampling %d / %d rows from partition %d", rows, part_rows, i)
             selection = part.sample(frac=fraction)
             dfs += selection.to_delayed()
         if len(dfs) > 0:
