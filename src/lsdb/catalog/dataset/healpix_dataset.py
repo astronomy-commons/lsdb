@@ -272,6 +272,11 @@ class HealpixDataset(Dataset):
             n (int): the number of desired rows.
             seed (int): random seed
 
+        As with `NestedFrame.sample`, `n` is an approximate number of
+        items to return.  The exact number of elements selected will
+        depend on how your data is partitioned.  (In practice, it
+        should be pretty close.)
+
         The `seed` argument is passed directly to `random.seed` in order
         to assist with creating predictable outputs when wanted, such
         as in unit tests.
@@ -303,6 +308,11 @@ class HealpixDataset(Dataset):
         Args:
             n (int): the number of desired rows.
             seed (int): random seed
+
+        As with `.sample`, `n` is an approximate number of items to
+        return.  The exact number of elements selected will depend on
+        how your data is partitioned.  (In practice, it should be
+        pretty close.)
 
         The `seed` argument is passed directly to `random.seed` in order
         to assist with creating predictable outputs when wanted, such
