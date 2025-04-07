@@ -227,7 +227,7 @@ class HealpixDataset(Dataset):
             n (int): The number of desired rows.
 
         Returns:
-            A pandas DataFrame with up to `n` rows of data.
+            A NestedFrame with up to `n` rows of data.
         """
         dfs = []
         remaining_rows = n
@@ -249,7 +249,7 @@ class HealpixDataset(Dataset):
             n (int): The number of desired rows.
 
         Returns:
-            A pandas DataFrame with up to `n` rows of data.
+            A NestedFrame with up to `n` rows of data.
         """
         dfs = []
         remaining_rows = n
@@ -277,7 +277,7 @@ class HealpixDataset(Dataset):
         as in unit tests.
 
         Returns:
-            A pandas DataFrame with up to `n` rows of data.
+            A NestedFrame with up to `n` rows of data.
         """
         random.seed(seed)
         # Get the number of partitions so that we can range-check the input argument
@@ -309,7 +309,7 @@ class HealpixDataset(Dataset):
         as in unit tests.
 
         Returns:
-            A pandas DataFrame with up to `n` rows of data.
+            A NestedFrame with up to `n` rows of data.
         """
         random.seed(seed)
         dfs = []
