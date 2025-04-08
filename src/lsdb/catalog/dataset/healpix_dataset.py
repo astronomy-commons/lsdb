@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+import random
 import warnings
 from pathlib import Path
 from typing import Any, Callable, Iterable, Literal, Type, cast
@@ -41,7 +43,7 @@ from lsdb.io.schema import get_arrow_schema
 from lsdb.types import DaskDFPixelMap
 
 
-# pylint: disable=protected-access,too-many-public-methods
+# pylint: disable=protected-access,too-many-public-methods,too-many-lines
 class HealpixDataset(Dataset):
     """LSDB Catalog DataFrame to perform analysis of sky catalogs and efficient
     spatial operations.
@@ -219,13 +221,13 @@ class HealpixDataset(Dataset):
         return PartitionIndexer(self)
 
     def head(self, n: int = 5) -> npd.NestedFrame:
-        """Returns a few rows of data for previewing purposes.
+        """Returns a few rows of initial data for previewing purposes.
 
         Args:
             n (int): The number of desired rows.
 
         Returns:
-            A pandas DataFrame with up to `n` of data.
+            A NestedFrame with up to `n` rows of data.
         """
         dfs = []
         remaining_rows = n
@@ -238,6 +240,115 @@ class HealpixDataset(Dataset):
                 remaining_rows -= len(partition_head)
         if len(dfs) > 0:
             return npd.NestedFrame(pd.concat(dfs))
+        return self._ddf._meta
+
+    def tail(self, n: int = 5) -> npd.NestedFrame:
+        """Returns a few rows of data from the end of the catalog for previewing purposes.
+
+        Args:
+            n (int): The number of desired rows.
+
+        Returns:
+            A NestedFrame with up to `n` rows of data.
+        """
+        dfs = []
+        remaining_rows = n
+        for partition in self._ddf.partitions:
+            if remaining_rows == 0:
+                break
+            partition_tail = partition.tail(remaining_rows)
+            if len(partition_tail) > 0:
+                dfs.append(partition_tail)
+                remaining_rows -= len(partition_tail)
+        if len(dfs) > 0:
+            return npd.NestedFrame(pd.concat(dfs))
+        return self._ddf._meta
+
+    def sample(self, partition_id: int, n: int = 5, seed: int | None = None) -> npd.NestedFrame:
+        """Returns a few randomly sampled rows from a given partition.
+
+        Args:
+            partition_id (int): the partition to sample.
+            n (int): the number of desired rows.
+            seed (int): random seed
+
+        As with `NestedFrame.sample`, `n` is an approximate number of
+        items to return.  The exact number of elements selected will
+        depend on how your data is partitioned.  (In practice, it
+        should be pretty close.)
+
+        The `seed` argument is passed directly to `random.seed` in order
+        to assist with creating predictable outputs when wanted, such
+        as in unit tests.
+
+        Returns:
+            A NestedFrame with up to `n` rows of data.
+        """
+        random.seed(seed)
+        # Get the number of partitions so that we can range-check the input argument
+        npartitions = len(self.get_healpix_pixels())
+        if not 0 <= partition_id < npartitions:
+            raise IndexError(f"{partition_id} is out of range [0, {npartitions})")
+        partition = self._ddf.partitions[partition_id]
+        # Get the count of rows in the partition.
+        pixel_rows = len(partition)
+        if pixel_rows == 0:
+            fraction = 0.0
+            logging.debug("Zero rows in partition %d, returning empty", partition_id)
+            return partition._meta
+        fraction = n / pixel_rows
+        logging.debug("Getting %d / %d = %f", n, pixel_rows, fraction)
+        return partition.sample(frac=fraction).compute()
+
+    def random_sample(self, n: int = 5, seed: int | None = None) -> npd.NestedFrame:
+        """Returns a few randomly sampled rows, like self.sample(),
+        except that it randomly samples all partitions in order to
+        fulfill the rows.
+
+        Args:
+            n (int): the number of desired rows.
+            seed (int): random seed
+
+        As with `.sample`, `n` is an approximate number of items to
+        return.  The exact number of elements selected will depend on
+        how your data is partitioned.  (In practice, it should be
+        pretty close.)
+
+        The `seed` argument is passed directly to `random.seed` in order
+        to assist with creating predictable outputs when wanted, such
+        as in unit tests.
+
+        Returns:
+            A NestedFrame with up to `n` rows of data.
+        """
+        random.seed(seed)
+        dfs = []
+        if self.hc_structure.catalog_info.total_rows > 0:
+            stats = self.hc_structure.per_pixel_statistics()
+            # These stats are one *row* per pixel.  The number of
+            # columns is permuted, with names like "colname:
+            # row_count".  We only need one representative column.
+            # Assume the first column is satisfactory.
+            rep_col = self.columns[0]
+            row_counts = stats[f"{rep_col}: row_count"].map(int)
+        else:
+            row_counts = np.array(dask.compute(*[dp.shape[0].to_delayed() for dp in self._ddf.partitions]))
+        rows_per_partition = np.random.multinomial(n, row_counts / row_counts.sum())
+        # With this breakdown, we randomly sample rows from each partition
+        # to collect the entire sampling.
+        # Logic is borrowed from self.sample(), but we already have a full list
+        # of row counts, so we can avoid a lot of overhead.
+        for i, (rows, part, part_rows) in enumerate(
+            zip(rows_per_partition, self._ddf.partitions, row_counts)
+        ):
+            if not rows:
+                continue
+            fraction = rows / part_rows
+            logging.debug("Sampling %d / %d rows from partition %d", rows, part_rows, i)
+            selection = part.sample(frac=fraction)
+            dfs += selection.to_delayed()
+        if len(dfs) > 0:
+            return npd.NestedFrame(pd.concat(dask.compute(*dfs)))
         return self._ddf._meta
 
     def query(self, expr: str) -> Self:
