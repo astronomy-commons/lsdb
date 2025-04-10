@@ -69,7 +69,7 @@ def _query_min_max_neighbors(
     len_too_close_neighbors[unique] = counts
 
     # Make sure we don't ask for more neighbors than there are points.
-    n_neighbors_to_request = min(n_neighbors + max(len_too_close_neighbors), len(right_xyz))
+    n_neighbors_to_request = min(n_neighbors + len_too_close_neighbors.max(), len(right_xyz))
 
     distances, right_index = tree.query(left_xyz, k=n_neighbors_to_request, distance_upper_bound=max_distance)
     if n_neighbors_to_request == 1:
@@ -99,7 +99,7 @@ def _query_min_max_neighbors(
         len_too_close_neighbors, n_neighbors
     )
     # If there are fewer points than those requested, clip indices.
-    if n_neighbors + max(len_too_close_neighbors) > len(right_xyz):
+    if n_neighbors + len_too_close_neighbors.max() > len(right_xyz):
         mask_ones_1 = np.clip(mask_ones_1, None, len(right_xyz) - 1)
 
     # Set the mask to one for the indices it should be one.

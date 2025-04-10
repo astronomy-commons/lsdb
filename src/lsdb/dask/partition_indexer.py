@@ -13,17 +13,11 @@ class PartitionIndexer:
         self.catalog = catalog
 
     def __getitem__(self, item):
-        indices = self._parse_partition_indices(item)
-        pixels = self._get_pixels_from_partition_indices(indices)
-        return self.catalog.search(PixelSearch(pixels))
-
-    def _parse_partition_indices(self, item: int | list[int]) -> list[int]:
-        """Parses the partition indices provided in the square brackets accessor.
-        It is either a single integer or a sequence-like set of integers."""
         if isinstance(item, int):
             item = [item]
-        indices = np.arange(len(self.catalog._ddf_pixel_map), dtype=object)[item].tolist()
-        return indices
+        indices = np.arange(len(self.catalog._ddf_pixel_map), dtype=np.int64)[item].tolist()
+        pixels = self._get_pixels_from_partition_indices(indices)
+        return self.catalog.search(PixelSearch(pixels))
 
     def _get_pixels_from_partition_indices(self, indices: list[int]) -> list[tuple[int, int]]:
         """Performs a reverse-lookup in the catalog pixel-to-partition map and returns the

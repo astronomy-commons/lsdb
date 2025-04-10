@@ -112,7 +112,7 @@ def to_hats(
     # Save parquet metadata
     hc.io.write_parquet_metadata(base_catalog_path)
     # Save partition info
-    PartitionInfo(pixels.tolist()).write_to_file(base_catalog_path / "partition_info.csv")
+    PartitionInfo(pixels).write_to_file(base_catalog_path / "partition_info.csv")
     # Save catalog info
     if default_columns is None:
         default_columns = catalog.hc_structure.catalog_info.default_columns
@@ -136,7 +136,7 @@ def to_hats(
 
 def write_partitions(
     catalog: HealpixDataset, base_catalog_dir_fp: str | Path | UPath, histogram_order: int, **kwargs
-) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[list[HealpixPixel], list[int], list[SparseHistogram]]:
     """Saves catalog partitions as parquet to disk and computes the sparse
     count histogram for each partition. The histogram is either of order 8
     or the maximum pixel order in the catalog, whichever is greater.
@@ -178,7 +178,7 @@ def write_partitions(
     if len(non_empty_pixels) == 0:
         raise RuntimeError("The output catalog is empty")
 
-    return non_empty_pixels, non_empty_counts, non_empty_hists
+    return list(non_empty_pixels), list(non_empty_counts), list(non_empty_hists)
 
 
 def create_modified_catalog_structure(
