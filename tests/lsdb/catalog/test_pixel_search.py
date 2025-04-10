@@ -89,8 +89,8 @@ def test_pixel_search_is_empty(small_sky_catalog, small_sky_order1_catalog):
     assert 0 == len(catalog._ddf_pixel_map)
     catalog = small_sky_order1_catalog.pixel_search([(0, 10)])
     assert 0 == len(catalog._ddf_pixel_map)
-    catalog = small_sky_catalog.pixel_search([])
-    assert 0 == len(catalog._ddf_pixel_map)
+    with pytest.raises(ValueError, match="pixels required"):
+        small_sky_catalog.pixel_search([])
 
 
 def test_pixel_search_keeps_all_points(small_sky_order1_catalog):
