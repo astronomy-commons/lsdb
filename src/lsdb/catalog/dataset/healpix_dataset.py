@@ -586,6 +586,8 @@ class HealpixDataset(Dataset):
         func: Callable[[npd.NestedFrame, HealpixPixel], Any],
         order: int | None = None,
         default_value: Any = 0.0,
+        plot=False,
+        plotting_args: dict | None = None,
         **kwargs,
     ) -> np.ndarray:
         """Get a histogram with the result of a given function applied to the points in each HEALPix pixel of
@@ -615,40 +617,12 @@ class HealpixDataset(Dataset):
         pixels = list(smdata.keys())
         results = dask.compute(*[smdata[pixel] for pixel in pixels])
         result_dict = {pixels[i]: results[i] for i in range(len(pixels))}
-        return compute_skymap(result_dict, order, default_value)
-
-    def skymap(
-        self,
-        func: Callable[[npd.NestedFrame, HealpixPixel], Any],
-        order: int | None = None,
-        default_value: Any = 0,
-        projection="MOL",
-        plotting_args: dict | None = None,
-        **kwargs,
-    ) -> tuple[Figure, WCSAxes]:
-        """Plot a skymap of an aggregate function applied over each partition
-
-        Args:
-            func (Callable[[npd.NestedFrame, HealpixPixel], Any]): A function that takes a pandas DataFrame
-                and the HealpixPixel the partition is from and returns a value
-            order (int | None): The HEALPix order to compute the skymap at. If None (default),
-                will compute for each partition in the catalog at their own orders. If a value
-                other than None, each partition will be grouped by pixel number at the order
-                specified and the function will be applied to each group.
-            default_value (Any): The value to use at pixels that aren't covered by the catalog (default 0)
-            projection (str): The map projection to use. Valid values include:
-                - moll - Molleweide projection (default)
-                - gnom - Gnomonic projection
-                - cart - Cartesian projection
-                - orth - Orthographic projection
-            plotting_args (dict): A dictionary of additional arguments to pass to the plotting function
-            **kwargs: Arguments to pass to the given function
-        """
-
-        img = self.skymap_histogram(func, order, default_value, **kwargs)
-        if plotting_args is None:
-            plotting_args = {}
-        return plot_healpix_map(img, projection=projection, **plotting_args)
+        img = compute_skymap(result_dict, order, default_value)
+        if plot:
+            if plotting_args is None:
+                plotting_args = {}
+            plot_healpix_map(img, **plotting_args)
+        return img
 
     def plot_pixels(self, projection: str = "MOL", **kwargs) -> tuple[Figure, WCSAxes]:
         """Create a visual map of the pixel density of the catalog.
