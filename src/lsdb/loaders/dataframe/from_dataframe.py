@@ -16,7 +16,7 @@ def from_dataframe(
     dec_column: str = "dec",
     lowest_order: int = 0,
     highest_order: int = 7,
-    drop_empty_siblings: bool = False,
+    drop_empty_siblings: bool = True,
     partition_size: int | None = None,
     threshold: int | None = None,
     margin_order: int = -1,
