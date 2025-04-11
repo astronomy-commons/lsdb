@@ -69,6 +69,11 @@ def test_get_catalog_partition_gets_correct_partition(small_sky_order1_catalog):
         pd.testing.assert_frame_equal(partition.compute(), ddf_partition.compute())
 
 
+def test_npartitions_property(small_sky_order1_catalog):
+    underlying_count = len(small_sky_order1_catalog.get_healpix_pixels())
+    assert underlying_count == small_sky_order1_catalog.npartitions
+
+
 def test_head(small_sky_order1_catalog):
     # By default, head returns 5 rows
     expected_df = small_sky_order1_catalog._ddf.partitions[0].compute()[:5]
