@@ -9,6 +9,7 @@ import nested_pandas as npd
 import pandas as pd
 from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
 from hats.catalog.index.index_catalog import IndexCatalog as HCIndexCatalog
+from hats.pixel_math import HealpixPixel
 from mocpy import MOC
 from pandas._libs import lib
 from pandas._typing import AnyAll, Axis, IndexLabel
@@ -362,7 +363,9 @@ class Catalog(HealpixDataset):
         """
         return self.search(OrderSearch(min_order, max_order))
 
-    def pixel_search(self, pixels: list[tuple[int, int]]) -> Catalog:
+    def pixel_search(
+        self, pixels: tuple[int, int] | HealpixPixel | list[tuple[int, int] | HealpixPixel]
+    ) -> Catalog:
         """Finds all catalog pixels that overlap with the requested pixel set.
 
         Args:
