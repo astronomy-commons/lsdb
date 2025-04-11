@@ -22,13 +22,13 @@ class PixelSearch(AbstractSearch):
     def __init__(self, pixels: tuple[int, int] | HealpixPixel | list[tuple[int, int] | HealpixPixel]):
         super().__init__(fine=False)
         if isinstance(pixels, tuple):
-            self.pixels = [HealpixPixel(pixels[0], pixels[1])]
+            self.pixels = [get_healpix_pixel(pixels)]
         elif isinstance(pixels, HealpixPixel):
             self.pixels = [pixels]
         elif pd.api.types.is_list_like(pixels):
             if len(pixels) == 0:
                 raise ValueError("Some pixels required for PixelSearch")
-            self.pixels = list({get_healpix_pixel(pix) for pix in pixels})
+            self.pixels = [get_healpix_pixel(pix) for pix in pixels]
         else:
             raise ValueError("Unsupported input for PixelSearch")
 
