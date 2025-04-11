@@ -220,6 +220,11 @@ class HealpixDataset(Dataset):
         """Returns the partitions of the catalog"""
         return PartitionIndexer(self)
 
+    @property
+    def npartitions(self):
+        """Returns the number of partitions of the catalog"""
+        return len(self.get_healpix_pixels())
+
     def head(self, n: int = 5) -> npd.NestedFrame:
         """Returns a few rows of initial data for previewing purposes.
 
