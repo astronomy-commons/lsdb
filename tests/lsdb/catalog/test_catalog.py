@@ -178,6 +178,24 @@ def test_random_sample(small_sky_order1_catalog):
     assert len(rsample_df) == 10
 
 
+def test_random_sample_changed_catalog(small_sky_order1_catalog):
+    # Choose a small portion of this catalog so that random_sample
+    # can't rely on the precalculated pixel statistics.
+
+    # The result of this cone search is known to have one empty partition
+    cone_search_catalog = small_sky_order1_catalog.cone_search(0, -80, 15 * 3600)
+    rsample_df = cone_search_catalog.random_sample(n=3, seed=0)
+    assert isinstance(rsample_df, npd.NestedFrame)
+    assert len(rsample_df) == 3
+
+
+def test_random_sample_no_return(small_sky_order1_catalog):
+    # Test what happens when no elements are returned.
+    rsample_df = small_sky_order1_catalog.random_sample(n=0, seed=0)
+    assert isinstance(rsample_df, npd.NestedFrame)
+    assert len(rsample_df) == 0
+
+
 def test_random_sample_empty_catalog(small_sky_order1_catalog):
     # Create an empty Pandas DataFrame with the same schema
     schema = small_sky_order1_catalog.dtypes
