@@ -698,19 +698,15 @@ def test_skymap_plot(small_sky_order1_catalog, mocker):
     def func(df, healpix):
         return len(df) / hp.order2pixarea(healpix.order, degrees=True)
 
-    small_sky_order1_catalog.skymap(func)
-    pixel_map = small_sky_order1_catalog.skymap_data(func)
-    pixel_map = {pixel: value.compute() for pixel, value in pixel_map.items()}
-    max_order = max(pixel_map.keys(), key=lambda x: x.order).order
-    img = np.full(hp.order2npix(max_order), 0)
-    for pixel, value in pixel_map.items():
-        dorder = max_order - pixel.order
-        start = pixel.pixel * (4**dorder)
-        end = (pixel.pixel + 1) * (4**dorder)
-        img_order_pixels = np.arange(start, end)
-        img[img_order_pixels] = value
+    img = small_sky_order1_catalog.skymap_histogram(func, plot=True)
+
+    # [42, 29, 42, 18] is the actual lengths of the four filled dataframes
+    expected_img = np.full(hp.order2npix(1), 0, dtype=np.float64)
+    expected_img[44:] = [42, 29, 42, 18] / hp.order2pixarea(1, degrees=True)
+
+    assert (img == expected_img).all()
     lsdb.catalog.dataset.healpix_dataset.plot_healpix_map.assert_called_once()
-    assert (lsdb.catalog.dataset.healpix_dataset.plot_healpix_map.call_args[0][0] == img).all()
+    assert (lsdb.catalog.dataset.healpix_dataset.plot_healpix_map.call_args[0][0] == expected_img).all()
 
 
 # pylint: disable=no-member
