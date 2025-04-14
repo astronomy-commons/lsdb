@@ -2,6 +2,7 @@ from pathlib import Path
 from unittest.mock import call
 
 import hats as hc
+import hats.catalog.index.index_catalog
 import nested_dask as nd
 import nested_pandas as npd
 import numpy as np
@@ -28,6 +29,45 @@ def test_read_hats(small_sky_order1_dir, small_sky_order1_hats_catalog, helpers)
     helpers.assert_divisions_are_correct(catalog)
     helpers.assert_index_correct(catalog)
     helpers.assert_schema_correct(catalog)
+
+
+def test_read_hats_collection(
+    small_sky_order1_collection_dir,
+    small_sky_order1_hats_catalog,
+    small_sky_order1_margin_catalog,
+    small_sky_order1_id_index_dir,
+    helpers,
+):
+    collection = lsdb.read_hats(small_sky_order1_collection_dir)
+    assert isinstance(collection, lsdb.catalog.CatalogCollection)
+
+    catalog = collection.catalog
+    assert isinstance(collection.catalog, lsdb.Catalog)
+    assert catalog.hc_structure.catalog_name == small_sky_order1_hats_catalog.catalog_name
+    assert catalog.hc_structure.catalog_info.total_rows == len(small_sky_order1_hats_catalog)
+    assert catalog.get_healpix_pixels() == small_sky_order1_hats_catalog.get_healpix_pixels()
+    assert len(catalog.compute().columns) == 5
+    assert isinstance(catalog.compute(), npd.NestedFrame)
+    helpers.assert_divisions_are_correct(catalog)
+    helpers.assert_index_correct(catalog)
+    helpers.assert_schema_correct(catalog)
+
+    margin = catalog.margin
+    assert isinstance(margin, lsdb.MarginCatalog)
+    assert margin.hc_structure.catalog_name == small_sky_order1_margin_catalog.hc_structure.catalog_name
+    assert margin.hc_structure.catalog_info.total_rows == len(small_sky_order1_margin_catalog)
+    assert margin.get_healpix_pixels() == small_sky_order1_margin_catalog.get_healpix_pixels()
+    assert len(margin.compute().columns) == 5
+    assert isinstance(margin.compute(), npd.NestedFrame)
+    helpers.assert_divisions_are_correct(margin)
+    helpers.assert_index_correct(margin)
+    helpers.assert_schema_correct(margin)
+
+    index = collection.index
+    assert isinstance(index, hats.catalog.index.index_catalog.IndexCatalog)
+    index_hc = hats.read_hats(small_sky_order1_id_index_dir)
+    assert index.catalog_name == index_hc.catalog_name
+    assert index.catalog_info == index_hc.catalog_info
 
 
 def test_read_hats_initializes_upath_once(

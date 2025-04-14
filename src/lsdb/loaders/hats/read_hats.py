@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import cast
 
 import hats as hc
 import nested_dask as nd
@@ -17,13 +18,14 @@ from upath import UPath
 
 from lsdb.catalog.association_catalog import AssociationCatalog
 from lsdb.catalog.catalog import Catalog, DaskDFPixelMap, MarginCatalog
+from lsdb.catalog.catalog_collection import CatalogCollection
+from lsdb.catalog.dataset.dataset import Dataset
 from lsdb.catalog.map_catalog import MapCatalog
 from lsdb.catalog.margin_catalog import _validate_margin_catalog
 from lsdb.core.search.abstract_search import AbstractSearch
 from lsdb.dask.divisions import get_pixels_divisions
 from lsdb.io.schema import get_arrow_schema
 from lsdb.loaders.hats.hats_loading_config import HatsLoadingConfig
-from lsdb.types import CatalogTypeVar
 
 
 def read_hats(
@@ -33,23 +35,48 @@ def read_hats(
     margin_cache: str | Path | UPath | None = None,
     dtype_backend: str | None = "pyarrow",
     **kwargs,
-) -> CatalogTypeVar | None:
-    """Load a catalog from a HATS formatted catalog.
+) -> CatalogCollection | Dataset:
+    """Load catalog from a HATS directory.
 
-    Typical usage example, where we load a catalog with a subset of columns::
+    Catalogs exist in collections or stand-alone.
 
-        lsdb.read_hats(path="./my_catalog_dir", columns=["ra","dec"])
+    Catalogs in a HATS collection are composed of a main catalog, and margin and index
+    catalogs. LSDB will load exactly ONE main object catalog, at most ONE margin catalog,
+    and at most ONE index catalog. The `collection.properties` file specifies which
+    margins and indexes are available, and which are the default.
 
-    Typical usage example, where we load a catalog from a cone search::
+    my_collection_dir/
+    ├── main_catalog/
+    ├── margin_catalog/
+    ├── margin_catalog_2/
+    ├── index_catalog/
+    ├── collection.properties
+
+    All arguments passed to the `read_hats` call are applied to the reading calls of
+    the main and margin catalogs. The index catalog is always loaded as is.
+
+    Typical usage example, where we load a collection with a subset of columns::
+
+        lsdb.read_hats(path='./my_collection_dir', columns=['ra','dec'])
+
+    Typical usage example, where we load a collection from a cone search::
 
         lsdb.read_hats(
-            path="./my_catalog_dir",
-            columns=["ra","dec"],
+            path='./my_collection_dir',
+            columns=['ra','dec'],
             search_filter=lsdb.core.search.ConeSearch(ra, dec, radius_arcsec),
         )
 
+    Typical usage example, where we load a collection with a non-default margin::
+
+        lsdb.read_hats(path='./my_collection_dir', margin='margin_catalog_2')
+
+    We can also load each catalog separately, if needed::
+
+        lsdb.read_hats(path='./my_collection_dir/main_catalog')
+
     Args:
-        path (UPath | Path): The path that locates the root of the HATS catalog
+        path (UPath | Path): The path that locates the root of the HATS collection or stand-alone catalog.
         search_filter (Type[AbstractSearch]): Default `None`. The filter method to be applied.
         columns (List[str]): Default `None`. The set of columns to filter the catalog on. If None, the
             catalog's default columns will be loaded. To load all catalog columns, use `columns="all"`
@@ -59,18 +86,65 @@ def read_hats(
         **kwargs: Arguments to pass to the pandas parquet file reader
 
     Returns:
-        Catalog object loaded from the given parameters
+        A `CatalogCollection` object if the provided path is for a HATS collection, a `Catalog` object
+        if the path is for a stand-alone HATS catalog. Both are loaded from the given parameters.
 
     Examples:
-        To read a catalog from a public S3 bucket, call it as follows::
+        To read a collection from a public S3 bucket, call it as follows::
 
             from upath import UPath
-            catalog = lsdb.read_hats(UPath(..., anon=True))
+            collection = lsdb.read_hats(UPath(..., anon=True))
     """
-    # Creates a config object to store loading parameters from all keyword arguments.
-
     hc_catalog = hc.read_hats(path)
+    if isinstance(hc_catalog, hc.catalog.Dataset):
+        return _load_catalog(
+            hc_catalog=hc_catalog,
+            search_filter=search_filter,
+            columns=columns,
+            margin_cache=margin_cache,
+            dtype_backend=dtype_backend,
+            **kwargs,
+        )
+    return _load_collection(
+        hc_catalog=hc_catalog,
+        search_filter=search_filter,
+        columns=columns,
+        margin_cache=margin_cache,
+        dtype_backend=dtype_backend,
+        **kwargs,
+    )
 
+
+def _load_collection(
+    hc_catalog,
+    search_filter: AbstractSearch | None = None,
+    columns: list[str] | str | None = None,
+    margin_cache: str | Path | UPath | None = None,
+    dtype_backend: str | None = "pyarrow",
+    **kwargs,
+) -> CatalogCollection:
+    main_catalog = cast(
+        Catalog,
+        _load_catalog(
+            hc_catalog.main_catalog,
+            search_filter=search_filter,
+            columns=columns,
+            margin_cache=hc_catalog.margin_catalog_dir if margin_cache is None else margin_cache,
+            dtype_backend=dtype_backend,
+            **kwargs,
+        ),
+    )
+    return CatalogCollection(main_catalog, index=hc_catalog.index_catalog)
+
+
+def _load_catalog(
+    hc_catalog,
+    search_filter: AbstractSearch | None = None,
+    columns: list[str] | str | None = None,
+    margin_cache: str | Path | UPath | None = None,
+    dtype_backend: str | None = "pyarrow",
+    **kwargs,
+) -> Dataset:
     if columns is None and hc_catalog.catalog_info.default_columns is not None:
         columns = hc_catalog.catalog_info.default_columns
 
@@ -80,6 +154,7 @@ def read_hats(
     if isinstance(columns, str):
         raise TypeError("`columns` argument must be a list of strings, None, or 'all'")
 
+    # Creates a config object to store loading parameters from all keyword arguments.
     config = HatsLoadingConfig(
         search_filter=search_filter,
         columns=columns,
