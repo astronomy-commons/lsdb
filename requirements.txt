@@ -1,3 +1,3 @@
-git+https://github.com/astronomy-commons/hats.git@main
+git+https://github.com/astronomy-commons/hats.git@issue/483/catalog-collections
 git+https://github.com/lincc-frameworks/nested-pandas.git@main
 git+https://github.com/lincc-frameworks/nested-dask.git@main
