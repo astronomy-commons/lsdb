@@ -43,14 +43,14 @@ def read_hats(
     Catalogs in a HATS collection are composed of a main catalog, and margin and index
     catalogs. LSDB will load exactly ONE main object catalog, at most ONE margin catalog,
     and at most ONE index catalog. The `collection.properties` file specifies which
-    margins and indexes are available, and which are the default.
+    margins and indexes are available, and which are the default::
 
-    my_collection_dir/
-    ├── main_catalog/
-    ├── margin_catalog/
-    ├── margin_catalog_2/
-    ├── index_catalog/
-    ├── collection.properties
+        my_collection_dir/
+        ├── main_catalog/
+        ├── margin_catalog/
+        ├── margin_catalog_2/
+        ├── index_catalog/
+        ├── collection.properties
 
     All arguments passed to the `read_hats` call are applied to the reading calls of
     the main and margin catalogs.
