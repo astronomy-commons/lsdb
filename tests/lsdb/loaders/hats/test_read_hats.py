@@ -12,6 +12,7 @@ import pytest
 from hats.catalog.dataset.collection_properties import CollectionProperties
 from hats.io.file_io import get_upath_for_protocol
 from hats.pixel_math import HealpixPixel
+from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 from pandas.core.dtypes.base import ExtensionDtype
 
 import lsdb
@@ -32,7 +33,7 @@ def test_read_hats(small_sky_order1_dir, small_sky_order1_hats_catalog, helpers)
     helpers.assert_schema_correct(catalog)
 
 
-def test_read_hats_collection_default_margin(
+def test_read_hats_collection_with_default_margin(
     small_sky_order1_collection_dir, small_sky_order1_catalog, small_sky_order1_margin_1deg_catalog, helpers
 ):
     catalog = lsdb.read_hats(small_sky_order1_collection_dir)
@@ -86,7 +87,7 @@ def test_read_hats_collection_with_non_default_margin(
     helpers.assert_schema_correct(catalog.margin)
 
 
-def test_read_hats_collection_margin_not_in_properties(
+def test_read_hats_collection_with_margin_not_in_properties(
     small_sky_order1_collection_dir,
     small_sky_order1_margin_1deg_catalog,
     small_sky_order1_margin_2deg_catalog,
@@ -105,6 +106,22 @@ def test_read_hats_collection_margin_not_in_properties(
 
     with pytest.raises(ValueError, match="not specified"):
         lsdb.read_hats(collection_base_dir, margin_cache=small_sky_order1_margin_2deg_catalog.name)
+
+
+def test_read_hats_collection_with_extra_kwargs(small_sky_order1_collection_dir):
+    catalog = lsdb.read_hats(
+        small_sky_order1_collection_dir, columns=["ra", "dec"], filters=[("ra", ">", 300)]
+    )
+
+    assert isinstance(catalog, lsdb.Catalog)
+    assert all(catalog.columns == ["ra", "dec"])
+    assert catalog.hc_structure.schema.names == ["ra", "dec", SPATIAL_INDEX_COLUMN]
+    assert np.all(catalog.compute()["ra"] > 300)
+
+    assert isinstance(catalog.margin, lsdb.MarginCatalog)
+    assert all(catalog.margin.columns == ["ra", "dec"])
+    assert catalog.margin.hc_structure.schema.names == ["ra", "dec", SPATIAL_INDEX_COLUMN]
+    assert np.all(catalog.margin.compute()["ra"] > 300)
 
 
 def test_read_hats_initializes_upath_once(

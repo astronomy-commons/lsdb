@@ -19,6 +19,7 @@ from upath import UPath
 from lsdb.catalog.association_catalog import AssociationCatalog
 from lsdb.catalog.catalog import Catalog, DaskDFPixelMap, MarginCatalog
 from lsdb.catalog.dataset.dataset import Dataset
+from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
 from lsdb.catalog.map_catalog import MapCatalog
 from lsdb.catalog.margin_catalog import _validate_margin_catalog
 from lsdb.core.search.abstract_search import AbstractSearch
@@ -68,7 +69,7 @@ def read_hats(
 
     Typical usage example, where we load a collection with a non-default margin::
 
-        lsdb.read_hats(path='./my_collection_dir', margin='margin_catalog_2')
+        lsdb.read_hats(path='./my_collection_dir', margin_cache='margin_catalog_2')
 
     Note that this margin still needs to be specified in the `all_margins` attribute
     of the `collection.properties` file.
@@ -175,8 +176,16 @@ def _load_catalog(
     else:
         raise NotImplementedError(f"Cannot load catalog of type {catalog_type}")
 
+    catalog.hc_structure = _update_hc_structure(catalog)
+    if isinstance(catalog, Catalog) and catalog.margin is not None:
+        catalog.margin.hc_structure = _update_hc_structure(catalog.margin)
+    return catalog
+
+
+def _update_hc_structure(catalog: HealpixDataset):
+    """Create the modified schema of the catalog after all the processing on the `read_hats` call"""
     # pylint: disable=protected-access
-    catalog.hc_structure = catalog._create_modified_hc_structure(
+    return catalog._create_modified_hc_structure(
         updated_schema=get_arrow_schema(catalog._ddf),
         default_columns=(
             [col for col in catalog.hc_structure.catalog_info.default_columns if col in catalog._ddf.columns]
@@ -184,7 +193,6 @@ def _load_catalog(
             else None
         ),
     )
-    return catalog
 
 
 def _load_association_catalog(hc_catalog, config):
