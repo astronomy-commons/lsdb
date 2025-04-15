@@ -1,14 +1,15 @@
+import shutil
 from pathlib import Path
 from unittest.mock import call
 
 import hats as hc
-import hats.catalog.index.index_catalog
 import nested_dask as nd
 import nested_pandas as npd
 import numpy as np
 import numpy.testing as npt
 import pandas as pd
 import pytest
+from hats.catalog.dataset.collection_properties import CollectionProperties
 from hats.io.file_io import get_upath_for_protocol
 from hats.pixel_math import HealpixPixel
 from pandas.core.dtypes.base import ExtensionDtype
@@ -31,43 +32,79 @@ def test_read_hats(small_sky_order1_dir, small_sky_order1_hats_catalog, helpers)
     helpers.assert_schema_correct(catalog)
 
 
-def test_read_hats_collection(
-    small_sky_order1_collection_dir,
-    small_sky_order1_hats_catalog,
-    small_sky_order1_margin_catalog,
-    small_sky_order1_id_index_dir,
-    helpers,
+def test_read_hats_collection_default_margin(
+    small_sky_order1_collection_dir, small_sky_order1_catalog, small_sky_order1_margin_1deg_catalog, helpers
 ):
-    collection = lsdb.read_hats(small_sky_order1_collection_dir)
-    assert isinstance(collection, lsdb.catalog.CatalogCollection)
+    catalog = lsdb.read_hats(small_sky_order1_collection_dir)
 
-    catalog = collection.catalog
-    assert isinstance(collection.catalog, lsdb.Catalog)
-    assert catalog.hc_structure.catalog_name == small_sky_order1_hats_catalog.catalog_name
-    assert catalog.hc_structure.catalog_info.total_rows == len(small_sky_order1_hats_catalog)
-    assert catalog.get_healpix_pixels() == small_sky_order1_hats_catalog.get_healpix_pixels()
+    collection_properties = CollectionProperties.read_from_dir(small_sky_order1_collection_dir)
+
+    assert isinstance(catalog, lsdb.Catalog)
+    assert catalog.name == collection_properties.hats_primary_table_url
+    main_catalog_dir = small_sky_order1_collection_dir / small_sky_order1_catalog.name
+    assert catalog.hc_structure.catalog_base_dir == main_catalog_dir
+    assert catalog.hc_structure.catalog_info.total_rows == len(small_sky_order1_catalog)
+    assert catalog.get_healpix_pixels() == small_sky_order1_catalog.get_healpix_pixels()
     assert len(catalog.compute().columns) == 5
     assert isinstance(catalog.compute(), npd.NestedFrame)
     helpers.assert_divisions_are_correct(catalog)
     helpers.assert_index_correct(catalog)
     helpers.assert_schema_correct(catalog)
 
-    margin = catalog.margin
-    assert isinstance(margin, lsdb.MarginCatalog)
-    assert margin.hc_structure.catalog_name == small_sky_order1_margin_catalog.hc_structure.catalog_name
-    assert margin.hc_structure.catalog_info.total_rows == len(small_sky_order1_margin_catalog)
-    assert margin.get_healpix_pixels() == small_sky_order1_margin_catalog.get_healpix_pixels()
-    assert len(margin.compute().columns) == 5
-    assert isinstance(margin.compute(), npd.NestedFrame)
-    helpers.assert_divisions_are_correct(margin)
-    helpers.assert_index_correct(margin)
-    helpers.assert_schema_correct(margin)
+    assert isinstance(catalog.margin, lsdb.MarginCatalog)
+    assert catalog.margin.name == collection_properties.default_margin
+    margin_catalog_dir = small_sky_order1_collection_dir / small_sky_order1_margin_1deg_catalog.name
+    assert catalog.margin.hc_structure.catalog_base_dir == margin_catalog_dir
+    assert catalog.margin.hc_structure.catalog_info.total_rows == len(small_sky_order1_margin_1deg_catalog)
+    assert catalog.margin.get_healpix_pixels() == small_sky_order1_margin_1deg_catalog.get_healpix_pixels()
+    assert len(catalog.margin.compute().columns) == 5
+    assert isinstance(catalog.margin.compute(), npd.NestedFrame)
+    helpers.assert_divisions_are_correct(catalog.margin)
+    helpers.assert_index_correct(catalog.margin)
+    helpers.assert_schema_correct(catalog.margin)
 
-    index = collection.index
-    assert isinstance(index, hats.catalog.index.index_catalog.IndexCatalog)
-    index_hc = hats.read_hats(small_sky_order1_id_index_dir)
-    assert index.catalog_name == index_hc.catalog_name
-    assert index.catalog_info == index_hc.catalog_info
+
+def test_read_hats_collection_with_non_default_margin(
+    small_sky_order1_collection_dir, small_sky_order1_margin_2deg_catalog, helpers
+):
+    catalog = lsdb.read_hats(
+        small_sky_order1_collection_dir, margin_cache=small_sky_order1_margin_2deg_catalog.name
+    )
+
+    collection_properties = CollectionProperties.read_from_dir(small_sky_order1_collection_dir)
+
+    assert isinstance(catalog.margin, lsdb.MarginCatalog)
+    assert catalog.margin.name != collection_properties.default_margin
+    margin_catalog_dir = small_sky_order1_collection_dir / small_sky_order1_margin_2deg_catalog.name
+    assert catalog.margin.hc_structure.catalog_base_dir == margin_catalog_dir
+    assert catalog.margin.hc_structure.catalog_info.total_rows == len(small_sky_order1_margin_2deg_catalog)
+    assert catalog.margin.get_healpix_pixels() == small_sky_order1_margin_2deg_catalog.get_healpix_pixels()
+    assert len(catalog.margin.compute().columns) == 5
+    assert isinstance(catalog.margin.compute(), npd.NestedFrame)
+    helpers.assert_divisions_are_correct(catalog.margin)
+    helpers.assert_index_correct(catalog.margin)
+    helpers.assert_schema_correct(catalog.margin)
+
+
+def test_read_hats_collection_margin_not_in_properties(
+    small_sky_order1_collection_dir,
+    small_sky_order1_margin_1deg_catalog,
+    small_sky_order1_margin_2deg_catalog,
+    tmp_path,
+):
+    # Copy the collection to a temporary directory so that we can modify its properties
+    collection_base_dir = tmp_path / "collection"
+    shutil.copytree(small_sky_order1_collection_dir, collection_base_dir)
+    assert collection_base_dir.exists()
+
+    # Remove the non-default margin from the properties file. The only margin
+    # available is that of 1deg.
+    collection_properties = CollectionProperties.read_from_dir(collection_base_dir)
+    collection_properties.all_margins = [small_sky_order1_margin_1deg_catalog.name]
+    collection_properties.to_properties_file(collection_base_dir)
+
+    with pytest.raises(ValueError, match="not specified"):
+        lsdb.read_hats(collection_base_dir, margin_cache=small_sky_order1_margin_2deg_catalog.name)
 
 
 def test_read_hats_initializes_upath_once(

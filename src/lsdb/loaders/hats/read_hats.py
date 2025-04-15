@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import cast
 
 import hats as hc
 import nested_dask as nd
@@ -9,6 +8,7 @@ import nested_pandas as npd
 import numpy as np
 import pyarrow as pa
 from hats.catalog import CatalogType
+from hats.catalog.catalog_collection import CatalogCollection
 from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
 from hats.io.file_io import file_io
 from hats.pixel_math import HealpixPixel
@@ -18,7 +18,6 @@ from upath import UPath
 
 from lsdb.catalog.association_catalog import AssociationCatalog
 from lsdb.catalog.catalog import Catalog, DaskDFPixelMap, MarginCatalog
-from lsdb.catalog.catalog_collection import CatalogCollection
 from lsdb.catalog.dataset.dataset import Dataset
 from lsdb.catalog.map_catalog import MapCatalog
 from lsdb.catalog.margin_catalog import _validate_margin_catalog
@@ -35,7 +34,7 @@ def read_hats(
     margin_cache: str | Path | UPath | None = None,
     dtype_backend: str | None = "pyarrow",
     **kwargs,
-) -> CatalogCollection | Dataset:
+) -> Dataset:
     """Load catalog from a HATS directory.
 
     Catalogs exist in collections or stand-alone.
@@ -53,7 +52,7 @@ def read_hats(
     ├── collection.properties
 
     All arguments passed to the `read_hats` call are applied to the reading calls of
-    the main and margin catalogs. The index catalog is always loaded as is.
+    the main and margin catalogs.
 
     Typical usage example, where we load a collection with a subset of columns::
 
@@ -70,6 +69,9 @@ def read_hats(
     Typical usage example, where we load a collection with a non-default margin::
 
         lsdb.read_hats(path='./my_collection_dir', margin='margin_catalog_2')
+
+    Note that this margin still needs to be specified in the `all_margins` attribute
+    of the `collection.properties` file.
 
     We can also load each catalog separately, if needed::
 
@@ -96,17 +98,11 @@ def read_hats(
             collection = lsdb.read_hats(UPath(..., anon=True))
     """
     hc_catalog = hc.read_hats(path)
-    if isinstance(hc_catalog, hc.catalog.Dataset):
-        return _load_catalog(
-            hc_catalog=hc_catalog,
-            search_filter=search_filter,
-            columns=columns,
-            margin_cache=margin_cache,
-            dtype_backend=dtype_backend,
-            **kwargs,
-        )
-    return _load_collection(
-        hc_catalog=hc_catalog,
+    if isinstance(hc_catalog, CatalogCollection):
+        margin_cache = _get_collection_margin(hc_catalog, margin_cache)
+        hc_catalog = hc_catalog.main_catalog
+    return _load_catalog(
+        hc_catalog,
         search_filter=search_filter,
         columns=columns,
         margin_cache=margin_cache,
@@ -115,30 +111,27 @@ def read_hats(
     )
 
 
-def _load_collection(
-    hc_catalog,
-    search_filter: AbstractSearch | None = None,
-    columns: list[str] | str | None = None,
-    margin_cache: str | Path | UPath | None = None,
-    dtype_backend: str | None = "pyarrow",
-    **kwargs,
-) -> CatalogCollection:
-    main_catalog = cast(
-        Catalog,
-        _load_catalog(
-            hc_catalog.main_catalog,
-            search_filter=search_filter,
-            columns=columns,
-            margin_cache=hc_catalog.margin_catalog_dir if margin_cache is None else margin_cache,
-            dtype_backend=dtype_backend,
-            **kwargs,
-        ),
-    )
-    return CatalogCollection(main_catalog, index=hc_catalog.index_catalog)
+def _get_collection_margin(collection: CatalogCollection, margin_cache: str | Path | UPath | None) -> UPath:
+    """The path to the collection margin.
+
+    If the margin cache is provided as a string and a catalog with that same name
+    exists in the collection, this method returns its absolute path. If no margin
+    name was provided, it returns the default margin catalog absolute path.
+
+    The margin specified must be declared in the `collection.properties`. Otherwise,
+    an error is raised.
+    """
+    if margin_cache is None:
+        return collection.default_margin_catalog_dir
+    if isinstance(margin_cache, str):
+        if margin_cache in collection.all_margins:
+            return collection.collection_path / margin_cache
+        raise ValueError(f"{margin_cache} is not specified in the collection properties")
+    return file_io.get_upath(margin_cache)
 
 
 def _load_catalog(
-    hc_catalog,
+    hc_catalog: hc.catalog.Dataset,
     search_filter: AbstractSearch | None = None,
     columns: list[str] | str | None = None,
     margin_cache: str | Path | UPath | None = None,
