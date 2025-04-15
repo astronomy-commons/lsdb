@@ -142,6 +142,7 @@ def test_cone_search_plot():
     assert isinstance(ax.patches[0], SphericalCircle)
     assert ax.patches[0].get_fc() == (0.0, 0.0, 0.0, 0.0)
     assert ax.patches[0].get_ec() == colors.to_rgba("tab:red")
+    plt.close()
 
 
 def test_cone_search_plot_set_color():
@@ -154,3 +155,4 @@ def test_cone_search_plot_set_color():
     assert len(ax.patches) == 1
     assert isinstance(ax.patches[0], SphericalCircle)
     assert ax.patches[0].get_fc() == color
+    plt.close()
