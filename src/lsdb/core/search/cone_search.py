@@ -35,7 +35,7 @@ class ConeSearch(AbstractSearch):
 
     def _perform_plot(self, ax: WCSAxes, **kwargs):
 
-        kwargs_to_use = {"fc": "#00000000"}
+        kwargs_to_use = {"ec": "tab:red", "fc": "none"}
         kwargs_to_use.update(kwargs)
 
         circle = SphericalCircle(

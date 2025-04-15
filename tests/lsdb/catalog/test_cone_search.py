@@ -1,3 +1,4 @@
+import matplotlib.pyplot as plt
 import nested_dask as nd
 import nested_pandas as npd
 import pandas as pd
@@ -5,6 +6,7 @@ import pytest
 from astropy.coordinates import SkyCoord
 from astropy.visualization.wcsaxes import SphericalCircle
 from hats.pixel_math.validators import ValidatorsErrors
+from matplotlib import colors
 
 from lsdb import ConeSearch
 
@@ -139,6 +141,7 @@ def test_cone_search_plot():
     assert len(ax.patches) == 1
     assert isinstance(ax.patches[0], SphericalCircle)
     assert ax.patches[0].get_fc() == (0.0, 0.0, 0.0, 0.0)
+    assert ax.patches[0].get_ec() == colors.to_rgba("tab:red")
 
 
 def test_cone_search_plot_set_color():
