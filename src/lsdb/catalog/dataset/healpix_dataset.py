@@ -210,7 +210,7 @@ class HealpixDataset(Dataset):
         exclude_columns: list[str] | None = None,
         include_columns: list[str] | None = None,
         include_stats: list[str] | None = None,
-        multiindex=False,
+        multi_index=False,
         include_pixels: list[HealpixPixel] | None = None,
     ) -> list[HealpixPixel]:
         """Read footer statistics in parquet metadata, and report on global min/max values."""
@@ -222,7 +222,7 @@ class HealpixDataset(Dataset):
             exclude_columns=exclude_columns,
             include_columns=include_columns,
             include_stats=include_stats,
-            multiindex=multiindex,
+            multi_index=multi_index,
             include_pixels=include_pixels,
         )
 
