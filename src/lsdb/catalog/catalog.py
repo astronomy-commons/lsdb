@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-from typing import Callable, Iterable, Literal, Type
+from typing import Any, Callable, Iterable, Literal, Type
 
 import dask.dataframe as dd
 import hats as hc
 import nested_dask as nd
 import nested_pandas as npd
 import pandas as pd
+from hats.catalog.catalog_collection import CatalogCollection
 from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
 from hats.catalog.index.index_catalog import IndexCatalog as HCIndexCatalog
 from hats.pixel_math import HealpixPixel
@@ -51,6 +52,7 @@ class Catalog(HealpixDataset):
 
     hc_structure: hc.catalog.Catalog
     margin: MarginCatalog | None = None
+    hc_collection: CatalogCollection | None = None
 
     def __init__(
         self,
@@ -343,7 +345,7 @@ class Catalog(HealpixDataset):
         NB: This requires a previously-computed catalog index table.
 
         Args:
-            ids: Values to search for.
+            ids (list): Values to search for.
             catalog_index (HCIndexCatalog): A pre-computed hats index catalog.
             fine (bool): True if points are to be filtered, False if not. Defaults to True.
 
@@ -351,6 +353,42 @@ class Catalog(HealpixDataset):
             A new Catalog containing the points filtered to those matching the ids.
         """
         return self.search(IndexSearch(ids, catalog_index, fine))
+
+    def id_search(self, ids: Any | list[Any], id_column: str | None = None, fine: bool = True) -> Catalog:
+        """Query rows by `id_column`.
+
+        This method can only be used within the context of Catalog collections because
+        it relies on the specification of index catalogs. If you are working with a
+        standalone catalog and have an instance of `HCIndexCatalog` which you would like
+        to use for querying please go with the `Catalog.index_search` method instead.
+
+        If `id_column` is not provided this method queries by the default index column,
+        as specified in the `collection.properties`.
+
+        Args:
+            ids (Any | list[Any]): Values to search for. A single value or a list of values.
+            id_column (str): The catalog field to query for.
+            fine (bool): True if points are to be filtered, False if not. Defaults to True.
+
+        Returns:
+            A new Catalog containing the points filtered to those matching the ids.
+        """
+        if self.hc_collection is None:
+            raise NotImplementedError(
+                "`Catalog.id_search` is only available in the context of Catalog collections."
+                " Use `Catalog.index_search` with an instance of `HCIndexCatalog` instead."
+            )
+        index_dir = self.hc_collection.get_index_dir_for_field(id_column)
+        if index_dir is None:
+            raise ValueError(
+                "The id_column requested does not have a matching index catalog,"
+                " and there is no default index field set."
+            )
+        index_catalog = hc.read_hats(index_dir)
+        if not isinstance(index_catalog, HCIndexCatalog):
+            raise TypeError("Catalog index is not of type `HCIndexCatalog`")
+        ids = [ids] if not isinstance(ids, list) else ids
+        return self.search(IndexSearch(ids, index_catalog, fine))
 
     def order_search(self, min_order: int = 0, max_order: int | None = None) -> Catalog:
         """Filter catalog by order of HEALPix.

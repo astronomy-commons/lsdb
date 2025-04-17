@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import nested_pandas as npd
-from hats.catalog.index.index_catalog import IndexCatalog
+from hats.catalog.index.index_catalog import IndexCatalog as HCIndexCatalog
 
 from lsdb.core.search.abstract_search import AbstractSearch
 
@@ -20,7 +20,7 @@ class IndexSearch(AbstractSearch):
     NB: This requires a previously-computed catalog index table.
     """
 
-    def __init__(self, ids, catalog_index: IndexCatalog, fine: bool = True):
+    def __init__(self, ids: list, catalog_index: HCIndexCatalog, fine: bool = True):
         super().__init__(fine)
         self.ids = ids
         self.catalog_index = catalog_index

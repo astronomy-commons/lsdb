@@ -239,6 +239,11 @@ def small_sky_order1_catalog(small_sky_order1_dir):
 
 
 @pytest.fixture
+def small_sky_order1_collection_catalog(small_sky_order1_collection_dir):
+    return lsdb.read_hats(small_sky_order1_collection_dir)
+
+
+@pytest.fixture
 def small_sky_order1_margin_1deg_catalog(small_sky_order1_margin_1deg_dir):
     return lsdb.read_hats(small_sky_order1_margin_1deg_dir)
 
