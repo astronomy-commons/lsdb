@@ -14,3 +14,4 @@ A more in-depth look into how LSDB works
     Index tables <tutorials/pre_executed/index_table>
     Dask cluster configuration <tutorials/dask-cluster-tips>
     Performance testing <tutorials/performance>
+    Use of map_partitions <tutorials/pre_executed/map_partitions>

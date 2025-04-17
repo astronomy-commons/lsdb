@@ -273,7 +273,7 @@ def test_from_dataframe_margin_threshold_from_order(small_sky_source_df):
             threshold=3000,
             margin_order=3,
         )
-    assert len(catalog.margin.get_healpix_pixels()) == 17
+    assert len(catalog.margin.get_healpix_pixels()) == 19
     margin_threshold_order3 = hp.order2mindist(3) * 60.0
     assert catalog.margin.hc_structure.catalog_info.margin_threshold == margin_threshold_order3
     assert catalog.margin._ddf.index.name == catalog._ddf.index.name

@@ -1,3 +1,4 @@
+# pylint: disable=too-many-lines
 from pathlib import Path
 
 import astropy.units as u
@@ -68,6 +69,11 @@ def test_get_catalog_partition_gets_correct_partition(small_sky_order1_catalog):
         pd.testing.assert_frame_equal(partition.compute(), ddf_partition.compute())
 
 
+def test_npartitions_property(small_sky_order1_catalog):
+    underlying_count = len(small_sky_order1_catalog.get_healpix_pixels())
+    assert underlying_count == small_sky_order1_catalog.npartitions
+
+
 def test_head(small_sky_order1_catalog):
     # By default, head returns 5 rows
     expected_df = small_sky_order1_catalog._ddf.partitions[0].compute()[:5]
@@ -113,6 +119,115 @@ def test_head_empty_catalog(small_sky_order1_catalog):
     empty_ddf = dd.from_pandas(empty_df, npartitions=1)
     empty_catalog = lsdb.Catalog(empty_ddf, {}, small_sky_order1_catalog.hc_structure)
     assert len(empty_catalog.head()) == 0
+
+
+def test_tail(small_sky_order1_catalog):
+    # By default, tail returns 5 rows
+    expected_df = small_sky_order1_catalog._ddf.partitions[0].compute()[-5:]
+    tail_df = small_sky_order1_catalog.tail()
+    assert isinstance(tail_df, npd.NestedFrame)
+    assert len(tail_df) == 5
+    pd.testing.assert_frame_equal(expected_df, tail_df)
+    # But we can also specify the number of rows we desire
+    expected_df = small_sky_order1_catalog._ddf.partitions[0].compute()[-10:]
+    tail_df = small_sky_order1_catalog.tail(n=10)
+    assert len(tail_df) == 10
+    pd.testing.assert_frame_equal(expected_df, tail_df)
+
+
+def test_tail_rows_less_than_requested(small_sky_order1_catalog):
+    schema = small_sky_order1_catalog.dtypes
+    two_rows = small_sky_order1_catalog._ddf.partitions[0].compute()[-2:]
+    tiny_df = pd.DataFrame(data=two_rows, columns=schema.index, dtype=schema.to_numpy())
+    altered_ndf = nd.NestedFrame.from_pandas(tiny_df, npartitions=1)
+    catalog = lsdb.Catalog(altered_ndf, {}, small_sky_order1_catalog.hc_structure)
+    # The tail only contains two values
+    assert len(catalog.tail()) == 2
+
+
+def test_tail_first_partition_is_empty(small_sky_order1_catalog):
+    # The same catalog but now the first partition is empty
+    schema = small_sky_order1_catalog.dtypes
+    empty_df = pd.DataFrame(columns=schema.index, dtype=schema.to_numpy())
+    empty_ddf = dd.from_pandas(empty_df, npartitions=1)
+    altered_ndf = nd.NestedFrame.from_dask_dataframe(dd.concat([empty_ddf, small_sky_order1_catalog._ddf]))
+    catalog = lsdb.Catalog(altered_ndf, {}, small_sky_order1_catalog.hc_structure)
+    # The first partition is empty
+    first_partition_df = catalog._ddf.partitions[0].compute()
+    assert len(first_partition_df) == 0
+    # We still get values from the second (non-empty) partition
+    assert len(catalog.tail()) == 5
+
+
+def test_tail_empty_catalog(small_sky_order1_catalog):
+    # Create an empty Pandas DataFrame with the same schema
+    schema = small_sky_order1_catalog.dtypes
+    empty_df = pd.DataFrame(columns=schema.index, dtype=schema.to_numpy())
+    empty_ddf = dd.from_pandas(empty_df, npartitions=1)
+    empty_catalog = lsdb.Catalog(empty_ddf, {}, small_sky_order1_catalog.hc_structure)
+    assert len(empty_catalog.tail()) == 0
+
+
+def test_random_sample(small_sky_order1_catalog):
+    # By default, random_sample returns 5 rows
+    rsample_df = small_sky_order1_catalog.random_sample(seed=0)
+    assert isinstance(rsample_df, npd.NestedFrame)
+    assert len(rsample_df) == 5
+    # But we can also specify the number of rows we desire
+    rsample_df = small_sky_order1_catalog.random_sample(n=10, seed=0)
+    assert len(rsample_df) == 10
+
+
+def test_random_sample_changed_catalog(small_sky_order1_catalog):
+    # Choose a small portion of this catalog so that random_sample
+    # can't rely on the precalculated pixel statistics.
+
+    # The result of this cone search is known to have one empty partition
+    cone_search_catalog = small_sky_order1_catalog.cone_search(0, -80, 15 * 3600)
+    rsample_df = cone_search_catalog.random_sample(n=3, seed=0)
+    assert isinstance(rsample_df, npd.NestedFrame)
+    assert len(rsample_df) == 3
+
+
+def test_random_sample_no_return(small_sky_order1_catalog):
+    # Test what happens when no elements are returned.
+    rsample_df = small_sky_order1_catalog.random_sample(n=0, seed=0)
+    assert isinstance(rsample_df, npd.NestedFrame)
+    assert len(rsample_df) == 0
+
+
+def test_random_sample_empty_catalog(small_sky_order1_catalog):
+    # Create an empty Pandas DataFrame with the same schema
+    schema = small_sky_order1_catalog.dtypes
+    empty_df = pd.DataFrame(columns=schema.index, dtype=schema.to_numpy())
+    empty_ddf = dd.from_pandas(empty_df, npartitions=1)
+    empty_catalog = lsdb.Catalog(empty_ddf, {}, small_sky_order1_catalog.hc_structure)
+    assert len(empty_catalog.random_sample(seed=0)) == 0
+
+
+def test_sample(small_sky_order1_catalog):
+    # By default, sample returns 5 rows
+    sample_df = small_sky_order1_catalog.sample(partition_id=0, seed=0)
+    assert isinstance(sample_df, npd.NestedFrame)
+    assert len(sample_df) == 5
+    # But we can also specify the number of rows we desire
+    sample_df = small_sky_order1_catalog.sample(partition_id=0, n=10, seed=0)
+    assert len(sample_df) == 10
+    # Verify that partition_id is verified to be in range
+    with pytest.raises(IndexError):
+        small_sky_order1_catalog.sample(partition_id=-1, n=10, seed=0)
+    with pytest.raises(IndexError):
+        npartitions = len(small_sky_order1_catalog.get_healpix_pixels())
+        small_sky_order1_catalog.sample(partition_id=npartitions, n=10)
+
+
+def test_sample_empty_catalog(small_sky_order1_catalog):
+    # Create an empty Pandas DataFrame with the same schema
+    schema = small_sky_order1_catalog.dtypes
+    empty_df = pd.DataFrame(columns=schema.index, dtype=schema.to_numpy())
+    empty_ddf = dd.from_pandas(empty_df, npartitions=1)
+    empty_catalog = lsdb.Catalog(empty_ddf, {}, small_sky_order1_catalog.hc_structure)
+    assert len(empty_catalog.sample(partition_id=0, seed=0)) == 0
 
 
 def test_query(small_sky_order1_catalog, helpers):
@@ -606,19 +721,15 @@ def test_skymap_plot(small_sky_order1_catalog, mocker):
     def func(df, healpix):
         return len(df) / hp.order2pixarea(healpix.order, degrees=True)
 
-    small_sky_order1_catalog.skymap(func)
-    pixel_map = small_sky_order1_catalog.skymap_data(func)
-    pixel_map = {pixel: value.compute() for pixel, value in pixel_map.items()}
-    max_order = max(pixel_map.keys(), key=lambda x: x.order).order
-    img = np.full(hp.order2npix(max_order), 0)
-    for pixel, value in pixel_map.items():
-        dorder = max_order - pixel.order
-        start = pixel.pixel * (4**dorder)
-        end = (pixel.pixel + 1) * (4**dorder)
-        img_order_pixels = np.arange(start, end)
-        img[img_order_pixels] = value
+    img = small_sky_order1_catalog.skymap_histogram(func, plot=True)
+
+    # [42, 29, 42, 18] is the actual lengths of the four filled dataframes
+    expected_img = np.full(hp.order2npix(1), 0, dtype=np.float64)
+    expected_img[44:] = [42, 29, 42, 18] / hp.order2pixarea(1, degrees=True)
+
+    assert (img == expected_img).all()
     lsdb.catalog.dataset.healpix_dataset.plot_healpix_map.assert_called_once()
-    assert (lsdb.catalog.dataset.healpix_dataset.plot_healpix_map.call_args[0][0] == img).all()
+    assert (lsdb.catalog.dataset.healpix_dataset.plot_healpix_map.call_args[0][0] == expected_img).all()
 
 
 # pylint: disable=no-member
