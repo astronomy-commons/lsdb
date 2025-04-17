@@ -1,4 +1,3 @@
-import shutil
 from pathlib import Path
 from unittest.mock import call
 
@@ -9,11 +8,11 @@ import numpy as np
 import numpy.testing as npt
 import pandas as pd
 import pytest
-from hats.catalog.dataset.collection_properties import CollectionProperties
 from hats.io.file_io import get_upath_for_protocol
 from hats.pixel_math import HealpixPixel
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 from pandas.core.dtypes.base import ExtensionDtype
+from upath import UPath
 
 import lsdb
 from lsdb.core.search import BoxSearch, ConeSearch, IndexSearch, OrderSearch, PolygonSearch
@@ -38,10 +37,8 @@ def test_read_hats_collection_with_default_margin(
 ):
     catalog = lsdb.read_hats(small_sky_order1_collection_dir)
 
-    collection_properties = CollectionProperties.read_from_dir(small_sky_order1_collection_dir)
-
     assert isinstance(catalog, lsdb.Catalog)
-    assert catalog.name == collection_properties.hats_primary_table_url
+    assert catalog.name == catalog.hc_collection.main_catalog.catalog_name
     main_catalog_dir = small_sky_order1_collection_dir / small_sky_order1_catalog.name
     assert catalog.hc_structure.catalog_base_dir == main_catalog_dir
     assert catalog.hc_structure.catalog_info.total_rows == len(small_sky_order1_catalog)
@@ -53,7 +50,7 @@ def test_read_hats_collection_with_default_margin(
     helpers.assert_schema_correct(catalog)
 
     assert isinstance(catalog.margin, lsdb.MarginCatalog)
-    assert catalog.margin.name == collection_properties.default_margin
+    assert catalog.margin.name == catalog.hc_collection.default_margin
     margin_catalog_dir = small_sky_order1_collection_dir / small_sky_order1_margin_1deg_catalog.name
     assert catalog.margin.hc_structure.catalog_base_dir == margin_catalog_dir
     assert catalog.margin.hc_structure.catalog_info.total_rows == len(small_sky_order1_margin_1deg_catalog)
@@ -65,17 +62,14 @@ def test_read_hats_collection_with_default_margin(
     helpers.assert_schema_correct(catalog.margin)
 
 
-def test_read_hats_collection_with_non_default_margin(
+def test_read_hats_collection_with_margin_name(
     small_sky_order1_collection_dir, small_sky_order1_margin_2deg_catalog, helpers
 ):
-    catalog = lsdb.read_hats(
-        small_sky_order1_collection_dir, margin_cache=small_sky_order1_margin_2deg_catalog.name
-    )
-
-    collection_properties = CollectionProperties.read_from_dir(small_sky_order1_collection_dir)
+    margin_name = small_sky_order1_margin_2deg_catalog.name
+    catalog = lsdb.read_hats(small_sky_order1_collection_dir, margin_cache=margin_name)
 
     assert isinstance(catalog.margin, lsdb.MarginCatalog)
-    assert catalog.margin.name != collection_properties.default_margin
+    assert catalog.margin.name != catalog.hc_collection.default_margin
     margin_catalog_dir = small_sky_order1_collection_dir / small_sky_order1_margin_2deg_catalog.name
     assert catalog.margin.hc_structure.catalog_base_dir == margin_catalog_dir
     assert catalog.margin.hc_structure.catalog_info.total_rows == len(small_sky_order1_margin_2deg_catalog)
@@ -87,25 +81,27 @@ def test_read_hats_collection_with_non_default_margin(
     helpers.assert_schema_correct(catalog.margin)
 
 
-def test_read_hats_collection_with_margin_not_in_properties(
+@pytest.mark.parametrize("path_type", [str, Path, UPath])
+def test_read_hats_collection_with_margin_absolute_path(
     small_sky_order1_collection_dir,
-    small_sky_order1_margin_1deg_catalog,
+    small_sky_order1_margin_2deg_dir,
     small_sky_order1_margin_2deg_catalog,
-    tmp_path,
+    path_type,
+    helpers,
 ):
-    # Copy the collection to a temporary directory so that we can modify its properties
-    collection_base_dir = tmp_path / "collection"
-    shutil.copytree(small_sky_order1_collection_dir, collection_base_dir)
-    assert collection_base_dir.exists()
+    margin_absolute_path = path_type(small_sky_order1_margin_2deg_dir)
+    catalog = lsdb.read_hats(small_sky_order1_collection_dir, margin_cache=margin_absolute_path)
 
-    # Remove the non-default margin from the properties file. The only margin
-    # available is that of 1deg.
-    collection_properties = CollectionProperties.read_from_dir(collection_base_dir)
-    collection_properties.all_margins = [small_sky_order1_margin_1deg_catalog.name]
-    collection_properties.to_properties_file(collection_base_dir)
-
-    with pytest.raises(ValueError, match="not specified"):
-        lsdb.read_hats(collection_base_dir, margin_cache=small_sky_order1_margin_2deg_catalog.name)
+    assert isinstance(catalog.margin, lsdb.MarginCatalog)
+    assert catalog.margin.name != catalog.hc_collection.default_margin
+    assert str(catalog.margin.hc_structure.catalog_base_dir) == str(small_sky_order1_margin_2deg_dir)
+    assert catalog.margin.hc_structure.catalog_info.total_rows == len(small_sky_order1_margin_2deg_catalog)
+    assert catalog.margin.get_healpix_pixels() == small_sky_order1_margin_2deg_catalog.get_healpix_pixels()
+    assert len(catalog.margin.compute().columns) == 5
+    assert isinstance(catalog.margin.compute(), npd.NestedFrame)
+    helpers.assert_divisions_are_correct(catalog.margin)
+    helpers.assert_index_correct(catalog.margin)
+    helpers.assert_schema_correct(catalog.margin)
 
 
 def test_read_hats_collection_with_extra_kwargs(small_sky_order1_collection_dir):

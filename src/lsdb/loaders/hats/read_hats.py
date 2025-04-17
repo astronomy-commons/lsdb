@@ -101,34 +101,46 @@ def read_hats(
     hc_catalog = hc.read_hats(path)
     if isinstance(hc_catalog, CatalogCollection):
         margin_cache = _get_collection_margin(hc_catalog, margin_cache)
-        hc_catalog = hc_catalog.main_catalog
-    return _load_catalog(
-        hc_catalog,
-        search_filter=search_filter,
-        columns=columns,
-        margin_cache=margin_cache,
-        dtype_backend=dtype_backend,
-        **kwargs,
-    )
+        catalog = _load_catalog(
+            hc_catalog.main_catalog,
+            search_filter=search_filter,
+            columns=columns,
+            margin_cache=margin_cache,
+            dtype_backend=dtype_backend,
+            **kwargs,
+        )
+        catalog.hc_collection = hc_catalog  # type: ignore[attr-defined]
+    else:
+        catalog = _load_catalog(
+            hc_catalog,
+            search_filter=search_filter,
+            columns=columns,
+            margin_cache=margin_cache,
+            dtype_backend=dtype_backend,
+            **kwargs,
+        )
+    return catalog
 
 
-def _get_collection_margin(collection: CatalogCollection, margin_cache: str | Path | UPath | None) -> UPath:
+def _get_collection_margin(
+    collection: CatalogCollection, margin_cache: str | Path | UPath | None
+) -> UPath | None:
     """The path to the collection margin.
 
-    If the margin cache is provided as a string and a catalog with that same name
-    exists in the collection, this method returns its absolute path. If no margin
-    name was provided, it returns the default margin catalog absolute path.
+    The `margin_cache` should be provided as:
+      - An identifier to the margin catalog name (it needs to be a string and be
+        specified in the `all_margins` attribute of the `collection.properties`).
+      - The absolute path to a margin, hosted locally or remote.
 
-    The margin specified must be declared in the `collection.properties`. Otherwise,
-    an error is raised.
+    By default, if no `margin_cache` is provided, the absolute path to the default
+    collection margin is returned.
     """
     if margin_cache is None:
         return collection.default_margin_catalog_dir
-    if isinstance(margin_cache, str):
-        if margin_cache in collection.all_margins:
-            return collection.collection_path / margin_cache
-        raise ValueError(f"{margin_cache} is not specified in the collection properties")
-    return file_io.get_upath(margin_cache)
+    margin_cache = file_io.get_upath(margin_cache)
+    if margin_cache.path in collection.all_margins:
+        return collection.collection_path / margin_cache.path
+    return margin_cache
 
 
 def _load_catalog(
