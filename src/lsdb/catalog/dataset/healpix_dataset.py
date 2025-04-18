@@ -184,6 +184,48 @@ class HealpixDataset(Dataset):
         pixels = self.get_healpix_pixels()
         return np.array(pixels)[get_pixel_argsort(pixels)]
 
+    def aggregate_column_statistics(
+        self,
+        use_default_columns: bool = True,
+        exclude_hats_columns: bool = True,
+        exclude_columns: list[str] | None = None,
+        include_columns: list[str] | None = None,
+        include_pixels: list[HealpixPixel] | None = None,
+    ) -> list[HealpixPixel]:
+        """Read footer statistics in parquet metadata, and report on global min/max values."""
+        if use_default_columns and include_columns is None:
+            include_columns = self.hc_structure.catalog_info.default_columns
+
+        return self.hc_structure.aggregate_column_statistics(
+            exclude_hats_columns=exclude_hats_columns,
+            exclude_columns=exclude_columns,
+            include_columns=include_columns,
+            include_pixels=include_pixels,
+        )
+
+    def per_pixel_statistics(
+        self,
+        use_default_columns: bool = True,
+        exclude_hats_columns: bool = True,
+        exclude_columns: list[str] | None = None,
+        include_columns: list[str] | None = None,
+        include_stats: list[str] | None = None,
+        multi_index=False,
+        include_pixels: list[HealpixPixel] | None = None,
+    ) -> list[HealpixPixel]:
+        """Read footer statistics in parquet metadata, and report on global min/max values."""
+        if use_default_columns and include_columns is None:
+            include_columns = self.hc_structure.catalog_info.default_columns
+
+        return self.hc_structure.per_pixel_statistics(
+            exclude_hats_columns=exclude_hats_columns,
+            exclude_columns=exclude_columns,
+            include_columns=include_columns,
+            include_stats=include_stats,
+            multi_index=multi_index,
+            include_pixels=include_pixels,
+        )
+
     def get_partition(self, order: int, pixel: int) -> nd.NestedFrame:
         """Get the dask partition for a given HEALPix pixel
 
