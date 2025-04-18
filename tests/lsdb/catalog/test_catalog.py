@@ -1116,7 +1116,7 @@ def test_all_columns(small_sky_order1_default_cols_catalog, small_sky_order1_cat
     assert np.all(small_sky_order1_default_cols_catalog.all_columns == small_sky_order1_catalog.columns)
 
 
-def test_original_schema(small_sky_order1_catalog, small_sky_order1_dir):
+def test_original_schema(small_sky_order1_catalog):
     assert small_sky_order1_catalog.original_schema is not None
     filtered_cat = small_sky_order1_catalog[["ra", "dec"]]
     assert filtered_cat.original_schema == small_sky_order1_catalog.original_schema
