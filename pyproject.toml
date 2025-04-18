@@ -2,7 +2,7 @@
 name = "lsdb"
 license = {file = "LICENSE"}
 readme = "README.md"
-description = "Spatial analysis for extremely large astronomical databases using dask"
+description = "Spatial analysis for extremely large astronomical catalogs using dask"
 authors = [
     { name = "LINCC Frameworks", email = "lincc-frameworks-team@lists.lsst.org" }
 ]

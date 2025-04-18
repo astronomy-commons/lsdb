@@ -2,7 +2,7 @@ About
 ==========================
 
 LSDB is an open source project and is free for all to use. It is released under the liberal terms of the 
-`BSD 3-Clause License <https://github.com/astronomy-commons/lsdb/blob/main/LICENSEc>`_.
+`BSD 3-Clause License <https://github.com/astronomy-commons/lsdb/blob/main/LICENSE>`_.
 
 Citation
 --------------------------
