@@ -2,6 +2,7 @@ import hats as hc
 import nested_dask as nd
 import nested_pandas as npd
 from dask.delayed import Delayed
+from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 
 
 class Dataset:
@@ -71,3 +72,20 @@ class Dataset:
     def columns(self):
         """Returns the columns in the Dataset"""
         return self._ddf.columns
+
+    @property
+    def all_columns(self):
+        """Returns all columns in the original Dataset"""
+        if self.hc_structure.original_schema is None:
+            raise ValueError("Original Catalog Columns are not available")
+        col_names = self.hc_structure.original_schema.names
+        if SPATIAL_INDEX_COLUMN in col_names:
+            col_names.remove(SPATIAL_INDEX_COLUMN)
+        return col_names
+
+    @property
+    def original_schema(self):
+        """Returns the schema of the original Dataset"""
+        if self.hc_structure.original_schema is None:
+            raise ValueError("Original Catalog Columns are not available")
+        return self.hc_structure.original_schema

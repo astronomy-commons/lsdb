@@ -121,6 +121,7 @@ class HealpixDataset(Dataset):
             pixels=hc_structure.pixel_tree,
             catalog_path=hc_structure.catalog_path,
             schema=hc_structure.schema if updated_schema is None else updated_schema,
+            original_schema=hc_structure.original_schema,
             moc=hc_structure.moc,
         )
 
