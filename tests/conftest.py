@@ -28,6 +28,9 @@ SMALL_SKY_TO_XMATCH_SOFT_NAME = "small_sky_to_xmatch_soft"
 SMALL_SKY_NPIX_ALT_SUFFIX_NAME = "small_sky_npix_alt_suffix"
 SMALL_SKY_NPIX_AS_DIR_NAME = "small_sky_npix_as_dir"
 SMALL_SKY_ORDER1_DIR_NAME = "small_sky_order1"
+SMALL_SKY_ORDER1_MARGIN_1DEG_DIR_NAME = "small_sky_order1_margin_1deg"
+SMALL_SKY_ORDER1_MARGIN_2DEG_DIR_NAME = "small_sky_order1_margin_2deg"
+SMALL_SKY_ORDER1_COLLECTION_DIR_NAME = "small_sky_order1_collection"
 SMALL_SKY_ORDER1_NESTED_SOURCES_NAME = "small_sky_order1_nested_sources"
 SMALL_SKY_ORDER1_NESTED_SOURCES_MARGIN_NAME = "small_sky_order1_nested_sources_margin"
 SMALL_SKY_ORDER1_NO_PANDAS_DIR_NAME = "small_sky_order1_no_pandas_meta"
@@ -103,6 +106,21 @@ def small_sky_npix_as_dir_dir(test_data_dir):
 @pytest.fixture
 def small_sky_order1_dir(test_data_dir):
     return test_data_dir / SMALL_SKY_ORDER1_DIR_NAME
+
+
+@pytest.fixture
+def small_sky_order1_margin_1deg_dir(test_data_dir):
+    return test_data_dir / SMALL_SKY_ORDER1_MARGIN_1DEG_DIR_NAME
+
+
+@pytest.fixture
+def small_sky_order1_margin_2deg_dir(test_data_dir):
+    return test_data_dir / SMALL_SKY_ORDER1_MARGIN_2DEG_DIR_NAME
+
+
+@pytest.fixture
+def small_sky_order1_collection_dir(test_data_dir):
+    return test_data_dir / SMALL_SKY_ORDER1_COLLECTION_DIR_NAME
 
 
 @pytest.fixture
@@ -218,6 +236,16 @@ def small_sky_order1_hats_catalog(small_sky_order1_dir):
 @pytest.fixture
 def small_sky_order1_catalog(small_sky_order1_dir):
     return lsdb.read_hats(small_sky_order1_dir)
+
+
+@pytest.fixture
+def small_sky_order1_margin_1deg_catalog(small_sky_order1_margin_1deg_dir):
+    return lsdb.read_hats(small_sky_order1_margin_1deg_dir)
+
+
+@pytest.fixture
+def small_sky_order1_margin_2deg_catalog(small_sky_order1_margin_2deg_dir):
+    return lsdb.read_hats(small_sky_order1_margin_2deg_dir)
 
 
 @pytest.fixture
