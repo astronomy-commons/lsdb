@@ -50,6 +50,7 @@ class Catalog(HealpixDataset):
     """
 
     hc_structure: hc.catalog.Catalog
+    margin: MarginCatalog | None = None
 
     def __init__(
         self,
