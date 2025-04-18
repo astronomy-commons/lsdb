@@ -85,7 +85,7 @@ class Dataset:
 
     @property
     def original_schema(self):
-        """Returns all columns in the original Dataset"""
+        """Returns the schema of the original Dataset"""
         if self.hc_structure.original_schema is None:
             raise ValueError("Original Catalog Columns are not available")
         return self.hc_structure.original_schema
