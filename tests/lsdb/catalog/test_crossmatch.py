@@ -61,6 +61,37 @@ class TestCrossmatch:
             )
 
     @staticmethod
+    def test_kdtree_crossmatch_nested_custom_name(
+        algo, small_sky_catalog, small_sky_xmatch_catalog, xmatch_correct
+    ):
+        nested_column_name = "xmatches"
+        with pytest.warns(RuntimeWarning, match="Results may be incomplete and/or inaccurate"):
+            cat_name = "xmatched_cat"
+            xmatched_cat = small_sky_catalog.crossmatch_nested(
+                small_sky_xmatch_catalog,
+                algorithm=algo,
+                radius_arcsec=0.01 * 3600,
+                nested_column_name=nested_column_name,
+                output_catalog_name=cat_name,
+            )
+            assert isinstance(xmatched_cat._ddf, nd.NestedFrame)
+            assert xmatched_cat.name == cat_name
+            xmatched = xmatched_cat.compute()
+        alignment = align_catalogs(small_sky_catalog, small_sky_xmatch_catalog)
+        assert xmatched_cat.hc_structure.moc == alignment.moc
+        assert xmatched_cat.get_healpix_pixels() == alignment.pixel_tree.get_healpix_pixels()
+
+        assert isinstance(xmatched, npd.NestedFrame)
+        assert np.sum(xmatched[nested_column_name].nest.list_lengths) == len(xmatch_correct)
+        for _, correct_row in xmatch_correct.iterrows():
+            assert correct_row["ss_id"] in xmatched["id"].to_numpy()
+            xmatch_row = xmatched[xmatched["id"] == correct_row["ss_id"]]
+            assert xmatch_row[nested_column_name].iloc[0]["id"].to_numpy() == correct_row["xmatch_id"]
+            assert xmatch_row[nested_column_name].iloc[0]["_dist_arcsec"].to_numpy() == pytest.approx(
+                correct_row["dist"] * 3600
+            )
+
+    @staticmethod
     def test_kdtree_crossmatch_default_cols(
         algo, small_sky_order1_default_cols_catalog, small_sky_xmatch_catalog, xmatch_correct, helpers
     ):
@@ -379,6 +410,19 @@ def test_custom_crossmatch_algorithm(small_sky_catalog, small_sky_xmatch_catalog
         assert correct_row["ss_id"] in xmatched["id_small_sky"].to_numpy()
         xmatch_row = xmatched[xmatched["id_small_sky"] == correct_row["ss_id"]]
         assert xmatch_row["id_small_sky_xmatch"].to_numpy() == correct_row["xmatch_id"]
+        assert xmatch_row["_DIST"].to_numpy() == pytest.approx(correct_row["dist"])
+
+
+def test_custom_crossmatch_algorithm_nested(small_sky_catalog, small_sky_xmatch_catalog, xmatch_mock):
+    with pytest.warns(RuntimeWarning, match="Results may be incomplete and/or inaccurate"):
+        xmatched = small_sky_catalog.crossmatch_nested(
+            small_sky_xmatch_catalog, algorithm=MockCrossmatchAlgorithm, mock_results=xmatch_mock
+        ).compute()
+    assert np.sum(xmatched["small_sky_xmatch"].nest.list_lengths) == len(xmatch_mock)
+    for _, correct_row in xmatch_mock.iterrows():
+        assert correct_row["ss_id"] in xmatched["id"].to_numpy()
+        xmatch_row = xmatched[xmatched["id"] == correct_row["ss_id"]]["small_sky_xmatch"].iloc[0]
+        assert xmatch_row["id"].to_numpy() == correct_row["xmatch_id"]
         assert xmatch_row["_DIST"].to_numpy() == pytest.approx(correct_row["dist"])
 
 
