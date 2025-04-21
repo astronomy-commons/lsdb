@@ -85,7 +85,7 @@ def perform_crossmatch_nested(
     meta_df,
     **kwargs,
 ):
-    """Performs a crossmatch on data from a HEALPix pixel in each catalog
+    """Performs a crossmatch on data from a HEALPix pixel in each catalog with result in a nested column
 
     Filters the left catalog before performing the cross-match to stop duplicate points appearing in
     the result.
@@ -183,13 +183,13 @@ def crossmatch_catalog_data_nested(
     ) = BuiltInCrossmatchAlgorithm.KD_TREE,
     **kwargs,
 ) -> tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]:
-    """Cross-matches the data from two catalogs
+    """Cross-matches the data from two catalogs with the result from the right catalog in a nested column
 
     Args:
         left (lsdb.Catalog): the left catalog to perform the cross-match on
         right (lsdb.Catalog): the right catalog to perform the cross-match on
-        suffixes (Tuple[str,str]): the suffixes to append to the column names from the left and
-            right catalogs respectively
+         nested_column_name (str): The name of the nested column that will contain the crossmatched rows
+                from the right catalog
         algorithm (BuiltInCrossmatchAlgorithm | Callable): The algorithm to use to perform the
             crossmatch. Can be specified using a string for a built-in algorithm, or a custom
             method. For more details, see `crossmatch` method in the `Catalog` class.
