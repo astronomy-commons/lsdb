@@ -503,3 +503,17 @@ def test_read_hats_map_catalog(test_data_dir):
 def test_read_hats_schema_not_found(small_sky_no_metadata_dir):
     with pytest.raises(ValueError, match="catalog schema could not be loaded"):
         lsdb.read_hats(small_sky_no_metadata_dir)
+
+
+def test_all_columns_read_columns(small_sky_order1_dir, small_sky_order1_catalog):
+    cat = lsdb.read_hats(small_sky_order1_dir, columns=["ra", "dec"])
+    assert len(cat.columns) < len(cat.all_columns)
+    assert np.all(cat.all_columns == small_sky_order1_catalog.columns)
+
+
+def test_original_schema_read_columns(small_sky_order1_dir, small_sky_order1_catalog):
+    cat = lsdb.read_hats(small_sky_order1_dir, columns=["ra", "dec"])
+    assert len(cat.original_schema) == len(small_sky_order1_catalog.hc_structure.schema)
+    for field in cat.original_schema:
+        assert field in small_sky_order1_catalog.hc_structure.schema
+    assert cat.original_schema == small_sky_order1_catalog.original_schema
