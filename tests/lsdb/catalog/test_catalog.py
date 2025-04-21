@@ -944,7 +944,7 @@ def test_filtered_catalog_has_undetermined_len(small_sky_order1_catalog, small_s
         len(small_sky_order1_catalog.order_search(max_order=2))
     with pytest.raises(ValueError, match="undetermined"):
         catalog_index = hc.read_hats(small_sky_order1_id_index_dir)
-        len(small_sky_order1_catalog.index_search([900], catalog_index))
+        len(small_sky_order1_catalog.id_search(values={"id": 900}, index_catalogs={"id": catalog_index}))
     with pytest.raises(ValueError, match="undetermined"):
         len(small_sky_order1_catalog.pixel_search([(0, 11)]))
     with pytest.raises(ValueError, match="undetermined"):

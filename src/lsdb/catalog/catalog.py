@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any, Callable, Iterable, Literal, Type
 
 import dask.dataframe as dd
@@ -16,6 +17,7 @@ from pandas._libs import lib
 from pandas._typing import AnyAll, Axis, IndexLabel
 from pandas.api.extensions import no_default
 from typing_extensions import Self
+from upath import UPath
 
 from lsdb.catalog.association_catalog import AssociationCatalog
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
@@ -336,59 +338,60 @@ class Catalog(HealpixDataset):
         """
         return self.search(PolygonSearch(vertices, fine))
 
-    def index_search(self, ids, catalog_index: HCIndexCatalog, fine: bool = True) -> Catalog:
-        """Find rows by ids (or other value indexed by a catalog index).
+    def id_search(
+        self, values: dict[str, Any], index_catalogs: dict[str, str | HCIndexCatalog] | None = None
+    ) -> Catalog:
+        """Query rows by column values.
 
-        Filters partitions in the catalog to those that could contain the ids requested.
-        Filters to points that have matching values in the id field.
-
-        NB: This requires a previously-computed catalog index table.
-
-        Args:
-            ids (list): Values to search for.
-            catalog_index (HCIndexCatalog): A pre-computed hats index catalog.
-            fine (bool): True if points are to be filtered, False if not. Defaults to True.
-
-        Returns:
-            A new Catalog containing the points filtered to those matching the ids.
-        """
-        return self.search(IndexSearch(ids, catalog_index, fine))
-
-    def id_search(self, ids: Any | list[Any], id_column: str | None = None, fine: bool = True) -> Catalog:
-        """Query rows by `id_column`.
-
-        This method can only be used within the context of Catalog collections because
-        it relies on the specification of index catalogs. If you are working with a
-        standalone catalog and have an instance of `HCIndexCatalog` which you would like
-        to use for querying please go with the `Catalog.index_search` method instead.
-
-        If `id_column` is not provided this method queries by the default index column,
-        as specified in the `collection.properties`.
+        In the context of Catalog collections this method will try to find an index
+        catalog for each field name specified in `values`. If the catalog calling
+        this method is not part of a collection or if it cannot find the index catalog
+        for the fields in the collection specification, explicit `index_catalogs` for
+        the desired fields can be specified. The `index_catalogs` argument is a dictionary
+        of field names to HATS index catalog paths or their instances and they take
+        precedence over the catalogs specified in the collection.
 
         Args:
-            ids (Any | list[Any]): Values to search for. A single value or a list of values.
-            id_column (str): The catalog field to query for.
-            fine (bool): True if points are to be filtered, False if not. Defaults to True.
+            values (dict[str, Any]): The mapping of field names (as string) to their values.
+            index_catalogs (dict[str, str|HCIndexCatalog]): The mapping of field names (as string)
+                to their respective index catalog paths or instance of `HCIndexCatalog`. Use this
+                argument to specify index catalogs for stand-alone catalogs or for collections where
+                there is no index catalog for the fields you are querying for.
+
+        Example:
+            To query by "objid" where an index for this field is available in the collection::
+
+                catalog.id_search(values={"objid":"GAIA_123"})
+
+            To query by "fieldid" and "ccid", if "fieldid" has an index catalog in the collection
+            and the index catalog for "ccid" is present in a directory named "ccid_id_index_catalog"
+            on the current working directory::
+
+                catalog.id_search(
+                    values={"fieldid": 700, "ccid": 300},
+                    index_catalogs={"ccid": "ccid_id_index_catalog"}
+                )
 
         Returns:
-            A new Catalog containing the points filtered to those matching the ids.
+            A new Catalog containing the results of the column match.
         """
-        if self.hc_collection is None:
-            raise NotImplementedError(
-                "`Catalog.id_search` is only available in the context of Catalog collections."
-                " Use `Catalog.index_search` with an instance of `HCIndexCatalog` instead."
-            )
-        index_dir = self.hc_collection.get_index_dir_for_field(id_column)
-        if index_dir is None:
-            raise ValueError(
-                "The id_column requested does not have a matching index catalog,"
-                " and there is no default index field set."
-            )
-        index_catalog = hc.read_hats(index_dir)
-        if not isinstance(index_catalog, HCIndexCatalog):
-            raise TypeError("Catalog index is not of type `HCIndexCatalog`")
-        ids = [ids] if not isinstance(ids, list) else ids
-        return self.search(IndexSearch(ids, index_catalog, fine))
+
+        def _get_index_catalog_for_field(field: str):
+            """Find the index catalog for `field`. Index catalogs declared
+            as an argument take precedence over the ones in the collection"""
+            field_index: str | Path | UPath | HCIndexCatalog | None = None
+            if index_catalogs is not None and field in index_catalogs:
+                field_index = index_catalogs[field]
+            elif self.hc_collection is not None:
+                field_index = self.hc_collection.get_index_dir_for_field(field)
+            if isinstance(field_index, HCIndexCatalog):
+                return field_index
+            if isinstance(field_index, (str | Path | UPath)):
+                return hc.read_hats(field_index)
+            raise TypeError(f"Catalog index for field `{field}` is not of type `HCIndexCatalog`")
+
+        field_indexes = {field_name: _get_index_catalog_for_field(field_name) for field_name in values.keys()}
+        return self.search(IndexSearch(values, field_indexes))
 
     def order_search(self, min_order: int = 0, max_order: int | None = None) -> Catalog:
         """Filter catalog by order of HEALPix.
