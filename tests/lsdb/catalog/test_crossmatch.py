@@ -39,9 +39,7 @@ class TestCrossmatch:
             assert xmatch_row["_dist_arcsec"].to_numpy() == pytest.approx(correct_row["dist"] * 3600)
 
     @staticmethod
-    def test_kdtree_crossmatch_nested(
-        algo, small_sky_catalog, small_sky_xmatch_catalog, xmatch_correct, helpers
-    ):
+    def test_kdtree_crossmatch_nested(algo, small_sky_catalog, small_sky_xmatch_catalog, xmatch_correct):
         with pytest.warns(RuntimeWarning, match="Results may be incomplete and/or inaccurate"):
             xmatched_cat = small_sky_catalog.crossmatch_nested(
                 small_sky_xmatch_catalog, algorithm=algo, radius_arcsec=0.01 * 3600
