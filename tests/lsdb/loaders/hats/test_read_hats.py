@@ -391,9 +391,11 @@ def test_read_hats_subset_with_index_search(
 ):
     catalog_index = hc.read_hats(small_sky_order1_id_index_dir)
     # Filtering using catalog's index_search
-    index_search_catalog = small_sky_order1_catalog.index_search([700], catalog_index)
+    index_search_catalog = small_sky_order1_catalog.id_search(
+        values={"id": 700}, index_catalogs={"id": catalog_index}
+    )
     # Filtering when calling `read_hats`
-    index_search = IndexSearch([700], catalog_index)
+    index_search = IndexSearch(values={"id": 700}, index_catalogs={"id": catalog_index})
     index_search_catalog_2 = lsdb.read_hats(small_sky_order1_dir, search_filter=index_search)
     assert isinstance(index_search_catalog_2, lsdb.Catalog)
     # The partitions of the catalogs are equivalent
@@ -414,7 +416,7 @@ def test_read_hats_subset_with_order_search(small_sky_source_catalog, small_sky_
 def test_read_hats_subset_no_partitions(small_sky_order1_dir, small_sky_order1_id_index_dir):
     with pytest.raises(ValueError, match="no coverage"):
         catalog_index = hc.read_hats(small_sky_order1_id_index_dir)
-        index_search = IndexSearch([900], catalog_index)
+        index_search = IndexSearch(values={"id": 900}, index_catalogs={"id": catalog_index})
         lsdb.read_hats(small_sky_order1_dir, search_filter=index_search)
 
 
