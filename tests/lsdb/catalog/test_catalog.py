@@ -756,6 +756,53 @@ def test_plot_coverage(small_sky_order1_catalog, mocker):
     )
 
 
+def test_aggregate_column_statistics(small_sky_order1_catalog):
+    def assert_column_stat_as_floats(
+        result_frame, column_name, min_value=None, max_value=None, row_count=None
+    ):
+        assert column_name in result_frame.index
+        data_stats = result_frame.loc[column_name]
+        assert float(data_stats["min_value"]) >= min_value
+        assert float(data_stats["max_value"]) <= max_value
+        assert int(data_stats["null_count"]) == 0
+        assert int(data_stats["row_count"]) == row_count
+
+    result_frame = small_sky_order1_catalog.aggregate_column_statistics()
+    assert len(result_frame) == 5
+    assert_column_stat_as_floats(result_frame, "dec", min_value=-69.5, max_value=-25.5, row_count=131)
+
+    result_frame = small_sky_order1_catalog.aggregate_column_statistics(exclude_hats_columns=False)
+    assert_column_stat_as_floats(
+        result_frame, "_healpix_29", min_value=1, max_value=3_458_764_513_820_540_928, row_count=131
+    )
+    assert len(result_frame) == 6
+
+    result_frame = small_sky_order1_catalog.aggregate_column_statistics(include_columns=["ra", "dec"])
+    assert len(result_frame) == 2
+
+    filtered_catalog = small_sky_order1_catalog.cone_search(315, -66.443, 0.1, fine=False)
+    result_frame = filtered_catalog.aggregate_column_statistics()
+    assert len(result_frame) == 5
+    assert_column_stat_as_floats(result_frame, "dec", min_value=-69.5, max_value=-47.5, row_count=42)
+
+
+def test_per_pixel_statistics(small_sky_order1_catalog):
+    result_frame = small_sky_order1_catalog.per_pixel_statistics()
+    assert result_frame.shape == (4, 20)
+
+    result_frame = small_sky_order1_catalog.per_pixel_statistics(exclude_hats_columns=False)
+    assert result_frame.shape == (4, 24)
+
+    result_frame = small_sky_order1_catalog.per_pixel_statistics(include_columns=["ra", "dec"])
+    assert result_frame.shape == (4, 8)
+
+    filtered_catalog = small_sky_order1_catalog.cone_search(315, -66.443, 0.1, fine=False)
+    result_frame = filtered_catalog.per_pixel_statistics(
+        include_stats=["row_count"], include_columns=["ra", "dec"]
+    )
+    assert result_frame.shape == (1, 2)
+
+
 def test_square_bracket_columns(small_sky_order1_catalog, helpers):
     columns = ["ra", "dec", "id"]
     column_subset = small_sky_order1_catalog[columns]
