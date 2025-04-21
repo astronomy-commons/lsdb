@@ -19,9 +19,9 @@ class IndexSearch(AbstractSearch):
     index_catalogs: dict[str, HCIndexCatalog]
     """Mapping of field name to respective index catalog"""
 
-    def __init__(self, values: dict[str, Any], index_catalogs: dict[str, HCIndexCatalog]):
-        super().__init__(fine=True)
-        if values.keys() != index_catalogs.keys():
+    def __init__(self, values: dict[str, Any], index_catalogs: dict[str, HCIndexCatalog], fine: bool = True):
+        super().__init__(fine)
+        if not all(key in index_catalogs for key in values):
             raise ValueError(
                 f"There is a mismatch between the queried fields: "
                 f"{values.keys()} and the fields of the provided index"

@@ -339,7 +339,10 @@ class Catalog(HealpixDataset):
         return self.search(PolygonSearch(vertices, fine))
 
     def id_search(
-        self, values: dict[str, Any], index_catalogs: dict[str, str | HCIndexCatalog] | None = None
+        self,
+        values: dict[str, Any],
+        index_catalogs: dict[str, str | HCIndexCatalog] | None = None,
+        fine: bool = True,
     ) -> Catalog:
         """Query rows by column values.
 
@@ -357,6 +360,8 @@ class Catalog(HealpixDataset):
                 to their respective index catalog paths or instance of `HCIndexCatalog`. Use this
                 argument to specify index catalogs for stand-alone catalogs or for collections where
                 there is no index catalog for the fields you are querying for.
+            fine (bool): If True, the rows of the partitions where a column match occurred are
+                filtered. If False, all the rows of those partitions are kept. Defaults to True.
 
         Example:
             To query by "objid" where an index for this field is available in the collection::
@@ -391,7 +396,7 @@ class Catalog(HealpixDataset):
             raise TypeError(f"Catalog index for field `{field}` is not of type `HCIndexCatalog`")
 
         field_indexes = {field_name: _get_index_catalog_for_field(field_name) for field_name in values.keys()}
-        return self.search(IndexSearch(values, field_indexes))
+        return self.search(IndexSearch(values, field_indexes, fine))
 
     def order_search(self, min_order: int = 0, max_order: int | None = None) -> Catalog:
         """Filter catalog by order of HEALPix.

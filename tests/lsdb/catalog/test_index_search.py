@@ -94,6 +94,16 @@ def test_id_search_with_some_explicit_index_catalogs(
     helpers.assert_divisions_are_correct(cat)
 
 
+def test_id_search_coarse(small_sky_order1_source_collection_catalog):
+    fine_search = small_sky_order1_source_collection_catalog.id_search(values={"object_id": 810})
+    coarse_search = small_sky_order1_source_collection_catalog.id_search(
+        values={"object_id": 810}, fine=False
+    )
+    assert coarse_search.get_healpix_pixels() == fine_search.get_healpix_pixels()
+    assert coarse_search._ddf.npartitions == fine_search._ddf.npartitions
+    assert len(coarse_search.compute()) > len(fine_search.compute())
+
+
 def test_id_search_when_no_index_for_field_is_available(small_sky_order1_source_collection_catalog):
     with pytest.raises(ValueError, match="`source_id` is not specified"):
         small_sky_order1_source_collection_catalog.id_search(values={"source_id": 70003})
@@ -110,8 +120,18 @@ def test_index_search_with_index_catalog_of_invalid_type(
         )
 
 
-def test_index_search_with_mismatching_fields(small_sky_order1_source_band_index_dir):
+def test_index_search_with_mismatching_fields(
+    small_sky_order1_source_object_id_index_dir, small_sky_order1_source_band_index_dir
+):
     with pytest.raises(ValueError, match="mismatch between the queried fields"):
+        # "object_id" is missing in the `index_catalogs` mapping
         IndexSearch(
             values={"object_id": 100}, index_catalogs={"band": small_sky_order1_source_band_index_dir}
         )
+    IndexSearch(
+        values={"object_id": 100},
+        index_catalogs={
+            "object_id": small_sky_order1_source_object_id_index_dir,
+            "band": small_sky_order1_source_band_index_dir,
+        },
+    )
