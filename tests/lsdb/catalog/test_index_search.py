@@ -1,7 +1,7 @@
 import shutil
 
 import hats
-import nested_dask as nd
+import lsdb.nested as nd
 import nested_pandas as npd
 import pytest
 from hats.catalog.dataset.collection_properties import CollectionProperties

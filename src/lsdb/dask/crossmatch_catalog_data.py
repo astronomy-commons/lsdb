@@ -3,7 +3,7 @@ from __future__ import annotations
 import warnings
 from typing import TYPE_CHECKING, Type
 
-import nested_dask as nd
+import lsdb.nested as nd
 from hats.pixel_tree import PixelAlignment
 
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm

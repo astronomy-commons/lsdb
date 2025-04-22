@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Callable, Sequence
 
 import hats.pixel_math.healpix_shim as hp
-import nested_dask as nd
+import lsdb.nested as nd
 import nested_pandas as npd
 import numpy as np
 import numpy.typing as npt

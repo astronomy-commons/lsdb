@@ -4,7 +4,7 @@ from __future__ import annotations
 import warnings
 from typing import TYPE_CHECKING
 
-import nested_dask as nd
+import lsdb.nested as nd
 import nested_pandas as npd
 import pandas as pd
 from hats.catalog import TableProperties

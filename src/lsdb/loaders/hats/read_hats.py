@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import hats as hc
-import nested_dask as nd
+import lsdb.nested as nd
 import nested_pandas as npd
 import numpy as np
 import pyarrow as pa

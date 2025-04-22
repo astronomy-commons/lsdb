@@ -1,4 +1,4 @@
-import nested_dask as nd
+import lsdb.nested as nd
 import pandas as pd
 import pytest
 

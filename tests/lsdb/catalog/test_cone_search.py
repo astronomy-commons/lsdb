@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-import nested_dask as nd
+import lsdb.nested as nd
 import nested_pandas as npd
 import pandas as pd
 import pytest

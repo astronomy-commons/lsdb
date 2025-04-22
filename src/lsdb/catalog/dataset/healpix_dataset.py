@@ -9,7 +9,7 @@ from typing import Any, Callable, Iterable, Literal, Type, cast
 import astropy
 import dask
 import dask.dataframe as dd
-import nested_dask as nd
+import lsdb.nested as nd
 import nested_pandas as npd
 import numpy as np
 import pandas as pd

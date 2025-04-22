@@ -5,7 +5,7 @@ from typing import Any, Callable, Iterable, Literal, Type
 
 import dask.dataframe as dd
 import hats as hc
-import nested_dask as nd
+import lsdb.nested as nd
 import nested_pandas as npd
 import pandas as pd
 from hats.catalog.catalog_collection import CatalogCollection

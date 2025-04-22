@@ -1,5 +1,5 @@
 import hats as hc
-import nested_dask as nd
+import lsdb.nested as nd
 import nested_pandas as npd
 from dask.delayed import Delayed
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN

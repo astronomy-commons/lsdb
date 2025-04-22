@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-import nested_dask as nd
+import lsdb.nested as nd
 import nested_pandas as npd
 import pandas as pd
 import pyarrow as pa

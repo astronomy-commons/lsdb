@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Callable
 
-import nested_dask as nd
+import lsdb.nested as nd
 import nested_pandas as npd
 from hats.catalog import TableProperties
 from hats.pixel_math import HealpixPixel

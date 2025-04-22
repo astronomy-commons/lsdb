@@ -1,5 +1,5 @@
 import hats as hc
-import nested_dask as nd
+import lsdb.nested as nd
 from hats.io import paths
 
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
