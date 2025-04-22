@@ -188,8 +188,8 @@ def crossmatch_catalog_data_nested(
     Args:
         left (lsdb.Catalog): the left catalog to perform the cross-match on
         right (lsdb.Catalog): the right catalog to perform the cross-match on
-         nested_column_name (str): The name of the nested column that will contain the crossmatched rows
-                from the right catalog
+        nested_column_name (str): The name of the nested column that will contain the crossmatched rows
+            from the right catalog
         algorithm (BuiltInCrossmatchAlgorithm | Callable): The algorithm to use to perform the
             crossmatch. Can be specified using a string for a built-in algorithm, or a custom
             method. For more details, see `crossmatch` method in the `Catalog` class.
