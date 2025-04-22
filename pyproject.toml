@@ -68,7 +68,10 @@ markers = [
 ]
 testpaths = [
     "tests",
+    "src",
+    "docs",
 ]
+addopts = "--doctest-modules --doctest-glob=*.rst"
 
 [tool.setuptools.package-data]
 lsdb = ["py.typed"]
