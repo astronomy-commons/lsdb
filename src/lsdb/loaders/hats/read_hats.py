@@ -188,6 +188,9 @@ def _load_catalog(
     else:
         raise NotImplementedError(f"Cannot load catalog of type {catalog_type}")
 
+    if config.search_filter is not None and len(catalog.get_healpix_pixels()) == 0:
+        raise ValueError("The selected sky region has no coverage")
+
     catalog.hc_structure = _update_hc_structure(catalog)
     if isinstance(catalog, Catalog) and catalog.margin is not None:
         catalog.margin.hc_structure = _update_hc_structure(catalog.margin)
