@@ -176,9 +176,8 @@ class NestedFrame(
         -------
         `lsdb.nested.NestedFrame`
         """
-        return df.map_partitions(
-            npd.NestedFrame, meta=npd.NestedFrame(df._meta.copy())
-        )  # pylint: disable=protected-access
+        meta = npd.NestedFrame(df._meta.copy())  # pylint: disable=protected-access
+        return df.map_partitions(npd.NestedFrame, meta=meta)
 
     # NOTE: Used in LSDB internally, but not wrapped
     @classmethod
