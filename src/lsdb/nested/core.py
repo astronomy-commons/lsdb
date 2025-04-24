@@ -69,7 +69,7 @@ class NestedFrame(
 
     Examples
     --------
-    >>> import nested_dask as nd
+    >>> import lsdb.nested as nd
     >>> base = nd.NestedFrame(base_data)
     >>> layer = nd.NestedFrame(layer_data)
     >>> base.add_nested(layer, "layer")
@@ -128,7 +128,7 @@ class NestedFrame(
     def _repr_html_(self):
         # following dask-geopandas lead
         output = super()._repr_html_()
-        return output.replace("Dask DataFrame Structure", "Nested-Dask NestedFrame Structure")
+        return output.replace("Dask DataFrame Structure", "LSDB.nested NestedFrame Structure")
 
     # NOTE: Used in LSDB internally, but not wrapped
     @classmethod
@@ -139,7 +139,7 @@ class NestedFrame(
         chunksize=None,
         sort=True,
     ) -> NestedFrame:
-        """Returns an Nested-Dask NestedFrame constructed from a Nested-Pandas
+        """Returns an LSDB.nested NestedFrame constructed from a Nested-Pandas
         NestedFrame or Pandas DataFrame.
 
         Parameters
@@ -177,7 +177,7 @@ class NestedFrame(
 
         Returns
         -------
-        `nested_dask.NestedFrame`
+        `lsdb.nested.NestedFrame`
         """
         return df.map_partitions(npd.NestedFrame, meta=npd.NestedFrame(df._meta.copy()))
 
@@ -185,7 +185,7 @@ class NestedFrame(
     @classmethod
     def from_delayed(cls, dfs, meta=None, divisions=None, prefix="from-delayed", verify_meta=True):
         """
-        Create Nested-Dask NestedFrames from many Dask Delayed objects.
+        Create LSDB.nested NestedFrames from many Dask Delayed objects.
 
         Docstring is copied from `dask.dataframe.from_delayed`.
 
@@ -497,7 +497,7 @@ Refer to the docstring for guidance on dtype requirements and assignment."""
 
         Returns
         -------
-        `nested_dask.NestedFrame`
+        `lsdb.nested.NestedFrame`
         """
         nested = nested.map_partitions(lambda x: pack_flat(npd.NestedFrame(x))).rename(name)
         return self.join(nested, how=how)
