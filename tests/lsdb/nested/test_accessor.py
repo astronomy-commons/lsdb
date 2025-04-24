@@ -1,7 +1,8 @@
-import lsdb.nested as nd
 import pandas as pd
 import pyarrow as pa
 import pytest
+
+import lsdb.nested as nd
 
 
 def test_nest_accessor(test_dataset):

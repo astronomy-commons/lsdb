@@ -1,7 +1,7 @@
-import lsdb.nested as nd
 import pandas as pd
 import pytest
 
+import lsdb.nested as nd
 from lsdb.core.search import OrderSearch
 
 

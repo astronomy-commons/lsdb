@@ -1,8 +1,8 @@
 import hats as hc
-import lsdb.nested as nd
 import pandas as pd
 
 import lsdb
+import lsdb.nested as nd
 from lsdb.catalog.association_catalog import AssociationCatalog
 
 

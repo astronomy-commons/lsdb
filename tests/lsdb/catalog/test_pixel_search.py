@@ -1,8 +1,8 @@
-import lsdb.nested as nd
 import pandas as pd
 import pytest
 from hats.pixel_math import HealpixPixel
 
+import lsdb.nested as nd
 from lsdb.core.search.pixel_search import PixelSearch
 
 

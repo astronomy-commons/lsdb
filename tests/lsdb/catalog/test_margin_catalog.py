@@ -1,10 +1,10 @@
 from pathlib import Path
 
 import hats as hc
-import lsdb.nested as nd
 import pandas as pd
 
 import lsdb
+import lsdb.nested as nd
 from lsdb.catalog.margin_catalog import MarginCatalog
 
 

@@ -7,7 +7,6 @@ import dask.dataframe as dd
 import hats as hc
 import hats.pixel_math.healpix_shim as hp
 import matplotlib.pyplot as plt
-import lsdb.nested as nd
 import nested_pandas as npd
 import numpy as np
 import numpy.testing as npt
@@ -21,6 +20,7 @@ from hats.pixel_math import HealpixPixel, spatial_index_to_healpix
 from mocpy import WCS
 
 import lsdb
+import lsdb.nested as nd
 from lsdb import Catalog, MarginCatalog
 from lsdb.core.search.moc_search import MOCSearch
 from lsdb.dask.merge_catalog_functions import filter_by_spatial_index_to_pixel

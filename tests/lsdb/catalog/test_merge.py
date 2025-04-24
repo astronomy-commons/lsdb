@@ -1,6 +1,7 @@
-import lsdb.nested as nd
 import pandas as pd
 import pytest
+
+import lsdb.nested as nd
 
 
 @pytest.mark.parametrize("how", ["left", "right", "inner", "outer"])

@@ -1,9 +1,9 @@
-import lsdb.nested as nd
 import nested_pandas as npd
 import numpy as np
 import pandas as pd
 import pytest
 
+import lsdb.nested as nd
 from lsdb import Catalog, MarginCatalog
 
 

@@ -1,6 +1,7 @@
-import lsdb.nested as nd
 import pytest
 from nested_pandas.utils import count_nested
+
+import lsdb.nested as nd
 
 
 @pytest.mark.parametrize("join", [True, False])

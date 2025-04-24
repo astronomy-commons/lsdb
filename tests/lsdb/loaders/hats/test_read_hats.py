@@ -2,7 +2,6 @@ from pathlib import Path
 from unittest.mock import call
 
 import hats as hc
-import lsdb.nested as nd
 import nested_pandas as npd
 import numpy as np
 import numpy.testing as npt
@@ -15,6 +14,7 @@ from pandas.core.dtypes.base import ExtensionDtype
 from upath import UPath
 
 import lsdb
+import lsdb.nested as nd
 from lsdb.core.search import BoxSearch, ConeSearch, IndexSearch, OrderSearch, PolygonSearch
 
 

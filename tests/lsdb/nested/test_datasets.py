@@ -1,5 +1,6 @@
-import lsdb.nested as nd
 import pytest
+
+import lsdb.nested as nd
 
 
 def test_generate_data():

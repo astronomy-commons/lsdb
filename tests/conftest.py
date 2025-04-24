@@ -1,11 +1,10 @@
 from pathlib import Path
 
-import numpy as np
 import hats as hc
+import nested_pandas as npd
+import numpy as np
 import numpy.testing as npt
 import pandas as pd
-import lsdb.nested as nd
-import nested_pandas as npd
 import pyarrow as pa
 import pytest
 from hats.io import paths
@@ -18,6 +17,7 @@ from hats.pixel_math.spatial_index import (
 from nested_pandas import NestedDtype
 
 import lsdb
+import lsdb.nested as nd
 
 DATA_DIR_NAME = "data"
 SMALL_SKY_DIR_NAME = "small_sky"
@@ -493,6 +493,7 @@ class Helpers:
 @pytest.fixture
 def helpers():
     return Helpers()
+
 
 @pytest.fixture
 def test_dataset():

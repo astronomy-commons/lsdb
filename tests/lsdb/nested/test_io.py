@@ -1,6 +1,7 @@
-import lsdb.nested as nd
 import pandas as pd
 import pyarrow as pa
+
+import lsdb.nested as nd
 
 
 def test_read_parquet(test_dataset, tmp_path):
