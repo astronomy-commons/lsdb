@@ -66,6 +66,8 @@ class AbstractCrossmatchAlgorithm(ABC):
         left_catalog_info: TableProperties,
         right_catalog_info: TableProperties,
         right_margin_catalog_info: TableProperties | None,
+        suffixes: tuple[str, str],
+        how: str = "inner",
     ):
         """Initializes a crossmatch algorithm
 
@@ -86,8 +88,9 @@ class AbstractCrossmatchAlgorithm(ABC):
                 name, with the first appended to the left columns and the second to the right
                 columns
         """
-        self.left = left.copy(deep=False)
-        self.right = right.copy(deep=False)
+        # TODO: don't clamp to None in case both left and right have objects in the pixel
+        self.left = left.copy(deep=False) if how != "right" else None
+        self.right = right.copy(deep=False) if how != "left" else None
         self.left_order = left_order
         self.left_pixel = left_pixel
         self.right_order = right_order
@@ -95,9 +98,15 @@ class AbstractCrossmatchAlgorithm(ABC):
         self.left_catalog_info = left_catalog_info
         self.right_catalog_info = right_catalog_info
         self.right_margin_catalog_info = right_margin_catalog_info
+        self.suffixes = suffixes
+        self.how = how
 
     def crossmatch(self, suffixes, **kwargs) -> npd.NestedFrame:
         """Perform a crossmatch"""
+        # TODO: check self.how to see whether we even need to do a crossmatch
+        # TODO: extra_cols contains not only items from left and right, but new ones from crossmatch
+        # TODO: extra_cols can be self.extra_columns once constructed, which is true here
+        # TODO: where are the columns from the right?  Best if it's an empty dataframe
         l_inds, r_inds, extra_cols = self.perform_crossmatch(**kwargs)
         if not len(l_inds) == len(r_inds) == len(extra_cols):
             raise ValueError(
@@ -213,16 +222,44 @@ class AbstractCrossmatchAlgorithm(ABC):
         self._rename_columns_with_suffix(self.right, suffixes[1])
         # concat dataframes together
         index_name = self.left.index.name if self.left.index.name is not None else "index"
-        left_join_part = self.left.iloc[left_idx].reset_index()
-        right_join_part = self.right.iloc[right_idx].reset_index(drop=True)
-        out = pd.concat(
-            [
-                left_join_part,
-                right_join_part,
-            ],
-            axis=1,
-        )
-        out.set_index(index_name, inplace=True)
+        if self.how == "left":
+            # TODO: reminder, this is just one pixel
+            # TODO: handle duplicate results from left
+            # TODO: try np.range, then exclude anything that appears in left_idx.  Try np.isin
+            left_join_part = self.left.reset_index()
+            right_join_part = self.right.iloc[right_idx].reset_index(drop=True)
+            out = pd.concat(
+                [
+                    left_join_part,
+                    right_join_part,
+                ],
+                axis=1,
+            )
+        elif self.how == "right":
+            # TODO: handle duplicate results from right
+            left_join_part = self.left.iloc[left_idx].reset_index()
+            right_join_part = self.right.reset_index(drop=True)
+            out = pd.concat(
+                [
+                    left_join_part,
+                    right_join_part,
+                ],
+                axis=1,
+            )
+        elif self.how == "outer":
+            # TODO: what is the right answer here?
+            pass
+        elif self.how == "inner":
+            left_join_part = self.left.iloc[left_idx].reset_index()
+            right_join_part = self.right.iloc[right_idx].reset_index(drop=True)
+            out = pd.concat(
+                [
+                    left_join_part,
+                    right_join_part,
+                ],
+                axis=1,
+            )
+            out.set_index(index_name, inplace=True)
         extra_cols.index = out.index
         self._append_extra_columns(out, extra_cols)
         return npd.NestedFrame(out)
