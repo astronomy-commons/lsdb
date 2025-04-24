@@ -3,7 +3,9 @@ from __future__ import annotations
 import warnings
 from typing import TYPE_CHECKING, Type
 
-from hats.pixel_tree import PixelAlignment
+import nested_dask as nd
+import pandas as pd
+from hats.pixel_tree import PixelAlignment, PixelAlignmentType
 
 import lsdb.nested as nd
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
@@ -28,6 +30,7 @@ if TYPE_CHECKING:
 
 
 # pylint: disable=too-many-arguments, unused-argument
+# TODO: plumb 'how' into this function
 def perform_crossmatch(
     left_df,
     right_df,
@@ -42,6 +45,7 @@ def perform_crossmatch(
     suffixes,
     suffix_method,
     meta_df,
+    how: str,
     **kwargs,
 ):
     """Performs a crossmatch on data from a HEALPix pixel in each catalog
@@ -90,7 +94,10 @@ def perform_crossmatch(
     npd.NestedFrame
         DataFrame with the results of crossmatching for the pair of partitions.
     """
-    if right_pix.order > left_pix.order:
+    # TODO: no need to check right_pix for None??
+    # TODO: why didn't the earlier version test right_pix?
+    # TODO: this looks like "implied inner"
+    if right_pix and right_pix.order > left_pix.order:
         left_df = filter_by_spatial_index_to_pixel(
             left_df, right_pix.order, right_pix.pixel, spatial_index_order=left_catalog_info.healpix_order
         )
@@ -98,19 +105,23 @@ def perform_crossmatch(
     if len(left_df) == 0:
         return meta_df
 
+    # TODO: check right_df?
+
+    # TODO: does this work if either or both are None?
     right_joined_df = concat_partition_and_margin(right_df, right_margin_df)
+    # TODO: check to see if right_joined_df is empty
 
     return algorithm(
         left_df,
         right_joined_df,
-        left_pix.order,
-        left_pix.pixel,
-        right_pix.order,
-        right_pix.pixel,
+        left_pix.order if left_pix else None,
+        left_pix.pixel if left_pix else None,
+        right_pix.order if right_pix else None,
+        right_pix.pixel if right_pix else None,
         left_catalog_info,
         right_catalog_info,
         right_margin_catalog_info,
-    ).crossmatch(suffixes, suffix_method=suffix_method, **kwargs)
+    ).crossmatch(suffixes, how, suffix_method=suffix_method, **kwargs)
 
 
 # pylint: disable=too-many-arguments, unused-argument
@@ -200,6 +211,7 @@ def crossmatch_catalog_data(
     left: Catalog,
     right: Catalog,
     suffixes: tuple[str, str],
+    how: str = "inner",
     algorithm: (
         Type[AbstractCrossmatchAlgorithm] | BuiltInCrossmatchAlgorithm
     ) = BuiltInCrossmatchAlgorithm.KD_TREE,
@@ -215,6 +227,9 @@ def crossmatch_catalog_data(
         the left catalog to perform the cross-match on
     right : lsdb.Catalog
         the right catalog to perform the cross-match on
+    how: str
+        How to handle the crossmatch of the two catalogs.
+        One of {'left', 'inner'}; defaults to 'inner'.
     suffixes : tuple[str,str]
         the suffixes to append to the column names from the left and
         right catalogs respectively
@@ -252,7 +267,9 @@ def crossmatch_catalog_data(
         )
 
     # perform alignment on the two catalogs
-    alignment = align_catalogs(left, right, add_right_margin=True)
+    alignment = align_catalogs(
+        left, right, add_right_margin=True, alignment_type=PixelAlignmentType[how.upper()]
+    )
 
     # get lists of HEALPix pixels from alignment to pass to cross-match
     left_pixels, right_pixels = get_healpix_pixels_from_alignment(alignment)
@@ -274,10 +291,32 @@ def crossmatch_catalog_data(
         suffixes,
         suffix_method,
         meta_df,
+        how,
         **kwargs,
     )
 
-    return construct_catalog_args(joined_partitions, meta_df, alignment)
+    # In the case of non-inner joins, we are obliged to first construct the catalog arguments
+    # with the inner-match partitions, and then union the outer partitions later.
+    # Otherwise there are mismatches between the cardinalities of the partitions and the
+    # pixel_map.
+    nf, pixel_map, alignment = construct_catalog_args(joined_partitions, meta_df, alignment)
+
+    # if how == "inner":
+    #     # This is the ordinary sense of crossmatching.  No change.
+    #     pass
+    # elif how == "left":
+    #     # Take *all* of the left-catalog partitions.
+    #     nf = pd.concat([nf, left._ddf], ignore_index=True)
+    # elif how == "right":
+    #     # Same as above except it's all of the right-side partitions.
+    #     nf = pd.concat([nf, right._ddf], ignore_index=True)
+    # elif how == "outer":
+    #     # Same, except it's ALL partitions.
+    #     nf = pd.concat([nf, left._ddf, right._ddf], ignore_index=True)
+    # else:
+    #     raise ValueError(f"Unknown crossmatching approach: `how={how}`")
+
+    return nf, pixel_map, alignment
 
 
 # pylint: disable=too-many-locals

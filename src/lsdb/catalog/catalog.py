@@ -170,6 +170,7 @@ class Catalog(HealpixDataset):
     def crossmatch(
         self,
         other: Catalog,
+        how: str = "inner",
         suffixes: tuple[str, str] | None = None,
         algorithm: (
             type[AbstractCrossmatchAlgorithm] | BuiltInCrossmatchAlgorithm
@@ -195,6 +196,9 @@ class Catalog(HealpixDataset):
         ----------
         other : Catalog
             The right catalog to cross-match against
+        how : str
+            How to handle the crossmatch of the two catalogs.
+            One of {'left', 'inner'}; defaults to 'inner'.
         suffixes : Tuple[str,str] or None
             A pair of suffixes to be appended to the end of each column
             name when they are joined. Default uses the name of the catalog for the suffix.
@@ -301,6 +305,7 @@ class Catalog(HealpixDataset):
             self,
             other,
             suffixes,
+            how=how,
             algorithm=algorithm,
             suffix_method=suffix_method,
             log_changes=log_changes,
@@ -754,8 +759,9 @@ class Catalog(HealpixDataset):
         ----------
         other : Catalog
             The right catalog to merge with.
-        how : {'left', 'right', 'outer', 'inner'}, default 'inner'
+        how : str
             How to handle the merge of the two catalogs.
+            One of {'left', 'inner'}, default 'inner'
         on : str | List
             Column or index names to join on. Defaults to the
             intersection of columns in both Dataframes if on is None and not
