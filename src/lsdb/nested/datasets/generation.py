@@ -28,9 +28,9 @@ def generate_data(n_base, n_layer, npartitions=1, seed=None) -> nd.NestedFrame:
 
     Examples
     --------
-    >>> import lsdb.nested as nd
-    >>> nd.datasets.generate_data(10,100)
-    >>> nd.datasets.generate_data(10, {"nested_a": 100, "nested_b": 200})
+    >>> import lsdb.nested as nd # doctest: +SKIP
+    >>> nd.datasets.generate_data(10,100) # doctest: +SKIP
+    >>> nd.datasets.generate_data(10, {"nested_a": 100, "nested_b": 200}) # doctest: +SKIP
     """
 
     # Use nested-pandas generator
