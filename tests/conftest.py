@@ -500,7 +500,7 @@ def test_dataset():
     """create a toy dataset for testing purposes"""
     n_base = 50
     layer_size = 500
-    randomstate = np.random.RandomState(seed=1)
+    randomstate = np.random.RandomState(seed=1)  # pylint: disable=no-member
 
     # Generate base data
     base_data = {"a": randomstate.random(n_base), "b": randomstate.random(n_base) * 2}
@@ -529,7 +529,7 @@ def test_dataset_with_nans():
     """stop before add_nested"""
     n_base = 50
     layer_size = 500
-    randomstate = np.random.RandomState(seed=1)
+    randomstate = np.random.RandomState(seed=1)  # pylint: disable=no-member
 
     # Generate base data
     a = randomstate.random(n_base)
@@ -559,7 +559,7 @@ def test_dataset_no_add_nested():
     """stop before add_nested"""
     n_base = 50
     layer_size = 500
-    randomstate = np.random.RandomState(seed=1)
+    randomstate = np.random.RandomState(seed=1)  # pylint: disable=no-member
 
     # Generate base data
     base_data = {"a": randomstate.random(n_base), "b": randomstate.random(n_base) * 2}

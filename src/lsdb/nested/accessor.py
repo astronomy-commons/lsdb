@@ -20,6 +20,7 @@ class DaskNestSeriesAccessor(npd.NestSeriesAccessor):
     """
 
     def __init__(self, series):
+        super().__init__(series)
         self._check_series(series)
 
         self._series = series
@@ -66,3 +67,7 @@ class DaskNestSeriesAccessor(npd.NestSeriesAccessor):
             Dataframe of flat arrays.
         """
         return self._series.map_partitions(lambda x: x.nest.to_flat(fields=fields))
+
+    def clear(self):
+        """Clear method implementation"""
+        raise NotImplementedError("The 'clear' method is not implemented for DaskNestSeriesAccessor.")

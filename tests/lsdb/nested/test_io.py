@@ -1,3 +1,10 @@
+"""
+Unit tests for the I/O functionality of the lsdb.nested module.
+
+This module tests the reproducibility of reading and writing Parquet files
+using the NestedFrame data structure.
+"""
+
 import pandas as pd
 import pyarrow as pa
 

@@ -22,19 +22,16 @@ from pandas.api.extensions import no_default
 # mypy: disable-error-code="misc"
 
 
-class _Frame(dx.FrameBase):  # type: ignore
+class _Frame(dx.FrameBase):  # type: ignore # pylint: disable=abstract-method
     """Base class for extensions of Dask Dataframes."""
 
     _partition_type = npd.NestedFrame
-
-    def __init__(self, expr):
-        super().__init__(expr)
 
     @property
     def _args(self):
         # Ensure our Dask extension can correctly be used by pickle.
         # See https://github.com/geopandas/dask-geopandas/issues/237
-        return super()._args
+        return super()._args  # pylint: disable=no-member
 
     def optimize(self, fuse: bool = True):
         result = new_collection(self.expr.optimize(fuse=fuse))
@@ -62,6 +59,7 @@ def _nested_meta_from_flat(flat, name):
     return pd.Series(name=name, dtype=NestedDtype.from_fields(pyarrow_fields))
 
 
+# pylint: disable=abstract-method
 class NestedFrame(
     _Frame, dd.DataFrame
 ):  # can use dd.DataFrame instead of dx.DataFrame if the config is set true (default in >=2024.3.0)
@@ -83,8 +81,7 @@ class NestedFrame(
             nested, col = item.split(".")
             meta = pd.Series(name=col, dtype=pd.ArrowDtype(self.dtypes[nested].fields[col]))
             return self.map_partitions(lambda x: x[nested].nest.get_flat_series(col), meta=meta)
-        else:
-            return super().__getitem__(item)
+        return super().__getitem__(item)
 
     def __setitem__(self, key, value):
         """Adds custom __setitem__ behavior for nested columns"""
@@ -113,7 +110,7 @@ class NestedFrame(
 
         # Adding a new nested structure from a column
         # Allows statements like ndf["new_nested.t"] = ndf["nested.t"] - 5
-        elif "." in key:
+        if "." in key:
             new_nested, col = key.split(".")
             if isinstance(value, dd.Series):
                 value.name = col
@@ -179,7 +176,8 @@ class NestedFrame(
         -------
         `lsdb.nested.NestedFrame`
         """
-        return df.map_partitions(npd.NestedFrame, meta=npd.NestedFrame(df._meta.copy()))
+        return df.map_partitions(npd.NestedFrame,
+                                 meta=npd.NestedFrame(df._meta.copy()))  # pylint: disable=protected-access
 
     # NOTE: Used in LSDB internally, but not wrapped
     @classmethod
@@ -328,13 +326,13 @@ class NestedFrame(
         """
 
         # Handle meta
-        meta = npd.NestedFrame(df[base_columns]._meta)
+        meta = npd.NestedFrame(df[base_columns]._meta)  # pylint: disable=protected-access
 
         if nested_columns is None:
             nested_columns = [col for col in df.columns if (col not in base_columns) and col != on]
 
         if len(nested_columns) > 0:
-            nested_meta = pack(df[nested_columns]._meta, name)
+            nested_meta = pack(df[nested_columns]._meta, name)  # pylint: disable=protected-access
             meta = meta.join(nested_meta)
 
         return df.map_partitions(
@@ -407,23 +405,23 @@ class NestedFrame(
         # from_lists should have at least one list column defined
         if len(list_columns) == 0:
             raise ValueError("No columns were assigned as list columns.")
-        else:
-            # reject any list columns that are not pyarrow dtyped
-            for col in list_columns:
-                if not hasattr(df[col].dtype, "pyarrow_dtype"):
-                    raise TypeError(
-                        f"""List column '{col}' dtype ({df[col].dtype}) is not a pyarrow list dtype.
+
+        # reject any list columns that are not pyarrow dtyped
+        for col in list_columns:
+            if not hasattr(df[col].dtype, "pyarrow_dtype"):
+                raise TypeError(
+                    f"""List column '{col}' dtype ({df[col].dtype}) is not a pyarrow list dtype.
 Refer to the docstring for guidance on dtype requirements and assignment."""
                     )
-                elif not pa.types.is_list(df[col].dtype.pyarrow_dtype):
-                    raise TypeError(
-                        f"""List column '{col}' dtype ({df[col].dtype}) is not a pyarrow list dtype.
+            if not pa.types.is_list(df[col].dtype.pyarrow_dtype):
+                raise TypeError(
+                    f"""List column '{col}' dtype ({df[col].dtype}) is not a pyarrow list dtype.
 Refer to the docstring for guidance on dtype requirements and assignment."""
-                    )
+                )
 
-        meta = npd.NestedFrame(df[base_columns]._meta)
+        meta = npd.NestedFrame(df[base_columns]._meta)  # pylint: disable=protected-access
 
-        nested_meta = pack_lists(df[list_columns]._meta, name)
+        nested_meta = pack_lists(df[list_columns]._meta, name)  # pylint: disable=protected-access
         meta = meta.join(nested_meta)
 
         return df.map_partitions(
@@ -433,6 +431,7 @@ Refer to the docstring for guidance on dtype requirements and assignment."""
             meta=meta,
         )
 
+    # pylint: disable=arguments-differ
     def compute(self, **kwargs):
         """Compute this Dask collection, returning the underlying dataframe or series."""
         return npd.NestedFrame(super().compute(**kwargs))
@@ -502,7 +501,7 @@ Refer to the docstring for guidance on dtype requirements and assignment."""
         nested = nested.map_partitions(lambda x: pack_flat(npd.NestedFrame(x))).rename(name)
         return self.join(nested, how=how)
 
-    def query(self, expr) -> Self:  # type: ignore # noqa: F821:
+    def query(self, expr) -> Self:  # type: ignore # noqa: F821: # pylint: disable=undefined-variable
         """
         Query the columns of a NestedFrame with a boolean expression. Specified
         queries can target nested columns in addition to the typical column set
@@ -547,8 +546,10 @@ Refer to the docstring for guidance on dtype requirements and assignment."""
 
         >>> df.query("mynested.a > 2") # doctest: +SKIP
         """
-        return self.map_partitions(lambda x: npd.NestedFrame(x).query(expr), meta=self._meta)
+        return self.map_partitions(lambda x: npd.NestedFrame(x).query(expr),
+                                   meta=self._meta)  # pylint: disable=protected-access
 
+    # pylint: disable=arguments-differ
     def dropna(
         self,
         *,
@@ -559,7 +560,7 @@ Refer to the docstring for guidance on dtype requirements and assignment."""
         subset: IndexLabel | None = None,
         inplace: bool = False,
         ignore_index: bool = False,
-    ) -> Self:  # type: ignore[name-defined] # noqa: F821:
+    ) -> Self:  # type: ignore[name-defined] # noqa: F821: # pylint: disable=undefined-variable
         """
         Remove missing values for one layer of the NestedFrame.
 
@@ -626,7 +627,7 @@ Refer to the docstring for guidance on dtype requirements and assignment."""
                 inplace=inplace,
                 ignore_index=ignore_index,
             ),
-            meta=self._meta,
+            meta=self._meta,  # pylint: disable=protected-access
         )
 
     # NOTE: This is wrapped as a much more restrictive sort_nested_values
@@ -644,7 +645,7 @@ Refer to the docstring for guidance on dtype requirements and assignment."""
         ignore_index: bool | None = False,
         shuffle_method: str | None = None,
         **options,
-    ) -> Self:  # type: ignore[name-defined] # noqa: F821:
+    ) -> Self:  # type: ignore[name-defined] # noqa: F821: # pylint: disable=undefined-variable
         """
         Sort the dataset by a single column.
 
@@ -740,7 +741,7 @@ Refer to the docstring for guidance on dtype requirements and assignment."""
                 ignore_index=ignore_index,
                 **options,
             ),
-            meta=self._meta,
+            meta=self._meta,  # pylint: disable=protected-access
         )
 
     # NOTE: This wrapping is unused in LSDB, LSDB uses nested-pandas directly
@@ -808,7 +809,8 @@ Refer to the docstring for guidance on dtype requirements and assignment."""
 
         >>> # create a NestedDtype for the nested column "lc"
         >>> from nested_pandas.series.dtype import NestedDtype # doctest: +SKIP
-        >>> lc_dtype = NestedDtype(pa.struct([pa.field("flux_quantiles", pa.list_(pa.float64())), # doctest: +SKIP
+        >>> lc_dtype = NestedDtype(pa.struct([pa.field("flux_quantiles",  # doctest: +SKIP
+        >>>                                   pa.list_(pa.float64())), # doctest: +SKIP
         >>>                                   pa.field("labels", pa.list_(pa.float64()))])) # doctest: +SKIP
         >>> # use the lc_dtype in meta creation
         >>> result_meta = npd.NestedFrame({'max_flux':pd.Series([], dtype='float'), # doctest: +SKIP
@@ -899,4 +901,3 @@ Refer to the docstring for guidance on dtype requirements and assignment."""
                 if layer != "base":
                     path_layer = os.path.join(path, f"{layer}")
                     self[layer].nest.to_flat().to_parquet(path_layer, engine="pyarrow", **kwargs)
-        return None

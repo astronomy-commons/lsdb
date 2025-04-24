@@ -8,6 +8,7 @@ from .core import NestedFrame
 
 # NOTE: This is unused in LSDB, and doesn't utilize Nested-Pandas read/write
 # serialization
+# pylint: disable=too-many-arguments, too-many-positional-arguments
 def read_parquet(
     path,
     columns=None,

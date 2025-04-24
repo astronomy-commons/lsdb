@@ -1,3 +1,10 @@
+"""
+Unit tests for the accessor functionality in the lsdb.nested module.
+
+This module tests the behavior and correctness of custom accessors, including
+methods like `to_flat`, `to_lists`, and field-specific operations.
+"""
+
 import pandas as pd
 import pyarrow as pa
 import pytest
@@ -13,7 +20,7 @@ def test_nest_accessor(test_dataset):
 
     # Make sure we get an attribute error when trying to use the wrong column
     with pytest.raises(AttributeError):
-        test_dataset.ra.nest  # noqa
+        _ = test_dataset.ra.nest
 
 
 def test_fields(test_dataset):

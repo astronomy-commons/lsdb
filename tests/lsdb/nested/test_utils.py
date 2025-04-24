@@ -1,3 +1,11 @@
+"""
+Unit tests for utility functions in the lsdb.nested module.
+
+This module tests the behavior of utility functions, such as the `count_nested`
+wrapper, ensuring they behave as expected and are consistent with the
+nested-pandas library.
+"""
+
 import pytest
 from nested_pandas.utils import count_nested
 

@@ -2,7 +2,7 @@ import nested_pandas as npd
 import pandas as pd
 from nested_pandas import utils as npd_utils
 
-from ..core import NestedFrame
+from ..core import NestedFrame  # pylint: disable=cyclic-import
 
 
 def count_nested(df, nested, by=None, join=True) -> NestedFrame:
@@ -47,6 +47,6 @@ def count_nested(df, nested, by=None, join=True) -> NestedFrame:
     # and second depending on join
     if join:
         # adds the meta onto the existing meta
-        meta = pd.concat([df._meta, meta])
+        meta = pd.concat([df._meta, meta])  # pylint: disable=protected-access
 
     return df.map_partitions(lambda x: npd_utils.count_nested(x, nested, by=by, join=join), meta=meta)

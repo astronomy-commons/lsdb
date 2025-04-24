@@ -1,3 +1,11 @@
+"""
+Unit tests for the NestedFrame functionality in the lsdb.nested module.
+
+This module tests the construction, manipulation, and I/O operations of
+NestedFrame objects, including nested column handling and integration with
+Dask and Pandas.
+"""
+
 import dask
 import dask.dataframe as dd
 import nested_pandas as npd
@@ -360,6 +368,8 @@ def test_reduce_output_type(meta):
             return np.mean(arr)  # type: ignore
 
         reduced = nddf.reduce(mean_arr, "test.a", meta=(0, "float"))
+    else:
+        reduced = None
     assert isinstance(reduced, nd.NestedFrame)
     assert isinstance(reduced.compute(), npd.NestedFrame)
 
@@ -411,7 +421,7 @@ def test_to_parquet_combined(test_dataset, tmp_path):
 
     # load back from parquet
     loaded_dataset = nd.read_parquet(test_save_path, calculate_divisions=True)
-    # todo: file bug for this and investigate
+    # we should file bug for this and investigate
     loaded_dataset = loaded_dataset.reset_index().set_index("index")
 
     # Check for equivalence
@@ -504,7 +514,7 @@ def test_from_delayed(with_nested):
 
     delayed = nf.to_delayed()
 
-    ndf = nd.NestedFrame.from_delayed(dfs=delayed, meta=nf._meta)
+    ndf = nd.NestedFrame.from_delayed(dfs=delayed, meta=nf._meta)  # pylint: disable=protected-access
     assert isinstance(ndf, nd.NestedFrame)
 
 
@@ -523,5 +533,7 @@ def test_from_map(test_dataset, tmp_path):
         tmp_path / "test_dataset" / "1.parquet",
         tmp_path / "test_dataset" / "2.parquet",
     ]
-    ndf = nd.NestedFrame.from_map(nd.read_parquet, paths, meta=test_dataset[["a", "b"]]._meta)
+
+    result_meta = test_dataset[["a", "b"]]._meta  # pylint: disable=protected-access
+    ndf = nd.NestedFrame.from_map(nd.read_parquet, paths, meta=result_meta)
     assert isinstance(ndf, nd.NestedFrame)

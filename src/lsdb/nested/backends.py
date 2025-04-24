@@ -43,4 +43,5 @@ def _(dtype) -> NestedExtensionArray:
     """Register a valid dtype for the NestedExtensionArray"""
     # must be two values to avoid a length error in meta inference
     # Dask seems to explicitly require meta dtypes to have length 2.
-    return NestedExtensionArray._from_sequence([pd.NA, pd.NA], dtype=dtype)
+    vals = [pd.NA, pd.NA]
+    return NestedExtensionArray._from_sequence(vals, dtype=dtype)  # pylint: disable=protected-access
