@@ -4,7 +4,6 @@ from __future__ import annotations
 import warnings
 from typing import TYPE_CHECKING
 
-import nested_dask as nd
 import nested_pandas as npd
 import pandas as pd
 from hats.catalog import TableProperties
@@ -13,6 +12,7 @@ from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 from hats.pixel_tree import PixelAlignment
 from nested_pandas.series.packer import pack_flat
 
+import lsdb.nested as nd
 from lsdb.catalog.association_catalog import AssociationCatalog
 from lsdb.dask.merge_catalog_functions import (
     align_and_apply,

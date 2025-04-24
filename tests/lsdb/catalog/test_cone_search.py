@@ -1,5 +1,4 @@
 import matplotlib.pyplot as plt
-import nested_dask as nd
 import nested_pandas as npd
 import pandas as pd
 import pytest
@@ -8,6 +7,7 @@ from astropy.visualization.wcsaxes import SphericalCircle
 from hats.pixel_math.validators import ValidatorsErrors
 from matplotlib import colors
 
+import lsdb.nested as nd
 from lsdb import ConeSearch
 
 

@@ -3,9 +3,9 @@ from __future__ import annotations
 import warnings
 from typing import TYPE_CHECKING, Type
 
-import nested_dask as nd
 from hats.pixel_tree import PixelAlignment
 
+import lsdb.nested as nd
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
 from lsdb.core.crossmatch.crossmatch_algorithms import (
     BuiltInCrossmatchAlgorithm,

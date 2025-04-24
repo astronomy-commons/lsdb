@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Callable, Sequence
 
 import hats.pixel_math.healpix_shim as hp
-import nested_dask as nd
 import nested_pandas as npd
 import numpy as np
 import numpy.typing as npt
@@ -18,6 +17,7 @@ from hats.pixel_tree import PixelAlignment, PixelAlignmentType, align_trees
 from hats.pixel_tree.moc_utils import copy_moc
 from hats.pixel_tree.pixel_alignment import align_with_mocs
 
+import lsdb.nested as nd
 from lsdb.dask.divisions import get_pixels_divisions
 from lsdb.types import DaskDFPixelMap
 

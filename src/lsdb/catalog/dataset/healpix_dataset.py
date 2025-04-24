@@ -9,7 +9,6 @@ from typing import Any, Callable, Iterable, Literal, Type, cast
 import astropy
 import dask
 import dask.dataframe as dd
-import nested_dask as nd
 import nested_pandas as npd
 import numpy as np
 import pandas as pd
@@ -31,6 +30,7 @@ from pandas.api.extensions import no_default
 from typing_extensions import Self
 from upath import UPath
 
+import lsdb.nested as nd
 from lsdb import io
 from lsdb.catalog.dataset.dataset import Dataset
 from lsdb.core.plotting.plot_points import plot_points

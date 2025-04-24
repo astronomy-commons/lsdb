@@ -3,7 +3,6 @@ import math
 import astropy.units as u
 import hats as hc
 import hats.pixel_math.healpix_shim as hp
-import nested_dask as nd
 import nested_pandas as npd
 import numpy as np
 import numpy.testing as npt
@@ -15,6 +14,7 @@ from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 from mocpy import MOC
 
 import lsdb
+import lsdb.nested as nd
 from lsdb.catalog.margin_catalog import MarginCatalog, _validate_margin_catalog
 
 

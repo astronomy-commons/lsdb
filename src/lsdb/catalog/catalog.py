@@ -5,7 +5,6 @@ from typing import Any, Callable, Iterable, Literal, Type
 
 import dask.dataframe as dd
 import hats as hc
-import nested_dask as nd
 import nested_pandas as npd
 import pandas as pd
 from hats.catalog.catalog_collection import CatalogCollection
@@ -19,6 +18,7 @@ from pandas.api.extensions import no_default
 from typing_extensions import Self
 from upath import UPath
 
+import lsdb.nested as nd
 from lsdb.catalog.association_catalog import AssociationCatalog
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
 from lsdb.catalog.map_catalog import MapCatalog

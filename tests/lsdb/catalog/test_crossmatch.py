@@ -1,4 +1,3 @@
-import nested_dask as nd
 import nested_pandas as npd
 import numpy as np
 import pandas as pd
@@ -8,6 +7,7 @@ from hats.pixel_math import HealpixPixel
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 
 import lsdb
+import lsdb.nested as nd
 from lsdb import Catalog
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
 from lsdb.core.crossmatch.bounded_kdtree_match import BoundedKdTreeCrossmatch

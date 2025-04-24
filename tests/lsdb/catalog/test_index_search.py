@@ -1,12 +1,12 @@
 import shutil
 
 import hats
-import nested_dask as nd
 import nested_pandas as npd
 import pytest
 from hats.catalog.dataset.collection_properties import CollectionProperties
 
 import lsdb
+import lsdb.nested as nd
 from lsdb.core.search import IndexSearch
 
 

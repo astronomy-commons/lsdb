@@ -1,4 +1,3 @@
-import nested_dask as nd
 import nested_pandas as npd
 import numpy as np
 import pandas as pd
@@ -8,6 +7,7 @@ from hats.io import paths
 from hats.pixel_math import HealpixPixel
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN, spatial_index_to_healpix
 
+import lsdb.nested as nd
 from lsdb import read_hats
 from lsdb.dask.merge_catalog_functions import align_catalogs
 

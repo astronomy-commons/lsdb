@@ -1,7 +1,7 @@
 import hats as hc
-import nested_dask as nd
 from hats.io import paths
 
+import lsdb.nested as nd
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
 from lsdb.types import DaskDFPixelMap
 
