@@ -1,15 +1,15 @@
 Dask cluster configuration tips
 ===============================
 
-LSDB uses the `Dask <https://dask.org/>`_ framework for parallel and out-of-memory computing.
+LSDB uses the `Dask <https://dask.org/>`__ framework for parallel and out-of-memory computing.
 Dask is a flexible library for parallel computing in Python that scales from single machines to large clusters.
 When using LSDB, it is usually worth setting up a Dask cluster (local or multi-node) to take advantage of
 parallel computing.
 With no Dask cluster, LSDB would use a single CPU core for the computations, which is prohibitive for large datasets.
 
 Here, we provide some tips on how to set up a Dask cluster for LSDB computations.
-Note that `Dask <https://dask.org/>`_ also provides its own
-`best practices <https://docs.dask.org/en/stable/best-practices.html>`_, which may also be useful to consult.
+Note that `Dask <https://dask.org/>`__ also provides its own
+`best practices <https://docs.dask.org/en/stable/best-practices.html>`__, which may also be useful to consult.
 
 Local Cluster on Single Machine or Node
 ---------------------------------------
@@ -31,7 +31,7 @@ This simple example runs a local cluster and starts a client connected to it.
     client.close()
 
 
-Here, ``Client()`` would create and start a `LocalCluster <https://distributed.dask.org/en/stable/api.html#distributed.LocalCluster>`_,
+Here, ``Client()`` would create and start a `LocalCluster <https://distributed.dask.org/en/stable/api.html#distributed.LocalCluster>`__,
 and initialize a client session connected to it.
 When no parameters are provided, Dask would typically allocate multiple workers, and set number of Python threads and
 memory limit to match your machine configuration.
@@ -73,7 +73,7 @@ The number of Python threads is a trade-off between minimizing inter-worker data
 parallel processing efficiency.
 We recommend keeping ``threads_per_worker`` small because LSDB pipelines typically do not transfer data frequently,
 and using a larger number of Python threads may increase
-`Global Interpreter Lock <https://wiki.python.org/moin/GlobalInterpreterLock>`_ (GIL) contention.
+`Global Interpreter Lock <https://wiki.python.org/moin/GlobalInterpreterLock>`__ (GIL) contention.
 Additionally, the underlying LSDB (e.g., Parquet reading) and user code may utilize more than one CPU
 core per Python thread.
 
@@ -108,20 +108,20 @@ With multiple nodes, you would usually have a scheduler running on one node and 
 In this case each computational node would run one or more Dask workers,
 while each worker may take few Dask tasks (usually one per LSDB partition) and use multiple threads.
 
-Please see the `Dask <https://docs.dask.org/en/stable/deploying.html>`_
-and `dask-jobqueue <https://jobqueue.dask.org/en/latest/>`_ documentation for more details
+Please see the `Dask <https://docs.dask.org/en/stable/deploying.html>`__
+and `dask-jobqueue <https://jobqueue.dask.org/en/latest/>`__ documentation for more details
 about how to run Dask on multiple nodes.
 
 High-Performance Computing Cluster with SLURM
 .............................................
 
-The Dask ecosystem has a `dask-jobqueue <https://jobqueue.dask.org/en/latest/>`_ package that allows users to run Dask on HPC clusters.
+The Dask ecosystem has a `dask-jobqueue <https://jobqueue.dask.org/en/latest/>`__ package that allows users to run Dask on HPC clusters.
 It provides a way to submit Dask workers as SLURM jobs, and to scale the number of workers dynamically.
 Unfortunately, ``dask-jobqueue`` does not support selecting both the number of SLURM job cores
 and Dask threads per worker separately.
 We found it may be a problem for some SLURM clusters that require to specify the exact number of cores and memory per job.
 
-The following configuration is an example that was run on `Pittsburgh Supercomputing Center <https://www.psc.edu/>`_,
+The following configuration is an example that was run on `Pittsburgh Supercomputing Center <https://www.psc.edu/>`__,
 and contains some specific settings useful for the hardware of that cluster.
 This configuration runs 60 SLURM jobs, each with a single Dask worker (``processes`` variable below),
 and each worker uses 3 threads (``worker_process_threads`` variable below).
@@ -184,7 +184,7 @@ Dask Dashboard
 
 Dask output logs and the Dask Dashboard are both great ways to monitor and debug the pipeline.
 The dashboard is run automatically by Dask.
-Typically, the dashboard would be accessible at `<http://127.0.0.1:8787/status>`_, but if port 8787 is already in use,
+Typically, the dashboard would be accessible at `<http://127.0.0.1:8787/status>`__, but if port 8787 is already in use,
 Dask will automatically choose a different port.
 
 Here is how you can get the Dashboard link using the `Client` object:
@@ -273,7 +273,7 @@ This approach can also help to speed up the computations, because it enables run
 
 
 I run ``.compute()``, but the Dask Dashboard is empty for a long time
-....................................................................
+.......................................................................
 
 For large tasks, such as cross-matching or joining multiple dozen-terabyte scale catalogs,
 Dask may spend a lot of time and memory of the main process before any computation starts.

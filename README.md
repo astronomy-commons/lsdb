@@ -15,9 +15,9 @@
 
 [![DOI:10.3847/2515-5172/ad4da1](https://zenodo.org/badge/DOI/10.48550/arXiv.2501.02103.svg)](https://ui.adsabs.harvard.edu/abs/2025arXiv250102103C)
 
-## LSDB - Large Survey DataBase
+## LSDB
 
-A framework to facilitate and enable spatial analysis for extremely large astronomical databases 
+LSDB is a python tool for scalable analysis of large catalogs 
 (i.e. querying and crossmatching ~10⁹ sources). This package uses dask to parallelize operations across
 multiple HATS partitioned surveys.
 
