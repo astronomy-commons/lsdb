@@ -176,8 +176,9 @@ class NestedFrame(
         -------
         `lsdb.nested.NestedFrame`
         """
-        return df.map_partitions(npd.NestedFrame,
-                                 meta=npd.NestedFrame(df._meta.copy()))  # pylint: disable=protected-access
+        return df.map_partitions(
+            npd.NestedFrame, meta=npd.NestedFrame(df._meta.copy())
+        )  # pylint: disable=protected-access
 
     # NOTE: Used in LSDB internally, but not wrapped
     @classmethod
@@ -412,7 +413,7 @@ class NestedFrame(
                 raise TypeError(
                     f"""List column '{col}' dtype ({df[col].dtype}) is not a pyarrow list dtype.
 Refer to the docstring for guidance on dtype requirements and assignment."""
-                    )
+                )
             if not pa.types.is_list(df[col].dtype.pyarrow_dtype):
                 raise TypeError(
                     f"""List column '{col}' dtype ({df[col].dtype}) is not a pyarrow list dtype.
@@ -546,8 +547,9 @@ Refer to the docstring for guidance on dtype requirements and assignment."""
 
         >>> df.query("mynested.a > 2") # doctest: +SKIP
         """
-        return self.map_partitions(lambda x: npd.NestedFrame(x).query(expr),
-                                   meta=self._meta)  # pylint: disable=protected-access
+        return self.map_partitions(
+            lambda x: npd.NestedFrame(x).query(expr), meta=self._meta
+        )  # pylint: disable=protected-access
 
     # pylint: disable=arguments-differ
     def dropna(
