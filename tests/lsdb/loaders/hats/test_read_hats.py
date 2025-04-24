@@ -488,7 +488,7 @@ def test_read_hats_margin_catalog_subset(
 
 def test_read_hats_margin_catalog_subset_is_empty(small_sky_order1_source_margin_dir):
     search_filter = ConeSearch(ra=100, dec=80, radius_arcsec=1)
-    with pytest.raises(ValueError, match="empty catalog"):
+    with pytest.raises(ValueError, match="no coverage"):
         lsdb.read_hats(small_sky_order1_source_margin_dir, search_filter=search_filter)
 
 
