@@ -806,7 +806,7 @@ Refer to the docstring for guidance on dtype requirements and assignment."""
 
         Would require the following meta:
 
-        >>> # create a NestedDtype for the nested column "lc" # doctest: +SKIP
+        >>> # create a NestedDtype for the nested column "lc"
         >>> from nested_pandas.series.dtype import NestedDtype # doctest: +SKIP
         >>> lc_dtype = NestedDtype(pa.struct([pa.field("flux_quantiles", pa.list_(pa.float64())), # doctest: +SKIP
         >>>                                   pa.field("labels", pa.list_(pa.float64()))])) # doctest: +SKIP
