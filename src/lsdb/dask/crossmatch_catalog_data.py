@@ -116,6 +116,7 @@ def crossmatch_catalog_data(
     left: Catalog,
     right: Catalog,
     suffixes: tuple[str, str],
+    how: str = "inner",
     algorithm: (
         Type[AbstractCrossmatchAlgorithm] | BuiltInCrossmatchAlgorithm
     ) = BuiltInCrossmatchAlgorithm.KD_TREE,
@@ -128,6 +129,8 @@ def crossmatch_catalog_data(
         right (lsdb.Catalog): the right catalog to perform the cross-match on
         suffixes (Tuple[str,str]): the suffixes to append to the column names from the left and
             right catalogs respectively
+        how (str): How to handle the crossmatch of the two catalogs.
+            One of {'left', 'right', 'outer', 'inner'}; defaults to 'inner'.
         algorithm (BuiltInCrossmatchAlgorithm | Callable): The algorithm to use to perform the
             crossmatch. Can be specified using a string for a built-in algorithm, or a custom
             method. For more details, see `crossmatch` method in the `Catalog` class.
@@ -169,6 +172,22 @@ def crossmatch_catalog_data(
         meta_df,
         **kwargs,
     )
+
+    if how == "inner":
+        # This is the ordinary sense of crossmatching.  No change to the partitions.
+        pass
+    elif how == "left":
+        # TODO: in here, if `how` == `"left"`, we want *all* of the left partitions.
+        # TODO: We want them unioned onto joined_partitions.
+        raise NotImplementedError(f"Unimplemented crossmatching approach: `how={how}`")
+    elif how == "right":
+        # TODO: same as above except it's all of the right-side partitions.
+        raise NotImplementedError(f"Unimplemented crossmatching approach: `how={how}`")
+    elif how == "outer":
+        # TODO: same, except it's ALL partitions.
+        raise NotImplementedError(f"Unimplemented crossmatching approach: `how={how}`")
+    else:
+        raise ValueError(f"Unknown crossmatching approach: `how={how}`")
 
     return construct_catalog_args(joined_partitions, meta_df, alignment)
 
