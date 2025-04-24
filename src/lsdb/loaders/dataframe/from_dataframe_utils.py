@@ -1,6 +1,5 @@
 from datetime import datetime, timezone
 
-import lsdb.nested as nd
 import nested_pandas as npd
 import pandas as pd
 import pyarrow as pa
@@ -9,6 +8,7 @@ from hats.pixel_math import HealpixPixel
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 
 import lsdb
+import lsdb.nested as nd
 from lsdb.dask.divisions import get_pixels_divisions
 
 

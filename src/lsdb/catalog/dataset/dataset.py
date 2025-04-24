@@ -1,8 +1,9 @@
 import hats as hc
-import lsdb.nested as nd
 import nested_pandas as npd
 from dask.delayed import Delayed
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
+
+import lsdb.nested as nd
 
 
 class Dataset:

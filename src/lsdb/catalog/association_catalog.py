@@ -1,6 +1,6 @@
 import hats as hc
-import lsdb.nested as nd
 
+import lsdb.nested as nd
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
 from lsdb.types import DaskDFPixelMap
 

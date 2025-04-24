@@ -3,7 +3,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import hats as hc
-import lsdb.nested as nd
 import nested_pandas as npd
 import numpy as np
 import pyarrow as pa
@@ -16,6 +15,7 @@ from hats.pixel_math.healpix_pixel_function import get_pixel_argsort
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 from upath import UPath
 
+import lsdb.nested as nd
 from lsdb.catalog.association_catalog import AssociationCatalog
 from lsdb.catalog.catalog import Catalog, DaskDFPixelMap, MarginCatalog
 from lsdb.catalog.dataset.dataset import Dataset

@@ -5,7 +5,6 @@ import warnings
 
 import astropy.units as u
 import hats as hc
-import lsdb.nested as nd
 import nested_pandas as npd
 import numpy as np
 import pandas as pd
@@ -20,6 +19,7 @@ from hats.pixel_math.spatial_index import (
 )
 from mocpy import MOC
 
+import lsdb.nested as nd
 from lsdb.catalog.catalog import Catalog
 from lsdb.io.schema import get_arrow_schema
 from lsdb.loaders.dataframe.from_dataframe_utils import (

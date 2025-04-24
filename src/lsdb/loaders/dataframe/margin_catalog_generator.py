@@ -4,7 +4,6 @@ import warnings
 
 import hats as hc
 import hats.pixel_math.healpix_shim as hp
-import lsdb.nested as nd
 import nested_pandas as npd
 import numpy as np
 import pandas as pd
@@ -13,6 +12,7 @@ from hats.pixel_math import HealpixPixel, get_margin
 from hats.pixel_math.healpix_pixel_function import get_pixel_argsort
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 
+import lsdb.nested as nd
 from lsdb import Catalog
 from lsdb.catalog.margin_catalog import MarginCatalog
 from lsdb.loaders.dataframe.from_dataframe_utils import (
