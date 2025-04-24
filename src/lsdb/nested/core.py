@@ -130,6 +130,7 @@ class NestedFrame(
         output = super()._repr_html_()
         return output.replace("Dask DataFrame Structure", "Nested-Dask NestedFrame Structure")
 
+    # NOTE: Used in LSDB internally, but not wrapped
     @classmethod
     def from_pandas(
         cls,
@@ -164,6 +165,7 @@ class NestedFrame(
         result = dd.from_pandas(data, npartitions=npartitions, chunksize=chunksize, sort=sort)
         return NestedFrame.from_dask_dataframe(result)
 
+    # NOTE: Used in LSDB internally, but not wrapped
     @classmethod
     def from_dask_dataframe(cls, df: dd.DataFrame) -> NestedFrame:
         """Converts a Dask Dataframe to a Dask-Nested NestedFrame
@@ -179,6 +181,7 @@ class NestedFrame(
         """
         return df.map_partitions(npd.NestedFrame, meta=npd.NestedFrame(df._meta.copy()))
 
+    # NOTE: Used in LSDB internally, but not wrapped
     @classmethod
     def from_delayed(cls, dfs, meta=None, divisions=None, prefix="from-delayed", verify_meta=True):
         """
@@ -290,6 +293,7 @@ class NestedFrame(
         )
         return NestedFrame.from_dask_dataframe(nf)
 
+    # NOTE: Not wrapped in LSDB
     @classmethod
     def from_flat(cls, df, base_columns, nested_columns=None, on=None, name="nested"):
         """Creates a NestedFrame with base and nested columns from a flat
@@ -340,6 +344,7 @@ class NestedFrame(
             meta=meta,
         )
 
+    # NOTE: Not wrapped in LSDB
     @classmethod
     def from_lists(cls, df, base_columns=None, list_columns=None, name="nested"):
         """Creates a NestedFrame with base and nested columns from a flat
@@ -432,6 +437,8 @@ Refer to the docstring for guidance on dtype requirements and assignment."""
         """Compute this Dask collection, returning the underlying dataframe or series."""
         return npd.NestedFrame(super().compute(**kwargs))
 
+    # NOTE: Naming conflict with LSDB.catalog.all_columns
+    # Not wrapped in LSDB
     @property
     def all_columns(self) -> dict:
         """returns a dictionary of columns for each base/nested dataframe"""
@@ -442,6 +449,7 @@ Refer to the docstring for guidance on dtype requirements and assignment."""
                 all_columns[column] = nest_cols
         return all_columns
 
+    # NOTE: Not wrapped in LSDB
     @property
     def nested_columns(self) -> list:
         """retrieves the base column names for all nested dataframes"""
@@ -460,6 +468,7 @@ Refer to the docstring for guidance on dtype requirements and assignment."""
             return False
         return False
 
+    # NOTE: Named join_nested in LSDB
     def add_nested(self, nested, name, how="outer") -> NestedFrame:  # type: ignore[name-defined] # noqa: F821
         """Packs a dataframe into a nested column
 
@@ -620,6 +629,8 @@ Refer to the docstring for guidance on dtype requirements and assignment."""
             meta=self._meta,
         )
 
+    # NOTE: This is wrapped as a much more restrictive sort_nested_values
+    # function in lsdb.catalog
     def sort_values(
         self,
         by: str | list[str],
@@ -732,6 +743,7 @@ Refer to the docstring for guidance on dtype requirements and assignment."""
             meta=self._meta,
         )
 
+    # NOTE: This wrapping is unused in LSDB, LSDB uses nested-pandas directly
     def reduce(self, func, *args, meta=dsk_no_default, infer_nesting=True, **kwargs) -> NestedFrame:
         """
         Takes a function and applies it to each top-level row of the NestedFrame.
@@ -820,6 +832,7 @@ Refer to the docstring for guidance on dtype requirements and assignment."""
             lambda x: npd.NestedFrame(x).reduce(func, *args, infer_nesting=infer_nesting, **kwargs), meta=meta
         )
 
+    # NOTE: Unused by LSDB, by_layer interface is only compatible with Nested-Pandas <0.4.0
     def to_parquet(self, path, by_layer=True, **kwargs) -> None:
         """Creates parquet file(s) with the data of a NestedFrame, either
         as a single parquet file directory where each nested dataset is packed
