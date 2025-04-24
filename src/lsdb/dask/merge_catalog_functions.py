@@ -239,6 +239,14 @@ def _get_right_tree_and_moc(right: Catalog, add_right_margin: bool = True):
             delta_order = int(np.ceil(np.log2(right_added_radius / right_moc_depth_resol)))
             right_moc = right_moc.degrade_to_order(right_moc.max_order - delta_order).add_neighbours()
 
+    # TODO: what it used to be before _merge_association_alignments
+    # return align_with_mocs(
+    #     left.hc_structure.pixel_tree,
+    #     right_tree,
+    #     left.hc_structure.moc,
+    #     right_moc,
+    #     alignment_type=alignment_type,
+    #     )
     return right_tree, right_moc
 
 
@@ -273,6 +281,7 @@ def _merge_association_alignments(left_alignment: PixelAlignment, final_alignmen
     )
 
 
+# TODO: maybe a kwarg to use None or empty dataframe for missing pixels/partitions
 def align_and_apply(
     catalog_mappings: list[tuple[HealpixDataset | None, list[HealpixPixel]]], func: Callable, *args, **kwargs
 ) -> list[Delayed]:
@@ -683,7 +692,7 @@ def align_catalog_to_partitions(
         lambda pix: (
             dfs[catalog.get_partition_index(pix.order, pix.pixel)]
             if pix is not None and pix in catalog.hc_structure.pixel_tree
-            else None
+            else None # TODO: better to use an empty dataframe?
         )
     )
     partitions = get_partition(pixels)
