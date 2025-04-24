@@ -420,3 +420,13 @@ def test_from_dataframe_does_not_keep_unnamed_index(small_sky_order1_df):
     catalog = lsdb.from_dataframe(small_sky_order1_df)
     assert catalog._ddf.index.name == "_healpix_29"
     assert "index" not in catalog.columns
+
+
+def test_from_dataframe_all_sky(sm_all_sky_df):
+    """Regression test for numpy error seen in issue #718
+
+    TypeError: cannot unpack non-iterable numpy.int32 object
+    """
+    catalog = lsdb.from_dataframe(sm_all_sky_df, ra_column="RA", dec_column="DEC", drop_empty_siblings=True)
+    assert catalog._ddf.index.name == "_healpix_29"
+    assert len(catalog.get_healpix_pixels()) == 12
