@@ -3,7 +3,9 @@ from __future__ import annotations
 import warnings
 from typing import TYPE_CHECKING
 
-from hats.pixel_tree import PixelAlignment
+import nested_pandas as npd
+import pandas as pd
+from hats.pixel_tree import PixelAlignment, PixelAlignmentType
 
 import lsdb.nested as nd
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
@@ -24,7 +26,7 @@ if TYPE_CHECKING:
     from lsdb.catalog.catalog import Catalog
 
 
-# pylint: disable=too-many-arguments, unused-argument
+# pylint: disable=too-many-arguments, unused-argument, too-many-locals
 def perform_crossmatch(
     left_df,
     right_df,
@@ -36,6 +38,7 @@ def perform_crossmatch(
     right_catalog_info,
     right_margin_catalog_info,
     algorithm,
+    how,
     suffixes,
     suffix_method,
     meta_df,
@@ -69,6 +72,9 @@ def perform_crossmatch(
         The algorithm to use to perform the crossmatch. Specified by subclassing
         `AbstractCrossmatchAlgorithm`. For more details, see `crossmatch` method
         in the `Catalog` class.
+    how : str
+        How to handle the crossmatch of the two catalogs.
+        One of {'left', 'inner'}.
     suffixes : tuple[str,str] | None
         The suffixes to append to the column names from the left and right catalogs respectively
     suffix_method : str, default 'all_columns'
@@ -84,28 +90,58 @@ def perform_crossmatch(
     npd.NestedFrame
         DataFrame with the results of crossmatching for the pair of partitions.
     """
-    if right_pix.order > left_pix.order:
+    # If there's no left partition for this aligned pixel, return an empty/meta frame
+    if left_df is None or left_df.size == 0:
+        return meta_df
+    if right_pix and right_pix.order > left_pix.order:
         left_df = filter_by_spatial_index_to_pixel(
             left_df, right_pix.order, right_pix.pixel, spatial_index_order=left_catalog_info.healpix_order
         )
 
-    if len(left_df) == 0:
-        return meta_df
-
     right_joined_df = concat_partition_and_margin(right_df, right_margin_df)
+    # If there is no right data for this aligned pixel, provide an empty dataframe with the
+    # expected RA/DEC columns so the algorithm can be instantiated safely.
+    if right_joined_df is None:
+        # Prefer constructing an empty pandas-backed NestedFrame whose columns and dtypes
+        # match the *original* right-catalog columns (pre-suffix). We derive the dtypes
+        # from the provided `meta_df`, which contains the suffixed column names and
+        # expected dtypes for the final joined table.
+        right_suffix = suffixes[1] if suffixes is not None else None
+        cols: dict = {}
+        if right_suffix is not None:
+            # meta_df is a nested-pandas NestedFrame with suffixed column names
+            # Find all columns that belong to the right side by suffix and map them
+            # back to their unsuffixed original names and dtypes.
+            suffixed_cols = [c for c in meta_df.columns if c.endswith(right_suffix)]
+            for sc in suffixed_cols:
+                orig = sc[: -len(right_suffix)]
+                # Use the dtype from meta_df so the partition meta will match
+                cols[orig] = pd.Series(dtype=meta_df[sc].dtype)
+        else:
+            # Fallback: use RA/DEC column names if suffixes are not available
+            ra_col = getattr(right_catalog_info, "ra_column", None)
+            dec_col = getattr(right_catalog_info, "dec_column", None)
+            if ra_col:
+                cols[ra_col] = pd.Series(dtype=float)
+            if dec_col:
+                cols[dec_col] = pd.Series(dtype=float)
+
+        # Create a plain nested-pandas NestedFrame (pandas-backed) for the empty partition
+        # so that algorithms that expect concrete partition data (pandas NestedFrame) work.
+        right_joined_df = npd.NestedFrame(pd.DataFrame(cols))
 
     crossmatch_args = CrossmatchArgs(
         left_df=left_df,
         right_df=right_joined_df,
-        left_order=left_pix.order,
-        left_pixel=left_pix.pixel,
-        right_order=right_pix.order,
-        right_pixel=right_pix.pixel,
+        left_order=left_pix.order if left_pix else None,
+        left_pixel=left_pix.pixel if left_pix else None,
+        right_order=right_pix.order if right_pix else None,
+        right_pixel=right_pix.pixel if right_pix else None,
         left_catalog_info=left_catalog_info,
         right_catalog_info=right_catalog_info,
         right_margin_catalog_info=right_margin_catalog_info,
     )
-    return algorithm.crossmatch(crossmatch_args, suffixes, suffix_method)
+    return algorithm.crossmatch(crossmatch_args, how, suffixes, suffix_method)
 
 
 # pylint: disable=too-many-arguments, unused-argument
@@ -164,13 +200,14 @@ def perform_crossmatch_nested(
         DataFrame with the results of crossmatching for the pair of partitions.
         The results are stored in a nested column.
     """
+    # If there's no left partition for this aligned pixel, return an empty/meta frame
+    if left_df is None or left_df.size == 0:
+        return meta_df
+
     if right_pix.order > left_pix.order:
         left_df = filter_by_spatial_index_to_pixel(
             left_df, right_pix.order, right_pix.pixel, spatial_index_order=left_catalog_info.healpix_order
         )
-
-    if len(left_df) == 0:
-        return meta_df
 
     right_joined_df = concat_partition_and_margin(right_df, right_margin_df)
 
@@ -193,6 +230,7 @@ def crossmatch_catalog_data(
     left: Catalog,
     right: Catalog,
     algorithm: AbstractCrossmatchAlgorithm,
+    how: str,
     suffixes: tuple[str, str],
     suffix_method: str | None = None,
     log_changes: bool = True,
@@ -209,6 +247,9 @@ def crossmatch_catalog_data(
         The algorithm to use to perform the crossmatch. Specified by subclassing
         `AbstractCrossmatchAlgorithm`. For more details, see `crossmatch` method
         in the `Catalog` class.
+    how: str
+        How to handle the crossmatch of the two catalogs.
+        One of {'left', 'inner'}.
     suffixes : tuple[str,str]
         The suffixes to append to the column names from the left and
         right catalogs respectively.
@@ -237,7 +278,9 @@ def crossmatch_catalog_data(
         )
 
     # perform alignment on the two catalogs
-    alignment = align_catalogs(left, right, add_right_margin=True)
+    alignment = align_catalogs(
+        left, right, add_right_margin=True, alignment_type=PixelAlignmentType[how.upper()]
+    )
 
     # get lists of HEALPix pixels from alignment to pass to cross-match
     left_pixels, right_pixels = get_healpix_pixels_from_alignment(alignment)
@@ -256,12 +299,15 @@ def crossmatch_catalog_data(
         [(left, left_pixels), (right, right_pixels), (right.margin, right_pixels)],
         perform_crossmatch,
         algorithm,
+        how,
         suffixes,
         suffix_method,
         meta_df,
     )
 
-    return construct_catalog_args(joined_partitions, meta_df, alignment)
+    nf, pixel_map, alignment = construct_catalog_args(joined_partitions, meta_df, alignment)
+
+    return nf, pixel_map, alignment
 
 
 # pylint: disable=too-many-locals

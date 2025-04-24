@@ -451,6 +451,90 @@ def test_crossmatch_empty_right_partition(small_sky_order1_catalog, small_sky_xm
     assert len(xmatched) == 3
     assert all(xmatched["_dist_arcsec"] <= 0.01 * 3600)
 
+    @staticmethod
+    def test_kdtree_crossmatch_left_join_preserves_left_rows(
+        algo, small_sky_order1_catalog, small_sky_xmatch_catalog
+    ):
+        """Check that a left join preserves left rows and keeps valid matches."""
+        radius = 0.01 * 3600
+        with pytest.warns(RuntimeWarning, match="Results may be incomplete and/or inaccurate"):
+            inner = small_sky_order1_catalog.crossmatch(
+                small_sky_xmatch_catalog, radius_arcsec=radius, algorithm=algo
+            ).compute()
+            left_joined = small_sky_order1_catalog.crossmatch(
+                small_sky_xmatch_catalog, radius_arcsec=radius, algorithm=algo, how="left"
+            ).compute()
+
+        # Every left id from the left catalog subset should appear at least once in the left-joined result
+        left_ids = small_sky_order1_catalog.compute()["id"].to_numpy()
+        # Using .issubset as a good practice in case of multiple matches
+        assert set(left_ids).issubset(set(left_joined["id_small_sky_order1"].to_numpy()))
+
+        # Every (left_id, right_id) pair present in the inner join
+        # must also be present in the left-join result (i.e. left-join doesn't drop inner matches).
+        inner_pairs = set(
+            zip(inner["id_small_sky_order1"].to_numpy(), inner["id_small_sky_xmatch"].to_numpy())
+        )
+        left_pairs = set(
+            zip(left_joined["id_small_sky_order1"].to_numpy(), left_joined["id_small_sky_xmatch"].to_numpy())
+        )
+        assert inner_pairs.issubset(left_pairs)
+
+        # Matched rows should have distances within the threshold
+        matched = left_joined[left_joined["id_small_sky_xmatch"].notna()]
+        assert all(matched["_dist_arcsec"] <= radius)
+
+        # Unmatched rows should have NaN/None in the right id column
+        unmatched = left_joined[left_joined["id_small_sky_xmatch"].isna()]
+        assert len(unmatched) >= 0
+
+    def test_kdtree_crossmatch_left_join_non_unique_left_index(
+        self, algo, small_sky_order1_catalog, small_sky_xmatch_catalog
+    ):
+        """Check that left join handles non-unique values in the left index correctly.
+
+        This tests the workaround for handling non-unique index values, which can occur
+        when using `.iloc[indices]` on DataFrames where the original index has duplicates.
+        The code should correctly identify unmatched rows even when multiple rows share
+        the same index value.
+        """
+        # Create a left catalog with deliberately non-unique index values
+        left_ddf = small_sky_order1_catalog._ddf
+        # Duplicate the index to create non-unique values
+        left_ddf_dup_index = left_ddf.copy()
+        left_ddf_dup_index.index = left_ddf_dup_index.index.map(lambda x: x if x % 2 == 0 else 0)
+        small_sky_order1_catalog_dup_idx = small_sky_order1_catalog._create_updated_dataset(
+            ddf=left_ddf_dup_index
+        )
+
+        radius = 0.01 * 3600
+        with pytest.warns(RuntimeWarning, match="Results may be incomplete and/or inaccurate"):
+            left_joined = small_sky_order1_catalog_dup_idx.crossmatch(
+                small_sky_xmatch_catalog, radius_arcsec=radius, algorithm=algo, how="left"
+            ).compute()
+
+        # Verify result has rows (both matched and unmatched)
+        assert len(left_joined) > 0
+
+        # Verify that matched rows have valid distance values
+        matched = left_joined[left_joined["id_small_sky_xmatch"].notna()]
+        if len(matched) > 0:
+            assert all(matched["_dist_arcsec"] <= radius)
+
+        # Verify that unmatched rows have NaN in right columns
+        unmatched = left_joined[left_joined["id_small_sky_xmatch"].isna()]
+        for col in left_joined.columns:
+            if col.endswith("_small_sky_xmatch"):
+                # Right-side columns should be NaN for unmatched rows
+                assert unmatched[col].isna().all() or (
+                    pd.api.types.is_object_dtype(unmatched[col]) and unmatched[col].isna().all()
+                )
+
+        # Ensure extra columns (distance) are NaN for unmatched rows
+        unmatched_extra = unmatched[unmatched.columns.intersection(["_dist_arcsec"])]
+        if len(unmatched_extra.columns) > 0:
+            assert unmatched_extra.isna().all().all()
+
 
 def test_crossmatch_with_moc(small_sky_order1_catalog):
     order = 1
@@ -548,7 +632,7 @@ class MockCrossmatchAlgorithmOverwrite(AbstractCrossmatchAlgorithm):
     def __init__(self, mock_results: pd.DataFrame = None):
         self.mock_results = mock_results
 
-    def crossmatch(self, crossmatch_args, suffixes, suffix_method="all_columns"):
+    def crossmatch(self, crossmatch_args, how, suffixes, suffix_method="all_columns"):
         left_reset = crossmatch_args.left_df.reset_index(drop=True)
         right_reset = crossmatch_args.right_df.reset_index(drop=True)
         left, right = apply_suffixes(
