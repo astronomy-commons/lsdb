@@ -1,12 +1,14 @@
 from __future__ import annotations
 
-from typing import Callable, Iterable, Literal, Type
+from pathlib import Path
+from typing import Any, Callable, Iterable, Literal, Type
 
 import dask.dataframe as dd
 import hats as hc
 import nested_dask as nd
 import nested_pandas as npd
 import pandas as pd
+from hats.catalog.catalog_collection import CatalogCollection
 from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
 from hats.catalog.index.index_catalog import IndexCatalog as HCIndexCatalog
 from hats.pixel_math import HealpixPixel
@@ -15,6 +17,7 @@ from pandas._libs import lib
 from pandas._typing import AnyAll, Axis, IndexLabel
 from pandas.api.extensions import no_default
 from typing_extensions import Self
+from upath import UPath
 
 from lsdb.catalog.association_catalog import AssociationCatalog
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
@@ -51,6 +54,7 @@ class Catalog(HealpixDataset):
 
     hc_structure: hc.catalog.Catalog
     margin: MarginCatalog | None = None
+    hc_collection: CatalogCollection | None = None
 
     def __init__(
         self,
@@ -334,23 +338,65 @@ class Catalog(HealpixDataset):
         """
         return self.search(PolygonSearch(vertices, fine))
 
-    def index_search(self, ids, catalog_index: HCIndexCatalog, fine: bool = True) -> Catalog:
-        """Find rows by ids (or other value indexed by a catalog index).
+    def id_search(
+        self,
+        values: dict[str, Any],
+        index_catalogs: dict[str, str | HCIndexCatalog] | None = None,
+        fine: bool = True,
+    ) -> Catalog:
+        """Query rows by column values.
 
-        Filters partitions in the catalog to those that could contain the ids requested.
-        Filters to points that have matching values in the id field.
-
-        NB: This requires a previously-computed catalog index table.
+        In the context of Catalog collections this method will try to find an index
+        catalog for each field name specified in `values`. If the catalog calling
+        this method is not part of a collection or if it cannot find the index catalog
+        for the fields in the collection specification, explicit `index_catalogs` for
+        the desired fields can be specified. The `index_catalogs` argument is a dictionary
+        of field names to HATS index catalog paths or their instances and they take
+        precedence over the catalogs specified in the collection.
 
         Args:
-            ids: Values to search for.
-            catalog_index (HCIndexCatalog): A pre-computed hats index catalog.
-            fine (bool): True if points are to be filtered, False if not. Defaults to True.
+            values (dict[str, Any]): The mapping of field names (as string) to their values.
+            index_catalogs (dict[str, str|HCIndexCatalog]): The mapping of field names (as string)
+                to their respective index catalog paths or instance of `HCIndexCatalog`. Use this
+                argument to specify index catalogs for stand-alone catalogs or for collections where
+                there is no index catalog for the fields you are querying for.
+            fine (bool): If True, the rows of the partitions where a column match occurred are
+                filtered. If False, all the rows of those partitions are kept. Defaults to True.
+
+        Example:
+            To query by "objid" where an index for this field is available in the collection::
+
+                catalog.id_search(values={"objid":"GAIA_123"})
+
+            To query by "fieldid" and "ccid", if "fieldid" has an index catalog in the collection
+            and the index catalog for "ccid" is present in a directory named "ccid_id_index_catalog"
+            on the current working directory::
+
+                catalog.id_search(
+                    values={"fieldid": 700, "ccid": 300},
+                    index_catalogs={"ccid": "ccid_id_index_catalog"}
+                )
 
         Returns:
-            A new Catalog containing the points filtered to those matching the ids.
+            A new Catalog containing the results of the column match.
         """
-        return self.search(IndexSearch(ids, catalog_index, fine))
+
+        def _get_index_catalog_for_field(field: str):
+            """Find the index catalog for `field`. Index catalogs declared
+            as an argument take precedence over the ones in the collection"""
+            field_index: str | Path | UPath | HCIndexCatalog | None = None
+            if index_catalogs is not None and field in index_catalogs:
+                field_index = index_catalogs[field]
+            elif self.hc_collection is not None:
+                field_index = self.hc_collection.get_index_dir_for_field(field)
+            if isinstance(field_index, HCIndexCatalog):
+                return field_index
+            if isinstance(field_index, (str | Path | UPath)):
+                return hc.read_hats(field_index)
+            raise TypeError(f"Catalog index for field `{field}` is not of type `HCIndexCatalog`")
+
+        field_indexes = {field_name: _get_index_catalog_for_field(field_name) for field_name in values.keys()}
+        return self.search(IndexSearch(values, field_indexes, fine))
 
     def order_search(self, min_order: int = 0, max_order: int | None = None) -> Catalog:
         """Filter catalog by order of HEALPix.
@@ -854,12 +900,17 @@ class Catalog(HealpixDataset):
 
         Example User Function:
 
-        >>> def my_sum(col1, col2):
-        >>>    '''reduce will return a NestedFrame with two columns'''
-        >>>    return {"sum_col1": sum(col1), "sum_col2": sum(col2)}
-        >>>
-        >>> catalog.reduce(my_sum, 'sources.col1', 'sources.col2')
-
+        >>> import numpy as np
+        >>> import lsdb
+        >>> catalog = lsdb.from_dataframe({"ra":[0, 10], "dec":[5, 15], "mag":[21, 22], "mag_err":[.1, .2]})
+        >>> def my_sigma(col1, col2):
+        ...    '''reduce will return a NestedFrame with two columns'''
+        ...    return {"plus_one": col1+col2, "minus_one": col1-col2}
+        >>> meta = {"plus_one": np.float64, "minus_one": np.float64}
+        >>> catalog.reduce(my_sigma, 'mag', 'mag_err', meta=meta).compute().reset_index()
+                   _healpix_29  plus_one  minus_one
+        0  1372475556631677955      21.1       20.9
+        1  1389879706834706546      22.2       21.8
         """
         catalog = super().reduce(func, *args, meta=meta, **kwargs)
         if self.margin is not None:

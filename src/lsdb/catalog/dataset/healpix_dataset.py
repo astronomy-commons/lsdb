@@ -121,6 +121,7 @@ class HealpixDataset(Dataset):
             pixels=hc_structure.pixel_tree,
             catalog_path=hc_structure.catalog_path,
             schema=hc_structure.schema if updated_schema is None else updated_schema,
+            original_schema=hc_structure.original_schema,
             moc=hc_structure.moc,
         )
 
@@ -892,12 +893,17 @@ class HealpixDataset(Dataset):
 
         Example User Function:
 
-        >>> def my_sum(col1, col2):
-        >>>    '''reduce will return a NestedFrame with two columns'''
-        >>>    return {"sum_col1": sum(col1), "sum_col2": sum(col2)}
-        >>>
-        >>> catalog.reduce(my_sum, 'sources.col1', 'sources.col2')
-
+        >>> import numpy as np
+        >>> import lsdb
+        >>> catalog = lsdb.from_dataframe({"ra":[0, 10], "dec":[5, 15], "mag":[21, 22], "mag_err":[.1, .2]})
+        >>> def my_sigma(col1, col2):
+        ...    '''reduce will return a NestedFrame with two columns'''
+        ...    return {"plus_one": col1+col2, "minus_one": col1-col2}
+        >>> meta = {"plus_one": np.float64, "minus_one": np.float64}
+        >>> catalog.reduce(my_sigma, 'mag', 'mag_err', meta=meta).compute().reset_index()
+                   _healpix_29  plus_one  minus_one
+        0  1372475556631677955      21.1       20.9
+        1  1389879706834706546      22.2       21.8
         """
 
         if append_columns:

@@ -391,9 +391,11 @@ def test_read_hats_subset_with_index_search(
 ):
     catalog_index = hc.read_hats(small_sky_order1_id_index_dir)
     # Filtering using catalog's index_search
-    index_search_catalog = small_sky_order1_catalog.index_search([700], catalog_index)
+    index_search_catalog = small_sky_order1_catalog.id_search(
+        values={"id": 700}, index_catalogs={"id": catalog_index}
+    )
     # Filtering when calling `read_hats`
-    index_search = IndexSearch([700], catalog_index)
+    index_search = IndexSearch(values={"id": 700}, index_catalogs={"id": catalog_index})
     index_search_catalog_2 = lsdb.read_hats(small_sky_order1_dir, search_filter=index_search)
     assert isinstance(index_search_catalog_2, lsdb.Catalog)
     # The partitions of the catalogs are equivalent
@@ -414,7 +416,7 @@ def test_read_hats_subset_with_order_search(small_sky_source_catalog, small_sky_
 def test_read_hats_subset_no_partitions(small_sky_order1_dir, small_sky_order1_id_index_dir):
     with pytest.raises(ValueError, match="no coverage"):
         catalog_index = hc.read_hats(small_sky_order1_id_index_dir)
-        index_search = IndexSearch([900], catalog_index)
+        index_search = IndexSearch(values={"id": 900}, index_catalogs={"id": catalog_index})
         lsdb.read_hats(small_sky_order1_dir, search_filter=index_search)
 
 
@@ -486,7 +488,7 @@ def test_read_hats_margin_catalog_subset(
 
 def test_read_hats_margin_catalog_subset_is_empty(small_sky_order1_source_margin_dir):
     search_filter = ConeSearch(ra=100, dec=80, radius_arcsec=1)
-    with pytest.raises(ValueError, match="empty catalog"):
+    with pytest.raises(ValueError, match="no coverage"):
         lsdb.read_hats(small_sky_order1_source_margin_dir, search_filter=search_filter)
 
 
@@ -501,3 +503,17 @@ def test_read_hats_map_catalog(test_data_dir):
 def test_read_hats_schema_not_found(small_sky_no_metadata_dir):
     with pytest.raises(ValueError, match="catalog schema could not be loaded"):
         lsdb.read_hats(small_sky_no_metadata_dir)
+
+
+def test_all_columns_read_columns(small_sky_order1_dir, small_sky_order1_catalog):
+    cat = lsdb.read_hats(small_sky_order1_dir, columns=["ra", "dec"])
+    assert len(cat.columns) < len(cat.all_columns)
+    assert np.all(cat.all_columns == small_sky_order1_catalog.columns)
+
+
+def test_original_schema_read_columns(small_sky_order1_dir, small_sky_order1_catalog):
+    cat = lsdb.read_hats(small_sky_order1_dir, columns=["ra", "dec"])
+    assert len(cat.original_schema) == len(small_sky_order1_catalog.hc_structure.schema)
+    for field in cat.original_schema:
+        assert field in small_sky_order1_catalog.hc_structure.schema
+    assert cat.original_schema == small_sky_order1_catalog.original_schema

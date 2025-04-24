@@ -991,7 +991,7 @@ def test_filtered_catalog_has_undetermined_len(small_sky_order1_catalog, small_s
         len(small_sky_order1_catalog.order_search(max_order=2))
     with pytest.raises(ValueError, match="undetermined"):
         catalog_index = hc.read_hats(small_sky_order1_id_index_dir)
-        len(small_sky_order1_catalog.index_search([900], catalog_index))
+        len(small_sky_order1_catalog.id_search(values={"id": 900}, index_catalogs={"id": catalog_index}))
     with pytest.raises(ValueError, match="undetermined"):
         len(small_sky_order1_catalog.pixel_search([(0, 11)]))
     with pytest.raises(ValueError, match="undetermined"):
@@ -1107,3 +1107,31 @@ def test_plot_points_colorcol(small_sky_order1_catalog, mocker):
     npt.assert_array_equal(WCSAxes.scatter.call_args.kwargs["c"], comp_cat["id"])
     assert WCSAxes.scatter.call_args.kwargs["transform"] == ax.get_transform("icrs")
     plt.colorbar.assert_called_once()
+
+
+def test_all_columns(small_sky_order1_default_cols_catalog, small_sky_order1_catalog):
+    assert len(small_sky_order1_default_cols_catalog.columns) < len(
+        small_sky_order1_default_cols_catalog.all_columns
+    )
+    assert np.all(small_sky_order1_default_cols_catalog.all_columns == small_sky_order1_catalog.columns)
+
+
+def test_original_schema(small_sky_order1_catalog):
+    assert small_sky_order1_catalog.original_schema is not None
+    filtered_cat = small_sky_order1_catalog[["ra", "dec"]]
+    assert filtered_cat.original_schema == small_sky_order1_catalog.original_schema
+
+
+def test_all_columns_after_query(small_sky_order1_catalog):
+    filtered_cat = small_sky_order1_catalog.query("ra > 10")
+    assert filtered_cat.all_columns == small_sky_order1_catalog.all_columns
+
+
+def test_all_columns_after_column_select(small_sky_order1_catalog):
+    filtered_cat = small_sky_order1_catalog[["ra", "dec"]]
+    assert filtered_cat.all_columns == small_sky_order1_catalog.all_columns
+
+
+def test_all_columns_after_filter(small_sky_order1_catalog):
+    filtered_cat = small_sky_order1_catalog.cone_search(10, 10, 10)
+    assert filtered_cat.all_columns == small_sky_order1_catalog.all_columns

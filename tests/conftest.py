@@ -36,6 +36,9 @@ SMALL_SKY_ORDER1_NESTED_SOURCES_MARGIN_NAME = "small_sky_order1_nested_sources_m
 SMALL_SKY_ORDER1_NO_PANDAS_DIR_NAME = "small_sky_order1_no_pandas_meta"
 SMALL_SKY_ORDER1_DEFAULT_COLS_DIR_NAME = "small_sky_order1_default_columns"
 SMALL_SKY_ORDER1_SOURCE_NAME = "small_sky_order1_source"
+SMALL_SKY_ORDER1_SOURCE_COLLECTION_DIR_NAME = "small_sky_order1_source_collection"
+SMALL_SKY_ORDER1_SOURCE_OBJECT_ID_INDEX_NAME = "small_sky_order1_source_object_id_index"
+SMALL_SKY_ORDER1_SOURCE_BAND_INDEX_NAME = "small_sky_order1_source_band_index"
 SMALL_SKY_ORDER1_SOURCE_MARGIN_NAME = "small_sky_order1_source_margin"
 SMALL_SKY_TO_ORDER1_SOURCE_NAME = "small_sky_to_o1source"
 SMALL_SKY_TO_ORDER1_SOURCE_SOFT_NAME = "small_sky_to_o1source_soft"
@@ -139,6 +142,21 @@ def small_sky_order1_source_dir(test_data_dir):
 
 
 @pytest.fixture
+def small_sky_order1_source_object_id_index_dir(test_data_dir):
+    return test_data_dir / SMALL_SKY_ORDER1_SOURCE_OBJECT_ID_INDEX_NAME
+
+
+@pytest.fixture
+def small_sky_order1_source_band_index_dir(test_data_dir):
+    return test_data_dir / SMALL_SKY_ORDER1_SOURCE_BAND_INDEX_NAME
+
+
+@pytest.fixture
+def small_sky_order1_source_collection_dir(test_data_dir):
+    return test_data_dir / SMALL_SKY_ORDER1_SOURCE_COLLECTION_DIR_NAME
+
+
+@pytest.fixture
 def small_sky_source_dir(test_data_dir):
     return test_data_dir / SMALL_SKY_SOURCE_DIR_NAME
 
@@ -146,6 +164,11 @@ def small_sky_source_dir(test_data_dir):
 @pytest.fixture
 def small_sky_source_catalog(small_sky_source_dir):
     return lsdb.read_hats(small_sky_source_dir)
+
+
+@pytest.fixture
+def small_sky_order1_source_collection_catalog(small_sky_order1_source_collection_dir):
+    return lsdb.read_hats(small_sky_order1_source_collection_dir)
 
 
 @pytest.fixture
@@ -236,6 +259,11 @@ def small_sky_order1_hats_catalog(small_sky_order1_dir):
 @pytest.fixture
 def small_sky_order1_catalog(small_sky_order1_dir):
     return lsdb.read_hats(small_sky_order1_dir)
+
+
+@pytest.fixture
+def small_sky_order1_collection_catalog(small_sky_order1_collection_dir):
+    return lsdb.read_hats(small_sky_order1_collection_dir)
 
 
 @pytest.fixture
