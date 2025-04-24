@@ -248,7 +248,7 @@ class AbstractCrossmatchAlgorithm(ABC):
         # concat dataframes together
         index_name = self.left.index.name if self.left.index.name is not None else "index"
         left_join_part = self.left.reset_index()
-        right_join_part = self.right.iloc[right_idx]
+        right_join_part = self.right.iloc[right_idx].copy()
         right_join_part["new_index_col"] = left_idx
         right_join_part = right_join_part.set_index("new_index_col")
         self._append_extra_columns(right_join_part, extra_cols)
