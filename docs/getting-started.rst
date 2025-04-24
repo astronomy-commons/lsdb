@@ -197,14 +197,3 @@ This creates the following HATS Catalog on disk:
     ├── point_map.fits
     └── properties
 
-Creation of Jupyter Kernel
---------------------------
-
-You may want to work with LSDB on Jupyter notebooks and, therefore, you need a kernel where
-our package is installed. To install a kernel for your environment, type:
-
-.. code-block:: bash
-
-    python -m ipykernel install --user --name lsdb_env --display-name "lsdb_kernel"
-
-It should now be available for selection in your Jupyter dashboard!

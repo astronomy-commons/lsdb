@@ -2,7 +2,7 @@
 name = "lsdb"
 license = {file = "LICENSE"}
 readme = "README.md"
-description = "Spatial analysis for extremely large astronomical databases using dask"
+description = "Spatial analysis for extremely large astronomical catalogs using dask"
 authors = [
     { name = "LINCC Frameworks", email = "lincc-frameworks-team@lists.lsst.org" }
 ]
@@ -23,7 +23,7 @@ dependencies = [
     "dask[complete]",
     "deprecated",
     "hats>=0.5.1",
-    "nested-pandas>=0.3.8",
+    "nested-pandas>=0.3.8,<0.4.0",
     "pyarrow",
     "scipy", # kdtree
 ]
@@ -67,7 +67,10 @@ markers = [
 ]
 testpaths = [
     "tests",
+    "src",
+    "docs",
 ]
+addopts = "--doctest-modules --doctest-glob=*.rst"
 
 [tool.setuptools.package-data]
 lsdb = ["py.typed"]
