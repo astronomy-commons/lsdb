@@ -197,9 +197,7 @@ class DataframeCatalogLoader:
             threshold=self.threshold,
             drop_empty_siblings=self.drop_empty_siblings,
         )
-        non_none_elements = alignment[alignment != np.array(None)]
-        pixel_list = np.unique(non_none_elements)
-        pixel_list = [HealpixPixel(order, pix) for (order, pix, count) in pixel_list if int(count) > 0]
+        pixel_list = list({HealpixPixel(tup[0], tup[1]) for tup in alignment if not tup is None})
         return list(np.array(pixel_list)[get_pixel_argsort(pixel_list)])
 
     def _generate_dask_df_and_map(

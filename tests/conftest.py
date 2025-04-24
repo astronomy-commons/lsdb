@@ -311,6 +311,11 @@ def small_sky_order1_df(test_data_dir):
 
 
 @pytest.fixture
+def sm_all_sky_df(test_data_dir):
+    return pd.read_csv(test_data_dir / "raw" / "reproducers" / "issue_718.csv")
+
+
+@pytest.fixture
 def small_sky_source_df(test_data_dir):
     return pd.read_csv(test_data_dir / "raw" / "small_sky_source" / "small_sky_source.csv")
 
