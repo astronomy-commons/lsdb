@@ -480,6 +480,7 @@ def _merge_association_alignments(left_alignment: PixelAlignment, final_alignmen
     )
 
 
+# TODO: maybe a kwarg to use None or empty dataframe for missing pixels/partitions
 def align_and_apply(
     catalog_mappings: list[tuple[HealpixDataset | None, list[HealpixPixel]]], func: Callable, *args, **kwargs
 ) -> list[Delayed]:
@@ -985,7 +986,7 @@ def align_catalog_to_partitions(
         lambda pix: (
             dfs[catalog.get_partition_index(pix.order, pix.pixel)]
             if pix is not None and pix in catalog.hc_structure.pixel_tree
-            else None
+            else None # TODO: better to use an empty dataframe?
         )
     )
     partitions = get_partition(pixels)
