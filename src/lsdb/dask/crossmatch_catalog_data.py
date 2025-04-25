@@ -4,7 +4,7 @@ import warnings
 from typing import TYPE_CHECKING, Type
 
 import nested_dask as nd
-from hats.pixel_tree import PixelAlignment
+from hats.pixel_tree import PixelAlignment, PixelAlignmentType
 
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
 from lsdb.core.crossmatch.crossmatch_algorithms import (
@@ -27,6 +27,7 @@ if TYPE_CHECKING:
 
 
 # pylint: disable=too-many-arguments, unused-argument
+# TODO: plumb 'how' into this function
 def perform_crossmatch(
     left_df,
     right_df,
@@ -53,7 +54,9 @@ def perform_crossmatch(
     if len(left_df) == 0:
         return meta_df
 
+    # TODO: does this work if either or both are None?
     right_joined_df = concat_partition_and_margin(right_df, right_margin_df)
+    # TODO: check to see if right_joined_df is empty
 
     return algorithm(
         left_df,
@@ -111,7 +114,7 @@ def crossmatch_catalog_data(
         )
 
     # perform alignment on the two catalogs
-    alignment = align_catalogs(left, right, add_right_margin=True)
+    alignment = align_catalogs(left, right, add_right_margin=True, alignment_type=PixelAlignmentType[how.upper()])
 
     # get lists of HEALPix pixels from alignment to pass to cross-match
     left_pixels, right_pixels = get_healpix_pixels_from_alignment(alignment)
@@ -135,15 +138,14 @@ def crossmatch_catalog_data(
         # This is the ordinary sense of crossmatching.  No change to the partitions.
         pass
     elif how == "left":
-        # TODO: in here, if `how` == `"left"`, we want *all* of the left partitions.
-        # TODO: We want them unioned onto joined_partitions.
-        raise NotImplementedError(f"Unimplemented crossmatching approach: `how={how}`")
+        # Take *all* of the left-catalog partitions.
+        joined_partitions = set(joined_partitions).union(set(left._ddf.partitions))
     elif how == "right":
-        # TODO: same as above except it's all of the right-side partitions.
-        raise NotImplementedError(f"Unimplemented crossmatching approach: `how={how}`")
+        # Same as above except it's all of the right-side partitions.
+        joined_partitions = set(joined_partitions).union(set(right._ddf.partitions))
     elif how == "outer":
-        # TODO: same, except it's ALL partitions.
-        raise NotImplementedError(f"Unimplemented crossmatching approach: `how={how}`")
+        # Same, except it's ALL partitions.
+        joined_partitions = set(joined_partitions).union(left._ddf.partitions).union(set(right._ddf.partitions))
     else:
         raise ValueError(f"Unknown crossmatching approach: `how={how}`")
 

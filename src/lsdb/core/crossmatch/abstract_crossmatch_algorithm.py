@@ -67,6 +67,7 @@ class AbstractCrossmatchAlgorithm(ABC):
         right_catalog_info: TableProperties,
         right_margin_catalog_info: TableProperties | None,
         suffixes: tuple[str, str],
+        how: str = "inner",
     ):
         """Initializes a crossmatch algorithm
 
@@ -97,6 +98,7 @@ class AbstractCrossmatchAlgorithm(ABC):
         self.right_catalog_info = right_catalog_info
         self.right_margin_catalog_info = right_margin_catalog_info
         self.suffixes = suffixes
+        self.how = how
 
     def crossmatch(self, **kwargs) -> npd.NestedFrame:
         """Perform a crossmatch"""
@@ -205,15 +207,41 @@ class AbstractCrossmatchAlgorithm(ABC):
         self._rename_columns_with_suffix(self.right, self.suffixes[1])
         # concat dataframes together
         self.left.index.name = SPATIAL_INDEX_COLUMN
-        left_join_part = self.left.iloc[left_idx].reset_index()
-        right_join_part = self.right.iloc[right_idx].reset_index(drop=True)
-        out = pd.concat(
-            [
-                left_join_part,
-                right_join_part,
-            ],
-            axis=1,
-        )
+        if self.how == "left":
+            # TODO: handle duplicate results from left
+            left_join_part = self.left.reset_index()
+            right_join_part = self.right.iloc[right_idx].reset_index(drop=True)
+            out = pd.concat(
+                [
+                    left_join_part,
+                    right_join_part,
+                ],
+                axis=1,
+            )
+        elif self.how == "right":
+            # TODO: handle duplicate results from right
+            left_join_part = self.left.iloc[left_idx].reset_index()
+            right_join_part = self.right.reset_index(drop=True)
+            out = pd.concat(
+                [
+                    left_join_part,
+                    right_join_part,
+                ],
+                axis=1,
+            )
+        elif self.how == "outer":
+            # TODO: what is the right answer here?
+            pass
+        elif self.how == "inner":
+            left_join_part = self.left.iloc[left_idx].reset_index()
+            right_join_part = self.right.iloc[right_idx].reset_index(drop=True)
+            out = pd.concat(
+                [
+                    left_join_part,
+                    right_join_part,
+                ],
+                axis=1,
+            )
         out.set_index(SPATIAL_INDEX_COLUMN, inplace=True)
         extra_cols.index = out.index
         self._append_extra_columns(out, extra_cols)
