@@ -294,8 +294,9 @@ def generate_meta_df_for_nested_tables(
     catalogs: Sequence[Catalog],
     nested_catalog: Catalog,
     nested_column_name: str,
-    join_column_name: str,
+    join_column_name: str | None = None,
     extra_columns: pd.DataFrame | None = None,
+    extra_nested_columns: pd.DataFrame | None = None,
     index_name: str = SPATIAL_INDEX_COLUMN,
     index_type: npt.DTypeLike | None = None,
 ) -> npd.NestedFrame:
@@ -338,7 +339,11 @@ def generate_meta_df_for_nested_tables(
     # make an empty copy of the nested catalog, removing the column that will be joined on (and removed from
     # the eventual dataframe)
     # pylint: disable=protected-access
-    nested_catalog_meta = nested_catalog._ddf._meta.copy().iloc[:0].drop(join_column_name, axis=1)
+    nested_catalog_meta = nested_catalog._ddf._meta.copy().iloc[:0]
+    if join_column_name is not None:
+        nested_catalog_meta = nested_catalog_meta.drop(join_column_name, axis=1)
+    if extra_nested_columns is not None:
+        nested_catalog_meta = pd.concat([nested_catalog_meta, extra_nested_columns], axis=1)
     hive_cols_to_drop = [c for c in paths.HIVE_COLUMNS if c in nested_catalog_meta.columns]
     nested_catalog_meta = nested_catalog_meta.drop(columns=hive_cols_to_drop)
 

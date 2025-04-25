@@ -66,7 +66,6 @@ class AbstractCrossmatchAlgorithm(ABC):
         left_catalog_info: TableProperties,
         right_catalog_info: TableProperties,
         right_margin_catalog_info: TableProperties | None,
-        suffixes: tuple[str, str],
     ):
         """Initializes a crossmatch algorithm
 
@@ -96,16 +95,24 @@ class AbstractCrossmatchAlgorithm(ABC):
         self.left_catalog_info = left_catalog_info
         self.right_catalog_info = right_catalog_info
         self.right_margin_catalog_info = right_margin_catalog_info
-        self.suffixes = suffixes
 
-    def crossmatch(self, **kwargs) -> npd.NestedFrame:
+    def crossmatch(self, suffixes, **kwargs) -> npd.NestedFrame:
         """Perform a crossmatch"""
         l_inds, r_inds, extra_cols = self.perform_crossmatch(**kwargs)
         if not len(l_inds) == len(r_inds) == len(extra_cols):
             raise ValueError(
                 "Crossmatch algorithm must return left and right indices and extra columns with same length"
             )
-        return self._create_crossmatch_df(l_inds, r_inds, extra_cols)
+        return self._create_crossmatch_df(l_inds, r_inds, extra_cols, suffixes)
+
+    def crossmatch_nested(self, nested_column_name, **kwargs) -> npd.NestedFrame:
+        """Perform a crossmatch"""
+        l_inds, r_inds, extra_cols = self.perform_crossmatch(**kwargs)
+        if not len(l_inds) == len(r_inds) == len(extra_cols):
+            raise ValueError(
+                "Crossmatch algorithm must return left and right indices and extra columns with same length"
+            )
+        return self._create_nested_crossmatch_df(l_inds, r_inds, extra_cols, nested_column_name)
 
     def perform_crossmatch(self) -> tuple[np.ndarray, np.ndarray, pd.DataFrame]:
         """Performs a crossmatch to get the indices of the matching rows and any extra columns
@@ -188,6 +195,7 @@ class AbstractCrossmatchAlgorithm(ABC):
         left_idx: npt.NDArray[np.int64],
         right_idx: npt.NDArray[np.int64],
         extra_cols: pd.DataFrame,
+        suffixes: tuple[str, str],
     ) -> npd.NestedFrame:
         """Creates a df containing the crossmatch result from matching indices and additional columns
 
@@ -201,10 +209,10 @@ class AbstractCrossmatchAlgorithm(ABC):
             additional columns added
         """
         # rename columns so no same names during merging
-        self._rename_columns_with_suffix(self.left, self.suffixes[0])
-        self._rename_columns_with_suffix(self.right, self.suffixes[1])
+        self._rename_columns_with_suffix(self.left, suffixes[0])
+        self._rename_columns_with_suffix(self.right, suffixes[1])
         # concat dataframes together
-        self.left.index.name = SPATIAL_INDEX_COLUMN
+        index_name = self.left.index.name if self.left.index.name is not None else "index"
         left_join_part = self.left.iloc[left_idx].reset_index()
         right_join_part = self.right.iloc[right_idx].reset_index(drop=True)
         out = pd.concat(
@@ -214,7 +222,36 @@ class AbstractCrossmatchAlgorithm(ABC):
             ],
             axis=1,
         )
-        out.set_index(SPATIAL_INDEX_COLUMN, inplace=True)
+        out.set_index(index_name, inplace=True)
         extra_cols.index = out.index
         self._append_extra_columns(out, extra_cols)
+        return npd.NestedFrame(out)
+
+    def _create_nested_crossmatch_df(
+        self,
+        left_idx: npt.NDArray[np.int64],
+        right_idx: npt.NDArray[np.int64],
+        extra_cols: pd.DataFrame,
+        nested_column_name: str,
+    ) -> npd.NestedFrame:
+        """Creates a df containing the crossmatch result from matching indices and additional columns
+
+        Args:
+            left_idx (np.ndarray): indices of the matching rows from the left table
+            right_idx (np.ndarray): indices of the matching rows from the right table
+            extra_cols (pd.DataFrame): dataframe containing additional columns from crossmatching
+
+        Returns:
+            A dataframe with the matching rows from the left and right table concatenated together, with the
+            additional columns added
+        """
+        # concat dataframes together
+        index_name = self.left.index.name if self.left.index.name is not None else "index"
+        left_join_part = self.left.reset_index()
+        right_join_part = self.right.iloc[right_idx].copy()
+        right_join_part["new_index_col"] = left_idx
+        right_join_part = right_join_part.set_index("new_index_col")
+        self._append_extra_columns(right_join_part, extra_cols)
+        out = left_join_part.add_nested(right_join_part, nested_column_name)
+        out.set_index(index_name, inplace=True)
         return npd.NestedFrame(out)
