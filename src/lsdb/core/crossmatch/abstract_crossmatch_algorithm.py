@@ -66,6 +66,8 @@ class AbstractCrossmatchAlgorithm(ABC):
         left_catalog_info: TableProperties,
         right_catalog_info: TableProperties,
         right_margin_catalog_info: TableProperties | None,
+        suffixes: tuple[str, str],
+        how: str = "inner",
     ):
         """Initializes a crossmatch algorithm
 
@@ -95,6 +97,8 @@ class AbstractCrossmatchAlgorithm(ABC):
         self.left_catalog_info = left_catalog_info
         self.right_catalog_info = right_catalog_info
         self.right_margin_catalog_info = right_margin_catalog_info
+        self.suffixes = suffixes
+        self.how = how
 
     def crossmatch(self, suffixes, **kwargs) -> npd.NestedFrame:
         """Perform a crossmatch"""
@@ -212,6 +216,7 @@ class AbstractCrossmatchAlgorithm(ABC):
         self._rename_columns_with_suffix(self.left, suffixes[0])
         self._rename_columns_with_suffix(self.right, suffixes[1])
         # concat dataframes together
+        # TODO: need test for left, right, inner, outer joins here
         index_name = self.left.index.name if self.left.index.name is not None else "index"
         left_join_part = self.left.iloc[left_idx].reset_index()
         right_join_part = self.right.iloc[right_idx].reset_index(drop=True)

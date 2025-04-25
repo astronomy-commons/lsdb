@@ -60,7 +60,7 @@ def remove_hips_columns(df: npd.NestedFrame | None):
     return df.drop(columns=hive_columns_in_df)
 
 
-def align_catalogs(left: Catalog, right: Catalog, add_right_margin: bool = True) -> PixelAlignment:
+def align_catalogs(left: Catalog, right: Catalog, add_right_margin: bool = True, alignment_type=PixelAlignmentType.INNER) -> PixelAlignment:
     """Aligns two catalogs, also using the right catalog's margin if it exists
 
     Args:
@@ -103,7 +103,7 @@ def align_catalogs(left: Catalog, right: Catalog, add_right_margin: bool = True)
         right_tree,
         left.hc_structure.moc,
         right_moc,
-        alignment_type=PixelAlignmentType.INNER,
+        alignment_type=alignment_type,
     )
 
 
@@ -237,7 +237,10 @@ def get_healpix_pixels_from_alignment(
     pixel_mapping = alignment.pixel_mapping
     if len(pixel_mapping) == 0:
         return ([], [])
-    make_pixel = np.vectorize(HealpixPixel)
+    def pixel_or_none(order: int, pixel: int) -> HealpixPixel | None:
+        """Creates a HealpixPixel object from the order and pixel number, or returns None if either is None"""
+        return HealpixPixel(order=order, pixel=pixel) if order is not None and pixel is not None else None
+    make_pixel = np.vectorize(pixel_or_none)
     left_pixels = make_pixel(
         pixel_mapping[PixelAlignment.PRIMARY_ORDER_COLUMN_NAME],
         pixel_mapping[PixelAlignment.PRIMARY_PIXEL_COLUMN_NAME],
@@ -408,7 +411,7 @@ def align_catalog_to_partitions(
     get_partition = np.vectorize(
         lambda pix: (
             dfs[catalog.get_partition_index(pix.order, pix.pixel)]
-            if pix in catalog.hc_structure.pixel_tree
+            if pix is not None and pix in catalog.hc_structure.pixel_tree
             else None
         )
     )
