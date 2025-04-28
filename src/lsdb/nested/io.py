@@ -2,6 +2,9 @@
 from __future__ import annotations
 
 import dask.dataframe as dd
+import dask
+import os
+import nested_pandas as npd
 
 from .core import NestedFrame
 
@@ -217,6 +220,41 @@ def read_parquet(
     --------
     >>> df = dd.read_parquet('s3://bucket/my-parquet-data')  # doctest: +SKIP
     """
+    # Check if the path is a single file or a directory
+    if os.path.isfile(path):
+        # Single file case
+        delayed_frame = dask.delayed(npd.read_parquet)(path, columns=columns, **kwargs)
+        meta = npd.read_parquet(path, columns=columns, **kwargs).head(0)
+        combined = NestedFrame.from_delayed([delayed_frame], meta=meta)
+    elif os.path.isdir(path):
+        # Directory case: List all Parquet files in the directory
+        parquet_files = [
+            os.path.join(path, f)
+            for f in os.listdir(path)
+            if f.endswith(parquet_file_extension)
+        ]
+
+        if not parquet_files:
+            raise ValueError(f"No Parquet files found in directory: {path}")
+
+        # Use Dask delayed to read each file with nested-pandas
+        delayed_frames = [
+            dask.delayed(npd.read_parquet)(file, columns=columns, **kwargs) for file in parquet_files
+        ]
+
+        # TODO: Do this properly
+        # Read the first file for metadata
+        meta = npd.read_parquet(parquet_files[0], columns=columns, **kwargs).head(0)
+
+        # Combine the delayed NestedFrames into a single Dask NestedFrame
+        combined = NestedFrame.from_delayed(delayed_frames, meta=meta)
+    else:
+        raise ValueError(f"Invalid path: {path}. Must be a file or directory.")
+
+    # Return the combined NestedFrame
+    return NestedFrame.from_dask_dataframe(combined)
+
+    # Issue with this is we can do any partial loading
     return NestedFrame.from_dask_dataframe(
         dd.read_parquet(
             path=path,
@@ -225,9 +263,9 @@ def read_parquet(
             categories=categories,
             index=index,
             storage_options=storage_options,
-            engine=engine,
+            engine="pyarrow",
             use_nullable_dtypes=use_nullable_dtypes,
-            dtype_backend=dtype_backend,
+            dtype_backend="pyarrow",
             calculate_divisions=calculate_divisions,
             ignore_metadata_file=ignore_metadata_file,
             metadata_task_size=metadata_task_size,

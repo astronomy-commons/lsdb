@@ -836,7 +836,7 @@ Refer to the docstring for guidance on dtype requirements and assignment."""
         )
 
     # NOTE: Unused by LSDB, by_layer interface is only compatible with Nested-Pandas <0.4.0
-    def to_parquet(self, path, by_layer=True, **kwargs) -> None:
+    def to_parquet(self, path, **kwargs) -> None:
         """Creates parquet file(s) with the data of a NestedFrame, either
         as a single parquet file directory where each nested dataset is packed
         into its own column or as an individual parquet file directory for each
@@ -851,19 +851,6 @@ Refer to the docstring for guidance on dtype requirements and assignment."""
         ----------
         path : str
             The path to the parquet directory to be written.
-        by_layer : bool, default True
-            NOTE: by_layer=False will not reliably preserve divisions currently,
-            be warned when using it that loading from such a dataset will
-            likely require you to reset and set the index to generate divisions
-            information.
-
-            If False, writes the entire NestedFrame to a single parquet
-            directory.
-
-            If True, writes each layer to a separate parquet sub-directory
-            within the directory specified by path. The filename for each
-            outputted file will be named after its layer. For example for the
-            base layer this is always "base".
         kwargs : keyword arguments, optional
             Keyword arguments to pass to the function.
 
@@ -872,33 +859,5 @@ Refer to the docstring for guidance on dtype requirements and assignment."""
         None
         """
 
-        # code copied from nested-pandas rather than wrapped
-        # reason being that a map_partitions call is probably not well-behaved here?
-
-        if not by_layer:
-            # Todo: Investigate this more
-            # Divisions cannot be generated from a parquet file that stores
-            # nested information without a reset_index().set_index() loop. It
-            # seems like this happens at the to_parquet level rather than
-            # in read_parquet as dropping the nested columns from the dataframe
-            # to save does enable divisions to be found, but removing the
-            # nested columns from the set of columns to load does not.
-            # Divisions are going to be crucial, and so I think it's best to
-            # not support this until this is resolved. However the non-by_layer
-            # mode is needed for by_layer so it may be best to just settle for
-            # changing the default and filing a higher-priority bug.
-            # raise NotImplementedError
-
-            # We just defer to the pandas to_parquet method if we're not writing by layer
-            # or there is only one layer in the NestedFrame.
-            super().to_parquet(path, engine="pyarrow", **kwargs)
-        else:
-            # Write the base layer to a parquet file
-            base_frame = self.drop(columns=self.nested_columns)
-            base_frame.to_parquet(os.path.join(path, "base"), by_layer=False, **kwargs)
-
-            # Write each nested layer to a parquet file
-            for layer in self.all_columns:
-                if layer != "base":
-                    path_layer = os.path.join(path, f"{layer}")
-                    self[layer].nest.to_flat().to_parquet(path_layer, engine="pyarrow", **kwargs)
+        schema = pa.Schema.from_pandas(self._meta)
+        super().to_parquet(path, schema=schema, **kwargs)
