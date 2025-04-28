@@ -209,6 +209,7 @@ class AbstractCrossmatchAlgorithm(ABC):
         self.left.index.name = SPATIAL_INDEX_COLUMN
         if self.how == "left":
             # TODO: handle duplicate results from left
+            # TODO: try np.range, then exclude anything that appears in left_idx.  Try np.isin
             left_join_part = self.left.reset_index()
             right_join_part = self.right.iloc[right_idx].reset_index(drop=True)
             out = pd.concat(
