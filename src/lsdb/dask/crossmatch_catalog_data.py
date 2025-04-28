@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Type
 
 import nested_dask as nd
 from hats.pixel_tree import PixelAlignment, PixelAlignmentType
+import pandas as pd
 
 import lsdb.nested as nd
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
@@ -177,22 +178,28 @@ def crossmatch_catalog_data(
         **kwargs,
     )
 
-    if how == "inner":
-        # This is the ordinary sense of crossmatching.  No change to the partitions.
-        pass
-    elif how == "left":
-        # Take *all* of the left-catalog partitions.
-        joined_partitions = set(joined_partitions).union(set(left._ddf.partitions))
-    elif how == "right":
-        # Same as above except it's all of the right-side partitions.
-        joined_partitions = set(joined_partitions).union(set(right._ddf.partitions))
-    elif how == "outer":
-        # Same, except it's ALL partitions.
-        joined_partitions = set(joined_partitions).union(left._ddf.partitions).union(set(right._ddf.partitions))
-    else:
-        raise ValueError(f"Unknown crossmatching approach: `how={how}`")
+    # In the case of non-inner joins, we are obliged to first construct the catalog arguments
+    # with the inner-match partitions, and then union the outer partitions later.
+    # Otherwise there are mismatches between the cardinalities of the partitions and the
+    # pixel_map.
+    nf, pixel_map, alignment = construct_catalog_args(joined_partitions, meta_df, alignment)
 
-    return construct_catalog_args(joined_partitions, meta_df, alignment)
+    # if how == "inner":
+    #     # This is the ordinary sense of crossmatching.  No change.
+    #     pass
+    # elif how == "left":
+    #     # Take *all* of the left-catalog partitions.
+    #     nf = pd.concat([nf, left._ddf], ignore_index=True)
+    # elif how == "right":
+    #     # Same as above except it's all of the right-side partitions.
+    #     nf = pd.concat([nf, right._ddf], ignore_index=True)
+    # elif how == "outer":
+    #     # Same, except it's ALL partitions.
+    #     nf = pd.concat([nf, left._ddf, right._ddf], ignore_index=True)
+    # else:
+    #     raise ValueError(f"Unknown crossmatching approach: `how={how}`")
+
+    return nf, pixel_map, alignment
 
 
 # pylint: disable=too-many-locals

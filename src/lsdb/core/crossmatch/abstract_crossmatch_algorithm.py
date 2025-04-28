@@ -216,18 +216,44 @@ class AbstractCrossmatchAlgorithm(ABC):
         self._rename_columns_with_suffix(self.left, suffixes[0])
         self._rename_columns_with_suffix(self.right, suffixes[1])
         # concat dataframes together
-        # TODO: need test for left, right, inner, outer joins here
         index_name = self.left.index.name if self.left.index.name is not None else "index"
-        left_join_part = self.left.iloc[left_idx].reset_index()
-        right_join_part = self.right.iloc[right_idx].reset_index(drop=True)
-        out = pd.concat(
-            [
-                left_join_part,
-                right_join_part,
-            ],
-            axis=1,
-        )
-        out.set_index(index_name, inplace=True)
+        if self.how == "left":
+            # TODO: handle duplicate results from left
+            # TODO: try np.range, then exclude anything that appears in left_idx.  Try np.isin
+            left_join_part = self.left.reset_index()
+            right_join_part = self.right.iloc[right_idx].reset_index(drop=True)
+            out = pd.concat(
+                [
+                    left_join_part,
+                    right_join_part,
+                ],
+                axis=1,
+            )
+        elif self.how == "right":
+            # TODO: handle duplicate results from right
+            left_join_part = self.left.iloc[left_idx].reset_index()
+            right_join_part = self.right.reset_index(drop=True)
+            out = pd.concat(
+                [
+                    left_join_part,
+                    right_join_part,
+                ],
+                axis=1,
+            )
+        elif self.how == "outer":
+            # TODO: what is the right answer here?
+            pass
+        elif self.how == "inner":
+            left_join_part = self.left.iloc[left_idx].reset_index()
+            right_join_part = self.right.iloc[right_idx].reset_index(drop=True)
+            out = pd.concat(
+                [
+                    left_join_part,
+                    right_join_part,
+                ],
+                axis=1,
+            )
+            out.set_index(index_name, inplace=True)
         extra_cols.index = out.index
         self._append_extra_columns(out, extra_cols)
         return npd.NestedFrame(out)
