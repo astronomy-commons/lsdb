@@ -836,7 +836,7 @@ Refer to the docstring for guidance on dtype requirements and assignment."""
         )
 
     # NOTE: Unused by LSDB, by_layer interface is only compatible with Nested-Pandas <0.4.0
-    def to_parquet(self, path, by_layer=True, **kwargs) -> None:
+    def to_parquet(self, path, by_layer=False, **kwargs) -> None:
         """Creates parquet file(s) with the data of a NestedFrame, either
         as a single parquet file directory where each nested dataset is packed
         into its own column or as an individual parquet file directory for each
