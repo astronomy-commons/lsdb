@@ -2,7 +2,9 @@ import nested_pandas as npd
 import numpy as np
 import pandas as pd
 import pytest
+from nested_pandas import NestedDtype
 
+import lsdb
 import lsdb.nested as nd
 from lsdb import Catalog, MarginCatalog
 
@@ -191,3 +193,19 @@ def test_sort_nested_values_with_margin(small_sky_with_nested_sources_with_margi
 def test_sort_nested_values_using_base_column(small_sky_with_nested_sources):
     with pytest.raises(ValueError, match="nested columns"):
         small_sky_with_nested_sources.sort_nested_values(by="ra")
+
+
+def test_serialization_read(small_sky_with_nested_sources):
+    assert type(small_sky_with_nested_sources.dtypes["sources"]) == NestedDtype
+
+
+def test_serialization_round_trip(tmp_path, small_sky_order1_catalog, small_sky_source_catalog):
+    cat = small_sky_order1_catalog.join_nested(
+        small_sky_source_catalog, left_on="id", right_on="object_id", nested_column_name="lc"
+    )
+    assert type(cat.dtypes["lc"]) == NestedDtype
+    out_path = tmp_path / "test_cat"
+    cat.to_hats(out_path)
+    read_catalog = lsdb.read_hats(out_path)
+    assert type(read_catalog.dtypes["lc"]) == NestedDtype
+    assert type(read_catalog.compute().dtypes["lc"]) == NestedDtype

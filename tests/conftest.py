@@ -58,13 +58,6 @@ XMATCH_MOCK_FILE = "xmatch_mock.csv"
 TEST_DIR = Path(__file__).parent
 
 
-def cast_nested(df, columns):
-    """Helper function to cast nested columns to the correct type."""
-    return df.assign(
-        **{col: df[col].astype(NestedDtype.from_pandas_arrow_dtype(df.dtypes[col])) for col in columns},
-    )
-
-
 @pytest.fixture
 def test_data_dir():
     return Path(TEST_DIR) / DATA_DIR_NAME
@@ -332,7 +325,7 @@ def small_sky_order3_source_margin_catalog(test_data_dir):
 
 @pytest.fixture
 def small_sky_with_nested_sources(small_sky_with_nested_sources_dir):
-    return lsdb.read_hats(small_sky_with_nested_sources_dir).map_partitions(cast_nested, columns=["sources"])
+    return lsdb.read_hats(small_sky_with_nested_sources_dir)
 
 
 @pytest.fixture
@@ -341,7 +334,7 @@ def small_sky_with_nested_sources_with_margin(
 ):
     return lsdb.read_hats(
         small_sky_with_nested_sources_dir, margin_cache=small_sky_with_nested_sources_margin_dir
-    ).map_partitions(cast_nested, columns=["sources"])
+    )
 
 
 @pytest.fixture
