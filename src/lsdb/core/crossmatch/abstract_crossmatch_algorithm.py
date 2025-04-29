@@ -88,8 +88,8 @@ class AbstractCrossmatchAlgorithm(ABC):
                 name, with the first appended to the left columns and the second to the right
                 columns
         """
-        self.left = left.copy(deep=False)
-        self.right = right.copy(deep=False)
+        self.left = left.copy(deep=False) if how != "right" else None
+        self.right = right.copy(deep=False) if how != "left" else None
         self.left_order = left_order
         self.left_pixel = left_pixel
         self.right_order = right_order

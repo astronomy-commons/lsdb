@@ -4,8 +4,8 @@ import warnings
 from typing import TYPE_CHECKING, Type
 
 import nested_dask as nd
-from hats.pixel_tree import PixelAlignment, PixelAlignmentType
 import pandas as pd
+from hats.pixel_tree import PixelAlignment, PixelAlignmentType
 
 import lsdb.nested as nd
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
@@ -47,16 +47,17 @@ def perform_crossmatch(
     how: str,
     **kwargs,
 ):
-    """Performs a crossmatch on data from a HEALPix pixel in each catalog
-
-    Filters the left catalog before performing the cross-match to stop duplicate points appearing in
-    the result.
-    """
-    if right_pix.order > left_pix.order:
+    """Performs a crossmatch on data from a HEALPix pixel in each catalog."""
+    # TODO: this looks like "implied inner"
+    # Filters the left catalog before performing the cross-match to
+    # stop duplicate points appearing in the result.
+    if right_pix and right_pix.order > left_pix.order:
         left_df = filter_by_spatial_index_to_pixel(left_df, right_pix.order, right_pix.pixel)
 
     if len(left_df) == 0:
         return meta_df
+
+    # TODO: check right_df?
 
     # TODO: does this work if either or both are None?
     right_joined_df = concat_partition_and_margin(right_df, right_margin_df)
@@ -159,7 +160,9 @@ def crossmatch_catalog_data(
         )
 
     # perform alignment on the two catalogs
-    alignment = align_catalogs(left, right, add_right_margin=True, alignment_type=PixelAlignmentType[how.upper()])
+    alignment = align_catalogs(
+        left, right, add_right_margin=True, alignment_type=PixelAlignmentType[how.upper()]
+    )
 
     # get lists of HEALPix pixels from alignment to pass to cross-match
     left_pixels, right_pixels = get_healpix_pixels_from_alignment(alignment)
@@ -176,6 +179,7 @@ def crossmatch_catalog_data(
         crossmatch_algorithm,
         suffixes,
         meta_df,
+        how,
         **kwargs,
     )
 
