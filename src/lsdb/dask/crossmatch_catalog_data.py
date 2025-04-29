@@ -42,6 +42,7 @@ def perform_crossmatch(
     algorithm,
     suffixes,
     meta_df,
+    how: str,
     **kwargs,
 ):
     """Performs a crossmatch on data from a HEALPix pixel in each catalog
@@ -62,14 +63,15 @@ def perform_crossmatch(
     return algorithm(
         left_df,
         right_joined_df,
-        left_pix.order,
-        left_pix.pixel,
-        right_pix.order,
-        right_pix.pixel,
+        left_pix.order if left_pix else None,
+        left_pix.pixel if left_pix else None,
+        right_pix.order if right_pix else None,
+        right_pix.pixel if right_pix else None,
         left_catalog_info,
         right_catalog_info,
         right_margin_catalog_info,
         suffixes,
+        how,
     ).crossmatch(**kwargs)
 
 
