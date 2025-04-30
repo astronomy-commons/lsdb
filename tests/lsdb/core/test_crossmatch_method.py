@@ -91,7 +91,7 @@ def test_ra_dec_columns_crossmatch(algo, small_sky_catalog, small_sky_xmatch_cat
     left_dataframe = small_sky_catalog.compute()
     right_dataframe = small_sky_xmatch_catalog.compute()
 
-    # Rename ra and dec columns to all caps
+    # Rename ra and dec columns to "RA" and "DEC"
     right_dataframe_caps_ra_col = right_dataframe.rename(columns={"ra": "RA"})
     right_dataframe_caps_dec_col = right_dataframe.rename(columns={"dec": "DEC"})
 
@@ -115,18 +115,17 @@ def test_ra_dec_columns_crossmatch(algo, small_sky_catalog, small_sky_xmatch_cat
     assert isinstance(result, npd.NestedFrame)
     assert len(result) == len(xmatch_correct)
 
-    # Rename ra and dec columns to unknown names
-    right_dataframe_abnormal_ra_col = right_dataframe.rename(columns={"ra": "ra_col"})
-    right_dataframe_abnormal_dec_col = right_dataframe.rename(columns={"dec": "dec_col"})
+    # Rename ra and dec columns to abnormal names
+    right_dataframe_abnormal_ra_col = right_dataframe.rename(columns={"ra": "abnormal_ra_col_name"})
+    right_dataframe_abnormal_dec_col = right_dataframe.rename(columns={"dec": "abnormal_dec_col_name"})
 
-    # Try crossmatch
+    # Crossmatch method attempts to use default column names and fails
     with pytest.raises(ValueError, match="No 'ra' or 'RA' column found"):
         lsdb.crossmatch(
             left_dataframe,
             right_dataframe_abnormal_ra_col,
             algorithm=algo,
         )
-
     with pytest.raises(ValueError, match="No 'dec' or 'DEC' column found"):
         lsdb.crossmatch(
             left_dataframe,
@@ -134,19 +133,16 @@ def test_ra_dec_columns_crossmatch(algo, small_sky_catalog, small_sky_xmatch_cat
             algorithm=algo,
         )
 
-    # Rename ra and dec columns to unknown names
-    left_dataframe_abnormal_ra_dec_cols = left_dataframe.rename(columns={"ra": "ra_col", "dec": "dec_col"})
-    right_dataframe_abnormal_ra_dec_cols = right_dataframe.rename(columns={"ra": "ra_col", "dec": "dec_col"})
-
-    # Try crossmatch with specified ra and dec columns
+    # Successful crossmatch when we specify the abnormal RA column name in the right_args dict
     result = lsdb.crossmatch(
-        left_dataframe_abnormal_ra_dec_cols,
-        right_dataframe_abnormal_ra_dec_cols,
-        ra_column="ra_col",
-        dec_column="dec_col",
+        left_dataframe,
+        right_dataframe_abnormal_ra_col,
         algorithm=algo,
         radius_arcsec=0.01 * 3600,
-        right_args={"margin_threshold": 100},
+        right_args={
+            "margin_threshold": 100,
+            "ra_column": "abnormal_ra_col_name",
+        },
     ).compute()
     assert isinstance(result, npd.NestedFrame)
     assert len(result) == len(xmatch_correct)
