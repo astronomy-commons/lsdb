@@ -148,3 +148,25 @@ def test_ra_dec_columns_crossmatch(algo, small_sky_catalog, small_sky_xmatch_cat
     ).compute()
     assert isinstance(result, npd.NestedFrame)
     assert len(result) == len(xmatch_correct)
+
+    # And finally, check we can override both left and right RA, dec column names using the ra/dec_column args
+    right_dataframe_abnormal_cols = right_dataframe.rename(
+        columns={"ra": "abnormal_ra_col_name", "dec": "abnormal_dec_col_name"}
+    )
+    left_dataframe_abnormal_cols = left_dataframe.rename(
+        columns={"ra": "abnormal_ra_col_name", "dec": "abnormal_dec_col_name"}
+    )
+    result = lsdb.crossmatch(
+        left_dataframe_abnormal_cols,
+        right_dataframe_abnormal_cols,
+        algorithm=algo,
+        radius_arcsec=0.01 * 3600,
+        ra_column="abnormal_ra_col_name",
+        dec_column="abnormal_dec_col_name",
+        right_args={
+            "margin_threshold": 100,
+            "ra_column": "abnormal_ra_col_name",
+        },
+    ).compute()
+    assert isinstance(result, npd.NestedFrame)
+    assert len(result) == len(xmatch_correct)
