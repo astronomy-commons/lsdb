@@ -24,6 +24,8 @@ def _validate_and_convert_to_catalog(
             data_args["ra_column"] = "ra"
         elif "RA" in data.columns:
             data_args["ra_column"] = "RA"
+        elif "Ra" in data.columns:
+            data_args["ra_column"] = "Ra"
         else:
             raise ValueError("No 'ra' or 'RA' column found in DataFrame; specify 'ra_column' param.")
 
@@ -32,6 +34,8 @@ def _validate_and_convert_to_catalog(
             data_args["dec_column"] = "dec"
         elif "DEC" in data.columns:
             data_args["dec_column"] = "DEC"
+        elif "Dec" in data.columns:
+            data_args["dec_column"] = "Dec"
         else:
             raise ValueError("No 'dec' or 'DEC' column found in DataFrame; specify 'dec_column' param.")
 

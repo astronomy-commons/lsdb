@@ -92,12 +92,10 @@ def test_ra_dec_columns_crossmatch(algo, small_sky_catalog, small_sky_xmatch_cat
     right_dataframe = small_sky_xmatch_catalog.compute()
 
     # Rename ra and dec columns to "RA" and "DEC"
-    right_dataframe_caps_ra_col = right_dataframe.rename(columns={"ra": "RA"})
-    right_dataframe_caps_dec_col = right_dataframe.rename(columns={"dec": "DEC"})
-
+    right_dataframe_caps_cols = right_dataframe.rename(columns={"ra": "RA"}).rename(columns={"dec": "DEC"})
     result = lsdb.crossmatch(
         left_dataframe,
-        right_dataframe_caps_ra_col,
+        right_dataframe_caps_cols,
         algorithm=algo,
         radius_arcsec=0.01 * 3600,
         right_args={"margin_threshold": 100},
@@ -105,9 +103,13 @@ def test_ra_dec_columns_crossmatch(algo, small_sky_catalog, small_sky_xmatch_cat
     assert isinstance(result, npd.NestedFrame)
     assert len(result) == len(xmatch_correct)
 
+    # Rename ra and dec columns to "Ra" and "Dec"
+    right_dataframe_title_case_cols = right_dataframe.rename(columns={"ra": "Ra"}).rename(
+        columns={"dec": "Dec"}
+    )
     result = lsdb.crossmatch(
         left_dataframe,
-        right_dataframe_caps_dec_col,
+        right_dataframe_title_case_cols,
         algorithm=algo,
         radius_arcsec=0.01 * 3600,
         right_args={"margin_threshold": 100},
