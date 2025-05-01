@@ -74,7 +74,7 @@ def crossmatch(
         ra_column (str, optional): The name of the right ascension column for both catalogs,
             if passing dataframes. Can be specified in the left_args or right_args dictionaries if
             left and right catalogs have different RA column names. Defaults to None, which will use
-            the default column names "ra" or "RA" if they exist in the DataFrame.
+            the default column names "ra", "Ra", or "RA" if they exist in the DataFrame.
         dec_column (str, optional): The name of the declination column for both catalogs,
             if passing dataframes. Can be specified in the left_args or right_args dictionaries if
             left and right catalogs have different dec column names. Defaults to None, which will use
