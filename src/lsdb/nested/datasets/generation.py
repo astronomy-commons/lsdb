@@ -1,12 +1,13 @@
-from nested_pandas import datasets
 import numpy as np
+from nested_pandas import datasets
 
-from lsdb.nested.core import NestedFrame
 import lsdb
+from lsdb.nested.core import NestedFrame
 
 
-def generate_data(n_base, n_layer, npartitions=1, 
-                  seed=None, ra_range=(0.0,360.0), dec_range=(-90,90)) -> NestedFrame:
+def generate_data(
+    n_base, n_layer, npartitions=1, seed=None, ra_range=(0.0, 360.0), dec_range=(-90, 90)
+) -> NestedFrame:
     """Generates a toy dataset.
 
     Docstring copied from nested-pandas.
@@ -48,16 +49,24 @@ def generate_data(n_base, n_layer, npartitions=1,
     base_nf["ra"] = rng.uniform(ra_range[0], ra_range[1], size=n_base)
     base_nf["dec"] = rng.uniform(dec_range[0], dec_range[1], size=n_base)
 
+    # Add an error column to the nested column
+    if isinstance(n_layer, dict):
+        for layer in n_layer.keys():
+            base_nf[f"{layer}.flux_err"] = base_nf[f"{layer}.flux"] * 0.05
+    else:
+        base_nf["nested.flux_err"] = base_nf["nested.flux"] * 0.05
+
+    # reorder columns nicely
+    base_nf = base_nf[["ra", "dec", "a", "b"] + base_nf.nested_columns]
+
     # Convert to lsdb.nested NestedFrame
     base_nf = NestedFrame.from_pandas(base_nf).repartition(npartitions=npartitions)
 
     return base_nf
 
-def generate_catalog(n_base, n_layer,
-                     seed=None, ra_range=(0.0,360.0), dec_range=(-90,90), **kwargs):
-    """Generates a toy catalog.
 
-    Docstring copied from nested-pandas.
+def generate_catalog(n_base, n_layer, seed=None, ra_range=(0.0, 360.0), dec_range=(-90, 90), **kwargs):
+    """Generates a toy catalog.
 
     Parameters
     ----------
@@ -90,4 +99,3 @@ def generate_catalog(n_base, n_layer,
 
     base_nf = generate_data(n_base, n_layer, seed=seed, ra_range=ra_range, dec_range=dec_range)
     return lsdb.from_dataframe(base_nf.compute(), **kwargs)
-
