@@ -27,7 +27,7 @@ def _validate_and_convert_to_catalog(
         elif "Ra" in data.columns:
             data_args["ra_column"] = "Ra"
         else:
-            raise ValueError("No 'ra' or 'RA' column found in DataFrame; specify 'ra_column' param.")
+            raise ValueError("No 'ra', 'Ra', or 'RA' column found in DataFrame; specify 'ra_column' param.")
 
     if "dec_column" not in data_args:
         if "dec" in data.columns:
