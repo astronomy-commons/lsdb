@@ -24,16 +24,22 @@ def _validate_and_convert_to_catalog(
             data_args["ra_column"] = "ra"
         elif "RA" in data.columns:
             data_args["ra_column"] = "RA"
+        elif "Ra" in data.columns:
+            data_args["ra_column"] = "Ra"
         else:
-            raise ValueError("No 'ra' or 'RA' column found in DataFrame; specify 'ra_column' param.")
+            raise ValueError("No 'ra', 'Ra', or 'RA' column found in DataFrame; specify 'ra_column' param.")
 
     if "dec_column" not in data_args:
         if "dec" in data.columns:
             data_args["dec_column"] = "dec"
         elif "DEC" in data.columns:
             data_args["dec_column"] = "DEC"
+        elif "Dec" in data.columns:
+            data_args["dec_column"] = "Dec"
         else:
-            raise ValueError("No 'dec' or 'DEC' column found in DataFrame; specify 'dec_column' param.")
+            raise ValueError(
+                "No 'dec', 'Dec', or 'DEC' column found in DataFrame; specify 'dec_column' param."
+            )
 
     # Pick catalog name: either use the user-specified suffixes, or default to "left" or "right".
     if "catalog_name" not in data_args:
@@ -68,9 +74,13 @@ def crossmatch(
         left (Catalog | NestedFrame): The left catalog or frame to crossmatch.
         right (Catalog | NestedFrame): The right catalog or frame to crossmatch.
         ra_column (str, optional): The name of the right ascension column for both catalogs,
-            if passing dataframes. Defaults to None.
+            if passing dataframes. Can be specified in the left_args or right_args dictionaries if
+            left and right catalogs have different RA column names. Defaults to None, which will use
+            the default column names "ra", "Ra", or "RA" if they exist in the DataFrame.
         dec_column (str, optional): The name of the declination column for both catalogs,
-            if passing dataframes. Defaults to None.
+            if passing dataframes. Can be specified in the left_args or right_args dictionaries if
+            left and right catalogs have different dec column names. Defaults to None, which will use
+            the default column names "dec", "Dec", or "DEC" if they exist in the DataFrame.
         suffixes (tuple[str, str], optional): Suffixes to append to overlapping column names.
             Defaults to None.
         algorithm (Type[AbstractCrossmatchAlgorithm] | BuiltInCrossmatchAlgorithm, optional): The
