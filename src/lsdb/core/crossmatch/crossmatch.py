@@ -37,7 +37,9 @@ def _validate_and_convert_to_catalog(
         elif "Dec" in data.columns:
             data_args["dec_column"] = "Dec"
         else:
-            raise ValueError("No 'dec', 'Dec', or 'DEC' column found in DataFrame; specify 'dec_column' param.")
+            raise ValueError(
+                "No 'dec', 'Dec', or 'DEC' column found in DataFrame; specify 'dec_column' param."
+            )
 
     # Pick catalog name: either use the user-specified suffixes, or default to "left" or "right".
     if "catalog_name" not in data_args:
