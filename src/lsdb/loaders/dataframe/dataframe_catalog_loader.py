@@ -167,8 +167,8 @@ class DataframeCatalogLoader:
 
         # Recover NestedDtype (https://github.com/astronomy-commons/lsdb/issues/730)
         if len(self.dataframe.nested_columns) > 0:
-            for col in self.dataframe.nested_columns:
-                ddf = ddf.astype({col: self.dataframe[col].dtype})
+            ddf = ddf.astype({col: self.dataframe[col].dtype for col in self.dataframe.nested_columns})
+
         return Catalog(ddf, ddf_pixel_map, hc_structure)
 
     def _set_spatial_index(self):
