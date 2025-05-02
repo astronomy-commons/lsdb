@@ -285,6 +285,12 @@ def _load_dask_meta_schema(hc_catalog, config) -> npd.NestedFrame:
     """Creates the Dask meta DataFrame from the HATS catalog schema."""
     metadata_pointer = hc.io.paths.get_common_metadata_pointer(hc_catalog.catalog_base_dir)
     dask_meta_schema = _read_parquet_file(metadata_pointer, columns=config.columns, schema=hc_catalog.schema)
+    if (
+        config.columns is not None
+        and SPATIAL_INDEX_COLUMN in config.columns
+        and dask_meta_schema.index.name == SPATIAL_INDEX_COLUMN
+    ):
+        config.columns.remove(SPATIAL_INDEX_COLUMN)
     return dask_meta_schema
 
 
