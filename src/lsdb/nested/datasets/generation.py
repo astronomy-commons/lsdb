@@ -1,8 +1,10 @@
 import numpy as np
 from astropy.coordinates import Angle, SkyCoord
+from cdshealpix.nested import healpix_to_lonlat
 from nested_pandas import datasets
 
 import lsdb
+from lsdb.core.search import BoxSearch, ConeSearch, PixelSearch
 from lsdb.nested.core import NestedFrame
 
 
@@ -31,7 +33,7 @@ def generate_data(
         A tuple of the min and max values for the dec column in degrees
     search_filter : AbstractSearch
         A search filter to apply to the generated data. Currently supports the
-        ConeSearch and BoxSearch filters. Note that if provided,
+        ConeSearch, BoxSearch, and PixelSearch filters. Note that if provided,
         this will override the `ra_range` and `dec_range` parameters.
 
     Returns
@@ -60,28 +62,17 @@ def generate_data(
     rng = np.random.default_rng(seed)  # Use the provided seed for reproducibility
 
     if search_filter is not None:
-        if isinstance(search_filter, lsdb.core.search.ConeSearch):
-            ra_center = search_filter.ra
-            dec_center = search_filter.dec
-
-            # Generate RA/decs from the cone parameters
-            radius_degrees = search_filter.radius_arcsec / 3600.0
-            phi = rng.uniform(0.0, 2.0 * np.pi, size=n_base)
-            cos_radius = np.cos(np.radians(radius_degrees))
-            theta = np.arccos(rng.uniform(cos_radius, 1.0, size=n_base))
-            cone_center = SkyCoord(ra=ra_center, dec=dec_center, unit="deg")
-            coords = cone_center.directional_offset_by(
-                position_angle=Angle(phi, "radian"), separation=Angle(theta, "radian")
-            )
-            base_nf["ra"] = coords.ra.deg
-            base_nf["dec"] = coords.dec.deg
-        elif isinstance(search_filter, lsdb.core.search.BoxSearch):
+        if isinstance(search_filter, ConeSearch):
+            base_nf["ra"], base_nf["dec"] = _generate_cone_search(search_filter, n_base=n_base, seed=seed)
+        elif isinstance(search_filter, BoxSearch):
             ra_range = search_filter.ra
             dec_range = search_filter.dec
             base_nf["ra"], base_nf["dec"] = _generate_box_radec(ra_range, dec_range, n_base, seed=seed)
+        elif isinstance(search_filter, PixelSearch):
+            base_nf["ra"], base_nf["dec"] = _generate_pixel_search(search_filter, n_base, seed=seed)
         else:
             raise NotImplementedError(
-                "Only ConeSearch and BoxSearch are currently supported for search_filter"
+                "Only ConeSearch, BoxSearch and PixelSearch are currently supported for search_filter"
             )
 
     else:
@@ -105,6 +96,26 @@ def generate_data(
     base_nf = NestedFrame.from_pandas(base_nf).repartition(npartitions=npartitions)
 
     return base_nf
+
+
+def _generate_cone_search(
+    cone_search: ConeSearch, n_base: int, seed: int | None = None
+) -> tuple[np.ndarray, np.ndarray]:
+    rng = np.random.default_rng(seed)
+
+    ra_center = cone_search.ra
+    dec_center = cone_search.dec
+
+    # Generate RA/decs from the cone parameters
+    radius_degrees = cone_search.radius_arcsec / 3600.0
+    phi = rng.uniform(0.0, 2.0 * np.pi, size=n_base)
+    cos_radius = np.cos(np.radians(radius_degrees))
+    theta = np.arccos(rng.uniform(cos_radius, 1.0, size=n_base))
+    cone_center = SkyCoord(ra=ra_center, dec=dec_center, unit="deg")
+    coords = cone_center.directional_offset_by(
+        position_angle=Angle(phi, "radian"), separation=Angle(theta, "radian")
+    )
+    return coords.ra.deg, coords.dec.deg
 
 
 def _generate_box_radec(ra_range, dec_range, n_base, seed=None):
@@ -133,6 +144,29 @@ def _generate_box_radec(ra_range, dec_range, n_base, seed=None):
     dec_rad = np.arcsin(rng.uniform(sindec_min, sindec_max, size=n_base))
     dec = np.degrees(dec_rad)
     return ra, dec
+
+
+def _generate_pixel_search(
+    pixel_search: PixelSearch, n_base: int, seed=None, gen_order: int = 29
+) -> tuple[np.ndarray, np.ndarray]:
+    rng = np.random.default_rng(seed)
+
+    pix_orders, pix_indexes = np.array([[pix.order, pix.pixel] for pix in pixel_search.pixels]).T
+    if np.any(pix_orders > gen_order):
+        raise ValueError("Pixel orders cannot be greater than gen_order")
+
+    # Distribute points over pixels, inverse proportional to pixel areas
+    inverse_area = 1.0 / (1 << (2 * pix_orders))
+    prob = inverse_area / np.sum(inverse_area)
+    pixels = rng.choice(len(pix_orders), p=prob, size=n_base)
+    # Set-up index ranges for all points
+    low_gen_index = pix_indexes[pixels] << (2 * (gen_order - pix_orders[pixels]))
+    high_gen_index = (pix_indexes[pixels] + 1) << (2 * (gen_order - pix_orders[pixels]))
+    # Generate healpix index on a high order
+    gen_index = rng.integers(low_gen_index, high_gen_index)
+    # Convert to ra and dec
+    lon, lat = healpix_to_lonlat(gen_index, gen_order)
+    return np.asarray(lon.deg), np.asarray(lat.deg)
 
 
 def generate_catalog(
