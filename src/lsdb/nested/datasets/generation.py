@@ -7,7 +7,7 @@ from lsdb.nested.core import NestedFrame
 
 
 def generate_data(
-    n_base, n_layer, npartitions=1, seed=None, ra_range=(0.0, 360.0), dec_range=(-90, 90), search_filter=None
+    n_base, n_layer, npartitions=1, seed=None, ra_range=(0.0, 360.0), dec_range=(-90, 90), search_region=None
 ) -> NestedFrame:
     """Generates a toy dataset.
 
@@ -29,9 +29,9 @@ def generate_data(
         A tuple of the min and max values for the ra column in degrees
     dec_range : tuple
         A tuple of the min and max values for the dec column in degrees
-    search_filter : AbstractSearch
-        A search filter to apply to the generated data. Currently supports the
-        ConeSearch and BoxSearch filters. Note that if provided,
+    search_region : AbstractSearch
+        A search region to apply to the generated data. Currently supports the
+        ConeSearch and BoxSearch regions. Note that if provided,
         this will override the `ra_range` and `dec_range` parameters.
 
     Returns
@@ -41,16 +41,16 @@ def generate_data(
 
     Examples
     --------
-    >>> from lsdb.nested.datasets import generate_data # doctest: +SKIP
-    >>> generate_data(10,100) # doctest: +SKIP
-    >>> generate_data(10, {"nested_a": 100, "nested_b": 200}) # doctest: +SKIP
+    >>> from lsdb.nested.datasets import generate_data
+    >>> generate_data(10,100)
+    >>> generate_data(10, {"nested_a": 100, "nested_b": 200})
 
     Constraining spatial ranges:
     >>> generate_data(10, 100, ra_range=(0., 10.), dec_range=(-5., 0.)) # doctest: +SKIP
 
-    Using a search filter:
+    Using a search region:
     >>> from lsdb.core.search import ConeSearch # doctest: +SKIP
-    >>> generate_data(10, 100, search_filter=ConeSearch(5, 5, 1)) # doctest: +SKIP
+    >>> generate_data(10, 100, search_region=ConeSearch(5, 5, 1)) # doctest: +SKIP
     """
 
     # Use nested-pandas generator
@@ -59,13 +59,13 @@ def generate_data(
     # Generated "ra" and "dec" columns for hats catalog validity
     rng = np.random.default_rng(seed)  # Use the provided seed for reproducibility
 
-    if search_filter is not None:
-        if isinstance(search_filter, lsdb.core.search.ConeSearch):
-            ra_center = search_filter.ra
-            dec_center = search_filter.dec
+    if search_region is not None:
+        if isinstance(search_region, lsdb.core.search.ConeSearch):
+            ra_center = search_region.ra
+            dec_center = search_region.dec
 
             # Generate RA/decs from the cone parameters
-            radius_degrees = search_filter.radius_arcsec / 3600.0
+            radius_degrees = search_region.radius_arcsec / 3600.0
             phi = rng.uniform(0.0, 2.0 * np.pi, size=n_base)
             cos_radius = np.cos(np.radians(radius_degrees))
             theta = np.arccos(rng.uniform(cos_radius, 1.0, size=n_base))
@@ -75,13 +75,13 @@ def generate_data(
             )
             base_nf["ra"] = coords.ra.deg
             base_nf["dec"] = coords.dec.deg
-        elif isinstance(search_filter, lsdb.core.search.BoxSearch):
-            ra_range = search_filter.ra
-            dec_range = search_filter.dec
+        elif isinstance(search_region, lsdb.core.search.BoxSearch):
+            ra_range = search_region.ra
+            dec_range = search_region.dec
             base_nf["ra"], base_nf["dec"] = _generate_box_radec(ra_range, dec_range, n_base, seed=seed)
         else:
             raise NotImplementedError(
-                "Only ConeSearch and BoxSearch are currently supported for search_filter"
+                "Only ConeSearch and BoxSearch are currently supported for search_region"
             )
 
     else:
@@ -136,7 +136,7 @@ def _generate_box_radec(ra_range, dec_range, n_base, seed=None):
 
 
 def generate_catalog(
-    n_base, n_layer, seed=None, ra_range=(0.0, 360.0), dec_range=(-90, 90), search_filter=None, **kwargs
+    n_base, n_layer, seed=None, ra_range=(0.0, 360.0), dec_range=(-90, 90), search_region=None, **kwargs
 ):
     """Generates a toy catalog.
 
@@ -154,9 +154,9 @@ def generate_catalog(
         A tuple of the min and max values for the ra column in degrees
     dec_range : tuple
         A tuple of the min and max values for the dec column in degrees
-    search_filter : AbstractSearch
-        A search filter to apply to the generated data. Currently supports the
-        ConeSearch and BoxSearch filters. Note that if provided,
+    search_region : AbstractSearch
+        A search region to apply to the generated data. Currently supports the
+        ConeSearch and BoxSearch regions. Note that if provided,
         this will override the `ra_range` and `dec_range` parameters.
     **kwargs :
         Additional keyword arguments to pass to `lsdb.from_dataframe`.
@@ -175,12 +175,15 @@ def generate_catalog(
     Constraining spatial ranges:
     >>> generate_data(10, 100, ra_range=(0., 10.), dec_range=(-5., 0.)) # doctest: +SKIP
 
-    Using a search filter:
+    Using a search region:
     >>> from lsdb.core.search import ConeSearch # doctest: +SKIP
-    >>> generate_data(10, 100, search_filter=ConeSearch(5, 5, 1)) # doctest: +SKIP
+    >>> generate_data(10, 100, search_region=ConeSearch(5, 5, 1)) # doctest: +SKIP
     """
 
     base_nf = generate_data(
-        n_base, n_layer, seed=seed, ra_range=ra_range, dec_range=dec_range, search_filter=search_filter
+        n_base, n_layer, seed=seed, ra_range=ra_range, dec_range=dec_range, search_region=search_region
     )
-    return lsdb.from_dataframe(base_nf.compute(), catalog_name="generated_catalog", **kwargs)
+    # Give it a default catalog name if not provided
+    if "catalog_name" not in kwargs:
+        return lsdb.from_dataframe(base_nf.compute(), catalog_name="generated_catalog", **kwargs)
+    return lsdb.from_dataframe(base_nf.compute(), **kwargs)

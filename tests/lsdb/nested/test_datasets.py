@@ -84,7 +84,7 @@ def test_generate_catalog_with_cone():
     """test the dataset generator function with a ConeSearch"""
 
     # test the seed
-    generate_1 = nd.datasets.generate_catalog(100, 3, seed=1, search_filter=ConeSearch(5, 5, 1))
+    generate_1 = nd.datasets.generate_catalog(100, 3, seed=1, search_region=ConeSearch(5, 5, 1))
 
     # test the length
     assert len(generate_1) == 100
@@ -103,7 +103,7 @@ def test_generate_catalog_with_box():
 
     # test the seed
     generate_1 = nd.datasets.generate_catalog(
-        100, 3, seed=1, search_filter=BoxSearch((50.0, 51.0), (0.5, 1.0))
+        100, 3, seed=1, search_region=BoxSearch((50.0, 51.0), (0.5, 1.0))
     )
 
     # test the length
@@ -119,9 +119,9 @@ def test_generate_catalog_with_box():
     assert computed.dec.max() <= 1.0
 
 
-def test_generate_catalog_with_invalid_search_filter():
-    """test the dataset generator function with an invalid search filter"""
+def test_generate_catalog_with_invalid_search_region():
+    """test the dataset generator function with an invalid search region"""
 
     # test the seed
     with pytest.raises(NotImplementedError):
-        nd.datasets.generate_catalog(100, 3, seed=1, search_filter="invalid_search_filter")
+        nd.datasets.generate_catalog(100, 3, seed=1, search_region="invalid_search_region")
