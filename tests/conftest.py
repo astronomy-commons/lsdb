@@ -14,7 +14,6 @@ from hats.pixel_math.spatial_index import (
     compute_spatial_index,
     healpix_to_spatial_index,
 )
-from nested_pandas import NestedDtype
 
 import lsdb
 import lsdb.nested as nd

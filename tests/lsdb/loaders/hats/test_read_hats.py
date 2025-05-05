@@ -10,7 +10,6 @@ import pytest
 from hats.io.file_io import get_upath_for_protocol
 from hats.pixel_math import HealpixPixel
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
-from pandas.core.dtypes.base import ExtensionDtype
 from upath import UPath
 
 import lsdb

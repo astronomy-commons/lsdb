@@ -196,16 +196,16 @@ def test_sort_nested_values_using_base_column(small_sky_with_nested_sources):
 
 
 def test_serialization_read(small_sky_with_nested_sources):
-    assert type(small_sky_with_nested_sources.dtypes["sources"]) == NestedDtype
+    assert isinstance(small_sky_with_nested_sources.dtypes["sources"], NestedDtype)
 
 
 def test_serialization_round_trip(tmp_path, small_sky_order1_catalog, small_sky_source_catalog):
     cat = small_sky_order1_catalog.join_nested(
         small_sky_source_catalog, left_on="id", right_on="object_id", nested_column_name="lc"
     )
-    assert type(cat.dtypes["lc"]) == NestedDtype
+    assert isinstance(cat.dtypes["lc"], NestedDtype)
     out_path = tmp_path / "test_cat"
     cat.to_hats(out_path)
     read_catalog = lsdb.read_hats(out_path)
-    assert type(read_catalog.dtypes["lc"]) == NestedDtype
-    assert type(read_catalog.compute().dtypes["lc"]) == NestedDtype
+    assert isinstance(read_catalog.dtypes["lc"], NestedDtype)
+    assert isinstance(read_catalog.compute().dtypes["lc"], NestedDtype)
