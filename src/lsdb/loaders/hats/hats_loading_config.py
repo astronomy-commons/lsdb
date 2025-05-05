@@ -2,10 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable
 
-import pandas as pd
-from pandas.io._util import _arrow_dtype_mapping
 from upath import UPath
 
 from lsdb.core.search.abstract_search import AbstractSearch
@@ -27,32 +24,16 @@ class HatsLoadingConfig:
     margin_cache: str | Path | UPath | None = None
     """Path to the margin cache catalog. Defaults to None."""
 
-    dtype_backend: str | None = "pyarrow"
-    """The backend data type to apply to the catalog. It defaults to "pyarrow" and 
-    if it is None no type conversion is performed."""
-
     kwargs: dict = field(default_factory=dict)
     """Extra kwargs for the pandas parquet file reader"""
 
     def __post_init__(self):
-        if self.dtype_backend not in ["pyarrow", "numpy_nullable", None]:
-            raise ValueError("The data type backend must be either 'pyarrow' or 'numpy_nullable'")
-
         # Check for commonly misspelled or mistaken keys
         for nonused_kwarg in ["margin", "maargin", "margins", "cache", "margincache"]:
             if nonused_kwarg in self.kwargs:
                 raise ValueError(
                     f"Invalid keyword argument '{nonused_kwarg}' found. Did you mean 'margin_cache'?"
                 )
-
-    def get_dtype_mapper(self) -> Callable | None:
-        """Returns a mapper for pyarrow or numpy types, mirroring Pandas behaviour."""
-        mapper = None
-        if self.dtype_backend == "pyarrow":
-            mapper = pd.ArrowDtype
-        elif self.dtype_backend == "numpy_nullable":
-            mapper = _arrow_dtype_mapping().get
-        return mapper
 
     def make_query_url_params(self) -> dict:
         """
@@ -74,6 +55,4 @@ class HatsLoadingConfig:
     def get_read_kwargs(self):
         """Clumps existing kwargs and `dtype_backend`, if specified."""
         kwargs = dict(self.kwargs)
-        if self.dtype_backend is not None:
-            kwargs["dtype_backend"] = self.dtype_backend
         return kwargs

@@ -1,1 +1,2 @@
 git+https://github.com/astronomy-commons/hats.git@main
+git+https://github.com/lincc-frameworks/nested-pandas.git@main

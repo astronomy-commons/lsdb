@@ -5,7 +5,6 @@ from pathlib import Path
 import hats as hc
 import nested_pandas as npd
 import numpy as np
-import pyarrow as pa
 from hats.catalog import CatalogType
 from hats.catalog.catalog_collection import CatalogCollection
 from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
@@ -33,7 +32,6 @@ def read_hats(
     search_filter: AbstractSearch | None = None,
     columns: list[str] | str | None = None,
     margin_cache: str | Path | UPath | None = None,
-    dtype_backend: str | None = "pyarrow",
     **kwargs,
 ) -> Dataset:
     """Load catalog from a HATS directory.
@@ -106,7 +104,6 @@ def read_hats(
             search_filter=search_filter,
             columns=columns,
             margin_cache=margin_cache,
-            dtype_backend=dtype_backend,
             **kwargs,
         )
         catalog.hc_collection = hc_catalog  # type: ignore[attr-defined]
@@ -116,7 +113,6 @@ def read_hats(
             search_filter=search_filter,
             columns=columns,
             margin_cache=margin_cache,
-            dtype_backend=dtype_backend,
             **kwargs,
         )
     return catalog
@@ -148,7 +144,6 @@ def _load_catalog(
     search_filter: AbstractSearch | None = None,
     columns: list[str] | str | None = None,
     margin_cache: str | Path | UPath | None = None,
-    dtype_backend: str | None = "pyarrow",
     **kwargs,
 ) -> Dataset:
     if columns is None and hc_catalog.catalog_info.default_columns is not None:
@@ -165,7 +160,6 @@ def _load_catalog(
         search_filter=search_filter,
         columns=columns,
         margin_cache=margin_cache,
-        dtype_backend=dtype_backend,
         kwargs=kwargs,
     )
 
@@ -219,7 +213,7 @@ def _load_association_catalog(hc_catalog, config):
     if hc_catalog.catalog_info.contains_leaf_files:
         dask_df, dask_df_pixel_map = _load_dask_df_and_map(hc_catalog, config)
     else:
-        dask_meta_schema = _create_dask_meta_schema(hc_catalog.schema, config)
+        dask_meta_schema = _load_dask_meta_schema(hc_catalog, config)
         dask_df = nd.NestedFrame.from_pandas(dask_meta_schema, npartitions=1)
         dask_df_pixel_map = {}
     return AssociationCatalog(dask_df, dask_df_pixel_map, hc_catalog)
@@ -287,19 +281,17 @@ def _load_map_catalog(hc_catalog, config):
     return MapCatalog(dask_df, dask_df_pixel_map, hc_catalog)
 
 
-def _create_dask_meta_schema(schema: pa.Schema, config) -> npd.NestedFrame:
-    """Creates the Dask meta DataFrame from the HATS catalog schema."""
-    dask_meta_schema = schema.empty_table().to_pandas(types_mapper=config.get_dtype_mapper())
+def _load_dask_meta_schema(hc_catalog, config) -> npd.NestedFrame:
+    """Loads the Dask meta DataFrame from the parquet _metadata file."""
+    metadata_pointer = hc.io.paths.get_common_metadata_pointer(hc_catalog.catalog_base_dir)
+    dask_meta_schema = _read_parquet_file(metadata_pointer, columns=config.columns, schema=hc_catalog.schema)
     if (
-        dask_meta_schema.index.name != SPATIAL_INDEX_COLUMN
-        and SPATIAL_INDEX_COLUMN in dask_meta_schema.columns
+        config.columns is not None
+        and SPATIAL_INDEX_COLUMN in config.columns
+        and dask_meta_schema.index.name == SPATIAL_INDEX_COLUMN
     ):
-        dask_meta_schema = dask_meta_schema.set_index(SPATIAL_INDEX_COLUMN)
-        if config.columns is not None and SPATIAL_INDEX_COLUMN in config.columns:
-            config.columns.remove(SPATIAL_INDEX_COLUMN)
-    if config.columns is not None:
-        dask_meta_schema = dask_meta_schema[config.columns]
-    return npd.NestedFrame(dask_meta_schema)
+        config.columns.remove(SPATIAL_INDEX_COLUMN)
+    return dask_meta_schema
 
 
 def _load_dask_df_and_map(catalog: HCHealpixDataset, config) -> tuple[nd.NestedFrame, DaskDFPixelMap]:
@@ -307,7 +299,7 @@ def _load_dask_df_and_map(catalog: HCHealpixDataset, config) -> tuple[nd.NestedF
     pixels = catalog.get_healpix_pixels()
     ordered_pixels = np.array(pixels)[get_pixel_argsort(pixels)]
     divisions = get_pixels_divisions(ordered_pixels)
-    dask_meta_schema = _create_dask_meta_schema(catalog.schema, config)
+    dask_meta_schema = _load_dask_meta_schema(catalog, config)
     if len(ordered_pixels) > 0:
         ddf = nd.NestedFrame.from_map(
             read_pixel,
@@ -339,6 +331,24 @@ def read_pixel(
 
     NB: `columns` is necessary as an argument, even if None, so that dask-expr
     optimizes the execution plan."""
+
+    return _read_parquet_file(
+        hc.io.pixel_catalog_file(
+            catalog.catalog_base_dir, pixel, query_url_params, npix_suffix=catalog.catalog_info.npix_suffix
+        ),
+        columns=columns,
+        schema=schema,
+        **kwargs,
+    )
+
+
+def _read_parquet_file(
+    path: UPath,
+    *,
+    columns=None,
+    schema=None,
+    **kwargs,
+):
     if (
         columns is not None
         and schema is not None
@@ -347,9 +357,7 @@ def read_pixel(
     ):
         columns = columns + [SPATIAL_INDEX_COLUMN]
     dataframe = file_io.read_parquet_file_to_pandas(
-        hc.io.pixel_catalog_file(
-            catalog.catalog_base_dir, pixel, query_url_params, npix_suffix=catalog.catalog_info.npix_suffix
-        ),
+        path,
         columns=columns,
         schema=schema,
         **kwargs,
