@@ -44,14 +44,7 @@ def generate_data(
     Examples
     --------
     >>> from lsdb.nested.datasets import generate_data
-    >>> generate_data(10,100)
-    Dask NestedFrame Structure:
-                        ra      dec     id        a        b                                                                   nested
-    npartitions=1
-    0              float64  float64  int64  float64  float64  nested<t: [double], flux: [double], band: [string], flux_err: [double]>
-    9                  ...      ...    ...      ...      ...                                                                      ...
-    Dask Name: repartition, 3 expressions
-    Expr=Repartition(frame=MapPartitions(NestedFrame), new_partitions=1)
+    >>> nf = generate_data(10,100)
     >>> nf = generate_data(10, {"nested_a": 100, "nested_b": 200})
 
     Constraining spatial ranges:
