@@ -10,7 +10,6 @@ import pytest
 from hats.io.file_io import get_upath_for_protocol
 from hats.pixel_math import HealpixPixel
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
-from pandas.core.dtypes.base import ExtensionDtype
 from upath import UPath
 
 import lsdb
@@ -194,7 +193,6 @@ def test_read_hats_with_margin_extra_kwargs(small_sky_xmatch_dir, small_sky_xmat
         margin_cache=small_sky_xmatch_margin_dir,
         columns=["ra", "dec"],
         filters=[("ra", ">", 300)],
-        engine="pyarrow",
     )
     assert isinstance(catalog, lsdb.Catalog)
     filtered_cat = catalog.compute()
@@ -271,7 +269,7 @@ def test_read_hats_no_pandas_with_index_column(small_sky_order1_no_pandas_dir, h
 
 
 def test_read_hats_with_extra_kwargs(small_sky_order1_dir):
-    catalog = lsdb.read_hats(small_sky_order1_dir, filters=[("ra", ">", 300)], engine="pyarrow")
+    catalog = lsdb.read_hats(small_sky_order1_dir, filters=[("ra", ">", 300)])
     assert isinstance(catalog, lsdb.Catalog)
     assert np.greater(catalog.compute()["ra"].to_numpy(), 300).all()
 
@@ -438,29 +436,6 @@ def test_read_hats_with_margin_subset(
     assert (
         cone_search_catalog.margin.get_healpix_pixels() == cone_search_catalog_2.margin.get_healpix_pixels()
     )
-
-
-def test_read_hats_with_backend(small_sky_dir):
-    # By default, the schema is backed by pyarrow
-    default_catalog = lsdb.read_hats(small_sky_dir)
-    assert all(isinstance(col_type, pd.ArrowDtype) for col_type in default_catalog.dtypes)
-    # We can also pass it explicitly as an argument
-    catalog = lsdb.read_hats(small_sky_dir, dtype_backend="pyarrow")
-    assert catalog.dtypes.equals(default_catalog.dtypes)
-    # Load data using a numpy-nullable types.
-    catalog = lsdb.read_hats(small_sky_dir, dtype_backend="numpy_nullable")
-    assert all(isinstance(col_type, ExtensionDtype) for col_type in catalog.dtypes)
-    # The other option is to keep the original types. In this case they are numpy-backed.
-    catalog = lsdb.read_hats(small_sky_dir, dtype_backend=None)
-    assert all(isinstance(col_type, np.dtype) for col_type in catalog.dtypes)
-
-    assert isinstance(catalog._ddf, nd.NestedFrame)
-    assert isinstance(catalog.compute(), npd.NestedFrame)
-
-
-def test_read_hats_with_invalid_backend(small_sky_dir):
-    with pytest.raises(ValueError, match="data type backend must be either"):
-        lsdb.read_hats(small_sky_dir, dtype_backend="abc")
 
 
 def test_read_hats_margin_catalog_subset(
