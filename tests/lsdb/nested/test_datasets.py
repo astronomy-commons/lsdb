@@ -63,6 +63,10 @@ def test_generate_catalog():
     assert len(generate_1) == 100
     assert len(generate_1._ddf.nested.nest.to_flat()) == 300
 
+    # test catalog naming
+    generate_1 = nd.datasets.generate_catalog(2, 3, catalog_name="test_catalog")
+    assert generate_1.name == "test_catalog"
+
 
 def test_generate_catalog_ra_dec_ranges():
     """test the dataset generator function with ra and dec ranges"""

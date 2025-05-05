@@ -51,7 +51,7 @@ def generate_data(
     >>> nf = generate_data(10, 100, ra_range=(0., 10.), dec_range=(-5., 0.))
 
     Using a search region:
-    >>> from lsdb.core.search import ConeSearch # doctest: +SKIP
+    >>> from lsdb.core.search import ConeSearch
     >>> nf = generate_data(10, 100, search_region=ConeSearch(5, 5, 1))
     """
 
