@@ -10,7 +10,7 @@ from lsdb.nested.core import NestedFrame
 
 def generate_data(
     n_base, n_layer, npartitions=1, seed=None, ra_range=(0.0, 360.0), dec_range=(-90, 90), search_region=None
-) -> NestedFrame:
+):
     """Generates a toy dataset.
 
     Docstring copied from nested-pandas.
@@ -47,7 +47,7 @@ def generate_data(
     >>> generate_data(10,100)
     Dask NestedFrame Structure:
                         ra      dec     id        a        b                                                                   nested
-    npartitions=1                                                                                                                    
+    npartitions=1
     0              float64  float64  int64  float64  float64  nested<t: [double], flux: [double], band: [string], flux_err: [double]>
     9                  ...      ...    ...      ...      ...                                                                      ...
     Dask Name: repartition, 3 expressions
@@ -209,16 +209,16 @@ def generate_catalog(
 
     Examples
     --------
-    >>> from lsdb.nested.datasets import generate_catalog # doctest: +SKIP
-    >>> generate_catalog(10,100) # doctest: +SKIP
-    >>> generate_catalog(1000, 10, ra_range=(0.,10.), dec_range=(-5.,0.)) # doctest: +SKIP
+    >>> from lsdb.nested.datasets import generate_catalog
+    >>> gen_cat = generate_catalog(10,100)
+    >>> gen_cat = generate_catalog(1000, 10, ra_range=(0.,10.), dec_range=(-5.,0.))
 
     Constraining spatial ranges:
-    >>> generate_data(10, 100, ra_range=(0., 10.), dec_range=(-5., 0.)) # doctest: +SKIP
+    >>> gen_cat = generate_data(10, 100, ra_range=(0., 10.), dec_range=(-5., 0.))
 
     Using a search region:
     >>> from lsdb.core.search import ConeSearch # doctest: +SKIP
-    >>> generate_data(10, 100, search_region=ConeSearch(5, 5, 1)) # doctest: +SKIP
+    >>> gen_cat = generate_data(10, 100, search_region=ConeSearch(5, 5, 1))
     """
 
     base_nf = generate_data(
