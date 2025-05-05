@@ -23,7 +23,7 @@ dependencies = [
     "dask[complete]",
     "deprecated",
     "hats>=0.5.1",
-    "nested-pandas>=0.4.0",
+    "nested-pandas>=0.4.0, <0.5.0",
     "pyarrow",
     "scipy", # kdtree
 ]
