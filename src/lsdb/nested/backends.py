@@ -1,6 +1,3 @@
-# Python 3.9 doesn't support "|" for types
-from __future__ import annotations
-
 import nested_pandas as npd
 import pandas as pd
 from dask._dispatch import get_collection_type
