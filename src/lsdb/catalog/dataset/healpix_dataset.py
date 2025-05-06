@@ -852,7 +852,7 @@ class HealpixDataset(Dataset):
         )
         return self._create_updated_dataset(ddf=new_ddf)
 
-    def reduce(self, func, *args, meta=None, append_columns=False, **kwargs) -> Self:
+    def reduce(self, func, *args, meta=None, append_columns=False, infer_nesting=True, **kwargs) -> Self:
         """
         Takes a function and applies it to each top-level row of the Catalog.
 
@@ -869,13 +869,18 @@ class HealpixDataset(Dataset):
             columns to apply the function to. See the Notes for recommendations
             on writing func outputs.
         args : positional arguments
-            Positional arguments to pass to the function, the first ``*args`` should be the names of the
-            columns to apply the function to.
+            A list of string column names to pull from the NestedFrame to pass along to the function.
+            If the function has additional arguments, pass them as keyword arguments (e.g. arg_name=value)
         meta : dataframe or series-like, optional
             The dask meta of the output. If append_columns is True, the meta should specify just the
             additional columns output by func.
         append_columns : bool
             If the output columns should be appended to the orignal dataframe.
+        infer_nesting : bool
+            If True, the function will pack output columns into nested structures based on column names
+            adhering to a nested naming scheme. E.g. “nested.b” and “nested.c” will be packed into a
+            column called “nested” with columns “b” and “c”. If False, all outputs will be returned as base
+            columns.
         kwargs : keyword arguments, optional
             Keyword arguments to pass to the function.
 
@@ -912,7 +917,7 @@ class HealpixDataset(Dataset):
         catalog_info = self.hc_structure.catalog_info
 
         def reduce_part(df):
-            reduced_result = npd.NestedFrame(df).reduce(func, *args, **kwargs)
+            reduced_result = npd.NestedFrame(df).reduce(func, *args, infer_nesting=infer_nesting, **kwargs)
             if append_columns:
                 if catalog_info.ra_column in reduced_result or catalog_info.dec_column in reduced_result:
                     raise ValueError("ra and dec columns can not be modified using reduce")
