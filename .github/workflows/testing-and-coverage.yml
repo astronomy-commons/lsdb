@@ -51,7 +51,7 @@ jobs:
         python -m pip install --upgrade uv
         uv venv venv
         source venv/bin/activate
-        uv pip compile --resolution=lowest-direct -o requirements_lowest.txt pyproject.toml
+        uv pip compile --resolution=lowest-direct --constraint=requirements.txt -o requirements_lowest.txt pyproject.toml
         uv pip install --constraint=requirements_lowest.txt -e .[dev]
     - name: Run unit tests with pytest
       run: |
