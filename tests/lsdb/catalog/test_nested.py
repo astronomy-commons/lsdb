@@ -1,6 +1,7 @@
 import nested_pandas as npd
 import numpy as np
 import pandas as pd
+import pyarrow as pa
 import pytest
 from nested_pandas import NestedDtype
 
@@ -159,6 +160,40 @@ def test_reduce_append_columns_raises_error(small_sky_with_nested_sources):
             meta={"ra": float, "dec": float, "mean_mag": float},
             append_columns=True,
         ).compute()
+
+
+def test_reduce_infer_nesting(small_sky_with_nested_sources):
+    def mean_mag(ra, dec, mag):
+        ra = np.asarray(ra)
+        dec = np.asarray(dec)
+        mag = np.asarray(mag)
+        return {"new_nested.ra_mag": ra + mag, "new_nested.dec_mag": dec + mag}
+
+    # With inferred nesting:
+    # create a NestedDtype for the nested column "new_nested"
+    new_dtype = NestedDtype(
+        pa.struct([pa.field("ra_mag", pa.list_(pa.float64())), pa.field("dec_mag", pa.list_(pa.float64()))])
+    )
+    # use the lc_dtype in meta creation
+    true_meta = npd.NestedFrame({"new_nested": pd.Series([], dtype=new_dtype)})
+
+    res_true = small_sky_with_nested_sources.reduce(mean_mag, "ra", "dec", "sources.mag", meta=true_meta)
+
+    assert "new_nested" in res_true.columns and "new_nested" in res_true._ddf.nested_columns
+    assert list(res_true["new_nested"].nest.fields) == ["ra_mag", "dec_mag"]
+
+    # Without inferred nesting:
+    false_meta = (
+        small_sky_with_nested_sources.compute()
+        .reduce(mean_mag, "ra", "dec", "sources.mag", infer_nesting=False)
+        .head(0)
+    )
+
+    res_false = small_sky_with_nested_sources.reduce(
+        mean_mag, "ra", "dec", "sources.mag", infer_nesting=False, meta=false_meta
+    )
+
+    assert list(res_false.columns) == ["new_nested.ra_mag", "new_nested.dec_mag"]
 
 
 def test_sort_nested_values(small_sky_with_nested_sources):

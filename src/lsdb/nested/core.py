@@ -763,8 +763,8 @@ Refer to the docstring for guidance on dtype requirements and assignment."""
             columns to apply the function to. See the Notes for recommendations
             on writing func outputs.
         args : positional arguments
-            Positional arguments to pass to the function, the first *args should be the names of the
-            columns to apply the function to.
+            A list of string column names to pull from the NestedFrame to pass along to the function.
+            If the function has additional arguments, pass them as keyword arguments (e.g. arg_name=value)
         meta : dataframe or series-like, optional
             The dask meta of the output. If not provided, dask will try to
             infer the metadata. This may lead to unexpected results, so
