@@ -10,6 +10,10 @@ import lsdb.nested as nd
 from lsdb import Catalog, MarginCatalog
 
 
+def test_nested_columns_property(small_sky_with_nested_sources):
+    assert list(small_sky_with_nested_sources.nested_columns) == ["sources"]
+
+
 def test_dropna(small_sky_with_nested_sources):
     filtered_cat = small_sky_with_nested_sources.query("sources.mag < 15.1")
     drop_na_cat = filtered_cat.dropna()
