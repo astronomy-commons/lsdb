@@ -35,7 +35,7 @@ def polygon_filter(data_frame: npd.NestedFrame, polygon, metadata: TableProperti
 
     Args:
         data_frame (npd.NestedFrame): DataFrame containing points in the sky
-        polygon (ConvexPolygon): Convex spherical polygon of interest, used to filter points
+        polygon (lsst.sphgeom.ConvexPolygon): Convex spherical polygon of interest, used to filter points
         metadata (hc.catalog.Catalog): hats `Catalog` with catalog_info that matches `dataframe`
 
     Returns:
