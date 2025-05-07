@@ -35,7 +35,7 @@ documentation = "https://lsdb.readthedocs.io/"
 # On a mac, install optional dependencies with `pip install '.[dev]'` (include the single quotes)
 [project.optional-dependencies]
 dev = [
-    "asv==0.6.4", # Used to compute performance benchmarks
+    "asv", # Used to compute performance benchmarks
     "virtualenv==20.30", # Temporary fix to airspeed-velocity/asv#1484
     "jupyter", # Clear notebook output
     "mypy", # Used for static type checking of files
