@@ -90,6 +90,15 @@ class HealpixDataset(Dataset):
         """
         return len(self.hc_structure)
 
+    @property
+    def nested_columns(self) -> list[str]:
+        """The columns of the catalog that are nested.
+
+        Returns:
+            The list of nested columns in the catalog.
+        """
+        return self._ddf.nested_columns
+
     def _repr_data(self):
         meta = self._ddf._meta
         index = self._repr_divisions
