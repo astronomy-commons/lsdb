@@ -56,6 +56,16 @@ def test_catalog_uses_dask_expressions(small_sky_order1_catalog):
     assert hasattr(small_sky_order1_catalog._ddf, "expr")
 
 
+def test_catalog_iloc_raises_error(small_sky_order1_catalog):
+    with pytest.raises(NotImplementedError, match="computing the entire catalog"):
+        _ = small_sky_order1_catalog.iloc[0]
+
+
+def test_catalog_loc_raises_error(small_sky_order1_catalog):
+    with pytest.raises(NotImplementedError, match="id_search"):
+        _ = small_sky_order1_catalog.loc[707]
+
+
 def test_get_catalog_partition_gets_correct_partition(small_sky_order1_catalog):
     for healpix_pixel in small_sky_order1_catalog.get_healpix_pixels():
         hp_order = healpix_pixel.order

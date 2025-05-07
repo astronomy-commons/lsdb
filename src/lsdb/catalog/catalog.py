@@ -88,6 +88,26 @@ class Catalog(HealpixDataset):
         cat.margin = margin
         return cat
 
+    @property
+    def iloc(self):
+        """Returns the position-indexer for the catalog"""
+        raise NotImplementedError(
+            "Access via .iloc is not supported since it would require computing the entire catalog."
+        )
+
+    @property
+    def loc(self):
+        """Returns the label-indexer for the catalog"""
+        raise NotImplementedError(
+            "Access via .loc is not allowed. Please use `Catalog.id_search` instead."
+            " For example, to retrieve a row for an object of ID 'GAIA_123' use"
+            " catalog.id_search(values={'objid':'GAIA_123'}), where 'objid' is the"
+            " column for which there is an index catalog. If `id_search` is targeted"
+            " at a column other than the collection's default index column, or if"
+            " working with a stand-alone catalog, use the `index_catalogs` argument"
+            " to specify a HATS index catalog for the desired column."
+        )
+
     def query(self, expr: str) -> Catalog:
         """Filters catalog and respective margin, if it exists, using a complex query expression
 
