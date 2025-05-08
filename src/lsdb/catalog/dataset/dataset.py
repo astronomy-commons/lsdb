@@ -46,6 +46,10 @@ class Dataset:
         """Compute dask distributed dataframe to pandas dataframe"""
         return self._ddf.compute()
 
+    def persist(self, **kwargs):
+        """Persist the dask dataframe in cluster/distributed memory"""
+        return self._ddf.persist(**kwargs)
+
     def to_delayed(self, optimize_graph: bool = True) -> list[Delayed]:
         """Get a list of Dask Delayed objects for each partition in the dataset
 
