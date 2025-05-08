@@ -11,11 +11,13 @@ import nested_pandas as npd
 import numpy as np
 import numpy.testing as npt
 import pandas as pd
+import pyarrow.parquet as pq
 import pytest
 from astropy.coordinates import SkyCoord
 from astropy.visualization.wcsaxes import WCSAxes
 from hats.inspection.visualize_catalog import get_fov_moc_from_wcs
 from hats.io.file_io import get_upath_for_protocol, read_fits_image
+from hats.io.paths import get_data_thumbnail_pointer
 from hats.pixel_math import HealpixPixel, spatial_index_to_healpix
 from mocpy import WCS
 
@@ -336,12 +338,19 @@ def test_save_catalog(small_sky_catalog, tmp_path):
     new_catalog_name = "small_sky"
     base_catalog_path = Path(tmp_path) / new_catalog_name
     small_sky_catalog.to_hats(base_catalog_path, catalog_name=new_catalog_name)
+
     expected_catalog = lsdb.read_hats(base_catalog_path)
     assert expected_catalog.hc_structure.schema.pandas_metadata is None
     assert expected_catalog.hc_structure.catalog_name == new_catalog_name
     assert expected_catalog.hc_structure.catalog_info == small_sky_catalog.hc_structure.catalog_info
     assert expected_catalog.get_healpix_pixels() == small_sky_catalog.get_healpix_pixels()
     pd.testing.assert_frame_equal(expected_catalog.compute(), small_sky_catalog._ddf.compute())
+
+    data_thumbnail_pointer = get_data_thumbnail_pointer(base_catalog_path)
+    assert data_thumbnail_pointer.exists()
+    data_thumbnail = pq.read_table(data_thumbnail_pointer)
+    # The catalog has 1 partition, therefore the thumbnail has 1 row
+    assert len(data_thumbnail) == 1
 
 
 def test_save_catalog_initializes_upath_once(small_sky_catalog, tmp_path, mocker):

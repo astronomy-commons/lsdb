@@ -75,6 +75,8 @@ def to_hats(
     default_columns: list[str] | None = None,
     histogram_order: int = 8,
     overwrite: bool = False,
+    create_thumbnail: bool = False,
+    thumbnail_threshold: int = 1_000_000,
     **kwargs,
 ):
     """Writes a catalog to disk, in HATS format. The output catalog comprises
@@ -90,6 +92,10 @@ def to_hats(
             exist.
         histogram_order (int): The default order for the count histogram. Defaults to 8.
         overwrite (bool): If True existing catalog is overwritten
+        create_thumbnail (bool): If True, create a data thumbnail of the catalog for previewing purposes.
+            Defaults to False.
+        thumbnail_threshold (int): The number of points per pixel as specified at import time.
+            Defaults to 1_000_000.
         **kwargs: Arguments to pass to the parquet write operations
     """
     # Create the output directory for the catalog
@@ -106,8 +112,10 @@ def to_hats(
     pixels, counts, histograms = write_partitions(
         catalog, base_catalog_dir_fp=base_catalog_path, histogram_order=histogram_order, **kwargs
     )
-    # Save parquet metadata
-    hc.io.write_parquet_metadata(base_catalog_path)
+    # Save parquet metadata and create a data thumbnail if needed
+    hc.io.write_parquet_metadata(
+        base_catalog_path, create_thumbnail=create_thumbnail, thumbnail_threshold=thumbnail_threshold
+    )
     # Save partition info
     PartitionInfo(pixels).write_to_file(base_catalog_path / "partition_info.csv")
     # Save catalog info

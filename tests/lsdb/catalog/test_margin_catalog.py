@@ -2,6 +2,7 @@ from pathlib import Path
 
 import hats as hc
 import pandas as pd
+from hats.io.paths import get_data_thumbnail_pointer
 
 import lsdb
 import lsdb.nested as nd
@@ -39,6 +40,7 @@ def test_save_margin_catalog(small_sky_xmatch_margin_catalog, tmp_path):
     new_catalog_name = "small_sky_xmatch_margin"
     base_catalog_path = Path(tmp_path) / new_catalog_name
     small_sky_xmatch_margin_catalog.to_hats(base_catalog_path, catalog_name=new_catalog_name)
+
     expected_catalog = lsdb.read_hats(base_catalog_path)
     assert expected_catalog.hc_structure.catalog_name == new_catalog_name
     assert (
@@ -47,3 +49,7 @@ def test_save_margin_catalog(small_sky_xmatch_margin_catalog, tmp_path):
     )
     assert expected_catalog.get_healpix_pixels() == small_sky_xmatch_margin_catalog.get_healpix_pixels()
     pd.testing.assert_frame_equal(expected_catalog.compute(), small_sky_xmatch_margin_catalog._ddf.compute())
+
+    # Sneak in test on data thumbnails: only main catalogs have them
+    data_thumbnail_pointer = get_data_thumbnail_pointer(base_catalog_path)
+    assert not data_thumbnail_pointer.exists()
