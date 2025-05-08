@@ -697,8 +697,6 @@ class HealpixDataset(Dataset):
         catalog_name: str | None = None,
         default_columns: list[str] | None = None,
         overwrite: bool = False,
-        create_thumbnail: bool = False,
-        thumbnail_threshold: int = 1_000_000,
         **kwargs,
     ):
         """Saves the catalog to disk in HATS format
@@ -710,10 +708,6 @@ class HealpixDataset(Dataset):
                 be loaded by default. By default, uses the default columns from the original hats catalogs if
                 they exist.
             overwrite (bool): If True existing catalog is overwritten
-            create_thumbnail (bool): If True, create a data thumbnail of the catalog for
-                previewing purposes. Defaults to False.
-            thumbnail_threshold (int): The number of points per pixel as specified at import time.
-                Defaults to 1_000_000.
             **kwargs: Arguments to pass to the parquet write operations
         """
         default_histogram_order = 8
@@ -726,8 +720,6 @@ class HealpixDataset(Dataset):
             default_columns=default_columns,
             histogram_order=histogram_order,
             overwrite=overwrite,
-            create_thumbnail=create_thumbnail,
-            thumbnail_threshold=thumbnail_threshold,
             **kwargs,
         )
 
