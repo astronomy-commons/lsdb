@@ -43,12 +43,15 @@ def test_save_margin_catalog(small_sky_xmatch_margin_catalog, tmp_path):
 
     expected_catalog = lsdb.read_hats(base_catalog_path)
     assert expected_catalog.hc_structure.catalog_name == new_catalog_name
-    assert (
-        expected_catalog.hc_structure.catalog_info
-        == small_sky_xmatch_margin_catalog.hc_structure.catalog_info
-    )
     assert expected_catalog.get_healpix_pixels() == small_sky_xmatch_margin_catalog.get_healpix_pixels()
     pd.testing.assert_frame_equal(expected_catalog.compute(), small_sky_xmatch_margin_catalog._ddf.compute())
+
+    # When saving a catalog with to_hats, we update the hats_max_rows
+    # to the maximum count of points per partition.
+    original_info = small_sky_xmatch_margin_catalog.hc_structure.catalog_info
+    partition_sizes = small_sky_xmatch_margin_catalog._ddf.map_partitions(len).compute()
+    assert max(partition_sizes) == 10
+    assert expected_catalog.hc_structure.catalog_info == original_info.copy_and_update(hats_max_rows="10")
 
     # Sneak in test on data thumbnails: only main catalogs have them
     data_thumbnail_pointer = get_data_thumbnail_pointer(base_catalog_path)

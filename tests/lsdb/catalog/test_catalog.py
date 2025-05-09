@@ -342,15 +342,23 @@ def test_save_catalog(small_sky_catalog, tmp_path):
     expected_catalog = lsdb.read_hats(base_catalog_path)
     assert expected_catalog.hc_structure.schema.pandas_metadata is None
     assert expected_catalog.hc_structure.catalog_name == new_catalog_name
-    assert expected_catalog.hc_structure.catalog_info == small_sky_catalog.hc_structure.catalog_info
     assert expected_catalog.get_healpix_pixels() == small_sky_catalog.get_healpix_pixels()
     pd.testing.assert_frame_equal(expected_catalog.compute(), small_sky_catalog._ddf.compute())
 
+    # When saving a catalog with to_hats, we update the hats_max_rows
+    # to the maximum count of points per partition. In this case there
+    # is only one with 131 rows, so that is the value we expect.
+    original_info = small_sky_catalog.hc_structure.catalog_info
+    partition_sizes = small_sky_catalog._ddf.map_partitions(len).compute()
+    assert max(partition_sizes) == 131
+    assert expected_catalog.hc_structure.catalog_info == original_info.copy_and_update(hats_max_rows="131")
+
+    # The catalog has 1 partition, therefore the thumbnail has 1 row
     data_thumbnail_pointer = get_data_thumbnail_pointer(base_catalog_path)
     assert data_thumbnail_pointer.exists()
     data_thumbnail = pq.read_table(data_thumbnail_pointer)
-    # The catalog has 1 partition, therefore the thumbnail has 1 row
     assert len(data_thumbnail) == 1
+    assert data_thumbnail.schema.equals(small_sky_catalog.hc_structure.schema)
 
 
 def test_save_catalog_initializes_upath_once(small_sky_catalog, tmp_path, mocker):
