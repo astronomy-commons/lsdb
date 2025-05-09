@@ -88,6 +88,7 @@ class AbstractCrossmatchAlgorithm(ABC):
                 name, with the first appended to the left columns and the second to the right
                 columns
         """
+        # TODO: don't clamp to None in case both left and right have objects in the pixel
         self.left = left.copy(deep=False) if how != "right" else None
         self.right = right.copy(deep=False) if how != "left" else None
         self.left_order = left_order
@@ -102,6 +103,10 @@ class AbstractCrossmatchAlgorithm(ABC):
 
     def crossmatch(self, suffixes, **kwargs) -> npd.NestedFrame:
         """Perform a crossmatch"""
+        # TODO: check self.how to see whether we even need to do a crossmatch
+        # TODO: extra_cols contains not only items from left and right, but new ones from crossmatch
+        # TODO: extra_cols can be self.extra_columns once constructed, which is true here
+        # TODO: where are the columns from the right?  Best if it's an empty dataframe
         l_inds, r_inds, extra_cols = self.perform_crossmatch(**kwargs)
         if not len(l_inds) == len(r_inds) == len(extra_cols):
             raise ValueError(
@@ -218,6 +223,7 @@ class AbstractCrossmatchAlgorithm(ABC):
         # concat dataframes together
         index_name = self.left.index.name if self.left.index.name is not None else "index"
         if self.how == "left":
+            # TODO: reminder, this is just one pixel
             # TODO: handle duplicate results from left
             # TODO: try np.range, then exclude anything that appears in left_idx.  Try np.isin
             left_join_part = self.left.reset_index()
