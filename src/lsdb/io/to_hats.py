@@ -94,7 +94,8 @@ def to_hats(
         overwrite (bool): If True existing catalog is overwritten
         create_thumbnail (bool): If True, create a data thumbnail of the catalog for previewing purposes.
             Defaults to False.
-        thumbnail_threshold (int): The number of points per pixel as specified at import time.
+        thumbnail_threshold (int): The maximum number of rows in the data thumbnail,
+            which is otherwise one row/partition.
             Defaults to 1_000_000.
         **kwargs: Arguments to pass to the parquet write operations
     """

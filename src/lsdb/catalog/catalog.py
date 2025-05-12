@@ -1109,7 +1109,7 @@ class Catalog(HealpixDataset):
             base_catalog_path (str): Location where catalog is saved to
             catalog_name (str): The name of the catalog to be saved
             default_columns (list[str]): A metadata property with the list of the columns in the catalog to
-                be loaded by default. By default, uses the default columns from the original hats catalogs if
+                be loaded by default. By default, uses the default columns from the original hats catalog if
                 they exist.
             overwrite (bool): If True existing catalog is overwritten
             **kwargs: Arguments to pass to the parquet write operations
