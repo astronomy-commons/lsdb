@@ -45,7 +45,7 @@ def test_catalog_html_repr(small_sky_order1_catalog):
     assert small_sky_order1_catalog.name in full_html
     assert str(small_sky_order1_catalog.get_ordered_healpix_pixels()[0]) in full_html
     assert str(small_sky_order1_catalog.get_ordered_healpix_pixels()[-1]) in full_html
-    assert "The catalog has been loaded <strong>lazily</strong>" in full_html
+    assert "columns in the catalog have been loaded <strong>lazily</strong>" in full_html
 
 
 def test_catalog_compute_equals_ddf_compute(small_sky_order1_catalog):

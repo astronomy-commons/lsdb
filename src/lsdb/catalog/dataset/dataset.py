@@ -31,11 +31,13 @@ class Dataset:
 
     def _repr_html_(self):
         data = self._repr_data().to_html(max_rows=5, show_dimensions=False, notebook=True)
+        loaded_cols = len(self.columns)
+        available_cols = len(self.all_columns)
         return (
             f"<div><strong>lsdb Catalog {self.name}:</strong></div>"
             f"{data}"
-            f"<div>The catalog has been loaded <strong>lazily</strong>, meaning no data has been read, only "
-            f"the catalog schema</div>"
+            f"<div>{loaded_cols} out of {available_cols} columns in the catalog have been loaded "
+            f"<strong>lazily</strong>, meaning no data has been read, only the catalog schema</div>"
         )
 
     def _repr_data(self):
