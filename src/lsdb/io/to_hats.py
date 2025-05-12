@@ -75,6 +75,7 @@ def to_hats(
     default_columns: list[str] | None = None,
     histogram_order: int = 8,
     overwrite: bool = False,
+    create_thumbnail: bool = False,
     **kwargs,
 ):
     """Writes a catalog to disk, in HATS format. The output catalog comprises
@@ -85,11 +86,13 @@ def to_hats(
         catalog (HealpixDataset): A catalog to export
         base_catalog_path (str): Location where catalog is saved to
         catalog_name (str): The name of the output catalog
-        default_columns (list[str]): A metadata property with the list of the columns in the catalog to be
-            loaded by default. Uses the default columns from the original hats catalogs if they
-            exist.
+        default_columns (list[str]): A metadata property with the list of the columns in the
+            catalog to be loaded by default. Uses the default columns from the original hats
+            catalog if they exist.
         histogram_order (int): The default order for the count histogram. Defaults to 8.
         overwrite (bool): If True existing catalog is overwritten
+        create_thumbnail (bool): If True, create a data thumbnail of the catalog for
+            previewing purposes. Defaults to False.
         **kwargs: Arguments to pass to the parquet write operations
     """
     # Create the output directory for the catalog
@@ -106,8 +109,11 @@ def to_hats(
     pixels, counts, histograms = write_partitions(
         catalog, base_catalog_dir_fp=base_catalog_path, histogram_order=histogram_order, **kwargs
     )
-    # Save parquet metadata
-    hc.io.write_parquet_metadata(base_catalog_path)
+    # Save parquet metadata and create a data thumbnail if needed
+    hats_max_rows = max(counts)
+    hc.io.write_parquet_metadata(
+        base_catalog_path, create_thumbnail=create_thumbnail, thumbnail_threshold=hats_max_rows
+    )
     # Save partition info
     PartitionInfo(pixels).write_to_file(base_catalog_path / "partition_info.csv")
     # Save catalog info
@@ -121,6 +127,7 @@ def to_hats(
         catalog_name if catalog_name else catalog.hc_structure.catalog_name,
         total_rows=int(np.sum(counts)),
         default_columns=default_columns,
+        hats_max_rows=hats_max_rows,
     )
     new_hc_structure.catalog_info.to_properties_file(base_catalog_path)
     # Save the point distribution map

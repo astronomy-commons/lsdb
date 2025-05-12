@@ -81,7 +81,11 @@ class DataframeCatalogLoader:
         self.drop_empty_siblings = drop_empty_siblings
         self.threshold = self._calculate_threshold(partition_size, threshold)
         self.catalog_info = self._create_catalog_info(
-            ra_column=ra_column, dec_column=dec_column, total_rows=int(len(self.dataframe)), **kwargs
+            ra_column=ra_column,
+            dec_column=dec_column,
+            total_rows=len(self.dataframe),
+            hats_max_rows=self.threshold,
+            **kwargs,
         )
         self.should_generate_moc = should_generate_moc
         self.moc_max_order = moc_max_order

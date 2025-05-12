@@ -46,6 +46,8 @@ def test_from_dataframe(small_sky_order1_df, small_sky_order1_catalog, helpers):
         catalog.hc_structure.catalog_info.explicit_dict()
         == small_sky_order1_catalog.hc_structure.catalog_info.explicit_dict()
     )
+    # The pixel threshold was specified properly
+    assert catalog.hc_structure.catalog_info.hats_max_rows == 50
     # Index is set to spatial index
     assert catalog._ddf.index.name == SPATIAL_INDEX_COLUMN
     # Dataframes have the same data (column data types may differ)
