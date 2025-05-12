@@ -83,7 +83,7 @@ class DataframeCatalogLoader:
         self.catalog_info = self._create_catalog_info(
             ra_column=ra_column,
             dec_column=dec_column,
-            total_rows=int(len(self.dataframe)),
+            total_rows=len(self.dataframe),
             hats_max_rows=self.threshold,
             **kwargs,
         )
