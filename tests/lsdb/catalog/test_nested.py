@@ -261,8 +261,8 @@ def test_getitem(small_sky_with_nested_sources):
 
 def test_getitem_errors(small_sky_with_nested_sources):
     with pytest.raises(KeyError):
-        small_sky_with_nested_sources[["ra", "dec", "sources.source_id", "sources.wrong"]]
+        df = small_sky_with_nested_sources[["ra", "dec", "sources.source_id", "sources.wrong"]]
     with pytest.raises(KeyError):
-        small_sky_with_nested_sources[["ra", "wrong", "sources.source_id", "sources.source_ra"]]
+        df = small_sky_with_nested_sources[["ra", "wrong", "sources.source_id", "sources.source_ra"]]
     with pytest.raises(KeyError):
-        small_sky_with_nested_sources[["ra", "dec", "wrong.source_id", "sources.source_ra"]]
+        df = small_sky_with_nested_sources[["ra", "dec", "wrong.source_id", "sources.source_ra"]]
