@@ -10,6 +10,7 @@ import pytest
 from hats.io.file_io import get_upath_for_protocol
 from hats.pixel_math import HealpixPixel
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
+from pyarrow import ArrowInvalid
 from upath import UPath
 
 import lsdb
@@ -492,3 +493,30 @@ def test_original_schema_read_columns(small_sky_order1_dir, small_sky_order1_cat
     for field in cat.original_schema:
         assert field in small_sky_order1_catalog.hc_structure.schema
     assert cat.original_schema == small_sky_order1_catalog.original_schema
+
+
+def test_read_nested_column_selection(small_sky_with_nested_sources_dir):
+    cat = lsdb.read_hats(
+        small_sky_with_nested_sources_dir, columns=["ra", "dec", "sources.source_id", "sources.source_ra"]
+    )
+    assert np.all(cat.columns == ["ra", "dec", "sources"])
+    assert cat.dtypes["sources"].field_names == ["source_id", "source_ra"]
+    computed = cat.compute()
+    assert np.all(computed.columns == ["ra", "dec", "sources"])
+    assert np.all(computed["sources"].iloc[0].columns == ["source_id", "source_ra"])
+
+
+def test_read_nested_column_selection_errors(small_sky_with_nested_sources_dir):
+    with pytest.raises(ArrowInvalid):
+        lsdb.read_hats(
+            small_sky_with_nested_sources_dir, columns=["ra", "dec", "sources.source_id", "sources.wrong"]
+        )
+    with pytest.raises(ArrowInvalid):
+        lsdb.read_hats(
+            small_sky_with_nested_sources_dir,
+            columns=["ra", "wrong", "sources.source_id", "sources.source_ra"],
+        )
+    with pytest.raises(ArrowInvalid):
+        lsdb.read_hats(
+            small_sky_with_nested_sources_dir, columns=["ra", "dec", "wrong.source_id", "sources.source_ra"]
+        )

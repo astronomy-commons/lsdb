@@ -248,3 +248,21 @@ def test_serialization_round_trip(tmp_path, small_sky_order1_catalog, small_sky_
     read_catalog = lsdb.read_hats(out_path)
     assert isinstance(read_catalog.dtypes["lc"], NestedDtype)
     assert isinstance(read_catalog.compute().dtypes["lc"], NestedDtype)
+
+
+def test_getitem(small_sky_with_nested_sources):
+    cat = small_sky_with_nested_sources[["ra", "dec", "sources.source_id", "sources.source_ra"]]
+    assert np.all(cat.columns == ["ra", "dec", "sources"])
+    assert cat.dtypes["sources"].field_names == ["source_id", "source_ra"]
+    computed = cat.compute()
+    assert np.all(computed.columns == ["ra", "dec", "sources"])
+    assert np.all(computed["sources"].iloc[0].columns == ["source_id", "source_ra"])
+
+
+def test_getitem_errors(small_sky_with_nested_sources):
+    with pytest.raises(KeyError):
+        small_sky_with_nested_sources[["ra", "dec", "sources.source_id", "sources.wrong"]]
+    with pytest.raises(KeyError):
+        small_sky_with_nested_sources[["ra", "wrong", "sources.source_id", "sources.source_ra"]]
+    with pytest.raises(KeyError):
+        small_sky_with_nested_sources[["ra", "dec", "wrong.source_id", "sources.source_ra"]]
