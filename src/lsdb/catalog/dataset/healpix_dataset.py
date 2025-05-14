@@ -81,9 +81,9 @@ class HealpixDataset(Dataset):
         # is extensive, so it's safer to check only those type configurations
         # which are known to be either a column name or sequence thereof.
         if isinstance(item, str):
-            self.check_unloaded_columns([item])
+            self._check_unloaded_columns([item])
         elif isinstance(item, Sequence):
-            self.check_unloaded_columns([col for col in item if isinstance(col, str)])
+            self._check_unloaded_columns([col for col in item if isinstance(col, str)])
         result = self._ddf.__getitem__(item)
         if isinstance(result, nd.NestedFrame):
             return self._create_updated_dataset(ddf=result)
@@ -212,8 +212,8 @@ class HealpixDataset(Dataset):
         include_pixels: list[HealpixPixel] | None = None,
     ) -> list[HealpixPixel]:
         """Read footer statistics in parquet metadata, and report on global min/max values."""
-        self.check_unloaded_columns(exclude_columns)
-        self.check_unloaded_columns(include_columns)
+        self._check_unloaded_columns(exclude_columns)
+        self._check_unloaded_columns(include_columns)
         if use_default_columns and include_columns is None:
             include_columns = self.hc_structure.catalog_info.default_columns
 
@@ -235,8 +235,8 @@ class HealpixDataset(Dataset):
         include_pixels: list[HealpixPixel] | None = None,
     ) -> list[HealpixPixel]:
         """Read footer statistics in parquet metadata, and report on global min/max values."""
-        self.check_unloaded_columns(exclude_columns)
-        self.check_unloaded_columns(include_columns)
+        self._check_unloaded_columns(exclude_columns)
+        self._check_unloaded_columns(include_columns)
         if use_default_columns and include_columns is None:
             include_columns = self.hc_structure.catalog_info.default_columns
 
@@ -732,7 +732,7 @@ class HealpixDataset(Dataset):
             overwrite (bool): If True existing catalog is overwritten
             **kwargs: Arguments to pass to the parquet write operations
         """
-        self.check_unloaded_columns(default_columns)
+        self._check_unloaded_columns(default_columns)
         default_histogram_order = 8
         max_catalog_depth = self.hc_structure.pixel_tree.get_max_depth()
         histogram_order = max(max_catalog_depth, default_histogram_order)
@@ -867,8 +867,8 @@ class HealpixDataset(Dataset):
             recommend setting the following dask config setting to prevent this:
             `dask.config.set({"dataframe.convert-string":False})`
         """
-        self.check_unloaded_columns(base_columns)
-        self.check_unloaded_columns(list_columns)
+        self._check_unloaded_columns(base_columns)
+        self._check_unloaded_columns(list_columns)
         new_ddf = nd.NestedFrame.from_lists(
             self._ddf,
             base_columns=base_columns,
@@ -935,7 +935,7 @@ class HealpixDataset(Dataset):
         0  1372475556631677955      21.1       20.9
         1  1389879706834706546      22.2       21.8
         """
-        self.check_unloaded_columns(args)
+        self._check_unloaded_columns(args)
 
         if append_columns:
             meta = concat_metas([self._ddf._meta.copy(), meta])
@@ -1044,7 +1044,7 @@ class HealpixDataset(Dataset):
         if title is None:
             title = f"Points in the {self.name} catalog"
 
-        self.check_unloaded_columns([ra_column, dec_column, color_col])
+        self._check_unloaded_columns([ra_column, dec_column, color_col])
         return plot_points(
             computed_catalog,
             ra_column,
@@ -1092,7 +1092,7 @@ class HealpixDataset(Dataset):
         """
         if isinstance(by, str):
             by = [by]
-        self.check_unloaded_columns(by)
+        self._check_unloaded_columns(by)
         # Check "by" columns for hierarchical references
         for col in by:
             if not self._ddf._is_known_hierarchical_column(col):

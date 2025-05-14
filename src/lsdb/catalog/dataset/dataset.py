@@ -98,7 +98,7 @@ class Dataset:
             raise ValueError("Original catalog schema is not available")
         return self.hc_structure.original_schema
 
-    def check_unloaded_columns(self, column_names: Sequence[str | None] | None):
+    def _check_unloaded_columns(self, column_names: Sequence[str | None] | None):
         """Check the list of given column names for any that are valid
         but unavailable because they were not loaded.
         """
