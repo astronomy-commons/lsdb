@@ -95,7 +95,7 @@ class Dataset:
     def original_schema(self):
         """Returns the schema of the original Dataset"""
         if self.hc_structure.original_schema is None:
-            raise ValueError("Original Catalog Columns are not available")
+            raise ValueError("Original catalog schema is not available")
         return self.hc_structure.original_schema
 
     def check_unloaded_columns(self, column_names: Sequence[str | None] | None):

@@ -435,7 +435,6 @@ class HealpixDataset(Dataset):
             A catalog that contains the data from the original catalog that complies
             with the query expression
         """
-        # TODO: validate the columns in the expr?
         ndf = self._ddf.query(expr)
         return self._create_updated_dataset(ddf=ndf)
 

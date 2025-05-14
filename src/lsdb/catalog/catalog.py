@@ -680,19 +680,18 @@ class Catalog(HealpixDataset):
         if len(suffixes) != 2:
             raise ValueError("`suffixes` must be a tuple with two strings")
 
-        # This is kind of a mess
-        def harmonize(col: str | list[str] | None) -> list[str]:
+        def make_strlist(col: str | list[str] | None) -> list[str]:
             if not col:
                 return []
             if isinstance(col, str):
                 return [col]
             return col
 
-        names_to_check = harmonize(on)
+        names_to_check = make_strlist(on)
         if not left_index:
-            names_to_check += harmonize(left_on)
+            names_to_check += make_strlist(left_on)
         if not right_index:
-            names_to_check += harmonize(right_on)
+            names_to_check += make_strlist(right_on)
         self.check_unloaded_columns(names_to_check)
         return self._ddf.merge(
             other._ddf,
