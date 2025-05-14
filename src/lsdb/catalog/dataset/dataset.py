@@ -1,7 +1,8 @@
+from collections.abc import Sequence
+
 import hats as hc
 import nested_pandas as npd
 from dask.delayed import Delayed
-from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 
 import lsdb.nested as nd
 
@@ -80,10 +81,14 @@ class Dataset:
     def all_columns(self):
         """Returns all columns in the original Dataset"""
         if self.hc_structure.original_schema is None:
-            raise ValueError("Original Catalog Columns are not available")
+            # This case corresponds to Datasets that have not yet been
+            # serialized, and thus cannot have a discrepancy between
+            # the original schema and the loaded schema.  In this case,
+            # this property is equivalent to the columns property.
+            return self.columns
         col_names = self.hc_structure.original_schema.names
-        if SPATIAL_INDEX_COLUMN in col_names:
-            col_names.remove(SPATIAL_INDEX_COLUMN)
+        if self._ddf.index.name in col_names:
+            col_names.remove(self._ddf.index.name)
         return col_names
 
     @property
@@ -92,3 +97,22 @@ class Dataset:
         if self.hc_structure.original_schema is None:
             raise ValueError("Original Catalog Columns are not available")
         return self.hc_structure.original_schema
+
+    def check_unloaded_columns(self, column_names: Sequence[str | None] | None):
+        """Check the list of given column names for any that are valid
+        but unavailable because they were not loaded.
+        """
+        if not column_names:
+            return
+        # Quick local optimization
+        problematic = set(self.all_columns) - set(self.columns)
+        confusing = [name for name in column_names if name and name in problematic]
+        if not confusing:
+            return
+        if len(confusing) == 1:
+            confusing_column = confusing[0]
+            msg = f"Column `{confusing_column}` is in the catalog but was not loaded."
+        else:
+            confusing_columns = ", ".join([f"`{c}`" for c in confusing])
+            msg = f"Columns {confusing_columns} are in the catalog but were not loaded."
+        raise ValueError(msg)
