@@ -862,7 +862,7 @@ class Catalog(HealpixDataset):
 
     def nest_lists(
         self,
-        base_columns: list[str] | None,
+        base_columns: list[str] | None = None,
         list_columns: list[str] | None = None,
         name: str = "nested",
     ) -> Catalog:
