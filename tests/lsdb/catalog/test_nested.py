@@ -67,6 +67,7 @@ def test_nest_lists(small_sky_with_nested_sources):
 
     pd.testing.assert_frame_equal(renested_flat, original_flat)
 
+
 def test_nest_lists_no_base_columns(small_sky_with_nested_sources):
     """Test the behavior of catalog.nest_lists"""
     cat_ndf = small_sky_with_nested_sources._ddf.map_partitions(
@@ -90,6 +91,7 @@ def test_nest_lists_no_base_columns(small_sky_with_nested_sources):
     original_flat = cat_ndf.compute()["sources"].nest.to_flat()
 
     pd.testing.assert_frame_equal(renested_flat, original_flat)
+
 
 def test_reduce(small_sky_with_nested_sources):
     def mean_mag(ra, dec, mag):
