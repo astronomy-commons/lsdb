@@ -819,7 +819,7 @@ class HealpixDataset(Dataset):
 
     def nest_lists(
         self,
-        base_columns: list[str] | None,
+        base_columns: list[str] | None = None,
         list_columns: list[str] | None = None,
         name: str = "nested",
     ) -> Self:  # type: ignore[name-defined] # noqa: F821:
@@ -828,7 +828,8 @@ class HealpixDataset(Dataset):
 
         Args:
             base_columns (list-like or None): Any columns that have non-list values in the input catalog.
-                These will simply be kept as identical columns in the result
+                These will simply be kept as identical columns in the result. If None, is inferred to be
+                all columns in the input catalog that are not considered list-value columns.
             list_columns (list-like or None): The list-value columns that should be packed into a nested
                 column. All columns in the list will attempt to be packed into a single nested column
                 with the name provided in `nested_name`. All columns in list_columns must have pyarrow
