@@ -408,8 +408,13 @@ def test_save_catalog_default_columns_cross_matched(
     )
     new_catalog_name = "small_sky_order1"
     base_catalog_path = Path(tmp_path) / new_catalog_name
+    # Before the catalog is serialized, verify that it won't have original schema.
+    # This is something that will be available after serialization.
+    with pytest.raises(ValueError, match="Original catalog schema is not available"):
+        _ = cat.original_schema
     cat.to_hats(base_catalog_path, catalog_name=new_catalog_name)
     expected_catalog = lsdb.read_hats(base_catalog_path)
+    assert expected_catalog.original_schema is not None
     assert expected_catalog.hc_structure.catalog_name == new_catalog_name
     assert expected_catalog.get_healpix_pixels() == cat.get_healpix_pixels()
     pd.testing.assert_frame_equal(
@@ -423,6 +428,16 @@ def test_save_catalog_default_columns_cross_matched(
     pd.testing.assert_frame_equal(expected_catalog_all_cols.compute(), cat._ddf.compute())
     helpers.assert_schema_correct(expected_catalog_all_cols)
     helpers.assert_default_columns_in_columns(expected_catalog_all_cols)
+
+
+def test_advise_unloaded_columns(small_sky_order1_default_cols_catalog):
+    cat = small_sky_order1_default_cols_catalog
+    with pytest.raises(ValueError, match="Column `dec_error` is in the catalog but was not loaded."):
+        _ = cat["dec_error"]
+    with pytest.raises(
+        ValueError, match="Columns `ra_error`, `dec_error` are in the catalog but were not loaded."
+    ):
+        _ = cat[["ra_error", "dec_error"]]
 
 
 def test_save_catalog_point_map(small_sky_order1_catalog, tmp_path):

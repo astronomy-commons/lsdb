@@ -150,6 +150,7 @@ class Catalog(HealpixDataset):
                 new_data = da.arange(...)
                 catalog = catalog.assign(new_col=new_data)
         """
+        self._check_unloaded_columns(list(kwargs.keys()))
         ddf = self._ddf.assign(**kwargs)
         return self._create_updated_dataset(ddf=ddf)
 
@@ -503,6 +504,7 @@ class Catalog(HealpixDataset):
         Returns:
             A new Catalog containing the results of the column match.
         """
+        self._check_unloaded_columns(list(values.keys()))
 
         def _get_index_catalog_for_field(field: str):
             """Find the index catalog for `field`. Index catalogs declared
@@ -677,6 +679,20 @@ class Catalog(HealpixDataset):
             suffixes = (f"_{self.name}", f"_{other.name}")
         if len(suffixes) != 2:
             raise ValueError("`suffixes` must be a tuple with two strings")
+
+        def make_strlist(col: str | list[str] | None) -> list[str]:
+            if col is None:
+                return []
+            if isinstance(col, str):
+                return [col]
+            return col
+
+        names_to_check = make_strlist(on)
+        if not left_index:
+            names_to_check += make_strlist(left_on)
+        if not right_index:
+            names_to_check += make_strlist(right_on)
+        self._check_unloaded_columns(names_to_check)
         return self._ddf.merge(
             other._ddf,
             how=how,
@@ -768,6 +784,8 @@ class Catalog(HealpixDataset):
         if len(suffixes) != 2:
             raise ValueError("`suffixes` must be a tuple with two strings")
 
+        self._check_unloaded_columns([left_on, right_on])
+
         if through is not None:
             ddf, ddf_map, alignment = join_catalog_data_through(self, other, through, suffixes)
 
@@ -839,9 +857,11 @@ class Catalog(HealpixDataset):
         if left_on is None or right_on is None:
             raise ValueError("Both of left_on and right_on must be set")
 
+        self._check_unloaded_columns([left_on])
         if left_on not in self._ddf.columns:
             raise ValueError("left_on must be a column in the left catalog")
 
+        other._check_unloaded_columns([right_on])
         if right_on not in other._ddf.columns:
             raise ValueError("right_on must be a column in the right catalog")
 
@@ -969,6 +989,7 @@ class Catalog(HealpixDataset):
         to a single layer, multi-layer operations are not supported at this
         time.
         """
+        self._check_unloaded_columns(subset)
         catalog = super().dropna(
             axis=axis, how=how, thresh=thresh, on_nested=on_nested, subset=subset, ignore_index=ignore_index
         )
