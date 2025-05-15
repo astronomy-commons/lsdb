@@ -68,8 +68,8 @@ def test_nest_lists(small_sky_with_nested_sources):
     pd.testing.assert_frame_equal(renested_flat, original_flat)
 
 
-def test_nest_lists_no_base_columns(small_sky_with_nested_sources):
-    """Test the behavior of catalog.nest_lists"""
+def test_nest_lists_only_list_columns(small_sky_with_nested_sources):
+    """Test the behavior of catalog.nest_lists when only list columns are provided"""
     cat_ndf = small_sky_with_nested_sources._ddf.map_partitions(
         lambda df: df.set_index(df.index.to_numpy() + np.arange(len(df)))
     )
@@ -77,6 +77,8 @@ def test_nest_lists_no_base_columns(small_sky_with_nested_sources):
     smallsky_lists = cat_ndf[["id", "ra", "dec"]].join(catlists_ndf)
     small_sky_with_nested_sources._ddf = smallsky_lists
 
+    # Use the columns from the original catalog as the list columns. All other
+    # columns are inferred to be "base" columns.
     cat_ndf_renested = small_sky_with_nested_sources.nest_lists(list_columns=cat_ndf["sources"].nest.fields)
 
     # check column structure
