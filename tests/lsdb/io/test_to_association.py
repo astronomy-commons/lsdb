@@ -1,9 +1,10 @@
+import pytest
+from hats.pixel_math import HealpixPixel
+
 import lsdb
 import lsdb.nested as nd
 from lsdb.catalog.association_catalog import AssociationCatalog
-import pytest
-from hats.pixel_math import HealpixPixel
-from lsdb.io.to_association import to_association, _check_catalogs_and_columns
+from lsdb.io.to_association import _check_catalogs_and_columns, to_association
 
 
 @pytest.fixture

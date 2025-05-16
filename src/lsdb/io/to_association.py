@@ -10,7 +10,6 @@ import nested_pandas as npd
 import numpy as np
 from hats.catalog import CatalogType, PartitionInfo, PartitionJoinInfo, TableProperties
 from hats.catalog.catalog_collection import CatalogCollection
-from hats.io.validation import is_valid_catalog
 from hats.pixel_math import HealpixPixel
 from upath import UPath
 
