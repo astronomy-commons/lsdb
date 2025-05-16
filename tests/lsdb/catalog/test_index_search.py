@@ -81,7 +81,7 @@ def test_id_search_with_some_explicit_index_catalogs(
     collection_properties.all_indexes = {"object_id": "small_sky_order1_source_object_id_index"}
     collection_properties.to_properties_file(collection_base_dir)
 
-    collection = lsdb.hats_catalog(collection_base_dir)
+    collection = lsdb.open_catalog(collection_base_dir)
     cat = collection.id_search(
         values={"object_id": 810, "band": "r"},
         index_catalogs={"band": small_sky_order1_source_band_index_dir},

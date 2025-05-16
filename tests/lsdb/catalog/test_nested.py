@@ -272,7 +272,7 @@ def test_serialization_round_trip(tmp_path, small_sky_order1_catalog, small_sky_
     assert isinstance(cat.dtypes["lc"], NestedDtype)
     out_path = tmp_path / "test_cat"
     cat.to_hats(out_path)
-    read_catalog = lsdb.hats_catalog(out_path)
+    read_catalog = lsdb.open_catalog(out_path)
     assert isinstance(read_catalog.dtypes["lc"], NestedDtype)
     assert isinstance(read_catalog.compute().dtypes["lc"], NestedDtype)
 

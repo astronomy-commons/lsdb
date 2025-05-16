@@ -334,12 +334,25 @@ def test_assign_with_invalid_arguments(small_sky_order1_catalog):
         small_sky_order1_catalog.assign(new_column=array)
 
 
+def test_read_hats(small_sky_catalog, tmp_path):
+    new_catalog_name = "small_sky"
+    base_catalog_path = Path(tmp_path) / new_catalog_name
+    small_sky_catalog.to_hats(base_catalog_path, catalog_name=new_catalog_name)
+
+    # Using .read_hats here vs .open_catalog in order to exercise code coverage for .read_hats
+    expected_catalog = lsdb.read_hats(base_catalog_path)
+    assert expected_catalog.hc_structure.schema.pandas_metadata is None
+    assert expected_catalog.hc_structure.catalog_name == new_catalog_name
+    assert expected_catalog.get_healpix_pixels() == small_sky_catalog.get_healpix_pixels()
+    pd.testing.assert_frame_equal(expected_catalog.compute(), small_sky_catalog._ddf.compute())
+
+
 def test_save_catalog(small_sky_catalog, tmp_path):
     new_catalog_name = "small_sky"
     base_catalog_path = Path(tmp_path) / new_catalog_name
     small_sky_catalog.to_hats(base_catalog_path, catalog_name=new_catalog_name)
 
-    expected_catalog = lsdb.hats_catalog(base_catalog_path)
+    expected_catalog = lsdb.open_catalog(base_catalog_path)
     assert expected_catalog.hc_structure.schema.pandas_metadata is None
     assert expected_catalog.hc_structure.catalog_name == new_catalog_name
     assert expected_catalog.get_healpix_pixels() == small_sky_catalog.get_healpix_pixels()
@@ -377,7 +390,7 @@ def test_save_catalog_default_columns(small_sky_order1_default_cols_catalog, tmp
     new_catalog_name = "small_sky_order1"
     base_catalog_path = Path(tmp_path) / new_catalog_name
     cat.to_hats(base_catalog_path, catalog_name=new_catalog_name)
-    expected_catalog = lsdb.hats_catalog(base_catalog_path)
+    expected_catalog = lsdb.open_catalog(base_catalog_path)
     assert expected_catalog.hc_structure.catalog_name == new_catalog_name
     assert expected_catalog.get_healpix_pixels() == cat.get_healpix_pixels()
     pd.testing.assert_frame_equal(expected_catalog.compute(), cat._ddf.compute())
@@ -391,7 +404,7 @@ def test_save_catalog_empty_default_columns(small_sky_order1_default_cols_catalo
     new_catalog_name = "small_sky_order1"
     base_catalog_path = Path(tmp_path) / new_catalog_name
     cat.to_hats(base_catalog_path, catalog_name=new_catalog_name)
-    expected_catalog = lsdb.hats_catalog(base_catalog_path)
+    expected_catalog = lsdb.open_catalog(base_catalog_path)
     assert expected_catalog.hc_structure.catalog_info.default_columns is None
     assert expected_catalog.hc_structure.catalog_name == new_catalog_name
     assert expected_catalog.get_healpix_pixels() == cat.get_healpix_pixels()
@@ -413,7 +426,7 @@ def test_save_catalog_default_columns_cross_matched(
     with pytest.raises(ValueError, match="Original catalog schema is not available"):
         _ = cat.original_schema
     cat.to_hats(base_catalog_path, catalog_name=new_catalog_name)
-    expected_catalog = lsdb.hats_catalog(base_catalog_path)
+    expected_catalog = lsdb.open_catalog(base_catalog_path)
     assert expected_catalog.original_schema is not None
     assert expected_catalog.hc_structure.catalog_name == new_catalog_name
     assert expected_catalog.get_healpix_pixels() == cat.get_healpix_pixels()
@@ -422,7 +435,7 @@ def test_save_catalog_default_columns_cross_matched(
     )
     helpers.assert_schema_correct(expected_catalog)
     helpers.assert_default_columns_in_columns(expected_catalog)
-    expected_catalog_all_cols = lsdb.hats_catalog(base_catalog_path, columns="all")
+    expected_catalog_all_cols = lsdb.open_catalog(base_catalog_path, columns="all")
     assert expected_catalog_all_cols.hc_structure.catalog_name == new_catalog_name
     assert expected_catalog_all_cols.get_healpix_pixels() == cat.get_healpix_pixels()
     pd.testing.assert_frame_equal(expected_catalog_all_cols.compute(), cat._ddf.compute())
@@ -530,7 +543,7 @@ def test_save_catalog_with_some_empty_partitions(small_sky_order1_catalog, tmp_p
 
     # Confirm that we can read the catalog from disk, and that it was
     # written with no empty partitions
-    catalog = lsdb.hats_catalog(base_catalog_path)
+    catalog = lsdb.open_catalog(base_catalog_path)
     assert catalog._ddf.npartitions == 1
     assert len(catalog._ddf.partitions[0]) > 0
     assert list(catalog._ddf_pixel_map.keys()) == non_empty_pixels

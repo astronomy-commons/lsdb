@@ -35,10 +35,10 @@ def read_hats(
     **kwargs,
 ) -> Dataset:
     """Load catalog from a HATS path.  See hats_catalog()."""
-    return hats_catalog(path, search_filter, columns, margin_cache, **kwargs)
+    return open_catalog(path, search_filter, columns, margin_cache, **kwargs)
 
 
-def hats_catalog(
+def open_catalog(
     path: str | Path | UPath,
     search_filter: AbstractSearch | None = None,
     columns: list[str] | str | None = None,
