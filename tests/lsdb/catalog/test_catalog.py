@@ -1,6 +1,4 @@
 # pylint: disable=too-many-lines
-from pathlib import Path
-
 import astropy.units as u
 import dask.array as da
 import dask.dataframe as dd
@@ -11,13 +9,10 @@ import nested_pandas as npd
 import numpy as np
 import numpy.testing as npt
 import pandas as pd
-import pyarrow.parquet as pq
 import pytest
 from astropy.coordinates import SkyCoord
 from astropy.visualization.wcsaxes import WCSAxes
 from hats.inspection.visualize_catalog import get_fov_moc_from_wcs
-from hats.io.file_io import get_upath_for_protocol, read_fits_image
-from hats.io.paths import get_data_thumbnail_pointer
 from hats.pixel_math import HealpixPixel, spatial_index_to_healpix
 from mocpy import WCS
 
