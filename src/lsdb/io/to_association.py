@@ -247,8 +247,6 @@ def _check_catalogs_and_columns(
     # Verify that the primary and join catalogs exist, and have the indicated columns.
     if not primary_catalog_dir:
         raise ValueError("primary_catalog_dir is required")
-    if not is_valid_catalog(primary_catalog_dir):
-        raise ValueError("primary_catalog_dir not a valid catalog")
     if not primary_id_column:
         raise ValueError("primary_id_column is required")
 
@@ -262,8 +260,6 @@ def _check_catalogs_and_columns(
         raise ValueError("join_catalog_dir is required")
     if not join_id_column:
         raise ValueError("join_id_column is required")
-    if not is_valid_catalog(join_catalog_dir):
-        raise ValueError("join_catalog_dir not a valid catalog")
 
     join_catalog = hats.read_hats(join_catalog_dir)
     if isinstance(join_catalog, CatalogCollection):
