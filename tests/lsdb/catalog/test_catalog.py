@@ -1,4 +1,6 @@
 # pylint: disable=too-many-lines
+from pathlib import Path
+
 import astropy.units as u
 import dask.array as da
 import dask.dataframe as dd
@@ -327,6 +329,19 @@ def test_assign_with_invalid_arguments(small_sky_order1_catalog):
         chunks = small_sky_order1_catalog._ddf.npartitions + 1
         array = da.random.random(size=10, chunks=chunks)
         small_sky_order1_catalog.assign(new_column=array)
+
+
+def test_read_hats(small_sky_catalog, tmp_path):
+    new_catalog_name = "small_sky"
+    base_catalog_path = Path(tmp_path) / new_catalog_name
+    small_sky_catalog.to_hats(base_catalog_path, catalog_name=new_catalog_name)
+
+    # Using .read_hats here vs .open_catalog in order to exercise code coverage for .read_hats
+    expected_catalog = lsdb.read_hats(base_catalog_path)
+    assert expected_catalog.hc_structure.schema.pandas_metadata is None
+    assert expected_catalog.hc_structure.catalog_name == new_catalog_name
+    assert expected_catalog.get_healpix_pixels() == small_sky_catalog.get_healpix_pixels()
+    pd.testing.assert_frame_equal(expected_catalog.compute(), small_sky_catalog._ddf.compute())
 
 
 def test_advise_unloaded_columns(small_sky_order1_default_cols_catalog):

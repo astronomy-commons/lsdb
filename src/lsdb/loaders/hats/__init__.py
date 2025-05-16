@@ -1,1 +1,1 @@
-from .read_hats import read_hats
+from .read_hats import open_catalog, read_hats

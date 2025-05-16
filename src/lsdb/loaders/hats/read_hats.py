@@ -34,7 +34,18 @@ def read_hats(
     margin_cache: str | Path | UPath | None = None,
     **kwargs,
 ) -> Dataset:
-    """Load catalog from a HATS directory.
+    """Load catalog from a HATS path.  See hats_catalog()."""
+    return open_catalog(path, search_filter, columns, margin_cache, **kwargs)
+
+
+def open_catalog(
+    path: str | Path | UPath,
+    search_filter: AbstractSearch | None = None,
+    columns: list[str] | str | None = None,
+    margin_cache: str | Path | UPath | None = None,
+    **kwargs,
+) -> Dataset:
+    """Load catalog from a HATS path.
 
     Catalogs exist in collections or stand-alone.
 
