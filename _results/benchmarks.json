@@ -15,7 +15,7 @@
         "warmup_time": -1
     },
     "benchmarks.time_create_large_catalog": {
-        "code": "def time_create_large_catalog():\n    return lsdb.read_hats(BENCH_DATA_DIR / \"large_catalog\")",
+        "code": "def time_create_large_catalog():\n    return lsdb.open_catalog(BENCH_DATA_DIR / \"large_catalog\")",
         "min_run_count": 2,
         "name": "benchmarks.time_create_large_catalog",
         "number": 0,
@@ -26,11 +26,11 @@
         "sample_time": 0.01,
         "type": "time",
         "unit": "seconds",
-        "version": "b7269a6892c684b6e767fe124c092484acfde95f07eb85d305b5baa0f492690e",
+        "version": "3f9b23c76db4ae5103da07499ca197a4722eabd18c4a71705e5e7836b62efd7b",
         "warmup_time": -1
     },
     "benchmarks.time_create_midsize_catalog": {
-        "code": "def time_create_midsize_catalog():\n    return lsdb.read_hats(BENCH_DATA_DIR / \"midsize_catalog\")",
+        "code": "def time_create_midsize_catalog():\n    return lsdb.open_catalog(BENCH_DATA_DIR / \"midsize_catalog\")",
         "min_run_count": 2,
         "name": "benchmarks.time_create_midsize_catalog",
         "number": 0,
@@ -41,7 +41,7 @@
         "sample_time": 0.01,
         "type": "time",
         "unit": "seconds",
-        "version": "1bb7ec29f4f7be3c1ddb7cb5b3d00ed0220d01824d6e98f372d180527d468acd",
+        "version": "df0781a9e8c88646c54e50a444d93b859a78e3d3e82d1d3ba2c116fd7d209050",
         "warmup_time": -1
     },
     "benchmarks.time_kdtree_crossmatch": {
