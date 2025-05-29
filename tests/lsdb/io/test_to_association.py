@@ -1,3 +1,4 @@
+import pandas as pd
 import pytest
 from hats.pixel_math import HealpixPixel
 
@@ -49,6 +50,31 @@ def test_crossmatch_to_association(xmatch_result, association_kwargs, tmp_path):
         HealpixPixel(1, 45),
         HealpixPixel(1, 46),
     ]
+
+
+def test_join_through_crossmatch_association(
+    xmatch_result, association_kwargs, small_sky_catalog, small_sky_xmatch_catalog, tmp_path
+):
+    to_association(
+        xmatch_result,
+        catalog_name="test_association",
+        base_catalog_path=tmp_path,
+        overwrite=False,
+        **association_kwargs,
+    )
+    association_table = lsdb.read_hats(tmp_path)
+    assert isinstance(association_table, AssociationCatalog)
+    xmatch_cat = small_sky_catalog.join(small_sky_xmatch_catalog, through=association_table)
+    assert association_table.get_healpix_pixels() == xmatch_cat.get_healpix_pixels()
+    assert xmatch_cat.hc_structure.moc is not None
+    xmatch_df = xmatch_cat.compute()
+    expected_xmatch_df = xmatch_result.compute()
+    pd.testing.assert_series_equal(
+        xmatch_df["id_small_sky"], expected_xmatch_df["id_left"], check_names=False
+    )
+    pd.testing.assert_series_equal(
+        xmatch_df["id_small_sky_xmatch"], expected_xmatch_df["id_right"], check_names=False
+    )
 
 
 def test_to_association_overwrite(xmatch_result, association_kwargs, tmp_path):

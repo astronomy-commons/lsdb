@@ -17,6 +17,7 @@ from hats.pixel_tree import PixelAlignment, PixelAlignmentType, align_trees
 from hats.pixel_tree.moc_utils import copy_moc
 from hats.pixel_tree.pixel_alignment import align_with_mocs
 
+import lsdb
 import lsdb.nested as nd
 from lsdb.dask.divisions import get_pixels_divisions
 from lsdb.types import DaskDFPixelMap
@@ -60,12 +61,14 @@ def remove_hips_columns(df: npd.NestedFrame | None):
     return df.drop(columns=hive_columns_in_df)
 
 
-def align_catalogs(left: Catalog, right: Catalog, add_right_margin: bool = True) -> PixelAlignment:
+def align_catalogs(
+    left: HealpixDataset, right: HealpixDataset, add_right_margin: bool = True
+) -> PixelAlignment:
     """Aligns two catalogs, also using the right catalog's margin if it exists
 
     Args:
-        left (lsdb.Catalog): The left catalog to align
-        right (lsdb.Catalog): The right catalog to align
+        left (HealpixDataset): The left catalog to align
+        right (HealpixDataset): The right catalog to align
         add_right_margin (bool): If True, when using MOCs to align catalogs, adds a border to the
             right catalog's moc to include the margin of the right catalog, if it exists. Defaults to True.
     Returns:
@@ -74,7 +77,7 @@ def align_catalogs(left: Catalog, right: Catalog, add_right_margin: bool = True)
 
     right_added_radius = None
 
-    if right.margin is not None:
+    if isinstance(right, lsdb.Catalog) and right.margin is not None:
         right_tree = align_trees(
             right.hc_structure.pixel_tree,
             right.margin.hc_structure.pixel_tree,
