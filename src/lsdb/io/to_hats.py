@@ -117,9 +117,11 @@ def to_hats(
     # Save partition info
     PartitionInfo(pixels).write_to_file(base_catalog_path / "partition_info.csv")
     # Save catalog info
-    if default_columns is None:
-        default_columns = catalog.hc_structure.catalog_info.default_columns
-    if default_columns is not None and len(default_columns) == 0:
+    if default_columns:
+        missing_columns = set(default_columns) - set(catalog.columns)
+        if missing_columns:
+            raise ValueError(f"Default columns `{missing_columns}` not found in catalog")
+    else:
         default_columns = None
     new_hc_structure = create_modified_catalog_structure(
         catalog.hc_structure,
