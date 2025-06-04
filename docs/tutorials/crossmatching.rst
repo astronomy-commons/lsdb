@@ -6,13 +6,14 @@ TODO - Help wanted
 Learning Objectives
 ----------------------------------------
 
-By the end of this tutorial, you will:
+By the end of this tutorial, you will know how to:
 
-* <List of things that you can learn here>
+* test a crossmatch by limiting inputs with a cone search
+* crossmatch objects between two catalogs by `ra` and `dec`
 
 You should already have an understanding of:
 
-* <Suggested pre-reading>
+* how to open a catalog
 
 Introduction
 ----------------------------------------
@@ -24,9 +25,9 @@ Introduction
 About
 ----------------------------------------
 
-**Authors**: Your Name
+**Authors**: Derek Jones
 
-**Last updated on**: April 4, 2025
+**Last updated on**: June 4, 2025
 
 If you use ``lsdb`` for published research, please cite following 
 `instructions <https://docs.lsdb.io/en/stable/citation.html>`__.
