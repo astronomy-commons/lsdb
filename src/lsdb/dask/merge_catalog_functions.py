@@ -19,7 +19,6 @@ from hats.pixel_tree.pixel_alignment import align_with_mocs
 from hats.pixel_tree.pixel_tree import PixelTree
 from mocpy import MOC
 
-import lsdb
 import lsdb.nested as nd
 from lsdb.dask.divisions import get_pixels_divisions
 from lsdb.types import DaskDFPixelMap
@@ -28,6 +27,10 @@ if TYPE_CHECKING:
     from lsdb.catalog.association_catalog import AssociationCatalog
     from lsdb.catalog.catalog import Catalog
     from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
+
+
+ASSOC_NORDER = "assoc_Norder"
+ASSOC_NPIX = "assoc_Npix"
 
 
 def concat_partition_and_margin(
@@ -64,14 +67,12 @@ def remove_hips_columns(df: npd.NestedFrame | None):
     return df.drop(columns=hive_columns_in_df)
 
 
-def align_catalogs(
-    left: HealpixDataset, right: HealpixDataset, add_right_margin: bool = True
-) -> PixelAlignment:
+def align_catalogs(left: Catalog, right: Catalog, add_right_margin: bool = True) -> PixelAlignment:
     """Aligns two catalogs, also using the right catalog's margin if it exists
 
     Args:
-        left (HealpixDataset): The left catalog to align
-        right (HealpixDataset): The right catalog to align
+        left (Catalog): The left catalog to align
+        right (Catalog): The right catalog to align
         add_right_margin (bool): If True, when using MOCs to align catalogs, adds a border to the
             right catalog's moc to include the margin of the right catalog, if it exists. Defaults to True.
 
@@ -89,17 +90,17 @@ def align_catalogs(
 
 
 def align_catalogs_with_association(
-    primary_catalog: HealpixDataset,
+    primary_catalog: Catalog,
     association: AssociationCatalog,
-    join_catalog: HealpixDataset,
+    join_catalog: Catalog,
     add_right_margin: bool = True,
 ) -> PixelAlignment:
     """Aligns two catalogs with an association
 
     Args:
-        left (HealpixDataset): The left catalog to align
+        primary_catalog (Catalog): The primary catalog to align
         association (AssociationCatalog): The association catalog
-        right (HealpixDataset): The right catalog to align
+        join_catalog (Catalog): The join catalog to align
         add_right_margin (bool): If True, when using MOCs to align catalogs, adds a border to the
             right catalog's moc to include the margin of the right catalog, if it exists. Defaults to True.
 
@@ -107,42 +108,58 @@ def align_catalogs_with_association(
         A tuple of PixelAlignment between the primary catalog and the association,
         and the final PixelAlignment between those and the join catalog.
     """
-    left_alignment = align_catalogs(primary_catalog, association)
+    # First, align primary catalog with the association.
+    left_alignment = align_with_mocs(
+        primary_catalog.hc_structure.pixel_tree,
+        association.hc_structure.pixel_tree,
+        primary_catalog.hc_structure.moc,
+        association.hc_structure.moc,
+        alignment_type=PixelAlignmentType.INNER,
+    )
+    # Then align this left alignment with the join catalog. The result
+    # will be the final alignment for the join via the association.
     right_tree, right_moc = _get_right_tree_and_moc(join_catalog, add_right_margin)
-    alignment = align_with_mocs(
+    final_alignment = align_with_mocs(
         left_alignment.pixel_tree,
         right_tree,
         left_alignment.moc,
         right_moc,
         alignment_type=PixelAlignmentType.INNER,
     )
-    left_pixel_mapping = left_alignment.pixel_mapping.rename(
+    # Next, merge the pixel mappings, based on the aligned pixels of the left
+    # alignment and the primary pixels of the final alignment.
+    merge_norder, merge_npix = "merge_Norder", "merge_Npix"
+    left_renamed = left_alignment.pixel_mapping.rename(
         columns={
-            PixelAlignment.JOIN_ORDER_COLUMN_NAME: "assoc_Norder",
-            PixelAlignment.JOIN_PIXEL_COLUMN_NAME: "assoc_Npix",
-            PixelAlignment.ALIGNED_ORDER_COLUMN_NAME: "merge_Norder",
-            PixelAlignment.ALIGNED_PIXEL_COLUMN_NAME: "merge_Npix",
+            PixelAlignment.JOIN_ORDER_COLUMN_NAME: ASSOC_NORDER,
+            PixelAlignment.JOIN_PIXEL_COLUMN_NAME: ASSOC_NPIX,
+            PixelAlignment.ALIGNED_ORDER_COLUMN_NAME: merge_norder,
+            PixelAlignment.ALIGNED_PIXEL_COLUMN_NAME: merge_npix,
         }
     )
-    right_pixel_mapping = alignment.pixel_mapping.rename(
+    right_renamed = final_alignment.pixel_mapping.rename(
         columns={
-            PixelAlignment.PRIMARY_ORDER_COLUMN_NAME: "merge_Norder",
-            PixelAlignment.PRIMARY_PIXEL_COLUMN_NAME: "merge_Npix",
+            PixelAlignment.PRIMARY_ORDER_COLUMN_NAME: merge_norder,
+            PixelAlignment.PRIMARY_PIXEL_COLUMN_NAME: merge_npix,
         }
     )
-    pixel_mapping = left_pixel_mapping.merge(right_pixel_mapping, on=["merge_Norder", "merge_Npix"]).drop(
-        columns=["merge_Norder", "merge_Npix"]
+    # The final pixel mapping will contain "primary", "assoc", "join" and "aligned" columns.
+    pixel_mapping = left_renamed.merge(right_renamed, on=[merge_norder, merge_npix]).drop(
+        columns=[merge_norder, merge_npix]
     )
     return PixelAlignment(
-        alignment.pixel_tree, pixel_mapping, alignment_type=PixelAlignmentType.INNER, moc=alignment.moc
+        final_alignment.pixel_tree,
+        pixel_mapping,
+        alignment_type=PixelAlignmentType.INNER,
+        moc=final_alignment.moc,
     )
 
 
-def _get_right_tree_and_moc(right: HealpixDataset, add_right_margin: bool = True) -> tuple[PixelTree, MOC]:
+def _get_right_tree_and_moc(right: Catalog, add_right_margin: bool = True) -> tuple[PixelTree, MOC]:
     """Prepare right catalog pixel tree and moc for alignment"""
     right_added_radius = None
 
-    if isinstance(right, lsdb.Catalog) and right.margin is not None:
+    if right.margin is not None:
         right_tree = align_trees(
             right.hc_structure.pixel_tree,
             right.margin.hc_structure.pixel_tree,
@@ -298,7 +315,7 @@ def get_healpix_pixels_from_alignment(
     """
     pixel_mapping = alignment.pixel_mapping
     if len(pixel_mapping) == 0:
-        return ([], [])
+        return [], []
     make_pixel = np.vectorize(HealpixPixel)
     left_pixels = make_pixel(
         pixel_mapping[PixelAlignment.PRIMARY_ORDER_COLUMN_NAME],
@@ -318,17 +335,10 @@ def get_healpix_pixels_from_association(
     pixel_mapping = alignment.pixel_mapping
     if len(pixel_mapping) == 0:
         return [], [], []
+    left_pixels, right_pixels = get_healpix_pixels_from_alignment(alignment)
     make_pixel = np.vectorize(HealpixPixel)
-    left_pixels = make_pixel(
-        pixel_mapping[PixelAlignment.PRIMARY_ORDER_COLUMN_NAME],
-        pixel_mapping[PixelAlignment.PRIMARY_PIXEL_COLUMN_NAME],
-    )
-    right_pixels = make_pixel(
-        pixel_mapping[PixelAlignment.JOIN_ORDER_COLUMN_NAME],
-        pixel_mapping[PixelAlignment.JOIN_PIXEL_COLUMN_NAME],
-    )
-    association_pixels = make_pixel(pixel_mapping["assoc_Norder"], pixel_mapping["assoc_Npix"])
-    return list(left_pixels), list(association_pixels), list(right_pixels)
+    assoc_pixels = make_pixel(pixel_mapping[ASSOC_NORDER], pixel_mapping[ASSOC_NPIX])
+    return left_pixels, list(assoc_pixels), right_pixels
 
 
 def generate_meta_df_for_joined_tables(
