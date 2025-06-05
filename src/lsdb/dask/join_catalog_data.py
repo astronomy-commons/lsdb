@@ -17,12 +17,14 @@ from lsdb.catalog.association_catalog import AssociationCatalog
 from lsdb.dask.merge_catalog_functions import (
     align_and_apply,
     align_catalogs,
+    align_catalogs_with_association,
     concat_partition_and_margin,
     construct_catalog_args,
     filter_by_spatial_index_to_pixel,
     generate_meta_df_for_joined_tables,
     generate_meta_df_for_nested_tables,
     get_healpix_pixels_from_alignment,
+    get_healpix_pixels_from_association,
 )
 from lsdb.types import DaskDFPixelMap
 
@@ -382,18 +384,15 @@ def join_catalog_data_through(
             RuntimeWarning,
         )
 
-    alignment = align_catalogs(left, right)
-    left_pixels, right_pixels = get_healpix_pixels_from_alignment(alignment)
-
-    alignment_association = align_catalogs(left, association)
-    _, pixels_association = get_healpix_pixels_from_alignment(alignment_association)
+    alignment = align_catalogs_with_association(left, association, right)
+    left_pixels, assoc_pixels, right_pixels = get_healpix_pixels_from_association(alignment)
 
     joined_partitions = align_and_apply(
         [
             (left, left_pixels),
             (right, right_pixels),
             (right.margin, right_pixels),
-            (association, pixels_association),
+            (association, assoc_pixels),
         ],
         perform_join_through,
         suffixes,

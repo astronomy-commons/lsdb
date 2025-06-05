@@ -53,7 +53,7 @@ def test_crossmatch_to_association(xmatch_result, association_kwargs, tmp_path):
 
 
 def test_join_through_crossmatch_association(
-    xmatch_result, association_kwargs, small_sky_catalog, small_sky_xmatch_catalog, tmp_path
+    xmatch_result, association_kwargs, small_sky_catalog, small_sky_xmatch_with_margin, tmp_path
 ):
     to_association(
         xmatch_result,
@@ -64,7 +64,7 @@ def test_join_through_crossmatch_association(
     )
     association_table = lsdb.read_hats(tmp_path)
     assert isinstance(association_table, AssociationCatalog)
-    xmatch_cat = small_sky_catalog.join(small_sky_xmatch_catalog, through=association_table)
+    xmatch_cat = small_sky_catalog.join(small_sky_xmatch_with_margin, through=association_table)
     assert association_table.get_healpix_pixels() == xmatch_cat.get_healpix_pixels()
     assert xmatch_cat.hc_structure.moc is not None
     xmatch_df = xmatch_cat.compute()
