@@ -49,7 +49,7 @@ full = [
     "fsspec[full]", # complete file system specs.
     "ipykernel", # Support for Jupyter notebooks
     "ipywidgets", # useful for tqdm in notebooks.
-    "lsst-sphgeom", # To handle spherical sky polygons
+    "lsst-sphgeom ; sys_platform == 'darwin' or sys_platform == 'linux'", # To handle spherical sky polygons, not available on Windows
 ]
 
 [build-system]
