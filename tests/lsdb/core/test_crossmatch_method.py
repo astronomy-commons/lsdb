@@ -25,7 +25,6 @@ def test_dataframe_or_catalog_crossmatch(
 
     # Determine which args to pass
     left_args = {} if left == "catalog" else {"margin_threshold": 100}
-    right_args = {} if right == "catalog" else {"margin_threshold": 100}
 
     # Perform the crossmatch
     result = lsdb.crossmatch(
@@ -35,7 +34,7 @@ def test_dataframe_or_catalog_crossmatch(
         algorithm=algo,
         radius_arcsec=0.01 * 3600,
         left_args=left_args,
-        right_args=right_args,
+        right_args={},
     ).compute()
 
     # Assertions
