@@ -176,6 +176,11 @@ def test_read_hats_default_cols_all_cols(small_sky_order1_default_cols_dir, help
     helpers.assert_index_correct(catalog)
 
 
+def test_read_hats_default_cols_invalid_selector(small_sky_order1_default_cols_dir):
+    with pytest.raises(TypeError):
+        lsdb.open_catalog(small_sky_order1_default_cols_dir, columns="other")
+
+
 def test_read_hats_no_pandas(small_sky_order1_no_pandas_dir, helpers):
     catalog = lsdb.open_catalog(small_sky_order1_no_pandas_dir)
     assert isinstance(catalog, lsdb.Catalog)
