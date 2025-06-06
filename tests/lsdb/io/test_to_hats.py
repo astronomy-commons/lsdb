@@ -51,24 +51,25 @@ def test_save_catalog_initializes_upath_once(small_sky_catalog, tmp_path, mocker
 
 
 def test_save_catalog_default_columns(small_sky_order1_default_cols_catalog, tmp_path, helpers):
-    cat = small_sky_order1_default_cols_catalog[["ra", "dec"]]
+    default_columns = ["ra", "dec"]
+    cat = small_sky_order1_default_cols_catalog[default_columns]
     new_catalog_name = "small_sky_order1"
     base_catalog_path = Path(tmp_path) / new_catalog_name
-    cat.to_hats(base_catalog_path, catalog_name=new_catalog_name)
+    cat.to_hats(base_catalog_path, catalog_name=new_catalog_name, default_columns=default_columns)
     expected_catalog = lsdb.read_hats(base_catalog_path)
     assert expected_catalog.hc_structure.catalog_name == new_catalog_name
     assert expected_catalog.get_healpix_pixels() == cat.get_healpix_pixels()
-    pd.testing.assert_frame_equal(expected_catalog.compute(), cat._ddf.compute())
+    assert expected_catalog.hc_structure.catalog_info.default_columns == default_columns
+    pd.testing.assert_frame_equal(expected_catalog.compute(), cat.compute())
     helpers.assert_schema_correct(expected_catalog)
     helpers.assert_default_columns_in_columns(expected_catalog)
 
 
 def test_save_catalog_empty_default_columns(small_sky_order1_default_cols_catalog, tmp_path, helpers):
     cat = small_sky_order1_default_cols_catalog[["ra", "dec"]]
-    cat.hc_structure.catalog_info.default_columns = []
     new_catalog_name = "small_sky_order1"
     base_catalog_path = Path(tmp_path) / new_catalog_name
-    cat.to_hats(base_catalog_path, catalog_name=new_catalog_name)
+    cat.to_hats(base_catalog_path, catalog_name=new_catalog_name, default_columns=[])
     expected_catalog = lsdb.read_hats(base_catalog_path)
     assert expected_catalog.hc_structure.catalog_info.default_columns is None
     assert expected_catalog.hc_structure.catalog_name == new_catalog_name
@@ -78,7 +79,16 @@ def test_save_catalog_empty_default_columns(small_sky_order1_default_cols_catalo
     helpers.assert_default_columns_in_columns(expected_catalog)
 
 
-def test_save_catalog_default_columns_cross_matched(
+def test_save_catalog_invalid_default_columns(small_sky_order1_default_cols_catalog, tmp_path):
+    new_catalog_name = "small_sky_order1"
+    base_catalog_path = Path(tmp_path) / new_catalog_name
+    with pytest.raises(ValueError, match="not found"):
+        small_sky_order1_default_cols_catalog.to_hats(
+            base_catalog_path, catalog_name=new_catalog_name, default_columns=["id", "abc"]
+        )
+
+
+def test_save_crossmatch_catalog(
     small_sky_order1_default_cols_catalog, small_sky_xmatch_catalog, tmp_path, helpers
 ):
     cat = small_sky_order1_default_cols_catalog.crossmatch(
@@ -93,19 +103,11 @@ def test_save_catalog_default_columns_cross_matched(
     cat.to_hats(base_catalog_path, catalog_name=new_catalog_name)
     expected_catalog = lsdb.read_hats(base_catalog_path)
     assert expected_catalog.original_schema is not None
+    assert expected_catalog.hc_structure.catalog_info.default_columns is None
     assert expected_catalog.hc_structure.catalog_name == new_catalog_name
     assert expected_catalog.get_healpix_pixels() == cat.get_healpix_pixels()
-    pd.testing.assert_frame_equal(
-        expected_catalog.compute(), cat._ddf.compute()[cat.hc_structure.catalog_info.default_columns]
-    )
+    pd.testing.assert_frame_equal(expected_catalog.compute(), cat.compute())
     helpers.assert_schema_correct(expected_catalog)
-    helpers.assert_default_columns_in_columns(expected_catalog)
-    expected_catalog_all_cols = lsdb.read_hats(base_catalog_path, columns="all")
-    assert expected_catalog_all_cols.hc_structure.catalog_name == new_catalog_name
-    assert expected_catalog_all_cols.get_healpix_pixels() == cat.get_healpix_pixels()
-    pd.testing.assert_frame_equal(expected_catalog_all_cols.compute(), cat._ddf.compute())
-    helpers.assert_schema_correct(expected_catalog_all_cols)
-    helpers.assert_default_columns_in_columns(expected_catalog_all_cols)
 
 
 def test_save_catalog_point_map(small_sky_order1_catalog, tmp_path):
