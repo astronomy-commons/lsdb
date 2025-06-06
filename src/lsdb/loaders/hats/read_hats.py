@@ -5,6 +5,7 @@ from pathlib import Path
 import hats as hc
 import nested_pandas as npd
 import numpy as np
+import pandas as pd
 from hats.catalog import CatalogType
 from hats.catalog.catalog_collection import CatalogCollection
 from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
@@ -34,7 +35,7 @@ def read_hats(
     margin_cache: str | Path | UPath | None = None,
     **kwargs,
 ) -> Dataset:
-    """Load catalog from a HATS path.  See hats_catalog()."""
+    """Load catalog from a HATS path. See open_catalog()."""
     return open_catalog(path, search_filter, columns, margin_cache, **kwargs)
 
 
@@ -90,8 +91,8 @@ def open_catalog(
     Args:
         path (UPath | Path): The path that locates the root of the HATS collection or stand-alone catalog.
         search_filter (Type[AbstractSearch]): Default `None`. The filter method to be applied.
-        columns (List[str]): Default `None`. The set of columns to filter the catalog on. If None, the
-            catalog's default columns will be loaded. To load all catalog columns, use `columns="all"`
+        columns (list[str] | str): Default `None`. The set of columns to filter the catalog on. If None,
+            the catalog's default columns will be loaded. To load all catalog columns, use `columns="all"`.
         margin_cache (path-like): Default `None`. The margin for the main catalog, provided as a path.
         dtype_backend (str): Backend data type to apply to the catalog.
             Defaults to "pyarrow". If None, no type conversion is performed.
@@ -159,12 +160,12 @@ def _load_catalog(
 ) -> Dataset:
     if columns is None and hc_catalog.catalog_info.default_columns is not None:
         columns = hc_catalog.catalog_info.default_columns
-
-    if columns == "all":
-        columns = None
-
     if isinstance(columns, str):
-        raise TypeError("`columns` argument must be a list of strings, None, or 'all'")
+        if columns != "all":
+            raise TypeError("`columns` argument must be a sequence of strings, None, or 'all'")
+        columns = None
+    elif pd.api.types.is_list_like(columns):
+        columns = list(columns)  # type: ignore[arg-type]
 
     # Creates a config object to store loading parameters from all keyword arguments.
     config = HatsLoadingConfig(
