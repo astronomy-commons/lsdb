@@ -51,7 +51,11 @@ def test_save_margin_catalog(small_sky_xmatch_margin_catalog, tmp_path):
     original_info = small_sky_xmatch_margin_catalog.hc_structure.catalog_info
     partition_sizes = small_sky_xmatch_margin_catalog._ddf.map_partitions(len).compute()
     assert max(partition_sizes) == 10
-    assert expected_catalog.hc_structure.catalog_info == original_info.copy_and_update(hats_max_rows="10")
+    assert expected_catalog.hc_structure.catalog_info == original_info.copy_and_update(
+        hats_max_rows="10",
+        # Also check that the builder was properly set
+        hats_builder=f"lsdb v{lsdb.__version__}, hats v{hc.__version__}",
+    )
 
     # Sneak in test on data thumbnails: only main catalogs have them
     data_thumbnail_pointer = get_data_thumbnail_pointer(base_catalog_path)

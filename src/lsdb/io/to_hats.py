@@ -14,6 +14,8 @@ from hats.pixel_math import HealpixPixel, spatial_index_to_healpix
 from hats.pixel_math.sparse_histogram import HistogramAggregator, SparseHistogram
 from upath import UPath
 
+import lsdb
+
 if TYPE_CHECKING:
     from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
 
@@ -130,6 +132,7 @@ def to_hats(
         total_rows=int(np.sum(counts)),
         default_columns=default_columns,
         hats_max_rows=hats_max_rows,
+        hats_builder=get_hats_builder_property(),
     )
     new_hc_structure.catalog_info.to_properties_file(base_catalog_path)
     # Save the point distribution map
@@ -210,3 +213,8 @@ def create_modified_catalog_structure(
     new_hc_structure.catalog_info = new_hc_structure.catalog_info.copy_and_update(**kwargs)
     new_hc_structure.catalog_info.catalog_name = catalog_name
     return new_hc_structure
+
+
+def get_hats_builder_property() -> str:
+    """Generate the hats-builder property with the current versions of LSDB and HATS"""
+    return f"lsdb v{lsdb.__version__}, hats v{hc.__version__}"
