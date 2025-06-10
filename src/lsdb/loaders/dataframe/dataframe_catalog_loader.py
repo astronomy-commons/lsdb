@@ -138,7 +138,7 @@ class DataframeCatalogLoader:
             catalog_name: it is recommended to provide a new name for your catalog
             ra_column: column to find right ascension coordinate
             dec_column: column to find declination coordinate
-            catalog_type: type of table being created (e.g. OBJECT, MARGIN, INDEX)
+            catalog_type: type of table being created (e.g. OBJECT, SOURCE, MAP)
             **kwargs: Arguments to pass to the creation of the catalog info
 
         Returns:
@@ -147,6 +147,8 @@ class DataframeCatalogLoader:
         if kwargs is None:
             kwargs = {}
         kwargs = kwargs | _extra_property_dict(self.df_total_memory)
+        if catalog_type and catalog_type not in (CatalogType.OBJECT, CatalogType.SOURCE, CatalogType.MAP):
+            raise ValueError(f"Cannot create {catalog_type} type catalog via from_dataframe.")
         return TableProperties(
             catalog_name=catalog_name,
             ra_column=ra_column,
