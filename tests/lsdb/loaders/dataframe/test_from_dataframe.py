@@ -65,13 +65,13 @@ def test_from_dataframe(small_sky_order1_df, small_sky_order1_catalog, helpers):
 
 def test_from_dataframe_catalog_of_invalid_type(small_sky_order1_df, small_sky_order1_catalog):
     """Tests that an exception is thrown if the catalog is not of type OBJECT or SOURCE"""
-    valid_catalog_types = [CatalogType.OBJECT, CatalogType.SOURCE]
+    valid_catalog_types = [CatalogType.OBJECT, CatalogType.SOURCE, CatalogType.MAP]
     for catalog_type in CatalogType.all_types():
         kwargs = get_catalog_kwargs(small_sky_order1_catalog, catalog_type=catalog_type)
         if catalog_type in valid_catalog_types:
             lsdb.from_dataframe(small_sky_order1_df, margin_threshold=None, **kwargs)
         else:
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="Cannot create"):
                 lsdb.from_dataframe(small_sky_order1_df, margin_threshold=None, **kwargs)
         # Drop spatial_index that might have been created in place
         small_sky_order1_df.reset_index(drop=True, inplace=True)
