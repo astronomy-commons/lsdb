@@ -191,8 +191,9 @@ This creates the following HATS Catalog on disk:
     │   │   └── Dir=0
     │   │       └── Npix=57.parquet
     │   ├── _common_metadata
-    │   └── _metadata
+    │   ├── _metadata
+    │   └── data_thumbnail.parquet
+    ├── hats.properties
     ├── partition_info.csv
-    ├── point_map.fits
-    └── properties
+    └── skymap.fits
 

@@ -15,7 +15,9 @@ import lsdb
 def test_save_catalog(small_sky_catalog, tmp_path):
     new_catalog_name = "small_sky"
     base_catalog_path = Path(tmp_path) / new_catalog_name
-    small_sky_catalog.to_hats(base_catalog_path, catalog_name=new_catalog_name)
+    small_sky_catalog.to_hats(
+        base_catalog_path, catalog_name=new_catalog_name, addl_hats_properties={"obs_regime": "Optical"}
+    )
 
     expected_catalog = lsdb.read_hats(base_catalog_path)
     assert expected_catalog.hc_structure.schema.pandas_metadata is None
@@ -31,7 +33,8 @@ def test_save_catalog(small_sky_catalog, tmp_path):
     assert max(partition_sizes) == 131
     assert expected_catalog.hc_structure.catalog_info == original_info.copy_and_update(
         hats_max_rows="131",
-        # Also check that the builder was properly set
+        skymap_order=8,
+        obs_regime="Optical",
         hats_builder=f"lsdb v{lsdb.__version__}, hats v{hc.__version__}",
     )
 
@@ -41,6 +44,9 @@ def test_save_catalog(small_sky_catalog, tmp_path):
     data_thumbnail = pq.read_table(data_thumbnail_pointer)
     assert len(data_thumbnail) == 1
     assert data_thumbnail.schema.equals(small_sky_catalog.hc_structure.schema)
+
+    assert (base_catalog_path / "properties").exists()
+    assert (base_catalog_path / "hats.properties").exists()
 
 
 def test_save_catalog_initializes_upath_once(small_sky_catalog, tmp_path, mocker):
@@ -117,16 +123,36 @@ def test_save_crossmatch_catalog(
 def test_save_catalog_point_map(small_sky_order1_catalog, tmp_path):
     new_catalog_name = "small_sky_order1"
     base_catalog_path = Path(tmp_path) / new_catalog_name
-    small_sky_order1_catalog.to_hats(base_catalog_path, catalog_name=new_catalog_name)
+    small_sky_order1_catalog.to_hats(
+        base_catalog_path, catalog_name=new_catalog_name, skymap_alt_orders=[1, 2]
+    )
 
     point_map_path = base_catalog_path / "point_map.fits"
-    assert hc.io.file_io.does_file_or_directory_exist(point_map_path)
+    assert point_map_path.exists()
     histogram = read_fits_image(point_map_path)
 
     # The histogram and the sky map histogram match
     assert len(small_sky_order1_catalog) == np.sum(histogram)
     expected_histogram = small_sky_order1_catalog.skymap_histogram(lambda df, _: len(df), order=8)
     npt.assert_array_equal(expected_histogram, histogram)
+
+    skymap_path = base_catalog_path / "skymap.fits"
+    assert skymap_path.exists()
+    skymap_histogram = read_fits_image(skymap_path)
+
+    # The histogram and the sky map histogram match
+    assert len(small_sky_order1_catalog) == np.sum(skymap_histogram)
+    npt.assert_array_equal(histogram, skymap_histogram)
+
+    skymap_path = base_catalog_path / "skymap.1.fits"
+    assert skymap_path.exists()
+
+    skymap_path = base_catalog_path / "skymap.2.fits"
+    assert skymap_path.exists()
+
+    new_catalog = lsdb.open_catalog(base_catalog_path)
+    assert new_catalog.hc_structure.catalog_info.skymap_alt_orders == [1, 2]
+    assert new_catalog.hc_structure.catalog_info.skymap_order == 8
 
 
 def test_save_catalog_overwrite(small_sky_catalog, tmp_path):
