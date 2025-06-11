@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from copy import copy
+from importlib.metadata import version
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -14,8 +15,6 @@ from hats.io.skymap import write_skymap
 from hats.pixel_math import HealpixPixel, spatial_index_to_healpix
 from hats.pixel_math.sparse_histogram import HistogramAggregator, SparseHistogram
 from upath import UPath
-
-import lsdb
 
 if TYPE_CHECKING:
     from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
@@ -242,4 +241,4 @@ def create_modified_catalog_structure(
 
 def get_hats_builder_property() -> str:
     """Generate the hats-builder property with the current versions of LSDB and HATS"""
-    return f"lsdb v{lsdb.__version__}, hats v{hc.__version__}"
+    return f"lsdb v{version('lsdb')}, hats v{version('hats')}"

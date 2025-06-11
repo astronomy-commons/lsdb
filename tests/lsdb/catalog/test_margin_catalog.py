@@ -1,3 +1,4 @@
+from importlib.metadata import version
 from pathlib import Path
 
 import hats as hc
@@ -54,7 +55,7 @@ def test_save_margin_catalog(small_sky_xmatch_margin_catalog, tmp_path):
     assert expected_catalog.hc_structure.catalog_info == original_info.copy_and_update(
         hats_max_rows="10",
         # Also check that the builder was properly set
-        hats_builder=f"lsdb v{lsdb.__version__}, hats v{hc.__version__}",
+        hats_builder=f"lsdb v{version('lsdb')}, hats v{version('hats')}",
     )
 
     # Sneak in test on data thumbnails: only main catalogs have them

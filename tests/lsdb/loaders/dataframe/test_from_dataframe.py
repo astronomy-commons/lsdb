@@ -1,4 +1,5 @@
 import math
+from importlib.metadata import version
 
 import astropy.units as u
 import hats as hc
@@ -48,7 +49,7 @@ def test_from_dataframe(small_sky_order1_df, small_sky_order1_catalog, helpers):
     )
     # The hats builder property is set correctly
     assert (
-        catalog.hc_structure.catalog_info.hats_builder == f"lsdb v{lsdb.__version__}, hats v{hc.__version__}"
+        catalog.hc_structure.catalog_info.hats_builder == f"lsdb v{version('lsdb')}, hats v{version('hats')}"
     )
     # The pixel threshold was specified properly
     assert catalog.hc_structure.catalog_info.hats_max_rows == 50
