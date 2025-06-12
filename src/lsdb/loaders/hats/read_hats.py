@@ -92,7 +92,8 @@ def open_catalog(
         path (UPath | Path): The path that locates the root of the HATS collection or stand-alone catalog.
         search_filter (Type[AbstractSearch]): Default `None`. The filter method to be applied.
         columns (list[str] | str): Default `None`. The set of columns to filter the catalog on. If None,
-            the catalog's default columns will be loaded. To load all catalog columns, use `columns="all"`.
+            the catalog's default columns will be loaded. To load all catalog columns, use `columns="all"`. 
+            RA and dec columns will be added if they are not present in specified or default columns.
         margin_cache (path-like): Default `None`. The margin for the main catalog, provided as a path.
         dtype_backend (str): Backend data type to apply to the catalog.
             Defaults to "pyarrow". If None, no type conversion is performed.
@@ -166,6 +167,14 @@ def _load_catalog(
         columns = None
     elif pd.api.types.is_list_like(columns):
         columns = list(columns)  # type: ignore[arg-type]
+    
+    ra_col = hc_catalog.catalog_info.ra_column
+    dec_col = hc_catalog.catalog_info.dec_column
+    if columns is not None:
+        if ra_col not in columns:
+            columns.append(ra_col)
+        if dec_col not in columns:
+            columns.append(dec_col)
 
     ra_col = hc_catalog.catalog_info.ra_column
     dec_col = hc_catalog.catalog_info.dec_column

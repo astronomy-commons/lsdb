@@ -16,6 +16,9 @@ import lsdb
 import lsdb.nested as nd
 from lsdb.core.search import BoxSearch, ConeSearch, IndexSearch, OrderSearch, PolygonSearch
 
+def test_no_ra_dec(small_sky_order1_collection_dir):
+    catalog = lsdb.open_catalog(small_sky_order1_collection_dir, columns = "all")
+    assert "ra" in catalog.columns and "dec" in catalog.columns
 
 def test_no_ra_dec(small_sky_order1_dir):
     catalog = lsdb.open_catalog(small_sky_order1_dir, columns=["id"])
@@ -530,3 +533,4 @@ def test_read_nested_column_selection_errors(small_sky_with_nested_sources_dir):
         lsdb.open_catalog(
             small_sky_with_nested_sources_dir, columns=["ra", "dec", "wrong.source_id", "sources.source_ra"]
         )
+        
