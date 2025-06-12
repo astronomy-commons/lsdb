@@ -16,6 +16,10 @@ import lsdb
 import lsdb.nested as nd
 from lsdb.core.search import BoxSearch, ConeSearch, IndexSearch, OrderSearch, PolygonSearch
 
+def test_no_ra_dec(small_sky_order1_dir):
+    catalog = lsdb.open_catalog(small_sky_order1_dir, columns = ["id"])
+    assert "ra" in catalog.columns
+    assert "dec" in catalog.columns
 
 def test_read_hats(small_sky_order1_dir, small_sky_order1_hats_catalog, helpers):
     catalog = lsdb.open_catalog(small_sky_order1_dir)
