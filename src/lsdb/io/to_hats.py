@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from copy import copy
+from importlib.metadata import version
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -160,6 +161,7 @@ def to_hats(
         total_rows=int(np.sum(counts)),
         default_columns=default_columns,
         hats_max_rows=hats_max_rows,
+        hats_builder=get_hats_builder_property(),
         **addl_hats_properties,
     )
     new_hc_structure.catalog_info.to_properties_file(base_catalog_path)
@@ -235,3 +237,8 @@ def create_modified_catalog_structure(
     new_hc_structure.catalog_info = new_hc_structure.catalog_info.copy_and_update(**kwargs)
     new_hc_structure.catalog_info.catalog_name = catalog_name
     return new_hc_structure
+
+
+def get_hats_builder_property() -> str:
+    """Generate the hats-builder property with the current versions of LSDB and HATS"""
+    return f"lsdb v{version('lsdb')}, hats v{version('hats')}"

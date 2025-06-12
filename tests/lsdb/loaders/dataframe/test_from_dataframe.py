@@ -1,4 +1,5 @@
 import math
+from importlib.metadata import version
 
 import astropy.units as u
 import hats as hc
@@ -46,6 +47,10 @@ def test_from_dataframe(small_sky_order1_df, small_sky_order1_catalog, helpers):
         catalog.hc_structure.catalog_info.explicit_dict()
         == small_sky_order1_catalog.hc_structure.catalog_info.explicit_dict()
     )
+    # The hats builder property is set correctly
+    assert (
+        catalog.hc_structure.catalog_info.hats_builder == f"lsdb v{version('lsdb')}, hats v{version('hats')}"
+    )
     # The pixel threshold was specified properly
     assert catalog.hc_structure.catalog_info.hats_max_rows == 50
     # Index is set to spatial index
@@ -59,7 +64,6 @@ def test_from_dataframe(small_sky_order1_df, small_sky_order1_catalog, helpers):
     helpers.assert_divisions_are_correct(catalog)
     # The arrow schema was automatically inferred
     helpers.assert_schema_correct(catalog)
-
     assert isinstance(catalog.compute(), npd.NestedFrame)
 
 
