@@ -1,3 +1,4 @@
+from importlib.metadata import version
 from pathlib import Path
 
 import hats as hc
@@ -35,6 +36,7 @@ def test_save_catalog(small_sky_catalog, tmp_path):
         hats_max_rows="131",
         skymap_order=8,
         obs_regime="Optical",
+        hats_builder=f"lsdb v{version('lsdb')}, hats v{version('hats')}",
     )
 
     # The catalog has 1 partition, therefore the thumbnail has 1 row
