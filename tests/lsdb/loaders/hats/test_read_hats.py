@@ -16,7 +16,6 @@ import lsdb
 import lsdb.nested as nd
 from lsdb.core.search import BoxSearch, ConeSearch, IndexSearch, OrderSearch, PolygonSearch
 
-
 def test_read_hats(small_sky_order1_dir, small_sky_order1_hats_catalog, helpers):
     catalog = lsdb.open_catalog(small_sky_order1_dir)
     assert isinstance(catalog, lsdb.Catalog)
@@ -266,7 +265,9 @@ def test_read_hats_no_pandas_with_columns(small_sky_order1_no_pandas_dir, helper
 
 def test_read_hats_no_pandas_with_index_column(small_sky_order1_no_pandas_dir, helpers):
     # _healpix_29 might be included in the columns, and it has no side effect.
-    catalog = lsdb.open_catalog(small_sky_order1_no_pandas_dir, columns=["ra", "dec", "_healpix_29"])
+    catalog = lsdb.open_catalog(small_sky_order1_no_pandas_dir, columns=["_healpix_29"])
+    assert "ra" in catalog.columns
+    assert "dec" in catalog.columns
     assert isinstance(catalog, lsdb.Catalog)
     helpers.assert_index_correct(catalog)
     assert list(catalog.compute().columns) == list(["ra", "dec"])

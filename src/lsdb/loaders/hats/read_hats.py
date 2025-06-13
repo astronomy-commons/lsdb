@@ -167,6 +167,13 @@ def _load_catalog(
     elif pd.api.types.is_list_like(columns):
         columns = list(columns)  # type: ignore[arg-type]
 
+    ra_col = hc_catalog.catalog_info.ra_column
+    dec_col = hc_catalog.catalog_info.dec_column
+    if columns is not None:
+        if ra_col is not None and ra_col not in columns:
+            columns.append(ra_col)
+        if dec_col is not None and dec_col not in columns:
+            columns.append(dec_col)
     # Creates a config object to store loading parameters from all keyword arguments.
     config = HatsLoadingConfig(
         search_filter=search_filter,
