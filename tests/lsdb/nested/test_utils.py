@@ -8,6 +8,7 @@ nested-pandas library.
 
 import pytest
 from nested_pandas.utils import count_nested
+from pandas.testing import assert_frame_equal
 
 import lsdb.nested as nd
 
@@ -23,4 +24,4 @@ def test_count_nested(test_dataset, join, by):
     result_dsk = nd.utils.count_nested(test_dataset, "nested", join=join, by=by).compute()
     result_pd = count_nested(test_dataset.compute(), "nested", join=join, by=by)
 
-    assert result_dsk.equals(result_pd)
+    assert_frame_equal(result_dsk, result_pd)

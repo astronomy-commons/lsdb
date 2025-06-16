@@ -47,6 +47,6 @@ def count_nested(df, nested, by=None, join=True) -> NestedFrame:
     # and second depending on join
     if join:
         # adds the meta onto the existing meta
-        meta = pd.concat([df._meta, meta])  # pylint: disable=protected-access
+        meta = pd.concat([df._meta, meta], axis=1)  # pylint: disable=protected-access
 
     return df.map_partitions(lambda x: npd_utils.count_nested(x, nested, by=by, join=join), meta=meta)
