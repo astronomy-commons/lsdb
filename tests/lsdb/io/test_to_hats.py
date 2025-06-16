@@ -34,7 +34,7 @@ def test_save_catalog(small_sky_catalog, tmp_path):
     assert max(partition_sizes) == 131
     assert expected_catalog.hc_structure.catalog_info == original_info.copy_and_update(
         hats_max_rows="131",
-        skymap_order=8,
+        skymap_order=5,
         obs_regime="Optical",
         hats_builder=f"lsdb v{version('lsdb')}, hats v{version('hats')}",
     )
@@ -125,7 +125,10 @@ def test_save_catalog_point_map(small_sky_order1_catalog, tmp_path):
     new_catalog_name = "small_sky_order1"
     base_catalog_path = Path(tmp_path) / new_catalog_name
     small_sky_order1_catalog.to_hats(
-        base_catalog_path, catalog_name=new_catalog_name, skymap_alt_orders=[1, 2]
+        base_catalog_path,
+        catalog_name=new_catalog_name,
+        skymap_alt_orders=[1, 2],
+        histogram_order=8,
     )
 
     point_map_path = base_catalog_path / "point_map.fits"

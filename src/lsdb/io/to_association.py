@@ -265,7 +265,7 @@ def _check_catalogs_and_columns(
         join_catalog = join_catalog.main_catalog
     if join_catalog.original_schema:
         if join_id_column not in join_catalog.original_schema.names:
-            raise ValueError("join_id_column must be a column in the primary catalog")
+            raise ValueError("join_id_column must be a column in the join catalog")
         if join_to_primary_id_column and join_to_primary_id_column not in join_catalog.original_schema.names:
             raise ValueError("join_to_primary_id_column must be a column in the primary catalog")
     info = {

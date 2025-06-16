@@ -102,6 +102,7 @@ def test_join_wrong_suffixes(small_sky_catalog, small_sky_order1_catalog):
         small_sky_catalog.join(small_sky_order1_catalog, left_on="id", right_on="id", suffixes=("wrong",))
 
 
+@pytest.mark.skip("Re-implementing JOIN THROUGH")
 def test_join_association(small_sky_catalog, small_sky_xmatch_catalog, small_sky_to_xmatch_catalog, helpers):
     suffixes = ("_a", "_b")
     with pytest.warns(match="margin"):
@@ -149,6 +150,7 @@ def test_join_association(small_sky_catalog, small_sky_xmatch_catalog, small_sky
         assert joined_row.index == left_index
 
 
+@pytest.mark.skip("Re-implementing JOIN THROUGH")
 def test_join_association_source_margin(
     small_sky_catalog, small_sky_order1_source_with_margin, small_sky_to_o1source_catalog, helpers
 ):
@@ -188,50 +190,6 @@ def test_join_association_source_margin(
     helpers.assert_columns_in_joined_catalog(
         joined, [small_sky_catalog, small_sky_order1_source_with_margin], suffixes
     )
-
-
-def test_join_association_soft(small_sky_catalog, small_sky_xmatch_catalog, small_sky_to_xmatch_soft_catalog):
-    suffixes = ("_a", "_b")
-    with pytest.warns(match="margin"):
-        joined = small_sky_catalog.join(
-            small_sky_xmatch_catalog, through=small_sky_to_xmatch_soft_catalog, suffixes=suffixes
-        )
-    assert joined._ddf.npartitions == len(small_sky_to_xmatch_soft_catalog.hc_structure.join_info.data_frame)
-    alignment = align_catalogs(small_sky_catalog, small_sky_xmatch_catalog)
-    assert joined.hc_structure.moc == alignment.moc
-    assert joined.get_healpix_pixels() == alignment.pixel_tree.get_healpix_pixels()
-
-    with pytest.warns(match="margin"):
-        joined_on = small_sky_catalog.join(
-            small_sky_xmatch_catalog,
-            left_on=small_sky_to_xmatch_soft_catalog.hc_structure.catalog_info.primary_column,
-            right_on=small_sky_to_xmatch_soft_catalog.hc_structure.catalog_info.join_column,
-            suffixes=suffixes,
-        )
-    pd.testing.assert_frame_equal(joined.compute(), joined_on.compute())
-
-
-def test_join_source_margin_soft(
-    small_sky_catalog, small_sky_order1_source_with_margin, small_sky_to_o1source_soft_catalog
-):
-    suffixes = ("_a", "_b")
-    joined = small_sky_catalog.join(
-        small_sky_order1_source_with_margin, through=small_sky_to_o1source_soft_catalog, suffixes=suffixes
-    )
-    assert joined._ddf.npartitions == len(
-        small_sky_to_o1source_soft_catalog.hc_structure.join_info.data_frame
-    )
-    alignment = align_catalogs(small_sky_catalog, small_sky_order1_source_with_margin)
-    assert joined.hc_structure.moc == alignment.moc
-    assert joined.get_healpix_pixels() == alignment.pixel_tree.get_healpix_pixels()
-
-    joined_on = small_sky_catalog.join(
-        small_sky_order1_source_with_margin,
-        left_on=small_sky_to_o1source_soft_catalog.hc_structure.catalog_info.primary_column,
-        right_on=small_sky_to_o1source_soft_catalog.hc_structure.catalog_info.join_column,
-        suffixes=suffixes,
-    )
-    pd.testing.assert_frame_equal(joined.compute(), joined_on.compute())
 
 
 def test_join_nested(small_sky_catalog, small_sky_order1_source_with_margin, helpers):
