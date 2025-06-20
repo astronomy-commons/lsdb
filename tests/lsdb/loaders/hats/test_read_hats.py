@@ -9,12 +9,12 @@ import pytest
 from hats.io.file_io import get_upath_for_protocol
 from hats.pixel_math import HealpixPixel
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
-from pyarrow import ArrowInvalid
 from upath import UPath
 
 import lsdb
 import lsdb.nested as nd
 from lsdb.core.search import BoxSearch, ConeSearch, IndexSearch, OrderSearch, PolygonSearch
+
 
 def test_read_hats(small_sky_order1_dir, small_sky_order1_hats_catalog, helpers):
     catalog = lsdb.open_catalog(small_sky_order1_dir)

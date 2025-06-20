@@ -5,8 +5,8 @@ from pathlib import Path
 import hats as hc
 import nested_pandas as npd
 import numpy as np
-from fsspec.implementations.http import HTTPFileSystem
 import pandas as pd
+from fsspec.implementations.http import HTTPFileSystem
 from hats.catalog import CatalogType
 from hats.catalog.catalog_collection import CatalogCollection
 from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
@@ -28,7 +28,6 @@ from lsdb.core.search.abstract_search import AbstractSearch
 from lsdb.dask.divisions import get_pixels_divisions
 from lsdb.io.schema import get_arrow_schema
 from lsdb.loaders.hats.hats_loading_config import HatsLoadingConfig
-
 
 MAX_PYARROW_FILTERS = 10
 
@@ -319,9 +318,9 @@ def _generate_pyarrow_filters_from_moc(filtered_catalog):
             for i_start, i_end in zip(np.concat(([0], max_diff_inds)), np.concat((max_diff_inds, [-1]))):
                 reduced_filters.append([starts[i_start], ends[i_end]])
             depth_array = np.array(reduced_filters)
-        for range in depth_array:
+        for hpx_range in depth_array:
             pyarrow_filter.append(
-                [(SPATIAL_INDEX_COLUMN, ">=", range[0]), (SPATIAL_INDEX_COLUMN, "<", range[1])]
+                [(SPATIAL_INDEX_COLUMN, ">=", hpx_range[0]), (SPATIAL_INDEX_COLUMN, "<", hpx_range[1])]
             )
     return pyarrow_filter
 
