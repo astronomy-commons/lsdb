@@ -25,7 +25,7 @@ class ConeSearch(AbstractSearch):
         self.dec = dec
         self.radius_arcsec = radius_arcsec
 
-    def filter_hc_catalog(self, hc_structure: HCCatalogTypeVar) -> MOC:
+    def perform_hc_catalog_filter(self, hc_structure: HCCatalogTypeVar) -> MOC:
         """Filters catalog pixels according to the cone"""
         return hc_structure.filter_by_cone(self.ra, self.dec, self.radius_arcsec)
 

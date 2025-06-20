@@ -30,7 +30,7 @@ class IndexSearch(AbstractSearch):
         self.values = values
         self.index_catalogs = index_catalogs
 
-    def filter_hc_catalog(self, hc_structure: HCCatalogTypeVar) -> HCCatalogTypeVar:
+    def perform_hc_catalog_filter(self, hc_structure: HCCatalogTypeVar) -> HCCatalogTypeVar:
         """Determine the pixels for which there is a result in each field"""
         all_pixels = set(hc_structure.get_healpix_pixels())
         for field_name, field_value in self.values.items():

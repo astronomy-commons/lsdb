@@ -44,7 +44,7 @@ class PixelSearch(AbstractSearch):
         pixels = [(spatial_index.SPATIAL_INDEX_ORDER, pix) for pix in pixels]
         return cls(pixels)
 
-    def filter_hc_catalog(self, hc_structure: HCCatalogTypeVar) -> HCCatalogTypeVar:
+    def perform_hc_catalog_filter(self, hc_structure: HCCatalogTypeVar) -> HCCatalogTypeVar:
         return hc_structure.filter_from_pixel_list(self.pixels)
 
     def search_points(self, frame: npd.NestedFrame, _) -> npd.NestedFrame:

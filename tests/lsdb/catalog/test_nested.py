@@ -293,3 +293,20 @@ def test_getitem_errors(small_sky_with_nested_sources):
         _ = small_sky_with_nested_sources[["ra", "wrong", "sources.source_id", "sources.source_ra"]]
     with pytest.raises(KeyError):
         _ = small_sky_with_nested_sources[["ra", "dec", "wrong.source_id", "sources.source_ra"]]
+
+
+def test_nested_columns_after_filter(small_sky_with_nested_sources_dir):
+    cat = lsdb.open_catalog(
+        small_sky_with_nested_sources_dir, columns=["ra", "dec", "sources.source_id", "sources.source_ra"]
+    )
+    assert np.all(cat.columns == ["ra", "dec", "sources"])
+    assert cat.dtypes["sources"].field_names == ["source_id", "source_ra"]
+    computed = cat.compute()
+    assert np.all(computed.columns == ["ra", "dec", "sources"])
+    assert np.all(computed["sources"].iloc[0].columns == ["source_id", "source_ra"])
+    filtered = cat.cone_search(300, -40, 10000)
+    assert np.all(filtered.columns == ["ra", "dec", "sources"])
+    assert filtered.dtypes["sources"].field_names == ["source_id", "source_ra"]
+    computed = filtered.compute()
+    assert np.all(computed.columns == ["ra", "dec", "sources"])
+    assert np.all(computed["sources"].iloc[0].columns == ["source_id", "source_ra"])
