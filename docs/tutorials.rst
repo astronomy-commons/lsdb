@@ -76,4 +76,4 @@ Notebooks going over specific, contributed scientific example use cases
     Import and cross-match DES and Gaia <tutorials/pre_executed/des-gaia>
     Get a list of light-curves from ZTF and PS1 <tutorials/pre_executed/zubercal-ps1-snad>
     Search for Supernovae in ZTF alerts <tutorials/pre_executed/ztf-alerts-sne>
-    Working with rubin data preview 1 <tutorials/rubin_dp1>
+    Working with Rubin data preview 1 <tutorials/pre_executed/rubin_dp1>
