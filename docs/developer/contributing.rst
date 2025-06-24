@@ -119,3 +119,10 @@ Release new version
 New versions are manually tagged and automatically released to pypi. To request
 a new release of LSDB, HATS, and HATS import packages, create a 
 `release ticket <https://github.com/astronomy-commons/lsdb/issues/new?assignees=delucchi-cmu&labels=&projects=&template=4-release_tracker.md&title=Release%3A+>`_
+
+Contribute a tutorial notebook
+-------------------------------------------------------------------------------
+
+Tutorials follow general style guidelines; feel free to use our 
+`tutorial notebook template <https://github.com/astronomy-commons/lsdb/blob/main/docs/developer/tutorial_template.ipynb>`__ 
+to get started.

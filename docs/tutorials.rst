@@ -29,9 +29,9 @@ An introduction to the most common Catalog operations
 
     Setting up a Dask Client <tutorials/dask_client>
     Margins <tutorials/margins>
-    Crossmatching catalogs <tutorials/crossmatching>
+    Crossmatching catalogs <tutorials/pre_executed/crossmatching>
     Applying a function (e.g. map_partitions) <tutorials/pre_executed/map_partitions>
-    Working with TimeSeries <tutorials/timeseries>
+    Working with TimeSeries <tutorials/pre_executed/timeseries>
     Plotting results <tutorials/pre_executed/plotting>
     Exporting results (e.g. to_hats) <tutorials/exporting_results>
 
@@ -41,7 +41,7 @@ An introduction to the most common Catalog operations
 .. toctree::
     :maxdepth: 1
 
-    NestedFrame <tutorials/nested_frame>
+    NestedFrame <tutorials/pre_executed/nestedframe>
 
 4 - HATS creation and reading
 ------------------------------------------------------

@@ -50,8 +50,7 @@ LSDB can also be installed from source on `GitHub <https://github.com/astronomy-
 advanced installation instructions in the :doc:`contribution guide </developer/contributing>`.
 
 .. tip::
-    There are some extra dependencies that can make running LSDB in a Jupyter
-    environment easier, or connecting to a variety of remote file systems.
+    There are some additional dependencies that you should install if you encounter roadblocks with the Jupyter environment or issues connecting to various remote file systems.
 
     These can be installed with the ``full`` extra.
 
@@ -192,8 +191,9 @@ This creates the following HATS Catalog on disk:
     │   │   └── Dir=0
     │   │       └── Npix=57.parquet
     │   ├── _common_metadata
-    │   └── _metadata
+    │   ├── _metadata
+    │   └── data_thumbnail.parquet
+    ├── hats.properties
     ├── partition_info.csv
-    ├── point_map.fits
-    └── properties
+    └── skymap.fits
 

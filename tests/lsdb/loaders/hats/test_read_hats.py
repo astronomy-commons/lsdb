@@ -4,7 +4,6 @@ from unittest.mock import call
 import hats as hc
 import nested_pandas as npd
 import numpy as np
-import numpy.testing as npt
 import pandas as pd
 import pytest
 from hats.io.file_io import get_upath_for_protocol
@@ -177,6 +176,11 @@ def test_read_hats_default_cols_all_cols(small_sky_order1_default_cols_dir, help
     helpers.assert_index_correct(catalog)
 
 
+def test_read_hats_default_cols_invalid_selector(small_sky_order1_default_cols_dir):
+    with pytest.raises(TypeError):
+        lsdb.open_catalog(small_sky_order1_default_cols_dir, columns="other")
+
+
 def test_read_hats_no_pandas(small_sky_order1_no_pandas_dir, helpers):
     catalog = lsdb.open_catalog(small_sky_order1_no_pandas_dir)
     assert isinstance(catalog, lsdb.Catalog)
@@ -189,21 +193,21 @@ def test_read_hats_no_pandas(small_sky_order1_no_pandas_dir, helpers):
 
 
 def test_read_hats_with_margin_extra_kwargs(small_sky_xmatch_dir, small_sky_xmatch_margin_dir):
+    filter_columns = ("ra", "dec")
     catalog = lsdb.open_catalog(
         small_sky_xmatch_dir,
         margin_cache=small_sky_xmatch_margin_dir,
-        columns=["ra", "dec"],
+        columns=filter_columns,
         filters=[("ra", ">", 300)],
     )
     assert isinstance(catalog, lsdb.Catalog)
     filtered_cat = catalog.compute()
-    assert all(catalog.columns == ["ra", "dec"])
+    assert list(catalog.columns) == list(filter_columns)
     assert np.all(filtered_cat["ra"] > 300)
-
     margin = catalog.margin
     assert isinstance(margin, lsdb.MarginCatalog)
     filtered_margin = margin.compute()
-    assert all(margin.columns == ["ra", "dec"])
+    assert list(margin.columns) == list(filter_columns)
     assert np.all(filtered_margin["ra"] > 300)
 
 
@@ -243,29 +247,31 @@ def test_read_hats_npix_as_dir(small_sky_npix_as_dir_dir, small_sky_npix_as_dir_
 
 
 def test_read_hats_with_columns(small_sky_order1_dir, helpers):
-    filter_columns = ["ra", "dec"]
+    filter_columns = np.array(["ra", "dec"])
     catalog = lsdb.open_catalog(small_sky_order1_dir, columns=filter_columns)
     assert isinstance(catalog, lsdb.Catalog)
-    npt.assert_array_equal(catalog.compute().columns.to_numpy(), filter_columns)
+    assert list(catalog.compute().columns) == list(filter_columns)
     helpers.assert_index_correct(catalog)
     helpers.assert_schema_correct(catalog)
 
 
 def test_read_hats_no_pandas_with_columns(small_sky_order1_no_pandas_dir, helpers):
-    filter_columns = ["ra", "dec"]
+    filter_columns = pd.Series(["ra", "dec"])
     catalog = lsdb.open_catalog(small_sky_order1_no_pandas_dir, columns=filter_columns)
     assert isinstance(catalog, lsdb.Catalog)
-    npt.assert_array_equal(catalog.compute().columns.to_numpy(), filter_columns)
+    assert list(catalog.compute().columns) == list(filter_columns)
     helpers.assert_index_correct(catalog)
     helpers.assert_schema_correct(catalog)
 
 
 def test_read_hats_no_pandas_with_index_column(small_sky_order1_no_pandas_dir, helpers):
-    filter_columns = ["ra", "dec", "_healpix_29"]
-    catalog = lsdb.open_catalog(small_sky_order1_no_pandas_dir, columns=filter_columns)
+    # _healpix_29 might be included in the columns, and it has no side effect.
+    catalog = lsdb.open_catalog(small_sky_order1_no_pandas_dir, columns=["_healpix_29"])
+    assert "ra" in catalog.columns
+    assert "dec" in catalog.columns
     assert isinstance(catalog, lsdb.Catalog)
     helpers.assert_index_correct(catalog)
-    npt.assert_array_equal(catalog.compute().columns.to_numpy(), filter_columns)
+    assert list(catalog.compute().columns) == list(["ra", "dec"])
     helpers.assert_schema_correct(catalog)
 
 

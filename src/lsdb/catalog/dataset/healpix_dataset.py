@@ -733,15 +733,11 @@ class HealpixDataset(Dataset):
             **kwargs: Arguments to pass to the parquet write operations
         """
         self._check_unloaded_columns(default_columns)
-        default_histogram_order = 8
-        max_catalog_depth = self.hc_structure.pixel_tree.get_max_depth()
-        histogram_order = max(max_catalog_depth, default_histogram_order)
         io.to_hats(
             self,
             base_catalog_path=base_catalog_path,
             catalog_name=catalog_name,
             default_columns=default_columns,
-            histogram_order=histogram_order,
             overwrite=overwrite,
             **kwargs,
         )

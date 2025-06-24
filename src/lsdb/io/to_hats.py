@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from copy import copy
+from importlib.metadata import version
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -8,8 +9,9 @@ import dask
 import hats as hc
 import nested_pandas as npd
 import numpy as np
-from hats.catalog import PartitionInfo
+from hats.catalog import CatalogType, PartitionInfo
 from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
+from hats.io.skymap import write_skymap
 from hats.pixel_math import HealpixPixel, spatial_index_to_healpix
 from hats.pixel_math.sparse_histogram import HistogramAggregator, SparseHistogram
 from upath import UPath
@@ -66,16 +68,18 @@ def calculate_histogram(df: npd.NestedFrame, histogram_order: int) -> SparseHist
     return SparseHistogram(indexes, counts_at_indexes, histogram_order)
 
 
-# pylint: disable=protected-access
+# pylint: disable=protected-access,too-many-locals
 def to_hats(
     catalog: HealpixDataset,
     *,
     base_catalog_path: str | Path | UPath,
     catalog_name: str | None = None,
     default_columns: list[str] | None = None,
-    histogram_order: int = 8,
+    histogram_order: int | None = None,
     overwrite: bool = False,
     create_thumbnail: bool = False,
+    skymap_alt_orders: list[int] | None = None,
+    addl_hats_properties: dict | None = None,
     **kwargs,
 ):
     """Writes a catalog to disk, in HATS format. The output catalog comprises
@@ -89,7 +93,9 @@ def to_hats(
         default_columns (list[str]): A metadata property with the list of the columns in the
             catalog to be loaded by default. Uses the default columns from the original hats
             catalog if they exist.
-        histogram_order (int): The default order for the count histogram. Defaults to 8.
+        histogram_order (int): The default order for the count histogram. Defaults to the same
+            skymap order as original catalog, or the highest order healpix of the current
+            catalog data partitions.
         overwrite (bool): If True existing catalog is overwritten
         create_thumbnail (bool): If True, create a data thumbnail of the catalog for
             previewing purposes. Defaults to False.
@@ -105,6 +111,12 @@ def to_hats(
             )
         hc.io.file_io.remove_directory(base_catalog_path)
     hc.io.file_io.make_directory(base_catalog_path, exist_ok=True)
+    if histogram_order is None:
+        if catalog.hc_structure.catalog_info.skymap_order is not None:
+            histogram_order = catalog.hc_structure.catalog_info.skymap_order
+        else:
+            max_catalog_depth = catalog.hc_structure.pixel_tree.get_max_depth()
+            histogram_order = max(max_catalog_depth, 8)
     # Save partition parquet files
     pixels, counts, histograms = write_partitions(
         catalog, base_catalog_dir_fp=base_catalog_path, histogram_order=histogram_order, **kwargs
@@ -117,10 +129,31 @@ def to_hats(
     # Save partition info
     PartitionInfo(pixels).write_to_file(base_catalog_path / "partition_info.csv")
     # Save catalog info
-    if default_columns is None:
-        default_columns = catalog.hc_structure.catalog_info.default_columns
-    if default_columns is not None and len(default_columns) == 0:
+    if default_columns:
+        missing_columns = set(default_columns) - set(catalog.columns)
+        if missing_columns:
+            raise ValueError(f"Default columns `{missing_columns}` not found in catalog")
+    else:
         default_columns = None
+
+    if not addl_hats_properties:
+        addl_hats_properties = {}
+    if catalog.hc_structure.catalog_info.catalog_type in (CatalogType.OBJECT, CatalogType.SOURCE):
+        addl_hats_properties = addl_hats_properties | {
+            "skymap_order": histogram_order,
+            "skymap_alt_orders": skymap_alt_orders,
+        }
+
+        # Save the point distribution map
+        total_histogram = HistogramAggregator(histogram_order)
+        for partition_hist in histograms:
+            total_histogram.add(partition_hist)
+        point_map_path = hc.io.paths.get_point_map_file_pointer(base_catalog_path)
+        full_histogram = total_histogram.full_histogram
+        hc.io.file_io.write_fits_image(full_histogram, point_map_path)
+
+        write_skymap(histogram=full_histogram, catalog_dir=base_catalog_path, orders=skymap_alt_orders)
+
     new_hc_structure = create_modified_catalog_structure(
         catalog.hc_structure,
         base_catalog_path,
@@ -128,14 +161,10 @@ def to_hats(
         total_rows=int(np.sum(counts)),
         default_columns=default_columns,
         hats_max_rows=hats_max_rows,
+        hats_builder=get_hats_builder_property(),
+        **addl_hats_properties,
     )
     new_hc_structure.catalog_info.to_properties_file(base_catalog_path)
-    # Save the point distribution map
-    total_histogram = HistogramAggregator(histogram_order)
-    for partition_hist in histograms:
-        total_histogram.add(partition_hist)
-    point_map_path = hc.io.paths.get_point_map_file_pointer(base_catalog_path)
-    hc.io.file_io.write_fits_image(total_histogram.full_histogram, point_map_path)
 
 
 def write_partitions(
@@ -208,3 +237,8 @@ def create_modified_catalog_structure(
     new_hc_structure.catalog_info = new_hc_structure.catalog_info.copy_and_update(**kwargs)
     new_hc_structure.catalog_info.catalog_name = catalog_name
     return new_hc_structure
+
+
+def get_hats_builder_property() -> str:
+    """Generate the hats-builder property with the current versions of LSDB and HATS"""
+    return f"lsdb v{version('lsdb')}, hats v{version('hats')}"
