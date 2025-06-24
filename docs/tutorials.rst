@@ -64,7 +64,15 @@ An introduction to the most common Catalog operations
     Performance testing <tutorials/performance>
     Joining catalogs <tutorials/pre_executed/join_catalogs>
 
-6 - Science Examples
+6 - Accessing Rubin Data
+------------------------------------------------------
+
+.. toctree::
+    :maxdepth: 1
+
+    Accessing Rubin Data Preview 1 <tutorials/pre_executed/rubin_dp1>
+
+7 - Science Examples
 ------------------------------------------------------
 
 Notebooks going over specific, contributed scientific example use cases
@@ -76,4 +84,3 @@ Notebooks going over specific, contributed scientific example use cases
     Import and cross-match DES and Gaia <tutorials/pre_executed/des-gaia>
     Get a list of light-curves from ZTF and PS1 <tutorials/pre_executed/zubercal-ps1-snad>
     Search for Supernovae in ZTF alerts <tutorials/pre_executed/ztf-alerts-sne>
-    Working with Rubin data preview 1 <tutorials/pre_executed/rubin_dp1>
