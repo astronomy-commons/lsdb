@@ -4,28 +4,21 @@ Getting Started with LSDB
 Installation
 --------------------------
 
-The latest release version of LSDB is available to install with `pip <https://pypi.org/project/lsdb/>`_ or `conda <https://anaconda.org/conda-forge/lsdb/>`_.
-
-.. code-block:: bash
-
-    python -m pip install lsdb
-
-.. code-block:: bash
-
-    conda install -c conda-forge lsdb
-
 .. hint::
 
-    We recommend using a virtual environment. Before installing the package, create and activate a fresh
+    We strongly recommend using a virtual environment. Installing
+    packages into your system Python can create subtle problems.
+
+    Before installing the package, create and activate a fresh
     environment. Here are some examples with different tools:
 
     .. tab-set::
 
-        .. tab-item:: Conda
+        .. tab-item:: conda
 
             .. code-block:: bash
 
-                conda create -n lsdb_env python=3.11
+                conda create -n lsdb_env python=3.12
                 conda activate lsdb_env
 
         .. tab-item:: venv
@@ -41,10 +34,20 @@ The latest release version of LSDB is available to install with `pip <https://py
 
             .. code-block:: bash
 
-                pyenv virtualenv 3.11 lsdb_env
+                pyenv virtualenv 3.12 lsdb_env
                 pyenv local lsdb_env
 
     We recommend Python versions **>=3.10, <=3.12**.
+
+The latest release version of LSDB is available to install with `pip <https://pypi.org/project/lsdb/>`_ or `conda <https://anaconda.org/conda-forge/lsdb/>`_.
+
+.. code-block:: bash
+
+    pip install lsdb
+
+.. code-block:: bash
+
+    conda install -c conda-forge lsdb
 
 LSDB can also be installed from source on `GitHub <https://github.com/astronomy-commons/lsdb>`_. See our
 advanced installation instructions in the :doc:`contribution guide </developer/contributing>`.
