@@ -36,6 +36,8 @@ class AbstractSearch(ABC):
         """Determine the target partitions for further filtering."""
         filtered_cat = self.perform_hc_catalog_filter(hc_structure)
         if not self.fine:
+            # If running a coarse search, the coverage of the catalog will match the healpix pixels the
+            # catalog is filtered to, not the finer filtered moc of the filtered catalog•
             filtered_cat.moc = filtered_cat.pixel_tree.to_moc()
         return filtered_cat
 

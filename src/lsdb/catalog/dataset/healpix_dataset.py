@@ -487,26 +487,28 @@ class HealpixDataset(Dataset):
             and self.hc_structure.catalog_base_dir is not None
             and self.hc_structure.original_schema is not None
         ):
-            from lsdb.loaders.hats.read_hats import _load_catalog
-
-            all_columns = self._ddf._meta.all_columns
-            base_columns = all_columns.pop("base", [])
-            nonnested_basecols = [c for c in base_columns if c not in self._ddf._meta.nested_columns]
-            loading_columns = [
-                [f"{base_name}.{col}" for col in all_columns[base_name]] for base_name in all_columns
-            ]
-            columns = nonnested_basecols + [c for cs in loading_columns for c in cs]
-            hc_structure = self._create_modified_hc_structure(
-                updated_schema=self.hc_structure.original_schema
-            )
-            return _load_catalog(
-                hc_structure, search_filter=search, columns=columns, error_empty_filter=False
-            )
+            return self._reload_with_filter(search)
         filtered_hc_structure = search.filter_hc_catalog(self.hc_structure)
         ddf_partition_map, search_ndf = self._perform_search(filtered_hc_structure, search)
         return self._create_updated_dataset(
             ddf=search_ndf, ddf_pixel_map=ddf_partition_map, hc_structure=filtered_hc_structure
         )
+
+    def _reload_with_filter(self, search: AbstractSearch):
+        """Reloads the catalog from storage, applying a given search filter. Uses the columns of the current
+        catalog to select the same columns to reload."""
+        from lsdb.loaders.hats.read_hats import _load_catalog
+
+        all_columns = self._ddf._meta.all_columns
+        base_columns = all_columns.pop("base", [])
+        nonnested_basecols = [c for c in base_columns if c not in self._ddf._meta.nested_columns]
+        loading_columns = [
+            [f"{base_name}.{col}" for col in all_columns[base_name]] for base_name in all_columns
+        ]
+        columns = nonnested_basecols + [c for cs in loading_columns for c in cs]
+
+        hc_structure = self._create_modified_hc_structure(updated_schema=self.hc_structure.original_schema)
+        return _load_catalog(hc_structure, search_filter=search, columns=columns, error_empty_filter=False)
 
     def map_partitions(
         self,

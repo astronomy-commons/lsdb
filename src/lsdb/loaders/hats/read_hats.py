@@ -263,6 +263,10 @@ def _load_margin_catalog(hc_catalog, config):
             schema=filtered_catalog.schema,
             moc=filtered_catalog.moc,
         )
+        pyarrow_filter = _generate_pyarrow_filters_from_moc(filtered_catalog)
+        if len(pyarrow_filter) > 0:
+            if "filters" not in config.kwargs:
+                config.kwargs["filters"] = pyarrow_filter
     dask_df, dask_df_pixel_map = _load_dask_df_and_map(hc_catalog, config)
     margin = MarginCatalog(dask_df, dask_df_pixel_map, hc_catalog)
     if config.search_filter is not None:
