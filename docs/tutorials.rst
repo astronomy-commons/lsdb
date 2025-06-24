@@ -64,7 +64,17 @@ An introduction to the most common Catalog operations
     Performance testing <tutorials/performance>
     Joining catalogs <tutorials/pre_executed/join_catalogs>
 
-6 - Science Examples
+6 - Working with Rubin data
+------------------------------------------------------
+
+.. toctree::
+    :maxdepth: 1
+
+    How to access data <tutorials/pre_executed/access>
+    Intro to using Rubin data <tutorials/using_rubin_data>
+    Photo-z catalog <tutorials/photo-z>
+
+7 - Science Examples
 ------------------------------------------------------
 
 Notebooks going over specific, contributed scientific example use cases
