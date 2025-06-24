@@ -23,7 +23,7 @@ class MOCSearch(AbstractSearch):
         super().__init__(fine)
         self.moc = moc
 
-    def filter_hc_catalog(self, hc_structure: HCCatalogTypeVar) -> HCCatalogTypeVar:
+    def perform_hc_catalog_filter(self, hc_structure: HCCatalogTypeVar) -> HCCatalogTypeVar:
         return hc_structure.filter_by_moc(self.moc)
 
     def search_points(self, frame: npd.NestedFrame, metadata: TableProperties) -> npd.NestedFrame:

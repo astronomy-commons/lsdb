@@ -9,7 +9,6 @@ import pytest
 from hats.io.file_io import get_upath_for_protocol
 from hats.pixel_math import HealpixPixel
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
-from pyarrow import ArrowInvalid
 from upath import UPath
 
 import lsdb
@@ -513,16 +512,16 @@ def test_read_nested_column_selection(small_sky_with_nested_sources_dir):
 
 
 def test_read_nested_column_selection_errors(small_sky_with_nested_sources_dir):
-    with pytest.raises(ArrowInvalid):
+    with pytest.raises(KeyError):
         lsdb.open_catalog(
             small_sky_with_nested_sources_dir, columns=["ra", "dec", "sources.source_id", "sources.wrong"]
         )
-    with pytest.raises(ArrowInvalid):
+    with pytest.raises(KeyError):
         lsdb.open_catalog(
             small_sky_with_nested_sources_dir,
             columns=["ra", "wrong", "sources.source_id", "sources.source_ra"],
         )
-    with pytest.raises(ArrowInvalid):
+    with pytest.raises(KeyError):
         lsdb.open_catalog(
             small_sky_with_nested_sources_dir, columns=["ra", "dec", "wrong.source_id", "sources.source_ra"]
         )
