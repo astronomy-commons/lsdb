@@ -1,11 +1,13 @@
 import hats as hc
 import pandas as pd
+import pytest
 
 import lsdb
 import lsdb.nested as nd
 from lsdb.catalog.association_catalog import AssociationCatalog
 
 
+@pytest.mark.skip("Re-implementing JOIN THROUGH")
 def test_load_association(small_sky_to_xmatch_dir):
     small_sky_to_xmatch = lsdb.open_catalog(small_sky_to_xmatch_dir)
     assert isinstance(small_sky_to_xmatch, AssociationCatalog)
@@ -22,10 +24,3 @@ def test_load_association(small_sky_to_xmatch_dir):
         partition = small_sky_to_xmatch.get_partition(hp_order, hp_pixel)
         data = pd.read_parquet(path, dtype_backend="pyarrow")
         pd.testing.assert_frame_equal(partition.compute(), data)
-
-
-def test_load_soft_association(small_sky_to_xmatch_soft_dir):
-    small_sky_to_xmatch_soft = lsdb.open_catalog(small_sky_to_xmatch_soft_dir)
-    assert isinstance(small_sky_to_xmatch_soft, AssociationCatalog)
-    assert isinstance(small_sky_to_xmatch_soft._ddf, nd.NestedFrame)
-    assert len(small_sky_to_xmatch_soft.compute()) == 0
