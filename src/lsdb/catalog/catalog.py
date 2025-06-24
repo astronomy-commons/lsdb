@@ -29,6 +29,10 @@ from lsdb.core.search import BoxSearch, ConeSearch, IndexSearch, OrderSearch, Po
 from lsdb.core.search.abstract_search import AbstractSearch
 from lsdb.core.search.moc_search import MOCSearch
 from lsdb.core.search.pixel_search import PixelSearch
+from lsdb.core.source_association.abstract_object_aggregator import AbstractObjectAggregator
+from lsdb.core.source_association.abstract_source_association_algorithm import (
+    AbstractSourceAssociationAlgorithm,
+)
 from lsdb.dask.crossmatch_catalog_data import crossmatch_catalog_data, crossmatch_catalog_data_nested
 from lsdb.dask.join_catalog_data import (
     join_catalog_data_nested,
@@ -38,6 +42,7 @@ from lsdb.dask.join_catalog_data import (
 )
 from lsdb.dask.merge_catalog_functions import create_merged_catalog_info
 from lsdb.dask.merge_map_catalog_data import merge_map_catalog_data
+from lsdb.dask.source_association import associate_sources
 from lsdb.io.schema import get_arrow_schema
 from lsdb.types import DaskDFPixelMap
 
@@ -899,6 +904,17 @@ class Catalog(HealpixDataset):
             new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(ddf), moc=alignment.moc
         )
         return Catalog(ddf, ddf_map, hc_catalog)
+
+    def associate_sources(
+        self,
+        source_association_algorithm: AbstractSourceAssociationAlgorithm,
+        object_aggregator: AbstractObjectAggregator = None,
+        object_id_column_name: str = "object_id",
+    ) -> Catalog:
+        ddf, partition_map = associate_sources(
+            self, source_association_algorithm, object_aggregator, object_id_column_name
+        )
+        return self._create_updated_dataset(ddf, partition_map)
 
     def nest_lists(
         self,
