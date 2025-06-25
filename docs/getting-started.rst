@@ -82,7 +82,7 @@ Catalog, and specify which columns we want to use from it.
 
     import lsdb
     ztf = lsdb.open_catalog(
-        'https://data.lsdb.io/hats/ztf_dr14/ztf_object/',
+        "https://data.lsdb.io/hats/ztf_dr14/ztf_object/",
         columns=["ra", "dec", "ps1_objid", "nobs_r", "mean_mag_r"],
     )
     >> ztf
@@ -145,7 +145,7 @@ get accurate results. This should be provided with the catalog by the catalog's 
 .. code-block:: python
 
     gaia = lsdb.open_catalog(
-        'https://data.lsdb.io/hats/gaia_dr3/gaia/',
+        "https://data.lsdb.io/hats/gaia_dr3/gaia/",
         columns=["ra", "dec", "phot_g_n_obs", "phot_g_mean_flux", "pm"],
         margin_cache="https://data.lsdb.io/hats/gaia_dr3/gaia_10arcs/",
     )
