@@ -20,9 +20,9 @@ This simple example runs a local cluster and starts a client connected to it.
 .. code-block:: python
 
     from dask.distributed import Client
-    from lsdb import read_hats, ConeSearch
+    from lsdb import open_catalog, ConeSearch
 
-    catalog = lsdb.read_hats(
+    catalog = lsdb.open_catalog(
         'https://data.lsdb.io/hats/gaia_dr3/gaia',
         search_filter=ConeSearch(ra=0, dec=0, radius=1),
     )
@@ -82,7 +82,7 @@ Setting memory limits
 
 In terms of RAM allocation for each worker, we have found that returns diminish past 10 GB per each thread
 allocated to that worker when processing LSDB workloads.
-Usage of ``lsdb.read_hats(columns=..., filters=...)`` may make the memory footprint much smaller, which would
+Usage of ``lsdb.open_catalog(columns=..., filters=...)`` may make the memory footprint much smaller, which would
 allow you to allocate less memory per worker, and thus use more workers and make the analysis run faster.
 
 When executing custom code/functions through LSDB's interface, keep in mind that any intermediate products
@@ -249,7 +249,7 @@ and logs will show messages like the following:
 You can solve this issue by increasing the memory limit per worker, which would usually mean
 that you also need to reduce the number of workers.
 If that is not possible, you can also try to reduce the amount of data loaded into memory per partition,
-for example, by specifying which columns to use when loading data with ``lsdb.read_hats(columns=...)``.
+for example, by specifying which columns to use when loading data with ``lsdb.open_catalog(columns=...)``.
 
 All workers are being killed in the middle/end
 ..............................................
@@ -281,4 +281,4 @@ This happens because Dask builds and optimizes the computation graph, which happ
 on the main process (one you create ``Client`` on).
 There is no single solution to this problem, but you can try to reduce the number of partitions in use,
 for example, by specifying limiting the area when loading data,
-with ``lsdb.read_hats(search_filter=lsdb.ConeSearch(...))``.
+with ``lsdb.open_catalog(search_filter=lsdb.ConeSearch(...))``.

@@ -66,23 +66,23 @@ Quickstart
 
 LSDB is built on top of `Dask DataFrame <https://docs.dask.org/en/stable/dataframe.html>`_, which allows workflows
 to run in parallel on distributed environments and scale to large, out-of-memory datasets. For this to work,
-Catalogs are loaded **lazily**, meaning that only the metadata is loaded at first. This way, LSDB can plan
+when catalogs are opened, they are loaded **lazily**, meaning that only the metadata is loaded at first. This way, LSDB can plan
 how tasks will be executed in the future without actually doing any computation. See our :doc:`tutorials </tutorials>`
 for more information.
 
 
-Loading a Catalog
+Opening a Catalog
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Let's start by loading a HATS formatted Catalog into LSDB. Use the :func:`lsdb.read_hats` function to
-lazy load a catalog object. We'll pass in the URL to load the Zwicky Transient Facility Data Release 14
+Let's start by opening a HATS formatted Catalog in LSDB. Use the :func:`lsdb.open_catalog` function to
+open a catalog object. We'll pass in the URL to open the Zwicky Transient Facility Data Release 14
 Catalog, and specify which columns we want to use from it.
 
 .. code-block:: python
 
     import lsdb
-    ztf = lsdb.read_hats(
-        'https://data.lsdb.io/hats/ztf_dr14/ztf_object/',
+    ztf = lsdb.open_catalog(
+        "https://data.lsdb.io/hats/ztf_dr14/ztf_object/",
         columns=["ra", "dec", "ps1_objid", "nobs_r", "mean_mag_r"],
     )
     >> ztf
@@ -100,14 +100,14 @@ usually see values.
 .. important::
 
     We've specified 5 columns to load here. It's important for performance to select only the columns you need
-    for your workflow. Without specifying any columns, all possible columns will be loaded when
+    for your workflow. Without specifying any columns, all available columns will be loaded when
     the workflow is executed, making everything much slower and using much more memory.
 
 
-Where to get Catalogs
+Where To Get Catalogs
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
-LSDB can load any catalogs in the HATS format, locally or from remote sources. There are a number of
-catalogs available publicly to use from the cloud. You can see them with their URLs to load in LSDB at our
+LSDB can open any catalogs in the HATS format, locally or from remote sources. There are a number of
+catalogs available publicly to use from the cloud. You can see them with their URLs to open in LSDB at our
 website `data.lsdb.io <https://data.lsdb.io>`_
 
 
@@ -137,15 +137,15 @@ Other filters on columns can be performed in the same way that you would on a pa
 Cross Matching
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Now we've filtered our catalog, let's try cross-matching! We'll need to load another catalog first. For a
-catalog on the right side of a cross-match, we need to make sure that we load it with a ``margin_cache`` to
+Now we've filtered our catalog, let's try cross-matching! We'll need to open another catalog first. For a
+catalog on the right side of a cross-match, we need to make sure that we open it with a ``margin_cache`` to
 get accurate results. This should be provided with the catalog by the catalog's data provider. See the
 :doc:`margins tutorial section </tutorials/margins>` for more.
 
 .. code-block:: python
 
-    gaia = lsdb.read_hats(
-        'https://data.lsdb.io/hats/gaia_dr3/gaia/',
+    gaia = lsdb.open_catalog(
+        "https://data.lsdb.io/hats/gaia_dr3/gaia/",
         columns=["ra", "dec", "phot_g_n_obs", "phot_g_mean_flux", "pm"],
         margin_cache="https://data.lsdb.io/hats/gaia_dr3/gaia_10arcs/",
     )
