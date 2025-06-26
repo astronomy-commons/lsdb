@@ -15,8 +15,9 @@ from dask.dataframe.dask_expr._expr import no_default as dsk_no_default
 from nested_pandas.series.dtype import NestedDtype
 from nested_pandas.series.packer import pack, pack_flat, pack_lists
 from pandas._libs import lib
-from pandas._typing import Axis, IndexLabel
+from pandas._typing import Axis, IndexLabel, Renamer
 from pandas.api.extensions import no_default
+from typing_extensions import Self
 
 # need this for the base _Frame class
 # mypy: disable-error-code="misc"
@@ -549,6 +550,21 @@ Refer to the docstring for guidance on dtype requirements and assignment."""
         return self.map_partitions(
             lambda x: npd.NestedFrame(x).query(expr), meta=self._meta
         )  # pylint: disable=protected-access
+
+    def rename(self, columns: Renamer) -> Self:
+        """Renames catalog columns (not indices) using a dictionary or function mapping.
+
+        Args:
+            columns (dict-like or function): transformations to apply to column names.
+
+        Returns:
+            A NestedFrame that contains the data from the original NestedFrame with renamed columns.
+
+        Notes
+        -----
+        Doesn't support renaming nested columns yet.
+        """
+        return self.map_partitions(lambda x: npd.NestedFrame(x).rename(columns=columns, errors="raise"))
 
     # pylint: disable=arguments-differ
     def dropna(

@@ -26,7 +26,7 @@ from hats.pixel_math.healpix_pixel_function import get_pixel_argsort
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 from matplotlib.figure import Figure
 from pandas._libs import lib
-from pandas._typing import AnyAll, Axis, IndexLabel
+from pandas._typing import AnyAll, Axis, IndexLabel, Renamer
 from pandas.api.extensions import no_default
 from typing_extensions import Self
 from upath import UPath
@@ -436,6 +436,18 @@ class HealpixDataset(Dataset):
             with the query expression
         """
         ndf = self._ddf.query(expr)
+        return self._create_updated_dataset(ddf=ndf)
+
+    def rename(self, columns: Renamer) -> Self:
+        """Renames catalog columns (not indices) using a dictionary or function mapping.
+
+        Args:
+            columns (dict-like or function): transformations to apply to column names.
+
+        Returns:
+            A catalog that contains the data from the original catalog with renamed columns.
+        """
+        ndf = self._ddf.rename(columns=columns)
         return self._create_updated_dataset(ddf=ndf)
 
     def _perform_search(
