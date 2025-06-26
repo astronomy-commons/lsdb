@@ -84,27 +84,18 @@ Catalog, and specify which columns we want to use from it.
     import lsdb
     ztf = lsdb.open_catalog(
         "https://data.lsdb.io/hats/ztf_dr14/ztf_object",
-        margin_cache="https://data.lsdb.io/hats/ztf_dr14/ztf_object_10arcs",
         columns=["ra", "dec", "ps1_objid", "nobs_r", "mean_mag_r"],
     )
     >> ztf
 
 .. image:: _static/ztf_catalog_lazy.png
    :align: center
-   :alt: The Lazy LSDB Representation of Gaia DR3
+   :alt: The Lazy LSDB Representation of ZTF DR14
 
 
 Here we can see the lazy representation of an LSDB catalog object, showing its metadata such as the column
 names and their types without loading any data. The ellipses in the table act as placeholders where you would
 usually see values.
-
-.. hint::
-
-    Note the `margin_cache=` argument.  This is usually a good idea to provide, and there's little downside to
-    using it, since its data is not loaded unless required.  We know what name to give it from the description
-    of the catalog at `https://data.lsdb.io`_.  See :doc:`margins tutorial section </tutorials/margins>` for
-    more, as well as :ref:`the crossmatching section in this guide <crossmatching>`.
-
 
 .. important::
 
@@ -112,12 +103,16 @@ usually see values.
     for your workflow. Without specifying any columns, all available columns will be loaded when
     the workflow is executed, making everything much slower and using much more memory.
 
+    Catalogs define a set of *default columns* that are loaded if you don't specify your own list, in part
+    to prevent you from incurring more I/O usage than you expected.  You can always see the full set
+    of columns available with the :attr:`lsdb.catalog.Catalog.all_columns` property.
+
 
 Where To Get Catalogs
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 LSDB can open any catalogs in the HATS format, locally or from remote sources. There are a number of
 catalogs available publicly to use from the cloud. You can see them with their URLs to open in LSDB at our
-website `data.lsdb.io <https://data.lsdb.io>`_
+website `data.lsdb.io <https://data.lsdb.io>`_.
 
 
 If you have your own data not in this format, you can import it by following the instructions in our
@@ -188,17 +183,13 @@ The row-based filters on column values can be done in the same way that you woul
 Crossmatching
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Now we've filtered our catalog, let's try crossmatching! We'll need to open another catalog first. For a
-catalog on the right side of a cross-match, we need to make sure that we open it with a ``margin_cache`` to
-get accurate results. This should be provided with the catalog by the catalog's data provider. See the
-:doc:`margins tutorial </tutorials/margins>` for more.
+Now we've filtered our catalog, let's try crossmatching! We'll need to open another catalog first.
 
 .. code-block:: python
 
     gaia = lsdb.open_catalog(
-        "https://data.lsdb.io/hats/gaia_dr3/gaia",
+        "https://data.lsdb.io/hats/gaia_dr3",
         columns=["ra", "dec", "phot_g_n_obs", "phot_g_mean_flux", "pm"],
-        margin_cache="https://data.lsdb.io/hats/gaia_dr3/gaia_10arcs",
     )
 
 Once we've got our other catalog, we can crossmatch the two together!
@@ -208,6 +199,22 @@ Once we've got our other catalog, we can crossmatch the two together!
     ztf_x_gaia = ztf_filtered.crossmatch(gaia, n_neighbors=1, radius_arcsec=3)
 
 As with opening the catalog, this plans but does not execute the crossmatch. See the next section.
+
+.. hint::
+
+    Catalogs used on the right side of a crossmatch need to have a *margin cache* in order to get accurate
+    results.  In the above example, Gaia DR3 is a catalog *collection*; opening the collection's URL
+    automatically loads an appropriate margin cache. You can see what margin cache your catalog has with the
+    :attr:`lsdb.catalog.Catalog.margin` property, and, if it exists (is not ``None``), can see its name with
+    :attr:`lsdb.catalog.Catalog.margin.name`.
+
+    If, when calling :func:`lsdb.catalog.Catalog.crossmatch`, you get the warning ``RuntimeWarning: Right
+    catalog does not have a margin cache. Results may be incomplete and/or inaccurate.``, it means that you
+    should provide the margin cache directly with the `margin_cache=` argument. You can also use this argument
+    to use a different margin cache than the collection's default.
+
+    See :doc:`margins tutorial section </tutorials/margins>` for more, as well as :ref:`crossmatching` in this
+    document.
 
 
 Computing
