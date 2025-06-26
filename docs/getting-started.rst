@@ -177,8 +177,6 @@ The row-based filters on column values can be done in the same way that you woul
     ztf_filtered = ztf_filtered.query("nobs_r > 50")
 
 
-.. _crossmatching:
-
 Crossmatching
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -212,8 +210,7 @@ As with opening the catalog, this plans but does not execute the crossmatch. See
     should provide the margin cache directly with the ``margin_cache=`` argument. You can also use this argument
     to use a different margin cache than the collection's default.
 
-    See :doc:`margins tutorial section </tutorials/margins>` for more, as well as :ref:`crossmatching` in this
-    document.
+    See :doc:`margins tutorial section </tutorials/margins>` for more.
 
 
 Computing
