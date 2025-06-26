@@ -42,7 +42,7 @@ Using this Guide
 .. grid:: 1 1 2 2
 
    .. grid-item-card:: API Reference
-       :link: autoapi/index
+       :link: reference
        :link-type: doc
 
        The detailed API documentation
@@ -60,7 +60,7 @@ Using this Guide
    Home page <self>
    Getting Started <getting-started>
    Tutorials <tutorials>
-   API Reference <autoapi/index>
+   API Reference <reference>
 
 .. toctree::
    :hidden:
