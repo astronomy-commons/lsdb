@@ -914,7 +914,8 @@ class Catalog(HealpixDataset):
         ddf, partition_map = associate_sources(
             self, source_association_algorithm, object_aggregator, object_id_column_name
         )
-        return self._create_updated_dataset(ddf, partition_map)
+        hc_structure = object_aggregator.get_hc_structure(self) if object_aggregator is not None else None
+        return self._create_updated_dataset(ddf, partition_map, hc_structure=hc_structure)
 
     def nest_lists(
         self,
