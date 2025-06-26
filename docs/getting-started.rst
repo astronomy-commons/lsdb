@@ -105,7 +105,7 @@ usually see values.
 
     Catalogs define a set of *default columns* that are loaded if you don't specify your own list, in part
     to prevent you from incurring more I/O usage than you expected.  You can always see the full set
-    of columns available with the :func:`lsdb.catalog.Catalog.all_columns` property.
+    of columns available with the :attr:`lsdb.catalog.Catalog.all_columns` property.
 
 
 Where To Get Catalogs
@@ -205,8 +205,8 @@ As with opening the catalog, this plans but does not execute the crossmatch. See
     Catalogs used on the right side of a crossmatch need to have a *margin cache* in order to get accurate
     results.  In the above example, Gaia DR3 is a catalog *collection*; opening the collection's URL
     automatically loads an appropriate margin cache. You can see what margin cache your catalog has with the
-    :func:`lsdb.catalog.Catalog.margin` property, and, if it exists (is not ``None``), can see its name with
-    :func:`lsdb.catalog.Catalog.margin.name`.
+    :attr:`lsdb.catalog.Catalog.margin` property, and, if it exists (is not ``None``), can see its name with
+    :attr:`lsdb.catalog.Catalog.margin.name`.
 
     If, when calling :func:`lsdb.catalog.Catalog.crossmatch`, you get the warning ``RuntimeWarning: Right
     catalog does not have a margin cache. Results may be incomplete and/or inaccurate.``, it means that you
