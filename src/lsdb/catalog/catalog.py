@@ -1004,7 +1004,7 @@ class Catalog(HealpixDataset):
             )
         return catalog
 
-    def reduce(self, func, *args, meta=None, infer_nesting=True, **kwargs) -> Catalog:
+    def reduce(self, func, *args, meta=None, append_columns=False, infer_nesting=True, **kwargs) -> Catalog:
         """
         Takes a function and applies it to each top-level row of the Catalog.
 
@@ -1038,8 +1038,8 @@ class Catalog(HealpixDataset):
 
         Returns
         -------
-        `HealpixDataset`
-            `HealpixDataset` with the results of the function applied to the columns of the frame.
+        `Catalog`
+            `Catalog` with the results of the function applied to the columns of the frame.
 
         Notes
         -----
@@ -1062,9 +1062,13 @@ class Catalog(HealpixDataset):
         0  1372475556631677955      21.1       20.9
         1  1389879706834706546      22.2       21.8
         """
-        catalog = super().reduce(func, *args, meta=meta, infer_nesting=infer_nesting, **kwargs)
+        catalog = super().reduce(
+            func, *args, meta=meta, append_columns=append_columns, infer_nesting=infer_nesting, **kwargs
+        )
         if self.margin is not None:
-            catalog.margin = self.margin.reduce(func, *args, meta=meta, infer_nesting=infer_nesting, **kwargs)
+            catalog.margin = self.margin.reduce(
+                func, *args, meta=meta, append_columns=append_columns, infer_nesting=infer_nesting, **kwargs
+            )
         return catalog
 
     def sort_nested_values(
