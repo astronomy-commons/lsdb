@@ -78,19 +78,19 @@ Let's start by opening a HATS formatted Catalog in LSDB. Use the :func:`lsdb.ope
 open a catalog object. We'll pass in the URL to open the Zwicky Transient Facility Data Release 14
 Catalog, and specify which columns we want to use from it.
 
+
 .. code-block:: python
 
     import lsdb
     ztf = lsdb.open_catalog(
-        "https://data.lsdb.io/hats/ztf_dr14/ztf_object/",
+        "https://data.lsdb.io/hats/ztf_dr14/ztf_object",
         columns=["ra", "dec", "ps1_objid", "nobs_r", "mean_mag_r"],
     )
     >> ztf
 
-
 .. image:: _static/ztf_catalog_lazy.png
    :align: center
-   :alt: The Lazy LSDB Representation of Gaia DR3
+   :alt: The Lazy LSDB Representation of ZTF DR14
 
 
 Here we can see the lazy representation of an LSDB catalog object, showing its metadata such as the column
@@ -103,12 +103,16 @@ usually see values.
     for your workflow. Without specifying any columns, all available columns will be loaded when
     the workflow is executed, making everything much slower and using much more memory.
 
+    Catalogs define a set of *default columns* that are loaded if you don't specify your own list, in part
+    to prevent you from incurring more I/O usage than you expected.  You can always see the full set
+    of columns available with the :attr:`lsdb.catalog.Catalog.all_columns` property.
+
 
 Where To Get Catalogs
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 LSDB can open any catalogs in the HATS format, locally or from remote sources. There are a number of
 catalogs available publicly to use from the cloud. You can see them with their URLs to open in LSDB at our
-website `data.lsdb.io <https://data.lsdb.io>`_
+website `data.lsdb.io <https://data.lsdb.io>`_.
 
 
 If you have your own data not in this format, you can import it by following the instructions in our
@@ -119,35 +123,70 @@ If you have your own data not in this format, you can import it by following the
 Performing Filters
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-LSDB can perform spatial filters fast, taking advantage of HATS's spatial partitioning. These optimized
-filters have their own methods, such as :func:`cone_search <lsdb.catalog.Catalog.cone_search>`. For the list
-of these methods see the full docs for the :func:`Catalog <lsdb.catalog.Catalog>` class.
+LSDB can perform spatial filters fast, taking advantage of HATS's spatial partitioning.  For the list of these
+methods see the full docs for the :func:`Catalog <lsdb.catalog.Catalog>` class.
+
+The best place to add filters is at the time of opening the catalog. This allows LSDB to
+avoid loading unused parts of the catalog.
+
+:func:`lsdb.open_catalog` has keyword arguments for these filters:
+
+  * ``search_filter=`` spatial filters like :func:`lsdb.ConeSearch` and :func:`lsdb.BoxSearch`
+  * ``columns=`` column filtering (as we saw earlier)
+  * ``filters=`` general row-based filtering expressions
+
+The search filter narrows the catalog to include only the regions of the catalog within the spatial
+constraint. See the :doc:`region selection tutorial </tutorials/region_selection>` for more.
+
+.. code-block:: python
+
+    ztf_cone = lsdb.open_catalog(
+        catalog_path,
+        search_filter=lsdb.ConeSearch(ra=40, dec=30, radius_arcsec=1000)
+    )
+
+All operations on ``ztf_cone`` from here on out are constrained to the given spatial filter.
+
+The ``filters=`` argument takes a list of lists, where each list is a condition, and all
+conditions must be fulfilled for the row to make it past the filter. Below is a way
+of filtering for ``mean_mag_r < 18 and nobs_r > 50``:
+
+.. code-block:: python
+
+    ztf_rows = lsdb.open_catalog(
+        catalog_path,
+        filters=[["mean_mag_r", "<", 18],
+                 ["nobs_r", ">", 50]],
+
+    )
+
+You can filter the catalog after it's opened. The search filters are methods on the catalog:
 
 .. code-block:: python
 
     ztf_cone = ztf.cone_search(ra=40, dec=30, radius_arcsec=1000)
 
-Other filters on columns can be performed in the same way that you would on a pandas DataFrame.
+The row-based filters on column values can be done in the same way that you would on a pandas DataFrame, using
+:func:`lsdb.catalog.Catalog.query` or Pandas-like indexing expressions:
 
 .. code-block:: python
 
+    ztf_cols = ztf[["objra", "objdec", "mean_mag_r", "nobs_r"]]
+    ztf_cone = ztf_cols.cone_search(ra=40, dec=30, radius_arcsec=1000)
     ztf_filtered = ztf_cone[ztf_cone["mean_mag_r"] < 18]
     ztf_filtered = ztf_filtered.query("nobs_r > 50")
 
-Cross Matching
+
+Crossmatching
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Now we've filtered our catalog, let's try cross-matching! We'll need to open another catalog first. For a
-catalog on the right side of a cross-match, we need to make sure that we open it with a ``margin_cache`` to
-get accurate results. This should be provided with the catalog by the catalog's data provider. See the
-:doc:`margins tutorial section </tutorials/margins>` for more.
+Now we've filtered our catalog, let's try crossmatching! We'll need to open another catalog first.
 
 .. code-block:: python
 
     gaia = lsdb.open_catalog(
-        "https://data.lsdb.io/hats/gaia_dr3/gaia/",
+        "https://data.lsdb.io/hats/gaia_dr3",
         columns=["ra", "dec", "phot_g_n_obs", "phot_g_mean_flux", "pm"],
-        margin_cache="https://data.lsdb.io/hats/gaia_dr3/gaia_10arcs/",
     )
 
 Once we've got our other catalog, we can crossmatch the two together!
@@ -156,13 +195,36 @@ Once we've got our other catalog, we can crossmatch the two together!
 
     ztf_x_gaia = ztf_filtered.crossmatch(gaia, n_neighbors=1, radius_arcsec=3)
 
+As with opening the catalog, this plans but does not execute the crossmatch. See the :ref:`computing` section,
+next.
+
+.. important::
+
+    Catalogs used on the right side of a crossmatch need to have a *margin cache* in order to get accurate
+    results.  In the above example, Gaia DR3 is a catalog *collection*; opening the collection's URL
+    automatically loads an appropriate margin cache. You can see what margin cache your catalog has with the
+    :attr:`lsdb.catalog.Catalog.margin` property. If it exists (is not ``None``), you can inspect its name.
+    In our example, this would be ``gaia.margin.name``.
+
+    If, when calling :func:`lsdb.catalog.Catalog.crossmatch`, you get the warning ``RuntimeWarning: Right
+    catalog does not have a margin cache. Results may be incomplete and/or inaccurate.``, it means that you
+    should provide the margin cache directly with the ``margin_cache=`` argument. You can also use this argument
+    to use a different margin cache than the collection's default.
+
+    See :doc:`margins tutorial section </tutorials/margins>` for more.
+
+For a detailed crossmatching example, see :doc:`the crossmatching tutorial </tutorials/pre_executed/crossmatching>`.
+
+
+.. _computing:
 
 Computing
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 We've now planned the crossmatch lazily, but it still hasn't been actually performed. To load the data and run
-the workflow we'll call the ``compute()`` method, which will perform all the tasks and return the result as a
-pandas DataFrame with all the computed values.
+the workflow we'll call the :func:`lsdb.catalog.Catalog.compute` method, which will perform all the tasks and
+return the result as a ``NestedFrame`` with all the computed values. For more on ``NestedFrame`` (an extension
+of the Pandas DataFrame) see the :doc:`NestedFrame tutorial section </tutorials/pre_executed/nestedframe>`.
 
 .. code-block:: python
 
@@ -177,8 +239,9 @@ pandas DataFrame with all the computed values.
 Saving the Result
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-For large results, it won't be possible to ``compute()`` since the full result won't be able to fit into memory.
-So instead, we can run the computation and save the results directly to disk in hats format.
+For large results, it won't be possible to :func:`lsdb.catalog.Catalog.compute` since the full result won't be
+able to fit into memory.  So instead, we can run the computation and save the results directly to disk in HATS
+format.
 
 .. code-block:: python
 
