@@ -16,7 +16,7 @@ from lsdb.core.search.polygon_search import get_cartesian_polygon
 TEST_DIR = Path(__file__).parent.parent / "tests"
 DATA_DIR_NAME = "data"
 SMALL_SKY_DIR_NAME = "small_sky"
-SMALL_SKY_ORDER1 = "small_sky_order1"
+SMALL_SKY_ORDER1 = "small_sky_order1_collection"
 SMALL_SKY_XMATCH_NAME = "small_sky_xmatch"
 BENCH_DATA_DIR = Path(__file__).parent / "data"
 
