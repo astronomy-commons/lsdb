@@ -123,9 +123,8 @@ If you have your own data not in this format, you can import it by following the
 Performing Filters
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-LSDB can perform spatial filters fast, taking advantage of HATS's spatial partitioning. These optimized
-filters have their own methods, such as :func:`cone_search <lsdb.catalog.Catalog.cone_search>`. For the list
-of these methods see the full docs for the :func:`Catalog <lsdb.catalog.Catalog>` class.
+LSDB can perform spatial filters fast, taking advantage of HATS's spatial partitioning.  For the list of these
+methods see the full docs for the :func:`Catalog <lsdb.catalog.Catalog>` class.
 
 The best place to add filters is at the time of opening the catalog. This allows LSDB to
 avoid loading unused parts of the catalog.
@@ -146,11 +145,11 @@ constraint. See the :doc:`region selection tutorial </tutorials/region_selection
         search_filter=lsdb.ConeSearch(ra=40, dec=30, radius_arcsec=1000)
     )
 
-All operations on `ztf_cone` from here on out are constrained to the given spatial filter.
+All operations on ``ztf_cone`` from here on out are constrained to the given spatial filter.
 
-The `filters=` argument takes a list of lists, where each list is a condition, and all
+The ``filters=`` argument takes a list of lists, where each list is a condition, and all
 conditions must be fulfilled for the row to make it past the filter. Below is a way
-of filtering for `mean_mag_r < 18 and nobs_r > 50`:
+of filtering for ``mean_mag_r < 18 and nobs_r > 50``:
 
 .. code-block:: python
 
@@ -178,7 +177,7 @@ The row-based filters on column values can be done in the same way that you woul
     ztf_filtered = ztf_filtered.query("nobs_r > 50")
 
 
-.. _crossmatching
+.. _crossmatching:
 
 Crossmatching
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -210,7 +209,7 @@ As with opening the catalog, this plans but does not execute the crossmatch. See
 
     If, when calling :func:`lsdb.catalog.Catalog.crossmatch`, you get the warning ``RuntimeWarning: Right
     catalog does not have a margin cache. Results may be incomplete and/or inaccurate.``, it means that you
-    should provide the margin cache directly with the `margin_cache=` argument. You can also use this argument
+    should provide the margin cache directly with the ``margin_cache=`` argument. You can also use this argument
     to use a different margin cache than the collection's default.
 
     See :doc:`margins tutorial section </tutorials/margins>` for more, as well as :ref:`crossmatching` in this
@@ -221,8 +220,8 @@ Computing
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 We've now planned the crossmatch lazily, but it still hasn't been actually performed. To load the data and run
-the workflow we'll call the :func:`lsdb.catalog.Catalog.compute` method, which will perform all the tasks and return the result as a
-pandas DataFrame with all the computed values.
+the workflow we'll call the :func:`lsdb.catalog.Catalog.compute` method, which will perform all the tasks and
+return the result as a pandas DataFrame with all the computed values.
 
 .. code-block:: python
 
@@ -237,8 +236,9 @@ pandas DataFrame with all the computed values.
 Saving the Result
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-For large results, it won't be possible to :func:`lsdb.catalog.Catalog.compute` since the full result won't be able to fit into memory.
-So instead, we can run the computation and save the results directly to disk in hats format.
+For large results, it won't be possible to :func:`lsdb.catalog.Catalog.compute` since the full result won't be
+able to fit into memory.  So instead, we can run the computation and save the results directly to disk in HATS
+format.
 
 .. code-block:: python
 
