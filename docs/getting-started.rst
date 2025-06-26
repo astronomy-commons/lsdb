@@ -195,7 +195,8 @@ Once we've got our other catalog, we can crossmatch the two together!
 
     ztf_x_gaia = ztf_filtered.crossmatch(gaia, n_neighbors=1, radius_arcsec=3)
 
-As with opening the catalog, this plans but does not execute the crossmatch. See the next section.
+As with opening the catalog, this plans but does not execute the crossmatch. See the :ref:`computing` section,
+next.
 
 .. important::
 
@@ -212,13 +213,18 @@ As with opening the catalog, this plans but does not execute the crossmatch. See
 
     See :doc:`margins tutorial section </tutorials/margins>` for more.
 
+For a detailed crossmatching example, see :doc:`the crossmatching tutorial </tutorials/pre_executed/crossmatching>`.
+
+
+.. _computing:
 
 Computing
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 We've now planned the crossmatch lazily, but it still hasn't been actually performed. To load the data and run
 the workflow we'll call the :func:`lsdb.catalog.Catalog.compute` method, which will perform all the tasks and
-return the result as a pandas DataFrame with all the computed values.
+return the result as a ``NestedFrame`` with all the computed values. For more on ``NestedFrame`` (an extension
+of the Pandas DataFrame) see the :doc:`NestedFrame tutorial section </tutorials/pre_executed/nestedframe>`.
 
 .. code-block:: python
 
