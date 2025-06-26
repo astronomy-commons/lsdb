@@ -78,15 +78,16 @@ Let's start by opening a HATS formatted Catalog in LSDB. Use the :func:`lsdb.ope
 open a catalog object. We'll pass in the URL to open the Zwicky Transient Facility Data Release 14
 Catalog, and specify which columns we want to use from it.
 
+
 .. code-block:: python
 
     import lsdb
     ztf = lsdb.open_catalog(
-        "https://data.lsdb.io/hats/ztf_dr14/ztf_object/",
+        "https://data.lsdb.io/hats/ztf_dr14/ztf_object",
+        margin_cache="https://data.lsdb.io/hats/ztf_dr14/ztf_object_10arcs",
         columns=["ra", "dec", "ps1_objid", "nobs_r", "mean_mag_r"],
     )
     >> ztf
-
 
 .. image:: _static/ztf_catalog_lazy.png
    :align: center
@@ -96,6 +97,14 @@ Catalog, and specify which columns we want to use from it.
 Here we can see the lazy representation of an LSDB catalog object, showing its metadata such as the column
 names and their types without loading any data. The ellipses in the table act as placeholders where you would
 usually see values.
+
+.. hint::
+
+    Note the `margin_cache=` argument.  This is usually a good idea to provide, and there's little downside to
+    using it, since its data is not loaded unless required.  We know what name to give it from the description
+    of the catalog at `https://data.lsdb.io`_.  See :doc:`margins tutorial section </tutorials/margins>` for
+    more, as well as :ref:`the crossmatching section in this guide <crossmatching>`.
+
 
 .. important::
 
@@ -134,10 +143,13 @@ Other filters on columns can be performed in the same way that you would on a pa
     ztf_filtered = ztf_cone[ztf_cone["mean_mag_r"] < 18]
     ztf_filtered = ztf_filtered.query("nobs_r > 50")
 
-Cross Matching
+
+.. _crossmatching
+
+Crossmatching
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Now we've filtered our catalog, let's try cross-matching! We'll need to open another catalog first. For a
+Now we've filtered our catalog, let's try crossmatching! We'll need to open another catalog first. For a
 catalog on the right side of a cross-match, we need to make sure that we open it with a ``margin_cache`` to
 get accurate results. This should be provided with the catalog by the catalog's data provider. See the
 :doc:`margins tutorial section </tutorials/margins>` for more.
@@ -145,9 +157,9 @@ get accurate results. This should be provided with the catalog by the catalog's 
 .. code-block:: python
 
     gaia = lsdb.open_catalog(
-        "https://data.lsdb.io/hats/gaia_dr3/gaia/",
+        "https://data.lsdb.io/hats/gaia_dr3/gaia",
         columns=["ra", "dec", "phot_g_n_obs", "phot_g_mean_flux", "pm"],
-        margin_cache="https://data.lsdb.io/hats/gaia_dr3/gaia_10arcs/",
+        margin_cache="https://data.lsdb.io/hats/gaia_dr3/gaia_10arcs",
     )
 
 Once we've got our other catalog, we can crossmatch the two together!
@@ -155,6 +167,8 @@ Once we've got our other catalog, we can crossmatch the two together!
 .. code-block:: python
 
     ztf_x_gaia = ztf_filtered.crossmatch(gaia, n_neighbors=1, radius_arcsec=3)
+
+As with opening the catalog, this plans but does not execute the crossmatch. See the next section.
 
 
 Computing
