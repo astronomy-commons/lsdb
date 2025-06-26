@@ -132,14 +132,53 @@ LSDB can perform spatial filters fast, taking advantage of HATS's spatial partit
 filters have their own methods, such as :func:`cone_search <lsdb.catalog.Catalog.cone_search>`. For the list
 of these methods see the full docs for the :func:`Catalog <lsdb.catalog.Catalog>` class.
 
+The best place to add filters is at the time of opening the catalog. This allows LSDB to
+avoid loading unused parts of the catalog.
+
+:func:`lsdb.open_catalog` has keyword arguments for these filters:
+
+  * `search_filter=`: spatial filters like :func:`lsdb.ConeSearch` and :func:`lsdb.BoxSearch`
+  * `columns=`: column filtering (as we saw earlier)
+  * `filters=`: general row-based filtering expressions
+
+The search filter narrows the catalog to include only the regions of the catalog within the spatial
+constraint. See the :doc:`region selection tutorial </tutorials/region_section>` for more.
+
+.. code-block:: python
+
+    ztf_cone = lsdb.open_catalog(
+        catalog_path,
+        search_filter=lsdb.ConeSearch(ra=40, dec=30, radius_arcsec=1000)
+    )
+
+All operations on `ztf_cone` from here on out are constrained to the given spatial filter.
+
+The `filters=` argument takes a list of lists, where each list is a condition, and all
+conditions must be fulfilled for the row to make it past the filter. Below is a way
+of filtering for `mean_mag_r < 18 and nobs_r > 50`:
+
+.. code-block:: python
+
+    ztf_rows = lsdb.open_catalog(
+        catalog_path,
+        filters=[["mean_mag_r", "<", 18],
+                 ["nobs_r", ">", 50]],
+
+    )
+
+You can filter the catalog after it's opened. The search filters are methods on the catalog:
+
 .. code-block:: python
 
     ztf_cone = ztf.cone_search(ra=40, dec=30, radius_arcsec=1000)
 
-Other filters on columns can be performed in the same way that you would on a pandas DataFrame.
+The row-based filters on column values can be done in the same way that you would on a pandas DataFrame, using
+:func:`Catalog.query` or Pandas-like indexing expressions:
 
 .. code-block:: python
 
+    ztf_cols = ztf[["objra", "objdec", "mean_mag_r", "nobs_r"]]
+    ztf_cone = ztf_cols.cone_search(ra=40, dec=30, radius_arcsec=1000)
     ztf_filtered = ztf_cone[ztf_cone["mean_mag_r"] < 18]
     ztf_filtered = ztf_filtered.query("nobs_r > 50")
 
@@ -152,7 +191,7 @@ Crossmatching
 Now we've filtered our catalog, let's try crossmatching! We'll need to open another catalog first. For a
 catalog on the right side of a cross-match, we need to make sure that we open it with a ``margin_cache`` to
 get accurate results. This should be provided with the catalog by the catalog's data provider. See the
-:doc:`margins tutorial section </tutorials/margins>` for more.
+:doc:`margins tutorial </tutorials/margins>` for more.
 
 .. code-block:: python
 
