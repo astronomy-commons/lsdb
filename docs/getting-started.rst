@@ -137,7 +137,7 @@ avoid loading unused parts of the catalog.
   * ``filters=`` general row-based filtering expressions
 
 The search filter narrows the catalog to include only the regions of the catalog within the spatial
-constraint. See the :doc:`region selection tutorial </tutorials/region_section>` for more.
+constraint. See the :doc:`region selection tutorial </tutorials/region_selection>` for more.
 
 .. code-block:: python
 
@@ -200,13 +200,13 @@ Once we've got our other catalog, we can crossmatch the two together!
 
 As with opening the catalog, this plans but does not execute the crossmatch. See the next section.
 
-.. hint::
+.. important::
 
     Catalogs used on the right side of a crossmatch need to have a *margin cache* in order to get accurate
     results.  In the above example, Gaia DR3 is a catalog *collection*; opening the collection's URL
     automatically loads an appropriate margin cache. You can see what margin cache your catalog has with the
-    :attr:`lsdb.catalog.Catalog.margin` property, and, if it exists (is not ``None``), can see its name with
-    :attr:`lsdb.catalog.Catalog.margin.name`.
+    :attr:`lsdb.catalog.Catalog.margin` property. If it exists (is not ``None``), you can inspect its name.
+    In our example, this would be ``gaia.margin.name``.
 
     If, when calling :func:`lsdb.catalog.Catalog.crossmatch`, you get the warning ``RuntimeWarning: Right
     catalog does not have a margin cache. Results may be incomplete and/or inaccurate.``, it means that you
@@ -221,7 +221,7 @@ Computing
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 We've now planned the crossmatch lazily, but it still hasn't been actually performed. To load the data and run
-the workflow we'll call the ``compute()`` method, which will perform all the tasks and return the result as a
+the workflow we'll call the :func:`lsdb.catalog.Catalog.compute` method, which will perform all the tasks and return the result as a
 pandas DataFrame with all the computed values.
 
 .. code-block:: python
@@ -237,7 +237,7 @@ pandas DataFrame with all the computed values.
 Saving the Result
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-For large results, it won't be possible to ``compute()`` since the full result won't be able to fit into memory.
+For large results, it won't be possible to :func:`lsdb.catalog.Catalog.compute` since the full result won't be able to fit into memory.
 So instead, we can run the computation and save the results directly to disk in hats format.
 
 .. code-block:: python
