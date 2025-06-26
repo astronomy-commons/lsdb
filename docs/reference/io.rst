@@ -1,5 +1,5 @@
 ==================
-Input/Ouput
+Input/Output
 ==================
 .. currentmodule:: lsdb
 
