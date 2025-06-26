@@ -132,9 +132,9 @@ avoid loading unused parts of the catalog.
 
 :func:`lsdb.open_catalog` has keyword arguments for these filters:
 
-  * `search_filter=`: spatial filters like :func:`lsdb.ConeSearch` and :func:`lsdb.BoxSearch`
-  * `columns=`: column filtering (as we saw earlier)
-  * `filters=`: general row-based filtering expressions
+  * ``search_filter=`` spatial filters like :func:`lsdb.ConeSearch` and :func:`lsdb.BoxSearch`
+  * ``columns=`` column filtering (as we saw earlier)
+  * ``filters=`` general row-based filtering expressions
 
 The search filter narrows the catalog to include only the regions of the catalog within the spatial
 constraint. See the :doc:`region selection tutorial </tutorials/region_section>` for more.
@@ -168,7 +168,7 @@ You can filter the catalog after it's opened. The search filters are methods on 
     ztf_cone = ztf.cone_search(ra=40, dec=30, radius_arcsec=1000)
 
 The row-based filters on column values can be done in the same way that you would on a pandas DataFrame, using
-:func:`Catalog.query` or Pandas-like indexing expressions:
+:func:`lsdb.catalog.Catalog.query` or Pandas-like indexing expressions:
 
 .. code-block:: python
 
