@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
+import hats.catalog
 import nested_pandas as npd
 import numpy as np
 from hats import HealpixPixel
@@ -31,4 +32,7 @@ class AbstractObjectAggregator(ABC):
 
     @abstractmethod
     def get_meta_df(self) -> npd.NestedFrame:
+        pass
+
+    def get_hc_structure(self, catalog: Catalog) -> hats.catalog.Catalog:
         pass
