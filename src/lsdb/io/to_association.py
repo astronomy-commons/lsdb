@@ -75,7 +75,7 @@ def to_association(
         catalog_name (str): The name of the output catalog
         overwrite (bool): If True existing catalog is overwritten
         **kwargs: Arguments to pass to the parquet write operations
-    
+
     Notes:
         To configure the appropriate column names, consider two tables that do not
         share an identifier space (e.g. two surveys), and the way you could go about

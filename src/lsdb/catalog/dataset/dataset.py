@@ -80,7 +80,7 @@ class Dataset:
     @property
     def all_columns(self):
         """Returns the names of all columns in the original Dataset.
-        
+
         This is different from the `columns` property, as you can open a catalog with
         only a subset of the columns, either explicitly with the ``columns=`` argument,
         or with some ``default_columns`` set on the catalog by the catalog provider."""

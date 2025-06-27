@@ -58,7 +58,7 @@ def open_catalog(
 
     Catalogs in a HATS collection are composed of a main catalog, and margin and index
     catalogs. LSDB will open exactly ONE main object catalog and at most ONE margin catalog.
-    The `collection.properties` file specifies which margins and indexes are available, 
+    The `collection.properties` file specifies which margins and indexes are available,
     and which margin to use by default::
 
         my_collection_dir/

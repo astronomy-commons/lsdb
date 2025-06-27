@@ -212,10 +212,10 @@ class HealpixDataset(Dataset):
         include_pixels: list[HealpixPixel] | None = None,
     ) -> list[HealpixPixel]:
         """Read footer statistics in parquet metadata, and report on global min/max values.
-        
+
         Args:
             use_default_columns (bool): should we use only the columns that are loaded
-                by default (will be set in the metadata by the catalog provider). 
+                by default (will be set in the metadata by the catalog provider).
                 Defaults to True.
             exclude_hats_columns (bool): exclude HATS spatial and partitioning fields
                 from the statistics. Defaults to True.
@@ -249,12 +249,12 @@ class HealpixDataset(Dataset):
         multi_index=False,
         include_pixels: list[HealpixPixel] | None = None,
     ) -> list[HealpixPixel]:
-        """Read footer statistics in parquet metadata, and report on min/max values for 
+        """Read footer statistics in parquet metadata, and report on min/max values for
         for each data partition.
-        
+
         Args:
             use_default_columns (bool): should we use only the columns that are loaded
-                by default (will be set in the metadata by the catalog provider). 
+                by default (will be set in the metadata by the catalog provider).
                 Defaults to True.
             exclude_hats_columns (bool): exclude HATS spatial and partitioning fields
                 from the statistics. Defaults to True.

@@ -912,7 +912,7 @@ class Catalog(HealpixDataset):
             a list column to this dtype, you can use this command structure:
 
                 nf= nf.astype({"colname": pd.ArrowDtype(pa.list_(pa.int64()))})
-            
+
             Where pa.int64 above should be replaced with the correct dtype of the
             underlying data accordingly.
             Additionally, it's a known issue in Dask

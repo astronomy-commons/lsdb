@@ -82,9 +82,9 @@ def to_hats(
     addl_hats_properties: dict | None = None,
     **kwargs,
 ):
-    """Writes a catalog to disk, in HATS format. 
-    
-    The output catalog comprises  partitioned parquet files and respective metadata, 
+    """Writes a catalog to disk, in HATS format.
+
+    The output catalog comprises  partitioned parquet files and respective metadata,
     as well as text and CSV files detailing partition, catalog and provenance info.
 
     Args:
