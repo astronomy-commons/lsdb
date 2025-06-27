@@ -52,14 +52,14 @@ def open_catalog(
     error_empty_filter: bool = True,
     **kwargs,
 ) -> Dataset:
-    """Load catalog from a HATS path.
+    """Open a catalog from a HATS path.
 
     Catalogs exist in collections or stand-alone.
 
     Catalogs in a HATS collection are composed of a main catalog, and margin and index
-    catalogs. LSDB will load exactly ONE main object catalog, at most ONE margin catalog,
-    and at most ONE index catalog. The `collection.properties` file specifies which
-    margins and indexes are available, and which are the default::
+    catalogs. LSDB will open exactly ONE main object catalog and at most ONE margin catalog.
+    The `collection.properties` file specifies which margins and indexes are available,
+    and which margin to use by default::
 
         my_collection_dir/
         ├── main_catalog/
@@ -68,31 +68,31 @@ def open_catalog(
         ├── index_catalog/
         ├── collection.properties
 
-    All arguments passed to the `read_hats` call are applied to the reading calls of
+    All arguments passed to the `open_catalog` call are applied to the calls to open
     the main and margin catalogs.
 
-    Typical usage example, where we load a collection with a subset of columns::
+    Typical usage example, where we open a collection with a subset of columns::
 
-        lsdb.read_hats(path='./my_collection_dir', columns=['ra','dec'])
+        lsdb.open_catalog(path='./my_collection_dir', columns=['ra','dec'])
 
-    Typical usage example, where we load a collection from a cone search::
+    Typical usage example, where we open a collection from a cone search::
 
-        lsdb.read_hats(
+        lsdb.open_catalog(
             path='./my_collection_dir',
             columns=['ra','dec'],
-            search_filter=lsdb.core.search.ConeSearch(ra, dec, radius_arcsec),
+            search_filter=lsdb.ConeSearch(ra, dec, radius_arcsec),
         )
 
-    Typical usage example, where we load a collection with a non-default margin::
+    Typical usage example, where we open a collection with a non-default margin::
 
-        lsdb.read_hats(path='./my_collection_dir', margin_cache='margin_catalog_2')
+        lsdb.open_catalog(path='./my_collection_dir', margin_cache='margin_catalog_2')
 
     Note that this margin still needs to be specified in the `all_margins` attribute
     of the `collection.properties` file.
 
-    We can also load each catalog separately, if needed::
+    We can also open each catalog separately, if needed::
 
-        lsdb.read_hats(path='./my_collection_dir/main_catalog')
+        lsdb.open_catalog(path='./my_collection_dir/main_catalog')
 
     Args:
         path (UPath | Path): The path that locates the root of the HATS collection or stand-alone catalog.
@@ -105,14 +105,13 @@ def open_catalog(
         **kwargs: Arguments to pass to the pandas parquet file reader
 
     Returns:
-        A `CatalogCollection` object if the provided path is for a HATS collection, a `Catalog` object
-        if the path is for a stand-alone HATS catalog. Both are loaded from the given parameters.
+        A `Catalog` object, and affiliated table links.
 
     Examples:
         To read a collection from a public S3 bucket, call it as follows::
 
             from upath import UPath
-            collection = lsdb.read_hats(UPath(..., anon=True))
+            collection = lsdb.open_catalog(UPath(..., anon=True))
     """
     hc_catalog = hc.read_hats(path)
     if isinstance(hc_catalog, CatalogCollection):
