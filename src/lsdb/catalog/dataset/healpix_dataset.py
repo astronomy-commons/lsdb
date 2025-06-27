@@ -212,8 +212,6 @@ class HealpixDataset(Dataset):
         include_pixels: list[HealpixPixel] | None = None,
     ) -> list[HealpixPixel]:
         """Read footer statistics in parquet metadata, and report on global min/max values."""
-        self._check_unloaded_columns(exclude_columns)
-        self._check_unloaded_columns(include_columns)
         if use_default_columns and include_columns is None:
             include_columns = self.hc_structure.catalog_info.default_columns
 
@@ -235,8 +233,6 @@ class HealpixDataset(Dataset):
         include_pixels: list[HealpixPixel] | None = None,
     ) -> list[HealpixPixel]:
         """Read footer statistics in parquet metadata, and report on global min/max values."""
-        self._check_unloaded_columns(exclude_columns)
-        self._check_unloaded_columns(include_columns)
         if use_default_columns and include_columns is None:
             include_columns = self.hc_structure.catalog_info.default_columns
 
