@@ -5,4 +5,4 @@ Accessing Rubin Data
     :maxdepth: 1
 
     Accessing Rubin Data Preview 1 </tutorials/pre_executed/rubin_dp1>
-
+    Accessing Rubin Data Preview 1 photo-z </tutorials/pre_executed/rubin_dp1_photoz>
