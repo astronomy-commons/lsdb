@@ -1,3 +1,4 @@
+from importlib.metadata import version
 from pathlib import Path
 
 import hats as hc
@@ -10,7 +11,7 @@ from lsdb.catalog.margin_catalog import MarginCatalog
 
 
 def test_read_margin_catalog(small_sky_xmatch_margin_dir):
-    margin = lsdb.read_hats(small_sky_xmatch_margin_dir)
+    margin = lsdb.open_catalog(small_sky_xmatch_margin_dir)
     assert isinstance(margin, MarginCatalog)
     assert isinstance(margin._ddf, nd.NestedFrame)
     hc_margin = hc.read_hats(small_sky_xmatch_margin_dir)
@@ -22,7 +23,7 @@ def test_read_margin_catalog(small_sky_xmatch_margin_dir):
 
 
 def test_margin_catalog_partitions_correct(small_sky_xmatch_margin_dir):
-    margin = lsdb.read_hats(small_sky_xmatch_margin_dir)
+    margin = lsdb.open_catalog(small_sky_xmatch_margin_dir)
     assert isinstance(margin, MarginCatalog)
     for healpix_pixel in margin.get_healpix_pixels():
         hp_order = healpix_pixel.order
@@ -41,7 +42,7 @@ def test_save_margin_catalog(small_sky_xmatch_margin_catalog, tmp_path):
     base_catalog_path = Path(tmp_path) / new_catalog_name
     small_sky_xmatch_margin_catalog.to_hats(base_catalog_path, catalog_name=new_catalog_name)
 
-    expected_catalog = lsdb.read_hats(base_catalog_path)
+    expected_catalog = lsdb.open_catalog(base_catalog_path)
     assert expected_catalog.hc_structure.catalog_name == new_catalog_name
     assert expected_catalog.get_healpix_pixels() == small_sky_xmatch_margin_catalog.get_healpix_pixels()
     pd.testing.assert_frame_equal(expected_catalog.compute(), small_sky_xmatch_margin_catalog._ddf.compute())
@@ -51,7 +52,11 @@ def test_save_margin_catalog(small_sky_xmatch_margin_catalog, tmp_path):
     original_info = small_sky_xmatch_margin_catalog.hc_structure.catalog_info
     partition_sizes = small_sky_xmatch_margin_catalog._ddf.map_partitions(len).compute()
     assert max(partition_sizes) == 10
-    assert expected_catalog.hc_structure.catalog_info == original_info.copy_and_update(hats_max_rows="10")
+    assert expected_catalog.hc_structure.catalog_info == original_info.copy_and_update(
+        hats_max_rows="10",
+        # Also check that the builder was properly set
+        hats_builder=f"lsdb v{version('lsdb')}, hats v{version('hats')}",
+    )
 
     # Sneak in test on data thumbnails: only main catalogs have them
     data_thumbnail_pointer = get_data_thumbnail_pointer(base_catalog_path)

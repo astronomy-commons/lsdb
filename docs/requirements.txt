@@ -7,7 +7,6 @@ lsst-sphgeom
 nbconvert
 nbsphinx
 sphinx
-sphinx-autoapi
 sphinx-copybutton
 sphinx-book-theme
 sphinx-design

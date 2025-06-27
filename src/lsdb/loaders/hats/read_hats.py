@@ -5,13 +5,16 @@ from pathlib import Path
 import hats as hc
 import nested_pandas as npd
 import numpy as np
+import pandas as pd
+from fsspec.implementations.http import HTTPFileSystem
 from hats.catalog import CatalogType
 from hats.catalog.catalog_collection import CatalogCollection
 from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
-from hats.io.file_io import file_io
+from hats.io.file_io import file_io, get_upath
 from hats.pixel_math import HealpixPixel
 from hats.pixel_math.healpix_pixel_function import get_pixel_argsort
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
+from nested_pandas.nestedframe.io import from_pyarrow
 from upath import UPath
 
 import lsdb.nested as nd
@@ -26,22 +29,37 @@ from lsdb.dask.divisions import get_pixels_divisions
 from lsdb.io.schema import get_arrow_schema
 from lsdb.loaders.hats.hats_loading_config import HatsLoadingConfig
 
+MAX_PYARROW_FILTERS = 10
+
 
 def read_hats(
     path: str | Path | UPath,
     search_filter: AbstractSearch | None = None,
     columns: list[str] | str | None = None,
     margin_cache: str | Path | UPath | None = None,
+    error_empty_filter: bool = True,
     **kwargs,
 ) -> Dataset:
-    """Load catalog from a HATS directory.
+    """Load catalog from a HATS path. See open_catalog()."""
+    return open_catalog(path, search_filter, columns, margin_cache, error_empty_filter, **kwargs)
+
+
+def open_catalog(
+    path: str | Path | UPath,
+    search_filter: AbstractSearch | None = None,
+    columns: list[str] | str | None = None,
+    margin_cache: str | Path | UPath | None = None,
+    error_empty_filter: bool = True,
+    **kwargs,
+) -> Dataset:
+    """Open a catalog from a HATS path.
 
     Catalogs exist in collections or stand-alone.
 
     Catalogs in a HATS collection are composed of a main catalog, and margin and index
-    catalogs. LSDB will load exactly ONE main object catalog, at most ONE margin catalog,
-    and at most ONE index catalog. The `collection.properties` file specifies which
-    margins and indexes are available, and which are the default::
+    catalogs. LSDB will open exactly ONE main object catalog and at most ONE margin catalog.
+    The `collection.properties` file specifies which margins and indexes are available,
+    and which margin to use by default::
 
         my_collection_dir/
         ├── main_catalog/
@@ -50,51 +68,50 @@ def read_hats(
         ├── index_catalog/
         ├── collection.properties
 
-    All arguments passed to the `read_hats` call are applied to the reading calls of
+    All arguments passed to the `open_catalog` call are applied to the calls to open
     the main and margin catalogs.
 
-    Typical usage example, where we load a collection with a subset of columns::
+    Typical usage example, where we open a collection with a subset of columns::
 
-        lsdb.read_hats(path='./my_collection_dir', columns=['ra','dec'])
+        lsdb.open_catalog(path='./my_collection_dir', columns=['ra','dec'])
 
-    Typical usage example, where we load a collection from a cone search::
+    Typical usage example, where we open a collection from a cone search::
 
-        lsdb.read_hats(
+        lsdb.open_catalog(
             path='./my_collection_dir',
             columns=['ra','dec'],
-            search_filter=lsdb.core.search.ConeSearch(ra, dec, radius_arcsec),
+            search_filter=lsdb.ConeSearch(ra, dec, radius_arcsec),
         )
 
-    Typical usage example, where we load a collection with a non-default margin::
+    Typical usage example, where we open a collection with a non-default margin::
 
-        lsdb.read_hats(path='./my_collection_dir', margin_cache='margin_catalog_2')
+        lsdb.open_catalog(path='./my_collection_dir', margin_cache='margin_catalog_2')
 
     Note that this margin still needs to be specified in the `all_margins` attribute
     of the `collection.properties` file.
 
-    We can also load each catalog separately, if needed::
+    We can also open each catalog separately, if needed::
 
-        lsdb.read_hats(path='./my_collection_dir/main_catalog')
+        lsdb.open_catalog(path='./my_collection_dir/main_catalog')
 
     Args:
         path (UPath | Path): The path that locates the root of the HATS collection or stand-alone catalog.
         search_filter (Type[AbstractSearch]): Default `None`. The filter method to be applied.
-        columns (List[str]): Default `None`. The set of columns to filter the catalog on. If None, the
-            catalog's default columns will be loaded. To load all catalog columns, use `columns="all"`
+        columns (list[str] | str): Default `None`. The set of columns to filter the catalog on. If None,
+            the catalog's default columns will be loaded. To load all catalog columns, use `columns="all"`.
         margin_cache (path-like): Default `None`. The margin for the main catalog, provided as a path.
         dtype_backend (str): Backend data type to apply to the catalog.
             Defaults to "pyarrow". If None, no type conversion is performed.
         **kwargs: Arguments to pass to the pandas parquet file reader
 
     Returns:
-        A `CatalogCollection` object if the provided path is for a HATS collection, a `Catalog` object
-        if the path is for a stand-alone HATS catalog. Both are loaded from the given parameters.
+        A `Catalog` object, and affiliated table links.
 
     Examples:
         To read a collection from a public S3 bucket, call it as follows::
 
             from upath import UPath
-            collection = lsdb.read_hats(UPath(..., anon=True))
+            collection = lsdb.open_catalog(UPath(..., anon=True))
     """
     hc_catalog = hc.read_hats(path)
     if isinstance(hc_catalog, CatalogCollection):
@@ -104,6 +121,7 @@ def read_hats(
             search_filter=search_filter,
             columns=columns,
             margin_cache=margin_cache,
+            error_empty_filter=error_empty_filter,
             **kwargs,
         )
         catalog.hc_collection = hc_catalog  # type: ignore[attr-defined]
@@ -113,6 +131,7 @@ def read_hats(
             search_filter=search_filter,
             columns=columns,
             margin_cache=margin_cache,
+            error_empty_filter=error_empty_filter,
             **kwargs,
         )
     return catalog
@@ -144,22 +163,31 @@ def _load_catalog(
     search_filter: AbstractSearch | None = None,
     columns: list[str] | str | None = None,
     margin_cache: str | Path | UPath | None = None,
+    error_empty_filter: bool = True,
     **kwargs,
 ) -> Dataset:
     if columns is None and hc_catalog.catalog_info.default_columns is not None:
         columns = hc_catalog.catalog_info.default_columns
-
-    if columns == "all":
-        columns = None
-
     if isinstance(columns, str):
-        raise TypeError("`columns` argument must be a list of strings, None, or 'all'")
+        if columns != "all":
+            raise TypeError("`columns` argument must be a sequence of strings, None, or 'all'")
+        columns = None
+    elif pd.api.types.is_list_like(columns):
+        columns = list(columns)  # type: ignore[arg-type]
 
+    ra_col = hc_catalog.catalog_info.ra_column
+    dec_col = hc_catalog.catalog_info.dec_column
+    if columns is not None:
+        if ra_col is not None and ra_col not in columns:
+            columns.append(ra_col)
+        if dec_col is not None and dec_col not in columns:
+            columns.append(dec_col)
     # Creates a config object to store loading parameters from all keyword arguments.
     config = HatsLoadingConfig(
         search_filter=search_filter,
         columns=columns,
         margin_cache=margin_cache,
+        error_empty_filter=error_empty_filter,
         kwargs=kwargs,
     )
 
@@ -182,7 +210,7 @@ def _load_catalog(
     else:
         raise NotImplementedError(f"Cannot load catalog of type {catalog_type}")
 
-    if config.search_filter is not None and len(catalog.get_healpix_pixels()) == 0:
+    if config.search_filter is not None and len(catalog.get_healpix_pixels()) == 0 and error_empty_filter:
         raise ValueError("The selected sky region has no coverage")
 
     catalog.hc_structure = _update_hc_structure(catalog)
@@ -234,6 +262,10 @@ def _load_margin_catalog(hc_catalog, config):
             schema=filtered_catalog.schema,
             moc=filtered_catalog.moc,
         )
+        pyarrow_filter = _generate_pyarrow_filters_from_moc(filtered_catalog)
+        if len(pyarrow_filter) > 0:
+            if "filters" not in config.kwargs:
+                config.kwargs["filters"] = pyarrow_filter
     dask_df, dask_df_pixel_map = _load_dask_df_and_map(hc_catalog, config)
     margin = MarginCatalog(dask_df, dask_df_pixel_map, hc_catalog)
     if config.search_filter is not None:
@@ -249,7 +281,7 @@ def _load_object_catalog(hc_catalog, config):
     """
     if config.search_filter:
         filtered_catalog = config.search_filter.filter_hc_catalog(hc_catalog)
-        if len(filtered_catalog.get_healpix_pixels()) == 0:
+        if len(filtered_catalog.get_healpix_pixels()) == 0 and config.error_empty_filter:
             raise ValueError("The selected sky region has no coverage")
         hc_catalog = hc.catalog.Catalog(
             filtered_catalog.catalog_info,
@@ -257,8 +289,12 @@ def _load_object_catalog(hc_catalog, config):
             catalog_path=hc_catalog.catalog_path,
             moc=filtered_catalog.moc,
             schema=filtered_catalog.schema,
+            original_schema=filtered_catalog.original_schema,
         )
-
+        pyarrow_filter = _generate_pyarrow_filters_from_moc(filtered_catalog)
+        if len(pyarrow_filter) > 0:
+            if "filters" not in config.kwargs:
+                config.kwargs["filters"] = pyarrow_filter
     dask_df, dask_df_pixel_map = _load_dask_df_and_map(hc_catalog, config)
     catalog = Catalog(dask_df, dask_df_pixel_map, hc_catalog)
     if config.search_filter is not None:
@@ -269,6 +305,27 @@ def _load_object_catalog(hc_catalog, config):
         _validate_margin_catalog(margin_hc_catalog, hc_catalog)
         catalog.margin = margin
     return catalog
+
+
+def _generate_pyarrow_filters_from_moc(filtered_catalog):
+    pyarrow_filter = []
+    if filtered_catalog.moc is not None:
+        depth_array = filtered_catalog.moc.to_depth29_ranges
+        if len(depth_array) > MAX_PYARROW_FILTERS:
+            starts = depth_array.T[0]
+            ends = depth_array.T[1]
+            diffs = starts[1:] - ends[:-1]
+            max_diff_inds = np.argpartition(diffs, -MAX_PYARROW_FILTERS)[-MAX_PYARROW_FILTERS:]
+            max_diff_inds = np.sort(max_diff_inds)
+            reduced_filters = []
+            for i_start, i_end in zip(np.concat(([0], max_diff_inds)), np.concat((max_diff_inds, [-1]))):
+                reduced_filters.append([starts[i_start], ends[i_end]])
+            depth_array = np.array(reduced_filters)
+        for hpx_range in depth_array:
+            pyarrow_filter.append(
+                [(SPATIAL_INDEX_COLUMN, ">=", hpx_range[0]), (SPATIAL_INDEX_COLUMN, "<", hpx_range[1])]
+            )
+    return pyarrow_filter
 
 
 def _load_map_catalog(hc_catalog, config):
@@ -283,8 +340,22 @@ def _load_map_catalog(hc_catalog, config):
 
 def _load_dask_meta_schema(hc_catalog, config) -> npd.NestedFrame:
     """Loads the Dask meta DataFrame from the parquet _metadata file."""
-    metadata_pointer = hc.io.paths.get_common_metadata_pointer(hc_catalog.catalog_base_dir)
-    dask_meta_schema = _read_parquet_file(metadata_pointer, columns=config.columns, schema=hc_catalog.schema)
+    columns = config.columns
+    if (
+        columns is not None
+        and hc_catalog.schema is not None
+        and SPATIAL_INDEX_COLUMN in hc_catalog.schema.names
+        and SPATIAL_INDEX_COLUMN not in columns
+    ):
+        columns = columns + [SPATIAL_INDEX_COLUMN]
+    dask_meta_schema = from_pyarrow(hc_catalog.schema.empty_table())
+    if columns is not None:
+        dask_meta_schema = dask_meta_schema[columns]
+    if (
+        dask_meta_schema.index.name != SPATIAL_INDEX_COLUMN
+        and SPATIAL_INDEX_COLUMN in dask_meta_schema.columns
+    ):
+        dask_meta_schema = dask_meta_schema.set_index(SPATIAL_INDEX_COLUMN)
     if (
         config.columns is not None
         and SPATIAL_INDEX_COLUMN in config.columns
@@ -300,12 +371,15 @@ def _load_dask_df_and_map(catalog: HCHealpixDataset, config) -> tuple[nd.NestedF
     ordered_pixels = np.array(pixels)[get_pixel_argsort(pixels)]
     divisions = get_pixels_divisions(ordered_pixels)
     dask_meta_schema = _load_dask_meta_schema(catalog, config)
+    query_url_params = None
+    if isinstance(get_upath(catalog.catalog_base_dir).fs, HTTPFileSystem):
+        query_url_params = config.make_query_url_params()
     if len(ordered_pixels) > 0:
         ddf = nd.NestedFrame.from_map(
             read_pixel,
             ordered_pixels,
             catalog=catalog,
-            query_url_params=config.make_query_url_params(),
+            query_url_params=query_url_params,
             columns=config.columns,
             divisions=divisions,
             meta=dask_meta_schema,

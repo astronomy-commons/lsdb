@@ -46,15 +46,19 @@ from lsdb.types import DaskDFPixelMap
 class Catalog(HealpixDataset):
     """LSDB Catalog DataFrame to perform analysis of sky catalogs and efficient
     spatial operations.
-
-    Attributes:
-        hc_structure: `hats.Catalog` object representing the structure
-                      and metadata of the HATS catalog
     """
 
     hc_structure: hc.catalog.Catalog
+    """`hats.Catalog` object representing (only) the structure and metadata of the HATS catalog"""
+
     margin: MarginCatalog | None = None
+    """Link to a ``MarginCatalog`` object that represents the objects in other partitions that
+    are within a specified radius of the border with this partition. This is useful for 
+    finding best counterparts when crossmatching catalogs."""
+
     hc_collection: CatalogCollection | None = None
+    """`hats.CatalogCollection` object representing the structure and metadata of the
+    HATS catalog, as well as links to affiliated tables like margins and indexes."""
 
     def __init__(
         self,
@@ -66,7 +70,7 @@ class Catalog(HealpixDataset):
         """Initialise a Catalog object.
 
         Not to be used to load a catalog directly, use one of the `lsdb.from_...` or
-        `lsdb.load_...` methods
+        `lsdb.open_...` methods
 
         Args:
             ddf: Dask DataFrame with the source data of the catalog
@@ -717,7 +721,7 @@ class Catalog(HealpixDataset):
         for merging points.
 
         This function is intended for use in special cases such as Dust Map Catalogs, for general merges,
-        the `crossmatch`and `join` functions should be used.
+        the ``crossmatch`` and ``join`` functions should be used.
 
         Args:
             other (lsdb.Catalog): the right catalog to merge to
@@ -906,7 +910,9 @@ class Catalog(HealpixDataset):
             As noted above, all columns in `list_columns` must have a pyarrow
             ListType dtype. This is needed for proper meta propagation. To convert
             a list column to this dtype, you can use this command structure:
-            `nf= nf.astype({"colname": pd.ArrowDtype(pa.list_(pa.int64()))})`
+
+                nf= nf.astype({"colname": pd.ArrowDtype(pa.list_(pa.int64()))})
+
             Where pa.int64 above should be replaced with the correct dtype of the
             underlying data accordingly.
             Additionally, it's a known issue in Dask
@@ -914,7 +920,8 @@ class Catalog(HealpixDataset):
             values will by default be converted to the string type. This will
             interfere with the ability to recast these to pyarrow lists. We
             recommend setting the following dask config setting to prevent this:
-            `dask.config.set({"dataframe.convert-string":False})`
+
+                `dask.config.set({"dataframe.convert-string":False})`
         """
         catalog = super().nest_lists(
             base_columns=base_columns,
@@ -1004,7 +1011,7 @@ class Catalog(HealpixDataset):
             )
         return catalog
 
-    def reduce(self, func, *args, meta=None, infer_nesting=True, **kwargs) -> Catalog:
+    def reduce(self, func, *args, meta=None, append_columns=False, infer_nesting=True, **kwargs) -> Catalog:
         """
         Takes a function and applies it to each top-level row of the Catalog.
 
@@ -1038,8 +1045,8 @@ class Catalog(HealpixDataset):
 
         Returns
         -------
-        `HealpixDataset`
-            `HealpixDataset` with the results of the function applied to the columns of the frame.
+        `Catalog`
+            `Catalog` with the results of the function applied to the columns of the frame.
 
         Notes
         -----
@@ -1062,9 +1069,13 @@ class Catalog(HealpixDataset):
         0  1372475556631677955      21.1       20.9
         1  1389879706834706546      22.2       21.8
         """
-        catalog = super().reduce(func, *args, meta=meta, infer_nesting=infer_nesting, **kwargs)
+        catalog = super().reduce(
+            func, *args, meta=meta, append_columns=append_columns, infer_nesting=infer_nesting, **kwargs
+        )
         if self.margin is not None:
-            catalog.margin = self.margin.reduce(func, *args, meta=meta, infer_nesting=infer_nesting, **kwargs)
+            catalog.margin = self.margin.reduce(
+                func, *args, meta=meta, append_columns=append_columns, infer_nesting=infer_nesting, **kwargs
+            )
         return catalog
 
     def sort_nested_values(

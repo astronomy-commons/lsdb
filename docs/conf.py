@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.abspath("../src/"))
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = "lsdb"
-copyright = "2024, LINCC Frameworks"
+copyright = "2025, LINCC Frameworks"
 author = "LINCC Frameworks"
 release = version("lsdb")
 # for example take major/minor
@@ -31,9 +31,9 @@ extensions = [
     "sphinx.ext.intersphinx",
     "sphinx.ext.graphviz",
     "sphinx_design",
+    "sphinx.ext.autosummary",
 ]
 
-extensions.append("autoapi.extension")
 extensions.append("nbsphinx")
 
 # -- sphinx-copybutton configuration ----------------------------------------
@@ -58,14 +58,14 @@ html_show_sourcelink = False
 # Remove namespaces from class/method signatures
 add_module_names = False
 
-autoapi_type = "python"
-autoapi_dirs = ["../src"]
-autoapi_ignore = ["*/__main__.py", "*/_version.py"]
-autoapi_add_toc_tree_entry = False
-autoapi_member_order = "bysource"
+
+templates_path = ["_templates"]
+# Hide full module path in navigation
+modindex_common_prefix = ["lsdb.", "lsdb.catalog", "lsdb.catalog.dataset."]
+# Customize display of autosummary entries
+autosummary_imported_members = True
 
 html_theme = "sphinx_book_theme"
-html_theme_options = {"max_navbar_depth": 1}
 html_static_path = ["_static"]
 html_css_files = ["custom.css"]
 

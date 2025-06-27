@@ -5,7 +5,7 @@ import pandas as pd
 
 from lsdb.catalog import Catalog
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
-from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorithm
+from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorithm, is_builtin_algorithm
 from lsdb.loaders.dataframe.from_dataframe import from_dataframe
 
 
@@ -103,6 +103,13 @@ def crossmatch(
     # Check for conflicting right margin arguments.
     if require_right_margin and right_args.get("margin_threshold") is None:
         raise ValueError("If require_right_margin is True, margin_threshold must not be None.")
+
+    # Check if the margin should be generated according to the
+    # maximum radius specified for the crossmatch.
+    if is_builtin_algorithm(algorithm) and "radius_arcsec" in kwargs:
+        radius_arcsec = kwargs.get("radius_arcsec")
+        if "margin_threshold" not in right_args:
+            right_args["margin_threshold"] = radius_arcsec
 
     # Update left_args and right_args with ra_column and dec_column if given.
     if ra_column:

@@ -21,7 +21,7 @@ class PolygonSearch(AbstractSearch):
         self.vertices = vertices
         self.polygon = get_cartesian_polygon(vertices)
 
-    def filter_hc_catalog(self, hc_structure: HCCatalogTypeVar) -> HCCatalogTypeVar:
+    def perform_hc_catalog_filter(self, hc_structure: HCCatalogTypeVar) -> HCCatalogTypeVar:
         """Filters catalog pixels according to the polygon"""
         return hc_structure.filter_by_polygon(self.vertices)
 

@@ -18,7 +18,7 @@ class Dataset:
         """Initialise a Catalog object.
 
         Not to be used to load a catalog directly, use one of the `lsdb.from_...` or
-        `lsdb.load_...` methods
+        `lsdb.open_...` methods
 
         Args:
             ddf: Dask DataFrame with the source data of the catalog
@@ -69,17 +69,21 @@ class Dataset:
 
     @property
     def dtypes(self):
-        """Returns the datatypes of the columns in the Dataset"""
+        """Returns the pandas datatypes of the columns in the Dataset"""
         return self._ddf.dtypes
 
     @property
     def columns(self):
-        """Returns the columns in the Dataset"""
+        """Returns the names of columns available in the Dataset"""
         return self._ddf.columns
 
     @property
     def all_columns(self):
-        """Returns all columns in the original Dataset"""
+        """Returns the names of all columns in the original Dataset.
+
+        This is different from the `columns` property, as you can open a catalog with
+        only a subset of the columns, either explicitly with the ``columns=`` argument,
+        or with some ``default_columns`` set on the catalog by the catalog provider."""
         if self.hc_structure.original_schema is None:
             # This case corresponds to Datasets that have not yet been
             # serialized, and thus cannot have a discrepancy between

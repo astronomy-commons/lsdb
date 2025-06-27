@@ -16,21 +16,21 @@ from lsdb.core.search.polygon_search import get_cartesian_polygon
 TEST_DIR = Path(__file__).parent.parent / "tests"
 DATA_DIR_NAME = "data"
 SMALL_SKY_DIR_NAME = "small_sky"
-SMALL_SKY_ORDER1 = "small_sky_order1"
+SMALL_SKY_ORDER1 = "small_sky_order1_collection"
 SMALL_SKY_XMATCH_NAME = "small_sky_xmatch"
 BENCH_DATA_DIR = Path(__file__).parent / "data"
 
 
 def load_small_sky():
-    return lsdb.read_hats(TEST_DIR / DATA_DIR_NAME / SMALL_SKY_DIR_NAME)
+    return lsdb.open_catalog(TEST_DIR / DATA_DIR_NAME / SMALL_SKY_DIR_NAME)
 
 
 def load_small_sky_order1():
-    return lsdb.read_hats(TEST_DIR / DATA_DIR_NAME / SMALL_SKY_ORDER1)
+    return lsdb.open_catalog(TEST_DIR / DATA_DIR_NAME / SMALL_SKY_ORDER1)
 
 
 def load_small_sky_xmatch():
-    return lsdb.read_hats(TEST_DIR / DATA_DIR_NAME / SMALL_SKY_XMATCH_NAME)
+    return lsdb.open_catalog(TEST_DIR / DATA_DIR_NAME / SMALL_SKY_XMATCH_NAME)
 
 
 def time_kdtree_crossmatch():
@@ -66,8 +66,8 @@ def time_box_filter_on_partition():
 
 
 def time_create_midsize_catalog():
-    return lsdb.read_hats(BENCH_DATA_DIR / "midsize_catalog")
+    return lsdb.open_catalog(BENCH_DATA_DIR / "midsize_catalog")
 
 
 def time_create_large_catalog():
-    return lsdb.read_hats(BENCH_DATA_DIR / "large_catalog")
+    return lsdb.open_catalog(BENCH_DATA_DIR / "large_catalog")

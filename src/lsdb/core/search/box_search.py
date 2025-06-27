@@ -26,7 +26,7 @@ class BoxSearch(AbstractSearch):
         validate_box(ra, dec)
         self.ra, self.dec = ra, dec
 
-    def filter_hc_catalog(self, hc_structure: HCCatalogTypeVar) -> MOC:
+    def perform_hc_catalog_filter(self, hc_structure: HCCatalogTypeVar) -> MOC:
         """Filters catalog pixels according to the box"""
         return hc_structure.filter_by_box(self.ra, self.dec)
 

@@ -34,7 +34,18 @@ class AbstractSearch(ABC):
 
     def filter_hc_catalog(self, hc_structure: HCCatalogTypeVar) -> HCCatalogTypeVar:
         """Determine the target partitions for further filtering."""
-        raise NotImplementedError("Search Class must implement `filter_hc_catalog` method")
+        filtered_cat = self.perform_hc_catalog_filter(hc_structure)
+        if not self.fine:
+            # If running a coarse search, the coverage of the catalog will match the healpix pixels the
+            # catalog is filtered to, not the finer filtered moc of the filtered catalog•
+            filtered_cat.moc = filtered_cat.pixel_tree.to_moc()
+        return filtered_cat
+
+    def perform_hc_catalog_filter(self, hc_structure: HCCatalogTypeVar) -> HCCatalogTypeVar:
+        """Determine the target partitions for further filtering."""
+        raise NotImplementedError(
+            "Search Class must implement `perform_hc_catalog_filter` method or `filter_hc_catalog`"
+        )
 
     @abstractmethod
     def search_points(self, frame: npd.NestedFrame, metadata: TableProperties) -> npd.NestedFrame:

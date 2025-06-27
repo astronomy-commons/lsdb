@@ -27,7 +27,6 @@ SMALL_SKY_ORDER3_SOURCE_MARGIN_NAME = "small_sky_order3_source_margin"
 SMALL_SKY_XMATCH_NAME = "small_sky_xmatch"
 SMALL_SKY_XMATCH_MARGIN_NAME = "small_sky_xmatch_margin"
 SMALL_SKY_TO_XMATCH_NAME = "small_sky_to_xmatch"
-SMALL_SKY_TO_XMATCH_SOFT_NAME = "small_sky_to_xmatch_soft"
 SMALL_SKY_NPIX_ALT_SUFFIX_NAME = "small_sky_npix_alt_suffix"
 SMALL_SKY_NPIX_AS_DIR_NAME = "small_sky_npix_as_dir"
 SMALL_SKY_ORDER1_DIR_NAME = "small_sky_order1"
@@ -44,7 +43,6 @@ SMALL_SKY_ORDER1_SOURCE_OBJECT_ID_INDEX_NAME = "small_sky_order1_source_object_i
 SMALL_SKY_ORDER1_SOURCE_BAND_INDEX_NAME = "small_sky_order1_source_band_index"
 SMALL_SKY_ORDER1_SOURCE_MARGIN_NAME = "small_sky_order1_source_margin"
 SMALL_SKY_TO_ORDER1_SOURCE_NAME = "small_sky_to_o1source"
-SMALL_SKY_TO_ORDER1_SOURCE_SOFT_NAME = "small_sky_to_o1source_soft"
 SMALL_SKY_NO_METADATA = "small_sky_no_metadata"
 XMATCH_CORRECT_FILE = "xmatch_correct.csv"
 XMATCH_CORRECT_005_FILE = "xmatch_correct_0_005.csv"
@@ -88,11 +86,6 @@ def small_sky_to_xmatch_dir(test_data_dir):
 
 
 @pytest.fixture
-def small_sky_to_xmatch_soft_dir(test_data_dir):
-    return test_data_dir / SMALL_SKY_TO_XMATCH_SOFT_NAME
-
-
-@pytest.fixture
 def small_sky_npix_alt_suffix_dir(test_data_dir):
     return test_data_dir / SMALL_SKY_NPIX_ALT_SUFFIX_NAME
 
@@ -104,17 +97,17 @@ def small_sky_npix_as_dir_dir(test_data_dir):
 
 @pytest.fixture
 def small_sky_order1_dir(test_data_dir):
-    return test_data_dir / SMALL_SKY_ORDER1_DIR_NAME
+    return test_data_dir / SMALL_SKY_ORDER1_COLLECTION_DIR_NAME / SMALL_SKY_ORDER1_DIR_NAME
 
 
 @pytest.fixture
 def small_sky_order1_margin_1deg_dir(test_data_dir):
-    return test_data_dir / SMALL_SKY_ORDER1_MARGIN_1DEG_DIR_NAME
+    return test_data_dir / SMALL_SKY_ORDER1_COLLECTION_DIR_NAME / SMALL_SKY_ORDER1_MARGIN_1DEG_DIR_NAME
 
 
 @pytest.fixture
 def small_sky_order1_margin_2deg_dir(test_data_dir):
-    return test_data_dir / SMALL_SKY_ORDER1_MARGIN_2DEG_DIR_NAME
+    return test_data_dir / SMALL_SKY_ORDER1_COLLECTION_DIR_NAME / SMALL_SKY_ORDER1_MARGIN_2DEG_DIR_NAME
 
 
 @pytest.fixture
@@ -134,17 +127,23 @@ def small_sky_order1_no_pandas_dir(test_data_dir):
 
 @pytest.fixture
 def small_sky_order1_source_dir(test_data_dir):
-    return test_data_dir / SMALL_SKY_ORDER1_SOURCE_NAME
+    return test_data_dir / SMALL_SKY_ORDER1_SOURCE_COLLECTION_DIR_NAME / SMALL_SKY_ORDER1_SOURCE_NAME
 
 
 @pytest.fixture
 def small_sky_order1_source_object_id_index_dir(test_data_dir):
-    return test_data_dir / SMALL_SKY_ORDER1_SOURCE_OBJECT_ID_INDEX_NAME
+    return (
+        test_data_dir
+        / SMALL_SKY_ORDER1_SOURCE_COLLECTION_DIR_NAME
+        / SMALL_SKY_ORDER1_SOURCE_OBJECT_ID_INDEX_NAME
+    )
 
 
 @pytest.fixture
 def small_sky_order1_source_band_index_dir(test_data_dir):
-    return test_data_dir / SMALL_SKY_ORDER1_SOURCE_BAND_INDEX_NAME
+    return (
+        test_data_dir / SMALL_SKY_ORDER1_SOURCE_COLLECTION_DIR_NAME / SMALL_SKY_ORDER1_SOURCE_BAND_INDEX_NAME
+    )
 
 
 @pytest.fixture
@@ -159,27 +158,22 @@ def small_sky_source_dir(test_data_dir):
 
 @pytest.fixture
 def small_sky_source_catalog(small_sky_source_dir):
-    return lsdb.read_hats(small_sky_source_dir)
+    return lsdb.open_catalog(small_sky_source_dir)
 
 
 @pytest.fixture
 def small_sky_order1_source_collection_catalog(small_sky_order1_source_collection_dir):
-    return lsdb.read_hats(small_sky_order1_source_collection_dir)
+    return lsdb.open_catalog(small_sky_order1_source_collection_dir)
 
 
 @pytest.fixture
 def small_sky_order1_source_margin_dir(test_data_dir):
-    return test_data_dir / SMALL_SKY_ORDER1_SOURCE_MARGIN_NAME
+    return test_data_dir / SMALL_SKY_ORDER1_SOURCE_COLLECTION_DIR_NAME / SMALL_SKY_ORDER1_SOURCE_MARGIN_NAME
 
 
 @pytest.fixture
 def small_sky_to_order1_source_dir(test_data_dir):
-    return test_data_dir / SMALL_SKY_TO_ORDER1_SOURCE_NAME
-
-
-@pytest.fixture
-def small_sky_to_order1_source_soft_dir(test_data_dir):
-    return test_data_dir / SMALL_SKY_TO_ORDER1_SOURCE_SOFT_NAME
+    return test_data_dir / SMALL_SKY_ORDER1_SOURCE_COLLECTION_DIR_NAME / SMALL_SKY_TO_ORDER1_SOURCE_NAME
 
 
 @pytest.fixture
@@ -209,42 +203,37 @@ def small_sky_npix_as_dir_hats_catalog(small_sky_npix_as_dir_dir):
 
 @pytest.fixture
 def small_sky_order1_id_index_dir(test_data_dir):
-    return test_data_dir / "small_sky_order1_id_index"
+    return test_data_dir / SMALL_SKY_ORDER1_COLLECTION_DIR_NAME / "small_sky_order1_id_index"
 
 
 @pytest.fixture
 def small_sky_catalog(small_sky_dir):
-    return lsdb.read_hats(small_sky_dir)
+    return lsdb.open_catalog(small_sky_dir)
 
 
 @pytest.fixture
 def small_sky_left_xmatch_catalog(small_sky_left_xmatch_dir):
-    return lsdb.read_hats(small_sky_left_xmatch_dir)
+    return lsdb.open_catalog(small_sky_left_xmatch_dir)
 
 
 @pytest.fixture
 def small_sky_xmatch_catalog(small_sky_xmatch_dir):
-    return lsdb.read_hats(small_sky_xmatch_dir)
+    return lsdb.open_catalog(small_sky_xmatch_dir)
 
 
 @pytest.fixture
 def small_sky_xmatch_margin_catalog(small_sky_xmatch_margin_dir):
-    return lsdb.read_hats(small_sky_xmatch_margin_dir)
+    return lsdb.open_catalog(small_sky_xmatch_margin_dir)
 
 
 @pytest.fixture
 def small_sky_xmatch_with_margin(small_sky_xmatch_dir, small_sky_xmatch_margin_dir):
-    return lsdb.read_hats(small_sky_xmatch_dir, margin_cache=small_sky_xmatch_margin_dir)
+    return lsdb.open_catalog(small_sky_xmatch_dir, margin_cache=small_sky_xmatch_margin_dir)
 
 
 @pytest.fixture
 def small_sky_to_xmatch_catalog(small_sky_to_xmatch_dir):
-    return lsdb.read_hats(small_sky_to_xmatch_dir)
-
-
-@pytest.fixture
-def small_sky_to_xmatch_soft_catalog(small_sky_to_xmatch_soft_dir):
-    return lsdb.read_hats(small_sky_to_xmatch_soft_dir)
+    return lsdb.open_catalog(small_sky_to_xmatch_dir)
 
 
 @pytest.fixture
@@ -254,47 +243,42 @@ def small_sky_order1_hats_catalog(small_sky_order1_dir):
 
 @pytest.fixture
 def small_sky_order1_catalog(small_sky_order1_dir):
-    return lsdb.read_hats(small_sky_order1_dir)
+    return lsdb.open_catalog(small_sky_order1_dir)
 
 
 @pytest.fixture
 def small_sky_order1_collection_catalog(small_sky_order1_collection_dir):
-    return lsdb.read_hats(small_sky_order1_collection_dir)
+    return lsdb.open_catalog(small_sky_order1_collection_dir)
 
 
 @pytest.fixture
 def small_sky_order1_margin_1deg_catalog(small_sky_order1_margin_1deg_dir):
-    return lsdb.read_hats(small_sky_order1_margin_1deg_dir)
+    return lsdb.open_catalog(small_sky_order1_margin_1deg_dir)
 
 
 @pytest.fixture
 def small_sky_order1_margin_2deg_catalog(small_sky_order1_margin_2deg_dir):
-    return lsdb.read_hats(small_sky_order1_margin_2deg_dir)
+    return lsdb.open_catalog(small_sky_order1_margin_2deg_dir)
 
 
 @pytest.fixture
 def small_sky_order1_default_cols_catalog(small_sky_order1_default_cols_dir):
-    return lsdb.read_hats(small_sky_order1_default_cols_dir)
+    return lsdb.open_catalog(small_sky_order1_default_cols_dir)
 
 
 @pytest.fixture
 def small_sky_order1_source_with_margin(small_sky_order1_source_dir, small_sky_order1_source_margin_dir):
-    return lsdb.read_hats(small_sky_order1_source_dir, margin_cache=small_sky_order1_source_margin_dir)
+    return lsdb.open_catalog(small_sky_order1_source_dir, margin_cache=small_sky_order1_source_margin_dir)
 
 
 @pytest.fixture
 def small_sky_order1_source_margin_catalog(small_sky_order1_source_margin_dir):
-    return lsdb.read_hats(small_sky_order1_source_margin_dir)
+    return lsdb.open_catalog(small_sky_order1_source_margin_dir)
 
 
 @pytest.fixture
 def small_sky_to_o1source_catalog(small_sky_to_order1_source_dir):
-    return lsdb.read_hats(small_sky_to_order1_source_dir)
-
-
-@pytest.fixture
-def small_sky_to_o1source_soft_catalog(small_sky_to_order1_source_soft_dir):
-    return lsdb.read_hats(small_sky_to_order1_source_soft_dir)
+    return lsdb.open_catalog(small_sky_to_order1_source_dir)
 
 
 @pytest.fixture
@@ -314,24 +298,24 @@ def small_sky_source_df(test_data_dir):
 
 @pytest.fixture
 def small_sky_source_margin_catalog(test_data_dir):
-    return lsdb.read_hats(test_data_dir / SMALL_SKY_SOURCE_MARGIN_NAME)
+    return lsdb.open_catalog(test_data_dir / SMALL_SKY_SOURCE_MARGIN_NAME)
 
 
 @pytest.fixture
 def small_sky_order3_source_margin_catalog(test_data_dir):
-    return lsdb.read_hats(test_data_dir / SMALL_SKY_ORDER3_SOURCE_MARGIN_NAME)
+    return lsdb.open_catalog(test_data_dir / SMALL_SKY_ORDER3_SOURCE_MARGIN_NAME)
 
 
 @pytest.fixture
 def small_sky_with_nested_sources(small_sky_with_nested_sources_dir):
-    return lsdb.read_hats(small_sky_with_nested_sources_dir)
+    return lsdb.open_catalog(small_sky_with_nested_sources_dir)
 
 
 @pytest.fixture
 def small_sky_with_nested_sources_with_margin(
     small_sky_with_nested_sources_dir, small_sky_with_nested_sources_margin_dir
 ):
-    return lsdb.read_hats(
+    return lsdb.open_catalog(
         small_sky_with_nested_sources_dir, margin_cache=small_sky_with_nested_sources_margin_dir
     )
 

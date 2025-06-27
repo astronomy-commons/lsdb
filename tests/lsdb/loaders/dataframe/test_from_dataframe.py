@@ -1,4 +1,5 @@
 import math
+from importlib.metadata import version
 
 import astropy.units as u
 import hats as hc
@@ -42,9 +43,13 @@ def test_from_dataframe(small_sky_order1_df, small_sky_order1_catalog, helpers):
     assert isinstance(catalog, lsdb.Catalog)
     assert isinstance(catalog._ddf, nd.NestedFrame)
     # Catalogs have the same information
+    # New catalog doesn't have a skymap order yet.
     assert (
-        catalog.hc_structure.catalog_info.explicit_dict()
-        == small_sky_order1_catalog.hc_structure.catalog_info.explicit_dict()
+        catalog.hc_structure.catalog_info.explicit_dict() | {"skymap_order": 1}
+    ) == small_sky_order1_catalog.hc_structure.catalog_info.explicit_dict()
+    # The hats builder property is set correctly
+    assert (
+        catalog.hc_structure.catalog_info.hats_builder == f"lsdb v{version('lsdb')}, hats v{version('hats')}"
     )
     # The pixel threshold was specified properly
     assert catalog.hc_structure.catalog_info.hats_max_rows == 50
@@ -59,19 +64,18 @@ def test_from_dataframe(small_sky_order1_df, small_sky_order1_catalog, helpers):
     helpers.assert_divisions_are_correct(catalog)
     # The arrow schema was automatically inferred
     helpers.assert_schema_correct(catalog)
-
     assert isinstance(catalog.compute(), npd.NestedFrame)
 
 
 def test_from_dataframe_catalog_of_invalid_type(small_sky_order1_df, small_sky_order1_catalog):
     """Tests that an exception is thrown if the catalog is not of type OBJECT or SOURCE"""
-    valid_catalog_types = [CatalogType.OBJECT, CatalogType.SOURCE]
+    valid_catalog_types = [CatalogType.OBJECT, CatalogType.SOURCE, CatalogType.MAP]
     for catalog_type in CatalogType.all_types():
         kwargs = get_catalog_kwargs(small_sky_order1_catalog, catalog_type=catalog_type)
         if catalog_type in valid_catalog_types:
             lsdb.from_dataframe(small_sky_order1_df, margin_threshold=None, **kwargs)
         else:
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="Cannot create"):
                 lsdb.from_dataframe(small_sky_order1_df, margin_threshold=None, **kwargs)
         # Drop spatial_index that might have been created in place
         small_sky_order1_df.reset_index(drop=True, inplace=True)
@@ -170,7 +174,10 @@ def test_from_dataframe_large_input(small_sky_order1_catalog, helpers):
     assert isinstance(catalog, lsdb.Catalog)
     # Catalogs have the same information
     original_catalog_info.total_rows = 1_500_000
-    assert catalog.hc_structure.catalog_info.explicit_dict() == original_catalog_info.explicit_dict()
+    # New catalog doesn't have a skymap order yet.
+    assert (
+        catalog.hc_structure.catalog_info.explicit_dict() | {"skymap_order": 1}
+    ) == original_catalog_info.explicit_dict()
     assert catalog.hc_structure.catalog_info.__pydantic_extra__["obs_regime"] == "Optical"
     assert catalog.hc_structure.catalog_info.__pydantic_extra__["hats_builder"].startswith("lsdb")
     # Index is set to spatial index
