@@ -82,9 +82,10 @@ def to_hats(
     addl_hats_properties: dict | None = None,
     **kwargs,
 ):
-    """Writes a catalog to disk, in HATS format. The output catalog comprises
-    partition parquet files and respective metadata, as well as JSON files detailing
-    partition, catalog and provenance info.
+    """Writes a catalog to disk, in HATS format. 
+    
+    The output catalog comprises  partitioned parquet files and respective metadata, 
+    as well as text and CSV files detailing partition, catalog and provenance info.
 
     Args:
         catalog (HealpixDataset): A catalog to export
@@ -99,6 +100,10 @@ def to_hats(
         overwrite (bool): If True existing catalog is overwritten
         create_thumbnail (bool): If True, create a data thumbnail of the catalog for
             previewing purposes. Defaults to False.
+        skymap_alt_orders (list[int]): We will write a skymap file at the ``histogram_order``,
+            but can also write down-sampled skymaps, for easier previewing of the data.
+        addl_hats_properties (dict): key-value pairs of additional properties to write in the
+            ``hats.properties`` file.
         **kwargs: Arguments to pass to the parquet write operations
     """
     # Create the output directory for the catalog

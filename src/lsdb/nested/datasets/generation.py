@@ -207,9 +207,11 @@ def generate_catalog(
     >>> gen_cat = generate_catalog(1000, 10, ra_range=(0.,10.), dec_range=(-5.,0.))
 
     Constraining spatial ranges:
+
     >>> gen_cat = generate_data(10, 100, ra_range=(0., 10.), dec_range=(-5., 0.))
 
     Using a search region:
+    
     >>> from lsdb.core.search import ConeSearch # doctest: +SKIP
     >>> gen_cat = generate_data(10, 100, search_region=ConeSearch(5, 5, 1))
     """

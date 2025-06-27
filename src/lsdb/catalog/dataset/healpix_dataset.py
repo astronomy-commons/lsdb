@@ -65,7 +65,7 @@ class HealpixDataset(Dataset):
         """Initialise a Catalog object.
 
         Not to be used to load a catalog directly, use one of the `lsdb.from_...` or
-        `lsdb.load_...` methods
+        `lsdb.open_...` methods
 
         Args:
             ddf: Dask DataFrame with the source data of the catalog
@@ -101,7 +101,7 @@ class HealpixDataset(Dataset):
 
     @property
     def nested_columns(self) -> list[str]:
-        """The columns of the catalog that are nested.
+        """The names of the columns of the catalog that are nested.
 
         Returns:
             The list of nested columns in the catalog.
@@ -211,7 +211,22 @@ class HealpixDataset(Dataset):
         include_columns: list[str] | None = None,
         include_pixels: list[HealpixPixel] | None = None,
     ) -> list[HealpixPixel]:
-        """Read footer statistics in parquet metadata, and report on global min/max values."""
+        """Read footer statistics in parquet metadata, and report on global min/max values.
+        
+        Args:
+            use_default_columns (bool): should we use only the columns that are loaded
+                by default (will be set in the metadata by the catalog provider). 
+                Defaults to True.
+            exclude_hats_columns (bool): exclude HATS spatial and partitioning fields
+                from the statistics. Defaults to True.
+            exclude_columns (List[str]): additional columns to exclude from the statistics.
+            include_columns (List[str]): if specified, only return statistics for the column
+                names provided. Defaults to None, and returns all non-hats columns.
+            include_pixels (list[HealpixPixel]): if specified, only return statistics
+                for the pixels indicated. Defaults to none, and returns all pixels.
+
+        Returns:
+            dataframe with global summary statistics"""
         self._check_unloaded_columns(exclude_columns)
         self._check_unloaded_columns(include_columns)
         if use_default_columns and include_columns is None:
@@ -234,7 +249,28 @@ class HealpixDataset(Dataset):
         multi_index=False,
         include_pixels: list[HealpixPixel] | None = None,
     ) -> list[HealpixPixel]:
-        """Read footer statistics in parquet metadata, and report on global min/max values."""
+        """Read footer statistics in parquet metadata, and report on min/max values for 
+        for each data partition.
+        
+        Args:
+            use_default_columns (bool): should we use only the columns that are loaded
+                by default (will be set in the metadata by the catalog provider). 
+                Defaults to True.
+            exclude_hats_columns (bool): exclude HATS spatial and partitioning fields
+                from the statistics. Defaults to True.
+            exclude_columns (List[str]): additional columns to exclude from the statistics.
+            include_columns (List[str]): if specified, only return statistics for the column
+                names provided. Defaults to None, and returns all non-hats columns.
+            include_stats (List[str]): if specified, only return the kinds of values from list
+                (min_value, max_value, null_count, row_count). Defaults to None, and returns all values.
+            multi_index (bool): should the returned frame be created with a multi-index, first on
+                pixel, then on column name? Default is False, and instead indexes on pixel, with
+                separate columns per-data-column and stat value combination.
+            include_pixels (list[HealpixPixel]): if specified, only return statistics
+                for the pixels indicated. Defaults to none, and returns all pixels.
+        Returns:
+            dataframe with granular per-pixel statistics
+        """
         self._check_unloaded_columns(exclude_columns)
         self._check_unloaded_columns(include_columns)
         if use_default_columns and include_columns is None:

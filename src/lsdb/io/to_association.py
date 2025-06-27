@@ -68,52 +68,6 @@ def to_association(
     primary and join OBJECT catalogs, so that the association table can be used
     to perform equijoins on the two sides and recreate the crossmatch.
 
-    To configure the appropriate column names, consider two tables that do not
-    share an identifier space (e.g. two surveys), and the way you could go about
-    joining them together with an association table::
-
-        TABLE GAIA_SOURCE {
-            DESIGNATION <primary key>
-        }
-
-        TABLE SDSS {
-            SDSS_ID <primary key>
-        }
-
-    And a SQL query to join them with as association table would look like::
-
-        SELECT g.DESIGNATION as gaia_id, s.SDSS_ID as sdss_id
-        FROM GAIA_SOURCE g
-        JOIN association_table a
-            ON a.primary_id_column = g.DESIGNATION
-        JOIN SDSS s
-            ON a.join_id_column = s.SDSS_ID
-
-    Consider instead an object table, joining to a detection table::
-
-        TABLE OBJECT {
-            ID <primary key>
-        }
-
-        TABLE DETECTION {
-            DETECTION_ID <primary key>
-            OBJECT_ID <foreign key>
-        }
-
-    And a SQL query to join them would look like::
-
-        SELECT o.ID as object_id, d.DETECTION_ID as detection_id
-        FROM OBJECT o
-        JOIN DETECTION d
-            ON o.ID = d.OBJECT_ID
-
-    This is important, as there are three different column names, but really only
-    two meaningful identifiers. For this example, the arguments for this method would
-    be as follows::
-
-        primary_id_column = "ID",
-        join_to_primary_id_column = "OBJECT_ID",
-        join_id_column = "DETECTION_ID",
 
     Args:
         catalog (HealpixDataset): A catalog to export
@@ -121,6 +75,54 @@ def to_association(
         catalog_name (str): The name of the output catalog
         overwrite (bool): If True existing catalog is overwritten
         **kwargs: Arguments to pass to the parquet write operations
+    
+    Notes:
+        To configure the appropriate column names, consider two tables that do not
+        share an identifier space (e.g. two surveys), and the way you could go about
+        joining them together with an association table::
+
+            TABLE GAIA_SOURCE {
+                DESIGNATION <primary key>
+            }
+
+            TABLE SDSS {
+                SDSS_ID <primary key>
+            }
+
+        And a SQL query to join them with as association table would look like::
+
+            SELECT g.DESIGNATION as gaia_id, s.SDSS_ID as sdss_id
+            FROM GAIA_SOURCE g
+            JOIN association_table a
+                ON a.primary_id_column = g.DESIGNATION
+            JOIN SDSS s
+                ON a.join_id_column = s.SDSS_ID
+
+        Consider instead an object table, joining to a detection table::
+
+            TABLE OBJECT {
+                ID <primary key>
+            }
+
+            TABLE DETECTION {
+                DETECTION_ID <primary key>
+                OBJECT_ID <foreign key>
+            }
+
+        And a SQL query to join them would look like::
+
+            SELECT o.ID as object_id, d.DETECTION_ID as detection_id
+            FROM OBJECT o
+            JOIN DETECTION d
+                ON o.ID = d.OBJECT_ID
+
+        This is important, as there are three different column names, but really only
+        two meaningful identifiers. For this example, the arguments for this method would
+        be as follows::
+
+            primary_id_column = "ID",
+            join_to_primary_id_column = "OBJECT_ID",
+            join_id_column = "DETECTION_ID",
     """
     column_args = _check_catalogs_and_columns(
         catalog.columns,
