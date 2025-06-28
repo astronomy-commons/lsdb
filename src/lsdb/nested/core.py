@@ -17,6 +17,7 @@ from nested_pandas.series.packer import pack, pack_flat, pack_lists
 from pandas._libs import lib
 from pandas._typing import Axis, IndexLabel
 from pandas.api.extensions import no_default
+from typing_extensions import Self
 
 # need this for the base _Frame class
 # mypy: disable-error-code="misc"
