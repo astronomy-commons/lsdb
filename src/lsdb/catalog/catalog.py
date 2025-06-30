@@ -910,9 +910,14 @@ class Catalog(HealpixDataset):
         source_association_algorithm: AbstractSourceAssociationAlgorithm,
         object_aggregator: AbstractObjectAggregator = None,
         object_id_column_name: str = "object_id",
+        healpix_id_bits: int = 10,
     ) -> Catalog:
         ddf, partition_map = associate_sources(
-            self, source_association_algorithm, object_aggregator, object_id_column_name
+            self,
+            source_association_algorithm,
+            object_aggregator,
+            object_id_column_name,
+            healpix_id_bits=healpix_id_bits,
         )
         hc_structure = object_aggregator.get_hc_structure(self) if object_aggregator is not None else None
         return self._create_updated_dataset(ddf, partition_map, hc_structure=hc_structure)
