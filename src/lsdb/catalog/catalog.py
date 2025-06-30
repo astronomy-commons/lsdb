@@ -13,7 +13,7 @@ from hats.catalog.index.index_catalog import IndexCatalog as HCIndexCatalog
 from hats.pixel_math import HealpixPixel
 from mocpy import MOC
 from pandas._libs import lib
-from pandas._typing import AnyAll, Axis, IndexLabel
+from pandas._typing import AnyAll, Axis, IndexLabel, Renamer
 from pandas.api.extensions import no_default
 from typing_extensions import Self
 from upath import UPath
@@ -129,6 +129,22 @@ class Catalog(HealpixDataset):
         catalog = super().query(expr)
         if self.margin is not None:
             catalog.margin = self.margin.query(expr)
+        return catalog
+
+    def rename(self, columns: Renamer) -> Catalog:
+        """Renames catalog columns (not indices) and that of its margin if it exists using a
+        dictionary or function mapping.
+
+        Args:
+            columns (dict-like or function): transformations to apply to column names.
+
+        Returns:
+            A catalog that contains the data from the original catalog with renamed columns.
+            If a margin exists, it is renamed according to the same column name mapping.
+        """
+        catalog = super().rename(columns)
+        if self.margin is not None:
+            catalog.margin = self.margin.rename(columns)
         return catalog
 
     def assign(self, **kwargs) -> Catalog:
