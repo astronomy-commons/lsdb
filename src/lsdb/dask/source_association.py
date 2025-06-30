@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import warnings
 from typing import TYPE_CHECKING
 
@@ -36,13 +38,18 @@ def perform_source_association(
     association_algorithm: AbstractSourceAssociationAlgorithm,
     aggregator: AbstractObjectAggregator = None,
     object_id_column_name: str = "object_id",
+    healpix_id_bits: int = 10,
 ) -> npd.NestedFrame:
     joined_df = concat_partition_and_margin(df, margin_df)
     object_ids = association_algorithm.associate_sources(joined_df, pix, properties, margin_properties)
     if aggregator is None:
         obj_id_arr = pa.array(object_ids)
         resulting_df = joined_df.assign(
-            **{object_id_column_name: pd.Series(obj_id_arr, dtype=pd.ArrowDtype(obj_id_arr.type))}
+            **{
+                object_id_column_name: pd.Series(
+                    obj_id_arr, index=joined_df.index, dtype=pd.ArrowDtype(obj_id_arr.type)
+                )
+            }
         )
         return filter_by_spatial_index_to_pixel(resulting_df, pix.order, pix.pixel)
     else:
@@ -68,6 +75,7 @@ def associate_sources(
     source_association_algorithm: AbstractSourceAssociationAlgorithm,
     object_aggregator: AbstractObjectAggregator = None,
     object_id_column_name: str = "object_id",
+    healpix_id_bits: int = 10,
 ) -> tuple[nd.NestedFrame, DaskDFPixelMap]:
     if catalog.margin is None:
         warnings.warn(
@@ -76,7 +84,8 @@ def associate_sources(
         )
 
     source_association_algorithm.validate(catalog)
-    object_aggregator.validate(catalog)
+    if object_aggregator is not None:
+        object_aggregator.validate(catalog)
 
     pixels = catalog.get_healpix_pixels()
     partitions = align_and_apply(
@@ -85,6 +94,7 @@ def associate_sources(
         source_association_algorithm,
         object_aggregator,
         object_id_column_name,
+        healpix_id_bits=healpix_id_bits,
     )
 
     partition_map = {}
