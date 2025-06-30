@@ -21,7 +21,7 @@ LSDB is a python tool for scalable analysis of large catalogs
 (i.e. querying and crossmatching ~10⁹ sources). This package uses dask to parallelize operations across
 multiple HATS partitioned surveys.
 
-Check out our [ReadTheDocs site](https://lsdb.readthedocs.io/en/latest/)
+Check out our [ReadTheDocs site](https://docs.lsdb.io)
 for more information on partitioning, installation, and contributing.
 
 See related projects:
