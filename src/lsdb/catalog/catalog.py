@@ -908,6 +908,7 @@ class Catalog(HealpixDataset):
     def associate_sources(
         self,
         source_association_algorithm: AbstractSourceAssociationAlgorithm,
+        source_id_col: str,
         object_aggregator: AbstractObjectAggregator = None,
         object_id_column_name: str = "object_id",
         healpix_id_bits: int = 10,
@@ -915,6 +916,7 @@ class Catalog(HealpixDataset):
         ddf, partition_map = associate_sources(
             self,
             source_association_algorithm,
+            source_id_col,
             object_aggregator,
             object_id_column_name,
             healpix_id_bits=healpix_id_bits,

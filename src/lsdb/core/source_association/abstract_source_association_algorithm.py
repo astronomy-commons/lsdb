@@ -26,5 +26,6 @@ class AbstractSourceAssociationAlgorithm(ABC):
         pixel: HealpixPixel,
         properties: TableProperties,
         margin_properties: TableProperties,
+        source_id_col: str,
     ) -> np.ndarray:
         pass

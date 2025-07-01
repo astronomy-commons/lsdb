@@ -3,6 +3,7 @@ from __future__ import annotations
 import warnings
 from typing import TYPE_CHECKING
 
+import numpy as np
 import pandas as pd
 from hats import HealpixPixel
 from hats.catalog import TableProperties
@@ -36,13 +37,18 @@ def perform_source_association(
     properties: TableProperties,
     margin_properties: TableProperties,
     association_algorithm: AbstractSourceAssociationAlgorithm,
+    source_id_column: str,
     aggregator: AbstractObjectAggregator = None,
     object_id_column_name: str = "object_id",
     healpix_id_bits: int = 10,
 ) -> npd.NestedFrame:
     joined_df = concat_partition_and_margin(df, margin_df)
-    object_ids = association_algorithm.associate_sources(joined_df, pix, properties, margin_properties)
+    object_ids = association_algorithm.associate_sources(
+        joined_df, pix, properties, margin_properties, source_id_column
+    )
     if aggregator is None:
+        # _, id_inds, id_inv = np.unique(object_ids, return_index=True, return_inverse=True)
+        # obj_id_from_source_id = joined_df[source_id_column].to_numpy()[id_inds][id_inv]
         obj_id_arr = pa.array(object_ids)
         resulting_df = joined_df.assign(
             **{
@@ -73,6 +79,7 @@ def generate_associated_meta(
 def associate_sources(
     catalog: Catalog,
     source_association_algorithm: AbstractSourceAssociationAlgorithm,
+    source_id_col: str,
     object_aggregator: AbstractObjectAggregator = None,
     object_id_column_name: str = "object_id",
     healpix_id_bits: int = 10,
@@ -92,6 +99,7 @@ def associate_sources(
         [(catalog, pixels), (catalog.margin, pixels)],
         perform_source_association,
         source_association_algorithm,
+        source_id_col,
         object_aggregator,
         object_id_column_name,
         healpix_id_bits=healpix_id_bits,
