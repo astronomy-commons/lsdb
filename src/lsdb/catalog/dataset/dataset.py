@@ -37,7 +37,7 @@ class Dataset:
         return (
             f"<div><strong>lsdb Catalog {self.name}:</strong></div>"
             f"{data}"
-            f"<div>{loaded_cols} out of {available_cols} columns in the catalog have been loaded "
+            f"<div>{loaded_cols} out of {available_cols} available columns in the catalog have been loaded "
             f"<strong>lazily</strong>, meaning no data has been read, only the catalog schema</div>"
         )
 
