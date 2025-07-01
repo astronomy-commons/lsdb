@@ -8,6 +8,7 @@ import nested_pandas as npd
 import numpy as np
 from hats import HealpixPixel
 from hats.catalog import TableProperties
+from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 
 if TYPE_CHECKING:
     from lsdb.catalog import Catalog
@@ -35,7 +36,7 @@ class AbstractObjectAggregator(ABC):
         df["obj_id"] = object_ids
         df.index = object_ids
         ndf = npd.NestedFrame.from_flat(df, base_columns=["obj_id"], name="nested")
-        return ndf.reduce(
+        res = ndf.reduce(
             perform_reduction,
             *(["obj_id"] + [f"nested.{f}" for f in ndf["nested"].nest.fields]),
             columns=ndf["nested"].nest.fields,
@@ -43,6 +44,10 @@ class AbstractObjectAggregator(ABC):
             pixel=pixel,
             properties=properties,
         )
+        if SPATIAL_INDEX_COLUMN in res.columns:
+            res = res.set_index(SPATIAL_INDEX_COLUMN)
+            res.index.name = SPATIAL_INDEX_COLUMN
+        return res
 
     @abstractmethod
     def perform_object_aggregation(

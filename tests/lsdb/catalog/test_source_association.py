@@ -28,6 +28,10 @@ def test_source_assoc(small_sky_source_catalog):
     obj = small_sky_source_catalog.associate_sources(
         associator, "source_id", object_aggregator=aggregator, object_id_column_name="new_obj_id"
     )
+    obj.plot_pixels(fc="#00000000", ec="black", color_by_order=False)
+    small_sky_source_catalog.plot_points(marker="+")
+    obj.plot_points()
+    plt.show()
     pass
     # cat.plot_pixels(fc="#00000000", ec="black", color_by_order=False)
     # cat.plot_points(color_col="new_obj_id", marker="+")

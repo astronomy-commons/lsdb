@@ -19,14 +19,15 @@ class BasicObjectAggregator(AbstractObjectAggregator):
         self.dec_name = dec_name
 
     def get_meta_df(self) -> npd.NestedFrame:
-        return npd.NestedFrame(
+        meta = npd.NestedFrame(
             {
                 "object_id": pd.Series([], dtype=pd.ArrowDtype(pa.int64())),
                 self.ra_name: pd.Series([], dtype=pd.ArrowDtype(pa.float64())),
                 self.dec_name: pd.Series([], dtype=pd.ArrowDtype(pa.float64())),
-                SPATIAL_INDEX_COLUMN: pd.Series([], dtype=pd.ArrowDtype(pa.int64())),
             }
         )
+        meta.index.name = SPATIAL_INDEX_COLUMN
+        return meta
 
     def get_hc_structure(self, catalog: Catalog) -> hats.catalog.Catalog:
         properties = hats.catalog.TableProperties(
