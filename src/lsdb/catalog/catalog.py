@@ -1040,9 +1040,8 @@ class Catalog(HealpixDataset):
         Parameters
         ----------
         func : callable
-            Function to apply to each nested dataframe. The first arguments to `func` should be which
-            columns to apply the function to. See the Notes for recommendations
-            on writing func outputs.
+            Function to apply to each row in the catalog. The first arguments to `func` should be which
+            columns to apply the function to. See the Notes for recommendations on writing func outputs.
         args : positional arguments
             A list of string column names to pull from the NestedFrame to pass along to the function.
             If the function has additional arguments, pass them as keyword arguments (e.g. arg_name=value)
@@ -1050,11 +1049,11 @@ class Catalog(HealpixDataset):
             The dask meta of the output. If append_columns is True, the meta should specify just the
             additional columns output by func.
         append_columns : bool
-            If the output columns should be appended to the orignal dataframe.
+            If True, the output columns should be appended to those in the original catalog.
         infer_nesting : bool
             If True, the function will pack output columns into nested structures based on column names
-            adhering to a nested naming scheme. E.g. “nested.b” and “nested.c” will be packed into a
-            column called “nested” with columns “b” and “c”. If False, all outputs will be returned as base
+            adhering to a nested naming scheme. E.g. `nested.b` and `nested.c` will be packed into a
+            column called `nested` with columns `b` and `c`. If False, all outputs will be returned as base
             columns.
         kwargs : keyword arguments, optional
             Keyword arguments to pass to the function.
@@ -1066,10 +1065,10 @@ class Catalog(HealpixDataset):
 
         Notes
         -----
-        By default, `reduce` will produce a `NestedFrame` with enumerated
+        By default, computing a `reduce` will produce a `NestedFrame` with enumerated
         column names for each returned value of the function. For more useful
         naming, it's recommended to have `func` return a dictionary where each
-        key is an output column of the dataframe returned by `reduce`.
+        key is an output column of the dataframe returned by computing `reduce`.
 
         Example User Function:
 
