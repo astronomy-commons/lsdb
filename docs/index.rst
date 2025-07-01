@@ -66,6 +66,6 @@ Using this Guide
    :hidden:
    :caption: Project
 
-   About <citation>
+   About & Citation <citation>
    Contact us <contact>
    Contribution Guide <developer/contributing>
