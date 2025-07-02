@@ -56,4 +56,5 @@ class BaselineSourceAssociationAlgorithm(AbstractSourceAssociationAlgorithm):
             remaining_source_idx = np.delete(np.arange(len(source_xyz)), source_idx)
             remaining_source_inds = np.where(mask)[0][remaining_source_idx]
             object_id_assignment[remaining_source_inds] = s_ids[remaining_source_inds]
-        return object_id_assignment
+        df["new_obj_id"] = object_id_assignment
+        return df.sort_index()["new_obj_id"].to_numpy()

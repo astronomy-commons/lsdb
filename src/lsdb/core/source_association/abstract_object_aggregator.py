@@ -6,9 +6,14 @@ from typing import TYPE_CHECKING
 import hats.catalog
 import nested_pandas as npd
 import numpy as np
+import pandas as pd
 from hats import HealpixPixel
 from hats.catalog import TableProperties
-from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
+from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN, compute_spatial_index
+
+import pyarrow as pa
+
+from lsdb.dask.merge_catalog_functions import filter_by_spatial_index_to_pixel
 
 if TYPE_CHECKING:
     from lsdb.catalog import Catalog
@@ -20,6 +25,10 @@ def perform_reduction(*args, columns=None, fun=None, **kwargs):
 
 
 class AbstractObjectAggregator(ABC):
+
+    def __init__(self, ra_name: str = "ra", dec_name: str = "dec"):
+        self.ra_name = ra_name
+        self.dec_name = dec_name
 
     def validate(self, catalog: Catalog):
         pass
@@ -44,10 +53,14 @@ class AbstractObjectAggregator(ABC):
             pixel=pixel,
             properties=properties,
         )
-        if SPATIAL_INDEX_COLUMN in res.columns:
-            res = res.set_index(SPATIAL_INDEX_COLUMN)
-            res.index.name = SPATIAL_INDEX_COLUMN
-        return res
+        if SPATIAL_INDEX_COLUMN not in res.columns:
+            spatial_index = compute_spatial_index(res[self.ra_name], res[self.dec_name])
+            pa_arr = pa.array(spatial_index)
+            index_series = pd.Series(pa_arr, index=res.index, dtype=pd.ArrowDtype(pa_arr.type))
+            res[SPATIAL_INDEX_COLUMN] = index_series
+        res = res.set_index(SPATIAL_INDEX_COLUMN)
+        res.index.name = SPATIAL_INDEX_COLUMN
+        return filter_by_spatial_index_to_pixel(res, pixel.order, pixel.pixel)
 
     @abstractmethod
     def perform_object_aggregation(
