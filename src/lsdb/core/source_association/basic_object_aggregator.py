@@ -14,9 +14,8 @@ from lsdb.core.source_association.abstract_object_aggregator import AbstractObje
 class BasicObjectAggregator(AbstractObjectAggregator):
 
     def __init__(self, properties: TableProperties, ra_name="ra", dec_name="dec"):
+        super().__init__(ra_name, dec_name)
         self.properties = properties
-        self.ra_name = ra_name
-        self.dec_name = dec_name
 
     def get_meta_df(self) -> npd.NestedFrame:
         meta = npd.NestedFrame(
