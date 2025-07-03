@@ -41,7 +41,7 @@ def from_dataframe(
         highest_order (int): The highest partition order. Defaults to 7.
         drop_empty_siblings (bool): When determining final partitionining,
             if 3 of 4 pixels are empty, keep only the non-empty pixel
-        partition_size (int): The desired partition size, in number of bytes in-memory.
+        partition_size (int): The desired partition size, in number of rows.
         threshold (int): The maximum number of data points per pixel.
         margin_order (int): The order at which to generate the margin cache.
         margin_threshold (float): The size of the margin cache boundary, in arcseconds. If None, and
