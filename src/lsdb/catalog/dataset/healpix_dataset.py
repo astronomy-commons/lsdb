@@ -227,8 +227,6 @@ class HealpixDataset(Dataset):
 
         Returns:
             dataframe with global summary statistics"""
-        self._check_unloaded_columns(exclude_columns)
-        self._check_unloaded_columns(include_columns)
         if use_default_columns and include_columns is None:
             include_columns = self.hc_structure.catalog_info.default_columns
 
@@ -271,8 +269,6 @@ class HealpixDataset(Dataset):
         Returns:
             dataframe with granular per-pixel statistics
         """
-        self._check_unloaded_columns(exclude_columns)
-        self._check_unloaded_columns(include_columns)
         if use_default_columns and include_columns is None:
             include_columns = self.hc_structure.catalog_info.default_columns
 
