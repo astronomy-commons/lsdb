@@ -67,5 +67,5 @@ Using this Guide
    :caption: Project
 
    About & Citation <citation>
-   Contact us <contact>
+   Getting Help <contact>
    Contribution Guide <developer/contributing>

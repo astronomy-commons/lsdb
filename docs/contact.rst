@@ -1,4 +1,4 @@
-Contact us
+Getting Help
 ===============================================================================
 
 We at LINCC Frameworks pride ourselves on being a friendly bunch!
