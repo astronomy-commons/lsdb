@@ -63,7 +63,7 @@ class DataframeCatalogLoader:
             highest_order (int): The highest partition order. Defaults to 7.
             drop_empty_siblings (bool): When determining final partitionining,
                 if 3 of 4 pixels are empty, keep only the non-empty pixel
-            partition_size (int): The desired partition size, in number of bytes in-memory.
+            partition_size (int): The desired partition size, in number of rows.
             threshold (int): The maximum number of data points per pixel.
             should_generate_moc (bool): should we generate a MOC (multi-order coverage map)
                 of the data. can improve performance when joining/crossmatching to
