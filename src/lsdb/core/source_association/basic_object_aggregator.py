@@ -1,13 +1,11 @@
-import hats
 import nested_pandas as npd
 import pandas as pd
 from hats import HealpixPixel
-from hats.catalog import TableProperties, CatalogType
+from hats.catalog import TableProperties
 
 import pyarrow as pa
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 
-from lsdb import Catalog
 from lsdb.core.source_association.abstract_object_aggregator import AbstractObjectAggregator
 
 
@@ -29,22 +27,6 @@ class BasicObjectAggregator(AbstractObjectAggregator):
         )
         meta.index.name = SPATIAL_INDEX_COLUMN
         return meta
-
-    def get_hc_structure(self, catalog: Catalog) -> hats.catalog.Catalog:
-        properties = hats.catalog.TableProperties(
-            catalog_name=catalog.hc_structure.catalog_name + "_objects",
-            catalog_type=CatalogType.OBJECT,
-            ra_column=self.ra_name,
-            dec_column=self.dec_name,
-            hats_nrows=0,
-        )
-        return hats.catalog.Catalog(
-            catalog_info=properties,
-            pixels=catalog.hc_structure.pixel_tree,
-            catalog_path=None,
-            moc=catalog.hc_structure.moc,
-            schema=pa.Schema.from_pandas(self.get_meta_df(catalog)).remove_metadata(),
-        )
 
     def perform_object_aggregation(
         self, df: dict, obj_id: int, pixel: HealpixPixel = None, properties: TableProperties = None

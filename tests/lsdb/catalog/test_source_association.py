@@ -12,7 +12,7 @@ from lsdb.core.source_association.basic_object_aggregator import BasicObjectAggr
 
 
 def test_source_assoc(small_sky_source_catalog_with_margin):
-    associator = BaselineSourceAssociationAlgorithm(exposure_id_col="exposure", max_distance=3100)
+    associator = BaselineSourceAssociationAlgorithm(exposure_id_col="exposure", max_distance_arcsec=3100)
     cat = small_sky_source_catalog_with_margin.associate_sources(
         associator, "source_id", object_id_column_name="new_obj_id"
     )

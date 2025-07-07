@@ -8,7 +8,7 @@ import nested_pandas as npd
 import numpy as np
 import pandas as pd
 from hats import HealpixPixel
-from hats.catalog import TableProperties
+from hats.catalog import TableProperties, CatalogType
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN, compute_spatial_index
 
 import pyarrow as pa
@@ -89,6 +89,19 @@ class AbstractObjectAggregator(ABC):
     def get_object_meta_df(self) -> npd.NestedFrame:
         pass
 
-    @abstractmethod
+
     def get_hc_structure(self, catalog: Catalog) -> hats.catalog.Catalog:
-        pass
+        properties = hats.catalog.TableProperties(
+            catalog_name=catalog.hc_structure.catalog_name + "_objects",
+            catalog_type=CatalogType.OBJECT,
+            ra_column=self.ra_name,
+            dec_column=self.dec_name,
+            hats_nrows=0,
+        )
+        return hats.catalog.Catalog(
+            catalog_info=properties,
+            pixels=catalog.hc_structure.pixel_tree,
+            catalog_path=None,
+            moc=catalog.hc_structure.moc,
+            schema=pa.Schema.from_pandas(self.get_meta_df(catalog)).remove_metadata(),
+        )

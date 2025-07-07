@@ -11,9 +11,9 @@ from lsdb.core.source_association.abstract_source_association_algorithm import (
 
 class BaselineSourceAssociationAlgorithm(AbstractSourceAssociationAlgorithm):
 
-    def __init__(self, exposure_id_col: str, max_distance: float):
+    def __init__(self, exposure_id_col: str, max_distance_arcsec: float):
         self.exposure_id_col = exposure_id_col
-        self.max_distance = max_distance
+        self.max_distance_arcsec = max_distance_arcsec
 
     def associate_sources(
         self,
@@ -34,7 +34,7 @@ class BaselineSourceAssociationAlgorithm(AbstractSourceAssociationAlgorithm):
         )
         s_ids = df[source_id_col].to_numpy()
         # Get max xmatch distance as a chord
-        max_dist_chord = _get_chord_distance(self.max_distance)
+        max_dist_chord = _get_chord_distance(self.max_distance_arcsec)
         # Make array to assign object ids
         object_id_assignment = np.full(s_ids.shape, fill_value=-1)
         # Make array of the objects we've found so far as the indices of the source df they correspond to
