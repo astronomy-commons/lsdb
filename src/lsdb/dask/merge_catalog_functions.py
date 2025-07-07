@@ -42,7 +42,7 @@ def concat_partition_and_margin(
         return partition
 
     joined_df = pd.concat([partition, margin])
-    return npd.NestedFrame(joined_df)
+    return npd.NestedFrame(joined_df).sort_index()
 
 
 def remove_hips_columns(df: npd.NestedFrame | None):

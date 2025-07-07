@@ -43,23 +43,29 @@ def perform_source_association(
     healpix_id_bits: int = 10,
 ) -> npd.NestedFrame:
     joined_df = concat_partition_and_margin(df, margin_df)
-    object_ids = association_algorithm.associate_sources(
+    result = association_algorithm.associate_sources(
         joined_df, pix, properties, margin_properties, source_id_column
     )
+    obj_id_series = None
+    if isinstance(result, np.ndarray):
+        obj_id_arr = pa.array(result)
+        obj_id_series = pd.Series(obj_id_arr, index=joined_df.index, dtype=pd.ArrowDtype(obj_id_arr.type))
+    elif isinstance(result, pd.Series):
+        obj_id_series = result
     if aggregator is None:
-        # _, id_inds, id_inv = np.unique(object_ids, return_index=True, return_inverse=True)
-        # obj_id_from_source_id = joined_df[source_id_column].to_numpy()[id_inds][id_inv]
-        obj_id_arr = pa.array(object_ids)
-        resulting_df = joined_df.assign(
-            **{
-                object_id_column_name: pd.Series(
-                    obj_id_arr, index=joined_df.index, dtype=pd.ArrowDtype(obj_id_arr.type)
-                )
-            }
+        assigned_df = joined_df.assign(**{object_id_column_name: obj_id_series})
+        object_ids = assigned_df[object_id_column_name].to_numpy()
+        _, id_inds, id_inv = np.unique(object_ids, return_index=True, return_inverse=True)
+        obj_id_from_source_id = assigned_df[source_id_column].to_numpy()[id_inds][id_inv]
+        obj_id_arr = pa.array(obj_id_from_source_id)
+        assigned_df[object_id_column_name] = pd.Series(
+            obj_id_arr, index=assigned_df.index, dtype=pd.ArrowDtype(obj_id_arr.type)
         )
-        return filter_by_spatial_index_to_pixel(resulting_df, pix.order, pix.pixel)
+        return filter_by_spatial_index_to_pixel(assigned_df, pix.order, pix.pixel)
     else:
-        return aggregator.aggregate_objects(joined_df, pix, properties, margin_properties, object_ids)
+        return aggregator.aggregate_objects(
+            joined_df, pix, properties, margin_properties, obj_id_series.to_numpy()
+        )
 
 
 def generate_associated_meta(
@@ -69,7 +75,7 @@ def generate_associated_meta(
     object_id_column_name: str = "object_id",
 ):
     if object_aggregator is not None:
-        return object_aggregator.get_meta_df()
+        return object_aggregator.get_meta_df(catalog)
     else:
         obj_id_type = source_association_algorithm.object_id_type
         obj_id_series = pd.Series(dtype=pd.ArrowDtype(pa.from_numpy_dtype(obj_id_type)))

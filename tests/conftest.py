@@ -162,6 +162,11 @@ def small_sky_source_catalog(small_sky_source_dir):
 
 
 @pytest.fixture
+def small_sky_source_catalog_with_margin(small_sky_source_dir, test_data_dir):
+    return lsdb.open_catalog(small_sky_source_dir, margin_cache=test_data_dir / SMALL_SKY_SOURCE_MARGIN_NAME)
+
+
+@pytest.fixture
 def small_sky_order1_source_collection_catalog(small_sky_order1_source_collection_dir):
     return lsdb.open_catalog(small_sky_order1_source_collection_dir)
 
