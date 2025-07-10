@@ -10,7 +10,7 @@ making our products better, or pretty much anything else, reach out!
     * https://github.com/astronomy-commons/lsdb/issues/new
 * Start a new github discussion
     * https://github.com/astronomy-commons/lsdb/discussions/new/choose
-* Join the LSST Community forum
+* If you have questions about data from the Rubin Observatory, the best place to ask is:
     * https://community.lsst.org
     * `LSST Data Products category <https://community.lsst.org/c/support/data/34>`_
 * If you're on LSST Discovery Alliance slack, so are we!
