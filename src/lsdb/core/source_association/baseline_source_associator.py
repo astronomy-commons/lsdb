@@ -3,14 +3,13 @@ import numpy as np
 from hats import HealpixPixel
 from hats.catalog import TableProperties
 
-from lsdb.core.crossmatch.kdtree_utils import _lon_lat_to_xyz, _find_crossmatch_indices, _get_chord_distance
+from lsdb.core.crossmatch.kdtree_utils import _find_crossmatch_indices, _get_chord_distance, _lon_lat_to_xyz
 from lsdb.core.source_association.abstract_source_association_algorithm import (
     AbstractSourceAssociationAlgorithm,
 )
 
 
 class BaselineSourceAssociationAlgorithm(AbstractSourceAssociationAlgorithm):
-
     def __init__(self, exposure_id_col: str, max_distance_arcsec: float):
         self.exposure_id_col = exposure_id_col
         self.max_distance_arcsec = max_distance_arcsec
@@ -54,9 +53,19 @@ class BaselineSourceAssociationAlgorithm(AbstractSourceAssociationAlgorithm):
             # Get the coordinates of the current exposure
             source_xyz = xyz[mask]
             # Crossmatch the current exposure to the current objects
-            _, source_idx, object_idx = _find_crossmatch_indices(
+            distances, source_idx, object_idx = _find_crossmatch_indices(
                 source_xyz, object_xyz, n_neighbors=1, max_distance=max_dist_chord
             )
+            # Ensure each object matches to at most one source in this exposure
+            unique_object_idx, object_idx_counts = np.unique(object_idx, return_counts=True)
+            for object_id in unique_object_idx[object_idx_counts > 1]:
+                # Index into crossmatch indices
+                idx_idx = np.where(object_idx == object_id)[0]
+                extra_idx_idx = np.argsort(idx_idx)[1:]
+                # Remove any matches that aren't the closest match
+                distances = np.delete(distances, idx_idx)
+                source_idx = np.delete(source_idx, extra_idx_idx)
+                object_idx = np.delete(object_idx, extra_idx_idx)
             if len(object_idx) > 0:
                 # Assign the Object ID of the objects to their matched sources
                 matched_source_inds = np.where(mask)[0][source_idx]
