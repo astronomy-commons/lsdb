@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+import re
 import warnings
 
 import astropy.units as u
@@ -40,8 +41,8 @@ class DataframeCatalogLoader:
         self,
         dataframe: pd.DataFrame,
         *,
-        ra_column: str = "ra",
-        dec_column: str = "dec",
+        ra_column: str | None = None,
+        dec_column: str | None = None,
         lowest_order: int = 0,
         highest_order: int = 7,
         drop_empty_siblings: bool = False,
@@ -57,8 +58,10 @@ class DataframeCatalogLoader:
 
         Args:
             dataframe (pd.Dataframe): Catalog Pandas Dataframe.
-            ra_column (str): The name of the right ascension column. Defaults to ra.
-            dec_column (str): The name of the declination column. Defaults to dec.
+            ra_column (str): The name of the right ascension column. By default,
+                case-insensitive versions of 'ra' are detected.
+            dec_column (str): The name of the declination column. By default,
+                case-insensitive versions of 'dec' are detected.
             lowest_order (int): The lowest partition order. Defaults to 3.
             highest_order (int): The highest partition order. Defaults to 7.
             drop_empty_siblings (bool): When determining final partitionining,
@@ -80,6 +83,12 @@ class DataframeCatalogLoader:
         self.highest_order = highest_order
         self.drop_empty_siblings = drop_empty_siblings
         self.threshold = self._calculate_threshold(partition_size, threshold)
+
+        if ra_column is None:
+            ra_column = self._find_column("ra")
+        if dec_column is None:
+            dec_column = self._find_column("dec")
+
         self.catalog_info = self._create_catalog_info(
             ra_column=ra_column,
             dec_column=dec_column,
@@ -91,6 +100,28 @@ class DataframeCatalogLoader:
         self.moc_max_order = moc_max_order
         self.use_pyarrow_types = use_pyarrow_types
         self.schema = schema
+
+    def _find_column(self, search_term: str) -> str:
+        """Finds the column in the data frame matching the search term.
+
+        The search is case-insensitive and unambiguous. An error is raised
+        if there are zero or multiple matches.
+
+        Args:
+            search_term (str): The column name to search for.
+
+        Returns:
+            The column name.
+        """
+        matches = [
+            c for c in self.dataframe.columns if re.fullmatch(re.escape(search_term), c, re.IGNORECASE)
+        ]
+        n_matches = len(matches)
+        if n_matches == 0:
+            raise ValueError(f"No column found for {search_term}")
+        if n_matches > 1:
+            raise ValueError(f"Found {n_matches} possible columns for {search_term}")
+        return matches[0]
 
     def _calculate_threshold(self, partition_size: int | None = None, threshold: int | None = None) -> int:
         """Calculates the number of pixels per HEALPix pixel (threshold) for the

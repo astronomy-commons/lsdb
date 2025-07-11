@@ -18,29 +18,6 @@ def _validate_and_convert_to_catalog(
     if not isinstance(data, (pd.DataFrame, npd.NestedFrame)):
         raise TypeError(f"Argument must be a DataFrame, NestedFrame, or Catalog, not {type(data)}.")
 
-    # Check for "ra" and "dec" columns. If they do not exist, try "RA" and "DEC" before raising an error.
-    if "ra_column" not in data_args:
-        if "ra" in data.columns:
-            data_args["ra_column"] = "ra"
-        elif "RA" in data.columns:
-            data_args["ra_column"] = "RA"
-        elif "Ra" in data.columns:
-            data_args["ra_column"] = "Ra"
-        else:
-            raise ValueError("No 'ra', 'Ra', or 'RA' column found in DataFrame; specify 'ra_column' param.")
-
-    if "dec_column" not in data_args:
-        if "dec" in data.columns:
-            data_args["dec_column"] = "dec"
-        elif "DEC" in data.columns:
-            data_args["dec_column"] = "DEC"
-        elif "Dec" in data.columns:
-            data_args["dec_column"] = "Dec"
-        else:
-            raise ValueError(
-                "No 'dec', 'Dec', or 'DEC' column found in DataFrame; specify 'dec_column' param."
-            )
-
     # Pick catalog name: either use the user-specified suffixes, or default to "left" or "right".
     if "catalog_name" not in data_args:
         data_args["catalog_name"] = suffix if suffix else default_suffix
