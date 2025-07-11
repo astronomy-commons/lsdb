@@ -415,3 +415,23 @@ def test_from_dataframe_all_sky(sm_all_sky_df):
     catalog = lsdb.from_dataframe(sm_all_sky_df, ra_column="RA", dec_column="DEC", drop_empty_siblings=True)
     assert catalog._ddf.index.name == "_healpix_29"
     assert len(catalog.get_healpix_pixels()) == 12
+
+
+def test_from_dataframe_finds_radec_columns(small_sky_order1_df):
+    """Check that the RA and Dec columns are identified
+    case-insensitively when omitted by the user."""
+    # The columns are named "ra" and "dec"
+    catalog = lsdb.from_dataframe(small_sky_order1_df)
+    assert {"ra", "dec"}.issubset(catalog.columns)
+    # It would also work if they were named "Ra" and "Dec"
+    df_renamed = small_sky_order1_df.rename(columns={"ra": "Ra", "dec": "Dec"})
+    catalog = lsdb.from_dataframe(df_renamed)
+    assert {"Ra", "Dec"}.issubset(catalog.columns)
+    # If no matches are found, an error is raised
+    df_no_radec = small_sky_order1_df.drop(columns=["ra", "dec"])
+    with pytest.raises(ValueError, match="No column found"):
+        lsdb.from_dataframe(df_no_radec)
+    # If multiple matches are found it's ambiguous, and an error is raised
+    small_sky_order1_df["RA"] = small_sky_order1_df["ra"].copy()
+    with pytest.raises(ValueError, match="possible columns"):
+        lsdb.from_dataframe(small_sky_order1_df)
