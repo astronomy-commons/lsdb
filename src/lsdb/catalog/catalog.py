@@ -19,6 +19,7 @@ from typing_extensions import Self
 from upath import UPath
 
 import lsdb.nested as nd
+from lsdb import io
 from lsdb.catalog.association_catalog import AssociationCatalog
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
 from lsdb.catalog.map_catalog import MapCatalog
@@ -1151,7 +1152,7 @@ class Catalog(HealpixDataset):
         overwrite: bool = False,
         **kwargs,
     ):
-        """Saves the catalog to disk in HATS format
+        """Saves the catalog to disk in the HATS format.
 
         Args:
             base_catalog_path (str): Location where catalog is saved to
@@ -1168,5 +1169,36 @@ class Catalog(HealpixDataset):
             default_columns=default_columns,
             overwrite=overwrite,
             create_thumbnail=True,
+            **kwargs,
+        )
+
+    def to_collection(
+        self,
+        base_collection_path: str | Path | UPath,
+        *,
+        collection_name: str,
+        default_columns: list[str] | None = None,
+        overwrite: bool = False,
+        **kwargs,
+    ):
+        """Saves the catalog collection to disk in the HATS format.
+
+        The output contains the main catalog and its margin cache, if it exists.
+
+        Args:
+            base_catalog_path (str): Location where catalog is saved to
+            collection_name (str): The name of the collection to be saved
+            default_columns (list[str]): A metadata property with the list of the columns in the
+                catalog to be loaded by default. By default, uses the default columns from the
+                original hats catalog if they exist.
+            overwrite (bool): If True existing collection is overwritten
+            **kwargs: Arguments to pass to the parquet write operations
+        """
+        io.to_collection(
+            self,
+            base_collection_path=base_collection_path,
+            collection_name=collection_name,
+            default_columns=default_columns,
+            overwrite=overwrite,
             **kwargs,
         )

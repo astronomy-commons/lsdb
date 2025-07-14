@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from copy import copy
+from datetime import datetime, timezone
 from importlib.metadata import version
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -143,6 +144,7 @@ def to_hats(
 
     if not addl_hats_properties:
         addl_hats_properties = {}
+
     if catalog.hc_structure.catalog_info.catalog_type in (CatalogType.OBJECT, CatalogType.SOURCE):
         addl_hats_properties = addl_hats_properties | {
             "skymap_order": histogram_order,
@@ -159,6 +161,8 @@ def to_hats(
 
         write_skymap(histogram=full_histogram, catalog_dir=base_catalog_path, orders=skymap_alt_orders)
 
+    addl_hats_properties = addl_hats_properties | extra_property_dict(path=base_catalog_path)
+
     new_hc_structure = create_modified_catalog_structure(
         catalog.hc_structure,
         base_catalog_path,
@@ -166,7 +170,6 @@ def to_hats(
         total_rows=int(np.sum(counts)),
         default_columns=default_columns,
         hats_max_rows=hats_max_rows,
-        hats_builder=get_hats_builder_property(),
         **addl_hats_properties,
     )
     new_hc_structure.catalog_info.to_properties_file(base_catalog_path)
@@ -244,6 +247,24 @@ def create_modified_catalog_structure(
     return new_hc_structure
 
 
-def get_hats_builder_property() -> str:
-    """Generate the hats-builder property with the current versions of LSDB and HATS"""
-    return f"lsdb v{version('lsdb')}, hats v{version('hats')}"
+def extra_property_dict(path: str | Path | UPath | None = None, estsize: int = 0) -> dict:
+    """Create a dictionary of additional fields to store in the properties file."""
+
+    def _estimate_dir_size(target_dir):
+        total_size = 0
+        for item in target_dir.iterdir():
+            if item.is_dir():
+                total_size += _estimate_dir_size(item)
+            else:
+                total_size += item.stat().st_size
+        return total_size
+
+    properties = {}
+    now = datetime.now(tz=timezone.utc)
+    properties["hats_builder"] = f"lsdb v{version('lsdb')}, hats v{version('hats')}"
+    properties["hats_creation_date"] = now.strftime("%Y-%m-%dT%H:%M%Z")
+    estsize_bytes = _estimate_dir_size(str(path)) if path else estsize
+    properties["hats_estsize"] = str(int(estsize_bytes / 1024))
+    properties["hats_release_date"] = "2024-09-18"
+    properties["hats_version"] = "v0.1"
+    return properties
