@@ -13,7 +13,7 @@ from hats.io.paths import get_data_thumbnail_pointer
 import lsdb
 
 
-def test_save_catalog(small_sky_catalog, tmp_path):
+def test_save_catalog(small_sky_catalog, tmp_path, helpers):
     new_catalog_name = "small_sky"
     base_catalog_path = Path(tmp_path) / new_catalog_name
     small_sky_catalog.to_hats(
@@ -29,10 +29,12 @@ def test_save_catalog(small_sky_catalog, tmp_path):
     # When saving a catalog with to_hats, we update the hats_max_rows
     # to the maximum count of points per partition. In this case there
     # is only one with 131 rows, so that is the value we expect.
-    original_info = small_sky_catalog.hc_structure.catalog_info
     partition_sizes = small_sky_catalog._ddf.map_partitions(len).compute()
     assert max(partition_sizes) == 131
-    assert expected_catalog.hc_structure.catalog_info == original_info.copy_and_update(
+
+    helpers.assert_catalog_info_is_correct(
+        expected_catalog.hc_structure.catalog_info,
+        small_sky_catalog.hc_structure.catalog_info,
         hats_max_rows="131",
         skymap_order=5,
         obs_regime="Optical",

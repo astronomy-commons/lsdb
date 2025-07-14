@@ -247,7 +247,7 @@ def create_modified_catalog_structure(
     return new_hc_structure
 
 
-def extra_property_dict(path: str | Path | UPath | None = None, estsize: int = 0) -> dict:
+def extra_property_dict(path: UPath | None = None, estsize: int = 0) -> dict:
     """Create a dictionary of additional fields to store in the properties file."""
 
     def _estimate_dir_size(target_dir):
@@ -263,7 +263,7 @@ def extra_property_dict(path: str | Path | UPath | None = None, estsize: int = 0
     now = datetime.now(tz=timezone.utc)
     properties["hats_builder"] = f"lsdb v{version('lsdb')}, hats v{version('hats')}"
     properties["hats_creation_date"] = now.strftime("%Y-%m-%dT%H:%M%Z")
-    estsize_bytes = _estimate_dir_size(str(path)) if path else estsize
+    estsize_bytes = _estimate_dir_size(path) if path else estsize
     properties["hats_estsize"] = str(int(estsize_bytes / 1024))
     properties["hats_release_date"] = "2024-09-18"
     properties["hats_version"] = "v0.1"

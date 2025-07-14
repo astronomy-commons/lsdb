@@ -470,6 +470,13 @@ class Helpers:
             if col_name not in right_ignore_columns and col_name not in paths.HIVE_COLUMNS:
                 assert (col_name, dtype.pyarrow_dtype) in joined_cat[nested_colname].dtypes.fields.items()
 
+    @staticmethod
+    def assert_catalog_info_is_correct(expected_catalog_info, catalog_info, **properties_to_update):
+        """Check that the catalog properties are similar (apart from creation date)"""
+        expected_catalog_info = expected_catalog_info.copy_and_update(hats_creation_date=None)
+        catalog_info = catalog_info.copy_and_update(hats_creation_date=None, **properties_to_update)
+        return expected_catalog_info == catalog_info
+
 
 @pytest.fixture
 def helpers():

@@ -46,7 +46,7 @@ def to_collection(
         margin_name = (
             catalog.margin.name
             if catalog.margin.name is not None
-            else f"{collection_name}_{margin_threshold}arcs"
+            else f"{catalog_name}_{margin_threshold}arcs"
         )
         catalog.margin.to_hats(
             base_collection_path / margin_name,

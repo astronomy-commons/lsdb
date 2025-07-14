@@ -37,7 +37,7 @@ def test_margin_catalog_partitions_correct(small_sky_xmatch_margin_dir):
         pd.testing.assert_frame_equal(partition.compute(), data)
 
 
-def test_save_margin_catalog(small_sky_xmatch_margin_catalog, tmp_path):
+def test_save_margin_catalog(small_sky_xmatch_margin_catalog, tmp_path, helpers):
     new_catalog_name = "small_sky_xmatch_margin"
     base_catalog_path = Path(tmp_path) / new_catalog_name
     small_sky_xmatch_margin_catalog.to_hats(base_catalog_path, catalog_name=new_catalog_name)
@@ -49,10 +49,12 @@ def test_save_margin_catalog(small_sky_xmatch_margin_catalog, tmp_path):
 
     # When saving a catalog with to_hats, we update the hats_max_rows
     # to the maximum count of points per partition.
-    original_info = small_sky_xmatch_margin_catalog.hc_structure.catalog_info
     partition_sizes = small_sky_xmatch_margin_catalog._ddf.map_partitions(len).compute()
     assert max(partition_sizes) == 10
-    assert expected_catalog.hc_structure.catalog_info == original_info.copy_and_update(
+
+    helpers.assert_catalog_info_is_correct(
+        expected_catalog.hc_structure.catalog_info,
+        small_sky_xmatch_margin_catalog.hc_structure.catalog_info,
         hats_max_rows="10",
         # Also check that the builder was properly set
         hats_builder=f"lsdb v{version('lsdb')}, hats v{version('hats')}",
