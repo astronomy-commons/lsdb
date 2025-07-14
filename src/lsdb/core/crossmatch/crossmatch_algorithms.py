@@ -11,12 +11,15 @@ class BuiltInCrossmatchAlgorithm(str, Enum):
     BOUNDED_KD_TREE = "bounded_kd_tree"
 
 
-def is_builtin_algorithm(algorithm_type) -> bool:
-    """Check if a given algorithm is built-in."""
-    return algorithm_type in builtin_crossmatch_algorithms.values()
-
-
 builtin_crossmatch_algorithms = {
     BuiltInCrossmatchAlgorithm.KD_TREE: KdTreeCrossmatch,
     BuiltInCrossmatchAlgorithm.BOUNDED_KD_TREE: BoundedKdTreeCrossmatch,
 }
+
+
+def is_builtin_algorithm(algorithm_type) -> bool:
+    """Check if a given algorithm is built-in."""
+    return (
+        algorithm_type in builtin_crossmatch_algorithms
+        or algorithm_type in builtin_crossmatch_algorithms.values()
+    )
