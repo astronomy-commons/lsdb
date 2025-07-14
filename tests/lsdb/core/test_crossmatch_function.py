@@ -3,10 +3,11 @@ import numpy as np
 import pytest
 
 import lsdb
+from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorithm
 from lsdb.core.crossmatch.kdtree_match import KdTreeCrossmatch
 
 
-@pytest.mark.parametrize("algo", [KdTreeCrossmatch])
+@pytest.mark.parametrize("algo", [KdTreeCrossmatch, BuiltInCrossmatchAlgorithm.KD_TREE])
 @pytest.mark.parametrize(
     "left, right",
     [
