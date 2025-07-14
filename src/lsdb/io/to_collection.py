@@ -29,7 +29,7 @@ def to_collection(
         overwrite (bool): If True existing collection is overwritten
         **kwargs: Arguments to pass to the parquet write operations
     """
-    base_collection_path = hc.io.file_io.get_upath(base_collection_path) / collection_name
+    base_collection_path = hc.io.file_io.get_upath(base_collection_path)
     catalog_name = catalog.name if catalog.name is not None else collection_name
     properties = {"obs_collection": collection_name, "hats_primary_table_url": catalog_name}
 
@@ -40,14 +40,8 @@ def to_collection(
         overwrite=overwrite,
         **kwargs,
     )
-
     if catalog.margin is not None:
-        margin_threshold = int(catalog.margin.hc_structure.catalog_info.margin_threshold)
-        margin_name = (
-            catalog.margin.name
-            if catalog.margin.name is not None
-            else f"{catalog_name}_{margin_threshold}arcs"
-        )
+        margin_name = catalog.margin.name
         catalog.margin.to_hats(
             base_collection_path / margin_name,
             catalog_name=margin_name,
