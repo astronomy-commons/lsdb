@@ -40,7 +40,7 @@ def to_collection(
         overwrite=overwrite,
         **kwargs,
     )
-    if catalog.margin is not None:
+    if catalog.margin is not None and len(catalog.margin.get_healpix_pixels()) > 0:
         margin_name = catalog.margin.name
         catalog.margin.to_hats(
             base_collection_path / margin_name,

@@ -233,7 +233,7 @@ class MarginCatalogGenerator:
         if not catalog_name:
             catalog_name = self.hc_structure.catalog_info.catalog_name
         return TableProperties(
-            catalog_name=f"{catalog_name}_margin",
+            catalog_name=f"{catalog_name}_{self.margin_threshold}arcs",
             catalog_type=CatalogType.MARGIN,
             ra_column=self.hc_structure.catalog_info.ra_column,
             dec_column=self.hc_structure.catalog_info.dec_column,
