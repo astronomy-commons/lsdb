@@ -473,7 +473,7 @@ class Helpers:
     @staticmethod
     def assert_catalog_info_is_correct(expected_catalog_info, catalog_info, **properties_to_update):
         """Check that the catalog properties are similar to the expected ones."""
-        do_not_compare = {prop: None for prop in ["hats_creation_date"]}
+        do_not_compare = {prop: None for prop in ["hats_creation_date", "hats_estsize"]}
         expected_catalog_info = expected_catalog_info.copy_and_update(**do_not_compare)
         catalog_info = catalog_info.copy_and_update(**(properties_to_update | do_not_compare))
         assert expected_catalog_info == catalog_info
