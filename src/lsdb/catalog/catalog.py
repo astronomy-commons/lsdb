@@ -534,7 +534,7 @@ class Catalog(HealpixDataset):
         # Only one column may contain a list of values (multiple columns may be specified, so long
         # as only one of them is a list).
         if not values:
-            raise ValueError("No values specified for id_search.")
+            raise ValueError("No values specified for search.")
         list_value_already_found = False
         for field, value in values.items():
             print(f"Searching for {field}={value}")

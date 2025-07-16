@@ -137,6 +137,12 @@ def test_index_search_with_mismatching_fields(
     )
 
 
+def test_index_search_with_no_values(small_sky_order1_source_collection_catalog):
+    # No values provided, should raise ValueError
+    with pytest.raises(ValueError, match="No values specified for search."):
+        small_sky_order1_source_collection_catalog.id_search(values={})
+
+
 def test_id_search_with_list_of_values(small_sky_order1_source_collection_catalog, helpers):
     # Searching with object_id as a list
     cat = small_sky_order1_source_collection_catalog.id_search(values={"object_id": [810, 811]})
