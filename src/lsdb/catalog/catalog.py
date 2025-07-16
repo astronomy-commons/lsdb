@@ -499,7 +499,10 @@ class Catalog(HealpixDataset):
         precedence over the catalogs specified in the collection.
 
         Args:
-            values (dict[str, Any]): The mapping of field names (as string) to their values.
+            values (dict[str, Any]): The mapping of field names (as string) to their search values.
+                Values can be single values or lists of values (but only one list of values is
+                allowed per search). If a list is specified, the search will return rows that match
+                any of the values in the list.
             index_catalogs (dict[str, str|HCIndexCatalog]): The mapping of field names (as string)
                 to their respective index catalog paths or instance of `HCIndexCatalog`. Use this
                 argument to specify index catalogs for stand-alone catalogs or for collections where
@@ -521,9 +524,25 @@ class Catalog(HealpixDataset):
                     index_catalogs={"ccid": "ccid_id_index_catalog"}
                 )
 
+            To query for multiple values in a column, use a list of values::
+
+                catalog.id_search(values={"objid": [1, 2, 3, ...]})
+
         Returns:
             A new Catalog containing the results of the column match.
         """
+        # Only one column may contain a list of values (multiple columns may be specified, so long
+        # as only one of them is a list).
+        if not values:
+            raise ValueError("No values specified for id_search.")
+        list_value_already_found = False
+        for field, value in values.items():
+            print(f"Searching for {field}={value}")
+            if isinstance(value, list):
+                if list_value_already_found:
+                    raise ValueError("Only one column may contain a list of values.")
+                list_value_already_found = True
+
         self._check_unloaded_columns(list(values.keys()))
 
         def _get_index_catalog_for_field(field: str):
