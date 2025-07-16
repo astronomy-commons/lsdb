@@ -137,7 +137,6 @@ def test_index_search_with_mismatching_fields(
     )
 
 
-# test_id_search_with_single_field
 def test_id_search_with_list_of_values(small_sky_order1_source_collection_catalog, helpers):
     # Searching with object_id as a list
     cat = small_sky_order1_source_collection_catalog.id_search(values={"object_id": [810, 811]})
@@ -163,7 +162,7 @@ def test_id_search_with_list_of_values(small_sky_order1_source_collection_catalo
             values={"object_id": [810, 811], "band": ["r", "g"]}
         )
 
-    # But it works when only one column contains list values
+    # Search works when only one column contains list values
     cat_with_only_one_list = small_sky_order1_source_collection_catalog.id_search(
         values={"object_id": [810, 811], "band": "r"}
     )
