@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 from copy import copy
-from datetime import datetime, timezone
-from importlib.metadata import version
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -16,6 +14,8 @@ from hats.io.skymap import write_skymap
 from hats.pixel_math import HealpixPixel, spatial_index_to_healpix
 from hats.pixel_math.sparse_histogram import HistogramAggregator, SparseHistogram
 from upath import UPath
+
+from lsdb.catalog.dataset.dataset import Dataset
 
 if TYPE_CHECKING:
     from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
@@ -161,7 +161,7 @@ def to_hats(
 
         write_skymap(histogram=full_histogram, catalog_dir=base_catalog_path, orders=skymap_alt_orders)
 
-    addl_hats_properties = addl_hats_properties | extra_property_dict(path=base_catalog_path)
+    addl_hats_properties = addl_hats_properties | Dataset.new_provenance_properties(base_catalog_path)
 
     new_hc_structure = create_modified_catalog_structure(
         catalog.hc_structure,
@@ -245,26 +245,3 @@ def create_modified_catalog_structure(
     new_hc_structure.catalog_info = new_hc_structure.catalog_info.copy_and_update(**kwargs)
     new_hc_structure.catalog_info.catalog_name = catalog_name
     return new_hc_structure
-
-
-def extra_property_dict(path: UPath | None = None, estsize: int = 0) -> dict:
-    """Create a dictionary of additional fields to store in the properties file."""
-
-    def _estimate_dir_size(target_dir):
-        total_size = 0
-        for item in target_dir.iterdir():
-            if item.is_dir():
-                total_size += _estimate_dir_size(item)
-            else:
-                total_size += item.stat().st_size
-        return total_size
-
-    properties = {}
-    now = datetime.now(tz=timezone.utc)
-    properties["hats_builder"] = f"lsdb v{version('lsdb')}, hats v{version('hats')}"
-    properties["hats_creation_date"] = now.strftime("%Y-%m-%dT%H:%M%Z")
-    estsize_bytes = _estimate_dir_size(path) if path else estsize
-    properties["hats_estsize"] = str(int(estsize_bytes / 1024))
-    properties["hats_release_date"] = "2024-09-18"
-    properties["hats_version"] = "v0.1"
-    return properties

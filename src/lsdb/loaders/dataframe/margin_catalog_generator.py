@@ -14,8 +14,8 @@ from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 
 import lsdb.nested as nd
 from lsdb import Catalog
+from lsdb.catalog.dataset.dataset import Dataset
 from lsdb.catalog.margin_catalog import MarginCatalog
-from lsdb.io.to_hats import extra_property_dict
 from lsdb.loaders.dataframe.from_dataframe_utils import (
     _format_margin_partition_dataframe,
     _generate_dask_dataframe,
@@ -229,7 +229,7 @@ class MarginCatalogGenerator:
         if kwargs is None:
             kwargs = {}
         kwargs.pop("catalog_type", None)
-        kwargs = kwargs | extra_property_dict(estsize=0)
+        kwargs = kwargs | Dataset.new_provenance_properties(hats_estsize=0)
         if not catalog_name:
             catalog_name = self.hc_structure.catalog_info.catalog_name
         return TableProperties(

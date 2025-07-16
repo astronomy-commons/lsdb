@@ -1,8 +1,12 @@
 from collections.abc import Sequence
+from importlib.metadata import version
+from pathlib import Path
 
 import hats as hc
 import nested_pandas as npd
 from dask.delayed import Delayed
+from hats.catalog import TableProperties
+from upath import UPath
 
 import lsdb.nested as nd
 
@@ -120,3 +124,8 @@ class Dataset:
             confusing_columns = ", ".join([f"`{c}`" for c in confusing])
             msg = f"Columns {confusing_columns} are in the catalog but were not loaded."
         raise ValueError(msg)
+
+    @staticmethod
+    def new_provenance_properties(path: str | Path | UPath | None = None, **kwargs) -> dict:
+        """Create a new provenance properties dictionary for the dataset."""
+        return TableProperties.new_provenance_dict(path, builder=f"lsdb v{version('lsdb')}", **kwargs)

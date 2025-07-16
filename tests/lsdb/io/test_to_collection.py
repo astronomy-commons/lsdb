@@ -9,9 +9,9 @@ import lsdb
 def test_save_collection(small_sky_order1_collection_catalog, tmp_path, helpers):
     base_collection_path = Path(tmp_path) / "small_sky_order1_collection"
 
-    small_sky_order1_collection_catalog.to_collection(
+    small_sky_order1_collection_catalog.write_catalog(
         base_collection_path,
-        collection_name="small_sky_order1_collection",
+        catalog_name="small_sky_order1",
         default_columns=["ra", "dec"],
         addl_hats_properties={"obs_regime": "Optical"},
     )
@@ -33,15 +33,14 @@ def test_save_collection(small_sky_order1_collection_catalog, tmp_path, helpers)
     )
 
     assert catalog.margin is not None
-    assert (
-        catalog.margin.hc_structure.catalog_base_dir == base_collection_path / "small_sky_order1_margin_1deg"
-    )
+    assert catalog.margin.hc_structure.catalog_base_dir == base_collection_path / "small_sky_order1_3600arcs"
     pd.testing.assert_frame_equal(
         catalog.margin.compute(), small_sky_order1_collection_catalog.margin.compute()[["ra", "dec"]]
     )
     helpers.assert_catalog_info_is_correct(
         catalog.margin.hc_structure.catalog_info,
         small_sky_order1_collection_catalog.margin.hc_structure.catalog_info,
+        catalog_name="small_sky_order1_3600arcs",
         hats_max_rows="7",
         obs_regime="Optical",
         default_columns=["ra", "dec"],
@@ -58,9 +57,9 @@ def test_save_collection_from_dataframe(small_sky_order1_df, tmp_path):
     )
 
     base_collection_path = Path(tmp_path) / "small_sky_order1_collection"
-    expected_catalog.to_collection(
+    expected_catalog.write_catalog(
         base_collection_path,
-        collection_name="small_sky_order1_collection",
+        catalog_name="small_sky_order1",
         default_columns=["ra", "dec"],
         addl_hats_properties={"obs_regime": "Optical"},
     )
@@ -89,7 +88,7 @@ def test_save_collection_with_empty_margin(small_sky_order1_df, tmp_path):
     )
 
     base_collection_path = Path(tmp_path) / "small_sky_order1_collection"
-    catalog.to_collection(base_collection_path, collection_name="small_sky_order1_collection")
+    catalog.write_catalog(base_collection_path, catalog_name="small_sky_order1")
 
     catalog = lsdb.read_hats(base_collection_path)
     assert isinstance(catalog, lsdb.Catalog)
