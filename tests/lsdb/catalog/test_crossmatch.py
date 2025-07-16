@@ -375,6 +375,14 @@ def test_crossmatch_with_moc(small_sky_order1_catalog):
     assert xmatched.get_healpix_pixels() == [HealpixPixel(order, p) for p in pixels]
 
 
+def test_crossmatch_with_non_catalog(small_sky_catalog, small_sky_xmatch_catalog):
+    # Turn the small_sky_xmatch_catalog into a DataFrame
+    xmatch_df = small_sky_xmatch_catalog.compute()
+    # Perform crossmatch with a DataFrame instead of a Catalog
+    with pytest.raises(TypeError, match="Expected `other` to be a Catalog instance"):
+        small_sky_catalog.crossmatch(xmatch_df)
+
+
 # pylint: disable=too-few-public-methods, unused-argument
 class MockCrossmatchAlgorithm(AbstractCrossmatchAlgorithm):
     """Mock class used to test a crossmatch algorithm"""
