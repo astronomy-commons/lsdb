@@ -1,5 +1,3 @@
-from datetime import datetime, timezone
-
 import nested_pandas as npd
 import pandas as pd
 import pyarrow as pa
@@ -9,7 +7,6 @@ from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 
 import lsdb.nested as nd
 from lsdb.dask.divisions import get_pixels_divisions
-from lsdb.io.to_hats import get_hats_builder_property
 
 
 def _generate_dask_dataframe(
@@ -64,18 +61,6 @@ def _format_margin_partition_dataframe(dataframe: npd.NestedFrame) -> npd.Nested
     """
     dataframe = dataframe.drop(columns=["margin_pixel", "partition_order", "partition_pixel"])
     return dataframe.set_index(SPATIAL_INDEX_COLUMN).sort_index()
-
-
-def _extra_property_dict(est_size_bytes: int):
-    """Create a dictionary of additional fields to store in the properties file."""
-    properties = {}
-    properties["hats_builder"] = get_hats_builder_property()
-    now = datetime.now(tz=timezone.utc)
-    properties["hats_creation_date"] = now.strftime("%Y-%m-%dT%H:%M%Z")
-    properties["hats_estsize"] = f"{int(est_size_bytes / 1024)}"
-    properties["hats_release_date"] = "2024-09-18"
-    properties["hats_version"] = "v0.1"
-    return properties
 
 
 def _has_named_index(dataframe: npd.NestedFrame) -> bool:

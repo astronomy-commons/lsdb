@@ -787,7 +787,25 @@ class HealpixDataset(Dataset):
         overwrite: bool = False,
         **kwargs,
     ):
-        """Saves the catalog to disk in HATS format
+        """Save the catalog to disk in the HATS format. See write_catalog()."""
+        self.write_catalog(
+            base_catalog_path,
+            catalog_name=catalog_name,
+            default_columns=default_columns,
+            overwrite=overwrite,
+            **kwargs,
+        )
+
+    def write_catalog(
+        self,
+        base_catalog_path: str | Path | UPath,
+        *,
+        catalog_name: str | None = None,
+        default_columns: list[str] | None = None,
+        overwrite: bool = False,
+        **kwargs,
+    ):
+        """Save the catalog to disk in HATS format.
 
         Args:
             base_catalog_path (str): Location where catalog is saved to

@@ -19,6 +19,7 @@ from typing_extensions import Self
 from upath import UPath
 
 import lsdb.nested as nd
+from lsdb import io
 from lsdb.catalog.association_catalog import AssociationCatalog
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
 from lsdb.catalog.map_catalog import MapCatalog
@@ -1148,10 +1149,31 @@ class Catalog(HealpixDataset):
         *,
         catalog_name: str | None = None,
         default_columns: list[str] | None = None,
+        as_collection: bool = True,
         overwrite: bool = False,
         **kwargs,
     ):
-        """Saves the catalog to disk in HATS format
+        """Save the catalog to disk in the HATS format. See write_catalog()."""
+        self.write_catalog(
+            base_catalog_path,
+            catalog_name=catalog_name,
+            default_columns=default_columns,
+            as_collection=as_collection,
+            overwrite=overwrite,
+            **kwargs,
+        )
+
+    def write_catalog(
+        self,
+        base_catalog_path: str | Path | UPath,
+        *,
+        catalog_name: str | None = None,
+        default_columns: list[str] | None = None,
+        as_collection: bool = True,
+        overwrite: bool = False,
+        **kwargs,
+    ):
+        """Save the catalog to disk in HATS format.
 
         Args:
             base_catalog_path (str): Location where catalog is saved to
@@ -1159,14 +1181,26 @@ class Catalog(HealpixDataset):
             default_columns (list[str]): A metadata property with the list of the columns in the
                 catalog to be loaded by default. By default, uses the default columns from the
                 original hats catalog if they exist.
+            as_collection (bool): If True, saves the catalog and its margin as a collection
             overwrite (bool): If True existing catalog is overwritten
             **kwargs: Arguments to pass to the parquet write operations
         """
-        super().to_hats(
-            base_catalog_path,
-            catalog_name=catalog_name,
-            default_columns=default_columns,
-            overwrite=overwrite,
-            create_thumbnail=True,
-            **kwargs,
-        )
+        if as_collection:
+            self._check_unloaded_columns(default_columns)
+            io.to_collection(
+                self,
+                base_collection_path=base_catalog_path,
+                catalog_name=catalog_name,
+                default_columns=default_columns,
+                overwrite=overwrite,
+                **kwargs,
+            )
+        else:
+            super().write_catalog(
+                base_catalog_path,
+                catalog_name=catalog_name,
+                default_columns=default_columns,
+                overwrite=overwrite,
+                create_thumbnail=True,
+                **kwargs,
+            )

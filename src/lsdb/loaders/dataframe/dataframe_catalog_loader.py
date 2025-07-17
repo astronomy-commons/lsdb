@@ -22,12 +22,9 @@ from mocpy import MOC
 
 import lsdb.nested as nd
 from lsdb.catalog.catalog import Catalog
+from lsdb.catalog.dataset.dataset import Dataset
 from lsdb.io.schema import get_arrow_schema
-from lsdb.loaders.dataframe.from_dataframe_utils import (
-    _extra_property_dict,
-    _generate_dask_dataframe,
-    _has_named_index,
-)
+from lsdb.loaders.dataframe.from_dataframe_utils import _generate_dask_dataframe, _has_named_index
 from lsdb.types import DaskDFPixelMap
 
 pd.options.mode.chained_assignment = None  # default='warn'
@@ -177,7 +174,7 @@ class DataframeCatalogLoader:
         """
         if kwargs is None:
             kwargs = {}
-        kwargs = kwargs | _extra_property_dict(self.df_total_memory)
+        kwargs = kwargs | Dataset.new_provenance_properties(hats_estsize=self.df_total_memory)
         if catalog_type and catalog_type not in (CatalogType.OBJECT, CatalogType.SOURCE, CatalogType.MAP):
             raise ValueError(f"Cannot create {catalog_type} type catalog via from_dataframe.")
         return TableProperties(
