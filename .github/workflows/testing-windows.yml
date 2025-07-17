@@ -31,4 +31,4 @@ jobs:
         pip install -r requirements.txt
     - name: Run unit tests with pytest
       run: |
-        python -m pytest tests
+        python -m pytest --timeout=0 tests
