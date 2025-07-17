@@ -8,3 +8,4 @@ Performance Tips
     Dask cluster configuration </tutorials/dask-cluster-tips>
     Performance testing </tutorials/performance>
     Joining catalogs </tutorials/pre_executed/join_catalogs>
+    Scaling Workflows </tutorials/pre_executed/scaling_workflows>
