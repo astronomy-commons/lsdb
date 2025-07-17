@@ -40,8 +40,11 @@ for complete installation instructions and contribution best practices.
 
 ## Citation
 
-If you use LSDB in your work, we ask the you cite the conference proceedings 
+If you use LSDB in your work, please cite the conference proceedings: 
 ["Using LSDB to enable large-scale catalog distribution, cross-matching, and analytics"](https://ui.adsabs.harvard.edu/abs/2025arXiv250102103C). 
+
+If you use Rubin Data Preview 1 (DP1) with LSDB, please also cite: ["Variability-finding in Rubin Data Preview 1 with LSDB"](https://ui.adsabs.harvard.edu/abs/2025arXiv250623955M).
+
 Find full citation information [here](./CITATION.bib).
 
 ## Acknowledgements
