@@ -58,7 +58,7 @@ e.g. major/minor/patch, deadlines, blocking issues, breaking changes, folks to n
 ### lsdb
 
 - [ ] request new conda-forge version (open [bot command issue](https://github.com/conda-forge/lsdb-feedstock/issues/) with title `@conda-forge-admin, please update version`)
-- [ ] confirm tagged hats version and approve
+- [ ] confirm tagged `hats` and `nested-pandas` versions and approve
 - [ ] confirm on [conda-forge](https://anaconda.org/conda-forge/lsdb)
 
 ### hats-import
