@@ -135,3 +135,46 @@ def test_index_search_with_mismatching_fields(
             "band": small_sky_order1_source_band_index_dir,
         },
     )
+
+
+def test_index_search_with_no_values(small_sky_order1_source_collection_catalog):
+    # No values provided, should raise ValueError
+    with pytest.raises(ValueError, match="No values specified for search."):
+        small_sky_order1_source_collection_catalog.id_search(values={})
+
+
+def test_id_search_with_list_of_values(small_sky_order1_source_collection_catalog, helpers):
+    # Searching with object_id as a list
+    cat = small_sky_order1_source_collection_catalog.id_search(values={"object_id": [810, 811]})
+    assert isinstance(cat._ddf, nd.NestedFrame)
+    index_search_df = cat.compute()
+    assert len(index_search_df) == 262  # 131 each
+    assert all(index_search_df["object_id"].isin([810, 811]))
+    helpers.assert_divisions_are_correct(cat)
+
+    # Searching with a list containing a non-existent object_id works as if the value was not in the list
+    cat_plus_non_existent = small_sky_order1_source_collection_catalog.id_search(
+        values={"object_id": [810, 811, 900]}
+    )
+    assert isinstance(cat_plus_non_existent._ddf, nd.NestedFrame)
+    index_search_df_plus_non_existent = cat_plus_non_existent.compute()
+    assert len(index_search_df_plus_non_existent) == 262  # 131 each
+    assert all(index_search_df_plus_non_existent["object_id"].isin([810, 811]))
+    helpers.assert_divisions_are_correct(cat_plus_non_existent)
+
+    # ValueError when two or more columns contain list values
+    with pytest.raises(ValueError, match="Only one column may contain a list of values."):
+        small_sky_order1_source_collection_catalog.id_search(
+            values={"object_id": [810, 811], "band": ["r", "g"]}
+        )
+
+    # Search works when only one column contains list values
+    cat_with_only_one_list = small_sky_order1_source_collection_catalog.id_search(
+        values={"object_id": [810, 811], "band": "r"}
+    )
+    assert isinstance(cat_with_only_one_list._ddf, nd.NestedFrame)
+    index_search_df_with_only_one_list = cat_with_only_one_list.compute()
+    assert len(index_search_df_with_only_one_list) == 47  # 17 for object_id=810 + 30 for object_id=811
+    assert all(index_search_df_with_only_one_list["object_id"].isin([810, 811]))
+    assert all(index_search_df_with_only_one_list["band"] == "r")
+    helpers.assert_divisions_are_correct(cat_with_only_one_list)
