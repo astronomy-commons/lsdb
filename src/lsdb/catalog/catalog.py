@@ -834,26 +834,14 @@ class Catalog(HealpixDataset):
 
         if through is not None:
             ddf, ddf_map, alignment = join_catalog_data_through(self, other, through, suffixes)
-
-            if output_catalog_name is None:
-                output_catalog_name = self.hc_structure.catalog_info.catalog_name
-
-            new_catalog_info = create_merged_catalog_info(
-                self.hc_structure.catalog_info, other.hc_structure.catalog_info, output_catalog_name, suffixes
-            )
-            hc_catalog = hc.catalog.Catalog(
-                new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(ddf), moc=alignment.moc
-            )
-            return Catalog(ddf, ddf_map, hc_catalog)
-        if left_on is None or right_on is None:
-            raise ValueError("Either both of left_on and right_on, or through must be set")
-        if left_on not in self._ddf.columns:
-            raise ValueError("left_on must be a column in the left catalog")
-
-        if right_on not in other._ddf.columns:
-            raise ValueError("right_on must be a column in the right catalog")
-
-        ddf, ddf_map, alignment = join_catalog_data_on(self, other, left_on, right_on, suffixes=suffixes)
+        else:
+            if left_on is None or right_on is None:
+                raise ValueError("Either both of left_on and right_on, or through must be set")
+            if left_on not in self._ddf.columns:
+                raise ValueError("left_on must be a column in the left catalog")
+            if right_on not in other._ddf.columns:
+                raise ValueError("right_on must be a column in the right catalog")
+            ddf, ddf_map, alignment = join_catalog_data_on(self, other, left_on, right_on, suffixes)
 
         if output_catalog_name is None:
             output_catalog_name = self.hc_structure.catalog_info.catalog_name
