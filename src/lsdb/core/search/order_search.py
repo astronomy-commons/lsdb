@@ -24,7 +24,7 @@ class OrderSearch(AbstractSearch):
         self.min_order = min_order
         self.max_order = max_order
 
-    def filter_hc_catalog(self, hc_structure: HCCatalogTypeVar) -> HCCatalogTypeVar:
+    def perform_hc_catalog_filter(self, hc_structure: HCCatalogTypeVar) -> HCCatalogTypeVar:
         max_catalog_order = hc_structure.pixel_tree.get_max_depth()
         max_order = max_catalog_order if self.max_order is None else self.max_order
         if self.min_order > max_order:

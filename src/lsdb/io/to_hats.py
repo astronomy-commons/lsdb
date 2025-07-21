@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from copy import copy
-from importlib.metadata import version
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -15,6 +14,8 @@ from hats.io.skymap import write_skymap
 from hats.pixel_math import HealpixPixel, spatial_index_to_healpix
 from hats.pixel_math.sparse_histogram import HistogramAggregator, SparseHistogram
 from upath import UPath
+
+from lsdb.catalog.dataset.dataset import Dataset
 
 if TYPE_CHECKING:
     from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
@@ -82,9 +83,10 @@ def to_hats(
     addl_hats_properties: dict | None = None,
     **kwargs,
 ):
-    """Writes a catalog to disk, in HATS format. The output catalog comprises
-    partition parquet files and respective metadata, as well as JSON files detailing
-    partition, catalog and provenance info.
+    """Writes a catalog to disk, in HATS format.
+
+    The output catalog comprises  partitioned parquet files and respective metadata,
+    as well as text and CSV files detailing partition, catalog and provenance info.
 
     Args:
         catalog (HealpixDataset): A catalog to export
@@ -99,6 +101,10 @@ def to_hats(
         overwrite (bool): If True existing catalog is overwritten
         create_thumbnail (bool): If True, create a data thumbnail of the catalog for
             previewing purposes. Defaults to False.
+        skymap_alt_orders (list[int]): We will write a skymap file at the ``histogram_order``,
+            but can also write down-sampled skymaps, for easier previewing of the data.
+        addl_hats_properties (dict): key-value pairs of additional properties to write in the
+            ``hats.properties`` file.
         **kwargs: Arguments to pass to the parquet write operations
     """
     # Create the output directory for the catalog
@@ -138,6 +144,7 @@ def to_hats(
 
     if not addl_hats_properties:
         addl_hats_properties = {}
+
     if catalog.hc_structure.catalog_info.catalog_type in (CatalogType.OBJECT, CatalogType.SOURCE):
         addl_hats_properties = addl_hats_properties | {
             "skymap_order": histogram_order,
@@ -154,6 +161,8 @@ def to_hats(
 
         write_skymap(histogram=full_histogram, catalog_dir=base_catalog_path, orders=skymap_alt_orders)
 
+    addl_hats_properties = addl_hats_properties | Dataset.new_provenance_properties(base_catalog_path)
+
     new_hc_structure = create_modified_catalog_structure(
         catalog.hc_structure,
         base_catalog_path,
@@ -161,7 +170,6 @@ def to_hats(
         total_rows=int(np.sum(counts)),
         default_columns=default_columns,
         hats_max_rows=hats_max_rows,
-        hats_builder=get_hats_builder_property(),
         **addl_hats_properties,
     )
     new_hc_structure.catalog_info.to_properties_file(base_catalog_path)
@@ -237,8 +245,3 @@ def create_modified_catalog_structure(
     new_hc_structure.catalog_info = new_hc_structure.catalog_info.copy_and_update(**kwargs)
     new_hc_structure.catalog_info.catalog_name = catalog_name
     return new_hc_structure
-
-
-def get_hats_builder_property() -> str:
-    """Generate the hats-builder property with the current versions of LSDB and HATS"""
-    return f"lsdb v{version('lsdb')}, hats v{version('hats')}"

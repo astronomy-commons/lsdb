@@ -12,8 +12,8 @@ from lsdb.loaders.dataframe.margin_catalog_generator import MarginCatalogGenerat
 def from_dataframe(
     dataframe: pd.DataFrame,
     *,
-    ra_column: str = "ra",
-    dec_column: str = "dec",
+    ra_column: str | None = None,
+    dec_column: str | None = None,
     lowest_order: int = 0,
     highest_order: int = 7,
     drop_empty_siblings: bool = True,
@@ -35,13 +35,15 @@ def from_dataframe(
 
     Args:
         dataframe (pd.Dataframe): The catalog Pandas Dataframe.
-        ra_column (str): The name of the right ascension column. Defaults to ra.
-        dec_column (str): The name of the declination column. Defaults to dec.
+        ra_column (str): The name of the right ascension column. By default,
+            case-insensitive versions of 'ra' are detected.
+        dec_column (str): The name of the declination column. By default,
+            case-insensitive versions of 'dec' are detected.
         lowest_order (int): The lowest partition order. Defaults to 0.
         highest_order (int): The highest partition order. Defaults to 7.
         drop_empty_siblings (bool): When determining final partitionining,
             if 3 of 4 pixels are empty, keep only the non-empty pixel
-        partition_size (int): The desired partition size, in number of bytes in-memory.
+        partition_size (int): The desired partition size, in number of rows.
         threshold (int): The maximum number of data points per pixel.
         margin_order (int): The order at which to generate the margin cache.
         margin_threshold (float): The size of the margin cache boundary, in arcseconds. If None, and

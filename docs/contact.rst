@@ -1,4 +1,4 @@
-Contact us
+Getting Help
 ===============================================================================
 
 We at LINCC Frameworks pride ourselves on being a friendly bunch!
@@ -10,6 +10,9 @@ making our products better, or pretty much anything else, reach out!
     * https://github.com/astronomy-commons/lsdb/issues/new
 * Start a new github discussion
     * https://github.com/astronomy-commons/lsdb/discussions/new/choose
+* If you have questions about data from the Rubin Observatory, the best place to ask is:
+    * https://community.lsst.org
+    * `LSST Data Products category <https://community.lsst.org/c/support/data/34>`_
 * If you're on LSST Discovery Alliance slack, so are we!
     * `#lincc-frameworks-qa <https://lsstc.slack.com/archives/C062LG1AK1S>`_
     * `#lincc-frameworks-lsdb <https://lsstc.slack.com/archives/C04610PQW9F>`_

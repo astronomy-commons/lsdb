@@ -21,7 +21,7 @@ LSDB is a python tool for scalable analysis of large catalogs
 (i.e. querying and crossmatching ~10⁹ sources). This package uses dask to parallelize operations across
 multiple HATS partitioned surveys.
 
-Check out our [ReadTheDocs site](https://lsdb.readthedocs.io/en/stable/)
+Check out our [ReadTheDocs site](https://docs.lsdb.io)
 for more information on partitioning, installation, and contributing.
 
 See related projects:
@@ -40,8 +40,11 @@ for complete installation instructions and contribution best practices.
 
 ## Citation
 
-If you use LSDB in your work, we ask the you cite the conference proceedings 
+If you use LSDB in your work, please cite the conference proceedings: 
 ["Using LSDB to enable large-scale catalog distribution, cross-matching, and analytics"](https://ui.adsabs.harvard.edu/abs/2025arXiv250102103C). 
+
+If you use Rubin Data Preview 1 (DP1) with LSDB, please also cite: ["Variability-finding in Rubin Data Preview 1 with LSDB"](https://ui.adsabs.harvard.edu/abs/2025arXiv250623955M).
+
 Find full citation information [here](./CITATION.bib).
 
 ## Acknowledgements

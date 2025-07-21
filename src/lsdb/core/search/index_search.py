@@ -30,7 +30,7 @@ class IndexSearch(AbstractSearch):
         self.values = values
         self.index_catalogs = index_catalogs
 
-    def filter_hc_catalog(self, hc_structure: HCCatalogTypeVar) -> HCCatalogTypeVar:
+    def perform_hc_catalog_filter(self, hc_structure: HCCatalogTypeVar) -> HCCatalogTypeVar:
         """Determine the pixels for which there is a result in each field"""
         all_pixels = set(hc_structure.get_healpix_pixels())
         for field_name, field_value in self.values.items():
@@ -44,6 +44,11 @@ class IndexSearch(AbstractSearch):
         filter_mask = np.ones(len(frame), dtype=np.bool)
         for field_name, field_index_catalog in self.index_catalogs.items():
             index_column = field_index_catalog.catalog_info.indexing_column
-            mask = frame[index_column].isin([self.values[field_name]])
+            field_values = (
+                self.values[field_name]
+                if isinstance(self.values[field_name], list)
+                else [self.values[field_name]]
+            )
+            mask = frame[index_column].isin(field_values)
             filter_mask = filter_mask & mask
         return frame[filter_mask]

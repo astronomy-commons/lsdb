@@ -1,8 +1,12 @@
 from collections.abc import Sequence
+from importlib.metadata import version
+from pathlib import Path
 
 import hats as hc
 import nested_pandas as npd
 from dask.delayed import Delayed
+from hats.catalog import TableProperties
+from upath import UPath
 
 import lsdb.nested as nd
 
@@ -18,7 +22,7 @@ class Dataset:
         """Initialise a Catalog object.
 
         Not to be used to load a catalog directly, use one of the `lsdb.from_...` or
-        `lsdb.load_...` methods
+        `lsdb.open_...` methods
 
         Args:
             ddf: Dask DataFrame with the source data of the catalog
@@ -37,7 +41,7 @@ class Dataset:
         return (
             f"<div><strong>lsdb Catalog {self.name}:</strong></div>"
             f"{data}"
-            f"<div>{loaded_cols} out of {available_cols} columns in the catalog have been loaded "
+            f"<div>{loaded_cols} out of {available_cols} available columns in the catalog have been loaded "
             f"<strong>lazily</strong>, meaning no data has been read, only the catalog schema</div>"
         )
 
@@ -69,17 +73,21 @@ class Dataset:
 
     @property
     def dtypes(self):
-        """Returns the datatypes of the columns in the Dataset"""
+        """Returns the pandas datatypes of the columns in the Dataset"""
         return self._ddf.dtypes
 
     @property
     def columns(self):
-        """Returns the columns in the Dataset"""
+        """Returns the names of columns available in the Dataset"""
         return self._ddf.columns
 
     @property
     def all_columns(self):
-        """Returns all columns in the original Dataset"""
+        """Returns the names of all columns in the original Dataset.
+
+        This is different from the `columns` property, as you can open a catalog with
+        only a subset of the columns, either explicitly with the ``columns=`` argument,
+        or with some ``default_columns`` set on the catalog by the catalog provider."""
         if self.hc_structure.original_schema is None:
             # This case corresponds to Datasets that have not yet been
             # serialized, and thus cannot have a discrepancy between
@@ -116,3 +124,8 @@ class Dataset:
             confusing_columns = ", ".join([f"`{c}`" for c in confusing])
             msg = f"Columns {confusing_columns} are in the catalog but were not loaded."
         raise ValueError(msg)
+
+    @staticmethod
+    def new_provenance_properties(path: str | Path | UPath | None = None, **kwargs) -> dict:
+        """Create a new provenance properties dictionary for the dataset."""
+        return TableProperties.new_provenance_dict(path, builder=f"lsdb v{version('lsdb')}", **kwargs)

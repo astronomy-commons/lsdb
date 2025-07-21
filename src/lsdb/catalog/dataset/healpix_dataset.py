@@ -26,7 +26,7 @@ from hats.pixel_math.healpix_pixel_function import get_pixel_argsort
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 from matplotlib.figure import Figure
 from pandas._libs import lib
-from pandas._typing import AnyAll, Axis, IndexLabel
+from pandas._typing import AnyAll, Axis, IndexLabel, Renamer
 from pandas.api.extensions import no_default
 from typing_extensions import Self
 from upath import UPath
@@ -44,7 +44,7 @@ from lsdb.io.schema import get_arrow_schema
 from lsdb.types import DaskDFPixelMap
 
 
-# pylint: disable=protected-access,too-many-public-methods,too-many-lines
+# pylint: disable=protected-access,too-many-public-methods,too-many-lines,import-outside-toplevel,cyclic-import
 class HealpixDataset(Dataset):
     """LSDB Catalog DataFrame to perform analysis of sky catalogs and efficient
     spatial operations.
@@ -65,7 +65,7 @@ class HealpixDataset(Dataset):
         """Initialise a Catalog object.
 
         Not to be used to load a catalog directly, use one of the `lsdb.from_...` or
-        `lsdb.load_...` methods
+        `lsdb.open_...` methods
 
         Args:
             ddf: Dask DataFrame with the source data of the catalog
@@ -101,7 +101,7 @@ class HealpixDataset(Dataset):
 
     @property
     def nested_columns(self) -> list[str]:
-        """The columns of the catalog that are nested.
+        """The names of the columns of the catalog that are nested.
 
         Returns:
             The list of nested columns in the catalog.
@@ -211,9 +211,22 @@ class HealpixDataset(Dataset):
         include_columns: list[str] | None = None,
         include_pixels: list[HealpixPixel] | None = None,
     ) -> list[HealpixPixel]:
-        """Read footer statistics in parquet metadata, and report on global min/max values."""
-        self._check_unloaded_columns(exclude_columns)
-        self._check_unloaded_columns(include_columns)
+        """Read footer statistics in parquet metadata, and report on global min/max values.
+
+        Args:
+            use_default_columns (bool): should we use only the columns that are loaded
+                by default (will be set in the metadata by the catalog provider).
+                Defaults to True.
+            exclude_hats_columns (bool): exclude HATS spatial and partitioning fields
+                from the statistics. Defaults to True.
+            exclude_columns (List[str]): additional columns to exclude from the statistics.
+            include_columns (List[str]): if specified, only return statistics for the column
+                names provided. Defaults to None, and returns all non-hats columns.
+            include_pixels (list[HealpixPixel]): if specified, only return statistics
+                for the pixels indicated. Defaults to none, and returns all pixels.
+
+        Returns:
+            dataframe with global summary statistics"""
         if use_default_columns and include_columns is None:
             include_columns = self.hc_structure.catalog_info.default_columns
 
@@ -234,9 +247,28 @@ class HealpixDataset(Dataset):
         multi_index=False,
         include_pixels: list[HealpixPixel] | None = None,
     ) -> list[HealpixPixel]:
-        """Read footer statistics in parquet metadata, and report on global min/max values."""
-        self._check_unloaded_columns(exclude_columns)
-        self._check_unloaded_columns(include_columns)
+        """Read footer statistics in parquet metadata, and report on min/max values for
+        for each data partition.
+
+        Args:
+            use_default_columns (bool): should we use only the columns that are loaded
+                by default (will be set in the metadata by the catalog provider).
+                Defaults to True.
+            exclude_hats_columns (bool): exclude HATS spatial and partitioning fields
+                from the statistics. Defaults to True.
+            exclude_columns (List[str]): additional columns to exclude from the statistics.
+            include_columns (List[str]): if specified, only return statistics for the column
+                names provided. Defaults to None, and returns all non-hats columns.
+            include_stats (List[str]): if specified, only return the kinds of values from list
+                (min_value, max_value, null_count, row_count). Defaults to None, and returns all values.
+            multi_index (bool): should the returned frame be created with a multi-index, first on
+                pixel, then on column name? Default is False, and instead indexes on pixel, with
+                separate columns per-data-column and stat value combination.
+            include_pixels (list[HealpixPixel]): if specified, only return statistics
+                for the pixels indicated. Defaults to none, and returns all pixels.
+        Returns:
+            dataframe with granular per-pixel statistics
+        """
         if use_default_columns and include_columns is None:
             include_columns = self.hc_structure.catalog_info.default_columns
 
@@ -438,6 +470,18 @@ class HealpixDataset(Dataset):
         ndf = self._ddf.query(expr)
         return self._create_updated_dataset(ddf=ndf)
 
+    def rename(self, columns: Renamer) -> Self:
+        """Renames catalog columns (not indices) using a dictionary or function mapping.
+
+        Args:
+            columns (dict-like or function): transformations to apply to column names.
+
+        Returns:
+            A catalog that contains the data from the original catalog with renamed columns.
+        """
+        ndf = self._ddf.rename(columns=columns)
+        return self._create_updated_dataset(ddf=ndf)
+
     def _perform_search(
         self,
         metadata: HCHealpixDataset,
@@ -482,11 +526,33 @@ class HealpixDataset(Dataset):
         Returns:
             A new Catalog containing the points filtered to those matching the search parameters.
         """
+        if (
+            self.hc_structure.catalog_info.total_rows > 0
+            and self.hc_structure.catalog_base_dir is not None
+            and self.hc_structure.original_schema is not None
+        ):
+            return self._reload_with_filter(search)
         filtered_hc_structure = search.filter_hc_catalog(self.hc_structure)
         ddf_partition_map, search_ndf = self._perform_search(filtered_hc_structure, search)
         return self._create_updated_dataset(
             ddf=search_ndf, ddf_pixel_map=ddf_partition_map, hc_structure=filtered_hc_structure
         )
+
+    def _reload_with_filter(self, search: AbstractSearch):
+        """Reloads the catalog from storage, applying a given search filter. Uses the columns of the current
+        catalog to select the same columns to reload."""
+        from lsdb.loaders.hats.read_hats import _load_catalog
+
+        all_columns = self._ddf._meta.all_columns
+        base_columns = all_columns.pop("base", [])
+        nonnested_basecols = [c for c in base_columns if c not in self._ddf._meta.nested_columns]
+        loading_columns = [
+            [f"{base_name}.{col}" for col in all_columns[base_name]] for base_name in all_columns
+        ]
+        columns = nonnested_basecols + [c for cs in loading_columns for c in cs]
+
+        hc_structure = self._create_modified_hc_structure(updated_schema=self.hc_structure.original_schema)
+        return _load_catalog(hc_structure, search_filter=search, columns=columns, error_empty_filter=False)
 
     def map_partitions(
         self,
@@ -721,7 +787,25 @@ class HealpixDataset(Dataset):
         overwrite: bool = False,
         **kwargs,
     ):
-        """Saves the catalog to disk in HATS format
+        """Save the catalog to disk in the HATS format. See write_catalog()."""
+        self.write_catalog(
+            base_catalog_path,
+            catalog_name=catalog_name,
+            default_columns=default_columns,
+            overwrite=overwrite,
+            **kwargs,
+        )
+
+    def write_catalog(
+        self,
+        base_catalog_path: str | Path | UPath,
+        *,
+        catalog_name: str | None = None,
+        default_columns: list[str] | None = None,
+        overwrite: bool = False,
+        **kwargs,
+    ):
+        """Save the catalog to disk in HATS format.
 
         Args:
             base_catalog_path (str): Location where catalog is saved to

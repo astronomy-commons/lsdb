@@ -44,7 +44,7 @@ def test_catalog_html_repr(small_sky_order1_catalog):
     assert small_sky_order1_catalog.name in full_html
     assert str(small_sky_order1_catalog.get_ordered_healpix_pixels()[0]) in full_html
     assert str(small_sky_order1_catalog.get_ordered_healpix_pixels()[-1]) in full_html
-    assert "columns in the catalog have been loaded <strong>lazily</strong>" in full_html
+    assert "available columns in the catalog have been loaded <strong>lazily</strong>" in full_html
 
 
 def test_catalog_compute_equals_ddf_compute(small_sky_order1_catalog):
@@ -277,6 +277,42 @@ def test_query_margin(small_sky_xmatch_with_margin):
     pd.testing.assert_frame_equal(result_catalog.compute(), expected_ddf.compute())
     pd.testing.assert_frame_equal(result_catalog.margin.compute(), expected_margin_ddf.compute())
     assert isinstance(result_catalog.margin._ddf, nd.NestedFrame)
+
+
+def test_rename_with_callable(small_sky_xmatch_with_margin):
+    uppercase_catalog = small_sky_xmatch_with_margin.rename(columns=str.upper)
+    assert len(small_sky_xmatch_with_margin.columns) == len(
+        uppercase_catalog.columns == len(uppercase_catalog.margin.columns)
+    )
+    for i, col in enumerate(small_sky_xmatch_with_margin.columns):
+        colname = col.upper()
+        assert uppercase_catalog.columns[i] == colname
+        assert uppercase_catalog.margin.columns[i] == colname
+
+    lowercase_catalog = uppercase_catalog.rename(columns=str.lower)
+    assert len(small_sky_xmatch_with_margin.columns) == len(
+        lowercase_catalog.columns == len(lowercase_catalog.margin.columns)
+    )
+    for i, col in enumerate(small_sky_xmatch_with_margin.columns):
+        colname = col.lower()
+        assert lowercase_catalog.columns[i] == colname
+        assert lowercase_catalog.margin.columns[i] == colname
+
+
+def test_rename_with_dict(small_sky_xmatch_with_margin):
+    rename_map = {}
+    for i, col in enumerate(small_sky_xmatch_with_margin.columns):
+        rename_map[col] = f"{col}_{i}"
+    renamed_catalog = small_sky_xmatch_with_margin.rename(columns=rename_map)
+
+    assert (
+        len(small_sky_xmatch_with_margin.columns)
+        == len(renamed_catalog.columns)
+        == len(renamed_catalog.margin.columns)
+    )
+    for i, col in enumerate(small_sky_xmatch_with_margin.columns):
+        assert renamed_catalog.columns[i] == f"{col}_{i}"
+        assert renamed_catalog.margin.columns[i] == f"{col}_{i}"
 
 
 def test_assign_no_arguments(small_sky_order1_catalog):
