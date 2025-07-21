@@ -13,3 +13,13 @@ class AssociationCatalog(HealpixDataset):
     """
 
     hc_structure: hc.catalog.AssociationCatalog
+
+    @property
+    def separation_column(self):
+        """The name of the separation column in the association"""
+        return self.hc_structure.catalog_info.assn_separation_column
+
+    @property
+    def max_separation(self):
+        """The maximum distance between two points in the association, in arcseconds"""
+        return self.hc_structure.catalog_info.assn_max_separation

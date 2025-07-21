@@ -51,10 +51,9 @@ def test_crossmatch_to_association(xmatch_result, association_kwargs, tmp_path):
         HealpixPixel(1, 45),
         HealpixPixel(1, 46),
     ]
-    assert association_table.hc_structure.catalog_info.assn_separation_column == "_dist_arcsec"
+    assert association_table.separation_column == "_dist_arcsec"
     expected_max_separation = association_table.compute()["_dist_arcsec"].max()
-    actual_max_separation = association_table.hc_structure.catalog_info.assn_max_separation
-    assert pytest.approx(actual_max_separation, 0.001) == expected_max_separation
+    assert pytest.approx(association_table.max_separation, 0.001) == expected_max_separation
 
 
 def test_join_through_crossmatch_association(
@@ -80,6 +79,39 @@ def test_join_through_crossmatch_association(
     pd.testing.assert_series_equal(
         xmatch_df["id_small_sky_xmatch"], expected_xmatch_df["id_right"], check_names=False
     )
+
+
+def test_to_association_has_invalid_separation_column(xmatch_result, association_kwargs, tmp_path):
+    association_kwargs = association_kwargs | {"separation_column": "_dist"}
+    with pytest.raises(ValueError, match="separation_column"):
+        to_association(
+            xmatch_result,
+            catalog_name="test_association",
+            base_catalog_path=tmp_path,
+            overwrite=False,
+            **association_kwargs,
+        )
+
+
+def test_join_through_has_margin_threshold_smaller_than_separation(
+    xmatch_result, association_kwargs, small_sky_catalog, small_sky_xmatch_with_margin, tmp_path
+):
+    to_association(
+        xmatch_result,
+        catalog_name="test_association",
+        base_catalog_path=tmp_path,
+        overwrite=False,
+        **association_kwargs,
+    )
+    association_table = lsdb.read_hats(tmp_path)
+    assert isinstance(association_table, AssociationCatalog)
+    assert pytest.approx(association_table.max_separation, 0.01) == 36
+
+    # Fake that the right catalog's margin is smaller than 36
+    small_sky_xmatch_with_margin.margin.hc_structure.catalog_info.margin_threshold = 1
+
+    with pytest.warns(RuntimeWarning, match="maximum separation"):
+        small_sky_catalog.join(small_sky_xmatch_with_margin, through=association_table)
 
 
 def test_to_association_overwrite(xmatch_result, association_kwargs, tmp_path):
