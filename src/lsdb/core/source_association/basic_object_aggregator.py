@@ -1,20 +1,26 @@
 import nested_pandas as npd
+import numpy as np
 import pandas as pd
+import pyarrow as pa
 from hats import HealpixPixel
 from hats.catalog import TableProperties
-
-import pyarrow as pa
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 
 from lsdb.core.source_association.abstract_object_aggregator import AbstractObjectAggregator
 
 
 class BasicObjectAggregator(AbstractObjectAggregator):
-
     def __init__(
-        self, properties: TableProperties, ra_name="ra", dec_name="dec", append_lc=True, lc_name="lc"
+        self,
+        properties: TableProperties,
+        ra_name="ra",
+        dec_name="dec",
+        append_lc=True,
+        lc_name="lc",
+        exposure_name="exposure",
     ):
         super().__init__(ra_name, dec_name, append_lc, lc_name)
+        self.exposure_name = exposure_name
         self.properties = properties
 
     def get_object_meta_df(self) -> npd.NestedFrame:
@@ -31,9 +37,10 @@ class BasicObjectAggregator(AbstractObjectAggregator):
     def perform_object_aggregation(
         self, df: dict, obj_id: int, pixel: HealpixPixel = None, properties: TableProperties = None
     ) -> dict:
+        idx = np.argmin(df[self.exposure_name])
         return {
             "object_id": obj_id,
-            self.ra_name: df[properties.ra_column][0],
-            self.dec_name: df[properties.dec_column][0],
-            SPATIAL_INDEX_COLUMN: df[SPATIAL_INDEX_COLUMN][0],
+            self.ra_name: df[properties.ra_column][idx],
+            self.dec_name: df[properties.dec_column][idx],
+            SPATIAL_INDEX_COLUMN: df[SPATIAL_INDEX_COLUMN][idx],
         }
