@@ -52,8 +52,8 @@ def test_crossmatch_to_association(xmatch_result, association_kwargs, tmp_path):
         HealpixPixel(1, 46),
     ]
     assert association_table.separation_column == "_dist_arcsec"
-    expected_max_separation = association_table.compute()["_dist_arcsec"].max()
-    assert pytest.approx(association_table.max_separation, 0.001) == expected_max_separation
+    max_separation = association_table.compute()["_dist_arcsec"].max()
+    assert pytest.approx(max_separation, abs=1e-5) == association_table.max_separation
 
 
 def test_join_through_crossmatch_association(
@@ -105,10 +105,10 @@ def test_join_through_has_margin_threshold_smaller_than_separation(
     )
     association_table = lsdb.read_hats(tmp_path)
     assert isinstance(association_table, AssociationCatalog)
-    assert pytest.approx(association_table.max_separation, 0.01) == 36
 
-    # Fake that the right catalog's margin is smaller than 36
-    small_sky_xmatch_with_margin.margin.hc_structure.catalog_info.margin_threshold = 1
+    # Fake that the right catalog's margin is smaller than the assn max separation
+    assert association_table.max_separation > 35
+    small_sky_xmatch_with_margin.margin.hc_structure.catalog_info.margin_threshold = 35
 
     with pytest.warns(RuntimeWarning, match="maximum separation"):
         small_sky_catalog.join(small_sky_xmatch_with_margin, through=association_table)

@@ -139,6 +139,8 @@ def to_association(
         separation_column=separation_column,
     )
 
+    catalog = catalog[[primary_column_association, join_column_association, separation_column]]
+
     # Create the output directory for the catalog
     base_catalog_path = file_io.file_io.get_upath(base_catalog_path)
     if file_io.file_io.directory_has_contents(base_catalog_path):
@@ -171,7 +173,7 @@ def to_association(
             "hats_order": partition_info.get_highest_order(),
             "total_rows": int(np.sum(counts)),
             "moc_sky_fraction": f"{partition_info.calculate_fractional_coverage():0.5f}",
-            "assn_max_separation": np.max(max_separations),
+            "assn_max_separation": f"{np.max(max_separations):0.5f}",
         }
         | column_args
         | kwargs
