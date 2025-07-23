@@ -1,10 +1,10 @@
-=========
+=======
 Catalog
-=========
+=======
 .. currentmodule:: lsdb.catalog
 
 Catalog Types
-~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~
 .. autosummary::
     :toctree: api/
 
@@ -13,7 +13,7 @@ Catalog Types
     MapCatalog
 
 Properties
-~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~
 .. autosummary::
     :toctree: api/
 
@@ -41,7 +41,7 @@ Inspection Methods
     Catalog.plot_points
 
 Search Methods
-~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~
 .. autosummary::
     :toctree: api/
 
@@ -60,7 +60,7 @@ Search Methods
     Catalog.__len__
 
 Dataframe Methods
-~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~
 .. autosummary::
     :toctree: api/
 
@@ -82,7 +82,7 @@ Dataframe Methods
     Catalog.skymap_histogram
 
 Inter-catalog Methods
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
 .. autosummary::
     :toctree: api/
 

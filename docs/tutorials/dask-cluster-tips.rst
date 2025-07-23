@@ -80,8 +80,6 @@ core per Python thread.
 Setting memory limits
 .....................
 
-In terms of RAM allocation for each worker, we have found that returns diminish past 10 GB per each thread
-allocated to that worker when processing LSDB workloads.
 Usage of ``lsdb.open_catalog(columns=..., filters=...)`` may make the memory footprint much smaller, which would
 allow you to allocate less memory per worker, and thus use more workers and make the analysis run faster.
 
@@ -282,3 +280,14 @@ on the main process (one you create ``Client`` on).
 There is no single solution to this problem, but you can try to reduce the number of partitions in use,
 for example, by specifying limiting the area when loading data,
 with ``lsdb.open_catalog(search_filter=lsdb.ConeSearch(...))``.
+
+Another way to reduce the load is to use the partition indexer after the catalog is opened,
+with an expression like ``cat.partitions[0]`` to get a catalog with only a single partition,
+or ``cat.partitions[0:4]`` to get 4, and so on.
+
+
+Understanding common Dask errors and warnings
+.............................................
+
+Dask Messages Guide </tutorials/dask-messages-guide>
+
