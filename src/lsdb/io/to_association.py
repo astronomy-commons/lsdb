@@ -139,7 +139,8 @@ def to_association(
         separation_column=separation_column,
     )
 
-    catalog = catalog[[primary_column_association, join_column_association, separation_column]]
+    # Select only the ID columns for the association
+    association = catalog[[primary_column_association, join_column_association, separation_column]]
 
     # Create the output directory for the catalog
     base_catalog_path = file_io.file_io.get_upath(base_catalog_path)
@@ -154,7 +155,7 @@ def to_association(
 
     # Save partition parquet files
     pixels, counts, max_separations = write_partitions(
-        catalog, base_catalog_dir_fp=base_catalog_path, separation_column=separation_column, **kwargs
+        association, base_catalog_dir_fp=base_catalog_path, separation_column=separation_column, **kwargs
     )
 
     # Save parquet metadata

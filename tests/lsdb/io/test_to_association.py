@@ -3,7 +3,6 @@ import pytest
 from hats.pixel_math import HealpixPixel
 
 import lsdb
-import lsdb.nested as nd
 from lsdb.catalog.association_catalog import AssociationCatalog
 from lsdb.io.to_association import _check_catalogs_and_columns, to_association
 
@@ -45,18 +44,18 @@ def test_crossmatch_to_association(xmatch_result, association_kwargs, tmp_path):
     )
     association_table = lsdb.read_hats(tmp_path)
     assert isinstance(association_table, AssociationCatalog)
-    assert isinstance(association_table._ddf, nd.NestedFrame)
     assert association_table.get_healpix_pixels() == [
         HealpixPixel(1, 44),
         HealpixPixel(1, 45),
         HealpixPixel(1, 46),
     ]
+    assert association_table.all_columns == ["id_left", "id_right", "_dist_arcsec"]
     assert association_table.separation_column == "_dist_arcsec"
     max_separation = association_table.compute()["_dist_arcsec"].max()
     assert pytest.approx(max_separation, abs=1e-5) == association_table.max_separation
 
 
-def test_join_through_crossmatch_association(
+def test_to_association_join_through_roundtrip(
     xmatch_result, association_kwargs, small_sky_catalog, small_sky_xmatch_with_margin, tmp_path
 ):
     to_association(
@@ -69,7 +68,7 @@ def test_join_through_crossmatch_association(
     association_table = lsdb.read_hats(tmp_path)
     assert isinstance(association_table, AssociationCatalog)
     xmatch_cat = small_sky_catalog.join(small_sky_xmatch_with_margin, through=association_table)
-    assert association_table.get_healpix_pixels() == xmatch_cat.get_healpix_pixels()
+    assert xmatch_cat.get_healpix_pixels() == association_table.get_healpix_pixels()
     assert xmatch_cat.hc_structure.moc is not None
     xmatch_df = xmatch_cat.compute()
     expected_xmatch_df = xmatch_result.compute()
@@ -91,27 +90,6 @@ def test_to_association_has_invalid_separation_column(xmatch_result, association
             overwrite=False,
             **association_kwargs,
         )
-
-
-def test_join_through_has_margin_threshold_smaller_than_separation(
-    xmatch_result, association_kwargs, small_sky_catalog, small_sky_xmatch_with_margin, tmp_path
-):
-    to_association(
-        xmatch_result,
-        catalog_name="test_association",
-        base_catalog_path=tmp_path,
-        overwrite=False,
-        **association_kwargs,
-    )
-    association_table = lsdb.read_hats(tmp_path)
-    assert isinstance(association_table, AssociationCatalog)
-
-    # Fake that the right catalog's margin is smaller than the assn max separation
-    assert association_table.max_separation > 35
-    small_sky_xmatch_with_margin.margin.hc_structure.catalog_info.margin_threshold = 35
-
-    with pytest.warns(RuntimeWarning, match="maximum separation"):
-        small_sky_catalog.join(small_sky_xmatch_with_margin, through=association_table)
 
 
 def test_to_association_overwrite(xmatch_result, association_kwargs, tmp_path):

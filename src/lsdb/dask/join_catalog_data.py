@@ -193,9 +193,19 @@ def perform_join_through(
 
     left, right_joined_df = rename_columns_with_suffixes(left, right_joined_df, suffixes)
 
-    join_columns = [assoc_catalog_info.primary_column_association]
-    if assoc_catalog_info.join_column_association != assoc_catalog_info.primary_column_association:
-        join_columns.append(assoc_catalog_info.join_column_association)
+    # Edge case: if right_column + suffix == join_column_association, columns will be in the wrong order
+    # so rename association column
+    join_column_association = assoc_catalog_info.join_column_association
+    if join_column_association in right_joined_df.columns:
+        join_column_association = join_column_association + "_assoc"
+        through.rename(
+            columns={assoc_catalog_info.join_column_association: join_column_association}, inplace=True
+        )
+
+    join_columns_to_drop = []
+    for c in [assoc_catalog_info.primary_column_association, join_column_association]:
+        if c not in left.columns and c not in right_joined_df.columns and c not in join_columns_to_drop:
+            join_columns_to_drop.append(c)
 
     cols_to_drop = [c for c in NON_JOINING_ASSOCIATION_COLUMNS if c in through.columns]
     if len(cols_to_drop) > 0:
@@ -210,13 +220,14 @@ def perform_join_through(
         )
         .merge(
             right_joined_df,
-            left_on=assoc_catalog_info.join_column_association,
+            left_on=join_column_association,
             right_on=assoc_catalog_info.join_column + suffixes[1],
         )
     )
 
     merged.set_index(SPATIAL_INDEX_COLUMN, inplace=True)
-    merged.drop(join_columns, axis=1, inplace=True)
+    if len(join_columns_to_drop) > 0:
+        merged.drop(join_columns_to_drop, axis=1, inplace=True)
     return merged
 
 
