@@ -72,7 +72,6 @@ def to_association(
     primary and join OBJECT catalogs, so that the association table can be used
     to perform equijoins on the two sides and recreate the crossmatch.
 
-
     Args:
         catalog (HealpixDataset): A catalog to export
         base_catalog_path (str): Location where catalog is saved to
