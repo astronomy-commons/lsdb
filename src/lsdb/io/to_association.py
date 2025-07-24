@@ -22,7 +22,7 @@ def perform_write(
     df: npd.NestedFrame,
     hp_pixel: HealpixPixel,
     base_catalog_dir: str | Path | UPath,
-    separation_column: str,
+    separation_column: str | None = None,
     **kwargs,
 ) -> tuple[int, float]:
     """Writes a pandas dataframe to a single parquet file and returns the total count
@@ -36,14 +36,16 @@ def perform_write(
         **kwargs: other kwargs to pass to pq.write_table method
 
     Returns:
-        The total number of points on the partition and the sparse count histogram
-        at the specified order.
+        The total number of points on the partition and the maximum separation between
+        any two of its points. It returns a maxmimum separation of -1 if a separation
+        column is not provided.
     """
     pixel_dir = file_io.pixel_directory(base_catalog_dir, hp_pixel.order, hp_pixel.pixel)
     file_io.file_io.make_directory(pixel_dir, exist_ok=True)
     pixel_path = file_io.paths.pixel_catalog_file(base_catalog_dir, hp_pixel)
     df.to_parquet(pixel_path.path, filesystem=pixel_path.fs, **kwargs)
-    return len(df), df[separation_column].max()
+    max_sep = df[separation_column].max() if separation_column is not None else -1
+    return len(df), max_sep
 
 
 # pylint: disable=protected-access,too-many-locals
@@ -59,7 +61,7 @@ def to_association(
     join_column_association: str | None = None,
     join_to_primary_id_column: str | None = None,
     join_id_column: str | None = None,
-    separation_column: str = "_dist_arcsec",
+    separation_column: str | None = None,
     overwrite: bool = False,
     **kwargs,
 ):
@@ -75,6 +77,14 @@ def to_association(
         catalog (HealpixDataset): A catalog to export
         base_catalog_path (str): Location where catalog is saved to
         catalog_name (str): The name of the output catalog
+        primary_catalog_dir (path-like): The path to the primary catalog
+        primary_column_association (str): The column in the association catalog
+            that matches the primary (left) side of join
+        primary_id_column (str): The id column in the primary catalog
+        join_catalog_dir (path-like): The path to the join catalog
+        join_column_association (str): The column in the association catalog
+            that matches the joining (right) side of join
+        join_id_column (str): The id column in the join catalog
         separation_column (str): The name of the crossmatch separation column
         overwrite (bool): If True existing catalog is overwritten
         **kwargs: Arguments to pass to the parquet write operations
@@ -139,9 +149,6 @@ def to_association(
         separation_column=separation_column,
     )
 
-    # Select only the ID columns for the association
-    association = catalog[[primary_column_association, join_column_association, separation_column]]
-
     # Create the output directory for the catalog
     base_catalog_path = file_io.file_io.get_upath(base_catalog_path)
     if file_io.file_io.directory_has_contents(base_catalog_path):
@@ -155,7 +162,7 @@ def to_association(
 
     # Save partition parquet files
     pixels, counts, max_separations = write_partitions(
-        association, base_catalog_dir_fp=base_catalog_path, separation_column=separation_column, **kwargs
+        catalog, base_catalog_dir_fp=base_catalog_path, separation_column=separation_column, **kwargs
     )
 
     # Save parquet metadata
@@ -166,25 +173,29 @@ def to_association(
     partition_info.write_to_file(base_catalog_path / "partition_info.csv")
 
     # Save catalog info
-    info = (
-        {
-            "catalog_name": catalog_name,
-            "catalog_type": CatalogType.ASSOCIATION,
-            "contains_leaf_files": True,
-            "hats_order": partition_info.get_highest_order(),
-            "total_rows": int(np.sum(counts)),
-            "moc_sky_fraction": f"{partition_info.calculate_fractional_coverage():0.5f}",
-            "assn_max_separation": f"{np.max(max_separations):0.5f}",
-        }
-        | column_args
-        | kwargs
-    )
+    info = {
+        "catalog_name": catalog_name,
+        "catalog_type": CatalogType.ASSOCIATION,
+        "contains_leaf_files": True,
+        "hats_order": partition_info.get_highest_order(),
+        "total_rows": int(np.sum(counts)),
+        "moc_sky_fraction": f"{partition_info.calculate_fractional_coverage():0.5f}",
+    }
+
+    max_separation = np.max(max_separations)
+    if max_separation != -1:
+        info = info | {"assn_max_separation": f"{max_separation:0.5f}"}
+    info = info | column_args | kwargs
+
     new_hc_structure = TableProperties(**info)
     new_hc_structure.to_properties_file(base_catalog_path)
 
 
 def write_partitions(
-    catalog: HealpixDataset, base_catalog_dir_fp: str | Path | UPath, separation_column: str, **kwargs
+    catalog: HealpixDataset,
+    base_catalog_dir_fp: str | Path | UPath,
+    separation_column: str | None,
+    **kwargs,
 ) -> tuple[list[HealpixPixel], list[int], list[float]]:
     """Saves catalog partitions as parquet to disk and computes the sparse
     count histogram for each partition. The histogram is either of order 8
@@ -197,7 +208,7 @@ def write_partitions(
 
     Returns:
         A tuple with the array of non-empty pixels, the array with the total counts
-        as well as the array with the sparse count histograms.
+        as well as the array with the maximum point separations.
     """
     results, pixels = [], []
     partitions = catalog._ddf.to_delayed()
@@ -254,7 +265,7 @@ def _check_catalogs_and_columns(
         raise ValueError("primary_column_association must be a column in input catalog")
     if join_column_association not in catalog_columns:
         raise ValueError("join_column_association must be a column in input catalog")
-    if separation_column not in catalog_columns:
+    if separation_column is not None and separation_column not in catalog_columns:
         raise ValueError("separation_column must be a column in input catalog")
 
     # Verify that the primary and join catalogs exist, and have the indicated columns.
@@ -289,7 +300,6 @@ def _check_catalogs_and_columns(
         "join_column": join_id_column,
         "join_column_association": join_column_association,
         "join_catalog": str(join_catalog_dir),
-        "assn_separation_column": separation_column,
     }
     if join_to_primary_id_column:
         info["join_to_primary_id_column"] = join_to_primary_id_column

@@ -394,10 +394,17 @@ def join_catalog_data_through(
             "Right catalog does not have a margin cache. Results may be incomplete and/or inaccurate.",
             RuntimeWarning,
         )
+    elif association.max_separation is None:
+        warnings.warn(
+            "Association catalog does not specify maximum separation."
+            " Results may be incomplete and/or inaccurate.",
+            RuntimeWarning,
+        )
     elif right.margin.hc_structure.catalog_info.margin_threshold < association.max_separation:
         warnings.warn(
-            f"Right catalog margin has a threshold smaller than the association maximum separation"
-            f" ({association.max_separation}). Results may be incomplete and/or inaccurate.",
+            f"Right catalog margin threshold ({right.margin.hc_structure.catalog_info.margin_threshold})"
+            f" is smaller than association maximum separation ({association.max_separation})."
+            " Results may be incomplete and/or inaccurate.",
             RuntimeWarning,
         )
 

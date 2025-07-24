@@ -12,7 +12,7 @@ def xmatch_result(small_sky_catalog, small_sky_xmatch_catalog):
     xmatch_result = lsdb.crossmatch(
         small_sky_catalog,
         small_sky_xmatch_catalog,
-        suffixes=["_left", "_right"],
+        suffixes=("_left", "_right"),
         radius_arcsec=0.01 * 3600,
         left_args={"margin_threshold": 100},
         right_args={"margin_threshold": 100},
@@ -30,7 +30,6 @@ def association_kwargs(small_sky_dir, small_sky_xmatch_dir):
         "join_catalog_dir": small_sky_xmatch_dir,
         "join_column_association": "id_right",
         "join_id_column": "id",
-        "separation_column": "_dist_arcsec",
     }
 
 
@@ -39,6 +38,7 @@ def test_crossmatch_to_association(xmatch_result, association_kwargs, tmp_path):
         xmatch_result,
         catalog_name="test_association",
         base_catalog_path=tmp_path,
+        separation_column="_dist_arcsec",
         overwrite=False,
         **association_kwargs,
     )
@@ -50,7 +50,6 @@ def test_crossmatch_to_association(xmatch_result, association_kwargs, tmp_path):
         HealpixPixel(1, 46),
     ]
     assert association_table.all_columns == ["id_left", "id_right", "_dist_arcsec"]
-    assert association_table.separation_column == "_dist_arcsec"
     max_separation = association_table.compute()["_dist_arcsec"].max()
     assert pytest.approx(max_separation, abs=1e-5) == association_table.max_separation
 
@@ -167,7 +166,6 @@ def test_association_with_collections(
             "join_column_association": "SOURCE_ID",
             "join_id_column": "object_id",
             "join_to_primary_id_column": "source_id",
-            "separation_column": "_dist",
         },
     )
 
@@ -179,5 +177,4 @@ def test_association_with_collections(
         "join_column_association": "SOURCE_ID",
         "join_catalog": str(small_sky_order1_source_collection_dir),
         "join_to_primary_id_column": "source_id",
-        "assn_separation_column": "_dist",
     }

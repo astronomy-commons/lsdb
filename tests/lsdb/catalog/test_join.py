@@ -169,18 +169,23 @@ def test_join_association_suffix_edge_case(
     pd.testing.assert_frame_equal(xmatch_df, join_df, check_like=True)
 
 
-def test_join_association_separation_greater_than_margin(
+def test_join_association_warnings(
     small_sky_catalog, small_sky_order1_source_collection_catalog, small_sky_to_o1source_catalog
 ):
-    # Fake that the right catalog's margin is smaller than the assn max separation
+    # Right catalog margin threshold < association max separation
     assert small_sky_to_o1source_catalog.max_separation > 436
     small_sky_order1_source_collection_catalog.margin.hc_structure.catalog_info.margin_threshold = 435
-    with pytest.warns(RuntimeWarning, match="maximum separation"):
+    with pytest.warns(RuntimeWarning, match="smaller than association maximum separation"):
         small_sky_catalog.join(
             small_sky_order1_source_collection_catalog, through=small_sky_to_o1source_catalog
         )
-
-    # Fake that the right catalog has no margin
+    # Association max separation is None
+    small_sky_to_o1source_catalog.hc_structure.catalog_info.assn_max_separation = None
+    with pytest.warns(RuntimeWarning, match="specify maximum separation"):
+        small_sky_catalog.join(
+            small_sky_order1_source_collection_catalog, through=small_sky_to_o1source_catalog
+        )
+    # Right catalog margin is None
     small_sky_order1_source_collection_catalog.margin = None
     with pytest.warns(RuntimeWarning, match="margin cache"):
         small_sky_catalog.join(
