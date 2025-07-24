@@ -1,5 +1,67 @@
-Guide to Dask messages (troubleshooting)
-========================================
+======================================
+Troubleshooting Frequent Dask Problems
+======================================
+
+Most of these problems are related to memory, and are solved by
+increasing the memory per worker, or decreasing the amount of data to
+be worked on, or both.
+
+
+Starting Small With Data
+------------------------
+
+Because so many of these problems are a result of having too little
+memory or having it inefficiently apportioned, it is very useful to
+limit the amount of data with up-front filters, get a result, and then
+gradually widen the filters.
+
+You can limit which columns are loaded with
+``lsdb.open_catalog(columns=...)``, and you can limit the region of
+the sky processed by
+``lsdb.open_catalog(search_filter=lsdb.ConeSearch(...))`` (or
+``lsdb.BoxSearch(...)``).  You can (and should!) combine these:
+
+.. code-block:: python
+
+    gaia_sm = lsdb.open_catalog(
+        gaia_root,
+        columns=['ra', 'dec', 'source_id'],
+        search_filter=lsdb.ConeSearch(280, -60, radius_arcsec=1800)
+        )
+
+You can see the number of partitions remaining with the property
+``.npartitions``, which is also displayed every time a catalog is
+displayed as the output of a Jupyter cell.
+
+Another way to reduce the load is to use the partition indexer after
+the catalog is opened, with an expression like ``cat.partitions[0]``
+to get a catalog with only a single partition.  This works for a range
+of partitions, thus, ``cat.partitions[0:4]`` to get 4, and so on.
+
+
+Working Your Way Upward
+-----------------------
+
+When you decide that you want to give each worker more memory, it's
+often a good idea to reduce the number of workers by the same factor,
+in order to keep your approximate memory footprint the same size.  If
+this is not enough, for example:
+
+.. code-block:: python
+
+    from dask.distributed import Client
+    client = Client(n_workers=16, memory_limit="8GB")
+
+try this type of change:
+
+.. code-block:: python
+
+    from dask.distributed import Client
+    client = Client(n_workers=8, memory_limit="16GB")
+
+
+Guide to common Dask messages
+=============================
 
 Dask can produce a lot of messages during a given run, at a variety of
 log levels.  It can be difficult at times to asses the true severity
@@ -152,9 +214,9 @@ It's calling it "unmanaged" memory.
 
 And yet: giving your workers more memory often clears this up.
 
-If it doesn't, the problem could be the task graph.  Any way you can
-express your computation more idempotently?  I mean, maybe not, but
-try.  Or have more intermediate results.
+If it doesn't, the problem could be the task graph.  Perhaps try to
+express your computation more idempotently, or produce intermediate
+results.
 
 
 The poison pill
@@ -179,3 +241,65 @@ say that.  The dashboard probably didn't even show workers running out
 of memory.  But they did.  And it's even worse.  You'd better just
 restart your kernel because you won't be able to close that old
 client.  Tear it all down and start fresh.  Really fresh.
+
+
+Observed problems
+=================
+
+Problems that may not be accompanied by immediate error messages.
+
+
+All workers are being killed in the beginning
+.............................................
+
+If you see that the pipeline failed fast after it started, it may be
+due to a bug in the code, data access issues, or memory overflow.  For
+the first two cases, you would see the appropriate error messages in
+the logs.  If the message doesn't contain enough useful information,
+you can try to run the pipeline with no ``Client`` object being
+created.  In this case, Dask will use the default scheduler, which
+will run tasks on the same Python process and give you a usual Python
+traceback on the failure.
+
+In the case of the memory overflow, Dask Dashboard will show red bars
+in the memory usage chart, and logs will show messages like the
+following:
+
+.. code-block:: output
+    :class: no-copybutton
+
+   distributed.nanny.memory - WARNING - Worker tcp://127.0.0.1:49477 (pid=59029) exceeded 95% memory budget. Restarting...
+   distributed.nanny - WARNING - Restarting worker
+   KilledWorker: Attempted to run task ('read_pixel-_to_string_dtype-nestedframe-0c9d20582a6d2703d02a4835dddb05d2', 30904) on 4 different workers, but all those workers died while running it. The last worker that attempt to run the task was tcp://127.0.0.1:50761. Inspecting worker logs is often a good next step to diagnose what went wrong. For more information see https://distributed.dask.org/en/stable/killed.html.
+
+
+All workers are being killed in the middle/end
+..............................................
+
+Some workflows can have a very unbalanced memory load, so just one or
+few tasks would use much more memory than others.  You can diagnose
+this by looking at the memory usage chart in Dask Dashboard, it would
+show that only one worker is using much more memory than others.  In
+such cases you may set the total memory limit ``memory_limit *
+n_workers`` larger than the actual amount of memory on your system.
+For example, if you have 16GB of RAM and you see that almost all of
+the tasks need 1GB, while a single task needs 8GB, you can start a
+cluster with this command:
+
+.. code-block:: python
+
+    from dask.distributed import Client
+    client = Client(n_workers=8, memory_limit='8GB', threads_per_worker=1)
+
+
+This approach can also help to speed up the computations, because it enables running with more workers.
+
+
+I run ``.compute()``, but the Dask Dashboard is empty for a long time
+.....................................................................
+
+For large tasks, such as cross-matching or joining multiple
+dozen-terabyte scale catalogs, Dask may spend a lot of time and memory
+of the main process before any computation starts.  This happens
+because Dask builds and optimizes the computation graph, which happens
+on the main process (one you create ``Client`` on).
