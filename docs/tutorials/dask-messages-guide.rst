@@ -10,6 +10,7 @@ Perhaps you have a cluster running?
 -----------------------------------
 
 .. code-block:: output
+    :class: no-copybutton
 
     lib/python3.12/site-packages/distributed/node.py:187: UserWarning: Port 8787 is already in use.
     Perhaps you already have a cluster running?
@@ -58,6 +59,7 @@ Pausing workers
 I didn't press pause!  Who did?
 
 .. code-block:: output
+    :class: no-copybutton
 
     2025-07-24 11:13:08,249 - distributed.worker.memory - WARNING - Worker is at 80% memory usage. Pausing worker.  Process memory: 1.49 GiB -- Worker memory limit: 1.86 GiB
 
@@ -83,7 +85,7 @@ Dask clients can be used as context objects, and since the use of
 context objects is a good practice in Python in general, you may be
 tempted to compute your results like this:
 
-.. code-block:: shell
+.. code-block:: python
 
     with Client(n_workers=8, memory_limit="2GB") as client:
         results = unrealized.compute()
@@ -93,6 +95,7 @@ superiority.  But nearly as often, this kind of thing fills up your
 notebook at the end of the computation:
 
 .. code-block:: output
+    :class: no-copybutton
 
     2025-07-24 10:58:24,870 - distributed.worker - ERROR - Failed to communicate with scheduler during heartbeat.
     Traceback (most recent call last):
@@ -143,8 +146,9 @@ amount of memory you gave your workers.  I mean, it says it isn't.
 It's calling it "unmanaged" memory.
 
 .. code-block:: output
+    :class: no-copybutton
 
-   2025-07-24 11:13:02,660 - distributed.worker.memory - WARNING - Unmanaged memory use is high. This may indicate a memory leak or the memory may not be released to the OS; see https://distributed.dask.org/en/latest/worker-memory.html#memory-not-released-back-to-the-os for more information. -- Unmanaged memory: 1.31 GiB -- Worker memory limit: 1.86 GiB
+    2025-07-24 11:13:02,660 - distributed.worker.memory - WARNING - Unmanaged memory use is high. This may indicate a memory leak or the memory may not be released to the OS; see https://distributed.dask.org/en/latest/worker-memory.html#memory-not-released-back-to-the-os for more information. -- Unmanaged memory: 1.31 GiB -- Worker memory limit: 1.86 GiB
 
 And yet: giving your workers more memory often clears this up.
 
@@ -161,6 +165,7 @@ like the cluster has run into a minor problem that it's going to route
 around with a little rescheduling.
 
 .. code-block:: output
+    :class: no-copybutton
 
     2025-07-24 11:32:00,670 - distributed.client - WARNING - Couldn't gather 1 keys, rescheduling (('repartitiontofewer-77ee1928ccf3f483f566fd6c17ee139b', 0),)
 

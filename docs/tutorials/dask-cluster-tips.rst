@@ -237,7 +237,8 @@ a usual Python traceback on the failure.
 In the case of the memory overflow, Dask Dashboard will show red bars in the memory usage chart,
 and logs will show messages like the following:
 
-.. code-block:: text
+.. code-block:: output
+    :class: no-copybutton
 
    distributed.nanny.memory - WARNING - Worker tcp://127.0.0.1:49477 (pid=59029) exceeded 95% memory budget. Restarting...
    distributed.nanny - WARNING - Restarting worker
