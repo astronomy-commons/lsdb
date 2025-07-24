@@ -290,5 +290,5 @@ or ``cat.partitions[0:4]`` to get 4, and so on.
 Understanding common Dask errors and warnings
 .............................................
 
-Dask Messages Guide </tutorials/dask-messages-guide>
+:doc:`Dask Messages Guide </tutorials/dask-messages-guide>`
 
