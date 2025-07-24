@@ -31,7 +31,7 @@ puts that port number in the warning.  This isn't even a warning,
 really.  It's like Standard Operating Procedure on a cluster.
 
 Finding the wandering dashboard
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+...............................
 
 On your local machine, you can view the dashboard by simply pointing
 your browser to http://localhost:8787 .  On a cluster, it's likely
