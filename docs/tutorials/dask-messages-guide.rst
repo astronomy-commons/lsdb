@@ -2,18 +2,19 @@
 Troubleshooting Frequent Dask Problems
 ======================================
 
-Most of these problems are related to memory, and are solved by
-increasing the memory per worker, or decreasing the amount of data to
-be worked on, or both.
+-------------------------
+Balancing Memory and Data
+-------------------------
+
+Most of these problems are a result of having too little memory or not
+having it usefully apportioned.
 
 
 Starting Small With Data
 ------------------------
 
-Because so many of these problems are a result of having too little
-memory or having it inefficiently apportioned, it is very useful to
-limit the amount of data with up-front filters, get a result, and then
-gradually widen the filters.
+It is very useful to limit the amount of data with up-front filters,
+get a result, and then gradually widen the filters.
 
 You can limit which columns are loaded with
 ``lsdb.open_catalog(columns=...)``, and you can limit the region of
@@ -60,8 +61,9 @@ try this type of change:
     client = Client(n_workers=8, memory_limit="16GB")
 
 
+-----------------------------
 Guide to common Dask messages
-=============================
+-----------------------------
 
 Dask can produce a lot of messages during a given run, at a variety of
 log levels.  It can be difficult at times to asses the true severity
@@ -243,14 +245,15 @@ restart your kernel because you won't be able to close that old
 client.  Tear it all down and start fresh.  Really fresh.
 
 
+-----------------
 Observed problems
-=================
+-----------------
 
 Problems that may not be accompanied by immediate error messages.
 
 
 All workers are being killed in the beginning
-.............................................
+---------------------------------------------
 
 If you see that the pipeline failed fast after it started, it may be
 due to a bug in the code, data access issues, or memory overflow.  For
@@ -274,7 +277,7 @@ following:
 
 
 All workers are being killed in the middle/end
-..............................................
+----------------------------------------------
 
 Some workflows can have a very unbalanced memory load, so just one or
 few tasks would use much more memory than others.  You can diagnose
@@ -296,7 +299,7 @@ This approach can also help to speed up the computations, because it enables run
 
 
 I run ``.compute()``, but the Dask Dashboard is empty for a long time
-.....................................................................
+---------------------------------------------------------------------
 
 For large tasks, such as cross-matching or joining multiple
 dozen-terabyte scale catalogs, Dask may spend a lot of time and memory
