@@ -35,12 +35,12 @@ class BasicObjectAggregator(AbstractObjectAggregator):
         return meta
 
     def perform_object_aggregation(
-        self, df: dict, obj_id: int, pixel: HealpixPixel = None, properties: TableProperties = None
+        self, column_dict: dict, obj_id: int, pixel: HealpixPixel = None, properties: TableProperties = None
     ) -> dict:
-        idx = np.argmin(df[self.exposure_name])
+        idx = np.argmin(column_dict[self.exposure_name])
         return {
             "object_id": obj_id,
-            self.ra_name: df[properties.ra_column][idx],
-            self.dec_name: df[properties.dec_column][idx],
-            SPATIAL_INDEX_COLUMN: df[SPATIAL_INDEX_COLUMN][idx],
+            self.ra_name: column_dict[properties.ra_column][idx],
+            self.dec_name: column_dict[properties.dec_column][idx],
+            SPATIAL_INDEX_COLUMN: column_dict[SPATIAL_INDEX_COLUMN][idx],
         }
