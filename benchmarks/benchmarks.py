@@ -85,7 +85,7 @@ class CloudBenchmarks:
             columns=["source_id", "ra", "dec"],
         ).compute()
 
-    def time_ps1_s3(self):
+    def time_euclid_s3(self):
         lsdb.open_catalog(
             "s3://nasa-irsa-euclid-q1/contributed/q1/merged_objects/hats",
             search_filter=lsdb.PixelSearch([(6, 16045)]),
