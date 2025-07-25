@@ -350,6 +350,15 @@ def test_catalog_with_wrong_margin(small_sky_order1_dir, small_sky_order1_source
         lsdb.open_catalog(small_sky_order1_dir, margin_cache=small_sky_order1_source_margin_dir)
 
 
+def test_read_hats_pixel_search_radec(small_sky_order1_collection_dir):
+    filtered_catalog = lsdb.open_catalog(
+        small_sky_order1_collection_dir, search_filter=lsdb.PixelSearch.from_radec(ra=280.5, dec=-35.5)
+    )
+    assert filtered_catalog.get_healpix_pixels() == [HealpixPixel(1, 46)]
+    assert filtered_catalog.margin is not None
+    assert filtered_catalog.margin.get_healpix_pixels() == [HealpixPixel(1, 46)]
+
+
 def test_read_hats_subset_with_cone_search(small_sky_order1_dir, small_sky_order1_catalog):
     cone_search = ConeSearch(ra=0, dec=-80, radius_arcsec=20 * 3600)
     # Filtering using catalog's cone_search
