@@ -60,13 +60,13 @@ class BaselineSourceAssociationAlgorithm(AbstractSourceAssociationAlgorithm):
             unique_object_idx, object_idx_counts = np.unique(xmatch_objects_idx, return_counts=True)
             for object_id in unique_object_idx[object_idx_counts > 1]:
                 # Index into crossmatch indices
-                xmatch_idx_idx = np.where(xmatch_objects_idx == object_id)[0]
-                xmatch_idx_idx_dups_idx = np.argsort(xmatch_distances[xmatch_idx_idx])[1:]
-                xmatch_dups_idx_idx = xmatch_idx_idx[xmatch_idx_idx_dups_idx]
+                xmatch_obj_id_idx = np.where(xmatch_objects_idx == object_id)[0]
+                xmatch_obj_id_idx_dups_idx = np.argsort(xmatch_distances[xmatch_obj_id_idx])[1:]
+                xmatch_idx_dups_idx = xmatch_obj_id_idx[xmatch_obj_id_idx_dups_idx]
                 # Remove (by index) any matches that aren't the closest match
-                xmatch_distances = np.delete(xmatch_distances, xmatch_dups_idx_idx)
-                xmatch_sources_idx = np.delete(xmatch_sources_idx, xmatch_dups_idx_idx)
-                xmatch_objects_idx = np.delete(xmatch_objects_idx, xmatch_dups_idx_idx)
+                xmatch_distances = np.delete(xmatch_distances, xmatch_idx_dups_idx)
+                xmatch_sources_idx = np.delete(xmatch_sources_idx, xmatch_idx_dups_idx)
+                xmatch_objects_idx = np.delete(xmatch_objects_idx, xmatch_idx_dups_idx)
             if len(xmatch_objects_idx) > 0:
                 # Assign the Object ID of the objects to their matched sources
                 matched_source_inds = np.where(e_mask)[0][xmatch_sources_idx]
