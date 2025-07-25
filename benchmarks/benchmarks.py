@@ -71,3 +71,23 @@ def time_create_midsize_catalog():
 
 def time_create_large_catalog():
     return lsdb.open_catalog(BENCH_DATA_DIR / "large_catalog")
+
+
+class CloudBenchmarks:
+    """Benchmark performance of column selection via HTTP/S3."""
+
+    timeout = 120
+
+    def time_gaia_http(self):
+        lsdb.open_catalog(
+            "https://data.lsdb.io/hats/gaia_dr3",
+            search_filter=lsdb.PixelSearch([(6, 29070)]),
+            columns=["source_id", "ra", "dec"],
+        ).compute()
+
+    def time_ps1_s3(self):
+        lsdb.open_catalog(
+            "s3://nasa-irsa-euclid-q1/contributed/q1/merged_objects/hats",
+            search_filter=lsdb.PixelSearch([(6, 16045)]),
+            columns=["object_id", "ra", "dec"],
+        ).compute()
