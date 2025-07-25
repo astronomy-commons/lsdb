@@ -10,8 +10,6 @@ import pandas as pd
 from hats.catalog.catalog_collection import CatalogCollection
 from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
 from hats.catalog.index.index_catalog import IndexCatalog as HCIndexCatalog
-from hats.pixel_math import HealpixPixel
-from mocpy import MOC
 from pandas._libs import lib
 from pandas._typing import AnyAll, Axis, IndexLabel, Renamer
 from pandas.api.extensions import no_default
@@ -26,10 +24,8 @@ from lsdb.catalog.map_catalog import MapCatalog
 from lsdb.catalog.margin_catalog import MarginCatalog
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
 from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorithm
-from lsdb.core.search import BoxSearch, ConeSearch, IndexSearch, OrderSearch, PolygonSearch
+from lsdb.core.search import IndexSearch
 from lsdb.core.search.abstract_search import AbstractSearch
-from lsdb.core.search.moc_search import MOCSearch
-from lsdb.core.search.pixel_search import PixelSearch
 from lsdb.dask.crossmatch_catalog_data import crossmatch_catalog_data, crossmatch_catalog_data_nested
 from lsdb.dask.join_catalog_data import (
     join_catalog_data_nested,
@@ -436,59 +432,6 @@ class Catalog(HealpixDataset):
         )
         return self._create_updated_dataset(ddf=ddf, ddf_pixel_map=ddf_map, hc_structure=hc_catalog)
 
-    def cone_search(self, ra: float, dec: float, radius_arcsec: float, fine: bool = True) -> Catalog:
-        """Perform a cone search to filter the catalog
-
-        Filters to points within radius great circle distance to the point specified by ra and dec in degrees.
-        Filters partitions in the catalog to those that have some overlap with the cone.
-
-        Args:
-            ra (float): Right Ascension of the center of the cone in degrees
-            dec (float): Declination of the center of the cone in degrees
-            radius_arcsec (float): Radius of the cone in arcseconds
-            fine (bool): True if points are to be filtered, False if not. Defaults to True.
-
-        Returns:
-            A new Catalog containing the points filtered to those within the cone, and the partitions that
-            overlap the cone.
-        """
-        return self.search(ConeSearch(ra, dec, radius_arcsec, fine))
-
-    def box_search(self, ra: tuple[float, float], dec: tuple[float, float], fine: bool = True) -> Catalog:
-        """Performs filtering according to right ascension and declination ranges. The right ascension
-        edges follow great arc circles and the declination edges follow small arc circles.
-
-        Filters to points within the region specified in degrees.
-        Filters partitions in the catalog to those that have some overlap with the region.
-
-        Args:
-            ra (Tuple[float, float]): The right ascension minimum and maximum values.
-            dec (Tuple[float, float]): The declination minimum and maximum values.
-            fine (bool): True if points are to be filtered, False if not. Defaults to True.
-
-        Returns:
-            A new catalog containing the points filtered to those within the region, and the
-            partitions that have some overlap with it.
-        """
-        return self.search(BoxSearch(ra, dec, fine))
-
-    def polygon_search(self, vertices: list[tuple[float, float]], fine: bool = True) -> Catalog:
-        """Perform a polygonal search to filter the catalog.
-
-        Filters to points within the polygonal region specified in ra and dec, in degrees.
-        Filters partitions in the catalog to those that have some overlap with the region.
-
-        Args:
-            vertices (list[tuple[float, float]]): The list of vertices of the polygon to
-                filter pixels with, as a list of (ra,dec) coordinates, in degrees.
-            fine (bool): True if points are to be filtered, False if not. Defaults to True.
-
-        Returns:
-            A new catalog containing the points filtered to those within the
-            polygonal region, and the partitions that have some overlap with it.
-        """
-        return self.search(PolygonSearch(vertices, fine))
-
     def id_search(
         self,
         values: dict[str, Any],
@@ -568,44 +511,6 @@ class Catalog(HealpixDataset):
 
         field_indexes = {field_name: _get_index_catalog_for_field(field_name) for field_name in values.keys()}
         return self.search(IndexSearch(values, field_indexes, fine))
-
-    def order_search(self, min_order: int = 0, max_order: int | None = None) -> Catalog:
-        """Filter catalog by order of HEALPix.
-
-        Args:
-            min_order (int): Minimum HEALPix order to select. Defaults to 0.
-            max_order (int): Maximum HEALPix order to select. Defaults to maximum catalog order.
-
-        Returns:
-            A new Catalog containing only the pixels of orders specified (inclusive).
-        """
-        return self.search(OrderSearch(min_order, max_order))
-
-    def pixel_search(
-        self, pixels: tuple[int, int] | HealpixPixel | list[tuple[int, int] | HealpixPixel]
-    ) -> Catalog:
-        """Finds all catalog pixels that overlap with the requested pixel set.
-
-        Args:
-            pixels (List[Tuple[int, int]]): The list of HEALPix tuples (order, pixel)
-                that define the region for the search.
-
-        Returns:
-            A new Catalog containing only the pixels that overlap with the requested pixel set.
-        """
-        return self.search(PixelSearch(pixels))
-
-    def moc_search(self, moc: MOC, fine: bool = True) -> Catalog:
-        """Finds all catalog points that are contained within a moc.
-
-        Args:
-            moc (mocpy.MOC): The moc that defines the region for the search.
-            fine (bool): True if points are to be filtered, False if only partitions. Defaults to True.
-
-        Returns:
-            A new Catalog containing only the points that are within the moc.
-        """
-        return self.search(MOCSearch(moc, fine=fine))
 
     def search(self, search: AbstractSearch):
         """Find rows by reusable search algorithm.

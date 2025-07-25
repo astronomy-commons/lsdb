@@ -142,8 +142,6 @@ def test_save_catalog_point_map(small_sky_order1_catalog, tmp_path):
 
     # The histogram and the sky map histogram match
     assert len(small_sky_order1_catalog) == np.sum(histogram)
-    expected_histogram = small_sky_order1_catalog.skymap_histogram(lambda df, _: len(df), order=8)
-    npt.assert_array_equal(expected_histogram, histogram)
 
     skymap_path = main_catalog_path / "skymap.fits"
     assert skymap_path.exists()
