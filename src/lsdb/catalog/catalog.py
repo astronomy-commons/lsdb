@@ -379,6 +379,37 @@ class Catalog(HealpixDataset):
             hc_structure=hc_catalog,
             updated_catalog_info_params={"catalog_name": output_catalog_name},
         )
+    
+    def concat(
+        self,
+        other: Catalog,
+        **kwargs,
+    ) -> Catalog:
+        """Concatenate two catalogs
+
+        The pixels from each catalog are aligned via a `PixelAlignment`, and the dataframes are
+        concatenated on each pair of overlapping pixels. The resulting catalog will have partitions
+        matching an inner pixel alignment - using pixels that have overlap in both input catalogs
+        and taking the smallest of any overlapping pixels.
+
+        Args:
+            other (Catalog): The right catalog to concatenate with
+            suffixes (Tuple[str, str]): A pair of suffixes to be appended to the end of each column
+                name when they are joined. Default: uses the name of the catalog for the suffix
+            **kwargs: Additional arguments to pass to the dask"""
+        ddf, ddf_map, alignment = concat_catalog_data(
+            self, other, **kwargs
+        )
+        hc_catalog = self.hc_structure.__class__(
+            self.hc_structure.catalog_info,
+            alignment.pixel_tree,
+            moc=alignment.moc,
+        )
+        return self._create_updated_dataset(
+            ddf=ddf,
+            ddf_pixel_map=ddf_map,
+            hc_structure=hc_catalog,
+        )
 
     def merge_map(
         self,
