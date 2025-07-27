@@ -27,6 +27,7 @@ from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorith
 from lsdb.core.search import IndexSearch
 from lsdb.core.search.abstract_search import AbstractSearch
 from lsdb.dask.crossmatch_catalog_data import crossmatch_catalog_data, crossmatch_catalog_data_nested
+from lsdb.dask.concat_catalog_data import concat_catalog_data
 from lsdb.dask.join_catalog_data import (
     join_catalog_data_nested,
     join_catalog_data_on,
@@ -379,7 +380,7 @@ class Catalog(HealpixDataset):
             hc_structure=hc_catalog,
             updated_catalog_info_params={"catalog_name": output_catalog_name},
         )
-    
+
     def concat(
         self,
         other: Catalog,
@@ -397,9 +398,7 @@ class Catalog(HealpixDataset):
             suffixes (Tuple[str, str]): A pair of suffixes to be appended to the end of each column
                 name when they are joined. Default: uses the name of the catalog for the suffix
             **kwargs: Additional arguments to pass to the dask"""
-        ddf, ddf_map, alignment = concat_catalog_data(
-            self, other, **kwargs
-        )
+        ddf, ddf_map, alignment = concat_catalog_data(self, other, **kwargs)
         hc_catalog = self.hc_structure.__class__(
             self.hc_structure.catalog_info,
             alignment.pixel_tree,

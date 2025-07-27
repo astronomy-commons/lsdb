@@ -3,9 +3,8 @@ from __future__ import annotations
 import warnings
 from typing import TYPE_CHECKING, Type
 
-from hats.pixel_tree import PixelAlignment
-
 import pandas as pd
+from hats.pixel_tree import PixelAlignment, PixelAlignmentType
 
 import lsdb.nested as nd
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
@@ -44,6 +43,12 @@ def perform_concat(
     Filters the left catalog before performing the cross-match to stop duplicate points appearing in
     the result.
     """
+    if left_df is None:
+        return right_df
+    
+    if right_df is None:
+        return left_df
+
     if right_pix.order > left_pix.order:
         left_df = filter_by_spatial_index_to_pixel(left_df, right_pix.order, right_pix.pixel)
 
@@ -51,6 +56,7 @@ def perform_concat(
         right_df = filter_by_spatial_index_to_pixel(right_df, left_pix.order, left_pix.pixel)
 
     return pd.concat([left_df, right_df], **kwargs)
+
 
 # pylint: disable=too-many-locals
 def concat_catalog_data(
@@ -77,7 +83,7 @@ def concat_catalog_data(
     """
 
     # perform alignment on the two catalogs
-    alignment = align_catalogs(left, right, add_right_margin=False)
+    alignment = align_catalogs(left, right, add_right_margin=False, alignment_type=PixelAlignmentType.OUTER)
 
     # get lists of HEALPix pixels from alignment to pass to cross-match
     left_pixels, right_pixels = get_healpix_pixels_from_alignment(alignment)
