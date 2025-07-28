@@ -1,3 +1,4 @@
+import hats
 import matplotlib.pyplot as plt
 import nested_pandas as npd
 import pandas as pd
@@ -82,8 +83,13 @@ def test_cone_search_filters_correct_points_margin(
 
 def test_cone_search_big_margin(small_sky_order1_source_with_margin):
     small_sky_order1_source_with_margin.margin.hc_structure.catalog_info.margin_threshold = 600000
-    with pytest.raises(ValueError, match="Margin size"):
-        small_sky_order1_source_with_margin.cone_search(0, 0, 1)
+    cone_search_catalog = small_sky_order1_source_with_margin.cone_search(0, 0, 1)
+    assert cone_search_catalog.get_healpix_pixels() == [hats.HealpixPixel(1, 16)]
+    assert cone_search_catalog.margin is not None
+    assert (
+        cone_search_catalog.margin.get_healpix_pixels()
+        == small_sky_order1_source_with_margin.margin.get_healpix_pixels()
+    )
 
 
 def test_cone_search_filters_partitions(small_sky_order1_catalog):

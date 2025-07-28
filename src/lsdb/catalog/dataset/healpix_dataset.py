@@ -5,7 +5,7 @@ import random
 import warnings
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, Callable, Iterable, Literal, Type, cast
+from typing import Callable, Iterable, Literal, Type, cast
 
 import astropy
 import dask
@@ -18,13 +18,13 @@ from astropy.units import Quantity
 from astropy.visualization.wcsaxes import WCSAxes
 from astropy.visualization.wcsaxes.frame import BaseFrame
 from dask.dataframe.core import _repr_data_series
-from dask.delayed import Delayed, delayed
 from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
-from hats.inspection.visualize_catalog import get_fov_moc_from_wcs, initialize_wcs_axes, plot_healpix_map
+from hats.inspection.visualize_catalog import get_fov_moc_from_wcs, initialize_wcs_axes
 from hats.pixel_math import HealpixPixel
 from hats.pixel_math.healpix_pixel_function import get_pixel_argsort
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 from matplotlib.figure import Figure
+from mocpy import MOC
 from pandas._libs import lib
 from pandas._typing import AnyAll, Axis, IndexLabel, Renamer
 from pandas.api.extensions import no_default
@@ -35,9 +35,10 @@ import lsdb.nested as nd
 from lsdb import io
 from lsdb.catalog.dataset.dataset import Dataset
 from lsdb.core.plotting.plot_points import plot_points
-from lsdb.core.plotting.skymap import compute_skymap, perform_inner_skymap
+from lsdb.core.search import BoxSearch, ConeSearch, OrderSearch, PolygonSearch
 from lsdb.core.search.abstract_search import AbstractSearch
 from lsdb.core.search.moc_search import MOCSearch
+from lsdb.core.search.pixel_search import PixelSearch
 from lsdb.dask.merge_catalog_functions import concat_metas
 from lsdb.dask.partition_indexer import PartitionIndexer
 from lsdb.io.schema import get_arrow_schema
@@ -482,6 +483,95 @@ class HealpixDataset(Dataset):
         ndf = self._ddf.rename(columns=columns)
         return self._create_updated_dataset(ddf=ndf)
 
+    def cone_search(self, ra: float, dec: float, radius_arcsec: float, fine: bool = True):
+        """Perform a cone search to filter the catalog
+
+        Filters to points within radius great circle distance to the point specified by ra and dec in degrees.
+        Filters partitions in the catalog to those that have some overlap with the cone.
+
+        Args:
+            ra (float): Right Ascension of the center of the cone in degrees
+            dec (float): Declination of the center of the cone in degrees
+            radius_arcsec (float): Radius of the cone in arcseconds
+            fine (bool): True if points are to be filtered, False if not. Defaults to True.
+
+        Returns:
+            A new Catalog containing the points filtered to those within the cone, and the partitions that
+            overlap the cone.
+        """
+        return self.search(ConeSearch(ra, dec, radius_arcsec, fine))
+
+    def box_search(self, ra: tuple[float, float], dec: tuple[float, float], fine: bool = True):
+        """Performs filtering according to right ascension and declination ranges. The right ascension
+        edges follow great arc circles and the declination edges follow small arc circles.
+
+        Filters to points within the region specified in degrees.
+        Filters partitions in the catalog to those that have some overlap with the region.
+
+        Args:
+            ra (Tuple[float, float]): The right ascension minimum and maximum values.
+            dec (Tuple[float, float]): The declination minimum and maximum values.
+            fine (bool): True if points are to be filtered, False if not. Defaults to True.
+
+        Returns:
+            A new catalog containing the points filtered to those within the region, and the
+            partitions that have some overlap with it.
+        """
+        return self.search(BoxSearch(ra, dec, fine))
+
+    def polygon_search(self, vertices: list[tuple[float, float]], fine: bool = True):
+        """Perform a polygonal search to filter the catalog.
+
+        Filters to points within the polygonal region specified in ra and dec, in degrees.
+        Filters partitions in the catalog to those that have some overlap with the region.
+
+        Args:
+            vertices (list[tuple[float, float]]): The list of vertices of the polygon to
+                filter pixels with, as a list of (ra,dec) coordinates, in degrees.
+            fine (bool): True if points are to be filtered, False if not. Defaults to True.
+
+        Returns:
+            A new catalog containing the points filtered to those within the
+            polygonal region, and the partitions that have some overlap with it.
+        """
+        return self.search(PolygonSearch(vertices, fine))
+
+    def order_search(self, min_order: int = 0, max_order: int | None = None):
+        """Filter catalog by order of HEALPix.
+
+        Args:
+            min_order (int): Minimum HEALPix order to select. Defaults to 0.
+            max_order (int): Maximum HEALPix order to select. Defaults to maximum catalog order.
+
+        Returns:
+            A new Catalog containing only the pixels of orders specified (inclusive).
+        """
+        return self.search(OrderSearch(min_order, max_order))
+
+    def pixel_search(self, pixels: tuple[int, int] | HealpixPixel | list[tuple[int, int] | HealpixPixel]):
+        """Finds all catalog pixels that overlap with the requested pixel set.
+
+        Args:
+            pixels (List[Tuple[int, int]]): The list of HEALPix tuples (order, pixel)
+                that define the region for the search.
+
+        Returns:
+            A new Catalog containing only the pixels that overlap with the requested pixel set.
+        """
+        return self.search(PixelSearch(pixels))
+
+    def moc_search(self, moc: MOC, fine: bool = True):
+        """Finds all catalog points that are contained within a moc.
+
+        Args:
+            moc (mocpy.MOC): The moc that defines the region for the search.
+            fine (bool): True if points are to be filtered, False if only partitions. Defaults to True.
+
+        Returns:
+            A new Catalog containing only the points that are within the moc.
+        """
+        return self.search(MOCSearch(moc, fine=fine))
+
     def _perform_search(
         self,
         metadata: HCHealpixDataset,
@@ -670,95 +760,6 @@ class HealpixDataset(Dataset):
                 non_empty_pixels.append(pixel)
 
         return non_empty_pixels, non_empty_partition_indices
-
-    def skymap_data(
-        self,
-        func: Callable[[npd.NestedFrame, HealpixPixel], Any],
-        order: int | None = None,
-        default_value: Any = 0.0,
-        **kwargs,
-    ) -> dict[HealpixPixel, Delayed]:
-        """Perform a function on each partition of the catalog, returning a dict of values for each pixel.
-
-        Args:
-            func (Callable[[npd.NestedFrame, HealpixPixel], Any]): A function that takes a pandas
-                DataFrame with the data in a partition, the HealpixPixel of the partition, and any other
-                keyword arguments and returns an aggregated value
-            order (int | None): The HEALPix order to compute the skymap at. If None (default),
-                will compute for each partition in the catalog at their own orders. If a value
-                other than None, each partition will be grouped by pixel number at the order
-                specified and the function will be applied to each group.
-            default_value (Any): The value to use at pixels that aren't covered by the catalog (default 0)
-            **kwargs: Arguments to pass to the function
-
-        Returns:
-            A dict of Delayed values, one for the function applied to each partition of the catalog.
-            If order is not None, the Delayed objects will be numpy arrays with all pixels within the
-            partition at the specified order. Any pixels within a partition that have no coverage will
-            have the default_value as its result, as well as any pixels for which the aggregate
-            function returns None.
-        """
-        results = {}
-        partitions = self.to_delayed()
-        if order is None:
-            results = {
-                pixel: delayed(func)(partitions[index], pixel, **kwargs)
-                for pixel, index in self._ddf_pixel_map.items()
-            }
-        elif len(self.hc_structure.pixel_tree) > 0:
-            if order < self.hc_structure.pixel_tree.get_max_depth():
-                raise ValueError(
-                    f"order must be greater than or equal to max order in catalog "
-                    f"({self.hc_structure.pixel_tree.get_max_depth()})"
-                )
-            results = {
-                pixel: perform_inner_skymap(partitions[index], func, pixel, order, default_value, **kwargs)
-                for pixel, index in self._ddf_pixel_map.items()
-            }
-        return results
-
-    def skymap_histogram(
-        self,
-        func: Callable[[npd.NestedFrame, HealpixPixel], Any],
-        order: int | None = None,
-        default_value: Any = 0.0,
-        plot=False,
-        plotting_args: dict | None = None,
-        **kwargs,
-    ) -> np.ndarray:
-        """Get a histogram with the result of a given function applied to the points in each HEALPix pixel of
-        a given order
-
-        Args:
-            func (Callable[[npd.NestedFrame, HealpixPixel], Any]): A function that takes a pandas DataFrame
-                and the HealpixPixel the partition is from and returns a value
-            order (int | None): The HEALPix order to compute the skymap at. If None (default),
-                will compute for each partition in the catalog at their own orders. If a value
-                other than None, each partition will be grouped by pixel number at the order
-                specified and the function will be applied to each group.
-            default_value (Any): The value to use at pixels that aren't covered by the catalog (default 0)
-            **kwargs: Arguments to pass to the given function
-
-        Returns:
-            A 1-dimensional numpy array where each index i is equal to the value of the function applied to
-            the points within the HEALPix pixel with pixel number i in NESTED ordering at a specified order.
-            If no order is supplied, the order of the resulting histogram will be the highest order partition
-            in the catalog, and the function will be applied to the partitions of the catalog with the result
-            copied to all pixels if the catalog partition is at a lower order than the histogram order.
-
-            If order is specified, any pixels at the specified order not covered by the catalog or any pixels
-            that the function returns None will use the default_value.
-        """
-        smdata = self.skymap_data(func, order, default_value, **kwargs)
-        pixels = list(smdata.keys())
-        results = dask.compute(*[smdata[pixel] for pixel in pixels])
-        result_dict = {pixels[i]: results[i] for i in range(len(pixels))}
-        img = compute_skymap(result_dict, order, default_value)
-        if plot:
-            if plotting_args is None:
-                plotting_args = {}
-            plot_healpix_map(img, **plotting_args)
-        return img
 
     def plot_pixels(self, projection: str = "MOL", **kwargs) -> tuple[Figure, WCSAxes]:
         """Create a visual map of the pixel density of the catalog.
