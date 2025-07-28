@@ -3,6 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Callable, Iterable, Literal, Type
 
+import warnings
+
 import dask.dataframe as dd
 import hats as hc
 import nested_pandas as npd
@@ -27,7 +29,7 @@ from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorith
 from lsdb.core.search import IndexSearch
 from lsdb.core.search.abstract_search import AbstractSearch
 from lsdb.dask.crossmatch_catalog_data import crossmatch_catalog_data, crossmatch_catalog_data_nested
-from lsdb.dask.concat_catalog_data import concat_catalog_data
+from lsdb.dask.concat_catalog_data import concat_catalog_data, concat_margin_data
 from lsdb.dask.join_catalog_data import (
     join_catalog_data_nested,
     join_catalog_data_on,
@@ -398,6 +400,34 @@ class Catalog(HealpixDataset):
             suffixes (Tuple[str, str]): A pair of suffixes to be appended to the end of each column
                 name when they are joined. Default: uses the name of the catalog for the suffix
             **kwargs: Additional arguments to pass to the dask"""
+        # check if the catalogs have margins
+        margin = None
+        if self.margin is None and other.margin is not None:
+            warnings.warn(
+                "Left catalog has no margin, result will not include margin data.",
+            )
+        
+        if self.margin is not None and other.margin is None:
+            warnings.warn(
+                "Right catalog has no margin, result will not include margin data.",
+            )
+        
+        if self.margin is not None and other.margin is not None:
+            smallest_margin_radius = min(self.margin.hc_structure.catalog_info.margin_threshold or 0, other.margin.hc_structure.catalog_info.margin_threshold or 0)
+        
+            margin_ddf, margin_ddf_map, margin_alignment = concat_margin_data(self, other, smallest_margin_radius, **kwargs)
+            margin_hc_catalog = self.margin.hc_structure.__class__(
+                self.margin.hc_structure.catalog_info,
+                margin_alignment.pixel_tree,
+            )
+            margin = self.margin._create_updated_dataset(
+                ddf=margin_ddf,
+                ddf_pixel_map=margin_ddf_map,
+                hc_structure= margin_hc_catalog,
+                updated_catalog_info_params= {"margin_threshold": smallest_margin_radius}
+            )
+
+        
         ddf, ddf_map, alignment = concat_catalog_data(self, other, **kwargs)
         hc_catalog = self.hc_structure.__class__(
             self.hc_structure.catalog_info,
@@ -408,6 +438,7 @@ class Catalog(HealpixDataset):
             ddf=ddf,
             ddf_pixel_map=ddf_map,
             hc_structure=hc_catalog,
+            margin=margin,
         )
 
     def merge_map(

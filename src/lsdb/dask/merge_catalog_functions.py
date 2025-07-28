@@ -12,7 +12,9 @@ from dask.delayed import Delayed, delayed
 from hats.catalog import TableProperties
 from hats.io import paths
 from hats.pixel_math import HealpixPixel
-from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN, healpix_to_spatial_index
+from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN, SPATIAL_INDEX_ORDER, healpix_to_spatial_index
+from hats.pixel_math.pixel_margins import get_margin
+from hats.pixel_math.healpix_pixel import get_lower_order_pixel
 from hats.pixel_tree import PixelAlignment, PixelAlignmentType, align_trees
 from hats.pixel_tree.moc_utils import copy_moc
 from hats.pixel_tree.pixel_alignment import align_with_mocs
@@ -106,6 +108,63 @@ def align_catalogs(left: Catalog, right: Catalog, add_right_margin: bool = True,
         alignment_type=alignment_type,
     )
 
+def concat_align_catalogs(left: Catalog, right: Catalog, filter_by_mocs: bool=True, alignment_type: PixelAlignmentType=PixelAlignmentType.OUTER) -> PixelAlignment:
+    """Aligns two catalogs, also using the right catalog's margin if it exists
+
+    Args:
+        left (lsdb.Catalog): The left catalog to align
+        right (lsdb.Catalog): The right catalog to align
+        add_right_margin (bool): If True, when using MOCs to align catalogs, adds a border to the
+            right catalog's moc to include the margin of the right catalog, if it exists. Defaults to True.
+    Returns:
+        The PixelAlignment object from aligning the catalogs
+    """
+
+    if right.margin is not None:
+        right_tree = align_trees(
+            right.hc_structure.pixel_tree,
+            right.margin.hc_structure.pixel_tree,
+            alignment_type=PixelAlignmentType.OUTER,
+        ).pixel_tree
+    else:
+        right_tree = right.hc_structure.pixel_tree
+    
+    if left.margin is not None:
+        left_tree = align_trees(
+            left.hc_structure.pixel_tree,
+            left.margin.hc_structure.pixel_tree,
+            alignment_type=PixelAlignmentType.OUTER,
+        ).pixel_tree
+    else:
+        left_tree = left.hc_structure.pixel_tree
+
+    right_moc = (
+        right.hc_structure.moc
+        if right.hc_structure.moc is not None
+        else right.hc_structure.pixel_tree.to_moc()
+    )
+
+    left_moc = (
+        left.hc_structure.moc
+        if left.hc_structure.moc is not None
+        else left.hc_structure.pixel_tree.to_moc() 
+    )
+    if filter_by_mocs:
+        return align_with_mocs(
+            left_tree,
+            right_tree,
+            left_moc,
+            right_moc,
+            alignment_type=alignment_type,
+        )
+    else:
+        return align_trees(
+            left_tree,
+            right_tree,
+            alignment_type=alignment_type,
+        )
+
+
 def align_and_apply(
     catalog_mappings: list[tuple[HealpixDataset | None, list[HealpixPixel]]], func: Callable, *args, **kwargs
 ) -> list[Delayed]:
@@ -198,6 +257,22 @@ def filter_by_spatial_index_to_pixel(dataframe: npd.NestedFrame, order: int, pix
     filtered_df = dataframe[(dataframe.index >= lower_bound) & (dataframe.index < upper_bound)]
     return filtered_df
 
+
+def filter_by_spatial_index_to_margin(
+    dataframe: npd.NestedFrame, order: int, pixel: int, margin_radius: float
+) -> npd.NestedFrame:
+    margin_order = hp.margin2order(margin_radius)
+    if margin_order < order:
+        raise ValueError(
+            f"Margin order {margin_order} is smaller than the order {order} of the pixel {pixel}. "
+            "Cannot generate margin for this pixel."
+        )
+    margin_pixels = get_margin(order, pixel, margin_order - order)
+    healpix_29 = dataframe.index.to_numpy()
+    margin_order_hp_pix = get_lower_order_pixel(order, healpix_29, SPATIAL_INDEX_ORDER - margin_order)
+    mask = np.isin(margin_order_hp_pix, margin_pixels)
+    filtered_df = dataframe[mask]
+    return filtered_df
 
 def construct_catalog_args(
     partitions: list[Delayed], meta_df: npd.NestedFrame, alignment: PixelAlignment
