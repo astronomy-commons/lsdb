@@ -8,7 +8,7 @@ import hats
 import hats.io as file_io
 import nested_pandas as npd
 import numpy as np
-from hats.catalog import CatalogType, PartitionInfo, PartitionJoinInfo, TableProperties
+from hats.catalog import CatalogType, PartitionInfo, TableProperties
 from hats.catalog.catalog_collection import CatalogCollection
 from hats.pixel_math import HealpixPixel
 from upath import UPath
@@ -153,11 +153,7 @@ def to_association(
 
     # Fake out partition join info
     partition_info = PartitionInfo(pixels)
-    partition_join_frame = partition_info.as_dataframe()
-    partition_join_frame["join_Norder"] = partition_join_frame["Norder"]
-    partition_join_frame["join_Npix"] = partition_join_frame["Npix"]
-    partition_join_info = PartitionJoinInfo(partition_join_frame)
-    partition_join_info.write_to_csv(base_catalog_path)
+    partition_info.write_to_file(base_catalog_path / "partition_info.csv")
 
     # Save catalog info
     info = (
