@@ -1,10 +1,10 @@
-=========
+=======
 Catalog
-=========
+=======
 .. currentmodule:: lsdb.catalog
 
 Catalog Types
-~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~
 .. autosummary::
     :toctree: api/
 
@@ -13,7 +13,7 @@ Catalog Types
     MapCatalog
 
 Properties
-~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~
 .. autosummary::
     :toctree: api/
 
@@ -64,7 +64,7 @@ Filtering Methods
     Catalog.__getitem__
 
 Dataframe Methods
-~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~
 .. autosummary::
     :toctree: api/
 
@@ -80,7 +80,7 @@ Dataframe Methods
     Catalog.prune_empty_partitions
 
 Inter-catalog Methods
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
 .. autosummary::
     :toctree: api/
 
