@@ -17,12 +17,14 @@ from lsdb.catalog.association_catalog import AssociationCatalog
 from lsdb.dask.merge_catalog_functions import (
     align_and_apply,
     align_catalogs,
+    align_catalogs_with_association,
     concat_partition_and_margin,
     construct_catalog_args,
     filter_by_spatial_index_to_pixel,
     generate_meta_df_for_joined_tables,
     generate_meta_df_for_nested_tables,
     get_healpix_pixels_from_alignment,
+    get_healpix_pixels_from_association,
 )
 from lsdb.types import DaskDFPixelMap
 
@@ -191,13 +193,23 @@ def perform_join_through(
 
     left, right_joined_df = rename_columns_with_suffixes(left, right_joined_df, suffixes)
 
-    join_columns = [assoc_catalog_info.primary_column_association]
-    if assoc_catalog_info.join_column_association != assoc_catalog_info.primary_column_association:
-        join_columns.append(assoc_catalog_info.join_column_association)
+    # Edge case: if right_column + suffix == join_column_association, columns will be in the wrong order
+    # so rename association column
+    join_column_association = assoc_catalog_info.join_column_association
+    if join_column_association in right_joined_df.columns:
+        join_column_association = join_column_association + "_assoc"
+        through.rename(
+            columns={assoc_catalog_info.join_column_association: join_column_association}, inplace=True
+        )
+
+    join_columns_to_drop = []
+    for c in [assoc_catalog_info.primary_column_association, join_column_association]:
+        if c not in left.columns and c not in right_joined_df.columns and c not in join_columns_to_drop:
+            join_columns_to_drop.append(c)
 
     cols_to_drop = [c for c in NON_JOINING_ASSOCIATION_COLUMNS if c in through.columns]
-
-    through = through.drop(cols_to_drop, axis=1)
+    if len(cols_to_drop) > 0:
+        through = through.drop(cols_to_drop, axis=1)
 
     merged = (
         left.reset_index()
@@ -208,13 +220,14 @@ def perform_join_through(
         )
         .merge(
             right_joined_df,
-            left_on=assoc_catalog_info.join_column_association,
+            left_on=join_column_association,
             right_on=assoc_catalog_info.join_column + suffixes[1],
         )
     )
 
     merged.set_index(SPATIAL_INDEX_COLUMN, inplace=True)
-    merged.drop(join_columns, axis=1, inplace=True)
+    if len(join_columns_to_drop) > 0:
+        merged.drop(join_columns_to_drop, axis=1, inplace=True)
     return merged
 
 
@@ -381,17 +394,29 @@ def join_catalog_data_through(
             "Right catalog does not have a margin cache. Results may be incomplete and/or inaccurate.",
             RuntimeWarning,
         )
+    elif association.max_separation is None:
+        warnings.warn(
+            "Association catalog does not specify maximum separation."
+            " Results may be incomplete and/or inaccurate.",
+            RuntimeWarning,
+        )
+    elif right.margin.hc_structure.catalog_info.margin_threshold < association.max_separation:
+        warnings.warn(
+            f"Right catalog margin threshold ({right.margin.hc_structure.catalog_info.margin_threshold})"
+            f" is smaller than association maximum separation ({association.max_separation})."
+            " Results may be incomplete and/or inaccurate.",
+            RuntimeWarning,
+        )
 
-    alignment = align_catalogs(left, right)
-
-    left_pixels, right_pixels = get_healpix_pixels_from_alignment(alignment)
+    alignment = align_catalogs_with_association(left, association, right)
+    left_pixels, assoc_pixels, right_pixels = get_healpix_pixels_from_association(alignment)
 
     joined_partitions = align_and_apply(
         [
             (left, left_pixels),
             (right, right_pixels),
             (right.margin, right_pixels),
-            (association, left_pixels),
+            (association, assoc_pixels),
         ],
         perform_join_through,
         suffixes,
@@ -401,8 +426,10 @@ def join_catalog_data_through(
         association.hc_structure.catalog_info.primary_column_association,
         association.hc_structure.catalog_info.join_column_association,
     ]
+    non_joining_columns = [c for c in NON_JOINING_ASSOCIATION_COLUMNS if c in association.columns]
+
     # pylint: disable=protected-access
-    extra_df = association._ddf._meta.drop(NON_JOINING_ASSOCIATION_COLUMNS + association_join_columns, axis=1)
+    extra_df = association._ddf._meta.drop(non_joining_columns + association_join_columns, axis=1)
     meta_df = generate_meta_df_for_joined_tables([left, extra_df, right], [suffixes[0], "", suffixes[1]])
 
     return construct_catalog_args(joined_partitions, meta_df, alignment)
