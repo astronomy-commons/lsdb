@@ -66,7 +66,7 @@ Guide to common Dask messages
 -----------------------------
 
 Dask can produce a lot of messages during a given run, at a variety of
-log levels.  It can be difficult at times to asses the true severity
+log levels.  It can be difficult at times to assess the true severity
 and impact of these messages on the success of your LSDB job.  This
 guide aims to help you do just that.
 
