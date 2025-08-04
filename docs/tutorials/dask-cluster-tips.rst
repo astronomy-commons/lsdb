@@ -80,8 +80,6 @@ core per Python thread.
 Setting memory limits
 .....................
 
-In terms of RAM allocation for each worker, we have found that returns diminish past 10 GB per each thread
-allocated to that worker when processing LSDB workloads.
 Usage of ``lsdb.open_catalog(columns=..., filters=...)`` may make the memory footprint much smaller, which would
 allow you to allocate less memory per worker, and thus use more workers and make the analysis run faster.
 
@@ -222,63 +220,9 @@ it means that the workers were killed or died.
 This may happen if workers overused their memory limit or, in multiple-node clusters, because of network issues.
 Increasing the memory limit and network timeouts may help keep workers alive.
 
-Receipts for Frequent Problems
-------------------------------
 
-All workers are being killed in the beginning
+Understanding common Dask errors and warnings
 .............................................
 
-If you see that the pipeline failed fast after it started, it may be due to a bug in the code, data access issues,
-or memory overflow.
-For the first two cases, you would see the appropriate error messages in the logs.
-If the message doesn't contain enough useful information, you can try to run the pipeline with no ``Client`` object
-being created.
-In this case, Dask will use the default scheduler, which will run tasks on the same Python process and give you
-a usual Python traceback on the failure.
+:doc:`Dask Messages Guide </tutorials/dask-messages-guide>`
 
-In the case of the memory overflow, Dask Dashboard will show red bars in the memory usage chart,
-and logs will show messages like the following:
-
-.. code-block:: text
-
-   distributed.nanny.memory - WARNING - Worker tcp://127.0.0.1:49477 (pid=59029) exceeded 95% memory budget. Restarting...
-   distributed.nanny - WARNING - Restarting worker
-   KilledWorker: Attempted to run task ('read_pixel-_to_string_dtype-nestedframe-0c9d20582a6d2703d02a4835dddb05d2', 30904) on 4 different workers, but all those workers died while running it. The last worker that attempt to run the task was tcp://127.0.0.1:50761. Inspecting worker logs is often a good next step to diagnose what went wrong. For more information see https://distributed.dask.org/en/stable/killed.html.
-
-
-You can solve this issue by increasing the memory limit per worker, which would usually mean
-that you also need to reduce the number of workers.
-If that is not possible, you can also try to reduce the amount of data loaded into memory per partition,
-for example, by specifying which columns to use when loading data with ``lsdb.open_catalog(columns=...)``.
-
-All workers are being killed in the middle/end
-..............................................
-
-Some workflows can have a very unbalanced memory load,
-so just one or few tasks would use much more memory than others.
-You can diagnose this by looking at the memory usage chart in Dask Dashboard,
-it would show that only one worker is using much more memory than others.
-In such cases you may set the total memory limit ``memory_limit * n_workers`` larger than the actual amount of
-memory on your system.
-For example, if you have 16GB of RAM and you see that almost all of the tasks need 1GB, while a single
-task needs 8GB, you can start a cluster with this command:
-
-.. code-block:: python
-
-    from dask.distributed import Client
-    client = Client(n_workers=8, memory_limit='8GB', threads_per_worker=1)
-
-
-This approach can also help to speed up the computations, because it enables running with more workers.
-
-
-I run ``.compute()``, but the Dask Dashboard is empty for a long time
-.......................................................................
-
-For large tasks, such as cross-matching or joining multiple dozen-terabyte scale catalogs,
-Dask may spend a lot of time and memory of the main process before any computation starts.
-This happens because Dask builds and optimizes the computation graph, which happens
-on the main process (one you create ``Client`` on).
-There is no single solution to this problem, but you can try to reduce the number of partitions in use,
-for example, by specifying limiting the area when loading data,
-with ``lsdb.open_catalog(search_filter=lsdb.ConeSearch(...))``.
