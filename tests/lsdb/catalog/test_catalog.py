@@ -818,6 +818,24 @@ def test_all_columns(small_sky_order1_default_cols_catalog, small_sky_order1_cat
     assert np.all(small_sky_order1_default_cols_catalog.all_columns == small_sky_order1_catalog.columns)
 
 
+def test_all_columns_without_default_columns(small_sky_order1_catalog):
+    """Test that all_columns property shows all available columns when default columns are not specified.
+    
+    This test verifies that when a catalog is opened without default columns specified,
+    the all_columns property returns all columns available in the catalog, which should
+    be the same as the columns property since all columns are loaded by default.
+    """
+    # When no default columns are specified, all columns should be loaded
+    # so all_columns should equal columns
+    assert np.all(small_sky_order1_catalog.all_columns == small_sky_order1_catalog.columns)
+    
+    # Verify that all_columns returns a non-empty list of column names
+    assert len(small_sky_order1_catalog.all_columns) > 0
+    
+    # Verify that the contents are the same (convert to list for comparison)
+    assert list(small_sky_order1_catalog.all_columns) == list(small_sky_order1_catalog.columns)
+
+
 def test_original_schema(small_sky_order1_catalog):
     assert small_sky_order1_catalog.original_schema is not None
     filtered_cat = small_sky_order1_catalog[["ra", "dec"]]
