@@ -46,6 +46,16 @@ def test_catalog_html_repr(small_sky_order1_catalog):
     assert "available columns in the catalog have been loaded <strong>lazily</strong>" in full_html
 
 
+def test_catalog_html_repr_empty(small_sky_order1_catalog):
+    pixel_search = lsdb.PixelSearch.from_radec(80.0, 33.0)
+    cat = small_sky_order1_catalog.search(pixel_search)
+    full_html = cat._repr_html_()
+    assert cat.name in full_html
+    assert "Empty Catalog" in full_html
+    assert "npartitions=0" in full_html
+    assert "available columns in the catalog have been loaded <strong>lazily</strong>" in full_html
+
+
 def test_catalog_compute_equals_ddf_compute(small_sky_order1_catalog):
     pd.testing.assert_frame_equal(small_sky_order1_catalog.compute(), small_sky_order1_catalog._ddf.compute())
 
