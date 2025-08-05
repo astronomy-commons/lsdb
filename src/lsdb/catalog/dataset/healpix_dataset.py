@@ -121,8 +121,13 @@ class HealpixDataset(Dataset):
 
     @property
     def _repr_divisions(self):
-        name = f"npartitions={self._ddf.npartitions}"
-        divisions = pd.Index(self.get_ordered_healpix_pixels(), name=name)
+        pixels = self.get_ordered_healpix_pixels()
+        name = f"npartitions={len(pixels)}"
+        # Dask will raise an exception, preventing display,
+        # if the index does not have at least one element.
+        if len(pixels) == 0:
+            pixels = ["Empty Catalog"]
+        divisions = pd.Index(pixels, name=name)
         return divisions
 
     def _create_modified_hc_structure(
