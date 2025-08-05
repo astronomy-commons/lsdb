@@ -1,3 +1,4 @@
+import hats.io as file_io
 import pytest
 from hats.pixel_math import HealpixPixel
 
@@ -49,6 +50,28 @@ def test_crossmatch_to_association(xmatch_result, association_kwargs, tmp_path):
         HealpixPixel(1, 45),
         HealpixPixel(1, 46),
     ]
+
+
+def test_to_association_writes_no_empty_partitions(xmatch_result, association_kwargs, tmp_path):
+    # Perform a query that forces the existence of one empty partition
+    xmatch = xmatch_result.query("id_left == 701 or id_left == 707")
+    assert HealpixPixel(1, 45) in xmatch.get_healpix_pixels()
+    non_empty_pixels, _ = xmatch._get_non_empty_partitions()
+    assert [HealpixPixel(1, 44), HealpixPixel(1, 46)] == non_empty_pixels
+    # Write catalog to disk
+    to_association(
+        xmatch,
+        catalog_name="test_association",
+        base_catalog_path=tmp_path,
+        **association_kwargs,
+    )
+    association_table = lsdb.read_hats(tmp_path)
+    assert isinstance(association_table, AssociationCatalog)
+    # Ensure the empty pixel is not in the association
+    assert association_table.get_healpix_pixels() == non_empty_pixels
+    # Ensure its leaf file wasn't written
+    pixel_path = file_io.paths.pixel_catalog_file(tmp_path, HealpixPixel(1, 45))
+    assert not pixel_path.exists()
 
 
 def test_to_association_overwrite(xmatch_result, association_kwargs, tmp_path):
