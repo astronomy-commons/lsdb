@@ -123,6 +123,8 @@ class HealpixDataset(Dataset):
     def _repr_divisions(self):
         pixels = self.get_ordered_healpix_pixels()
         name = f"npartitions={len(pixels)}"
+        # Dask will raise an exception, preventing display,
+        # if the index does not have at least one element.
         if len(pixels) == 0:
             pixels = ["Empty Catalog"]
         divisions = pd.Index(pixels, name=name)
