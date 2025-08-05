@@ -38,6 +38,8 @@ def perform_write(
         The total number of points on the partition and the sparse count histogram
         at the specified order.
     """
+    if len(df) == 0:
+        return 0
     pixel_dir = file_io.pixel_directory(base_catalog_dir, hp_pixel.order, hp_pixel.pixel)
     file_io.file_io.make_directory(pixel_dir, exist_ok=True)
     pixel_path = file_io.paths.pixel_catalog_file(base_catalog_dir, hp_pixel)
