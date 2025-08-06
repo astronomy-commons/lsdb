@@ -375,45 +375,25 @@ def _load_dask_df_and_map(catalog: HCHealpixDataset, config) -> tuple[nd.NestedF
     if isinstance(get_upath(catalog.catalog_base_dir).fs, HTTPFileSystem):
         query_url_params = config.make_query_url_params()
     if len(ordered_pixels) > 0:
+        paths = [
+            hc.io.pixel_catalog_file(
+                catalog.catalog_base_dir, p, query_url_params, npix_suffix=catalog.catalog_info.npix_suffix
+            )
+            for p in ordered_pixels
+        ]
         ddf = nd.NestedFrame.from_map(
-            read_pixel,
-            ordered_pixels,
-            catalog=catalog,
-            query_url_params=query_url_params,
+            _read_parquet_file,
+            paths,
             columns=config.columns,
-            divisions=divisions,
-            meta=dask_meta_schema,
             schema=catalog.schema,
             **config.get_read_kwargs(),
+            divisions=divisions,
+            meta=dask_meta_schema,
         )
     else:
         ddf = nd.NestedFrame.from_pandas(dask_meta_schema, npartitions=1)
     pixel_to_index_map = {pixel: index for index, pixel in enumerate(ordered_pixels)}
     return ddf, pixel_to_index_map
-
-
-def read_pixel(
-    pixel: HealpixPixel,
-    catalog: HCHealpixDataset,
-    *,
-    query_url_params: dict | None = None,
-    columns=None,
-    schema=None,
-    **kwargs,
-):
-    """Utility method to read a single pixel's parquet file from disk.
-
-    NB: `columns` is necessary as an argument, even if None, so that dask-expr
-    optimizes the execution plan."""
-
-    return _read_parquet_file(
-        hc.io.pixel_catalog_file(
-            catalog.catalog_base_dir, pixel, query_url_params, npix_suffix=catalog.catalog_info.npix_suffix
-        ),
-        columns=columns,
-        schema=schema,
-        **kwargs,
-    )
 
 
 def _read_parquet_file(
