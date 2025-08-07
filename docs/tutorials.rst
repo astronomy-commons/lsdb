@@ -15,3 +15,5 @@ functionality.
    tutorial_toc/toc_performance
    tutorial_toc/toc_rubin
    tutorial_toc/toc_science
+   tutorial_toc/toc_debugging
+

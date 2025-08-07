@@ -1,10 +1,10 @@
-=========
+=======
 Catalog
-=========
+=======
 .. currentmodule:: lsdb.catalog
 
 Catalog Types
-~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~
 .. autosummary::
     :toctree: api/
 
@@ -13,7 +13,7 @@ Catalog Types
     MapCatalog
 
 Properties
-~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~
 .. autosummary::
     :toctree: api/
 
@@ -39,8 +39,9 @@ Inspection Methods
     Catalog.plot_pixels
     Catalog.plot_coverage
     Catalog.plot_points
+    Catalog.__len__
 
-Search Methods
+Filtering Methods
 ~~~~~~~~~~~~~~~~~~
 .. autosummary::
     :toctree: api/
@@ -56,11 +57,14 @@ Search Methods
     Catalog.pixel_search
     Catalog.moc_search
     Catalog.search
+    Catalog.head
+    Catalog.tail
+    Catalog.sample
+    Catalog.random_sample
     Catalog.__getitem__
-    Catalog.__len__
 
 Dataframe Methods
-~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~
 .. autosummary::
     :toctree: api/
 
@@ -73,16 +77,10 @@ Dataframe Methods
     Catalog.compute
     Catalog.get_partition
     Catalog.get_partition_index
-    Catalog.head
-    Catalog.tail
-    Catalog.sample
-    Catalog.random_sample
     Catalog.prune_empty_partitions
-    Catalog.skymap_data
-    Catalog.skymap_histogram
 
 Inter-catalog Methods
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
 .. autosummary::
     :toctree: api/
 

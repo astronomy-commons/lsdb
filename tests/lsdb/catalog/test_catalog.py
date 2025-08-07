@@ -15,14 +15,13 @@ import pytest
 from astropy.coordinates import SkyCoord
 from astropy.visualization.wcsaxes import WCSAxes
 from hats.inspection.visualize_catalog import get_fov_moc_from_wcs
-from hats.pixel_math import HealpixPixel, spatial_index_to_healpix
+from hats.pixel_math import HealpixPixel
 from mocpy import WCS
 
 import lsdb
 import lsdb.nested as nd
 from lsdb import Catalog, MarginCatalog
 from lsdb.core.search.moc_search import MOCSearch
-from lsdb.dask.merge_catalog_functions import filter_by_spatial_index_to_pixel
 
 
 @pytest.fixture(autouse=True)
@@ -44,6 +43,16 @@ def test_catalog_html_repr(small_sky_order1_catalog):
     assert small_sky_order1_catalog.name in full_html
     assert str(small_sky_order1_catalog.get_ordered_healpix_pixels()[0]) in full_html
     assert str(small_sky_order1_catalog.get_ordered_healpix_pixels()[-1]) in full_html
+    assert "available columns in the catalog have been loaded <strong>lazily</strong>" in full_html
+
+
+def test_catalog_html_repr_empty(small_sky_order1_catalog):
+    pixel_search = lsdb.PixelSearch.from_radec(80.0, 33.0)
+    cat = small_sky_order1_catalog.search(pixel_search)
+    full_html = cat._repr_html_()
+    assert cat.name in full_html
+    assert "Empty Catalog" in full_html
+    assert "npartitions=0" in full_html
     assert "available columns in the catalog have been loaded <strong>lazily</strong>" in full_html
 
 
@@ -433,199 +442,6 @@ def test_prune_empty_partitions_all_are_removed(small_sky_order1_catalog):
     # The pruned catalog is also empty
     _, non_empty_partitions = pruned_catalog._get_non_empty_partitions()
     assert len(non_empty_partitions) == 0
-
-
-def test_skymap_data(small_sky_order1_catalog):
-    def func(df, healpix):
-        return len(df) / hp.order2pixarea(healpix.order, degrees=True)
-
-    skymap = small_sky_order1_catalog.skymap_data(func)
-    for pixel in skymap.keys():
-        partition = small_sky_order1_catalog.get_partition(pixel.order, pixel.pixel)
-        expected_value = func(partition, pixel)
-        assert skymap[pixel].compute() == expected_value
-
-
-def test_skymap_data_order(small_sky_order1_catalog):
-    def func(df, healpix):
-        return len(df) / hp.order2pixarea(healpix.order, degrees=True)
-
-    order = 3
-
-    skymap = small_sky_order1_catalog.skymap_data(func, order=order)
-    for pixel in skymap.keys():
-        partition = small_sky_order1_catalog.get_partition(pixel.order, pixel.pixel).compute()
-        value = skymap[pixel].compute()
-        delta_order = order - pixel.order
-        expected_array_length = 1 << 2 * delta_order
-        assert len(value) == expected_array_length
-        pixels = np.arange(pixel.pixel << (2 * delta_order), (pixel.pixel + 1) << (2 * delta_order))
-        for i in range(expected_array_length):
-            p = pixels[i]
-            expected_value = func(
-                filter_by_spatial_index_to_pixel(partition, order, p), HealpixPixel(order, p)
-            )
-            assert value[i] == expected_value
-
-
-def test_skymap_data_wrong_order(small_sky_order1_catalog):
-    def func(df, healpix):
-        return len(df) / hp.order2pixarea(healpix.order, degrees=True)
-
-    order = 0
-
-    with pytest.raises(ValueError):
-        small_sky_order1_catalog.skymap_data(func, order)
-
-
-def test_skymap_histogram(small_sky_order1_catalog):
-    def func(df, healpix):
-        return len(df) / hp.order2pixarea(healpix.order, degrees=True)
-
-    pixel_map = small_sky_order1_catalog.skymap_data(func)
-    pixel_map = {pixel: value.compute() for pixel, value in pixel_map.items()}
-    max_order = max(pixel_map.keys(), key=lambda x: x.order).order
-    img = np.zeros(hp.order2npix(max_order))
-    for pixel, value in pixel_map.items():
-        dorder = max_order - pixel.order
-        start = pixel.pixel * (4**dorder)
-        end = (pixel.pixel + 1) * (4**dorder)
-        img_order_pixels = np.arange(start, end)
-        img[img_order_pixels] = value
-    assert (small_sky_order1_catalog.skymap_histogram(func) == img).all()
-
-
-def test_skymap_histogram_empty(small_sky_order1_catalog):
-    def func(df, healpix):
-        return len(df) / hp.order2pixarea(healpix.order, degrees=True)
-
-    expected_img = np.full(12, 1)
-    img = small_sky_order1_catalog.cone_search(0, 0, 1).skymap_histogram(func, default_value=1)
-    assert (img == expected_img).all()
-
-
-def test_skymap_histogram_order_default(small_sky_order1_catalog):
-    order = 3
-    default = -1.0
-
-    def func(df, _):
-        return len(df) / hp.order2pixarea(order, degrees=True)
-
-    computed_catalog = small_sky_order1_catalog.compute()
-    order_3_pixels = spatial_index_to_healpix(computed_catalog.index.to_numpy(), order)
-    pixel_map = computed_catalog.groupby(order_3_pixels).apply(lambda x: func(x, None))
-
-    img = np.full(hp.order2npix(order), default)
-    for pixel_num, row in pixel_map.items():
-        img[pixel_num] = row
-    assert (small_sky_order1_catalog.skymap_histogram(func, order, default) == img).all()
-
-
-def test_skymap_histogram_null_values_order_default(small_sky_order1_catalog):
-    default = -1.0
-
-    def func(df, healpix):
-        density = len(df) / hp.order2pixarea(healpix.order, degrees=True)
-        return density if healpix.pixel % 2 == 0 else None
-
-    pixels = list(small_sky_order1_catalog._ddf_pixel_map.keys())
-    max_order = max(pixels, key=lambda x: x.order).order
-    hp_orders = np.vectorize(lambda x: x.order)(pixels)
-    hp_pixels = np.vectorize(lambda x: x.pixel)(pixels)
-
-    dorders = max_order - hp_orders
-    starts = hp_pixels << (2 * dorders)
-    ends = (hp_pixels + 1) << (2 * dorders)
-
-    histogram = small_sky_order1_catalog.skymap_histogram(func, default_value=default)
-
-    for start, end in zip(starts, ends):
-        pixels = np.arange(start, end)
-        arr = histogram[pixels[pixels % 2 != 0]]
-        expected_arr = np.full(arr.shape, fill_value=default)
-        assert np.array_equal(expected_arr, arr)
-
-
-def test_skymap_histogram_null_values_order(small_sky_order1_catalog):
-    order = 3
-    default = -1.0
-
-    def func(df, healpix):
-        density = len(df) / hp.order2pixarea(healpix.order, degrees=True)
-        return density if healpix.pixel % 2 == 0 else None
-
-    pixels = list(small_sky_order1_catalog._ddf_pixel_map.keys())
-    hp_orders = np.vectorize(lambda x: x.order)(pixels)
-    hp_pixels = np.vectorize(lambda x: x.pixel)(pixels)
-
-    dorders = order - hp_orders
-    starts = hp_pixels << (2 * dorders)
-    ends = (hp_pixels + 1) << (2 * dorders)
-
-    histogram = small_sky_order1_catalog.skymap_histogram(func, order, default)
-
-    for start, end in zip(starts, ends):
-        pixels = np.arange(start, end)
-        arr = histogram[pixels[pixels % 2 != 0]]
-        expected_arr = np.full(arr.shape, fill_value=default)
-        assert np.array_equal(expected_arr, arr)
-
-
-def test_skymap_histogram_order_empty(small_sky_order1_catalog):
-    order = 3
-
-    def func(df, healpix):
-        return len(df) / hp.order2pixarea(healpix.order, degrees=True)
-
-    catalog = small_sky_order1_catalog.cone_search(0, 0, 1)
-    _, non_empty_partitions = catalog._get_non_empty_partitions()
-    assert len(non_empty_partitions) == 0
-
-    img = catalog.skymap_histogram(func, order)
-    expected_img = np.zeros(hp.order2npix(order))
-    assert (img == expected_img).all()
-
-
-def test_skymap_histogram_order_some_partitions_empty(small_sky_order1_catalog):
-    order = 3
-
-    def func(df, healpix):
-        return len(df) / hp.order2pixarea(healpix.order, degrees=True)
-
-    catalog = small_sky_order1_catalog.query("ra > 350 and dec < -50")
-    _, non_empty_partitions = catalog._get_non_empty_partitions()
-    assert 0 < len(non_empty_partitions) < catalog._ddf.npartitions
-
-    img = catalog.skymap_histogram(func, order)
-
-    pixel_map = catalog.skymap_data(func, order)
-    pixel_map = {pixel: value.compute() for pixel, value in pixel_map.items()}
-    expected_img = np.zeros(hp.order2npix(order))
-    for pixel, value in pixel_map.items():
-        dorder = order - pixel.order
-        start = pixel.pixel * (4**dorder)
-        end = (pixel.pixel + 1) * (4**dorder)
-        img_order_pixels = np.arange(start, end)
-        expected_img[img_order_pixels] = value
-    assert (img == expected_img).all()
-
-
-# pylint: disable=no-member
-def test_skymap_plot(small_sky_order1_catalog, mocker):
-    mocker.patch("lsdb.catalog.dataset.healpix_dataset.plot_healpix_map")
-
-    def func(df, healpix):
-        return len(df) / hp.order2pixarea(healpix.order, degrees=True)
-
-    img = small_sky_order1_catalog.skymap_histogram(func, plot=True)
-
-    # [42, 29, 42, 18] is the actual lengths of the four filled dataframes
-    expected_img = np.full(hp.order2npix(1), 0, dtype=np.float64)
-    expected_img[44:] = [42, 29, 42, 18] / hp.order2pixarea(1, degrees=True)
-
-    assert (img == expected_img).all()
-    lsdb.catalog.dataset.healpix_dataset.plot_healpix_map.assert_called_once()
-    assert (lsdb.catalog.dataset.healpix_dataset.plot_healpix_map.call_args[0][0] == expected_img).all()
 
 
 # pylint: disable=no-member

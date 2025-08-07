@@ -37,9 +37,11 @@ def perform_write(
 
     Returns:
         The total number of points on the partition and the maximum separation between
-        any two of its points. It returns a maxmimum separation of -1 if a separation
+        any two of its points. It returns a maximum separation of -1 if a separation
         column is not provided.
     """
+    if len(df) == 0:
+        return (0, -1)
     pixel_dir = file_io.pixel_directory(base_catalog_dir, hp_pixel.order, hp_pixel.pixel)
     file_io.file_io.make_directory(pixel_dir, exist_ok=True)
     pixel_path = file_io.paths.pixel_catalog_file(base_catalog_dir, hp_pixel)
