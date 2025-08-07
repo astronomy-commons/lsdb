@@ -706,11 +706,29 @@ class HealpixDataset(Dataset):
             def apply_func(df, *args, partition_info=None, **kwargs):
                 """Uses `partition_info` passed by dask `map_partitions` to get healpix pixel to pass to
                 ufunc"""
-                return func(df, pixels[partition_info["number"]], *args, **kwargs)
-
+                assert partition_info is not None, "partition_info must be provided by dask map_partitions"
+                partition_number = partition_info["number"]
+                pixel = pixels[partition_number]
+                try:
+                    return func(df, pixel, *args, **kwargs)
+                except Exception as e:
+                    raise RuntimeError(
+                        f"Error applying function {func.__name__} to partition {partition_number}, pixel {pixel}: {e}"
+                    ) from e
             output_ddf = self._ddf.map_partitions(apply_func, *args, meta=meta, **kwargs)
         else:
-            output_ddf = self._ddf.map_partitions(func, *args, meta=meta, **kwargs)
+
+            def apply_func(df, *args, partition_info=None, **kwargs):
+                """Applies the function to the partition without pixel information"""
+                assert partition_info is not None, "partition_info must be provided by dask map_partitions"
+                partition_number = partition_info["number"]
+                try:
+                    return func(df, *args, **kwargs)
+                except Exception as e:
+                    raise RuntimeError(
+                        f"Error applying function {func.__name__} to partition {partition_number}: {str(e)}"
+                    ) from e
+            output_ddf = self._ddf.map_partitions(apply_func, *args, meta=meta, **kwargs)
 
         if isinstance(output_ddf, nd.NestedFrame) | isinstance(output_ddf, dd.DataFrame):
             return self._create_updated_dataset(ddf=nd.NestedFrame.from_dask_dataframe(output_ddf))
