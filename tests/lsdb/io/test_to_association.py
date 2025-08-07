@@ -1,9 +1,9 @@
 import hats.io as file_io
+import pandas as pd
 import pytest
 from hats.pixel_math import HealpixPixel
 
 import lsdb
-import lsdb.nested as nd
 from lsdb.catalog.association_catalog import AssociationCatalog
 from lsdb.io.to_association import _check_catalogs_and_columns, to_association
 
@@ -13,12 +13,12 @@ def xmatch_result(small_sky_catalog, small_sky_xmatch_catalog):
     xmatch_result = lsdb.crossmatch(
         small_sky_catalog,
         small_sky_xmatch_catalog,
-        suffixes=["_left", "_right"],
+        suffixes=("_left", "_right"),
         radius_arcsec=0.01 * 3600,
         left_args={"margin_threshold": 100},
         right_args={"margin_threshold": 100},
-    )[["id_left", "id_right"]]
-    assert list(xmatch_result.columns) == ["id_left", "id_right"]
+    )[["id_left", "id_right", "_dist_arcsec"]]
+    assert list(xmatch_result.columns) == ["id_left", "id_right", "_dist_arcsec"]
     return xmatch_result
 
 
@@ -39,17 +39,57 @@ def test_crossmatch_to_association(xmatch_result, association_kwargs, tmp_path):
         xmatch_result,
         catalog_name="test_association",
         base_catalog_path=tmp_path,
+        separation_column="_dist_arcsec",
         overwrite=False,
         **association_kwargs,
     )
     association_table = lsdb.read_hats(tmp_path)
     assert isinstance(association_table, AssociationCatalog)
-    assert isinstance(association_table._ddf, nd.NestedFrame)
     assert association_table.get_healpix_pixels() == [
         HealpixPixel(1, 44),
         HealpixPixel(1, 45),
         HealpixPixel(1, 46),
     ]
+    assert association_table.all_columns == ["id_left", "id_right", "_dist_arcsec"]
+    max_separation = association_table.compute()["_dist_arcsec"].max()
+    assert pytest.approx(max_separation, abs=1e-5) == association_table.max_separation
+
+
+def test_to_association_join_through_roundtrip(
+    xmatch_result, association_kwargs, small_sky_catalog, small_sky_xmatch_with_margin, tmp_path
+):
+    to_association(
+        xmatch_result,
+        catalog_name="test_association",
+        base_catalog_path=tmp_path,
+        overwrite=False,
+        **association_kwargs,
+    )
+    association_table = lsdb.read_hats(tmp_path)
+    assert isinstance(association_table, AssociationCatalog)
+    xmatch_cat = small_sky_catalog.join(small_sky_xmatch_with_margin, through=association_table)
+    assert xmatch_cat.get_healpix_pixels() == association_table.get_healpix_pixels()
+    assert xmatch_cat.hc_structure.moc is not None
+    xmatch_df = xmatch_cat.compute()
+    expected_xmatch_df = xmatch_result.compute()
+    pd.testing.assert_series_equal(
+        xmatch_df["id_small_sky"], expected_xmatch_df["id_left"], check_names=False
+    )
+    pd.testing.assert_series_equal(
+        xmatch_df["id_small_sky_xmatch"], expected_xmatch_df["id_right"], check_names=False
+    )
+
+
+def test_to_association_has_invalid_separation_column(xmatch_result, association_kwargs, tmp_path):
+    association_kwargs = association_kwargs | {"separation_column": "_dist"}
+    with pytest.raises(ValueError, match="separation_column"):
+        to_association(
+            xmatch_result,
+            catalog_name="test_association",
+            base_catalog_path=tmp_path,
+            overwrite=False,
+            **association_kwargs,
+        )
 
 
 def test_to_association_writes_no_empty_partitions(xmatch_result, association_kwargs, tmp_path):
@@ -104,7 +144,7 @@ def test_to_association_overwrite(xmatch_result, association_kwargs, tmp_path):
 
 
 def test_association_required_column_names(association_kwargs, tmp_path):
-    column_names = ["id_left", "id_right"]
+    column_names = ["id_left", "id_right", "_dist_arcsec"]
     _check_catalogs_and_columns(column_names, **association_kwargs)
 
     ## Try setting each field to None, and be sad about it.
@@ -120,7 +160,7 @@ def test_association_required_column_names(association_kwargs, tmp_path):
             _check_catalogs_and_columns(column_names, **missing_field)
 
     ## Try setting catalog columns to ones that aren't in the original catalogs.
-    for field in ["primary_id_column", "join_id_column", "join_to_primary_id_column"]:
+    for field in ["primary_id_column", "join_id_column", "join_to_primary_id_column", "separation_column"]:
         missing_field = association_kwargs | {field: "garbage"}
         with pytest.raises(ValueError, match=field):
             _check_catalogs_and_columns(column_names, **missing_field)
@@ -137,7 +177,7 @@ def test_association_with_collections(
 ):
     """Confirm that catalog directories on either side can be collections.
     Confirm that with a join-to-primary column, everything is populated correctly."""
-    column_names = ["OBJECT_ID", "SOURCE_ID"]
+    column_names = ["OBJECT_ID", "SOURCE_ID", "_dist"]
 
     returned_values = _check_catalogs_and_columns(
         column_names,
