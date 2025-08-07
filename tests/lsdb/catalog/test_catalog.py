@@ -847,3 +847,74 @@ def test_all_columns_after_column_select(small_sky_order1_catalog):
 def test_all_columns_after_filter(small_sky_order1_catalog):
     filtered_cat = small_sky_order1_catalog.cone_search(10, 10, 10)
     assert filtered_cat.all_columns == small_sky_order1_catalog.all_columns
+
+
+def test_map_partitions_error_in_one_partition(small_sky_order1_catalog):
+    """Test that map_partitions properly handles errors that occur in a specific partition.
+
+    This test creates a scenario where a user function fails in one partition but not others.
+    For example, when trying to perform an operation that is invalid for certain values.
+    This is designed to test the fix for issue #837 regarding enhanced error messages.
+    """
+    # We'll create a condition based on the data content to determine which partition should fail
+    # From our earlier investigation, partition 1 has RA values around 320-350
+
+    def modify_for_error_test(df):
+        """Modify data to ensure only one specific partition will cause an error."""
+        df = df.copy()
+        if len(df) > 0:
+            # Use the RA range to identify the partition that should fail
+            # Partition 1 has RA values starting around 320.5
+            avg_ra = df['ra'].mean()
+            if 320 <= avg_ra <= 350:  # This should target partition 1
+                df['dec_error'] = 0  # Will cause our test function to fail
+            else:
+                df['dec_error'] = 1  # Will allow our test function to succeed
+        return df
+
+    # Apply the modification to create our test catalog
+    modified_catalog = small_sky_order1_catalog.map_partitions(modify_for_error_test)
+
+    # Verify our modification worked correctly by checking each partition
+    partitions_data = []
+    for i in range(modified_catalog.npartitions):
+        partition_data = modified_catalog.partitions[i].compute()
+        if len(partition_data) > 0:
+            unique_dec_errors = partition_data['dec_error'].unique()
+            avg_ra = partition_data['ra'].mean()
+            partitions_data.append((i, unique_dec_errors, avg_ra))
+
+    # Ensure exactly one partition has dec_error = 0 and others have dec_error = 1
+    zero_partitions = [(i, avg_ra) for i, errors, avg_ra in partitions_data if 0 in errors]
+    one_partitions = [(i, avg_ra) for i, errors, avg_ra in partitions_data if 1 in errors and 0 not in errors]
+
+    assert len(zero_partitions) == 1, f"Expected exactly 1 partition with dec_error=0, got {len(zero_partitions)}: {zero_partitions}"
+    assert len(one_partitions) >= 1, f"Expected at least 1 partition with dec_error=1, got {len(one_partitions)}: {one_partitions}"
+
+    # Define a function that will fail when it encounters zero in dec_error column
+    def strict_divide_by_dec_error(df):
+        """Function that explicitly checks for zero and raises an error."""
+        if len(df) > 0 and (df['dec_error'] == 0).any():
+            raise ValueError("Cannot divide by zero in dec_error column")
+
+        result_df = df.copy()
+        result_df['result'] = result_df['ra'] / df['dec_error']
+        return result_df
+
+    # This should trigger an error in the partition with dec_error = 0
+    # For now, we expect this to raise a basic error (before the fix is implemented)
+    with pytest.raises(Exception) as exc_info:
+        # Compute to trigger the actual execution
+        modified_catalog.map_partitions(strict_divide_by_dec_error).compute()
+
+    # Verify that an error occurred - the exact error type/message will depend on
+    # whether issue #837 has been implemented or not
+    assert exc_info.value is not None
+    assert "Cannot divide by zero" in str(exc_info.value)
+
+    # Additional validation could be added here once issue #837 is implemented
+    # to check for enhanced error messages containing:
+    # - Function name ("strict_divide_by_dec_error")
+    # - Partition index (the one with RA average around 320-350)
+    # - HEALPix tile order and index
+    # - Reproduction instructions like "rerun with <catalog object>.partitions[X].compute()"
