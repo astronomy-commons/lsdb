@@ -847,3 +847,24 @@ def test_all_columns_after_column_select(small_sky_order1_catalog):
 def test_all_columns_after_filter(small_sky_order1_catalog):
     filtered_cat = small_sky_order1_catalog.cone_search(10, 10, 10)
     assert filtered_cat.all_columns == small_sky_order1_catalog.all_columns
+
+
+def test_map_partitions_error_messages():
+    # Create a dummy catalog with few partitions
+    from nested_pandas.datasets import generate_data
+    nf = generate_data(5, 5, seed=0)
+    nf.loc[2, "a"] = 0.0  # Introduce a zero to trigger an error in the user function
+
+    def divme(df, pixel=None):
+        if (df['a'] == 0.0).any():
+            raise ValueError("Not so fast")
+        return 1 / df['a']
+
+    # Force every row into a separate partition
+    nfc = lsdb.from_dataframe(nf, ra_column='a', dec_column='b', partition_size=1)
+
+    with pytest.raises(RuntimeError, match=r"function divme to partition 3: Not so fast"):
+        nfc.map_partitions(divme, include_pixel=False).compute()
+
+    with pytest.raises(RuntimeError, match=r"function divme to partition 3, pixel Order: 7, Pixel: 77836: Not so fast"):
+        nfc.map_partitions(divme, include_pixel=True).compute()
