@@ -714,7 +714,7 @@ class HealpixDataset(Dataset):
                 except Exception as e:
                     raise RuntimeError(
                         f"Error applying function {func.__name__} to partition "
-                        "{partition_number}, pixel {pixel}: {e}"
+                        f"{partition_number}, pixel {pixel}: {e}"
                     ) from e
 
             output_ddf = self._ddf.map_partitions(apply_func, *args, meta=meta, **kwargs)
