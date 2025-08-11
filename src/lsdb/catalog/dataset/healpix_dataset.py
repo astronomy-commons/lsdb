@@ -713,8 +713,10 @@ class HealpixDataset(Dataset):
                     return func(df, pixel, *args, **kwargs)
                 except Exception as e:
                     raise RuntimeError(
-                        f"Error applying function {func.__name__} to partition {partition_number}, pixel {pixel}: {e}"
+                        f"Error applying function {func.__name__} to partition "
+                        "{partition_number}, pixel {pixel}: {e}"
                     ) from e
+
             output_ddf = self._ddf.map_partitions(apply_func, *args, meta=meta, **kwargs)
         else:
 
@@ -728,6 +730,7 @@ class HealpixDataset(Dataset):
                     raise RuntimeError(
                         f"Error applying function {func.__name__} to partition {partition_number}: {str(e)}"
                     ) from e
+
             output_ddf = self._ddf.map_partitions(apply_func, *args, meta=meta, **kwargs)
 
         if isinstance(output_ddf, nd.NestedFrame) | isinstance(output_ddf, dd.DataFrame):
