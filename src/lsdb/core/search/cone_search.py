@@ -1,6 +1,6 @@
 import astropy.units as u
 import nested_pandas as npd
-from astropy.coordinates import SkyCoord
+import numpy as np
 from astropy.visualization.wcsaxes import SphericalCircle, WCSAxes
 from hats.catalog import TableProperties
 from hats.pixel_math.validators import validate_declination_values, validate_radius
@@ -59,11 +59,16 @@ def cone_filter(data_frame: npd.NestedFrame, ra, dec, radius_arcsec, metadata: T
     Returns:
         A new DataFrame with the rows from `data_frame` filtered to only the points inside the cone
     """
-    df_ras = data_frame[metadata.ra_column].to_numpy()
-    df_decs = data_frame[metadata.dec_column].to_numpy()
-    df_coords = SkyCoord(df_ras, df_decs, unit="deg")
-    center_coord = SkyCoord(ra, dec, unit="deg")
-    df_separations_deg = df_coords.separation(center_coord).value
-    radius_degrees = radius_arcsec / 3600
-    data_frame = data_frame.iloc[df_separations_deg < radius_degrees]
+    ra_rad = np.radians(data_frame[metadata.ra_column].to_numpy())
+    dec_rad = np.radians(data_frame[metadata.dec_column].to_numpy())
+    ra0 = np.radians(ra)
+    dec0 = np.radians(dec)
+
+    cos_angle = np.sin(dec_rad) * np.sin(dec0) + np.cos(dec_rad) * np.cos(dec0) * np.cos(ra_rad - ra0)
+
+    # Clamp to valid range to avoid numerical issues
+    cos_separation = np.clip(cos_angle, -1.0, 1.0)
+
+    cos_radius = np.cos(np.radians(radius_arcsec / 3600))
+    data_frame = data_frame[cos_separation >= cos_radius]
     return data_frame
