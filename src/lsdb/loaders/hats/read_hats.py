@@ -396,8 +396,8 @@ def _load_dask_df_and_map(catalog: HCHealpixDataset, config) -> tuple[nd.NestedF
 def read_pixel(
     pixel: HealpixPixel,
     catalog_base_dir: str | Path | UPath,
+    npix_suffix: str,
     *,
-    npix_suffix: str | None = None,
     query_url_params: dict | None = None,
     columns=None,
     schema=None,
