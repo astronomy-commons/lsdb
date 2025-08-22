@@ -62,7 +62,12 @@ def remove_hips_columns(df: npd.NestedFrame | None):
     return df.drop(columns=hive_columns_in_df)
 
 
-def align_catalogs(left: Catalog, right: Catalog, add_right_margin: bool = True, alignment_type: PixelAlignmentType=PixelAlignmentType.INNER) -> PixelAlignment:
+def align_catalogs(
+    left: Catalog,
+    right: Catalog,
+    add_right_margin: bool = True,
+    alignment_type: PixelAlignmentType = PixelAlignmentType.INNER,
+) -> PixelAlignment:
     """Aligns two catalogs, also using the right catalog's margin if it exists
 
     Args:
@@ -108,7 +113,13 @@ def align_catalogs(left: Catalog, right: Catalog, add_right_margin: bool = True,
         alignment_type=alignment_type,
     )
 
-def concat_align_catalogs(left: Catalog, right: Catalog, filter_by_mocs: bool=True, alignment_type: PixelAlignmentType=PixelAlignmentType.OUTER) -> PixelAlignment:
+
+def concat_align_catalogs(
+    left: Catalog,
+    right: Catalog,
+    filter_by_mocs: bool = True,
+    alignment_type: PixelAlignmentType = PixelAlignmentType.OUTER,
+) -> PixelAlignment:
     """Aligns two catalogs, also using the right catalog's margin if it exists
 
     Args:
@@ -128,7 +139,7 @@ def concat_align_catalogs(left: Catalog, right: Catalog, filter_by_mocs: bool=Tr
         ).pixel_tree
     else:
         right_tree = right.hc_structure.pixel_tree
-    
+
     if left.margin is not None:
         left_tree = align_trees(
             left.hc_structure.pixel_tree,
@@ -145,9 +156,7 @@ def concat_align_catalogs(left: Catalog, right: Catalog, filter_by_mocs: bool=Tr
     )
 
     left_moc = (
-        left.hc_structure.moc
-        if left.hc_structure.moc is not None
-        else left.hc_structure.pixel_tree.to_moc() 
+        left.hc_structure.moc if left.hc_structure.moc is not None else left.hc_structure.pixel_tree.to_moc()
     )
     if filter_by_mocs:
         return align_with_mocs(
@@ -261,7 +270,7 @@ def filter_by_spatial_index_to_pixel(dataframe: npd.NestedFrame, order: int, pix
 def filter_by_spatial_index_to_margin(
     dataframe: npd.NestedFrame, order: int, pixel: int, margin_radius: float
 ) -> npd.NestedFrame:
-    margin_order = hp.margin2order(margin_radius)
+    margin_order = hp.margin2order(margin_radius / 60)
     if margin_order < order:
         raise ValueError(
             f"Margin order {margin_order} is smaller than the order {order} of the pixel {pixel}. "
@@ -269,10 +278,13 @@ def filter_by_spatial_index_to_margin(
         )
     margin_pixels = get_margin(order, pixel, margin_order - order)
     healpix_29 = dataframe.index.to_numpy()
-    margin_order_hp_pix = get_lower_order_pixel(order, healpix_29, SPATIAL_INDEX_ORDER - margin_order)
+    margin_order_hp_pix = get_lower_order_pixel(
+        SPATIAL_INDEX_ORDER, healpix_29, SPATIAL_INDEX_ORDER - margin_order
+    )
     mask = np.isin(margin_order_hp_pix, margin_pixels)
     filtered_df = dataframe[mask]
     return filtered_df
+
 
 def construct_catalog_args(
     partitions: list[Delayed], meta_df: npd.NestedFrame, alignment: PixelAlignment
@@ -311,7 +323,9 @@ def get_healpix_pixels_from_alignment(
     pixel_mapping = alignment.pixel_mapping
     if len(pixel_mapping) == 0:
         return ([], [])
-    make_pixel = np.vectorize(lambda order, pixel: HealpixPixel(order=order, pixel=pixel) if order is not None else None)
+    make_pixel = np.vectorize(
+        lambda order, pixel: HealpixPixel(order=order, pixel=pixel) if order is not None else None
+    )
     left_pixels = make_pixel(
         pixel_mapping[PixelAlignment.PRIMARY_ORDER_COLUMN_NAME],
         pixel_mapping[PixelAlignment.PRIMARY_PIXEL_COLUMN_NAME],
