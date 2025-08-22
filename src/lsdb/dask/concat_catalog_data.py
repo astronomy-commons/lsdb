@@ -50,9 +50,9 @@ def perform_concat(
     Filters the left catalog before performing the cross-match to stop duplicate points appearing in
     the result.
     """
-    if left_pix is None:
+    if left_df is None:
         left_df = aligned_meta
-    if right_pix is None:
+    if right_df is None:
         right_df = aligned_meta
 
     if left_pix is not None and aligned_pix.order > left_pix.order and left_df is not None:
