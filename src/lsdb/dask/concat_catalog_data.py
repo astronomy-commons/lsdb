@@ -50,16 +50,17 @@ def perform_concat(
     Filters the left catalog before performing the cross-match to stop duplicate points appearing in
     the result.
     """
-    if left_df is None:
-        left_df = aligned_meta
-    if right_df is None:
-        right_df = aligned_meta
 
     if left_pix is not None and aligned_pix.order > left_pix.order and left_df is not None:
         left_df = filter_by_spatial_index_to_pixel(left_df, aligned_pix.order, aligned_pix.pixel)
 
     if right_pix is not None and aligned_pix.order > right_pix.order and right_df is not None:
         right_df = filter_by_spatial_index_to_pixel(right_df, aligned_pix.order, aligned_pix.pixel)
+
+    if left_df is None:
+        left_df = aligned_meta
+    if right_df is None:
+        right_df = aligned_meta
 
     return pd.concat([left_df, right_df], **kwargs)
 
