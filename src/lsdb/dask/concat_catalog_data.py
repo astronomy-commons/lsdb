@@ -35,10 +35,14 @@ if TYPE_CHECKING:
 def perform_concat(
     left_df,
     right_df,
+    aligned_df,
     left_pix,
     right_pix,
+    aligned_pix,
     left_catalog_info,
     right_catalog_info,
+    aligned_catalog_info,
+    aligned_meta,
     **kwargs,
 ):
     """Performs a crossmatch on data from a HEALPix pixel in each catalog
@@ -47,15 +51,14 @@ def perform_concat(
     the result.
     """
     if left_pix is None:
-        return right_df
-
+        left_df = aligned_meta
     if right_pix is None:
-        return left_df
+        right_df = aligned_meta
 
-    if right_pix.order > left_pix.order and left_df is not None:
+    if left_pix is not None and aligned_pix.order > left_pix.order and left_df is not None:
         left_df = filter_by_spatial_index_to_pixel(left_df, right_pix.order, right_pix.pixel)
 
-    if left_pix.order > right_pix.order and right_df is not None:
+    if right_pix is not None and aligned_pix.order > right_pix.order and right_df is not None:
         right_df = filter_by_spatial_index_to_pixel(right_df, left_pix.order, left_pix.pixel)
 
     return pd.concat([left_df, right_df], **kwargs)
@@ -96,13 +99,16 @@ def concat_catalog_data(
     # get lists of HEALPix pixels from alignment to pass to cross-match
     left_pixels, right_pixels = get_healpix_pixels_from_alignment(alignment)
 
+    aligned_pixels = get_aligned_pixels_from_alignment(alignment)
+
     # generate meta table structure for dask df
     meta_df = pd.concat([left._ddf._meta, right._ddf._meta], **kwargs)
 
     # perform the crossmatch on each partition pairing using dask delayed for lazy computation
     joined_partitions = align_and_apply(
-        [(left, left_pixels), (right, right_pixels)],
+        [(left, left_pixels), (right, right_pixels), (None, aligned_pixels)],
         perform_concat,
+        aligned_meta=meta_df,
         **kwargs,
     )
 
@@ -141,14 +147,13 @@ def perform_margin_concat(
             output_margin_df = right_margin_df
         else:
             combined_right_df = concat_partition_and_margin(right_df, right_margin_df)
-            filtered_combined_df = filter_by_spatial_index_to_margin(
+            output_margin_df = filter_by_spatial_index_to_margin(
                 combined_right_df,
                 aligned_pix.order,
                 aligned_pix.pixel,
                 margin_radius,
             )
-            output_margin_df = pd.concat([filtered_combined_df, aligned_meta], **kwargs)
-        return output_margin_df if output_margin_df is not None else aligned_meta
+        return pd.concat([output_margin_df, aligned_meta], **kwargs)
 
     if right_pix is None:
         output_margin_df = None
@@ -156,14 +161,13 @@ def perform_margin_concat(
             output_margin_df = left_margin_df
         else:
             combined_left_df = concat_partition_and_margin(left_df, left_margin_df)
-            filtered_combined_df = filter_by_spatial_index_to_margin(
+            output_margin_df = filter_by_spatial_index_to_margin(
                 combined_left_df,
                 aligned_pix.order,
                 aligned_pix.pixel,
                 margin_radius,
             )
-            output_margin_df = pd.concat([filtered_combined_df, aligned_meta], **kwargs)
-        return output_margin_df if output_margin_df is not None else aligned_meta
+        return pd.concat([output_margin_df, aligned_meta], **kwargs)
 
     if right_pix.order > left_pix.order:
         combined_left_df = concat_partition_and_margin(left_df, left_margin_df)
