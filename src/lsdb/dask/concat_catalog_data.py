@@ -22,7 +22,8 @@ from lsdb.dask.merge_catalog_functions import (
     generate_meta_df_for_joined_tables,
     generate_meta_df_for_nested_tables,
     get_healpix_pixels_from_alignment,
-    concat_align_catalogs, get_aligned_pixels_from_alignment,
+    concat_align_catalogs,
+    get_aligned_pixels_from_alignment,
 )
 from lsdb.types import DaskDFPixelMap
 
@@ -140,12 +141,13 @@ def perform_margin_concat(
             output_margin_df = right_margin_df
         else:
             combined_right_df = concat_partition_and_margin(right_df, right_margin_df)
-            output_margin_df = filter_by_spatial_index_to_margin(
+            filtered_combined_df = filter_by_spatial_index_to_margin(
                 combined_right_df,
                 aligned_pix.order,
                 aligned_pix.pixel,
                 margin_radius,
             )
+            output_margin_df = pd.concat([filtered_combined_df, aligned_meta], **kwargs)
         return output_margin_df if output_margin_df is not None else aligned_meta
 
     if right_pix is None:
@@ -154,12 +156,13 @@ def perform_margin_concat(
             output_margin_df = left_margin_df
         else:
             combined_left_df = concat_partition_and_margin(left_df, left_margin_df)
-            output_margin_df = filter_by_spatial_index_to_margin(
+            filtered_combined_df = filter_by_spatial_index_to_margin(
                 combined_left_df,
                 aligned_pix.order,
                 aligned_pix.pixel,
                 margin_radius,
             )
+            output_margin_df = pd.concat([filtered_combined_df, aligned_meta], **kwargs)
         return output_margin_df if output_margin_df is not None else aligned_meta
 
     if right_pix.order > left_pix.order:
