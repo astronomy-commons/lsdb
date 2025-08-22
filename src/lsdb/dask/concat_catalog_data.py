@@ -22,7 +22,7 @@ from lsdb.dask.merge_catalog_functions import (
     generate_meta_df_for_joined_tables,
     generate_meta_df_for_nested_tables,
     get_healpix_pixels_from_alignment,
-    concat_align_catalogs
+    concat_align_catalogs, get_aligned_pixels_from_alignment,
 )
 from lsdb.types import DaskDFPixelMap
 
@@ -47,7 +47,7 @@ def perform_concat(
     """
     if left_pix is None:
         return right_df
-    
+
     if right_pix is None:
         return left_df
 
@@ -107,21 +107,26 @@ def concat_catalog_data(
 
     return construct_catalog_args(joined_partitions, meta_df, alignment)
 
+
 # pylint: disable=too-many-arguments, unused-argument
 def perform_margin_concat(
     left_df,
     left_margin_df,
     right_df,
     right_margin_df,
+    aligned_df,
     left_pix,
     left_margin_pix,
     right_pix,
     right_margin_pix,
+    aligned_pix,
     left_catalog_info,
     left_margin_catalog_info,
     right_catalog_info,
     right_margin_catalog_info,
+    aligned_catalog_info,
     margin_radius,
+    aligned_meta,
     **kwargs,
 ):
     """Performs a crossmatch on data from a HEALPix pixel in each catalog
@@ -130,10 +135,32 @@ def perform_margin_concat(
     the result.
     """
     if left_pix is None:
-        return right_margin_df
-    
+        output_margin_df = None
+        if right_pix.order == aligned_pix.order:
+            output_margin_df = right_margin_df
+        else:
+            combined_right_df = concat_partition_and_margin(right_df, right_margin_df)
+            output_margin_df = filter_by_spatial_index_to_margin(
+                combined_right_df,
+                aligned_pix.order,
+                aligned_pix.pixel,
+                margin_radius,
+            )
+        return output_margin_df if output_margin_df is not None else aligned_meta
+
     if right_pix is None:
-        return left_margin_df
+        output_margin_df = None
+        if left_pix.order == aligned_pix.order:
+            output_margin_df = left_margin_df
+        else:
+            combined_left_df = concat_partition_and_margin(left_df, left_margin_df)
+            output_margin_df = filter_by_spatial_index_to_margin(
+                combined_left_df,
+                aligned_pix.order,
+                aligned_pix.pixel,
+                margin_radius,
+            )
+        return output_margin_df if output_margin_df is not None else aligned_meta
 
     if right_pix.order > left_pix.order:
         combined_left_df = concat_partition_and_margin(left_df, left_margin_df)
@@ -143,7 +170,9 @@ def perform_margin_concat(
             right_pix.pixel,
             margin_radius,
         )
-        return pd.concat([filtered_left_df, right_margin_df], **kwargs)
+        return pd.concat(
+            [filtered_left_df, right_margin_df if right_margin_df is not None else aligned_meta], **kwargs
+        )
 
     if left_pix.order > right_pix.order:
         combined_right_df = concat_partition_and_margin(right_df, right_margin_df)
@@ -153,9 +182,17 @@ def perform_margin_concat(
             left_pix.pixel,
             margin_radius,
         )
-        return pd.concat([left_margin_df, filtered_right_df], **kwargs)
+        return pd.concat(
+            [left_margin_df if left_margin_df is not None else aligned_meta, filtered_right_df], **kwargs
+        )
 
-    return pd.concat([left_margin_df, right_margin_df], **kwargs)
+    return pd.concat(
+        [
+            left_margin_df if left_margin_df is not None else aligned_meta,
+            right_margin_df if right_margin_df is not None else aligned_meta,
+        ],
+        **kwargs,
+    )
 
 
 # pylint: disable=too-many-locals
@@ -194,14 +231,23 @@ def concat_margin_data(
     # get lists of HEALPix pixels from alignment to pass to cross-match
     left_pixels, right_pixels = get_healpix_pixels_from_alignment(alignment)
 
+    aligned_pixels = get_aligned_pixels_from_alignment(alignment)
+
     # generate meta table structure for dask df
     meta_df = pd.concat([left._ddf._meta, right._ddf._meta], **kwargs)
 
     # perform the crossmatch on each partition pairing using dask delayed for lazy computation
     joined_partitions = align_and_apply(
-        [(left, left_pixels), (left.margin, left_pixels), (right, right_pixels), (right.margin, right_pixels)],
+        [
+            (left, left_pixels),
+            (left.margin, left_pixels),
+            (right, right_pixels),
+            (right.margin, right_pixels),
+            (None, aligned_pixels),
+        ],
         perform_margin_concat,
         margin_radius=margin_radius,
+        aligned_meta=meta_df,
         **kwargs,
     )
 

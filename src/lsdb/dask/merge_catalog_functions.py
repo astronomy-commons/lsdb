@@ -337,6 +337,30 @@ def get_healpix_pixels_from_alignment(
     return list(left_pixels), list(right_pixels)
 
 
+def get_aligned_pixels_from_alignment(
+    alignment: PixelAlignment,
+) -> list[HealpixPixel]:
+    """Gets the list of aligned pixels as the HealpixPixel class from a PixelAlignment
+
+    Args:
+        alignment (PixelAlignment): the PixelAlignment to get pixels from
+
+    Returns:
+        a list of HealpixPixel objects
+    """
+    pixel_mapping = alignment.pixel_mapping
+    if len(pixel_mapping) == 0:
+        return []
+    make_pixel = np.vectorize(
+        lambda order, pixel: HealpixPixel(order=order, pixel=pixel) if order is not None else None
+    )
+    aligned_pixels = make_pixel(
+        pixel_mapping[PixelAlignment.ALIGNED_ORDER_COLUMN_NAME],
+        pixel_mapping[PixelAlignment.ALIGNED_PIXEL_COLUMN_NAME],
+    )
+    return list(aligned_pixels)
+
+
 def generate_meta_df_for_joined_tables(
     catalogs: Sequence[Catalog],
     suffixes: Sequence[str],
