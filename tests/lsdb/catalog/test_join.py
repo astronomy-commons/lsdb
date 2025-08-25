@@ -1,5 +1,4 @@
 import nested_pandas as npd
-import numpy as np
 import pandas as pd
 import pyarrow as pa
 import pytest
@@ -102,94 +101,96 @@ def test_join_wrong_suffixes(small_sky_catalog, small_sky_order1_catalog):
         small_sky_catalog.join(small_sky_order1_catalog, left_on="id", right_on="id", suffixes=("wrong",))
 
 
-@pytest.mark.skip("Re-implementing JOIN THROUGH")
-def test_join_association(small_sky_catalog, small_sky_xmatch_catalog, small_sky_to_xmatch_catalog, helpers):
+def test_join_association(
+    small_sky_catalog, small_sky_order1_source_collection_catalog, small_sky_to_o1source_catalog, helpers
+):
     suffixes = ("_a", "_b")
-    with pytest.warns(match="margin"):
-        joined = small_sky_catalog.join(
-            small_sky_xmatch_catalog, through=small_sky_to_xmatch_catalog, suffixes=suffixes
-        )
-        assert isinstance(joined._ddf, nd.NestedFrame)
-    assert joined._ddf.npartitions == len(small_sky_to_xmatch_catalog.hc_structure.join_info.data_frame)
-    alignment = align_catalogs(small_sky_catalog, small_sky_xmatch_catalog)
+    joined = small_sky_catalog.join(
+        small_sky_order1_source_collection_catalog, through=small_sky_to_o1source_catalog, suffixes=suffixes
+    )
+    assert isinstance(joined._ddf, nd.NestedFrame)
+    alignment = align_catalogs(small_sky_catalog, small_sky_order1_source_collection_catalog)
     assert joined.hc_structure.moc == alignment.moc
     assert joined.get_healpix_pixels() == alignment.pixel_tree.get_healpix_pixels()
-
-    joined_data = joined.compute()
-    assert isinstance(joined_data, npd.NestedFrame)
-    association_data = small_sky_to_xmatch_catalog.compute()
-    assert len(joined_data) == len(association_data)
-
-    helpers.assert_columns_in_joined_catalog(joined, [small_sky_catalog, small_sky_xmatch_catalog], suffixes)
+    helpers.assert_columns_in_joined_catalog(
+        joined, [small_sky_catalog, small_sky_order1_source_collection_catalog], suffixes
+    )
     assert joined._ddf.index.name == SPATIAL_INDEX_COLUMN
     assert joined._ddf.index.dtype == pd.ArrowDtype(pa.int64())
 
+    joined_data = joined.compute()
+    assert isinstance(joined_data, npd.NestedFrame)
+    association_data = small_sky_to_o1source_catalog.compute()
+    assert len(joined_data) == len(association_data)
+
     small_sky_compute = small_sky_catalog.compute()
-    small_sky_xmatch_compute = small_sky_xmatch_catalog.compute()
+    small_sky_xmatch_compute = small_sky_order1_source_collection_catalog.compute()
 
     for _, row in association_data.iterrows():
-        left_col = small_sky_to_xmatch_catalog.hc_structure.catalog_info.primary_column + suffixes[0]
-        right_col = small_sky_to_xmatch_catalog.hc_structure.catalog_info.join_column + suffixes[1]
-        left_id = row[small_sky_to_xmatch_catalog.hc_structure.catalog_info.primary_column_association]
-        right_id = row[small_sky_to_xmatch_catalog.hc_structure.catalog_info.join_column_association]
+        left_col = small_sky_to_o1source_catalog.hc_structure.catalog_info.primary_column + suffixes[0]
+        right_col = small_sky_to_o1source_catalog.hc_structure.catalog_info.join_column + suffixes[1]
+        left_id = row[small_sky_to_o1source_catalog.hc_structure.catalog_info.primary_column_association]
+        right_id = row[small_sky_to_o1source_catalog.hc_structure.catalog_info.join_column_association]
         joined_row = joined_data.query(f"{left_col} == {left_id} & {right_col} == {right_id}")
         assert len(joined_row) == 1
-        small_sky_col = small_sky_to_xmatch_catalog.hc_structure.catalog_info.primary_column
-        left_row = small_sky_compute.query(f"{small_sky_col}=={left_id}")
+
+        small_sky_col = small_sky_to_o1source_catalog.hc_structure.catalog_info.primary_column
+        left_row = small_sky_compute.query(f"{small_sky_col} == {left_id}")
         for col in left_row.columns:
-            if col not in paths.HIVE_COLUMNS:
-                assert joined_row[col + suffixes[0]].to_numpy() == left_row[col].to_numpy()
+            assert joined_row[col + suffixes[0]].to_numpy() == left_row[col].to_numpy()
 
-        small_sky_xmatch_col = small_sky_to_xmatch_catalog.hc_structure.catalog_info.join_column
-        right_row = small_sky_xmatch_compute.query(f"{small_sky_xmatch_col}=={right_id}")
+        small_sky_xmatch_col = small_sky_to_o1source_catalog.hc_structure.catalog_info.join_column
+        right_row = small_sky_xmatch_compute.query(f"{small_sky_xmatch_col} == {right_id}")
         for col in right_row.columns:
-            if col not in paths.HIVE_COLUMNS:
-                assert joined_row[col + suffixes[1]].to_numpy() == right_row[col].to_numpy()
+            assert joined_row[col + suffixes[1]].to_numpy() == right_row[col].to_numpy()
 
-        left_index = left_row.index
-        assert joined_row.index == left_index
+        assert joined_row.index == left_row.index
 
 
-@pytest.mark.skip("Re-implementing JOIN THROUGH")
-def test_join_association_source_margin(
-    small_sky_catalog, small_sky_order1_source_with_margin, small_sky_to_o1source_catalog, helpers
+def test_join_association_suffix_edge_case(
+    small_sky_catalog, small_sky_order1_source_collection_catalog, small_sky_to_o1source_catalog
 ):
-    """Join the small sky object catalog to the order1 source catalog, including the margin
-    of the order1 source catalog."""
-    suffixes = ("_a", "_b")
-    joined = small_sky_catalog.join(
-        small_sky_order1_source_with_margin, through=small_sky_to_o1source_catalog, suffixes=suffixes
-    )
-    assert joined._ddf.npartitions == len(small_sky_to_o1source_catalog.hc_structure.join_info.data_frame)
-    alignment = align_catalogs(small_sky_catalog, small_sky_order1_source_with_margin)
-    assert joined.hc_structure.moc == alignment.moc
-    assert joined.get_healpix_pixels() == alignment.pixel_tree.get_healpix_pixels()
+    # Edge case: handle merge when right_column + suffix == join_column_association
+    right_column = "source_id"
+    suffix = small_sky_order1_source_collection_catalog.name
+    join_column_assoc = small_sky_to_o1source_catalog.hc_structure.catalog_info.join_column_association
+    assert f"{right_column}_{suffix}" == join_column_assoc
 
-    joined_data = joined.compute()
-    association_data = small_sky_to_o1source_catalog.compute()
-    assert len(joined_data) == 17161
-    assert len(association_data) == 17161
+    xmatch_df = small_sky_catalog.crossmatch(
+        small_sky_order1_source_collection_catalog, radius_arcsec=3600
+    ).compute()
 
-    assert (
-        np.sort(joined_data["id_a"].to_numpy())
-        == np.sort(
-            association_data[
-                small_sky_to_o1source_catalog.hc_structure.catalog_info.primary_column_association
-            ].to_numpy()
+    join_df = small_sky_catalog.join(
+        small_sky_order1_source_collection_catalog, through=small_sky_to_o1source_catalog
+    ).compute()
+
+    assert f"{right_column}_{suffix}" in join_df
+    assert set(xmatch_df.columns) == set(join_df.columns)
+    pd.testing.assert_frame_equal(xmatch_df, join_df, check_like=True)
+
+
+def test_join_association_warnings(
+    small_sky_catalog, small_sky_order1_source_collection_catalog, small_sky_to_o1source_catalog
+):
+    # Right catalog margin threshold < association max separation
+    assert small_sky_to_o1source_catalog.max_separation > 436
+    small_sky_order1_source_collection_catalog.margin.hc_structure.catalog_info.margin_threshold = 435
+    with pytest.warns(RuntimeWarning, match="smaller than association maximum separation"):
+        small_sky_catalog.join(
+            small_sky_order1_source_collection_catalog, through=small_sky_to_o1source_catalog
         )
-    ).all()
-    assert (
-        np.sort(joined_data["source_id_b"].to_numpy())
-        == np.sort(
-            association_data[
-                small_sky_to_o1source_catalog.hc_structure.catalog_info.join_column_association
-            ].to_numpy()
+    # Association max separation is None
+    small_sky_to_o1source_catalog.hc_structure.catalog_info.assn_max_separation = None
+    with pytest.warns(RuntimeWarning, match="specify maximum separation"):
+        small_sky_catalog.join(
+            small_sky_order1_source_collection_catalog, through=small_sky_to_o1source_catalog
         )
-    ).all()
-
-    helpers.assert_columns_in_joined_catalog(
-        joined, [small_sky_catalog, small_sky_order1_source_with_margin], suffixes
-    )
+    # Right catalog margin is None
+    small_sky_order1_source_collection_catalog.margin = None
+    with pytest.warns(RuntimeWarning, match="margin cache"):
+        small_sky_catalog.join(
+            small_sky_order1_source_collection_catalog, through=small_sky_to_o1source_catalog
+        )
 
 
 def test_join_nested(small_sky_catalog, small_sky_order1_source_with_margin, helpers):

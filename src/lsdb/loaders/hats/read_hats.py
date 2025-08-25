@@ -378,13 +378,14 @@ def _load_dask_df_and_map(catalog: HCHealpixDataset, config) -> tuple[nd.NestedF
         ddf = nd.NestedFrame.from_map(
             read_pixel,
             ordered_pixels,
-            catalog=catalog,
+            catalog_base_dir=catalog.catalog_base_dir,
+            npix_suffix=catalog.catalog_info.npix_suffix,
             query_url_params=query_url_params,
             columns=config.columns,
-            divisions=divisions,
-            meta=dask_meta_schema,
             schema=catalog.schema,
             **config.get_read_kwargs(),
+            divisions=divisions,
+            meta=dask_meta_schema,
         )
     else:
         ddf = nd.NestedFrame.from_pandas(dask_meta_schema, npartitions=1)
@@ -394,7 +395,8 @@ def _load_dask_df_and_map(catalog: HCHealpixDataset, config) -> tuple[nd.NestedF
 
 def read_pixel(
     pixel: HealpixPixel,
-    catalog: HCHealpixDataset,
+    catalog_base_dir: str | Path | UPath,
+    npix_suffix: str,
     *,
     query_url_params: dict | None = None,
     columns=None,
@@ -407,9 +409,7 @@ def read_pixel(
     optimizes the execution plan."""
 
     return _read_parquet_file(
-        hc.io.pixel_catalog_file(
-            catalog.catalog_base_dir, pixel, query_url_params, npix_suffix=catalog.catalog_info.npix_suffix
-        ),
+        hc.io.pixel_catalog_file(catalog_base_dir, pixel, query_url_params, npix_suffix=npix_suffix),
         columns=columns,
         schema=schema,
         **kwargs,

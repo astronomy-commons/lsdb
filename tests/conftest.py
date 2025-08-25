@@ -173,7 +173,7 @@ def small_sky_order1_source_margin_dir(test_data_dir):
 
 @pytest.fixture
 def small_sky_to_order1_source_dir(test_data_dir):
-    return test_data_dir / SMALL_SKY_ORDER1_SOURCE_COLLECTION_DIR_NAME / SMALL_SKY_TO_ORDER1_SOURCE_NAME
+    return test_data_dir / SMALL_SKY_TO_ORDER1_SOURCE_NAME
 
 
 @pytest.fixture

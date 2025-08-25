@@ -17,6 +17,7 @@ from astropy.visualization.wcsaxes import WCSAxes
 from hats.inspection.visualize_catalog import get_fov_moc_from_wcs
 from hats.pixel_math import HealpixPixel
 from mocpy import WCS
+from nested_pandas.datasets import generate_data
 
 import lsdb
 import lsdb.nested as nd
@@ -43,6 +44,16 @@ def test_catalog_html_repr(small_sky_order1_catalog):
     assert small_sky_order1_catalog.name in full_html
     assert str(small_sky_order1_catalog.get_ordered_healpix_pixels()[0]) in full_html
     assert str(small_sky_order1_catalog.get_ordered_healpix_pixels()[-1]) in full_html
+    assert "available columns in the catalog have been loaded <strong>lazily</strong>" in full_html
+
+
+def test_catalog_html_repr_empty(small_sky_order1_catalog):
+    pixel_search = lsdb.PixelSearch.from_radec(80.0, 33.0)
+    cat = small_sky_order1_catalog.search(pixel_search)
+    full_html = cat._repr_html_()
+    assert cat.name in full_html
+    assert "Empty Catalog" in full_html
+    assert "npartitions=0" in full_html
     assert "available columns in the catalog have been loaded <strong>lazily</strong>" in full_html
 
 
@@ -837,3 +848,25 @@ def test_all_columns_after_column_select(small_sky_order1_catalog):
 def test_all_columns_after_filter(small_sky_order1_catalog):
     filtered_cat = small_sky_order1_catalog.cone_search(10, 10, 10)
     assert filtered_cat.all_columns == small_sky_order1_catalog.all_columns
+
+
+def test_map_partitions_error_messages():
+    # Create a dummy catalog with few partitions
+    nf = generate_data(5, 5, seed=0)
+    nf.loc[2, "a"] = 0.0  # Introduce a zero to trigger an error in the user function
+
+    def divme(df, _=None):
+        if (df["a"] == 0.0).any():
+            raise ValueError("Not so fast")
+        return 1 / df["a"]
+
+    # Force every row into a separate partition
+    nfc = lsdb.from_dataframe(nf, ra_column="a", dec_column="b", partition_size=1)
+
+    with pytest.raises(RuntimeError, match=r"function divme to partition 3: Not so fast"):
+        nfc.map_partitions(divme, include_pixel=False).compute()
+
+    with pytest.raises(
+        RuntimeError, match=r"function divme to partition 3, pixel Order: 7, Pixel: 77836: Not so fast"
+    ):
+        nfc.map_partitions(divme, include_pixel=True).compute()
