@@ -31,6 +31,86 @@ if TYPE_CHECKING:
     from lsdb.catalog.catalog import Catalog
 
 
+def _concat_no_warn(frames: list[pd.DataFrame], **kwargs) -> pd.DataFrame:
+    """
+    Concatenate frames while suppressing any pandas FutureWarning (local scope).
+    Also defaults to sort=False to avoid accidental column reordering.
+    """
+    kwargs.setdefault("sort", False)
+    with warnings.catch_warnings():
+        # Ignore any FutureWarning only within this concat call
+        warnings.simplefilter("ignore", category=FutureWarning)
+        return pd.concat(frames, **kwargs)
+
+
+def _reindex_like_meta(df: pd.DataFrame | None, meta: pd.DataFrame) -> pd.DataFrame:
+    """
+    Ensure `df` has the same column order as `meta`. If `df` is None, return `meta`.
+
+    Notes
+    -----
+    This is critical to keep Dask's `meta` consistent with each partition result.
+    Any mismatch in column order between the computed partition and the meta
+    will trigger `dask.dataframe.utils.check_meta` errors.
+    """
+    if df is None:
+        return meta
+    # Use copy=False to avoid unnecessary copies; columns missing in df become all-NA.
+    return df.reindex(columns=meta.columns, copy=False)
+
+
+def _is_all_na(df: pd.DataFrame) -> bool:
+    """
+    Return True if the DataFrame has no non-null values (robust to extension dtypes).
+    Treat both empty frames and frames with rows but all-null cells as all-NA.
+    """
+    if df.size == 0:
+        return True
+    return not df.notna().any().any()
+
+
+def _concat_meta_safe(meta: pd.DataFrame, parts: list[pd.DataFrame | None], **kwargs) -> pd.DataFrame:
+    """
+    Safely concatenate only non-empty and non-all-NA parts to avoid pandas' FutureWarning.
+
+    Behavior:
+    - If no parts remain, return an empty DataFrame with the `meta` schema.
+    - If a single part remains, return it directly (avoid calling pd.concat on length-1 lists).
+    - To fully avoid the FutureWarning, temporarily drop columns that are all-NA
+      across all kept parts, concat, then reindex back to `meta.columns`.
+    """
+    keep: list[pd.DataFrame] = []
+    for p in parts:
+        if p is None:
+            continue
+        if len(p) == 0:
+            continue
+        if _is_all_na(p):
+            continue
+        keep.append(p)
+
+    if not keep:
+        return meta.iloc[0:0].copy()
+
+    if len(keep) == 1:
+        return keep[0]
+
+    # Columns that are all-NA across ALL kept parts
+    all_na_cols: list[str] = []
+    cols = meta.columns
+    for c in cols:
+        has_non_na_somewhere = any(k[c].notna().any() for k in keep)
+        if not has_non_na_somewhere:
+            all_na_cols.append(c)
+
+    if all_na_cols:
+        reduced = [k.drop(columns=all_na_cols) for k in keep]
+        out = _concat_no_warn(reduced, **kwargs)
+        return out.reindex(columns=meta.columns)
+
+    return _concat_no_warn(keep, **kwargs)
+
+
 # pylint: disable=too-many-arguments, unused-argument
 def perform_concat(
     left_df,
@@ -45,78 +125,35 @@ def perform_concat(
     aligned_meta,
     **kwargs,
 ):
-    """Performs a crossmatch on data from a HEALPix pixel in each catalog
-
-    Filters the left catalog before performing the cross-match to stop duplicate points appearing in
-    the result.
     """
+    Per-aligned-pixel concatenation for the *main* (non-margin) tables.
 
+    If an input DF is None, substitute `aligned_meta` to preserve the schema.
+    When input pixel orders differ, filter to the aligned pixel region to avoid
+    duplication/leakage. Always reindex each piece to `aligned_meta.columns`.
+    """
+    # Filter to aligned pixel when needed (handles order differences)
     if left_pix is not None and aligned_pix.order > left_pix.order and left_df is not None:
         left_df = filter_by_spatial_index_to_pixel(left_df, aligned_pix.order, aligned_pix.pixel)
 
     if right_pix is not None and aligned_pix.order > right_pix.order and right_df is not None:
         right_df = filter_by_spatial_index_to_pixel(right_df, aligned_pix.order, aligned_pix.pixel)
 
+    # Substitute None with meta to preserve schema
     if left_df is None:
         left_df = aligned_meta
     if right_df is None:
         right_df = aligned_meta
 
-    return pd.concat([left_df, right_df], **kwargs)
+    # Normalize column order
+    left_df = _reindex_like_meta(left_df, aligned_meta)
+    right_df = _reindex_like_meta(right_df, aligned_meta)
+
+    # Concatenate without empty/all-NA inputs to avoid FutureWarning
+    return _concat_meta_safe(aligned_meta, [left_df, right_df], **kwargs)
 
 
-# pylint: disable=too-many-locals
-def concat_catalog_data(
-    left: Catalog,
-    right: Catalog,
-    **kwargs,
-) -> tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]:
-    """Cross-matches the data from two catalogs
-
-    Args:
-        left (lsdb.Catalog): the left catalog to perform the cross-match on
-        right (lsdb.Catalog): the right catalog to perform the cross-match on
-        suffixes (Tuple[str,str]): the suffixes to append to the column names from the left and
-            right catalogs respectively
-        algorithm (BuiltInCrossmatchAlgorithm | Callable): The algorithm to use to perform the
-            crossmatch. Can be specified using a string for a built-in algorithm, or a custom
-            method. For more details, see `crossmatch` method in the `Catalog` class.
-        **kwargs: Additional arguments to pass to the cross-match algorithm
-
-    Returns:
-        A tuple of the dask dataframe with the result of the cross-match, the pixel map from HEALPix
-        pixel to partition index within the dataframe, and the PixelAlignment of the two input
-        catalogs.
-    """
-
-    # perform alignment on the two catalogs
-    alignment = concat_align_catalogs(
-        left,
-        right,
-        filter_by_mocs=True,
-        alignment_type=PixelAlignmentType.OUTER,
-    )
-
-    # get lists of HEALPix pixels from alignment to pass to cross-match
-    left_pixels, right_pixels = get_healpix_pixels_from_alignment(alignment)
-
-    aligned_pixels = get_aligned_pixels_from_alignment(alignment)
-
-    # generate meta table structure for dask df
-    meta_df = pd.concat([left._ddf._meta, right._ddf._meta], **kwargs)
-
-    # perform the crossmatch on each partition pairing using dask delayed for lazy computation
-    joined_partitions = align_and_apply(
-        [(left, left_pixels), (right, right_pixels), (None, aligned_pixels)],
-        perform_concat,
-        aligned_meta=meta_df,
-        **kwargs,
-    )
-
-    return construct_catalog_args(joined_partitions, meta_df, alignment)
-
-
-# pylint: disable=too-many-arguments, unused-argument
+# pylint: disable=too-many-locals, too-many-arguments, unused-argument
 def perform_margin_concat(
     left_df,
     left_margin_df,
@@ -137,70 +174,101 @@ def perform_margin_concat(
     aligned_meta,
     **kwargs,
 ):
-    """Performs a crossmatch on data from a HEALPix pixel in each catalog
+    """
+    Per-aligned-pixel concatenation for the *margin* tables.
 
-    Filters the left catalog before performing the cross-match to stop duplicate points appearing in
-    the result.
+    Depending on which side is present and the relative orders, we may need to
+    build a combined (partition ∪ margin) table and then filter it to the
+    aligned pixel's margin footprint. Each piece is reindexed to `aligned_meta.columns`
+    and concatenated using `_concat_meta_safe`.
     """
     if left_pix is None:
-        output_margin_df = None
+        # Only right side contributes to this aligned pixel
         if right_pix.order == aligned_pix.order:
-            output_margin_df = right_margin_df
+            out = right_margin_df
         else:
             combined_right_df = concat_partition_and_margin(right_df, right_margin_df)
-            output_margin_df = filter_by_spatial_index_to_margin(
-                combined_right_df,
-                aligned_pix.order,
-                aligned_pix.pixel,
-                margin_radius,
+            out = filter_by_spatial_index_to_margin(
+                combined_right_df, aligned_pix.order, aligned_pix.pixel, margin_radius
             )
-        return pd.concat([output_margin_df, aligned_meta], **kwargs)
+        out = _reindex_like_meta(out, aligned_meta)
+        return _concat_meta_safe(aligned_meta, [out], **kwargs)
 
     if right_pix is None:
-        output_margin_df = None
+        # Only left side contributes to this aligned pixel
         if left_pix.order == aligned_pix.order:
-            output_margin_df = left_margin_df
+            out = left_margin_df
         else:
             combined_left_df = concat_partition_and_margin(left_df, left_margin_df)
-            output_margin_df = filter_by_spatial_index_to_margin(
-                combined_left_df,
-                aligned_pix.order,
-                aligned_pix.pixel,
-                margin_radius,
+            out = filter_by_spatial_index_to_margin(
+                combined_left_df, aligned_pix.order, aligned_pix.pixel, margin_radius
             )
-        return pd.concat([output_margin_df, aligned_meta], **kwargs)
+        out = _reindex_like_meta(out, aligned_meta)
+        return _concat_meta_safe(aligned_meta, [out], **kwargs)
 
     if right_pix.order > left_pix.order:
+        # Right has higher order: filter left (partition ∪ margin) to right's pixel at that order
         combined_left_df = concat_partition_and_margin(left_df, left_margin_df)
         filtered_left_df = filter_by_spatial_index_to_margin(
-            combined_left_df,
-            right_pix.order,
-            right_pix.pixel,
-            margin_radius,
+            combined_left_df, right_pix.order, right_pix.pixel, margin_radius
         )
-        return pd.concat(
-            [filtered_left_df, right_margin_df if right_margin_df is not None else aligned_meta], **kwargs
-        )
+        left_part = _reindex_like_meta(filtered_left_df, aligned_meta)
+        right_part = _reindex_like_meta(right_margin_df, aligned_meta)
+        return _concat_meta_safe(aligned_meta, [left_part, right_part], **kwargs)
 
     if left_pix.order > right_pix.order:
+        # Left has higher order: symmetric case to the above
         combined_right_df = concat_partition_and_margin(right_df, right_margin_df)
         filtered_right_df = filter_by_spatial_index_to_margin(
-            combined_right_df,
-            left_pix.order,
-            left_pix.pixel,
-            margin_radius,
+            combined_right_df, left_pix.order, left_pix.pixel, margin_radius
         )
-        return pd.concat(
-            [left_margin_df if left_margin_df is not None else aligned_meta, filtered_right_df], **kwargs
-        )
+        left_part = _reindex_like_meta(left_margin_df, aligned_meta)
+        right_part = _reindex_like_meta(filtered_right_df, aligned_meta)
+        return _concat_meta_safe(aligned_meta, [left_part, right_part], **kwargs)
 
-    return pd.concat(
-        [
-            left_margin_df if left_margin_df is not None else aligned_meta,
-            right_margin_df if right_margin_df is not None else aligned_meta,
-        ],
+    # Same order on both sides: just stack margins (still normalize)
+    left_part = _reindex_like_meta(left_margin_df, aligned_meta)
+    right_part = _reindex_like_meta(right_margin_df, aligned_meta)
+    return _concat_meta_safe(aligned_meta, [left_part, right_part], **kwargs)
+
+
+# pylint: disable=too-many-locals
+def concat_catalog_data(
+    left: Catalog,
+    right: Catalog,
+    **kwargs,
+) -> tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]:
+    """
+    Concatenate the *main* (non-margin) data for two catalogs over a pixel alignment.
+
+    This builds an OUTER pixel alignment (via `concat_align_catalogs`) and, for each
+    aligned pixel, concatenates the partitions from `left` and `right` after normalizing
+    their column layout to the `meta` (union of left/right schemas).
+    """
+    # Build alignment across both trees (including margins as pixel trees, but filtered by MOCs)
+    alignment = concat_align_catalogs(
+        left,
+        right,
+        filter_by_mocs=True,
+        alignment_type=PixelAlignmentType.OUTER,
+    )
+
+    # Lists of HEALPix pixels to feed into the map/apply stage
+    left_pixels, right_pixels = get_healpix_pixels_from_alignment(alignment)
+    aligned_pixels = get_aligned_pixels_from_alignment(alignment)
+
+    # Build the meta (union of schemas) with deterministic column order (left then right)
+    meta_df = _concat_no_warn([left._ddf._meta, right._ddf._meta], **kwargs)
+
+    # Lazy per-pixel concatenation
+    joined_partitions = align_and_apply(
+        [(left, left_pixels), (right, right_pixels), (None, aligned_pixels)],
+        perform_concat,
+        aligned_meta=meta_df,
         **kwargs,
     )
+
+    return construct_catalog_args(joined_partitions, meta_df, alignment)
 
 
 # pylint: disable=too-many-locals
@@ -210,25 +278,15 @@ def concat_margin_data(
     margin_radius: float,
     **kwargs,
 ) -> tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]:
-    """Cross-matches the data from two catalogs
-
-    Args:
-        left (lsdb.Catalog): the left catalog to perform the cross-match on
-        right (lsdb.Catalog): the right catalog to perform the cross-match on
-        suffixes (Tuple[str,str]): the suffixes to append to the column names from the left and
-            right catalogs respectively
-        algorithm (BuiltInCrossmatchAlgorithm | Callable): The algorithm to use to perform the
-            crossmatch. Can be specified using a string for a built-in algorithm, or a custom
-            method. For more details, see `crossmatch` method in the `Catalog` class.
-        **kwargs: Additional arguments to pass to the cross-match algorithm
-
-    Returns:
-        A tuple of the dask dataframe with the result of the cross-match, the pixel map from HEALPix
-        pixel to partition index within the dataframe, and the PixelAlignment of the two input
-        catalogs.
     """
+    Concatenate the *margin* data for two catalogs over a pixel alignment.
 
-    # perform alignment on the two catalogs
+    The alignment is OUTER and *not* filtered by MOCs (margins can lie outside MOC).
+    For each aligned pixel, we combine the relevant (partition ∪ margin) pieces from
+    both sides, optionally filtering to the aligned-pixel's margin footprint when
+    orders differ, then normalize to `aligned_meta`.
+    """
+    # Build alignment across both trees (including margins as pixel trees), no MOC filtering
     alignment = concat_align_catalogs(
         left,
         right,
@@ -236,15 +294,14 @@ def concat_margin_data(
         alignment_type=PixelAlignmentType.OUTER,
     )
 
-    # get lists of HEALPix pixels from alignment to pass to cross-match
+    # Lists of HEALPix pixels to feed into the map/apply stage
     left_pixels, right_pixels = get_healpix_pixels_from_alignment(alignment)
-
     aligned_pixels = get_aligned_pixels_from_alignment(alignment)
 
-    # generate meta table structure for dask df
-    meta_df = pd.concat([left._ddf._meta, right._ddf._meta], **kwargs)
+    # Build the meta (union of schemas) with deterministic column order (left then right)
+    meta_df = _concat_no_warn([left._ddf._meta, right._ddf._meta], **kwargs)
 
-    # perform the crossmatch on each partition pairing using dask delayed for lazy computation
+    # Lazy per-pixel concatenation for margins
     joined_partitions = align_and_apply(
         [
             (left, left_pixels),

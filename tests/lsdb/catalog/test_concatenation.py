@@ -1,115 +1,415 @@
 import os
 import pytest
+import numpy as np
+from collections import Counter
 import lsdb
 import pandas as pd
 import nested_pandas as npd
 import lsdb.nested as nd
 from lsdb import ConeSearch
+from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
+
+
+# ------------------------------- helpers ---------------------------------- #
+
+def _normalize_na(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Convert any null sentinel (NaN/pd.NA/None) to np.nan and cast columns to 'object'
+    so assert_frame_equal compares nulls consistently regardless of dtype/backing.
+    """
+    out = df.copy()
+    for c in out.columns:
+        out[c] = out[c].astype("object")
+        out[c] = out[c].where(pd.notna(out[c]), np.nan)
+    return out
+
+
+def _row_multiset(df: pd.DataFrame) -> Counter:
+    """
+    Convert a DataFrame into a multiset (Counter) of row-tuples, ignoring
+    row order but preserving multiplicity. Columns must already be aligned.
+    - We canonicalize values so that 1 == 1.0 and all nulls -> None.
+    - Columns are sorted by name to ignore column ordering differences.
+    """
+    cols = sorted(df.columns)
+    def _canon(v):
+        if pd.isna(v):
+            return None
+        # Treat numeric values uniformly as float to avoid 1 vs 1.0 mismatches
+        if isinstance(v, (int, np.integer, float, np.floating, np.number, bool, np.bool_)):
+            return float(v)
+        return v
+    rows = (tuple(_canon(x) for x in row) for row in df[cols].itertuples(index=False, name=None))
+    return Counter(rows)
+
+
+def _align_columns(df1: pd.DataFrame, df2: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Align two frames to the union of their columns (sorted for determinism),
+    filling missing columns with NaN.
+    """
+    all_cols = sorted(set(df1.columns) | set(df2.columns))
+    return df1.reindex(columns=all_cols), df2.reindex(columns=all_cols)
+
+
+def _assert_concat_symmetry(left_cat, right_cat, use_margin: bool = False, cols_subset: list[str] | None = None):
+    """
+    Assert that left.concat(right) and right.concat(left) contain the same content,
+    allowing differences in row order and column order. Content includes the
+    spatial-index (we compare on reset_index()).
+
+    Parameters
+    ----------
+    use_margin : bool
+        If True, compare the .margin DataFrames; otherwise compare the main tables.
+    cols_subset : list[str] | None
+        If provided, restrict the comparison to this subset of columns (after reset_index()).
+    """
+    lr = left_cat.concat(right_cat)
+    rl = right_cat.concat(left_cat)
+
+    df_lr = (lr.margin.compute() if use_margin else lr.compute()).reset_index()
+    df_rl = (rl.margin.compute() if use_margin else rl.compute()).reset_index()
+
+    # Optionally select a subset of columns (plus spatial index if present)
+    if cols_subset is not None:
+        keep = [c for c in [SPATIAL_INDEX_COLUMN] + cols_subset if c in df_lr.columns or c in df_rl.columns]
+        df_lr = df_lr[keep]
+        df_rl = df_rl[keep]
+
+    # Align columns to the union and compare as multisets
+    df_lr, df_rl = _align_columns(df_lr, df_rl)
+    ms_lr = _row_multiset(df_lr)
+    ms_rl = _row_multiset(df_rl)
+    assert ms_lr == ms_rl, "left.concat(right) and right.concat(left) differ in content (as multisets of rows)."
+
+
+# --------------------------------- tests ---------------------------------- #
 
 def test_concat_catalog_row_count(small_sky_order1_catalog, helpers):
     """
-    Test that concatenating two catalogs results in a catalog whose row count
-    is the sum of the individual catalogs' row counts, and that the structure is preserved.
+    Concatenating two catalogs should produce a catalog whose row count equals
+    the sum of the inputs, and the structure should be preserved.
     """
-    # Define two cone regions with partial overlap
+    # Two partially overlapping cones
     cone1 = ConeSearch(325, -55, 36000)  # 10 deg radius
     cone2 = ConeSearch(325, -25, 36000)  # 10 deg radius
 
-    # Perform cone searches
+    # Cone searches
     left_cat = small_sky_order1_catalog.search(cone1)
     right_cat = small_sky_order1_catalog.search(cone2)
 
-    # Concatenate the two catalogs
+    # Concatenate
     concat_cat = left_cat.concat(right_cat)
 
-    # Compute all results
+    # Compute
     df_left = left_cat.compute()
     df_right = right_cat.compute()
     df_concat = concat_cat.compute()
 
-    # Check that concat contains all rows from left and right
+    # Row count = sum
     expected_total = len(df_left) + len(df_right)
     actual_total = len(df_concat)
-
     assert actual_total == expected_total, (
         f"Expected {expected_total} rows after concat, but got {actual_total}"
     )
 
-    # Check internal type and structure
+    # Internal types
     assert isinstance(concat_cat._ddf, nd.NestedFrame)
     assert isinstance(df_concat, npd.NestedFrame)
 
-    # Optional: check if the structure metadata is still valid
+    # Structure/divisions sanity
     helpers.assert_divisions_are_correct(concat_cat)
     assert concat_cat.hc_structure.catalog_path is None
 
+    # Symmetry check: left.concat(right) vs right.concat(left)
+    _assert_concat_symmetry(left_cat, right_cat, use_margin=False)
+
+
 def test_concat_catalog_row_content(small_sky_order1_catalog):
     """
-    Test that every row in the concatenated catalog matches exactly with the corresponding
-    row (by 'id') in either the left or right catalog, and that all column values are identical.
+    Every row in the concatenated catalog should exactly match the corresponding
+    row (by 'id') in either the left or the right catalog; all column values identical.
     """
-    # Define two cone regions with partial overlap
     cone1 = ConeSearch(325, -55, 36000)
     cone2 = ConeSearch(325, -25, 36000)
 
-    # Perform cone searches
     left_cat = small_sky_order1_catalog.search(cone1)
     right_cat = small_sky_order1_catalog.search(cone2)
 
-    # Concatenate the two catalogs
     concat_cat = left_cat.concat(right_cat)
 
-    # Compute all results
     df_left = left_cat.compute()
     df_right = right_cat.compute()
     df_concat = concat_cat.compute()
 
-    # For each row in df_concat, check if it exists in df_left or df_right and if all values match
-    for idx, row in df_concat.iterrows():
+    for _, row in df_concat.iterrows():
         row_id = row["id"]
-        # Find the corresponding row in df_left or df_right
         match_left = df_left[df_left["id"] == row_id]
         match_right = df_right[df_right["id"] == row_id]
         assert not (match_left.empty and match_right.empty), f"id {row_id} not found in left nor right"
-        if not match_left.empty:
-            expected_row = match_left.iloc[0]
-        else:
-            expected_row = match_right.iloc[0]
-        # Compare all column values
+        expected_row = match_left.iloc[0] if not match_left.empty else match_right.iloc[0]
         for col in df_concat.columns:
             assert row[col] == expected_row[col], f"Different value in column '{col}' for id {row_id}"
 
+    # Symmetry: full-content equality as multisets
+    _assert_concat_symmetry(left_cat, right_cat, use_margin=False)
+
+
 def test_concat_catalog_margin_content(small_sky_order1_collection_catalog):
     """
-    Test that every row in the concatenated catalog's margin matches exactly with the corresponding
-    row (by 'id') in either the left or right catalog's margin, and that all column values are identical.
-    This test assumes the catalog structure and pixel order are the same for this specific case.
+    Every row in the concatenated catalog's margin should exactly match the corresponding
+    row (by 'id') in either the left or right catalog's margin; all column values identical.
+    Assumes same catalog structure and pixel order for this case.
     """
-    # Define two cone regions with partial overlap
     cone1 = ConeSearch(325, -55, 36000)
     cone2 = ConeSearch(325, -25, 36000)
 
-    # Perform cone searches
     left_cat = small_sky_order1_collection_catalog.search(cone1)
     right_cat = small_sky_order1_collection_catalog.search(cone2)
 
-    # Concatenate the two catalogs
     concat_cat = left_cat.concat(right_cat)
 
-    # Compute margins
     margin_left = left_cat.margin.compute()
     margin_right = right_cat.margin.compute()
     margin_concat = concat_cat.margin.compute()
 
-    # For each row in margin_concat, check if it exists in margin_left or margin_right and if all values match
-    for idx, row in margin_concat.iterrows():
+    for _, row in margin_concat.iterrows():
         row_id = row["id"]
         match_left = margin_left[margin_left["id"] == row_id]
         match_right = margin_right[margin_right["id"] == row_id]
         assert not (match_left.empty and match_right.empty), f"id {row_id} not found in left nor right margin"
-        if not match_left.empty:
-            expected_row = match_left.iloc[0]
-        else:
-            expected_row = match_right.iloc[0]
+        expected_row = match_left.iloc[0] if not match_left.empty else match_right.iloc[0]
         for col in margin_concat.columns:
             assert row[col] == expected_row[col], f"Different value in column '{col}' for id {row_id} in margin"
+
+    # Symmetry on margins
+    _assert_concat_symmetry(left_cat, right_cat, use_margin=True)
+
+
+def test_concat_catalogs_with_different_schemas(small_sky_order1_collection_dir, test_data_dir, helpers):
+    """
+    Concatenate two catalogs with different schemas (different column sets) and verify:
+      1) Row count is the sum of inputs.
+      2) Output columns are the union of input columns.
+      3) Rows coming from LEFT (RIGHT) have RIGHT-only (LEFT-only) columns as NaN.
+      4) For common columns, values match the originating side exactly.
+      5) Symmetry: left.concat(right) and right.concat(left) have the same content
+         (ignoring row/column ordering).
+    """
+    # LEFT: small_sky_order1_collection (collection)
+    left_cat = lsdb.open_catalog(small_sky_order1_collection_dir)
+
+    # RIGHT: small_sky_order3_source with margin cache
+    right_dir = test_data_dir / "small_sky_order3_source"
+    right_margin_dir = test_data_dir / "small_sky_order3_source_margin"
+    right_cat = lsdb.open_catalog(right_dir, margin_cache=right_margin_dir)
+
+    # DataFrames
+    left_df = left_cat.compute()
+    right_df = right_cat.compute()
+
+    assert "id" in left_df.columns, "Expected 'id' column in left_df"
+    assert "source_id" in right_df.columns, "Expected 'source_id' column in right_df"
+
+    # Concat
+    concat_cat = left_cat.concat(right_cat)
+    concat_df = concat_cat.compute()
+
+    # (1) Row count
+    assert len(concat_df) == len(left_df) + len(right_df), (
+        f"Expected {len(left_df) + len(right_df)} rows, got {len(concat_df)}"
+    )
+
+    # (2) Columns = union
+    left_cols = set(left_df.columns)
+    right_cols = set(right_df.columns)
+    expected_cols = sorted(left_cols | right_cols)
+    assert sorted(concat_df.columns.tolist()) == expected_cols, (
+        "Concatenated columns differ from the union of input columns"
+    )
+
+    # Identify origin by presence of side-specific IDs
+    mask_left_rows = concat_df["id"].notna()
+    mask_right_rows = concat_df["source_id"].notna()
+
+    # (3a) LEFT-only columns are NaN on RIGHT-origin rows; match on LEFT rows
+    left_only_cols = left_cols - right_cols
+    for col in left_only_cols:
+        assert concat_df.loc[mask_right_rows, col].isna().all(), (
+            f"Column '{col}' should be NaN on RIGHT-origin rows"
+        )
+        pd.testing.assert_series_equal(
+            concat_df.loc[mask_left_rows, col].sort_index(),
+            left_df[col].sort_index(),
+            check_names=False,
+            check_dtype=False,
+        )
+
+    # (3b) RIGHT-only columns are NaN on LEFT-origin rows; match on RIGHT rows
+    right_only_cols = right_cols - left_cols
+    for col in right_only_cols:
+        assert concat_df.loc[mask_left_rows, col].isna().all(), (
+            f"Column '{col}' should be NaN on LEFT-origin rows"
+        )
+        pd.testing.assert_series_equal(
+            concat_df.loc[mask_right_rows, col].sort_index(),
+            right_df[col].sort_index(),
+            check_names=False,
+            check_dtype=False,
+        )
+
+    # (4) Common columns match on their originating side
+    common_cols = (left_cols & right_cols)
+    for col in common_cols:
+        pd.testing.assert_series_equal(
+            concat_df.loc[mask_left_rows, col].sort_index(),
+            left_df[col].sort_index(),
+            check_names=False,
+            check_dtype=False,
+        )
+        pd.testing.assert_series_equal(
+            concat_df.loc[mask_right_rows, col].sort_index(),
+            right_df[col].sort_index(),
+            check_names=False,
+            check_dtype=False,
+        )
+
+    # Structural checks
+    assert isinstance(concat_cat._ddf, nd.NestedFrame)
+    helpers.assert_divisions_are_correct(concat_cat)
+
+    # (5) Symmetry on main tables (different schemas)
+    _assert_concat_symmetry(left_cat, right_cat, use_margin=False)
+
+
+@pytest.mark.parametrize("use_low_order", [True, False])
+def test_concat_margin_with_low_and_high_orders(use_low_order):
+    """
+    Build two catalogs directly from DataFrames:
+      - cat_high always at high order (order_high = 2)
+      - cat_low at:
+          * low order (order_low = 1) when use_low_order=True, or
+          * the same high order when use_low_order=False
+
+    In both cases, the concatenated margin must contain exactly the three expected rows.
+    Also assert symmetry between left.concat(right) and right.concat(left) on margins.
+    """
+    order_low = 1
+    order_high = 2
+
+    df_high_main = pd.DataFrame({"id": [1, 2], "ra": [314, 350], "dec": [-50, -70]})
+    df_high_margin = pd.DataFrame({"id": [3, 4], "ra": [324.4, 324.4], "dec": [-60.099, -60.1]})
+    df_low_main = pd.DataFrame({"id": [5, 6, 7, 8], "ra": [355, 275, 315, 315], "dec": [-70, -70, -80, -45]})
+    df_low_into_df_high_margin = pd.DataFrame({"id": [9], "ra": [324.4], "dec": [-60.101]})
+
+    df_high = pd.concat([df_high_main, df_high_margin], ignore_index=True)
+    df_low = pd.concat([df_low_main, df_low_into_df_high_margin], ignore_index=True)
+
+    cat_high = lsdb.from_dataframe(df_high, lowest_order=order_high, highest_order=order_high)
+    if use_low_order:
+        cat_low = lsdb.from_dataframe(df_low, lowest_order=order_low, highest_order=order_low)
+    else:
+        cat_low = lsdb.from_dataframe(df_low, lowest_order=order_high, highest_order=order_high)
+
+    concat_cat = cat_high.concat(cat_low)
+    margin_df = concat_cat.margin.compute()
+
+    expected_index = [
+        3205067508097231189,  # id=4
+        3205067511012692051,  # id=3
+        3205067507930193833,  # id=9
+    ]
+    expected_rows = pd.DataFrame(
+        {"id": [4, 3, 9], "ra": [324.4, 324.4, 324.4], "dec": [-60.1, -60.099, -60.101]},
+        index=pd.Index(expected_index, name=SPATIAL_INDEX_COLUMN),
+    ).sort_index()
+
+    sub = margin_df.loc[expected_rows.index, ["id", "ra", "dec"]].sort_index()
+
+    pd.testing.assert_frame_equal(
+        sub.reset_index()[[SPATIAL_INDEX_COLUMN, "id", "ra", "dec"]],
+        expected_rows.reset_index()[[SPATIAL_INDEX_COLUMN, "id", "ra", "dec"]],
+        check_dtype=False,
+        check_like=True,
+    )
+
+    only_expected = margin_df.index.isin(expected_rows.index)
+    assert only_expected.all(), "Found margin indices beyond the three expected entries for this scenario."
+
+    # Symmetry on margins (use all columns available there)
+    _assert_concat_symmetry(cat_high, cat_low, use_margin=True)
+
+
+@pytest.mark.parametrize("use_low_order", [True, False])
+def test_concat_margin_with_different_schemas_and_orders(use_low_order):
+    """
+    Create two catalogs with different schemas:
+      - cat_high: columns id_1, ra_1, dec_1
+      - cat_low : columns id_2, ra_2, dec_2
+    Concatenate and assert the margin contains exactly the three expected entries,
+    with nulls on the columns belonging to the other schema. Test two cases:
+      * use_low_order=True  -> cat_low at low order (order_low=1)
+      * use_low_order=False -> cat_low at the same high order as cat_high (order_high=2)
+    Also assert symmetry between left.concat(right) and right.concat(left) on margins.
+    """
+    order_low = 1
+    order_high = 2
+
+    df_high_main = pd.DataFrame({"id_1": [1, 2], "ra_1": [314, 350], "dec_1": [-50, -70]})
+    df_high_margin = pd.DataFrame({"id_1": [3, 4], "ra_1": [324.4, 324.4], "dec_1": [-60.099, -60.1]})
+    df_low_main = pd.DataFrame({"id_2": [5, 6, 7, 8], "ra_2": [355, 275, 315, 315], "dec_2": [-70, -70, -80, -45]})
+    df_low_into_df_high_margin = pd.DataFrame({"id_2": [9], "ra_2": [324.4], "dec_2": [-60.101]})
+
+    df_high = pd.concat([df_high_main, df_high_margin], ignore_index=True)
+    df_low = pd.concat([df_low_main, df_low_into_df_high_margin], ignore_index=True)
+
+    cat_high = lsdb.from_dataframe(df_high, ra_column="ra_1", dec_column="dec_1",
+                                   lowest_order=order_high, highest_order=order_high)
+
+    if use_low_order:
+        cat_low = lsdb.from_dataframe(df_low, ra_column="ra_2", dec_column="dec_2",
+                                      lowest_order=order_low, highest_order=order_low)
+    else:
+        cat_low = lsdb.from_dataframe(df_low, ra_column="ra_2", dec_column="dec_2",
+                                      lowest_order=order_high, highest_order=order_high)
+
+    concat_cat = cat_high.concat(cat_low)
+    margin_df = concat_cat.margin.compute()
+
+    expected_index = [
+        3205067508097231189,  # id_1=4
+        3205067511012692051,  # id_1=3
+        3205067507930193833,  # id_2=9
+    ]
+    expected_rows = pd.DataFrame(
+        {
+            "id_1":  [4, 3, pd.NA],
+            "ra_1":  [324.4, 324.4, pd.NA],
+            "dec_1": [-60.1, -60.099, pd.NA],
+            "id_2":  [pd.NA, pd.NA, 9],
+            "ra_2":  [pd.NA, pd.NA, 324.4],
+            "dec_2": [pd.NA, pd.NA, -60.101],
+        },
+        index=pd.Index(expected_index, name=SPATIAL_INDEX_COLUMN),
+    ).sort_index()
+
+    cols = ["id_1", "ra_1", "dec_1", "id_2", "ra_2", "dec_2"]
+    got = (
+        margin_df.loc[expected_rows.index, cols]
+        .sort_index()
+        .reset_index()[[SPATIAL_INDEX_COLUMN] + cols]
+    )
+    exp = expected_rows.reset_index()[[SPATIAL_INDEX_COLUMN] + cols]
+
+    # Normalize nulls so NaN == pd.NA for comparison
+    got_norm = _normalize_na(got)
+    exp_norm = _normalize_na(exp)
+
+    pd.testing.assert_frame_equal(got_norm, exp_norm, check_dtype=False, check_like=True)
+
+    only_expected = margin_df.index.isin(expected_rows.index)
+    assert only_expected.all(), "Found margin indices beyond the three expected entries for this scenario."
+
+    # Symmetry on margins (different schemas)
+    _assert_concat_symmetry(cat_high, cat_low, use_margin=True)
