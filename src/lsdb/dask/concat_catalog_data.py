@@ -1,29 +1,21 @@
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING, Type
+from typing import TYPE_CHECKING
 
 import pandas as pd
 from hats.pixel_tree import PixelAlignment, PixelAlignmentType
 
 import lsdb.nested as nd
-from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
-from lsdb.core.crossmatch.crossmatch_algorithms import (
-    BuiltInCrossmatchAlgorithm,
-    builtin_crossmatch_algorithms,
-)
 from lsdb.dask.merge_catalog_functions import (
     align_and_apply,
-    align_catalogs,
+    concat_align_catalogs,
     concat_partition_and_margin,
     construct_catalog_args,
-    filter_by_spatial_index_to_pixel,
     filter_by_spatial_index_to_margin,
-    generate_meta_df_for_joined_tables,
-    generate_meta_df_for_nested_tables,
-    get_healpix_pixels_from_alignment,
-    concat_align_catalogs,
+    filter_by_spatial_index_to_pixel,
     get_aligned_pixels_from_alignment,
+    get_healpix_pixels_from_alignment,
 )
 from lsdb.types import DaskDFPixelMap
 
@@ -153,7 +145,7 @@ def perform_concat(
     return _concat_meta_safe(aligned_meta, [left_df, right_df], **kwargs)
 
 
-# pylint: disable=too-many-locals, too-many-arguments, unused-argument
+# pylint: disable=too-many-locals, too-many-arguments, too-many-positional-arguments, unused-argument
 def perform_margin_concat(
     left_df,
     left_margin_df,
@@ -258,8 +250,9 @@ def concat_catalog_data(
     aligned_pixels = get_aligned_pixels_from_alignment(alignment)
 
     # Build the meta (union of schemas) with deterministic column order (left then right)
+    # pylint: disable=protected-access
     meta_df = _concat_no_warn([left._ddf._meta, right._ddf._meta], **kwargs)
-
+    # pylint: enable=protected-access
     # Lazy per-pixel concatenation
     joined_partitions = align_and_apply(
         [(left, left_pixels), (right, right_pixels), (None, aligned_pixels)],
@@ -299,7 +292,9 @@ def concat_margin_data(
     aligned_pixels = get_aligned_pixels_from_alignment(alignment)
 
     # Build the meta (union of schemas) with deterministic column order (left then right)
+    # pylint: disable=protected-access
     meta_df = _concat_no_warn([left._ddf._meta, right._ddf._meta], **kwargs)
+    # pylint: enable=protected-access
 
     # Lazy per-pixel concatenation for margins
     joined_partitions = align_and_apply(

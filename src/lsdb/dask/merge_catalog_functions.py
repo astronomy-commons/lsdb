@@ -12,9 +12,9 @@ from dask.delayed import Delayed, delayed
 from hats.catalog import TableProperties
 from hats.io import paths
 from hats.pixel_math import HealpixPixel
-from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN, SPATIAL_INDEX_ORDER, healpix_to_spatial_index
-from hats.pixel_math.pixel_margins import get_margin
 from hats.pixel_math.healpix_pixel import get_lower_order_pixel
+from hats.pixel_math.pixel_margins import get_margin
+from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN, SPATIAL_INDEX_ORDER, healpix_to_spatial_index
 from hats.pixel_tree import PixelAlignment, PixelAlignmentType, align_trees
 from hats.pixel_tree.moc_utils import copy_moc
 from hats.pixel_tree.pixel_alignment import align_with_mocs
@@ -152,7 +152,7 @@ def concat_align_catalogs(
     Notes
     -----
     Compared to `align_catalogs`, this function:
-      • expands **both** sides with their margin pixel trees when available; and  
+      • expands **both** sides with their margin pixel trees when available; and
       • allows opting out of MOC filtering via `filter_by_mocs=False`.
     """
     if right.margin is not None:
@@ -190,12 +190,11 @@ def concat_align_catalogs(
             right_moc,
             alignment_type=alignment_type,
         )
-    else:
-        return align_trees(
-            left_tree,
-            right_tree,
-            alignment_type=alignment_type,
-        )
+    return align_trees(
+        left_tree,
+        right_tree,
+        alignment_type=alignment_type,
+    )
 
 
 def align_and_apply(
@@ -330,18 +329,24 @@ def filter_by_spatial_index_to_margin(
     Notes
     -----
     Implementation steps:
-      1) Convert `margin_radius` to a `margin_order` via `hp.margin2order`.  
-      2) Enumerate the margin pixels at `margin_order` using `get_margin`.  
+      1) Convert `margin_radius` to a `margin_order` via `hp.margin2order`.
+      2) Enumerate the margin pixels at `margin_order` using `get_margin`.
       3) Map each row’s index at `SPATIAL_INDEX_ORDER` down to `margin_order`
          (via `get_lower_order_pixel`) and keep rows whose mapped pixel is in
          the margin set.
     """
-    margin_order = hp.margin2order(margin_radius / 60)
+    # margin_radius is in arcmin; convert to degrees
+    margin_deg = margin_radius / 60.0
+    # mypy: margin2order expects ndarray; extract the scalar from position [0]
+    margin_order_arr = hp.margin2order(np.asarray([margin_deg], dtype=float))
+    margin_order = int(margin_order_arr[0])
+
     if margin_order < order:
         raise ValueError(
             f"Margin order {margin_order} is smaller than the order {order} of the pixel {pixel}. "
             "Cannot generate margin for this pixel."
         )
+
     margin_pixels = get_margin(order, pixel, margin_order - order)
     healpix_29 = dataframe.index.to_numpy()
     margin_order_hp_pix = get_lower_order_pixel(
