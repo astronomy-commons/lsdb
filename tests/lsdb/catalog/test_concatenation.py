@@ -543,8 +543,11 @@ def test_concat_both_margins_uses_smallest_threshold(small_sky_order1_collection
     _assert_concat_symmetry(left_cat, right_cat, use_margin=True)
 
 
-def test_concat_drops_all_na_cols_internally_but_reindexes_back(test_data_dir):
+@pytest.mark.parametrize("na_sentinel", ["pd.NA", "np.nan"])
+def test_concat_drops_all_na_cols_internally_but_reindexes_back(test_data_dir, na_sentinel):
     """
+    Parametrized over the null sentinel used in the all-NA column ('pd.NA' or 'np.nan').
+
     If a column is present on both sides but is 100% null on all kept parts,
     the internal concat may drop it (to avoid pandas warnings) and then
     reindex it back to the meta schema. From the public API perspective,
@@ -555,11 +558,14 @@ def test_concat_drops_all_na_cols_internally_but_reindexes_back(test_data_dir):
     left = lsdb.open_catalog(src_dir)
     right = lsdb.open_catalog(src_dir)
 
-    # Build DataFrames and add an all-null column with a STABLE dtype (float64 via NaN)
+    # Choose the sentinel
+    na_value = pd.NA if na_sentinel == "pd.NA" else np.nan
+
+    # Build DataFrames and add an all-null column using the chosen sentinel
     left_df = left.compute()
     right_df = right.compute()
-    left_df["only_na"] = np.nan  # ensures float64
-    right_df["only_na"] = np.nan  # ensures float64
+    left_df["only_na"] = na_value
+    right_df["only_na"] = na_value
 
     # Rebuild catalogs from the modified DataFrames
     # (explicit ra/dec to match this dataset's schema)
@@ -585,4 +591,4 @@ def test_concat_drops_all_na_cols_internally_but_reindexes_back(test_data_dir):
     exp_aligned, got_aligned = _align_columns(expected_stack, got_no_onlyna)
     assert _row_multiset(exp_aligned) == _row_multiset(
         got_aligned
-    ), "Concat content should match vertical stack even with an all-NA column"
+    ), f"Concat content should match vertical stack even with an all-NA column (na_sentinel={na_sentinel})"

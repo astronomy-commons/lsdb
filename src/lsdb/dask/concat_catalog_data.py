@@ -3,6 +3,7 @@ from __future__ import annotations
 import warnings
 from typing import TYPE_CHECKING
 
+import numpy as np
 import pandas as pd
 from hats.pixel_tree import PixelAlignment, PixelAlignmentType
 
@@ -69,7 +70,8 @@ def _concat_meta_safe(meta: pd.DataFrame, parts: list[pd.DataFrame | None], **kw
     - If no parts remain, return an empty DataFrame with the `meta` schema.
     - If a single part remains, return it directly (avoid calling pd.concat on length-1 lists).
     - To fully avoid the FutureWarning, temporarily drop columns that are all-NA
-      across all kept parts, concat, then reindex back to `meta.columns`.
+      across all kept parts, concat, then reindex back to `meta.columns`, restoring
+      those all-NA columns with the exact dtype from `meta`.
     """
     keep: list[pd.DataFrame] = []
     for p in parts:
@@ -81,25 +83,52 @@ def _concat_meta_safe(meta: pd.DataFrame, parts: list[pd.DataFrame | None], **kw
             continue
         keep.append(p)
 
+    # No parts kept → return empty frame with meta schema (and dtypes)
     if not keep:
         return meta.iloc[0:0].copy()
 
+    # Single part → return directly (avoid concat of length-1)
     if len(keep) == 1:
         return keep[0]
 
-    # Columns that are all-NA across ALL kept parts
+    # Identify columns that are all-NA across ALL kept parts.
+    # Be tolerant if some part lacks the column (treat as all-NA for that part).
     all_na_cols: list[str] = []
-    cols = meta.columns
+    cols = list(meta.columns)
     for c in cols:
-        has_non_na_somewhere = any(k[c].notna().any() for k in keep)
+        has_non_na_somewhere = False
+        for k in keep:
+            if c in k.columns:
+                if k[c].notna().any():
+                    has_non_na_somewhere = True
+                    break
+            # else: missing column in this part counts as "all-NA" for that part
         if not has_non_na_somewhere:
             all_na_cols.append(c)
 
     if all_na_cols:
-        reduced = [k.drop(columns=all_na_cols) for k in keep]
+        # Drop the all-NA columns before concat to avoid pandas' dtype warnings,
+        # then reindex and recreate them with the exact dtype from `meta`.
+        reduced = [k.drop(columns=all_na_cols, errors="ignore") for k in keep]
         out = _concat_no_warn(reduced, **kwargs)
-        return out.reindex(columns=meta.columns)
+        out = out.reindex(columns=meta.columns)
 
+        # Recreate dropped columns with precise dtype from `meta`
+        for c in all_na_cols:
+            target_dtype = meta[c].dtype
+            try:
+                # Prefer constructing an ExtensionArray with pd.NA and the target dtype
+                out[c] = pd.array([pd.NA] * len(out), dtype=target_dtype)
+            except (TypeError, ValueError):
+                # Fallback: use float NaN and best-effort astype to target dtype
+                s = pd.Series([np.nan] * len(out), index=out.index)
+                try:
+                    out[c] = s.astype(target_dtype, copy=False)
+                except (TypeError, ValueError):
+                    out[c] = s
+        return out
+
+    # Normal path: just concat the kept parts
     return _concat_no_warn(keep, **kwargs)
 
 
