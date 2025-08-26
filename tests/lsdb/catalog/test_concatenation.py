@@ -424,3 +424,165 @@ def test_concat_margin_with_different_schemas_and_orders(use_low_order):
 
     # Symmetry on margins (different schemas)
     _assert_concat_symmetry(cat_high, cat_low, use_margin=True)
+
+
+def test_concat_warn_left_no_margin(test_data_dir):
+    """
+    Left has NO margin; Right HAS margin -> must warn and result must NOT have margin.
+    We use the same physical catalog on the right, but with an explicit margin_cache.
+    """
+    right_dir = test_data_dir / "small_sky_order3_source"
+    right_margin_dir = test_data_dir / "small_sky_order3_source_margin"
+
+    # Left: open without margin_cache (no margin)
+    left_cat = lsdb.open_catalog(right_dir)
+    assert left_cat.margin is None, "Left catalog unexpectedly has a margin"
+
+    # Right: open with margin_cache (has margin)
+    right_cat = lsdb.open_catalog(right_dir, margin_cache=right_margin_dir)
+    assert right_cat.margin is not None, "Right catalog should have a margin"
+
+    # Expect a warning from concat since only the right side has margin
+    with pytest.warns(UserWarning, match="Left catalog has no margin"):
+        concat_cat = left_cat.concat(right_cat)
+
+    # Result should not carry a margin dataset in this asymmetric case
+    assert (
+        concat_cat.margin is None
+    ), "Concatenated catalog should not include margin when only one side has it"
+
+    # Content symmetry (main tables) still holds
+    _assert_concat_symmetry(left_cat, right_cat, use_margin=False)
+
+
+def test_concat_warn_right_no_margin(test_data_dir):
+    """
+    Right has NO margin; Left HAS margin -> must warn and result must NOT have margin.
+    We flip the previous setup: left gets a margin, right does not.
+    """
+    right_dir = test_data_dir / "small_sky_order3_source"
+    right_margin_dir = test_data_dir / "small_sky_order3_source_margin"
+
+    # Left: with margin
+    left_cat = lsdb.open_catalog(right_dir, margin_cache=right_margin_dir)
+    assert left_cat.margin is not None, "Left catalog should have a margin"
+
+    # Right: without margin
+    right_cat = lsdb.open_catalog(right_dir)
+    assert right_cat.margin is None, "Right catalog unexpectedly has a margin"
+
+    with pytest.warns(UserWarning, match="Right catalog has no margin"):
+        concat_cat = left_cat.concat(right_cat)
+
+    assert (
+        concat_cat.margin is None
+    ), "Concatenated catalog should not include margin when only one side has it"
+
+    # Content symmetry (main tables) still holds
+    _assert_concat_symmetry(left_cat, right_cat, use_margin=False)
+
+
+def test_concat_kwargs_forwarding_does_not_change_content(test_data_dir):
+    """
+    Ensure that **kwargs passed to Catalog.concat (e.g., ignore_index=True) are accepted
+    and do not change the logical content. We compare the result with and without kwargs
+    using the multiset-of-rows approach already used elsewhere.
+    """
+    # Use two partially overlapping cones from the same source to get non-trivial content
+    src_dir = test_data_dir / "small_sky_order3_source"
+    cat = lsdb.open_catalog(src_dir)
+
+    left = cat.search(ConeSearch(325, -55, 36000))
+    right = cat.search(ConeSearch(325, -25, 36000))
+
+    concat_default = left.concat(right)  # no kwargs
+    concat_kwargs = left.concat(right, ignore_index=True)  # exercise kwargs path
+
+    # Compare content ignoring row/column order
+    df_default = concat_default.compute().reset_index()
+    df_kwargs = concat_kwargs.compute().reset_index()
+    df_default, df_kwargs = _align_columns(df_default, df_kwargs)
+    assert _row_multiset(df_default) == _row_multiset(
+        df_kwargs
+    ), "Passing kwargs to concat should not change the logical content"
+
+
+def test_concat_both_margins_uses_smallest_threshold(small_sky_order1_collection_dir, test_data_dir):
+    """
+    When BOTH sides have a margin, the concatenated margin must be built using the
+    SMALLEST of the two margin thresholds. We read thresholds from the inputs and
+    check that the result's margin_info reflects min(left, right).
+    """
+    # LEFT: a collection that already ships with a margin cache
+    left_cat = lsdb.open_catalog(small_sky_order1_collection_dir)
+    assert left_cat.margin is not None, "Left catalog should have a margin"
+    left_thr = left_cat.margin.hc_structure.catalog_info.margin_threshold
+
+    # RIGHT: a source with an explicit margin_cache directory
+    right_dir = test_data_dir / "small_sky_order3_source"
+    right_margin_dir = test_data_dir / "small_sky_order3_source_margin"
+    right_cat = lsdb.open_catalog(right_dir, margin_cache=right_margin_dir)
+    assert right_cat.margin is not None, "Right catalog should have a margin"
+    right_thr = right_cat.margin.hc_structure.catalog_info.margin_threshold
+
+    # Sanity: thresholds must be numeric (some datasets store them as float)
+    assert left_thr is not None and right_thr is not None, "Input margin thresholds must be defined"
+
+    concat_cat = left_cat.concat(right_cat)
+
+    # Result MUST have a margin and must use the smallest threshold
+    assert (
+        concat_cat.margin is not None
+    ), "Concatenated catalog should include a margin when both sides have one"
+    got_thr = concat_cat.margin.hc_structure.catalog_info.margin_threshold
+    exp_thr = min(left_thr, right_thr)
+    # Compare as floats to avoid dtype quirks
+    assert float(got_thr) == float(exp_thr), f"Expected margin_threshold={exp_thr} but got {got_thr}"
+
+    # Symmetry on margins still holds
+    _assert_concat_symmetry(left_cat, right_cat, use_margin=True)
+
+
+def test_concat_drops_all_na_cols_internally_but_reindexes_back(test_data_dir):
+    """
+    If a column is present on both sides but is 100% null on all kept parts,
+    the internal concat may drop it (to avoid pandas warnings) and then
+    reindex it back to the meta schema. From the public API perspective,
+    content must remain unchanged and the column must still exist (all NaN).
+    """
+    # Open two catalogs from the same source to ensure overlapping pixels
+    src_dir = test_data_dir / "small_sky_order3_source"
+    left = lsdb.open_catalog(src_dir)
+    right = lsdb.open_catalog(src_dir)
+
+    # Build DataFrames and add an all-null column with a STABLE dtype (float64 via NaN)
+    left_df = left.compute()
+    right_df = right.compute()
+    left_df["only_na"] = np.nan  # ensures float64
+    right_df["only_na"] = np.nan  # ensures float64
+
+    # Rebuild catalogs from the modified DataFrames
+    # (explicit ra/dec to match this dataset's schema)
+    left2 = lsdb.from_dataframe(left_df, ra_column="source_ra", dec_column="source_dec")
+    right2 = lsdb.from_dataframe(right_df, ra_column="source_ra", dec_column="source_dec")
+
+    # Concat and compute
+    concat_cat = left2.concat(right2)
+    concat_df = concat_cat.compute()
+
+    # Column must exist and be entirely NaN after concat
+    assert "only_na" in concat_df.columns, "Column 'only_na' should be reindexed back after internal drop"
+    assert concat_df["only_na"].isna().all(), "Column 'only_na' must remain entirely NaN"
+
+    # Logical content (ignoring the all-NA column) should equal simple vertical stack
+    expected_stack = pd.concat(
+        [left_df.drop(columns=["only_na"]), right_df.drop(columns=["only_na"])],
+        ignore_index=True,
+    )
+    got_no_onlyna = concat_df.drop(columns=["only_na"]).reset_index(drop=True)
+
+    # Align and compare as multisets (ignoring row/column order)
+    exp_aligned, got_aligned = _align_columns(expected_stack, got_no_onlyna)
+    assert _row_multiset(exp_aligned) == _row_multiset(
+        got_aligned
+    ), "Concat content should match vertical stack even with an all-NA column"
