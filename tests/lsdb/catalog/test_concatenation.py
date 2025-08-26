@@ -1,4 +1,5 @@
 from collections import Counter
+from types import SimpleNamespace
 
 import nested_pandas as npd
 import numpy as np
@@ -8,6 +9,7 @@ from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 
 import lsdb
 import lsdb.dask.concat_catalog_data as m
+import lsdb.dask.merge_catalog_functions as mf
 import lsdb.nested as nd
 from lsdb import ConeSearch
 
@@ -711,3 +713,39 @@ def test_concat_meta_safe_outer_except_and_inner_except(monkeypatch):
         pd.Series([1.0, 2.0, 3.0], name="ok"),
         check_dtype=False,
     )
+
+
+def test_filter_by_spatial_index_to_margin_raises_when_margin_order_smaller_than_order(monkeypatch):
+    """
+    Ensure the function raises ValueError when the derived margin_order < order.
+    We monkeypatch hp.margin2order to force a too-small order, so we deterministically
+    hit the error branch regardless of the actual margin_radius value.
+    """
+    # Any dataframe is fine; the error is raised before the frame is used.
+    df = pd.DataFrame({"x": [1]}, index=pd.Index([0], name=mf.SPATIAL_INDEX_COLUMN))
+
+    # Force margin2order(...) -> array([0]) so that margin_order (=0) < order (=1)
+    monkeypatch.setattr(mf.hp, "margin2order", lambda arr: np.array([0], dtype=int))
+
+    with pytest.raises(
+        ValueError, match=r"Margin order .* is smaller than the order .* Cannot generate margin"
+    ):
+        mf.filter_by_spatial_index_to_margin(
+            dataframe=df,
+            order=1,  # larger than the forced margin_order (0)
+            pixel=0,
+            margin_radius=0.1,  # value irrelevant due to monkeypatch
+        )
+
+
+def test_get_aligned_pixels_from_alignment_empty_mapping_returns_empty_list():
+    """
+    When the alignment.pixel_mapping is empty (len == 0), the function should
+    return an empty list early without attempting to vectorize.
+    We can pass a lightweight object exposing only 'pixel_mapping'.
+    """
+    dummy_alignment = SimpleNamespace(pixel_mapping=pd.DataFrame())
+
+    got = mf.get_aligned_pixels_from_alignment(dummy_alignment)
+    assert not got  # empty list is falsy (pylint-friendly)
+    assert isinstance(got, list)
