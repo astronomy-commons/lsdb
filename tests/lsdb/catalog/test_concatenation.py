@@ -7,6 +7,7 @@ import pytest
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 
 import lsdb
+import lsdb.dask.concat_catalog_data as m
 import lsdb.nested as nd
 from lsdb import ConeSearch
 
@@ -89,6 +90,20 @@ def _assert_concat_symmetry(
     assert (
         ms_lr == ms_rl
     ), "left.concat(right) and right.concat(left) differ in content (as multisets of rows)."
+
+
+def _build_inputs_for_all_na_col(target_dtype):
+    """Utility to build meta/parts where one column is all-NA in every part."""
+    meta = pd.DataFrame(
+        {
+            "only_na": pd.Series(dtype=target_dtype),
+            "ok": pd.Series(dtype="float64"),
+        }
+    ).iloc[0:0]
+
+    p1 = pd.DataFrame({"only_na": [np.nan, np.nan], "ok": [1.0, 2.0]})
+    p2 = pd.DataFrame({"only_na": [np.nan], "ok": [3.0]})
+    return meta, [p1, p2]
 
 
 # --------------------------------- tests ---------------------------------- #
@@ -592,3 +607,107 @@ def test_concat_drops_all_na_cols_internally_but_reindexes_back(test_data_dir, n
     assert _row_multiset(exp_aligned) == _row_multiset(
         got_aligned
     ), f"Concat content should match vertical stack even with an all-NA column (na_sentinel={na_sentinel})"
+
+
+def test__is_all_na_returns_true_for_size_zero():
+    """_is_all_na should return True when df.size == 0, and also for all-null dataframes."""
+    # Empty dataframe with size == 0
+    df_empty = pd.DataFrame(columns=["a", "b"]).iloc[0:0]
+    assert df_empty.size == 0
+    assert m._is_all_na(df_empty) is True
+
+    # Dataframe with rows but all null values
+    df_all_na = pd.DataFrame({"a": [np.nan, np.nan], "b": [pd.NA, pd.NA]})
+    assert m._is_all_na(df_all_na) is True
+
+    # Dataframe with at least one non-null value
+    df_some = pd.DataFrame({"a": [np.nan, 1.0]})
+    assert m._is_all_na(df_some) is False
+
+
+def test__concat_meta_safe_skips_none_and_all_na_parts():
+    """_concat_meta_safe should skip None, empty parts, and all-NA parts."""
+    meta = pd.DataFrame({"a": pd.Series(dtype="float64"), "b": pd.Series(dtype="float64")}).iloc[0:0]
+
+    # part None -> ignored
+    p_none = None
+
+    # part with size 0 -> treated as all-NA -> ignored
+    p_empty = pd.DataFrame({"a": pd.Series([], dtype="float64"), "b": pd.Series([], dtype="float64")})
+
+    # part with all-null values -> ignored
+    p_all_na = pd.DataFrame({"a": [np.nan, np.nan], "b": [pd.NA, pd.NA]})
+
+    # valid part with data
+    p_data = pd.DataFrame({"a": [1.0, 2.0], "b": [3.0, 4.0]})
+
+    out = m._concat_meta_safe(meta, [p_none, p_empty, p_all_na, p_data], ignore_index=True)
+
+    # Only the real part should remain, reindexed to meta schema
+    pd.testing.assert_frame_equal(
+        out.reset_index(drop=True),
+        p_data.reindex(columns=meta.columns).reset_index(drop=True),
+        check_dtype=False,
+    )
+
+
+def test_concat_meta_safe_outer_except_and_inner_try_succeeds(monkeypatch):
+    """
+    Covers the EXTERNAL 'except (TypeError, ValueError)'.
+    - Force m.pd.array(...) to raise TypeError.
+    - Let Series.astype() succeed (internal TRY branch).
+    """
+    meta, parts = _build_inputs_for_all_na_col(target_dtype="int64")
+
+    # Force pd.array(...) to always raise TypeError
+    monkeypatch.setattr(m.pd, "array", lambda *a, **k: (_ for _ in ()).throw(TypeError("boom")))
+
+    out = m._concat_meta_safe(meta, parts, ignore_index=True)
+
+    # Column exists and is all NaN
+    assert "only_na" in out.columns
+    assert out["only_na"].isna().all()
+    # Column 'ok' concatenated normally
+    pd.testing.assert_series_equal(
+        out["ok"].reset_index(drop=True),
+        pd.Series([1.0, 2.0, 3.0], name="ok"),
+        check_dtype=False,
+    )
+
+
+def test_concat_meta_safe_outer_except_and_inner_except(monkeypatch):
+    """
+    Covers the INTERNAL 'except (TypeError, ValueError)' as well.
+    - Force m.pd.array(...) to raise TypeError (external except).
+    - Also patch Series.astype(...) to raise TypeError for target dtype (internal except).
+    """
+    meta, parts = _build_inputs_for_all_na_col(target_dtype="int64")
+
+    # Force pd.array(...) to always raise TypeError
+    monkeypatch.setattr(m.pd, "array", lambda *a, **k: (_ for _ in ()).throw(TypeError("boom")))
+
+    # Patch Series.astype to fail for dtype 'int64'
+    original_astype = pd.Series.astype
+
+    def fake_astype(self, *args, **kwargs):
+        # pandas.Series.astype(dtype, copy=True, errors='raise', **kwargs)
+        # dtype usually comes as the first positional; it can come in kwargs as well.
+        dtype = kwargs.get("dtype", args[0] if args else None)
+        if str(dtype) == "int64":
+            raise TypeError("astype boom")
+        return original_astype(self, *args, **kwargs)
+
+    monkeypatch.setattr(pd.Series, "astype", fake_astype)
+
+    out = m._concat_meta_safe(meta, parts, ignore_index=True)
+
+    # Column reconstructed by fallback (all NaN, float dtype)
+    assert "only_na" in out.columns
+    assert out["only_na"].isna().all()
+    assert pd.api.types.is_float_dtype(out["only_na"])
+    # Column 'ok' concatenated normally
+    pd.testing.assert_series_equal(
+        out["ok"].reset_index(drop=True),
+        pd.Series([1.0, 2.0, 3.0], name="ok"),
+        check_dtype=False,
+    )
