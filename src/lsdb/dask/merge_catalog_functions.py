@@ -370,49 +370,50 @@ def filter_by_spatial_index_to_pixel(dataframe: npd.NestedFrame, order: int, pix
 
 
 def filter_by_spatial_index_to_margin(
-    dataframe: npd.NestedFrame, order: int, pixel: int, margin_radius: float
+    dataframe: npd.NestedFrame,
+    order: int,
+    pixel: int,
+    margin_radius: float,
 ) -> npd.NestedFrame:
     """
-    Filter rows to those that fall within the *margin footprint* of a given HEALPix pixel.
-    The input `dataframe` is indexed by a global spatial index at `SPATIAL_INDEX_ORDER`.
-    We compute a “margin order” from the requested `margin_radius` and derive the set of
-    margin pixels at that order around the target `(order, pixel)`. Each row’s index is
-    mapped down to the margin order and kept if it belongs to one of those margin pixels.
-    Parameters
-    ----------
-    dataframe : nested_pandas.NestedFrame
-        DataFrame to be filtered. Its index must be the spatial index at
-        `SPATIAL_INDEX_ORDER` (NESTED scheme).
-    order : int
-        HEALPix order of the *central* pixel.
-    pixel : int
-        HEALPix pixel number (NESTED numbering) at `order`.
-    margin_radius : float
-        Margin radius in arcminutes. Internally converted to degrees to derive
-        the effective `margin_order`.
-    Returns
-    -------
-    nested_pandas.NestedFrame
-        A filtered view of `dataframe` containing only rows that lie within the
-        margin region around `(order, pixel)`.
-    Raises
-    ------
-    ValueError
-        If the derived `margin_order` is smaller than `order`. In that case we cannot
-        construct a valid margin ring around the target pixel.
-    Notes
-    -----
-    Implementation steps:
-      1) Convert `margin_radius` to a `margin_order` via `hp.margin2order`.
-      2) Enumerate the margin pixels at `margin_order` using `get_margin`.
-      3) Map each row’s index at `SPATIAL_INDEX_ORDER` down to `margin_order`
-         (via `get_lower_order_pixel`) and keep rows whose mapped pixel is in
-         the margin set.
+    Filter rows to those that fall within the margin footprint of a
+    given HEALPix pixel.
+
+    Args:
+        dataframe (nested_pandas.NestedFrame):
+            DataFrame to be filtered. Its index must be the spatial
+            index at SPATIAL_INDEX_ORDER (NESTED scheme).
+        order (int): HEALPix order of the central pixel.
+        pixel (int): HEALPix pixel number (NESTED numbering) at `order`.
+        margin_radius (float):
+            Margin radius in arcseconds. Internally converted to
+            arcminutes to derive the effective margin order.
+
+    Returns:
+        nested_pandas.NestedFrame:
+            A filtered view of `dataframe` containing only rows that
+            lie within the margin region around `(order, pixel)`.
+
+    Raises:
+        ValueError:
+            If the derived margin order is smaller than `order`. In
+            that case, a valid margin ring around the target pixel
+            cannot be constructed.
+
+    Notes:
+        Implementation steps:
+            1) Convert `margin_radius` from arcseconds to arcminutes,
+               then to a margin order via `hp.margin2order`.
+            2) Enumerate the margin pixels at margin order using
+               `get_margin`.
+            3) Map each row’s index at SPATIAL_INDEX_ORDER down to
+               margin order (via `get_lower_order_pixel`) and keep rows
+               whose mapped pixel is in the margin set.
     """
-    # margin_radius is in arcmin; convert to degrees
-    margin_deg = margin_radius / 60.0
+    # margin_radius is in arcsec; convert to arcmin
+    margin_min = margin_radius / 60.0
     # mypy: margin2order expects ndarray; extract the scalar from position [0]
-    margin_order_arr = hp.margin2order(np.asarray([margin_deg], dtype=float))
+    margin_order_arr = hp.margin2order(np.asarray([margin_min], dtype=float))
     margin_order = int(margin_order_arr[0])
 
     if margin_order < order:

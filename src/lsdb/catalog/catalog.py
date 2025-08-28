@@ -390,47 +390,30 @@ class Catalog(HealpixDataset):
         """
         Concatenate two catalogs by aligned HEALPix pixels.
 
-        The method builds an OUTER pixel alignment between the two catalogs and,
-        for each aligned pixel, vertically stacks (concatenates) the rows from the
-        left and the right partitions. The resulting table’s columns are the union
-        of both inputs; columns that are absent on one side are filled with nulls
-        for rows coming from that side.
+        Args:
+            other (Catalog): The catalog to concatenate with.
+            **kwargs: Extra arguments forwarded to internal `pandas.concat` calls.
 
-        Margin handling
-        ---------------
-        - If both inputs have a margin, their margins are concatenated as well using
-        an OUTER pixel alignment **without** MOC filtering, and clipped using the
-        smallest of the two margin radii.
-        - If only one side has a margin, a warning is emitted and the result will
-        not include a margin dataset.
-        - If neither side has a margin, no margin is attached.
-
-        Notes
-        -----
-        - The main (non-margin) alignment is filtered by the catalogs’ MOCs when
-        available; the pixel-tree alignment itself is OUTER, so pixels present on
-        either side are preserved (within the MOC filter).
-        - This is a *stacking* operation, not a row-wise join or crossmatch; no
-        deduplication or key-based matching is applied.
-        - Column dtypes may be upcast by pandas to accommodate the unioned schema.
-        Row/column order is not guaranteed to be stable.
-        - `**kwargs` are forwarded to the internal pandas concatenations (e.g.,
-        `ignore_index`, etc.).
-
-        Parameters
-        ----------
-        other : Catalog
-            The catalog to concatenate with.
-        **kwargs
-            Extra arguments forwarded to internal `pandas.concat` calls.
-
-        Returns
-        -------
-        Catalog
-            A new catalog whose partitions correspond to the OUTER pixel alignment
+        Returns:
+            Catalog: A new catalog whose partitions correspond to the OUTER pixel alignment
             and whose rows are the per-pixel concatenation of both inputs. If both
             inputs provide a margin, the result includes a concatenated margin
             dataset as described above.
+
+        Raises:
+            Warning: If only one side has a margin, a warning is emitted and the result will
+            not include a margin dataset.
+
+        Notes:
+            - The main (non-margin) alignment is filtered by the catalogs’ MOCs when
+              available; the pixel-tree alignment itself is OUTER, so pixels present on
+              either side are preserved (within the MOC filter).
+            - This is a stacking operation, not a row-wise join or crossmatch; no
+              deduplication or key-based matching is applied.
+            - Column dtypes may be upcast by pandas to accommodate the unioned schema.
+              Row/column order is not guaranteed to be stable.
+            - `**kwargs` are forwarded to the internal pandas concatenations (e.g.,
+              `ignore_index`, etc.).
         """
         # check if the catalogs have margins
         margin = None

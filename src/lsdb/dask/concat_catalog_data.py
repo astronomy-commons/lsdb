@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-import warnings
 from typing import TYPE_CHECKING
 
-import numpy as np
 import pandas as pd
 from hats.pixel_tree import PixelAlignment, PixelAlignmentType
 
@@ -24,38 +22,55 @@ if TYPE_CHECKING:
     from lsdb.catalog.catalog import Catalog
 
 
-def _concat_no_warn(frames: list[pd.DataFrame], **kwargs) -> pd.DataFrame:
+def _reindex_and_coerce_dtypes(
+    df: pd.DataFrame | None,
+    meta: pd.DataFrame,
+) -> pd.DataFrame:
     """
-    Concatenate frames while suppressing any pandas FutureWarning (local scope).
-    Also defaults to sort=False to avoid accidental column reordering.
-    """
-    kwargs.setdefault("sort", False)
-    with warnings.catch_warnings():
-        # Ignore any FutureWarning only within this concat call
-        warnings.simplefilter("ignore", category=FutureWarning)
-        return pd.concat(frames, **kwargs)
+    Reindex DataFrame columns and coerce dtypes to match a reference
+    meta DataFrame.
 
+    Args:
+        df (pd.DataFrame | None):
+            DataFrame to be reindexed and coerced. If None, returns meta.
+        meta (pd.DataFrame):
+            Reference DataFrame whose columns and dtypes should be
+            matched.
 
-def _reindex_like_meta(df: pd.DataFrame | None, meta: pd.DataFrame) -> pd.DataFrame:
-    """
-    Ensure `df` has the same column order as `meta`. If `df` is None, return `meta`.
+    Returns:
+        pd.DataFrame:
+            DataFrame with columns and dtypes matching `meta`. Missing
+            columns are filled with NA values and correct dtype.
 
-    Notes
-    -----
-    This is critical to keep Dask's `meta` consistent with each partition result.
-    Any mismatch in column order between the computed partition and the meta
-    will trigger `dask.dataframe.utils.check_meta` errors.
+    Raises:
+        TypeError:
+            If dtype conversion fails for any column.
+
+    Notes:
+        - This function is useful to ensure all partitions in a Dask
+          DataFrame have consistent schema.
     """
     if df is None:
-        return meta
-    # Use copy=False to avoid unnecessary copies; columns missing in df become all-NA.
-    return df.reindex(columns=meta.columns, copy=False)
+        df = meta.copy()
+    else:
+        df = df.reindex(columns=meta.columns, copy=False)
+    for col in meta.columns:
+        try:
+            df[col] = df[col].astype(meta[col].dtype, copy=False)
+        except (TypeError, ValueError) as e:
+            raise TypeError(f"Could not convert column '{col}' to dtype {meta[col].dtype}: {e}") from e
+    return df
 
 
 def _is_all_na(df: pd.DataFrame) -> bool:
     """
-    Return True if the DataFrame has no non-null values (robust to extension dtypes).
-    Treat both empty frames and frames with rows but all-null cells as all-NA.
+    Check if a DataFrame contains only null values or is empty.
+
+    Args:
+        df (pd.DataFrame): DataFrame to check.
+
+    Returns:
+        bool: True if all values are null or DataFrame is empty, False otherwise.
     """
     if df.size == 0:
         return True
@@ -64,14 +79,20 @@ def _is_all_na(df: pd.DataFrame) -> bool:
 
 def _concat_meta_safe(meta: pd.DataFrame, parts: list[pd.DataFrame | None], **kwargs) -> pd.DataFrame:
     """
-    Safely concatenate only non-empty and non-all-NA parts to avoid pandas' FutureWarning.
+    Concatenate only non-empty and non-all-NA DataFrames, preserving meta schema and dtypes.
 
-    Behavior:
-    - If no parts remain, return an empty DataFrame with the `meta` schema.
-    - If a single part remains, return it directly (avoid calling pd.concat on length-1 lists).
-    - To fully avoid the FutureWarning, temporarily drop columns that are all-NA
-      across all kept parts, concat, then reindex back to `meta.columns`, restoring
-      those all-NA columns with the exact dtype from `meta`.
+    Args:
+        meta (pd.DataFrame): Reference DataFrame for schema and dtypes.
+        parts (list[pd.DataFrame | None]): List of DataFrames to concatenate.
+        **kwargs: Additional keyword arguments for pandas.concat.
+
+    Returns:
+        pd.DataFrame: Concatenated DataFrame with schema and dtypes matching meta.
+
+    Notes:
+        - All output columns will match the order and dtypes of meta.
+        - Missing columns are filled with NA values and correct dtype.
+        - Empty result returns meta.iloc[0:0].copy() coerced to meta dtypes.
     """
     keep: list[pd.DataFrame] = []
     for p in parts:
@@ -83,53 +104,16 @@ def _concat_meta_safe(meta: pd.DataFrame, parts: list[pd.DataFrame | None], **kw
             continue
         keep.append(p)
 
-    # No parts kept → return empty frame with meta schema (and dtypes)
     if not keep:
-        return meta.iloc[0:0].copy()
+        return _reindex_and_coerce_dtypes(meta.iloc[0:0].copy(), meta)
 
-    # Single part → return directly (avoid concat of length-1)
     if len(keep) == 1:
-        return keep[0]
+        return _reindex_and_coerce_dtypes(keep[0], meta)
 
-    # Identify columns that are all-NA across ALL kept parts.
-    # Be tolerant if some part lacks the column (treat as all-NA for that part).
-    all_na_cols: list[str] = []
-    cols = list(meta.columns)
-    for c in cols:
-        has_non_na_somewhere = False
-        for k in keep:
-            if c in k.columns:
-                if k[c].notna().any():
-                    has_non_na_somewhere = True
-                    break
-            # else: missing column in this part counts as "all-NA" for that part
-        if not has_non_na_somewhere:
-            all_na_cols.append(c)
-
-    if all_na_cols:
-        # Drop the all-NA columns before concat to avoid pandas' dtype warnings,
-        # then reindex and recreate them with the exact dtype from `meta`.
-        reduced = [k.drop(columns=all_na_cols, errors="ignore") for k in keep]
-        out = _concat_no_warn(reduced, **kwargs)
-        out = out.reindex(columns=meta.columns)
-
-        # Recreate dropped columns with precise dtype from `meta`
-        for c in all_na_cols:
-            target_dtype = meta[c].dtype
-            try:
-                # Prefer constructing an ExtensionArray with pd.NA and the target dtype
-                out[c] = pd.array([pd.NA] * len(out), dtype=target_dtype)
-            except (TypeError, ValueError):
-                # Fallback: use float NaN and best-effort astype to target dtype
-                s = pd.Series([np.nan] * len(out), index=out.index)
-                try:
-                    out[c] = s.astype(target_dtype, copy=False)
-                except (TypeError, ValueError):
-                    out[c] = s
-        return out
-
-    # Normal path: just concat the kept parts
-    return _concat_no_warn(keep, **kwargs)
+    # Reindex and coerce all kept DataFrames to meta before concatenation
+    keep = [_reindex_and_coerce_dtypes(df, meta) for df in keep]
+    out = pd.concat(keep, **kwargs)
+    return _reindex_and_coerce_dtypes(out, meta)
 
 
 # pylint: disable=too-many-arguments, unused-argument
@@ -147,11 +131,23 @@ def perform_concat(
     **kwargs,
 ):
     """
-    Per-aligned-pixel concatenation for the *main* (non-margin) tables.
+    Concatenate partitions for a single aligned pixel from two catalogs.
 
-    If an input DF is None, substitute `aligned_meta` to preserve the schema.
-    When input pixel orders differ, filter to the aligned pixel region to avoid
-    duplication/leakage. Always reindex each piece to `aligned_meta.columns`.
+    Args:
+        left_df (pd.DataFrame | None): Partition from the left catalog.
+        right_df (pd.DataFrame | None): Partition from the right catalog.
+        aligned_df (pd.DataFrame | None): Partition for the aligned pixel.
+        left_pix: HealpixPixel for the left partition.
+        right_pix: HealpixPixel for the right partition.
+        aligned_pix: HealpixPixel for the aligned partition.
+        left_catalog_info: Catalog info for the left partition.
+        right_catalog_info: Catalog info for the right partition.
+        aligned_catalog_info: Catalog info for the aligned partition.
+        aligned_meta (pd.DataFrame): Meta DataFrame for column order and dtypes.
+        **kwargs: Additional keyword arguments for pandas.concat.
+
+    Returns:
+        pd.DataFrame: Concatenated DataFrame for the aligned pixel.
     """
     # Filter to aligned pixel when needed (handles order differences)
     if left_pix is not None and aligned_pix.order > left_pix.order and left_df is not None:
@@ -167,8 +163,8 @@ def perform_concat(
         right_df = aligned_meta
 
     # Normalize column order
-    left_df = _reindex_like_meta(left_df, aligned_meta)
-    right_df = _reindex_like_meta(right_df, aligned_meta)
+    left_df = _reindex_and_coerce_dtypes(left_df, aligned_meta)
+    right_df = _reindex_and_coerce_dtypes(right_df, aligned_meta)
 
     # Concatenate without empty/all-NA inputs to avoid FutureWarning
     return _concat_meta_safe(aligned_meta, [left_df, right_df], **kwargs)
@@ -196,12 +192,30 @@ def perform_margin_concat(
     **kwargs,
 ):
     """
-    Per-aligned-pixel concatenation for the *margin* tables.
+    Concatenate margin partitions for a single aligned pixel from two catalogs.
 
-    Depending on which side is present and the relative orders, we may need to
-    build a combined (partition ∪ margin) table and then filter it to the
-    aligned pixel's margin footprint. Each piece is reindexed to `aligned_meta.columns`
-    and concatenated using `_concat_meta_safe`.
+    Args:
+        left_df (pd.DataFrame | None): Partition from the left catalog.
+        left_margin_df (pd.DataFrame | None): Margin partition from the left catalog.
+        right_df (pd.DataFrame | None): Partition from the right catalog.
+        right_margin_df (pd.DataFrame | None): Margin partition from the right catalog.
+        aligned_df (pd.DataFrame | None): Partition for the aligned pixel.
+        left_pix: HealpixPixel for the left partition.
+        left_margin_pix: HealpixPixel for the left margin partition.
+        right_pix: HealpixPixel for the right partition.
+        right_margin_pix: HealpixPixel for the right margin partition.
+        aligned_pix: HealpixPixel for the aligned partition.
+        left_catalog_info: Catalog info for the left partition.
+        left_margin_catalog_info: Catalog info for the left margin partition.
+        right_catalog_info: Catalog info for the right partition.
+        right_margin_catalog_info: Catalog info for the right margin partition.
+        aligned_catalog_info: Catalog info for the aligned partition.
+        margin_radius (float): Margin radius in arcseconds.
+        aligned_meta (pd.DataFrame): Meta DataFrame for column order and dtypes.
+        **kwargs: Additional keyword arguments for pandas.concat.
+
+    Returns:
+        pd.DataFrame: Concatenated DataFrame for the aligned pixel margin.
     """
     if left_pix is None:
         # Only right side contributes to this aligned pixel
@@ -212,7 +226,7 @@ def perform_margin_concat(
             out = filter_by_spatial_index_to_margin(
                 combined_right_df, aligned_pix.order, aligned_pix.pixel, margin_radius
             )
-        out = _reindex_like_meta(out, aligned_meta)
+        out = _reindex_and_coerce_dtypes(out, aligned_meta)
         return _concat_meta_safe(aligned_meta, [out], **kwargs)
 
     if right_pix is None:
@@ -224,7 +238,7 @@ def perform_margin_concat(
             out = filter_by_spatial_index_to_margin(
                 combined_left_df, aligned_pix.order, aligned_pix.pixel, margin_radius
             )
-        out = _reindex_like_meta(out, aligned_meta)
+        out = _reindex_and_coerce_dtypes(out, aligned_meta)
         return _concat_meta_safe(aligned_meta, [out], **kwargs)
 
     if right_pix.order > left_pix.order:
@@ -233,8 +247,8 @@ def perform_margin_concat(
         filtered_left_df = filter_by_spatial_index_to_margin(
             combined_left_df, right_pix.order, right_pix.pixel, margin_radius
         )
-        left_part = _reindex_like_meta(filtered_left_df, aligned_meta)
-        right_part = _reindex_like_meta(right_margin_df, aligned_meta)
+        left_part = _reindex_and_coerce_dtypes(filtered_left_df, aligned_meta)
+        right_part = _reindex_and_coerce_dtypes(right_margin_df, aligned_meta)
         return _concat_meta_safe(aligned_meta, [left_part, right_part], **kwargs)
 
     if left_pix.order > right_pix.order:
@@ -243,13 +257,13 @@ def perform_margin_concat(
         filtered_right_df = filter_by_spatial_index_to_margin(
             combined_right_df, left_pix.order, left_pix.pixel, margin_radius
         )
-        left_part = _reindex_like_meta(left_margin_df, aligned_meta)
-        right_part = _reindex_like_meta(filtered_right_df, aligned_meta)
+        left_part = _reindex_and_coerce_dtypes(left_margin_df, aligned_meta)
+        right_part = _reindex_and_coerce_dtypes(filtered_right_df, aligned_meta)
         return _concat_meta_safe(aligned_meta, [left_part, right_part], **kwargs)
 
     # Same order on both sides: just stack margins (still normalize)
-    left_part = _reindex_like_meta(left_margin_df, aligned_meta)
-    right_part = _reindex_like_meta(right_margin_df, aligned_meta)
+    left_part = _reindex_and_coerce_dtypes(left_margin_df, aligned_meta)
+    right_part = _reindex_and_coerce_dtypes(right_margin_df, aligned_meta)
     return _concat_meta_safe(aligned_meta, [left_part, right_part], **kwargs)
 
 
@@ -260,11 +274,16 @@ def concat_catalog_data(
     **kwargs,
 ) -> tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]:
     """
-    Concatenate the *main* (non-margin) data for two catalogs over a pixel alignment.
+    Concatenate main catalog data for two catalogs using pixel alignment.
 
-    This builds an OUTER pixel alignment (via `concat_align_catalogs`) and, for each
-    aligned pixel, concatenates the partitions from `left` and `right` after normalizing
-    their column layout to the `meta` (union of left/right schemas).
+    Args:
+        left (Catalog): The left catalog.
+        right (Catalog): The right catalog.
+        **kwargs: Additional keyword arguments for pandas.concat.
+
+    Returns:
+        tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]: Tuple containing the concatenated
+            NestedFrame, pixel map, and pixel alignment.
     """
     # Build alignment across both trees (including margins as pixel trees, but filtered by MOCs)
     alignment = concat_align_catalogs(
@@ -280,7 +299,7 @@ def concat_catalog_data(
 
     # Build the meta (union of schemas) with deterministic column order (left then right)
     # pylint: disable=protected-access
-    meta_df = _concat_no_warn([left._ddf._meta, right._ddf._meta], **kwargs)
+    meta_df = pd.concat([left._ddf._meta, right._ddf._meta], **kwargs)
     # pylint: enable=protected-access
     # Lazy per-pixel concatenation
     joined_partitions = align_and_apply(
@@ -301,12 +320,17 @@ def concat_margin_data(
     **kwargs,
 ) -> tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]:
     """
-    Concatenate the *margin* data for two catalogs over a pixel alignment.
+    Concatenate margin data for two catalogs using pixel alignment.
 
-    The alignment is OUTER and *not* filtered by MOCs (margins can lie outside MOC).
-    For each aligned pixel, we combine the relevant (partition ∪ margin) pieces from
-    both sides, optionally filtering to the aligned-pixel's margin footprint when
-    orders differ, then normalize to `aligned_meta`.
+    Args:
+        left (Catalog): The left catalog.
+        right (Catalog): The right catalog.
+        margin_radius (float): Margin radius in arcseconds.
+        **kwargs: Additional keyword arguments for pandas.concat.
+
+    Returns:
+        tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]: Tuple containing the concatenated
+            NestedFrame, pixel map, and pixel alignment for the margin data.
     """
     # Build alignment across both trees (including margins as pixel trees), no MOC filtering
     alignment = concat_align_catalogs(
@@ -322,7 +346,7 @@ def concat_margin_data(
 
     # Build the meta (union of schemas) with deterministic column order (left then right)
     # pylint: disable=protected-access
-    meta_df = _concat_no_warn([left._ddf._meta, right._ddf._meta], **kwargs)
+    meta_df = pd.concat([left._ddf._meta, right._ddf._meta], **kwargs)
     # pylint: enable=protected-access
 
     # Lazy per-pixel concatenation for margins
