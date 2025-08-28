@@ -100,35 +100,32 @@ def concat_align_catalogs(
     alignment_type: PixelAlignmentType = PixelAlignmentType.OUTER,
 ) -> PixelAlignment:
     """
-    Align two catalogs specifically for *concatenation*.
+    Aligns two catalogs specifically for concatenation.
+
     This function builds a pixel-tree alignment between `left` and `right`. Before aligning,
-    each side’s pixel tree is expanded, when available, by OUTER-aligning it with its margin
+    each side's pixel tree is expanded, when available, by OUTER-aligning it with its margin
     pixel tree (i.e., the union of main + margin trees). This guarantees pixels that appear
     only in a margin are still represented in the final alignment.
-    Parameters
-    ----------
-    left : Catalog
-        The left catalog to align.
-    right : Catalog
-        The right catalog to align.
-    filter_by_mocs : bool, default True
-        If True, restrict the alignment using each catalog’s MOC. If a catalog has no MOC,
-        its pixel tree is converted to a MOC. If False, align the raw pixel trees directly
-        (useful because margins may extend beyond a catalog’s MOC).
-    alignment_type : PixelAlignmentType, default PixelAlignmentType.OUTER
-        Alignment policy applied between the (possibly margin-expanded) pixel trees.
-        OUTER is recommended for concatenation because it preserves pixels present
-        on either side.
-    Returns
-    -------
-    PixelAlignment
-        The alignment object including a `pixel_mapping` with columns for the primary
-        (left), secondary (right), and aligned order/pixel identifiers.
-    Notes
-    -----
-    Compared to `align_catalogs`, this function:
-      • expands **both** sides with their margin pixel trees when available; and
-      • allows opting out of MOC filtering via `filter_by_mocs=False`.
+
+    Args:
+        left (Catalog): The left catalog to align.
+        right (Catalog): The right catalog to align.
+        filter_by_mocs (bool, optional): If True, restricts the alignment using each catalog's MOC.
+            If a catalog has no MOC, its pixel tree is converted to a MOC. If False, aligns the raw
+            pixel trees directly (useful because margins may extend beyond a catalog's MOC).
+            Defaults to True.
+        alignment_type (PixelAlignmentType, optional): Alignment policy applied between the (possibly
+            margin-expanded) pixel trees. OUTER is recommended for concatenation because it preserves
+            pixels present on either side. Defaults to PixelAlignmentType.OUTER.
+
+    Returns:
+        PixelAlignment: The alignment object including a `pixel_mapping` with columns for the primary
+            (left), secondary (right), and aligned order/pixel identifiers.
+
+    Notes:
+        Compared to `align_catalogs`, this function:
+            - Expands both sides with their margin pixel trees when available.
+            - Allows opting out of MOC filtering via `filter_by_mocs=False`.
     """
     if right.margin is not None:
         right_tree = align_trees(
@@ -488,18 +485,17 @@ def get_aligned_pixels_from_alignment(
 ) -> list[HealpixPixel]:
     """
     Extract the list of *aligned* pixels from a `PixelAlignment`.
-    Parameters
-    ----------
-    alignment : PixelAlignment
-        The alignment object whose `pixel_mapping` contains order/pixel columns
-        for the aligned grid.
-    Returns
-    -------
-    list[HealpixPixel]
-        One entry per row in `alignment.pixel_mapping`. Entries are `HealpixPixel`
-        when the aligned order/pixel is present, or `None` when the aligned fields
-        are missing (the list may therefore contain `None` placeholders). An empty
-        list is returned when the mapping has zero rows.
+
+    Args:
+        alignment (PixelAlignment): The alignment object whose `pixel_mapping`
+            contains order/pixel columns for the aligned grid.
+
+    Returns:
+        list[HealpixPixel]: One entry per row in `alignment.pixel_mapping`.
+            Entries are `HealpixPixel` when the aligned order/pixel is present,
+            or `None` when the aligned fields are missing (the list may therefore
+            contain `None` placeholders). An empty list is returned when the mapping
+            has zero rows.
     """
     pixel_mapping = alignment.pixel_mapping
     if len(pixel_mapping) == 0:
