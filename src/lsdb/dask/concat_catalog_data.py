@@ -327,7 +327,6 @@ def concat_catalog_data(
     _check_strict_column_types(meta_left, meta_right)
 
     meta_df = pd.concat([meta_left, meta_right], **kwargs)
-    # ...existing code...
     # pylint: enable=protected-access
     # Lazy per-pixel concatenation
     joined_partitions = align_and_apply(
@@ -374,9 +373,13 @@ def concat_margin_data(
 
     # Build the meta (union of schemas) with deterministic column order (left then right)
     # pylint: disable=protected-access
-    meta_df = pd.concat([left._ddf._meta, right._ddf._meta], **kwargs)
-    # pylint: enable=protected-access
+    meta_left = left._ddf._meta
+    meta_right = right._ddf._meta
 
+    _check_strict_column_types(meta_left, meta_right)
+
+    meta_df = pd.concat([meta_left, meta_right], **kwargs)
+    # pylint: enable=protected-access
     # Lazy per-pixel concatenation for margins
     joined_partitions = align_and_apply(
         [
