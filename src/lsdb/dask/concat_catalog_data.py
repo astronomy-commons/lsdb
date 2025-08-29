@@ -22,6 +22,28 @@ if TYPE_CHECKING:
     from lsdb.catalog.catalog import Catalog
 
 
+def _check_strict_column_types(meta1: pd.DataFrame, meta2: pd.DataFrame):
+    """
+    Raises a TypeError if columns with the same name have different dtypes.
+
+    Args:
+        meta1 (pd.DataFrame): First DataFrame to compare.
+        meta2 (pd.DataFrame): Second DataFrame to compare.
+
+    Raises:
+        TypeError: If any columns with the same name have conflicting dtypes.
+
+    Notes:
+        This function is useful for ensuring strict schema consistency when concatenating
+        or merging DataFrames. It checks only columns present in both DataFrames.
+    """
+    for col in set(meta1.columns) & set(meta2.columns):
+        dtype1 = meta1[col].dtype
+        dtype2 = meta2[col].dtype
+        if dtype1 != dtype2:
+            raise TypeError(f"Column '{col}' has conflicting dtypes: {dtype1} (left) vs {dtype2} (right)")
+
+
 def _reindex_and_coerce_dtypes(
     df: pd.DataFrame | None,
     meta: pd.DataFrame,
@@ -299,7 +321,13 @@ def concat_catalog_data(
 
     # Build the meta (union of schemas) with deterministic column order (left then right)
     # pylint: disable=protected-access
-    meta_df = pd.concat([left._ddf._meta, right._ddf._meta], **kwargs)
+    meta_left = left._ddf._meta
+    meta_right = right._ddf._meta
+
+    _check_strict_column_types(meta_left, meta_right)
+
+    meta_df = pd.concat([meta_left, meta_right], **kwargs)
+    # ...existing code...
     # pylint: enable=protected-access
     # Lazy per-pixel concatenation
     joined_partitions = align_and_apply(

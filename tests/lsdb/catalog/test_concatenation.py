@@ -802,3 +802,12 @@ def test__reindex_and_coerce_dtypes_raises_typeerror_on_incompatible():
 
     with pytest.raises(TypeError, match="Could not convert column 'x'"):
         m._reindex_and_coerce_dtypes(df, meta)
+
+
+def test__check_strict_column_types_raises_on_conflict():
+    """Verify that _check_strict_column_types raises when dtypes conflict."""
+    meta1 = pd.DataFrame({"x": pd.Series(dtype="int64")}).iloc[0:0]
+    meta2 = pd.DataFrame({"x": pd.Series(dtype="float64")}).iloc[0:0]
+
+    with pytest.raises(TypeError, match="Column 'x' has conflicting dtypes"):
+        m._check_strict_column_types(meta1, meta2)
