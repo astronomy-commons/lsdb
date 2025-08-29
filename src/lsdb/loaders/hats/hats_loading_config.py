@@ -48,7 +48,7 @@ class HatsLoadingConfig:
         if self.columns and len(self.columns) > 0:
             url_params["columns"] = self.columns
 
-        if "filters" in self.kwargs:
+        if "filters" in self.kwargs and self.kwargs["filters"]:
             filters = []
             join_char = ","
             for filtr in self.kwargs["filters"]:
