@@ -32,7 +32,7 @@ jobs:
       with:
         python-version: ${{env.PYTHON_VERSION}}
     - name: Checkout PR branch of the repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         fetch-depth: 0
     - name: Display Workflow Run Information
