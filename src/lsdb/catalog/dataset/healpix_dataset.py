@@ -527,6 +527,8 @@ class HealpixDataset(Dataset):
     def polygon_search(self, vertices: list[tuple[float, float]], fine: bool = True):
         """Perform a polygonal search to filter the catalog.
 
+        IMPORTANT: Requires additional ``lsst-sphgeom`` package
+
         Filters to points within the polygonal region specified in ra and dec, in degrees.
         Filters partitions in the catalog to those that have some overlap with the region.
 
