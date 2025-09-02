@@ -3,7 +3,7 @@ from __future__ import annotations
 import nested_pandas as npd
 import numpy as np
 from hats.catalog import TableProperties
-from hats.pixel_math.box_filter import wrap_ra_angles
+from hats.pixel_math.region_to_moc import wrap_ra_angles
 from hats.pixel_math.validators import validate_box
 from mocpy import MOC
 
