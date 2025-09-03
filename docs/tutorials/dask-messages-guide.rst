@@ -268,7 +268,7 @@ In the case of the memory overflow, Dask Dashboard will show red bars
 in the memory usage chart, and logs will show messages like the
 following:
 
-.. code-block:: output
+.. code-block:: text
     :class: no-copybutton
 
     distributed.nanny.memory - WARNING - Worker tcp://127.0.0.1:49477 (pid=59029) exceeded 95% memory budget. Restarting...
