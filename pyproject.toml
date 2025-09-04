@@ -37,7 +37,7 @@ documentation = "https://lsdb.readthedocs.io/"
 [project.optional-dependencies]
 dev = [
     "asv", # Used to compute performance benchmarks
-    "virtualenv==20.30", # Temporary fix to airspeed-velocity/asv#1484
+    "virtualenv==20.34.0", # Temporary fix to airspeed-velocity/asv#1484
     "jupyter", # Clear notebook output
     "mypy", # Used for static type checking of files
     "pre-commit", # Used to run checks before finalizing a git commit
