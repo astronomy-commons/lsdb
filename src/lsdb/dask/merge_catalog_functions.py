@@ -12,7 +12,9 @@ from dask.delayed import Delayed, delayed
 from hats.catalog import TableProperties
 from hats.io import paths
 from hats.pixel_math import HealpixPixel
-from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN, healpix_to_spatial_index
+from hats.pixel_math.healpix_pixel import get_lower_order_pixel
+from hats.pixel_math.pixel_margins import get_margin
+from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN, SPATIAL_INDEX_ORDER, healpix_to_spatial_index
 from hats.pixel_tree import PixelAlignment, PixelAlignmentType, align_trees
 from hats.pixel_tree.moc_utils import copy_moc
 from hats.pixel_tree.pixel_alignment import align_with_mocs
@@ -65,7 +67,12 @@ def remove_hips_columns(df: npd.NestedFrame | None):
     return df.drop(columns=hive_columns_in_df)
 
 
-def align_catalogs(left: Catalog, right: Catalog, add_right_margin: bool = True) -> PixelAlignment:
+def align_catalogs(
+    left: Catalog,
+    right: Catalog,
+    add_right_margin: bool = True,
+    alignment_type: PixelAlignmentType = PixelAlignmentType.INNER,
+) -> PixelAlignment:
     """Aligns two catalogs, also using the right catalog's margin if it exists
 
     Args:
@@ -82,7 +89,83 @@ def align_catalogs(left: Catalog, right: Catalog, add_right_margin: bool = True)
         right_tree,
         left.hc_structure.moc,
         right_moc,
-        alignment_type=PixelAlignmentType.INNER,
+        alignment_type=alignment_type,
+    )
+
+
+def concat_align_catalogs(
+    left: Catalog,
+    right: Catalog,
+    filter_by_mocs: bool = True,
+    alignment_type: PixelAlignmentType = PixelAlignmentType.OUTER,
+) -> PixelAlignment:
+    """
+    Aligns two catalogs specifically for concatenation.
+
+    This function builds a pixel-tree alignment between `left` and `right`. Before aligning,
+    each side's pixel tree is expanded, when available, by OUTER-aligning it with its margin
+    pixel tree (i.e., the union of main + margin trees). This guarantees pixels that appear
+    only in a margin are still represented in the final alignment.
+
+    Args:
+        left (Catalog): The left catalog to align.
+        right (Catalog): The right catalog to align.
+        filter_by_mocs (bool, optional): If True, restricts the alignment using each catalog's MOC.
+            If a catalog has no MOC, its pixel tree is converted to a MOC. If False, aligns the raw
+            pixel trees directly (useful because margins may extend beyond a catalog's MOC).
+            Defaults to True.
+        alignment_type (PixelAlignmentType, optional): Alignment policy applied between the (possibly
+            margin-expanded) pixel trees. OUTER is recommended for concatenation because it preserves
+            pixels present on either side. Defaults to PixelAlignmentType.OUTER.
+
+    Returns:
+        PixelAlignment: The alignment object including a `pixel_mapping` with columns for the primary
+            (left), secondary (right), and aligned order/pixel identifiers.
+
+    Notes:
+        Compared to `align_catalogs`, this function:
+            - Expands both sides with their margin pixel trees when available.
+            - Allows opting out of MOC filtering via `filter_by_mocs=False`.
+    """
+    if right.margin is not None:
+        right_tree = align_trees(
+            right.hc_structure.pixel_tree,
+            right.margin.hc_structure.pixel_tree,
+            alignment_type=PixelAlignmentType.OUTER,
+        ).pixel_tree
+    else:
+        right_tree = right.hc_structure.pixel_tree
+
+    if left.margin is not None:
+        left_tree = align_trees(
+            left.hc_structure.pixel_tree,
+            left.margin.hc_structure.pixel_tree,
+            alignment_type=PixelAlignmentType.OUTER,
+        ).pixel_tree
+    else:
+        left_tree = left.hc_structure.pixel_tree
+
+    right_moc = (
+        right.hc_structure.moc
+        if right.hc_structure.moc is not None
+        else right.hc_structure.pixel_tree.to_moc()
+    )
+
+    left_moc = (
+        left.hc_structure.moc if left.hc_structure.moc is not None else left.hc_structure.pixel_tree.to_moc()
+    )
+    if filter_by_mocs:
+        return align_with_mocs(
+            left_tree,
+            right_tree,
+            left_moc,
+            right_moc,
+            alignment_type=alignment_type,
+        )
+    return align_trees(
+        left_tree,
+        right_tree,
+        alignment_type=alignment_type,
     )
 
 
@@ -283,6 +366,69 @@ def filter_by_spatial_index_to_pixel(dataframe: npd.NestedFrame, order: int, pix
     return filtered_df
 
 
+def filter_by_spatial_index_to_margin(
+    dataframe: npd.NestedFrame,
+    order: int,
+    pixel: int,
+    margin_radius: float,
+) -> npd.NestedFrame:
+    """
+    Filter rows to those that fall within the margin footprint of a
+    given HEALPix pixel.
+
+    Args:
+        dataframe (nested_pandas.NestedFrame):
+            DataFrame to be filtered. Its index must be the spatial
+            index at SPATIAL_INDEX_ORDER (NESTED scheme).
+        order (int): HEALPix order of the central pixel.
+        pixel (int): HEALPix pixel number (NESTED numbering) at `order`.
+        margin_radius (float):
+            Margin radius in arcseconds. Internally converted to
+            arcminutes to derive the effective margin order.
+
+    Returns:
+        nested_pandas.NestedFrame:
+            A filtered view of `dataframe` containing only rows that
+            lie within the margin region around `(order, pixel)`.
+
+    Raises:
+        ValueError:
+            If the derived margin order is smaller than `order`. In
+            that case, a valid margin ring around the target pixel
+            cannot be constructed.
+
+    Notes:
+        Implementation steps:
+            1) Convert `margin_radius` from arcseconds to arcminutes,
+               then to a margin order via `hp.margin2order`.
+            2) Enumerate the margin pixels at margin order using
+               `get_margin`.
+            3) Map each row’s index at SPATIAL_INDEX_ORDER down to
+               margin order (via `get_lower_order_pixel`) and keep rows
+               whose mapped pixel is in the margin set.
+    """
+    # margin_radius is in arcsec; convert to arcmin
+    margin_min = margin_radius / 60.0
+    # mypy: margin2order expects ndarray; extract the scalar from position [0]
+    margin_order_arr = hp.margin2order(np.asarray([margin_min], dtype=float))
+    margin_order = int(margin_order_arr[0])
+
+    if margin_order < order:
+        raise ValueError(
+            f"Margin order {margin_order} is smaller than the order {order} of the pixel {pixel}. "
+            "Cannot generate margin for this pixel."
+        )
+
+    margin_pixels = get_margin(order, pixel, margin_order - order)
+    healpix_29 = dataframe.index.to_numpy()
+    margin_order_hp_pix = get_lower_order_pixel(
+        SPATIAL_INDEX_ORDER, healpix_29, SPATIAL_INDEX_ORDER - margin_order
+    )
+    mask = np.isin(margin_order_hp_pix, margin_pixels)
+    filtered_df = dataframe[mask]
+    return filtered_df
+
+
 def construct_catalog_args(
     partitions: list[Delayed], meta_df: npd.NestedFrame, alignment: PixelAlignment
 ) -> tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]:
@@ -320,7 +466,9 @@ def get_healpix_pixels_from_alignment(
     pixel_mapping = alignment.pixel_mapping
     if len(pixel_mapping) == 0:
         return ([], [])
-    make_pixel = np.vectorize(HealpixPixel)
+    make_pixel = np.vectorize(
+        lambda order, pixel: HealpixPixel(order=order, pixel=pixel) if order is not None else None
+    )
     left_pixels = make_pixel(
         pixel_mapping[PixelAlignment.PRIMARY_ORDER_COLUMN_NAME],
         pixel_mapping[PixelAlignment.PRIMARY_PIXEL_COLUMN_NAME],
@@ -330,6 +478,36 @@ def get_healpix_pixels_from_alignment(
         pixel_mapping[PixelAlignment.JOIN_PIXEL_COLUMN_NAME],
     )
     return list(left_pixels), list(right_pixels)
+
+
+def get_aligned_pixels_from_alignment(
+    alignment: PixelAlignment,
+) -> list[HealpixPixel]:
+    """
+    Extract the list of *aligned* pixels from a `PixelAlignment`.
+
+    Args:
+        alignment (PixelAlignment): The alignment object whose `pixel_mapping`
+            contains order/pixel columns for the aligned grid.
+
+    Returns:
+        list[HealpixPixel]: One entry per row in `alignment.pixel_mapping`.
+            Entries are `HealpixPixel` when the aligned order/pixel is present,
+            or `None` when the aligned fields are missing (the list may therefore
+            contain `None` placeholders). An empty list is returned when the mapping
+            has zero rows.
+    """
+    pixel_mapping = alignment.pixel_mapping
+    if len(pixel_mapping) == 0:
+        return []
+    make_pixel = np.vectorize(
+        lambda order, pixel: HealpixPixel(order=order, pixel=pixel) if order is not None else None
+    )
+    aligned_pixels = make_pixel(
+        pixel_mapping[PixelAlignment.ALIGNED_ORDER_COLUMN_NAME],
+        pixel_mapping[PixelAlignment.ALIGNED_PIXEL_COLUMN_NAME],
+    )
+    return list(aligned_pixels)
 
 
 def get_healpix_pixels_from_association(
@@ -504,7 +682,7 @@ def align_catalog_to_partitions(
     get_partition = np.vectorize(
         lambda pix: (
             dfs[catalog.get_partition_index(pix.order, pix.pixel)]
-            if pix in catalog.hc_structure.pixel_tree
+            if pix is not None and pix in catalog.hc_structure.pixel_tree
             else None
         )
     )
