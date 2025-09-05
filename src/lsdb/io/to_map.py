@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
 
 
-# pylint: disable=protected-access,too-many-locals
+# pylint: disable=protected-access,too-many-locals, duplicate-code
 def to_map(
     catalog: HealpixDataset,
     *,
