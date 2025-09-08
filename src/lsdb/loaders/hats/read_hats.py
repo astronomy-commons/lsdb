@@ -309,6 +309,8 @@ def _load_object_catalog(hc_catalog, config):
 
 def _generate_pyarrow_filters_from_moc(filtered_catalog):
     pyarrow_filter = []
+    if SPATIAL_INDEX_COLUMN not in filtered_catalog.schema.names:
+        return pyarrow_filter
     if filtered_catalog.moc is not None:
         depth_array = filtered_catalog.moc.to_depth29_ranges
         if len(depth_array) > MAX_PYARROW_FILTERS:
