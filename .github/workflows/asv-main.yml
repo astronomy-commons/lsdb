@@ -25,44 +25,44 @@ jobs:
       run:
         working-directory: ${{env.WORKING_DIR}}
     steps:
-      - name: Set up Python ${{env.PYTHON_VERSION}}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{env.PYTHON_VERSION}}
-      - name: Checkout main branch of the repository
-        uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
-      - name: Install dependencies
-        run: pip install asv[virtualenv]==$ASV_VERSION
-      - name: Configure git
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-      - name: Create ASV machine config file
-        run: asv machine --machine gh-runner --yes
-      - name: Fetch previous results from the "benchmarks" branch
-        run: |
-          if git ls-remote --exit-code origin benchmarks > /dev/null 2>&1; then
-            git merge origin/benchmarks \
-              --allow-unrelated-histories \
-              --no-commit
-            mv ../_results .
-          fi
-      - name: Run ASV for the main branch
-        run: asv run ALL --skip-existing --verbose
-      - name: Submit new results to the "benchmarks" branch
-        uses: JamesIves/github-pages-deploy-action@v4
-        with:
-          branch: benchmarks
-          folder: ${{env.WORKING_DIR}}/_results
-          target-folder: _results
-      - name: Generate dashboard HTML
-        run: |
-          asv show
-          asv publish
-      - name: Deploy to Github pages
-        uses: JamesIves/github-pages-deploy-action@v4
-        with:
-          branch: gh-pages
-          folder: ${{env.WORKING_DIR}}/_html
+    - name: Set up Python ${{env.PYTHON_VERSION}}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{env.PYTHON_VERSION}}
+    - name: Checkout main branch of the repository
+      uses: actions/checkout@v5
+      with:
+        fetch-depth: 0
+    - name: Install dependencies
+      run: pip install asv[virtualenv]==$ASV_VERSION
+    - name: Configure git
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+    - name: Create ASV machine config file
+      run: asv machine --machine gh-runner --yes
+    - name: Fetch previous results from the "benchmarks" branch
+      run: |
+        if git ls-remote --exit-code origin benchmarks > /dev/null 2>&1; then
+          git merge origin/benchmarks \
+            --allow-unrelated-histories \
+            --no-commit
+          mv ../_results .
+        fi
+    - name: Run ASV for the main branch
+      run: asv run ALL --skip-existing --verbose
+    - name: Submit new results to the "benchmarks" branch
+      uses: JamesIves/github-pages-deploy-action@v4
+      with:
+        branch: benchmarks
+        folder: ${{env.WORKING_DIR}}/_results
+        target-folder: _results
+    - name: Generate dashboard HTML
+      run: |
+        asv show
+        asv publish
+    - name: Deploy to Github pages
+      uses: JamesIves/github-pages-deploy-action@v4
+      with:
+        branch: gh-pages
+        folder: ${{env.WORKING_DIR}}/_html
