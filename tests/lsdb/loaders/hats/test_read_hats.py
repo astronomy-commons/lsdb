@@ -487,9 +487,14 @@ def test_read_hats_subset_with_order_search(small_sky_source_catalog, small_sky_
     order_search = OrderSearch(min_order=1, max_order=2)
     # Filtering using catalog's order_search
     order_search_catalog = small_sky_source_catalog.order_search(min_order=1, max_order=2)
+    results1 = order_search_catalog.compute()
     # Filtering when calling `read_hats`
-    order_search_catalog_2 = lsdb.open_catalog(small_sky_source_dir, search_filter=order_search)
+    order_search_catalog_2 = lsdb.open_catalog(
+        small_sky_source_dir, search_filter=order_search, columns=["object_id", "object_ra", "object_dec"]
+    )
     assert isinstance(order_search_catalog_2, lsdb.Catalog)
+    results2 = order_search_catalog_2.compute()
+    assert len(results1) == len(results2)
     # The partitions of the catalogs are equivalent
     assert order_search_catalog.get_healpix_pixels() == order_search_catalog_2.get_healpix_pixels()
 
