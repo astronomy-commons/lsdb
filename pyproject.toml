@@ -1,6 +1,7 @@
 [project]
 name = "lsdb"
-license = {file = "LICENSE"}
+license = "BSD-3-Clause"
+license-files = ["LICENSE", "CITATION.bib"]
 readme = "README.md"
 description = "Spatial analysis for extremely large astronomical catalogs using dask"
 authors = [
@@ -8,7 +9,6 @@ authors = [
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
-    "License :: OSI Approved :: BSD License",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
     "Operating System :: OS Independent",
