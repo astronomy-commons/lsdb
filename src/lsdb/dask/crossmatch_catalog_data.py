@@ -20,6 +20,7 @@ from lsdb.dask.merge_catalog_functions import (
     generate_meta_df_for_joined_tables,
     generate_meta_df_for_nested_tables,
     get_healpix_pixels_from_alignment,
+    get_suffix_function,
 )
 from lsdb.types import DaskDFPixelMap
 
@@ -40,6 +41,7 @@ def perform_crossmatch(
     right_margin_catalog_info,
     algorithm,
     suffixes,
+    suffix_function,
     meta_df,
     **kwargs,
 ):
@@ -66,7 +68,7 @@ def perform_crossmatch(
         left_catalog_info,
         right_catalog_info,
         right_margin_catalog_info,
-    ).crossmatch(suffixes, **kwargs)
+    ).crossmatch(suffixes, suffix_function=suffix_function, **kwargs)
 
 
 # pylint: disable=too-many-arguments, unused-argument
@@ -119,6 +121,7 @@ def crossmatch_catalog_data(
     algorithm: (
         Type[AbstractCrossmatchAlgorithm] | BuiltInCrossmatchAlgorithm
     ) = BuiltInCrossmatchAlgorithm.KD_TREE,
+    suffix_method: str | None = None,
     **kwargs,
 ) -> tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]:
     """Cross-matches the data from two catalogs
@@ -155,9 +158,14 @@ def crossmatch_catalog_data(
     # get lists of HEALPix pixels from alignment to pass to cross-match
     left_pixels, right_pixels = get_healpix_pixels_from_alignment(alignment)
 
+    suffix_function = get_suffix_function(suffix_method)
+
     # generate meta table structure for dask df
     meta_df = generate_meta_df_for_joined_tables(
-        [left, right], suffixes, extra_columns=crossmatch_algorithm.extra_columns
+        (left, right),
+        suffixes,
+        suffix_function=suffix_function,
+        extra_columns=crossmatch_algorithm.extra_columns,
     )
 
     # perform the crossmatch on each partition pairing using dask delayed for lazy computation
@@ -166,6 +174,7 @@ def crossmatch_catalog_data(
         perform_crossmatch,
         crossmatch_algorithm,
         suffixes,
+        suffix_function,
         meta_df,
         **kwargs,
     )

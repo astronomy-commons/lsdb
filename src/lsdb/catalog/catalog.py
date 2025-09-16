@@ -182,6 +182,7 @@ class Catalog(HealpixDataset):
         ) = BuiltInCrossmatchAlgorithm.KD_TREE,
         output_catalog_name: str | None = None,
         require_right_margin: bool = False,
+        suffix_method: str | None = None,
         **kwargs,
     ) -> Catalog:
         """Perform a cross-match between two catalogs
@@ -244,6 +245,11 @@ class Catalog(HealpixDataset):
                 Default: {left_name}_x_{right_name}
             require_right_margin (bool): If true, raises an error if the right margin is missing which could
                 lead to incomplete crossmatches. Default: False
+            suffix_method (str): Method to use to add suffixes to columns. Options are:
+                - "overlapping_columns": only add suffixes to columns that are present in both catalogs
+                - "all_columns": add suffixes to all columns from both catalogs
+                Default: "all_columns" Warning: This default will change to "overlapping_columns" in a future
+                release.
 
         Returns:
             A Catalog with the data from the left and right catalogs merged with one row for each
@@ -268,7 +274,7 @@ class Catalog(HealpixDataset):
         if output_catalog_name is None:
             output_catalog_name = f"{self.name}_x_{other.name}"
         ddf, ddf_map, alignment = crossmatch_catalog_data(
-            self, other, suffixes, algorithm=algorithm, **kwargs
+            self, other, suffixes, algorithm=algorithm, suffix_method=suffix_method, **kwargs
         )
         new_catalog_info = create_merged_catalog_info(
             self.hc_structure.catalog_info, other.hc_structure.catalog_info, output_catalog_name, suffixes

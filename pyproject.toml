@@ -27,6 +27,7 @@ dependencies = [
     "pyarrow>=14.0.1",
     "scipy>=1.7.2", # kdtree
     "universal-pathlib>=0.2.2",
+    "tabulate>=0.7.0",
 ]
 
 [project.urls]

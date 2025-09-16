@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable, Sequence
+import logging
+import warnings
+from typing import TYPE_CHECKING, Callable, Sequence, Literal
 
 import hats.pixel_math.healpix_shim as hp
 import nested_pandas as npd
@@ -18,6 +20,7 @@ from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN, SPATIAL_INDEX_OR
 from hats.pixel_tree import PixelAlignment, PixelAlignmentType, align_trees
 from hats.pixel_tree.moc_utils import copy_moc
 from hats.pixel_tree.pixel_alignment import align_with_mocs
+from tabulate import tabulate
 
 import lsdb.nested as nd
 from lsdb.dask.divisions import get_pixels_divisions
@@ -31,6 +34,85 @@ if TYPE_CHECKING:
 
 ASSOC_NORDER = "assoc_Norder"
 ASSOC_NPIX = "assoc_Npix"
+
+
+def apply_suffix_all_columns(
+    left_df: npd.NestedFrame, right_df: npd.NestedFrame, suffixes: tuple[str, str]
+) -> tuple[npd.NestedFrame, npd.NestedFrame]:
+    """Applies suffixes to all columns in both dataframes
+
+    Args:
+        left_df (npd.NestedFrame): The left dataframe
+        right_df (npd.NestedFrame): The right dataframe
+        suffixes (tuple[str, str]): The suffixes to apply to the left and right dataframes
+
+    Returns:
+        A tuple of the two dataframes with the suffixes applied
+    """
+    left_suffix, right_suffix = suffixes
+    left_df = left_df.add_suffix(left_suffix)
+    right_df = right_df.add_suffix(right_suffix)
+    return left_df, right_df
+
+
+def apply_suffix_overlapping_columns(
+    left_df: npd.NestedFrame, right_df: npd.NestedFrame, suffixes: tuple[str, str]
+) -> tuple[npd.NestedFrame, npd.NestedFrame]:
+    """Applies suffixes to overlapping columns in both dataframes
+
+    Logs an info message for each column that is being renamed.
+
+    Args:
+        left_df (npd.NestedFrame): The left dataframe
+        right_df (npd.NestedFrame): The right dataframe
+        suffixes (tuple[str, str]): The suffixes to apply to the left and right dataframes
+
+    Returns:
+        A tuple of the two dataframes with the suffixes applied
+    """
+    left_suffix, right_suffix = suffixes
+    overlapping_columns = set(left_df.columns).intersection(set(right_df.columns))
+    overlapping_columns = [c for c in overlapping_columns]
+    left_df = left_df.rename(columns={c: c + left_suffix for c in overlapping_columns})
+    right_df = right_df.rename(columns={c: c + right_suffix for c in overlapping_columns})
+
+    table = tabulate(
+        [(c, c + left_suffix, c + right_suffix) for c in overlapping_columns],
+        headers=["Column", f"Left (suffix={left_suffix})", f"Right (suffix={right_suffix})"],
+        tablefmt="pretty",
+    )
+
+    logging.info(f"Renaming overlapping columns:\n{table}")
+
+    return left_df, right_df
+
+
+def get_suffix_function(
+    suffix_method: str | None = None,
+) -> Callable[[npd.NestedFrame, npd.NestedFrame, tuple[str, str]], tuple[npd.NestedFrame, npd.NestedFrame]]:
+    """Gets a function that can be used to generate suffixes for columns based on a specified method
+
+    Args:
+        suffix_method (str): The method to use to generate suffixes. Options are 'all_columns', 'overlapping_columns',
+
+    Returns:
+        A function that takes in two dataframes and returns a tuple of the two dataframes with the suffixes applied
+    """
+    if suffix_method is None:
+        suffix_method = "all_columns"
+        warnings.warn(
+            "The default suffix behavior will change from applying suffixes to all columns to only applying suffixes to overlapping columns in a future release."
+            "To maintain the current behavior, explicitly set `suffix_method='all_columns'`. To change to the new behavior, set `suffix_method='overlapping_columns'`.",
+            FutureWarning,
+        )
+
+    suffix_functions = {
+        "all_columns": apply_suffix_all_columns,
+        "overlapping_columns": apply_suffix_overlapping_columns,
+    }
+    if suffix_method not in suffix_functions:
+        raise ValueError(f"Invalid suffix method: {suffix_method}")
+    return suffix_functions[suffix_method]
 
 
 def concat_partition_and_margin(
@@ -524,8 +606,9 @@ def get_healpix_pixels_from_association(
 
 
 def generate_meta_df_for_joined_tables(
-    catalogs: Sequence[Catalog],
-    suffixes: Sequence[str],
+    catalogs: tuple[Catalog, Catalog],
+    suffixes: tuple[str, str],
+    suffix_function: Callable,
     extra_columns: pd.DataFrame | None = None,
     index_name: str = SPATIAL_INDEX_COLUMN,
     index_type: npt.DTypeLike | None = None,
@@ -547,15 +630,14 @@ def generate_meta_df_for_joined_tables(
         An empty dataframe with the columns of each catalog with their respective suffix, and any extra
         columns specified, with the index name set.
     """
-    meta = {}
     # Construct meta for crossmatched catalog columns
-    for table, suffix in zip(catalogs, suffixes):
-        for name, col_type in table.dtypes.items():
-            if name not in paths.HIVE_COLUMNS:
-                meta[name + suffix] = pd.Series(dtype=col_type)
+    left_meta, right_meta = suffix_function(
+        catalogs[0]._ddf._meta, catalogs[1]._ddf._meta, suffixes  # pylint: disable=protected-access
+    )
+    meta = pd.concat([left_meta, right_meta], axis=1)
     # Construct meta for crossmatch result columns
     if extra_columns is not None:
-        meta.update(extra_columns)
+        meta = pd.concat([meta, extra_columns], axis=1)
     if index_type is None:
         # pylint: disable=protected-access
         index_type = catalogs[0]._ddf._meta.index.dtype
