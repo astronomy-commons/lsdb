@@ -747,6 +747,7 @@ class Catalog(HealpixDataset):
         direction: str = "backward",
         suffixes: tuple[str, str] | None = None,
         output_catalog_name: str | None = None,
+        suffix_method: str | None = None,
     ):
         """Uses the pandas `merge_asof` function to merge two catalogs on their indices by distance of keys
 
@@ -760,6 +761,12 @@ class Catalog(HealpixDataset):
             other (lsdb.Catalog): the right catalog to merge to
             suffixes (Tuple[str,str]): the suffixes to apply to each partition's column names
             direction (str): the direction to perform the merge_asof
+            output_catalog_name (str): The name of the resulting catalog to be stored in metadata
+            suffix_method (str): Method to use to add suffixes to columns. Options are:
+                - "overlapping_columns": only add suffixes to columns that are present in both catalogs
+                - "all_columns": add suffixes to all columns from both catalogs
+                Default: "all_columns" Warning: This default will change to "overlapping_columns" in a future
+                release.
 
         Returns:
             A new catalog with the columns from each of the input catalogs with their respective suffixes
@@ -771,7 +778,7 @@ class Catalog(HealpixDataset):
         if len(suffixes) != 2:
             raise ValueError("`suffixes` must be a tuple with two strings")
 
-        ddf, ddf_map, alignment = merge_asof_catalog_data(self, other, suffixes=suffixes, direction=direction)
+        ddf, ddf_map, alignment = merge_asof_catalog_data(self, other, suffixes=suffixes, direction=direction, suffix_method=suffix_method)
 
         if output_catalog_name is None:
             output_catalog_name = (
@@ -795,6 +802,7 @@ class Catalog(HealpixDataset):
         through: AssociationCatalog | None = None,
         suffixes: tuple[str, str] | None = None,
         output_catalog_name: str | None = None,
+        suffix_method: str | None = None,
     ) -> Catalog:
         """Perform a spatial join to another catalog
 
@@ -810,6 +818,11 @@ class Catalog(HealpixDataset):
                 between pixels and individual rows.
             suffixes (Tuple[str,str]): suffixes to apply to the columns of each table
             output_catalog_name (str): The name of the resulting catalog to be stored in metadata
+            suffix_method (str): Method to use to add suffixes to columns. Options are:
+                - "overlapping_columns": only add suffixes to columns that are present in both catalogs
+                - "all_columns": add suffixes to all columns from both catalogs
+                Default: "all_columns" Warning: This default will change to "overlapping_columns" in a future
+                release.
 
         Returns:
             A new catalog with the columns from each of the input catalogs with their respective suffixes
@@ -824,7 +837,7 @@ class Catalog(HealpixDataset):
         self._check_unloaded_columns([left_on, right_on])
 
         if through is not None:
-            ddf, ddf_map, alignment = join_catalog_data_through(self, other, through, suffixes)
+            ddf, ddf_map, alignment = join_catalog_data_through(self, other, through, suffixes, suffix_method=suffix_method)
         else:
             if left_on is None or right_on is None:
                 raise ValueError("Either both of left_on and right_on, or through must be set")
@@ -832,7 +845,7 @@ class Catalog(HealpixDataset):
                 raise ValueError("left_on must be a column in the left catalog")
             if right_on not in other._ddf.columns:
                 raise ValueError("right_on must be a column in the right catalog")
-            ddf, ddf_map, alignment = join_catalog_data_on(self, other, left_on, right_on, suffixes)
+            ddf, ddf_map, alignment = join_catalog_data_on(self, other, left_on, right_on, suffixes, suffix_method=suffix_method)
 
         if output_catalog_name is None:
             output_catalog_name = self.hc_structure.catalog_info.catalog_name

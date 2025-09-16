@@ -10,7 +10,7 @@ import pandas as pd
 from hats.catalog import TableProperties
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 
-from lsdb.dask.merge_catalog_functions import apply_suffix_all_columns
+from lsdb.dask.merge_catalog_functions import apply_suffix_all_columns, get_suffix_function
 
 if TYPE_CHECKING:
     from lsdb.catalog import Catalog
@@ -98,14 +98,14 @@ class AbstractCrossmatchAlgorithm(ABC):
         self.right_catalog_info = right_catalog_info
         self.right_margin_catalog_info = right_margin_catalog_info
 
-    def crossmatch(self, suffixes, suffix_function=apply_suffix_all_columns, **kwargs) -> npd.NestedFrame:
+    def crossmatch(self, suffixes, suffix_method="all_columns", **kwargs) -> npd.NestedFrame:
         """Perform a crossmatch"""
         l_inds, r_inds, extra_cols = self.perform_crossmatch(**kwargs)
         if not len(l_inds) == len(r_inds) == len(extra_cols):
             raise ValueError(
                 "Crossmatch algorithm must return left and right indices and extra columns with same length"
             )
-        return self._create_crossmatch_df(l_inds, r_inds, extra_cols, suffixes, suffix_function)
+        return self._create_crossmatch_df(l_inds, r_inds, extra_cols, suffixes, suffix_method)
 
     def crossmatch_nested(self, nested_column_name, **kwargs) -> npd.NestedFrame:
         """Perform a crossmatch"""
@@ -198,7 +198,7 @@ class AbstractCrossmatchAlgorithm(ABC):
         right_idx: npt.NDArray[np.int64],
         extra_cols: pd.DataFrame,
         suffixes: tuple[str, str],
-        suffix_function=apply_suffix_all_columns,
+        suffix_method="all_columns",
     ) -> npd.NestedFrame:
         """Creates a df containing the crossmatch result from matching indices and additional columns
 
@@ -212,6 +212,7 @@ class AbstractCrossmatchAlgorithm(ABC):
             additional columns added
         """
         # rename columns so no same names during merging
+        suffix_function = get_suffix_function(suffix_method)
         self.left, self.right = suffix_function(self.left, self.right, suffixes)
         # concat dataframes together
         index_name = self.left.index.name if self.left.index.name is not None else "index"

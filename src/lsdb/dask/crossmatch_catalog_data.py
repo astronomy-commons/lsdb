@@ -41,7 +41,7 @@ def perform_crossmatch(
     right_margin_catalog_info,
     algorithm,
     suffixes,
-    suffix_function,
+    suffix_method,
     meta_df,
     **kwargs,
 ):
@@ -68,7 +68,7 @@ def perform_crossmatch(
         left_catalog_info,
         right_catalog_info,
         right_margin_catalog_info,
-    ).crossmatch(suffixes, suffix_function=suffix_function, **kwargs)
+    ).crossmatch(suffixes, suffix_method=suffix_method, **kwargs)
 
 
 # pylint: disable=too-many-arguments, unused-argument
@@ -174,7 +174,7 @@ def crossmatch_catalog_data(
         perform_crossmatch,
         crossmatch_algorithm,
         suffixes,
-        suffix_function,
+        suffix_method,
         meta_df,
         **kwargs,
     )

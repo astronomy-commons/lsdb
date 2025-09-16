@@ -12,7 +12,7 @@ from lsdb import Catalog
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
 from lsdb.core.crossmatch.bounded_kdtree_match import BoundedKdTreeCrossmatch
 from lsdb.core.crossmatch.kdtree_match import KdTreeCrossmatch
-from lsdb.dask.merge_catalog_functions import align_catalogs, apply_suffix_all_columns
+from lsdb.dask.merge_catalog_functions import align_catalogs, get_suffix_function
 
 
 @pytest.mark.parametrize("algo", [KdTreeCrossmatch])
@@ -440,11 +440,10 @@ class MockCrossmatchAlgorithmOverwrite(AbstractCrossmatchAlgorithm):
 
     extra_columns = pd.DataFrame({"_DIST": pd.Series(dtype=np.float64)})
 
-    def crossmatch(
-        self, suffixes, suffix_function=apply_suffix_all_columns, mock_results: pd.DataFrame = None, **kwargs
-    ):
+    def crossmatch(self, suffixes, suffix_method="all_columns", mock_results: pd.DataFrame = None, **kwargs):
         left_reset = self.left.reset_index(drop=True)
         right_reset = self.right.reset_index(drop=True)
+        suffix_function = get_suffix_function(suffix_method)
         self.left, self.right = suffix_function(self.left, self.right, suffixes)
         mock_results = mock_results[mock_results["ss_id"].isin(left_reset["id"].to_numpy())]
         left_indexes = mock_results.apply(
