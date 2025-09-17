@@ -778,7 +778,9 @@ class Catalog(HealpixDataset):
         if len(suffixes) != 2:
             raise ValueError("`suffixes` must be a tuple with two strings")
 
-        ddf, ddf_map, alignment = merge_asof_catalog_data(self, other, suffixes=suffixes, direction=direction, suffix_method=suffix_method)
+        ddf, ddf_map, alignment = merge_asof_catalog_data(
+            self, other, suffixes=suffixes, direction=direction, suffix_method=suffix_method
+        )
 
         if output_catalog_name is None:
             output_catalog_name = (
@@ -837,7 +839,9 @@ class Catalog(HealpixDataset):
         self._check_unloaded_columns([left_on, right_on])
 
         if through is not None:
-            ddf, ddf_map, alignment = join_catalog_data_through(self, other, through, suffixes, suffix_method=suffix_method)
+            ddf, ddf_map, alignment = join_catalog_data_through(
+                self, other, through, suffixes, suffix_method=suffix_method
+            )
         else:
             if left_on is None or right_on is None:
                 raise ValueError("Either both of left_on and right_on, or through must be set")
@@ -845,7 +849,9 @@ class Catalog(HealpixDataset):
                 raise ValueError("left_on must be a column in the left catalog")
             if right_on not in other._ddf.columns:
                 raise ValueError("right_on must be a column in the right catalog")
-            ddf, ddf_map, alignment = join_catalog_data_on(self, other, left_on, right_on, suffixes, suffix_method=suffix_method)
+            ddf, ddf_map, alignment = join_catalog_data_on(
+                self, other, left_on, right_on, suffixes, suffix_method=suffix_method
+            )
 
         if output_catalog_name is None:
             output_catalog_name = self.hc_structure.catalog_info.catalog_name

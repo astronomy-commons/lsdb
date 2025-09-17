@@ -18,6 +18,8 @@ from lsdb.dask.merge_catalog_functions import (
     align_and_apply,
     align_catalogs,
     align_catalogs_with_association,
+    apply_left_suffix,
+    apply_right_suffix,
     concat_partition_and_margin,
     construct_catalog_args,
     filter_by_spatial_index_to_pixel,
@@ -26,8 +28,6 @@ from lsdb.dask.merge_catalog_functions import (
     get_healpix_pixels_from_alignment,
     get_healpix_pixels_from_association,
     get_suffix_function,
-    apply_left_suffix,
-    apply_right_suffix,
 )
 from lsdb.types import DaskDFPixelMap
 
@@ -146,7 +146,7 @@ def perform_join_nested(
     return merged
 
 
-# pylint: disable=too-many-arguments, unused-argument
+# pylint: disable=too-many-arguments, unused-argument, too-many-locals
 def perform_join_through(
     left: npd.NestedFrame,
     right: npd.NestedFrame,
@@ -343,7 +343,7 @@ def join_catalog_data_on(
     )
 
     suffix_function = get_suffix_function(suffix_method)
-    meta_df = generate_meta_df_for_joined_tables([left, right], suffixes, suffix_function=suffix_function)
+    meta_df = generate_meta_df_for_joined_tables((left, right), suffixes, suffix_function=suffix_function)
 
     return construct_catalog_args(joined_partitions, meta_df, alignment)
 
@@ -483,7 +483,7 @@ def join_catalog_data_through(
     extra_df = association._ddf._meta.drop(non_joining_columns + association_join_columns, axis=1)
     suffix_function = get_suffix_function(suffix_method)
     meta_df = generate_meta_df_for_joined_tables(
-        [left, right], [suffixes[0], suffixes[1]], extra_columns=extra_df, suffix_function=suffix_function
+        (left, right), suffixes, extra_columns=extra_df, suffix_function=suffix_function
     )
 
     return construct_catalog_args(joined_partitions, meta_df, alignment)
@@ -530,6 +530,6 @@ def merge_asof_catalog_data(
     )
 
     suffix_function = get_suffix_function(suffix_method)
-    meta_df = generate_meta_df_for_joined_tables([left, right], suffixes, suffix_function=suffix_function)
+    meta_df = generate_meta_df_for_joined_tables((left, right), suffixes, suffix_function=suffix_function)
 
     return construct_catalog_args(joined_partitions, meta_df, alignment)

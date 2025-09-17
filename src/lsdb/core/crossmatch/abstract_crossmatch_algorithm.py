@@ -10,7 +10,7 @@ import pandas as pd
 from hats.catalog import TableProperties
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 
-from lsdb.dask.merge_catalog_functions import apply_suffix_all_columns, get_suffix_function
+from lsdb.dask.merge_catalog_functions import get_suffix_function
 
 if TYPE_CHECKING:
     from lsdb.catalog import Catalog

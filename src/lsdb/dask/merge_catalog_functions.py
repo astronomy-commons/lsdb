@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import warnings
-from typing import TYPE_CHECKING, Callable, Sequence, Literal
+from typing import TYPE_CHECKING, Callable, Literal, Sequence
 
 import hats.pixel_math.healpix_shim as hp
 import nested_pandas as npd
@@ -74,7 +74,6 @@ def apply_suffix_overlapping_columns(
     """
     left_suffix, right_suffix = suffixes
     overlapping_columns = set(left_df.columns).intersection(set(right_df.columns))
-    overlapping_columns = [c for c in overlapping_columns]
     left_df = left_df.rename(columns={c: c + left_suffix for c in overlapping_columns})
     right_df = right_df.rename(columns={c: c + right_suffix for c in overlapping_columns})
 
@@ -84,7 +83,7 @@ def apply_suffix_overlapping_columns(
         tablefmt="pretty",
     )
 
-    logging.info(f"Renaming overlapping columns:\n{table}")
+    logging.info("Renaming overlapping columns:\n%s", table)
 
     return left_df, right_df
 
@@ -95,16 +94,20 @@ def get_suffix_function(
     """Gets a function that can be used to generate suffixes for columns based on a specified method
 
     Args:
-        suffix_method (str): The method to use to generate suffixes. Options are 'all_columns', 'overlapping_columns',
+        suffix_method (str): The method to use to generate suffixes. Options are 'all_columns',
+            'overlapping_columns',
 
     Returns:
-        A function that takes in two dataframes and returns a tuple of the two dataframes with the suffixes applied
+        A function that takes in two dataframes and returns a tuple of the two dataframes with the suffixes
+        applied
     """
     if suffix_method is None:
         suffix_method = DEFAULT_SUFFIX_METHOD
         warnings.warn(
-            "The default suffix behavior will change from applying suffixes to all columns to only applying suffixes to overlapping columns in a future release."
-            "To maintain the current behavior, explicitly set `suffix_method='all_columns'`. To change to the new behavior, set `suffix_method='overlapping_columns'`.",
+            "The default suffix behavior will change from applying suffixes to all columns to only "
+            "applying suffixes to overlapping columns in a future release."
+            "To maintain the current behavior, explicitly set `suffix_method='all_columns'`. "
+            "To change to the new behavior, set `suffix_method='overlapping_columns'`.",
             FutureWarning,
         )
 
