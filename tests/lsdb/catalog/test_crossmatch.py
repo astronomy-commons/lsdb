@@ -51,6 +51,9 @@ class TestCrossmatch:
         assert xmatched_cat.get_healpix_pixels() == alignment.pixel_tree.get_healpix_pixels()
 
         assert isinstance(xmatched, npd.NestedFrame)
+        print("len(xmatch_correct)", len(xmatch_correct))
+        print("np.sum(xmatched[small_sky_xmatch].nest.list_lengths)", np.sum(xmatched["small_sky_xmatch"].nest.list_lengths))
+        print("len(xmatched)", len(xmatched))
         assert np.sum(xmatched["small_sky_xmatch"].nest.list_lengths) == len(xmatch_correct)
         for _, correct_row in xmatch_correct.iterrows():
             assert correct_row["ss_id"] in xmatched["id"].to_numpy()

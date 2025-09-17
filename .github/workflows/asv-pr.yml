@@ -6,9 +6,9 @@
 name: Run benchmarks for PR
 
 on:
-  pull_request:
-    branches: [main]
-  workflow_dispatch:
+  # pull_request:
+  #   branches: [main]
+  # workflow_dispatch:
 
 env:
   PYTHON_VERSION: "3.11"
