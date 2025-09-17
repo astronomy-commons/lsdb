@@ -61,22 +61,24 @@ class TestCrossmatch:
             "np.sum(xmatched[small_sky_xmatch].nest.list_lengths)",
             np.sum(xmatched["small_sky_xmatch"].nest.list_lengths),
         )
-        # all_lengths = xmatched["small_sky_xmatch"].nest.list_lengths
-        print("xmatched")
-        print(xmatched)
+        # print("xmatched")
+        # print(xmatched)
+        all_lengths = xmatched["small_sky_xmatch"].nest.list_lengths
+        print("all lengths")
+        print(all_lengths)
 
-        not_matched = xmatched.query("small_sky_xmatch.isnull()").sort_values("id")["id"]
-        print("not matched", len(not_matched))
-        print(xmatched.query("small_sky_xmatch.isnull()").sort_values("id")["id"])
+        # not_matched = xmatched.query("small_sky_xmatch.isnull()").sort_values("id")["id"]
+        # print("not matched", len(not_matched))
+        # print(xmatched.query("small_sky_xmatch.isnull()").sort_values("id")["id"])
 
         print("len(xmatched)", len(xmatched))
         # assert np.sum(xmatched["small_sky_xmatch"].nest.list_lengths) == len(xmatch_correct)
         for _, correct_row in xmatch_correct.iterrows():
-            print("looking for match for", int(correct_row["ss_id"]))
+            # print("looking for match for", int(correct_row["ss_id"]))
             # assert correct_row["ss_id"] in xmatched["id"].to_numpy()
             xmatch_row = xmatched[xmatched["id"] == correct_row["ss_id"]]
-            print("   found", len(xmatch_row))
-            print("   found lists", np.sum(xmatch_row["small_sky_xmatch"].nest.list_lengths))
+            # print("   found", len(xmatch_row))
+            # print("   found lists", np.sum(xmatch_row["small_sky_xmatch"].nest.list_lengths))
             if not xmatch_row["small_sky_xmatch"].iloc[0]["id"].to_numpy() == correct_row["xmatch_id"]:
                 print("   failed check 1")
             if not xmatch_row["small_sky_xmatch"].iloc[0]["_dist_arcsec"].to_numpy() == pytest.approx(
