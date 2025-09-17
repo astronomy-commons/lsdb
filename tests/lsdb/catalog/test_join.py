@@ -40,6 +40,33 @@ def test_small_sky_join_small_sky_order1(small_sky_catalog, small_sky_order1_cat
     assert not joined.hc_structure.on_disk
 
 
+def test_small_sky_join_overlapping_suffix(small_sky_catalog, small_sky_order1_catalog, helpers):
+    suffixes = ("_a", "_b")
+    with pytest.warns(match="margin"):
+        joined = small_sky_catalog.join(
+            small_sky_order1_catalog,
+            left_on="id",
+            right_on="id",
+            suffixes=suffixes,
+            suffix_method="overlapping_columns",
+        )
+        assert isinstance(joined._ddf, nd.NestedFrame)
+    helpers.assert_columns_in_joined_catalog(
+        joined, [small_sky_catalog, small_sky_order1_catalog], suffixes, suffix_method="overlapping_columns"
+    )
+
+    joined_compute = joined.compute()
+
+    helpers.assert_columns_in_joined_catalog(
+        joined_compute,
+        [small_sky_catalog, small_sky_order1_catalog],
+        suffixes,
+        suffix_method="overlapping_columns",
+    )
+    helpers.assert_divisions_are_correct(joined)
+    helpers.assert_schema_correct(joined)
+
+
 def test_small_sky_join_small_sky_order1_source(
     small_sky_catalog, small_sky_order1_source_with_margin, helpers
 ):
@@ -145,6 +172,35 @@ def test_join_association(
             assert joined_row[col + suffixes[1]].to_numpy() == right_row[col].to_numpy()
 
         assert joined_row.index == left_row.index
+
+
+def test_join_association_overlapping_suffix(
+    small_sky_catalog, small_sky_order1_source_collection_catalog, small_sky_to_o1source_catalog, helpers
+):
+    suffixes = ("_a", "_b")
+    joined = small_sky_catalog.join(
+        small_sky_order1_source_collection_catalog,
+        through=small_sky_to_o1source_catalog,
+        suffixes=suffixes,
+        suffix_method="overlapping_columns",
+    )
+    helpers.assert_columns_in_joined_catalog(
+        joined,
+        [small_sky_catalog, small_sky_order1_source_collection_catalog],
+        suffixes,
+        suffix_method="overlapping_columns",
+    )
+
+    joined_compute = joined.compute()
+
+    helpers.assert_columns_in_joined_catalog(
+        joined_compute,
+        [small_sky_catalog, small_sky_order1_source_collection_catalog],
+        suffixes,
+        suffix_method="overlapping_columns",
+    )
+    helpers.assert_divisions_are_correct(joined)
+    helpers.assert_schema_correct(joined)
 
 
 def test_join_association_suffix_edge_case(
@@ -261,6 +317,31 @@ def test_merge_asof(small_sky_catalog, small_sky_xmatch_catalog, direction, help
         ]
     )
     pd.testing.assert_frame_equal(joined_compute.drop(columns=drop_cols), correct_result)
+
+
+def test_merge_asof_overlapping_suffix(small_sky_catalog, small_sky_xmatch_catalog, helpers):
+    suffixes = ("_a", "_b")
+    joined = small_sky_catalog.merge_asof(
+        small_sky_xmatch_catalog, direction="backward", suffixes=suffixes, suffix_method="overlapping_columns"
+    )
+    helpers.assert_columns_in_joined_catalog(
+        joined,
+        [small_sky_catalog, small_sky_xmatch_catalog],
+        suffixes,
+        suffix_method="overlapping_columns",
+    )
+    helpers.assert_divisions_are_correct(joined)
+
+    joined_compute = joined.compute()
+
+    helpers.assert_columns_in_joined_catalog(
+        joined_compute,
+        [small_sky_catalog, small_sky_xmatch_catalog],
+        suffixes,
+        suffix_method="overlapping_columns",
+    )
+    helpers.assert_divisions_are_correct(joined)
+    helpers.assert_schema_correct(joined)
 
 
 def merging_function(input_frame, map_input, *args, **kwargs):

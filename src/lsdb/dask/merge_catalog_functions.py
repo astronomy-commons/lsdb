@@ -35,6 +35,8 @@ if TYPE_CHECKING:
 ASSOC_NORDER = "assoc_Norder"
 ASSOC_NPIX = "assoc_Npix"
 
+DEFAULT_SUFFIX_METHOD: Literal["all_columns", "overlapping_columns"] = "all_columns"
+
 
 def apply_suffix_all_columns(
     left_df: npd.NestedFrame, right_df: npd.NestedFrame, suffixes: tuple[str, str]
@@ -99,7 +101,7 @@ def get_suffix_function(
         A function that takes in two dataframes and returns a tuple of the two dataframes with the suffixes applied
     """
     if suffix_method is None:
-        suffix_method = "all_columns"
+        suffix_method = DEFAULT_SUFFIX_METHOD
         warnings.warn(
             "The default suffix behavior will change from applying suffixes to all columns to only applying suffixes to overlapping columns in a future release."
             "To maintain the current behavior, explicitly set `suffix_method='all_columns'`. To change to the new behavior, set `suffix_method='overlapping_columns'`.",
@@ -113,6 +115,40 @@ def get_suffix_function(
     if suffix_method not in suffix_functions:
         raise ValueError(f"Invalid suffix method: {suffix_method}")
     return suffix_functions[suffix_method]
+
+
+def apply_left_suffix(col_name: str, suffix_function: Callable, suffixes: tuple[str, str]) -> str:
+    """Applies the left suffix to a column name using the specified suffix function
+
+    Args:
+        col_name (str): The column name to apply the suffix to
+        suffix_function (Callable): The function to use to apply the suffix
+        suffixes (tuple[str, str]): The suffixes to apply to the left and right dataframes
+
+    Returns:
+        The column name with the left suffix applied
+    """
+    left_df = npd.NestedFrame(columns=[col_name])
+    right_df = npd.NestedFrame(columns=[col_name])
+    left_df, _ = suffix_function(left_df, right_df, suffixes)
+    return left_df.columns[0]
+
+
+def apply_right_suffix(col_name: str, suffix_function: Callable, suffixes: tuple[str, str]) -> str:
+    """Applies the right suffix to a column name using the specified suffix function
+
+    Args:
+        col_name (str): The column name to apply the suffix to
+        suffix_function (Callable): The function to use to apply the suffix
+        suffixes (tuple[str, str]): The suffixes to apply to the left and right dataframes
+
+    Returns:
+        The column name with the right suffix applied
+    """
+    left_df = npd.NestedFrame(columns=[col_name])
+    right_df = npd.NestedFrame(columns=[col_name])
+    _, right_df = suffix_function(left_df, right_df, suffixes)
+    return right_df.columns[0]
 
 
 def concat_partition_and_margin(

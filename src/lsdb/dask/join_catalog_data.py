@@ -26,6 +26,8 @@ from lsdb.dask.merge_catalog_functions import (
     get_healpix_pixels_from_alignment,
     get_healpix_pixels_from_association,
     get_suffix_function,
+    apply_left_suffix,
+    apply_right_suffix,
 )
 from lsdb.types import DaskDFPixelMap
 
@@ -82,9 +84,17 @@ def perform_join_on(
 
     suffix_function = get_suffix_function(suffix_method)
     left, right_joined_df = suffix_function(left, right_joined_df, suffixes)
-    merged = left.reset_index().merge(
-        right_joined_df, left_on=left_on + suffixes[0], right_on=right_on + suffixes[1]
+
+    left_join_column = (
+        left_on if left_on in left.columns else apply_left_suffix(left_on, suffix_function, suffixes)
     )
+    right_join_column = (
+        right_on
+        if right_on in right_joined_df.columns
+        else apply_right_suffix(right_on, suffix_function, suffixes)
+    )
+
+    merged = left.reset_index().merge(right_joined_df, left_on=left_join_column, right_on=right_join_column)
     merged.set_index(SPATIAL_INDEX_COLUMN, inplace=True)
     return merged
 
@@ -188,6 +198,17 @@ def perform_join_through(
     suffix_function = get_suffix_function(suffix_method)
     left, right_joined_df = suffix_function(left, right_joined_df, suffixes)
 
+    left_join_column = (
+        assoc_catalog_info.primary_column
+        if assoc_catalog_info.primary_column in left.columns
+        else apply_left_suffix(assoc_catalog_info.primary_column, suffix_function, suffixes)
+    )
+    right_join_column = (
+        assoc_catalog_info.join_column
+        if assoc_catalog_info.join_column in right_joined_df.columns
+        else apply_right_suffix(assoc_catalog_info.join_column, suffix_function, suffixes)
+    )
+
     # Edge case: if right_column + suffix == join_column_association, columns will be in the wrong order
     # so rename association column
     join_column_association = assoc_catalog_info.join_column_association
@@ -197,8 +218,9 @@ def perform_join_through(
             columns={assoc_catalog_info.join_column_association: join_column_association}, inplace=True
         )
 
+    join_columns = [assoc_catalog_info.primary_column_association, join_column_association]
     join_columns_to_drop = []
-    for c in [assoc_catalog_info.primary_column_association, join_column_association]:
+    for c in join_columns:
         if c not in left.columns and c not in right_joined_df.columns and c not in join_columns_to_drop:
             join_columns_to_drop.append(c)
 
@@ -210,15 +232,20 @@ def perform_join_through(
         left.reset_index()
         .merge(
             through,
-            left_on=assoc_catalog_info.primary_column + suffixes[0],
+            left_on=left_join_column,
             right_on=assoc_catalog_info.primary_column_association,
         )
         .merge(
             right_joined_df,
             left_on=join_column_association,
-            right_on=assoc_catalog_info.join_column + suffixes[1],
+            right_on=right_join_column,
         )
     )
+
+    extra_join_cols = through.columns.drop(join_columns + cols_to_drop)
+    other_cols = merged.columns.drop(extra_join_cols)
+
+    merged = merged[other_cols.append(extra_join_cols)]
 
     merged.set_index(SPATIAL_INDEX_COLUMN, inplace=True)
     if len(join_columns_to_drop) > 0:

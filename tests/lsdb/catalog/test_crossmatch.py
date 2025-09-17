@@ -216,6 +216,31 @@ class TestCrossmatch:
             assert xmatch_row["_dist_arcsec"].to_numpy() == pytest.approx(correct_row["dist"] * 3600)
 
     @staticmethod
+    def test_overlapping_suffix_method(algo, small_sky_catalog, small_sky_xmatch_catalog):
+        suffixes = ("_left", "_right")
+        xmatched = small_sky_catalog.crossmatch(
+            small_sky_xmatch_catalog,
+            algorithm=algo,
+            suffix_method="overlapping_columns",
+            suffixes=suffixes,
+        )
+        computed = xmatched.compute()
+        for col in small_sky_catalog.columns:
+            if col in small_sky_xmatch_catalog.columns:
+                assert f"{col}{suffixes[0]}" in xmatched.columns
+                assert f"{col}{suffixes[0]}" in computed.columns
+            else:
+                assert col in xmatched.columns
+                assert col in computed.columns
+        for col in small_sky_xmatch_catalog.columns:
+            if col in small_sky_catalog.columns:
+                assert f"{col}{suffixes[1]}" in xmatched.columns
+                assert f"{col}{suffixes[1]}" in computed.columns
+            else:
+                assert col in xmatched.columns
+                assert col in computed.columns
+
+    @staticmethod
     def test_wrong_suffixes(algo, small_sky_catalog, small_sky_xmatch_catalog):
         with pytest.raises(ValueError):
             small_sky_catalog.crossmatch(small_sky_xmatch_catalog, suffixes=("wrong",), algorithm=algo)
