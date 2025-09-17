@@ -14,6 +14,8 @@ from lsdb.core.crossmatch.bounded_kdtree_match import BoundedKdTreeCrossmatch
 from lsdb.core.crossmatch.kdtree_match import KdTreeCrossmatch
 from lsdb.dask.merge_catalog_functions import align_catalogs
 
+import pandas as pd
+pd.set_option('display.max_rows', None)
 
 @pytest.mark.parametrize("algo", [KdTreeCrossmatch])
 class TestCrossmatch:
@@ -60,6 +62,12 @@ class TestCrossmatch:
             np.sum(xmatched["small_sky_xmatch"].nest.list_lengths),
         )
         # all_lengths = xmatched["small_sky_xmatch"].nest.list_lengths
+        print("xmatched")
+        print(xmatched)
+
+        not_matched = xmatched.query("small_sky_xmatch.isnull()").sort_values("id")["id"]
+        print("not matched", len(not_matched))
+        print(xmatched.query("small_sky_xmatch.isnull()").sort_values("id")["id"])
 
         print("len(xmatched)", len(xmatched))
         # assert np.sum(xmatched["small_sky_xmatch"].nest.list_lengths) == len(xmatch_correct)
@@ -68,6 +76,7 @@ class TestCrossmatch:
             # assert correct_row["ss_id"] in xmatched["id"].to_numpy()
             xmatch_row = xmatched[xmatched["id"] == correct_row["ss_id"]]
             print("   found", len(xmatch_row))
+            print("   found lists", np.sum(xmatch_row["small_sky_xmatch"].nest.list_lengths))
             if not xmatch_row["small_sky_xmatch"].iloc[0]["id"].to_numpy() == correct_row["xmatch_id"]:
                 print("   failed check 1")
             if not xmatch_row["small_sky_xmatch"].iloc[0]["_dist_arcsec"].to_numpy() == pytest.approx(
