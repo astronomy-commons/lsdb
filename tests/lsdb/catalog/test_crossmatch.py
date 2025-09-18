@@ -256,6 +256,11 @@ class TestCrossmatch:
             small_sky_catalog.crossmatch(small_sky_xmatch_catalog, suffixes=("wrong",), algorithm=algo)
 
     @staticmethod
+    def test_wrong_suffix_method(algo, small_sky_catalog, small_sky_xmatch_catalog):
+        with pytest.raises(ValueError, match="Invalid suffix method"):
+            small_sky_catalog.crossmatch(small_sky_xmatch_catalog, suffix_method="wrong", algorithm=algo)
+
+    @staticmethod
     def test_right_margin_missing(algo, small_sky_catalog, small_sky_xmatch_catalog):
         small_sky_xmatch_catalog.margin = None
         with pytest.raises(ValueError, match="Right catalog margin"):
