@@ -220,7 +220,7 @@ class TestCrossmatch:
     @staticmethod
     def test_overlapping_suffix_method(algo, small_sky_catalog, small_sky_xmatch_catalog, caplog):
         suffixes = ("_left", "_right")
-        # Test that remaned columns are logged correctly
+        # Test that renamed columns are logged correctly
         with caplog.at_level(logging.INFO):
             xmatched = small_sky_catalog.crossmatch(
                 small_sky_xmatch_catalog,
