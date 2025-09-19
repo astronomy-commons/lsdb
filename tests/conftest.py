@@ -17,7 +17,6 @@ from hats.pixel_math.spatial_index import (
 
 import lsdb
 import lsdb.nested as nd
-from lsdb.dask.merge_catalog_functions import DEFAULT_SUFFIX_METHOD
 
 DATA_DIR_NAME = "data"
 SMALL_SKY_DIR_NAME = "small_sky"

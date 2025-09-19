@@ -186,7 +186,7 @@ def test_join_wrong_suffixes(small_sky_catalog, small_sky_order1_catalog):
 
 
 def test_join_association(
-    small_sky_catalog, small_sky_order1_source_collection_catalog, small_sky_to_o1source_catalog, helpers
+    small_sky_catalog, small_sky_order1_source_collection_catalog, small_sky_to_o1source_catalog
 ):
     suffixes = ("_a", "_b")
     joined = small_sky_catalog.join(
