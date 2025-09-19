@@ -112,13 +112,11 @@ def get_suffix_function(
             FutureWarning,
         )
 
-    suffix_functions = {
-        "all_columns": apply_suffix_all_columns,
-        "overlapping_columns": apply_suffix_overlapping_columns,
-    }
-    if suffix_method not in suffix_functions:
-        raise ValueError(f"Invalid suffix method: {suffix_method}")
-    return suffix_functions[suffix_method]
+    if suffix_method == "all_columns":
+        return apply_suffix_all_columns
+    elif suffix_method == "overlapping_columns":
+        return apply_suffix_overlapping_columns
+    raise ValueError(f"Invalid suffix method: {suffix_method}")
 
 
 def apply_left_suffix(

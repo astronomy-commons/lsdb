@@ -453,38 +453,6 @@ class Helpers:
             for col in cat.hc_structure.catalog_info.default_columns:
                 assert col in cat._ddf.columns
 
-    @classmethod
-    def assert_columns_in_joined_catalog(
-        cls, joined_cat, cats, suffixes, suffix_method=DEFAULT_SUFFIX_METHOD
-    ):
-        assert_methods = {
-            "all_columns": cls.assert_all_suffix_columns_in_joined_catalog,
-            "overlapping_columns": cls.assert_overlapping_suffix_columns_in_joined_catalog,
-        }
-        assert_method = assert_methods.get(suffix_method)
-        if assert_method is None:
-            raise ValueError(f"Unknown suffix_strategy: {suffix_method}")
-        assert_method(joined_cat, cats, suffixes)
-
-    @staticmethod
-    def assert_all_suffix_columns_in_joined_catalog(joined_cat, cats, suffixes):
-        for cat, suffix in zip(cats, suffixes):
-            for col_name, dtype in cat.dtypes.items():
-                if col_name not in paths.HIVE_COLUMNS:
-                    assert (col_name + suffix, dtype) in joined_cat.dtypes.items()
-
-    @staticmethod
-    def assert_overlapping_suffix_columns_in_joined_catalog(joined_cat, cats, suffixes):
-        cat_columns = [set(cat.columns) for cat in cats]
-        overlapping_columns = cat_columns[0].intersection(*cat_columns[1:])
-        for cat, suffix in zip(cats, suffixes):
-            for col_name, dtype in cat.dtypes.items():
-                if col_name not in paths.HIVE_COLUMNS:
-                    if col_name in overlapping_columns:
-                        assert (col_name + suffix, dtype) in joined_cat.dtypes.items()
-                    else:
-                        assert (col_name, dtype) in joined_cat.dtypes.items()
-
     @staticmethod
     def assert_columns_in_nested_joined_catalog(
         joined_cat, left_cat, right_cat, right_ignore_columns, nested_colname
