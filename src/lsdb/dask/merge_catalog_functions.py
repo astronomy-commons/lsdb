@@ -847,10 +847,10 @@ def create_merged_catalog_info(
     """
     suffix_function = get_suffix_function(suffix_method)
     left_info = left.hc_structure.catalog_info
-    # type: ignore
-    ra_col = apply_left_suffix(left_info.ra_column, right.columns, suffixes, suffix_function)
-    # type: ignore
-    dec_col = apply_left_suffix(left_info.dec_column, right.columns, suffixes, suffix_function)
+    ra_col = apply_left_suffix(left_info.ra_column, right.columns, suffixes, suffix_function)  # type: ignore
+    dec_col = apply_left_suffix(
+        left_info.dec_column, right.columns, suffixes, suffix_function  # type: ignore
+    )
     return left_info.copy_and_update(
         catalog_name=updated_name,
         ra_column=ra_col,
