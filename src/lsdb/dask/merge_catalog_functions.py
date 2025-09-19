@@ -83,7 +83,8 @@ def apply_suffix_overlapping_columns(
         tablefmt="pretty",
     )
 
-    logging.info("Renaming overlapping columns:\n%s", table)
+    if overlapping_columns:
+        logging.info("Renaming overlapping columns:\n%s", table)
 
     return left_df, right_df
 
@@ -120,35 +121,47 @@ def get_suffix_function(
     return suffix_functions[suffix_method]
 
 
-def apply_left_suffix(col_name: str, suffix_function: Callable, suffixes: tuple[str, str]) -> str:
+def apply_left_suffix(
+    col_name: str,
+    right_col_names: list[str],
+    suffixes: tuple[str, str],
+    suffix_function: Callable,
+) -> str:
     """Applies the left suffix to a column name using the specified suffix function
 
     Args:
         col_name (str): The column name to apply the suffix to
-        suffix_function (Callable): The function to use to apply the suffix
+        right_col_names (list[str]): The list of column names in the right dataframe
         suffixes (tuple[str, str]): The suffixes to apply to the left and right dataframes
+        suffix_function (Callable): The function to use to apply the suffix
 
     Returns:
         The column name with the left suffix applied
     """
     left_df = npd.NestedFrame(columns=[col_name])
-    right_df = npd.NestedFrame(columns=[col_name])
+    right_df = npd.NestedFrame(columns=right_col_names)
     left_df, _ = suffix_function(left_df, right_df, suffixes)
     return left_df.columns[0]
 
 
-def apply_right_suffix(col_name: str, suffix_function: Callable, suffixes: tuple[str, str]) -> str:
+def apply_right_suffix(
+    col_name: str,
+    left_col_names: list[str],
+    suffixes: tuple[str, str],
+    suffix_function: Callable,
+) -> str:
     """Applies the right suffix to a column name using the specified suffix function
 
     Args:
         col_name (str): The column name to apply the suffix to
-        suffix_function (Callable): The function to use to apply the suffix
+        left_col_names (list[str]): The column names in the left dataframe
         suffixes (tuple[str, str]): The suffixes to apply to the left and right dataframes
+        suffix_function (Callable): The function to use to apply the suffix
 
     Returns:
         The column name with the right suffix applied
     """
-    left_df = npd.NestedFrame(columns=[col_name])
+    left_df = npd.NestedFrame(columns=left_col_names)
     right_df = npd.NestedFrame(columns=[col_name])
     _, right_df = suffix_function(left_df, right_df, suffixes)
     return right_df.columns[0]
@@ -812,7 +825,11 @@ def align_catalog_to_partitions(
 
 
 def create_merged_catalog_info(
-    left_info: TableProperties, right_info: TableProperties, updated_name: str, suffixes: tuple[str, str]
+    left: Catalog,
+    right: Catalog,
+    updated_name: str,
+    suffixes: tuple[str, str],
+    suffix_method: str | None = None,
 ) -> TableProperties:
     """Creates the catalog info of the resulting catalog from merging two catalogs
 
@@ -820,24 +837,22 @@ def create_merged_catalog_info(
     catalog name, and sets the total rows to 0
 
     Args:
-        left_info (TableProperties): The catalog_info of the left catalog
-        right_info (TableProperties): The catalog_info of the right catalog
+        left (Catalog): The left catalog being merged
+        right (Catalog): The right catalog being merged
         updated_name (str): The updated name of the catalog
         suffixes (tuple[str, str]): The suffixes of the catalogs in the merged result
+        suffix_method (str): The method used to generate suffixes. Options are 'all_columns',
+            'overlapping_columns'
+
+    Returns:
+        The catalog info of the resulting merged catalog
     """
-    default_cols = (
-        [c + suffixes[0] for c in left_info.default_columns] if left_info.default_columns is not None else []
-    )
-    default_cols = (
-        default_cols + [c + suffixes[1] for c in right_info.default_columns]
-        if right_info.default_columns is not None
-        else default_cols
-    )
-    default_cols_to_use = default_cols if len(default_cols) > 0 else None
+    suffix_function = get_suffix_function(suffix_method)
+    left_info = left.hc_structure.catalog_info
     return left_info.copy_and_update(
         catalog_name=updated_name,
-        ra_column=left_info.ra_column + suffixes[0],
-        dec_column=left_info.dec_column + suffixes[0],
+        ra_column=apply_left_suffix(left_info.ra_column, right.columns, suffixes, suffix_function),
+        dec_column=apply_left_suffix(left_info.dec_column, right.columns, suffixes, suffix_function),
         total_rows=0,
-        default_columns=default_cols_to_use,
+        default_columns=None,
     )

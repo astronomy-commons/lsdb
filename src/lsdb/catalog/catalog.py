@@ -277,7 +277,11 @@ class Catalog(HealpixDataset):
             self, other, suffixes, algorithm=algorithm, suffix_method=suffix_method, **kwargs
         )
         new_catalog_info = create_merged_catalog_info(
-            self.hc_structure.catalog_info, other.hc_structure.catalog_info, output_catalog_name, suffixes
+            self,
+            other,
+            output_catalog_name,
+            suffixes,
+            suffix_method,
         )
         hc_catalog = self.hc_structure.__class__(
             new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(ddf), moc=alignment.moc
@@ -789,7 +793,11 @@ class Catalog(HealpixDataset):
             )
 
         new_catalog_info = create_merged_catalog_info(
-            self.hc_structure.catalog_info, other.hc_structure.catalog_info, output_catalog_name, suffixes
+            self,
+            other,
+            output_catalog_name,
+            suffixes,
+            suffix_method,
         )
         hc_catalog = hc.catalog.Catalog(
             new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(ddf), moc=alignment.moc
@@ -857,7 +865,11 @@ class Catalog(HealpixDataset):
             output_catalog_name = self.hc_structure.catalog_info.catalog_name
 
         new_catalog_info = create_merged_catalog_info(
-            self.hc_structure.catalog_info, other.hc_structure.catalog_info, output_catalog_name, suffixes
+            self,
+            other,
+            output_catalog_name,
+            suffixes,
+            suffix_method,
         )
         hc_catalog = hc.catalog.Catalog(
             new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(ddf), moc=alignment.moc

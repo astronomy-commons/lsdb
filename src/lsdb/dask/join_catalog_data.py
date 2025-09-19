@@ -83,16 +83,9 @@ def perform_join_on(
     right_joined_df = concat_partition_and_margin(right, right_margin)
 
     suffix_function = get_suffix_function(suffix_method)
+    left_join_column = apply_left_suffix(left_on, right_joined_df.columns, suffixes, suffix_function)
+    right_join_column = apply_right_suffix(right_on, left.columns, suffixes, suffix_function)
     left, right_joined_df = suffix_function(left, right_joined_df, suffixes)
-
-    left_join_column = (
-        left_on if left_on in left.columns else apply_left_suffix(left_on, suffix_function, suffixes)
-    )
-    right_join_column = (
-        right_on
-        if right_on in right_joined_df.columns
-        else apply_right_suffix(right_on, suffix_function, suffixes)
-    )
 
     merged = left.reset_index().merge(right_joined_df, left_on=left_join_column, right_on=right_join_column)
     merged.set_index(SPATIAL_INDEX_COLUMN, inplace=True)
@@ -196,18 +189,13 @@ def perform_join_through(
     right_joined_df = concat_partition_and_margin(right, right_margin)
 
     suffix_function = get_suffix_function(suffix_method)
+    left_join_column = apply_left_suffix(
+        assoc_catalog_info.primary_column, right_joined_df.columns, suffixes, suffix_function
+    )
+    right_join_column = apply_right_suffix(
+        assoc_catalog_info.join_column, left.columns, suffixes, suffix_function
+    )
     left, right_joined_df = suffix_function(left, right_joined_df, suffixes)
-
-    left_join_column = (
-        assoc_catalog_info.primary_column
-        if assoc_catalog_info.primary_column in left.columns
-        else apply_left_suffix(assoc_catalog_info.primary_column, suffix_function, suffixes)
-    )
-    right_join_column = (
-        assoc_catalog_info.join_column
-        if assoc_catalog_info.join_column in right_joined_df.columns
-        else apply_right_suffix(assoc_catalog_info.join_column, suffix_function, suffixes)
-    )
 
     # Edge case: if right_column + suffix == join_column_association, columns will be in the wrong order
     # so rename association column

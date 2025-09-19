@@ -40,6 +40,11 @@ class TestCrossmatch:
             assert xmatch_row["id_small_sky_xmatch"].to_numpy() == correct_row["xmatch_id"]
             assert xmatch_row["_dist_arcsec"].to_numpy() == pytest.approx(correct_row["dist"] * 3600)
 
+        assert xmatched_cat.hc_structure.catalog_info.ra_column in xmatched_cat.columns
+        assert xmatched_cat.hc_structure.catalog_info.dec_column in xmatched_cat.columns
+        assert xmatched_cat.hc_structure.catalog_info.ra_column == "ra_small_sky"
+        assert xmatched_cat.hc_structure.catalog_info.dec_column == "dec_small_sky"
+
     @staticmethod
     def test_kdtree_crossmatch_nested(algo, small_sky_catalog, small_sky_xmatch_catalog, xmatch_correct):
         with pytest.warns(RuntimeWarning, match="Results may be incomplete and/or inaccurate"):
@@ -249,6 +254,47 @@ class TestCrossmatch:
             else:
                 assert col in xmatched.columns
                 assert col in computed.columns
+
+        assert xmatched.hc_structure.catalog_info.ra_column in xmatched.columns
+        assert xmatched.hc_structure.catalog_info.dec_column in xmatched.columns
+        assert xmatched.hc_structure.catalog_info.ra_column == "ra_left"
+        assert xmatched.hc_structure.catalog_info.dec_column == "dec_left"
+
+    @staticmethod
+    def test_overlapping_suffix_method_no_overlaps(algo, small_sky_catalog, small_sky_xmatch_catalog, caplog):
+        suffixes = ("_left", "_right")
+        small_sky_catalog = small_sky_catalog.rename(
+            {col: f"{col}_unique" for col in small_sky_catalog.columns}
+        )
+        small_sky_catalog.hc_structure.catalog_info.ra_column = (
+            f"{small_sky_catalog.hc_structure.catalog_info.ra_column}_unique"
+        )
+        small_sky_catalog.hc_structure.catalog_info.dec_column = (
+            f"{small_sky_catalog.hc_structure.catalog_info.dec_column}_unique"
+        )
+        # Test that renamed columns are logged correctly
+        with caplog.at_level(logging.INFO):
+            xmatched = small_sky_catalog.crossmatch(
+                small_sky_xmatch_catalog,
+                algorithm=algo,
+                suffix_method="overlapping_columns",
+                suffixes=suffixes,
+            )
+
+        assert len(caplog.text) == 0
+
+        computed = xmatched.compute()
+        for col in small_sky_catalog.columns:
+            assert col in xmatched.columns
+            assert col in computed.columns
+        for col in small_sky_xmatch_catalog.columns:
+            assert col in xmatched.columns
+            assert col in computed.columns
+
+        assert xmatched.hc_structure.catalog_info.ra_column in xmatched.columns
+        assert xmatched.hc_structure.catalog_info.dec_column in xmatched.columns
+        assert xmatched.hc_structure.catalog_info.ra_column == "ra_unique"
+        assert xmatched.hc_structure.catalog_info.dec_column == "dec_unique"
 
     @staticmethod
     def test_wrong_suffixes(algo, small_sky_catalog, small_sky_xmatch_catalog):
