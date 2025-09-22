@@ -5,7 +5,7 @@ import random
 import warnings
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Callable, Iterable, Literal, Type, cast
+from typing import Callable, Iterable, Type
 
 import astropy
 import dask
@@ -22,12 +22,9 @@ from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHea
 from hats.inspection.visualize_catalog import get_fov_moc_from_wcs, initialize_wcs_axes
 from hats.pixel_math import HealpixPixel
 from hats.pixel_math.healpix_pixel_function import get_pixel_argsort
-from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 from matplotlib.figure import Figure
 from mocpy import MOC
-from pandas._libs import lib
-from pandas._typing import AnyAll, Axis, IndexLabel, Renamer
-from pandas.api.extensions import no_default
+from pandas._typing import Renamer
 from typing_extensions import Self
 from upath import UPath
 
@@ -855,91 +852,6 @@ class HealpixDataset(Dataset):
             **kwargs,
         )
 
-    def dropna(
-        self,
-        *,
-        axis: Axis = 0,
-        how: AnyAll | lib.NoDefault = no_default,
-        thresh: int | lib.NoDefault = no_default,
-        on_nested: bool = False,
-        subset: IndexLabel | None = None,
-        ignore_index: bool = False,
-    ) -> Self:  # type: ignore[name-defined] # noqa: F821:
-        """
-        Remove missing values for one layer of nested columns in the catalog.
-
-        Parameters
-        ----------
-        axis : {0 or 'index', 1 or 'columns'}, default 0
-            Determine if rows or columns which contain missing values are
-            removed.
-
-            * 0, or 'index' : Drop rows which contain missing values.
-            * 1, or 'columns' : Drop columns which contain missing value.
-
-            Only a single axis is allowed.
-
-        how : {'any', 'all'}, default 'any'
-            Determine if row or column is removed from catalog, when we have
-            at least one NA or all NA.
-
-            * 'any' : If any NA values are present, drop that row or column.
-            * 'all' : If all values are NA, drop that row or column.
-        thresh : int, optional
-            Require that many non-NA values. Cannot be combined with how.
-        on_nested : str or bool, optional
-            If not False, applies the call to the nested dataframe in the
-            column with label equal to the provided string. If specified,
-            the nested dataframe should align with any columns given in
-            `subset`.
-        subset : column label or sequence of labels, optional
-            Labels along other axis to consider, e.g. if you are dropping rows
-            these would be a list of columns to include.
-
-            Access nested columns using `nested_df.nested_col` (where
-            `nested_df` refers to a particular nested dataframe and
-            `nested_col` is a column of that nested dataframe).
-        ignore_index : bool, default ``False``
-            If ``True``, the resulting axis will be labeled 0, 1, …, n - 1.
-
-            .. versionadded:: 2.0.0
-
-        Returns
-        -------
-        Catalog
-            Catalog with NA entries dropped from it.
-
-        Notes
-        -----
-        Operations that target a particular nested structure return a dataframe
-        with rows of that particular nested structure affected.
-
-        Values for `on_nested` and `subset` should be consistent in pointing
-        to a single layer, multi-layer operations are not supported at this
-        time.
-        """
-
-        def drop_na_part(df: npd.NestedFrame):
-            if df.index.name == SPATIAL_INDEX_COLUMN:
-                df = df.reset_index()
-            df = cast(
-                npd.NestedFrame,
-                df.dropna(
-                    axis=axis,
-                    how=how,
-                    thresh=thresh,
-                    on_nested=on_nested,
-                    subset=subset,
-                    ignore_index=ignore_index,
-                ),
-            )
-            if SPATIAL_INDEX_COLUMN in df.columns:
-                df = df.set_index(SPATIAL_INDEX_COLUMN)
-            return df
-
-        ndf = self._ddf.map_partitions(drop_na_part, meta=self._ddf._meta)
-        return self._create_updated_dataset(ddf=ndf)
-
     def nest_lists(
         self,
         base_columns: list[str] | None = None,
@@ -1170,48 +1082,3 @@ class HealpixDataset(Dataset):
             fig=fig,
             **kwargs,
         )
-
-    def sort_nested_values(
-        self,
-        by: str | list[str],
-        ascending: bool | list[bool] = True,
-        na_position: Literal["first"] | Literal["last"] = "last",
-        ignore_index: bool | None = False,
-        **options,
-    ) -> Self:
-        """Sort nested columns for each row in the catalog.
-
-        Args:
-            by: str or list[str]
-                Column(s) to sort by.
-            ascending: bool or list[bool], optional
-                Sort ascending vs. descending. Defaults to True. Specify list for
-                multiple sort orders. If this is a list of bools, must match the
-                length of the by.
-            na_position: {‘last’, ‘first’}, optional
-                Puts NaNs at the beginning if ‘first’, puts NaN at the end if
-                ‘last’. Defaults to ‘last’.
-            ignore_index: bool, optional
-                If True, the resulting axis will be labeled 0, 1, …, n - 1.
-                Defaults to False.
-            **options: keyword arguments, optional
-                Additional options to pass to the sorting function.
-
-        Returns:
-            A new catalog where the specified nested columns are sorted.
-        """
-        if isinstance(by, str):
-            by = [by]
-        self._check_unloaded_columns(by)
-        # Check "by" columns for hierarchical references
-        for col in by:
-            if not self._ddf._is_known_hierarchical_column(col):
-                raise ValueError(f"{col} not found in nested columns")
-        ndf = self._ddf.sort_values(
-            by=by,
-            ascending=ascending,
-            na_position=na_position,
-            ignore_index=ignore_index,
-            **options,
-        )
-        return self._create_updated_dataset(ddf=ndf)
