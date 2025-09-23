@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -28,6 +29,10 @@ class HatsLoadingConfig:
     error_empty_filter: bool = True
     """If loading raises an error for an empty filter result. Defaults to True."""
 
+    enable_fsspec_optimization: bool | None = None
+    """Whether to enable fsspec optimization for remote file systems. If None, 
+    will check LSDB_ENABLE_FSSPEC_OPTIMIZATION environment variable."""
+
     kwargs: dict = field(default_factory=dict)
     """Extra kwargs for the pandas parquet file reader"""
 
@@ -38,6 +43,14 @@ class HatsLoadingConfig:
                 raise ValueError(
                     f"Invalid keyword argument '{nonused_kwarg}' found. Did you mean 'margin_cache'?"
                 )
+
+        # Handle environment variable for fsspec optimization if not explicitly set
+        if self.enable_fsspec_optimization is None:
+            env_value = os.getenv("LSDB_ENABLE_FSSPEC_OPTIMIZATION")
+            if env_value is not None:
+                self.enable_fsspec_optimization = env_value.lower() in ("true", "1", "yes", "on")
+            else:
+                self.enable_fsspec_optimization = False
 
     def make_query_url_params(self) -> dict:
         """
@@ -72,6 +85,17 @@ class HatsLoadingConfig:
         return url_params
 
     def get_read_kwargs(self):
-        """Clumps existing kwargs and `dtype_backend`, if specified."""
+        """Clumps existing kwargs and applies fsspec optimization if enabled."""
         kwargs = dict(self.kwargs)
+
+        # Apply fsspec optimization if enabled
+        if self.enable_fsspec_optimization:
+            # Set up open_file_options with precache_options if not already present
+            if "open_file_options" not in kwargs:
+                kwargs["open_file_options"] = {}
+
+            # Only add precache_options if not already set by the user
+            if "precache_options" not in kwargs["open_file_options"]:
+                kwargs["open_file_options"]["precache_options"] = {"method": "parquet"}
+
         return kwargs
