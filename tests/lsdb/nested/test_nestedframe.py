@@ -291,23 +291,6 @@ def test_query_on_nested(test_dataset):
     assert len(res) == 50  # make sure the base df remains unchanged
 
 
-def test_dropna(test_dataset_with_nans):
-    """test the dropna function"""
-
-    nan_free_base = test_dataset_with_nans.dropna(subset=["a"])
-    # should just remove one row
-    assert len(nan_free_base) == len(test_dataset_with_nans) - 1
-
-    meta = test_dataset_with_nans.loc[0].head(0).nested.nest.to_flat()
-
-    nan_free_nested = test_dataset_with_nans.dropna(subset=["nested.t"])
-
-    flat_nested_nan_free = nan_free_nested.map_partitions(lambda x: x.nested.nest.to_flat(), meta=meta)
-    flat_nested = test_dataset_with_nans.map_partitions(lambda x: x.nested.nest.to_flat(), meta=meta)
-    # should just remove one row
-    assert len(flat_nested_nan_free) == len(flat_nested) - 1
-
-
 def test_sort_values(test_dataset):
     """test the sort_values function"""
 

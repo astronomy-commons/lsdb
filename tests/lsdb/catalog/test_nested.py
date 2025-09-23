@@ -7,41 +7,11 @@ from nested_pandas import NestedDtype
 
 import lsdb
 import lsdb.nested as nd
-from lsdb import Catalog, MarginCatalog
+from lsdb import Catalog
 
 
 def test_nested_columns_property(small_sky_with_nested_sources):
     assert list(small_sky_with_nested_sources.nested_columns) == ["sources"]
-
-
-def test_dropna(small_sky_with_nested_sources):
-    filtered_cat = small_sky_with_nested_sources.query("sources.mag < 15.1")
-    drop_na_cat = filtered_cat.dropna()
-    assert isinstance(drop_na_cat, Catalog)
-    assert isinstance(drop_na_cat._ddf, nd.NestedFrame)
-    drop_na_compute = drop_na_cat.compute()
-    assert isinstance(drop_na_compute, npd.NestedFrame)
-    filtered_compute = filtered_cat.compute()
-    assert len(drop_na_compute) < len(filtered_compute)
-    pd.testing.assert_frame_equal(drop_na_compute, filtered_compute.dropna())
-
-
-def test_dropna_on_nested(small_sky_with_nested_sources):
-    def add_na_values_nested(df):
-        """replaces the first source_ra value in each nested df with NaN"""
-        for i in range(len(df)):
-            first_ra_value = df.iloc[i]["sources"].iloc[0]["source_ra"]
-            df["sources"].array[i] = df["sources"].array[i].replace(first_ra_value, np.nan)
-        return df
-
-    filtered_cat = small_sky_with_nested_sources.map_partitions(add_na_values_nested)
-    drop_na_cat = filtered_cat.dropna(on_nested="sources")
-    assert isinstance(drop_na_cat, Catalog)
-    assert isinstance(drop_na_cat._ddf, nd.NestedFrame)
-    drop_na_sources_compute = drop_na_cat["sources"].compute()
-    filtered_sources_compute = filtered_cat["sources"].compute()
-    assert len(drop_na_sources_compute) == len(filtered_sources_compute)
-    assert sum(map(len, drop_na_sources_compute)) < sum(map(len, filtered_sources_compute))
 
 
 def test_nest_lists(small_sky_with_nested_sources):
@@ -225,40 +195,6 @@ def test_reduce_infer_nesting(small_sky_with_nested_sources):
     )
 
     assert list(res_false.columns) == ["new_nested.ra_mag", "new_nested.dec_mag"]
-
-
-def test_sort_nested_values(small_sky_with_nested_sources):
-    # Sorting on nested "mjd" source column, in descending order
-    sorted_nested = small_sky_with_nested_sources.sort_nested_values(by="sources.mjd", ascending=False)
-    assert isinstance(sorted_nested, Catalog)
-    unsorted_source = small_sky_with_nested_sources["sources"].compute()
-    sorted_source = sorted_nested["sources"].compute()
-    for i in range(len(unsorted_source)):
-        expected_mjd = sorted(unsorted_source.iloc[i]["mjd"], reverse=True)
-        assert expected_mjd == sorted_source.iloc[i]["mjd"].values.tolist()
-    expected_schema = small_sky_with_nested_sources.hc_structure.schema
-    assert expected_schema.equals(sorted_nested.hc_structure.schema)
-
-
-def test_sort_nested_values_with_margin(small_sky_with_nested_sources_with_margin):
-    # Sorting values in nested column also sorts catalog margin
-    sorted_nested = small_sky_with_nested_sources_with_margin.sort_nested_values(
-        by="sources.mjd", ascending=False
-    )
-    assert isinstance(sorted_nested, Catalog)
-    assert isinstance(sorted_nested.margin, MarginCatalog)
-    unsorted_source = small_sky_with_nested_sources_with_margin.margin["sources"].compute()
-    sorted_source = sorted_nested.margin["sources"].compute()
-    for i in range(len(unsorted_source)):
-        expected_mjd = sorted(unsorted_source.iloc[i]["mjd"], reverse=True)
-        assert expected_mjd == sorted_source.iloc[i]["mjd"].values.tolist()
-    expected_schema = small_sky_with_nested_sources_with_margin.margin.hc_structure.schema
-    assert expected_schema.equals(sorted_nested.margin.hc_structure.schema)
-
-
-def test_sort_nested_values_using_base_column(small_sky_with_nested_sources):
-    with pytest.raises(ValueError, match="nested columns"):
-        small_sky_with_nested_sources.sort_nested_values(by="ra")
 
 
 def test_serialization_read(small_sky_with_nested_sources):

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import warnings
 from pathlib import Path
-from typing import Any, Callable, Iterable, Literal, Type
+from typing import Any, Callable, Iterable, Type
 
 import dask.dataframe as dd
 import hats as hc
@@ -11,9 +11,7 @@ import pandas as pd
 from hats.catalog.catalog_collection import CatalogCollection
 from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
 from hats.catalog.index.index_catalog import IndexCatalog as HCIndexCatalog
-from pandas._libs import lib
-from pandas._typing import AnyAll, Axis, IndexLabel, Renamer
-from pandas.api.extensions import no_default
+from pandas._typing import Renamer
 from typing_extensions import Self
 from upath import UPath
 
@@ -145,33 +143,6 @@ class Catalog(HealpixDataset):
         if self.margin is not None:
             catalog.margin = self.margin.rename(columns)
         return catalog
-
-    def assign(self, **kwargs) -> Catalog:
-        """Assigns new columns to a catalog
-
-        Args:
-            **kwargs: Arguments to pass to the assign method. This dictionary
-                should contain the column names as keys and either a
-                function or a 1-D Dask array as their corresponding value.
-
-        Returns:
-            The catalog containing both the old columns and the newly created columns
-
-        Examples:
-            Create a new column using a function::
-
-                catalog = Catalog(...)
-                catalog = catalog.assign(new_col=lambda df: df['existing_col'] * 2)
-
-            Add a column from a 1-D Dask array::
-
-                import dask.array as da
-                new_data = da.arange(...)
-                catalog = catalog.assign(new_col=new_data)
-        """
-        self._check_unloaded_columns(list(kwargs.keys()))
-        ddf = self._ddf.assign(**kwargs)
-        return self._create_updated_dataset(ddf=ddf)
 
     def crossmatch(
         self,
@@ -951,81 +922,6 @@ class Catalog(HealpixDataset):
             )
         return catalog
 
-    def dropna(
-        self,
-        *,
-        axis: Axis = 0,
-        how: AnyAll | lib.NoDefault = no_default,
-        thresh: int | lib.NoDefault = no_default,
-        on_nested: bool = False,
-        subset: IndexLabel | None = None,
-        ignore_index: bool = False,
-    ) -> Catalog:
-        """Remove missing values for one layer of nested columns in the catalog.
-
-        Parameters
-        ----------
-        axis : {0 or 'index', 1 or 'columns'}, default 0
-            Determine if rows or columns which contain missing values are
-            removed.
-
-            * 0, or 'index' : Drop rows which contain missing values.
-            * 1, or 'columns' : Drop columns which contain missing value.
-
-            Only a single axis is allowed.
-
-        how : {'any', 'all'}, default 'any'
-            Determine if row or column is removed from catalog, when we have
-            at least one NA or all NA.
-
-            * 'any' : If any NA values are present, drop that row or column.
-            * 'all' : If all values are NA, drop that row or column.
-        thresh : int, optional
-            Require that many non-NA values. Cannot be combined with how.
-        on_nested : str or bool, optional
-            If not False, applies the call to the nested dataframe in the
-            column with label equal to the provided string. If specified,
-            the nested dataframe should align with any columns given in
-            `subset`.
-        subset : column label or sequence of labels, optional
-            Labels along other axis to consider, e.g. if you are dropping rows
-            these would be a list of columns to include.
-
-            Access nested columns using `nested_df.nested_col` (where
-            `nested_df` refers to a particular nested dataframe and
-            `nested_col` is a column of that nested dataframe).
-        ignore_index : bool, default ``False``
-            If ``True``, the resulting axis will be labeled 0, 1, …, n - 1.
-
-        Returns
-        -------
-        Catalog
-            Catalog with NA entries dropped from it.
-
-        Notes
-        -----
-        Operations that target a particular nested structure return a dataframe
-        with rows of that particular nested structure affected.
-
-        Values for `on_nested` and `subset` should be consistent in pointing
-        to a single layer, multi-layer operations are not supported at this
-        time.
-        """
-        self._check_unloaded_columns(subset)
-        catalog = super().dropna(
-            axis=axis, how=how, thresh=thresh, on_nested=on_nested, subset=subset, ignore_index=ignore_index
-        )
-        if self.margin is not None:
-            catalog.margin = self.margin.dropna(
-                axis=axis,
-                how=how,
-                thresh=thresh,
-                on_nested=on_nested,
-                subset=subset,
-                ignore_index=ignore_index,
-            )
-        return catalog
-
     def reduce(self, func, *args, meta=None, append_columns=False, infer_nesting=True, **kwargs) -> Catalog:
         """
         Takes a function and applies it to each top-level row of the Catalog.
@@ -1089,55 +985,6 @@ class Catalog(HealpixDataset):
         if self.margin is not None:
             catalog.margin = self.margin.reduce(
                 func, *args, meta=meta, append_columns=append_columns, infer_nesting=infer_nesting, **kwargs
-            )
-        return catalog
-
-    def sort_nested_values(
-        self,
-        by: str | list[str],
-        ascending: bool | list[bool] = True,
-        na_position: Literal["first"] | Literal["last"] = "last",
-        ignore_index: bool | None = False,
-        **options,
-    ) -> Catalog:
-        # pylint: disable=duplicate-code
-        """Sort nested columns for each row in the catalog.
-
-        Note that this does NOT sort rows, only nested values within rows.
-
-        Args:
-            by: str or list[str]
-                Column(s) to sort by.
-            ascending: bool or list[bool], optional
-                Sort ascending vs. descending. Defaults to True. Specify list for
-                multiple sort orders. If this is a list of bools, must match the
-                length of the `by`.
-            na_position: {‘last’, ‘first’}, optional
-                Puts NaNs at the beginning if ‘first’, puts NaN at the end if
-                ‘last’. Defaults to ‘last’.
-            ignore_index: bool, optional
-                If True, the resulting axis will be labeled 0, 1, …, n - 1.
-                Defaults to False.
-            **options: keyword arguments, optional
-                Additional options to pass to the sorting function.
-
-        Returns:
-            A new catalog where the specified nested columns are sorted.
-        """
-        catalog = super().sort_nested_values(
-            by=by,
-            ascending=ascending,
-            na_position=na_position,
-            ignore_index=ignore_index,
-            **options,
-        )
-        if self.margin is not None:
-            catalog.margin = self.margin.sort_nested_values(
-                by=by,
-                ascending=ascending,
-                na_position=na_position,
-                ignore_index=ignore_index,
-                **options,
             )
         return catalog
 

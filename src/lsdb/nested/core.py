@@ -14,9 +14,6 @@ from dask.dataframe.dask_expr._collection import new_collection
 from dask.dataframe.dask_expr._expr import no_default as dsk_no_default
 from nested_pandas.series.dtype import NestedDtype
 from nested_pandas.series.packer import pack, pack_flat, pack_lists
-from pandas._libs import lib
-from pandas._typing import Axis, IndexLabel
-from pandas.api.extensions import no_default
 from typing_extensions import Self
 
 # need this for the base _Frame class
@@ -551,89 +548,6 @@ Refer to the docstring for guidance on dtype requirements and assignment."""
             lambda x: npd.NestedFrame(x).query(expr), meta=self._meta
         )  # pylint: disable=protected-access
 
-    # pylint: disable=arguments-differ
-    def dropna(
-        self,
-        *,
-        axis: Axis = 0,
-        how: str | lib.NoDefault = no_default,
-        thresh: int | lib.NoDefault = no_default,
-        on_nested: bool = False,
-        subset: IndexLabel | None = None,
-        inplace: bool = False,
-        ignore_index: bool = False,
-    ) -> Self:  # type: ignore[name-defined] # noqa: F821: # pylint: disable=undefined-variable
-        """
-        Remove missing values for one layer of the NestedFrame.
-
-        Parameters
-        ----------
-        axis : {0 or 'index', 1 or 'columns'}, default 0
-            Determine if rows or columns which contain missing values are
-            removed.
-
-            * 0, or 'index' : Drop rows which contain missing values.
-            * 1, or 'columns' : Drop columns which contain missing value.
-
-            Only a single axis is allowed.
-
-        how : {'any', 'all'}, default 'any'
-            Determine if row or column is removed from DataFrame, when we have
-            at least one NA or all NA.
-
-            * 'any' : If any NA values are present, drop that row or column.
-            * 'all' : If all values are NA, drop that row or column.
-        thresh : int, optional
-            Require that many non-NA values. Cannot be combined with how.
-        on_nested : str or bool, optional
-            If not False, applies the call to the nested dataframe in the
-            column with label equal to the provided string. If specified,
-            the nested dataframe should align with any columns given in
-            `subset`.
-        subset : column label or sequence of labels, optional
-            Labels along other axis to consider, e.g. if you are dropping rows
-            these would be a list of columns to include.
-
-            Access nested columns using `nested_df.nested_col` (where
-            `nested_df` refers to a particular nested dataframe and
-            `nested_col` is a column of that nested dataframe).
-        inplace : bool, default False
-            Whether to modify the DataFrame rather than creating a new one.
-        ignore_index : bool, default ``False``
-            If ``True``, the resulting axis will be labeled 0, 1, …, n - 1.
-
-            .. versionadded:: 2.0.0
-
-        Returns
-        -------
-        DataFrame or None
-            DataFrame with NA entries dropped from it or None if ``inplace=True``.
-
-        Notes
-        -----
-        Operations that target a particular nested structure return a dataframe
-        with rows of that particular nested structure affected.
-
-        Values for `on_nested` and `subset` should be consistent in pointing
-        to a single layer, multi-layer operations are not supported at this
-        time.
-        """
-        # propagate meta, assumes row-based operation
-        return self.map_partitions(
-            lambda x: npd.NestedFrame(x).dropna(
-                axis=axis,
-                how=how,
-                thresh=thresh,
-                on_nested=on_nested,
-                subset=subset,
-                inplace=inplace,
-                ignore_index=ignore_index,
-            ),
-            meta=self._meta,  # pylint: disable=protected-access
-        )
-
-    # NOTE: This is wrapped as a much more restrictive sort_nested_values
-    # function in lsdb.catalog
     def sort_values(
         self,
         by: str | list[str],

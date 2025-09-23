@@ -6,10 +6,7 @@ Dataframe Methods
 .. autosummary::
     :toctree: api/
 
-    Catalog.assign
-    Catalog.dropna
     Catalog.reduce
-    Catalog.sort_nested_values
     Catalog.map_partitions
     Catalog.to_hats
     Catalog.compute
