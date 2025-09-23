@@ -549,6 +549,19 @@ def test_read_hats_margin_catalog_subset(
     helpers.assert_divisions_are_correct(margin)
 
 
+def test_read_hats_with_fsspec_optimization(small_sky_order1_dir, helpers):
+    """Test that fsspec optimization parameter is accepted and works."""
+    # Test explicit enable
+    catalog = lsdb.open_catalog(small_sky_order1_dir, enable_fsspec_optimization=True)
+    assert isinstance(catalog, lsdb.Catalog)
+    helpers.assert_divisions_are_correct(catalog)
+    
+    # Test explicit disable
+    catalog = lsdb.open_catalog(small_sky_order1_dir, enable_fsspec_optimization=False)
+    assert isinstance(catalog, lsdb.Catalog)
+    helpers.assert_divisions_are_correct(catalog)
+
+
 def test_read_hats_margin_catalog_subset_is_empty(small_sky_order1_source_margin_dir):
     search_filter = ConeSearch(ra=100, dec=80, radius_arcsec=1)
     with pytest.raises(ValueError, match="no coverage"):

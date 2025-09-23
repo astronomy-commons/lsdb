@@ -38,10 +38,13 @@ def read_hats(
     columns: list[str] | str | None = None,
     margin_cache: str | Path | UPath | None = None,
     error_empty_filter: bool = True,
+    enable_fsspec_optimization: bool | None = None,
     **kwargs,
 ) -> Dataset:
     """Load catalog from a HATS path. See open_catalog()."""
-    return open_catalog(path, search_filter, columns, margin_cache, error_empty_filter, **kwargs)
+    return open_catalog(
+        path, search_filter, columns, margin_cache, error_empty_filter, enable_fsspec_optimization, **kwargs
+    )
 
 
 def open_catalog(
@@ -50,6 +53,7 @@ def open_catalog(
     columns: list[str] | str | None = None,
     margin_cache: str | Path | UPath | None = None,
     error_empty_filter: bool = True,
+    enable_fsspec_optimization: bool | None = None,
     **kwargs,
 ) -> Dataset:
     """Open a catalog from a HATS path.
@@ -100,6 +104,11 @@ def open_catalog(
         columns (list[str] | str): Default `None`. The set of columns to filter the catalog on. If None,
             the catalog's default columns will be loaded. To load all catalog columns, use `columns="all"`.
         margin_cache (path-like): Default `None`. The margin for the main catalog, provided as a path.
+        error_empty_filter (bool): Default `True`. If loading raises an error for an empty filter result.
+        enable_fsspec_optimization (bool | None): Default `None`. Whether to enable fsspec optimization
+            for remote file systems (e.g. S3, GCS). If None, will check LSDB_ENABLE_FSSPEC_OPTIMIZATION
+            environment variable. The optimization uses precaching to improve performance when reading
+            Parquet files from remote storage.
         dtype_backend (str): Backend data type to apply to the catalog.
             Defaults to "pyarrow". If None, no type conversion is performed.
         **kwargs: Arguments to pass to the pandas parquet file reader
@@ -122,6 +131,7 @@ def open_catalog(
             columns=columns,
             margin_cache=margin_cache,
             error_empty_filter=error_empty_filter,
+            enable_fsspec_optimization=enable_fsspec_optimization,
             **kwargs,
         )
         catalog.hc_collection = hc_catalog  # type: ignore[attr-defined]
@@ -132,6 +142,7 @@ def open_catalog(
             columns=columns,
             margin_cache=margin_cache,
             error_empty_filter=error_empty_filter,
+            enable_fsspec_optimization=enable_fsspec_optimization,
             **kwargs,
         )
     return catalog
@@ -164,6 +175,7 @@ def _load_catalog(
     columns: list[str] | str | None = None,
     margin_cache: str | Path | UPath | None = None,
     error_empty_filter: bool = True,
+    enable_fsspec_optimization: bool | None = None,
     **kwargs,
 ) -> Dataset:
     if columns is None and hc_catalog.catalog_info.default_columns is not None:
@@ -188,6 +200,7 @@ def _load_catalog(
         columns=columns,
         margin_cache=margin_cache,
         error_empty_filter=error_empty_filter,
+        enable_fsspec_optimization=enable_fsspec_optimization,
         kwargs=kwargs,
     )
 
