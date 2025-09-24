@@ -89,6 +89,7 @@ target-version = ["py38"]
 [tool.isort]
 profile = "black"
 line_length = 110
+skip_glob = ["benchmarks/env/*"]
 
 [tool.coverage.run]
 omit=["src/lsdb/_version.py"]
