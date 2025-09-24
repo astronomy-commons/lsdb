@@ -10,7 +10,7 @@ import pandas as pd
 from hats.catalog import TableProperties
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 
-from lsdb.dask.merge_catalog_functions import get_suffix_function
+from lsdb.dask.merge_catalog_functions import apply_suffixes
 
 if TYPE_CHECKING:
     from lsdb.catalog import Catalog
@@ -212,8 +212,9 @@ class AbstractCrossmatchAlgorithm(ABC):
             additional columns added
         """
         # rename columns so no same names during merging
-        suffix_function = get_suffix_function(suffix_method)
-        self.left, self.right = suffix_function(self.left, self.right, suffixes)
+        self.left, self.right = apply_suffixes(
+            self.left, self.right, suffixes, suffix_method, log_changes=False
+        )
         # concat dataframes together
         index_name = self.left.index.name if self.left.index.name is not None else "index"
         left_join_part = self.left.iloc[left_idx].reset_index()

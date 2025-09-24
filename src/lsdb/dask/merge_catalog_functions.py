@@ -58,7 +58,7 @@ def apply_suffix_all_columns(
 
 
 def apply_suffix_overlapping_columns(
-    left_df: npd.NestedFrame, right_df: npd.NestedFrame, suffixes: tuple[str, str]
+    left_df: npd.NestedFrame, right_df: npd.NestedFrame, suffixes: tuple[str, str], log_changes: bool = True
 ) -> tuple[npd.NestedFrame, npd.NestedFrame]:
     """Applies suffixes to overlapping columns in both dataframes
 
@@ -68,6 +68,7 @@ def apply_suffix_overlapping_columns(
         left_df (npd.NestedFrame): The left dataframe
         right_df (npd.NestedFrame): The right dataframe
         suffixes (tuple[str, str]): The suffixes to apply to the left and right dataframes
+        log_changes (bool): If True, logs an info message for each column that is being renamed.
 
     Returns:
         A tuple of the two dataframes with the suffixes applied
@@ -83,24 +84,32 @@ def apply_suffix_overlapping_columns(
         tablefmt="pretty",
     )
 
-    if overlapping_columns:
+    if overlapping_columns and log_changes:
         logging.info("Renaming overlapping columns:\n%s", table)
 
     return left_df, right_df
 
 
-def get_suffix_function(
+def apply_suffixes(
+    left_df: npd.NestedFrame,
+    right_df: npd.NestedFrame,
+    suffixes: tuple[str, str],
     suffix_method: str | None = None,
-) -> Callable[[npd.NestedFrame, npd.NestedFrame, tuple[str, str]], tuple[npd.NestedFrame, npd.NestedFrame]]:
-    """Gets a function that can be used to generate suffixes for columns based on a specified method
+    log_changes: bool = True,
+) -> tuple[npd.NestedFrame, npd.NestedFrame]:
+    """Applies suffixes to the columns of two dataframes using the specified suffix method
 
     Args:
-        suffix_method (str): The method to use to generate suffixes. Options are 'all_columns',
-            'overlapping_columns',
+        left_df (npd.NestedFrame): The left dataframe
+        right_df (npd.NestedFrame): The right dataframe
+        suffixes (tuple[str, str]): The suffixes to apply to the left and right dataframes
+        suffix_method (str | None): The method to use to generate suffixes. Options are 'all_columns',
+            'overlapping_columns'. If None, defaults to 'all_columns' but will change to
+            'overlapping_columns' in a future release.
+        log_changes (bool): If True, logs an info message for each column that is being renamed.
 
     Returns:
-        A function that takes in two dataframes and returns a tuple of the two dataframes with the suffixes
-        applied
+        A tuple of the two dataframes with the suffixes applied
     """
     if suffix_method is None:
         suffix_method = DEFAULT_SUFFIX_METHOD
@@ -113,9 +122,9 @@ def get_suffix_function(
         )
 
     if suffix_method == "all_columns":
-        return apply_suffix_all_columns
+        return apply_suffix_all_columns(left_df, right_df, suffixes)
     if suffix_method == "overlapping_columns":
-        return apply_suffix_overlapping_columns
+        return apply_suffix_overlapping_columns(left_df, right_df, suffixes, log_changes)
     raise ValueError(f"Invalid suffix method: {suffix_method}")
 
 
@@ -123,7 +132,8 @@ def apply_left_suffix(
     col_name: str,
     right_col_names: list[str],
     suffixes: tuple[str, str],
-    suffix_function: Callable,
+    suffix_method: str | None = None,
+    log_changes: bool = False,
 ) -> str:
     """Applies the left suffix to a column name using the specified suffix function
 
@@ -131,14 +141,17 @@ def apply_left_suffix(
         col_name (str): The column name to apply the suffix to
         right_col_names (list[str]): The list of column names in the right dataframe
         suffixes (tuple[str, str]): The suffixes to apply to the left and right dataframes
-        suffix_function (Callable): The function to use to apply the suffix
+        suffix_method (str): The method to use to generate suffixes. Options are 'all_columns',
+            'overlapping_columns'
+        log_changes (bool): If True, logs an info message for each column that is being renamed.
+            Default: False
 
     Returns:
         The column name with the left suffix applied
     """
     left_df = npd.NestedFrame(columns=[col_name])
     right_df = npd.NestedFrame(columns=right_col_names)
-    left_df, _ = suffix_function(left_df, right_df, suffixes)
+    left_df, _ = apply_suffixes(left_df, right_df, suffixes, suffix_method, log_changes=log_changes)
     return left_df.columns[0]
 
 
@@ -146,7 +159,8 @@ def apply_right_suffix(
     col_name: str,
     left_col_names: list[str],
     suffixes: tuple[str, str],
-    suffix_function: Callable,
+    suffix_method: str | None = None,
+    log_changes: bool = False,
 ) -> str:
     """Applies the right suffix to a column name using the specified suffix function
 
@@ -154,14 +168,17 @@ def apply_right_suffix(
         col_name (str): The column name to apply the suffix to
         left_col_names (list[str]): The column names in the left dataframe
         suffixes (tuple[str, str]): The suffixes to apply to the left and right dataframes
-        suffix_function (Callable): The function to use to apply the suffix
+        suffix_method (str): The method to use to generate suffixes. Options are 'all_columns',
+            'overlapping_columns'
+        log_changes (bool): If True, logs an info message for each column that is being renamed.
+            Default: False
 
     Returns:
         The column name with the right suffix applied
     """
     left_df = npd.NestedFrame(columns=left_col_names)
     right_df = npd.NestedFrame(columns=[col_name])
-    _, right_df = suffix_function(left_df, right_df, suffixes)
+    _, right_df = apply_suffixes(left_df, right_df, suffixes, suffix_method, log_changes=log_changes)
     return right_df.columns[0]
 
 
@@ -658,7 +675,7 @@ def get_healpix_pixels_from_association(
 def generate_meta_df_for_joined_tables(
     catalogs: tuple[Catalog, Catalog],
     suffixes: tuple[str, str],
-    suffix_function: Callable,
+    suffix_method: str | None = None,
     extra_columns: pd.DataFrame | None = None,
     index_name: str = SPATIAL_INDEX_COLUMN,
     index_type: npt.DTypeLike | None = None,
@@ -671,6 +688,7 @@ def generate_meta_df_for_joined_tables(
     Args:
         catalogs (Sequence[lsdb.Catalog]): The catalogs to merge together
         suffixes (Sequence[Str]): The column suffixes to apply each catalog
+        suffix_method (str): The method to use to generate suffixes.
         extra_columns (pd.Dataframe): Any additional columns to the merged catalogs
         index_name (str): The name of the index in the resulting DataFrame
         index_type (npt.DTypeLike): The type of the index in the resulting DataFrame.
@@ -681,8 +699,12 @@ def generate_meta_df_for_joined_tables(
         columns specified, with the index name set.
     """
     # Construct meta for crossmatched catalog columns
-    left_meta, right_meta = suffix_function(
-        catalogs[0]._ddf._meta, catalogs[1]._ddf._meta, suffixes  # pylint: disable=protected-access
+    # pylint: disable=protected-access
+    left_meta, right_meta = apply_suffixes(
+        catalogs[0]._ddf._meta,
+        catalogs[1]._ddf._meta,
+        suffixes,
+        suffix_method,
     )
     meta = pd.concat([left_meta, right_meta], axis=1)
     # Construct meta for crossmatch result columns
@@ -845,12 +867,9 @@ def create_merged_catalog_info(
     Returns:
         The catalog info of the resulting merged catalog
     """
-    suffix_function = get_suffix_function(suffix_method)
     left_info = left.hc_structure.catalog_info
-    ra_col = apply_left_suffix(left_info.ra_column, right.columns, suffixes, suffix_function)  # type: ignore
-    dec_col = apply_left_suffix(
-        left_info.dec_column, right.columns, suffixes, suffix_function  # type: ignore
-    )
+    ra_col = apply_left_suffix(left_info.ra_column, right.columns, suffixes, suffix_method)  # type: ignore
+    dec_col = apply_left_suffix(left_info.dec_column, right.columns, suffixes, suffix_method)  # type: ignore
     return left_info.copy_and_update(
         catalog_name=updated_name,
         ra_column=ra_col,

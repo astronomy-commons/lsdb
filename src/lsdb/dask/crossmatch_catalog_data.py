@@ -20,7 +20,6 @@ from lsdb.dask.merge_catalog_functions import (
     generate_meta_df_for_joined_tables,
     generate_meta_df_for_nested_tables,
     get_healpix_pixels_from_alignment,
-    get_suffix_function,
 )
 from lsdb.types import DaskDFPixelMap
 
@@ -158,13 +157,11 @@ def crossmatch_catalog_data(
     # get lists of HEALPix pixels from alignment to pass to cross-match
     left_pixels, right_pixels = get_healpix_pixels_from_alignment(alignment)
 
-    suffix_function = get_suffix_function(suffix_method)
-
     # generate meta table structure for dask df
     meta_df = generate_meta_df_for_joined_tables(
         (left, right),
         suffixes,
-        suffix_function=suffix_function,
+        suffix_method=suffix_method,
         extra_columns=crossmatch_algorithm.extra_columns,
     )
 
