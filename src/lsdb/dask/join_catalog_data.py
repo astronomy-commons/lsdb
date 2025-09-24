@@ -18,6 +18,9 @@ from lsdb.dask.merge_catalog_functions import (
     align_and_apply,
     align_catalogs,
     align_catalogs_with_association,
+    apply_left_suffix,
+    apply_right_suffix,
+    apply_suffixes,
     concat_partition_and_margin,
     construct_catalog_args,
     filter_by_spatial_index_to_pixel,
@@ -35,24 +38,6 @@ if TYPE_CHECKING:
 NON_JOINING_ASSOCIATION_COLUMNS = ["Norder", "Dir", "Npix", "join_Norder", "join_Dir", "join_Npix"]
 
 
-def rename_columns_with_suffixes(left: npd.NestedFrame, right: npd.NestedFrame, suffixes: tuple[str, str]):
-    """Renames two dataframes with the suffixes specified
-
-    Args:
-        left (npd.NestedFrame): the left dataframe to apply the first suffix to
-        right (npd.NestedFrame): the right dataframe to apply the second suffix to
-        suffixes (Tuple[str, str]): the pair of suffixes to apply to the dataframes
-
-    Returns:
-        A tuple of (left, right) updated dataframes with their columns renamed
-    """
-    left_columns_renamed = {name: name + suffixes[0] for name in left.columns}
-    left = left.rename(columns=left_columns_renamed)
-    right_columns_renamed = {name: name + suffixes[1] for name in right.columns}
-    right = right.rename(columns=right_columns_renamed)
-    return left, right
-
-
 # pylint: disable=too-many-arguments, unused-argument
 def perform_join_on(
     left: npd.NestedFrame,
@@ -67,6 +52,7 @@ def perform_join_on(
     left_on: str,
     right_on: str,
     suffixes: tuple[str, str],
+    suffix_method: str | None = None,
 ):
     """Performs a join on two catalog partitions
 
@@ -83,6 +69,10 @@ def perform_join_on(
         left_on (str): the column to join on from the left partition
         right_on (str): the column to join on from the right partition
         suffixes (Tuple[str,str]): the suffixes to apply to each partition's column names
+        suffix_method (str): Method to use to add suffixes to columns. Options are:
+            - "overlapping_columns": only add suffixes to columns that are present in both catalogs
+            - "all_columns": add suffixes to all columns from both catalogs
+            Default: "all_columns"
 
     Returns:
         A dataframe with the result of merging the left and right partitions on the specified columns
@@ -92,10 +82,11 @@ def perform_join_on(
 
     right_joined_df = concat_partition_and_margin(right, right_margin)
 
-    left, right_joined_df = rename_columns_with_suffixes(left, right_joined_df, suffixes)
-    merged = left.reset_index().merge(
-        right_joined_df, left_on=left_on + suffixes[0], right_on=right_on + suffixes[1]
-    )
+    left_join_column = apply_left_suffix(left_on, right_joined_df.columns, suffixes, suffix_method)
+    right_join_column = apply_right_suffix(right_on, left.columns, suffixes, suffix_method)
+    left, right_joined_df = apply_suffixes(left, right_joined_df, suffixes, suffix_method, log_changes=False)
+
+    merged = left.reset_index().merge(right_joined_df, left_on=left_join_column, right_on=right_join_column)
     merged.set_index(SPATIAL_INDEX_COLUMN, inplace=True)
     return merged
 
@@ -147,7 +138,7 @@ def perform_join_nested(
     return merged
 
 
-# pylint: disable=too-many-arguments, unused-argument
+# pylint: disable=too-many-arguments, unused-argument, too-many-locals
 def perform_join_through(
     left: npd.NestedFrame,
     right: npd.NestedFrame,
@@ -162,6 +153,7 @@ def perform_join_through(
     right_margin_catalog_info: TableProperties,
     assoc_catalog_info: TableProperties,
     suffixes: tuple[str, str],
+    suffix_method: str | None = None,
 ):
     """Performs a join on two catalog partitions through an association catalog
 
@@ -180,6 +172,10 @@ def perform_join_through(
             catalog
         assoc_catalog_info (hc.TableProperties): the hats structure of the association catalog
         suffixes (Tuple[str,str]): the suffixes to apply to each partition's column names
+        suffix_method (str): Method to use to add suffixes to columns. Options are:
+            - "overlapping_columns": only add suffixes to columns that are present in both catalogs
+            - "all_columns": add suffixes to all columns from both catalogs
+            Default: "all_columns"
 
     Returns:
         A dataframe with the result of merging the left and right partitions on the specified columns
@@ -191,7 +187,13 @@ def perform_join_through(
 
     right_joined_df = concat_partition_and_margin(right, right_margin)
 
-    left, right_joined_df = rename_columns_with_suffixes(left, right_joined_df, suffixes)
+    left_join_column = apply_left_suffix(
+        assoc_catalog_info.primary_column, right_joined_df.columns, suffixes, suffix_method
+    )
+    right_join_column = apply_right_suffix(
+        assoc_catalog_info.join_column, left.columns, suffixes, suffix_method
+    )
+    left, right_joined_df = apply_suffixes(left, right_joined_df, suffixes, suffix_method, log_changes=False)
 
     # Edge case: if right_column + suffix == join_column_association, columns will be in the wrong order
     # so rename association column
@@ -202,8 +204,9 @@ def perform_join_through(
             columns={assoc_catalog_info.join_column_association: join_column_association}, inplace=True
         )
 
+    join_columns = [assoc_catalog_info.primary_column_association, join_column_association]
     join_columns_to_drop = []
-    for c in [assoc_catalog_info.primary_column_association, join_column_association]:
+    for c in join_columns:
         if c not in left.columns and c not in right_joined_df.columns and c not in join_columns_to_drop:
             join_columns_to_drop.append(c)
 
@@ -215,15 +218,20 @@ def perform_join_through(
         left.reset_index()
         .merge(
             through,
-            left_on=assoc_catalog_info.primary_column + suffixes[0],
+            left_on=left_join_column,
             right_on=assoc_catalog_info.primary_column_association,
         )
         .merge(
             right_joined_df,
             left_on=join_column_association,
-            right_on=assoc_catalog_info.join_column + suffixes[1],
+            right_on=right_join_column,
         )
     )
+
+    extra_join_cols = through.columns.drop(join_columns + cols_to_drop)
+    other_cols = merged.columns.drop(extra_join_cols)
+
+    merged = merged[other_cols.append(extra_join_cols)]
 
     merged.set_index(SPATIAL_INDEX_COLUMN, inplace=True)
     if len(join_columns_to_drop) > 0:
@@ -241,6 +249,7 @@ def perform_merge_asof(
     right_catalog_info: TableProperties,
     suffixes: tuple[str, str],
     direction: str,
+    suffix_method: str | None = None,
 ):
     """Performs a merge_asof on two catalog partitions
 
@@ -253,6 +262,10 @@ def perform_merge_asof(
         right_catalog_info (hc.TableProperties): the catalog info of the right catalog
         suffixes (Tuple[str,str]): the suffixes to apply to each partition's column names
         direction (str): The direction to perform the merge_asof
+        suffix_method (str): Method to use to add suffixes to columns. Options are:
+            - "overlapping_columns": only add suffixes to columns that are present in both catalogs
+            - "all_columns": add suffixes to all columns from both catalogs
+            Default: "all_columns"
 
     Returns:
         A dataframe with the result of merging the left and right partitions on the specified columns with
@@ -261,7 +274,7 @@ def perform_merge_asof(
     if right_pixel.order > left_pixel.order:
         left = filter_by_spatial_index_to_pixel(left, right_pixel.order, right_pixel.pixel)
 
-    left, right = rename_columns_with_suffixes(left, right, suffixes)
+    left, right = apply_suffixes(left, right, suffixes, suffix_method, log_changes=False)
     left.sort_index(inplace=True)
     right.sort_index(inplace=True)
     merged = pd.merge_asof(left, right, left_index=True, right_index=True, direction=direction)
@@ -269,7 +282,12 @@ def perform_merge_asof(
 
 
 def join_catalog_data_on(
-    left: Catalog, right: Catalog, left_on: str, right_on: str, suffixes: tuple[str, str]
+    left: Catalog,
+    right: Catalog,
+    left_on: str,
+    right_on: str,
+    suffixes: tuple[str, str],
+    suffix_method: str | None = None,
 ) -> tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]:
     """Joins two catalogs spatially on a specified column
 
@@ -279,6 +297,11 @@ def join_catalog_data_on(
         left_on (str): the column to join on from the left partition
         right_on (str): the column to join on from the right partition
         suffixes (Tuple[str,str]): the suffixes to apply to each partition's column names
+        suffix_method (str): Method to use to add suffixes to columns. Options are:
+            - "overlapping_columns": only add suffixes to columns that are present in both catalogs
+            - "all_columns": add suffixes to all columns from both catalogs
+            Default: "all_columns" Warning: This default will change to "overlapping_columns" in a future
+            release.
 
     Returns:
         A tuple of the dask dataframe with the result of the join, the pixel map from HEALPix
@@ -301,9 +324,10 @@ def join_catalog_data_on(
         left_on,
         right_on,
         suffixes,
+        suffix_method,
     )
 
-    meta_df = generate_meta_df_for_joined_tables([left, right], suffixes)
+    meta_df = generate_meta_df_for_joined_tables((left, right), suffixes, suffix_method=suffix_method)
 
     return construct_catalog_args(joined_partitions, meta_df, alignment)
 
@@ -358,7 +382,11 @@ def join_catalog_data_nested(
 
 
 def join_catalog_data_through(
-    left: Catalog, right: Catalog, association: AssociationCatalog, suffixes: tuple[str, str]
+    left: Catalog,
+    right: Catalog,
+    association: AssociationCatalog,
+    suffixes: tuple[str, str],
+    suffix_method: str | None = None,
 ) -> tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]:
     """Joins two catalogs with an association table
 
@@ -367,6 +395,11 @@ def join_catalog_data_through(
         right (lsdb.Catalog): the right catalog to join
         association (AssociationCatalog): the association catalog to join the catalogs with
         suffixes (Tuple[str,str]): the suffixes to apply to each partition's column names
+        suffix_method (str): Method to use to add suffixes to columns. Options are:
+            - "overlapping_columns": only add suffixes to columns that are present in both catalogs
+            - "all_columns": add suffixes to all columns from both catalogs
+            Default: "all_columns" Warning: This default will change to "overlapping_columns" in a future
+            release.
 
     Returns:
         A tuple of the dask dataframe with the result of the join, the pixel map from HEALPix
@@ -387,6 +420,7 @@ def join_catalog_data_through(
             association.hc_structure.catalog_info.primary_column,
             association.hc_structure.catalog_info.join_column,
             suffixes,
+            suffix_method=suffix_method,
         )
 
     if right.margin is None:
@@ -420,6 +454,7 @@ def join_catalog_data_through(
         ],
         perform_join_through,
         suffixes,
+        suffix_method,
     )
 
     association_join_columns = [
@@ -430,13 +465,19 @@ def join_catalog_data_through(
 
     # pylint: disable=protected-access
     extra_df = association._ddf._meta.drop(non_joining_columns + association_join_columns, axis=1)
-    meta_df = generate_meta_df_for_joined_tables([left, extra_df, right], [suffixes[0], "", suffixes[1]])
+    meta_df = generate_meta_df_for_joined_tables(
+        (left, right), suffixes, extra_columns=extra_df, suffix_method=suffix_method
+    )
 
     return construct_catalog_args(joined_partitions, meta_df, alignment)
 
 
 def merge_asof_catalog_data(
-    left: Catalog, right: Catalog, suffixes: tuple[str, str], direction: str = "backward"
+    left: Catalog,
+    right: Catalog,
+    suffixes: tuple[str, str],
+    direction: str = "backward",
+    suffix_method: str | None = None,
 ) -> tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]:
     """Uses the pandas `merge_asof` function to merge two catalogs on their indices by distance of keys
 
@@ -451,6 +492,11 @@ def merge_asof_catalog_data(
         right (lsdb.Catalog): the right catalog to join
         suffixes (Tuple[str,str]): the suffixes to apply to each partition's column names
         direction (str): the direction to perform the merge_asof
+        suffix_method (str): Method to use to add suffixes to columns. Options are:
+            - "overlapping_columns": only add suffixes to columns that are present in both catalogs
+            - "all_columns": add suffixes to all columns from both catalogs
+            Default: "all_columns" Warning: This default will change to "overlapping_columns" in a future
+            release.
 
     Returns:
         A tuple of the dask dataframe with the result of the join, the pixel map from HEALPix
@@ -463,9 +509,9 @@ def merge_asof_catalog_data(
     left_pixels, right_pixels = get_healpix_pixels_from_alignment(alignment)
 
     joined_partitions = align_and_apply(
-        [(left, left_pixels), (right, right_pixels)], perform_merge_asof, suffixes, direction
+        [(left, left_pixels), (right, right_pixels)], perform_merge_asof, suffixes, direction, suffix_method
     )
 
-    meta_df = generate_meta_df_for_joined_tables([left, right], suffixes)
+    meta_df = generate_meta_df_for_joined_tables((left, right), suffixes, suffix_method=suffix_method)
 
     return construct_catalog_args(joined_partitions, meta_df, alignment)

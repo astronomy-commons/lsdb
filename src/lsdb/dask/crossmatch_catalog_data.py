@@ -40,6 +40,7 @@ def perform_crossmatch(
     right_margin_catalog_info,
     algorithm,
     suffixes,
+    suffix_method,
     meta_df,
     **kwargs,
 ):
@@ -66,7 +67,7 @@ def perform_crossmatch(
         left_catalog_info,
         right_catalog_info,
         right_margin_catalog_info,
-    ).crossmatch(suffixes, **kwargs)
+    ).crossmatch(suffixes, suffix_method=suffix_method, **kwargs)
 
 
 # pylint: disable=too-many-arguments, unused-argument
@@ -119,6 +120,7 @@ def crossmatch_catalog_data(
     algorithm: (
         Type[AbstractCrossmatchAlgorithm] | BuiltInCrossmatchAlgorithm
     ) = BuiltInCrossmatchAlgorithm.KD_TREE,
+    suffix_method: str | None = None,
     **kwargs,
 ) -> tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]:
     """Cross-matches the data from two catalogs
@@ -157,7 +159,10 @@ def crossmatch_catalog_data(
 
     # generate meta table structure for dask df
     meta_df = generate_meta_df_for_joined_tables(
-        [left, right], suffixes, extra_columns=crossmatch_algorithm.extra_columns
+        (left, right),
+        suffixes,
+        suffix_method=suffix_method,
+        extra_columns=crossmatch_algorithm.extra_columns,
     )
 
     # perform the crossmatch on each partition pairing using dask delayed for lazy computation
@@ -166,6 +171,7 @@ def crossmatch_catalog_data(
         perform_crossmatch,
         crossmatch_algorithm,
         suffixes,
+        suffix_method,
         meta_df,
         **kwargs,
     )
