@@ -7,6 +7,7 @@ import numpy.testing as npt
 import pandas as pd
 import pyarrow.parquet as pq
 import pytest
+from hats.catalog import MapCatalog
 from hats.io.file_io import get_upath_for_protocol, read_fits_image
 from hats.io.paths import get_data_thumbnail_pointer
 
@@ -74,6 +75,23 @@ def test_save_catalog_default_columns(small_sky_order1_default_cols_catalog, tmp
     assert expected_catalog.get_healpix_pixels() == cat.get_healpix_pixels()
     assert expected_catalog.hc_structure.catalog_info.default_columns == default_columns
     pd.testing.assert_frame_equal(expected_catalog.compute(), cat.compute())
+    helpers.assert_schema_correct(expected_catalog)
+    helpers.assert_default_columns_in_columns(expected_catalog)
+
+
+def test_save_map_catalog(small_sky_order1_default_cols_catalog, tmp_path, helpers):
+    new_catalog_name = "small_sky_order1"
+    base_catalog_path = Path(tmp_path) / new_catalog_name
+    lsdb.io.to_map.to_map(
+        small_sky_order1_default_cols_catalog,
+        base_catalog_path=base_catalog_path,
+        catalog_name=new_catalog_name,
+    )
+    expected_catalog = lsdb.open_catalog(base_catalog_path)
+    assert expected_catalog.hc_structure.catalog_name == new_catalog_name
+    assert expected_catalog.get_healpix_pixels() == small_sky_order1_default_cols_catalog.get_healpix_pixels()
+    assert isinstance(expected_catalog.hc_structure, MapCatalog)
+    pd.testing.assert_frame_equal(expected_catalog.compute(), small_sky_order1_default_cols_catalog.compute())
     helpers.assert_schema_correct(expected_catalog)
     helpers.assert_default_columns_in_columns(expected_catalog)
 
