@@ -2,6 +2,8 @@ import numpy as np
 import pytest
 from hats.pixel_math.validators import ValidatorsErrors
 
+import lsdb
+
 
 def test_box_search_filters_correct_points(small_sky_order1_catalog, helpers):
     search_catalog = small_sky_order1_catalog.box_search(ra=(280, 300), dec=(-40, -30))
@@ -50,6 +52,68 @@ def test_box_search_ra_complement(small_sky_order1_catalog):
     joined_values = np.concatenate([filtered_ra_values, complement_search_ra_values])
     all_catalog_values = small_sky_order1_catalog.compute()[ra_column].to_numpy()
     assert np.array_equal(np.sort(joined_values), np.sort(all_catalog_values))
+
+
+def test_box_search_with_filters(small_sky_order1_dir):
+    small_sky_order1_catalog = lsdb.read_hats(small_sky_order1_dir, filters=[("id", ">", 750)])
+    large_ids = small_sky_order1_catalog.compute()
+    assert len(large_ids) == 80
+    assert all(id > 750 for id in large_ids["id"])
+
+    # Confirm that we see fewer results when we have both a `filters` and `search_filter` specified.
+    small_sky_order1_catalog = lsdb.read_hats(
+        small_sky_order1_dir,
+        filters=[("id", ">", 750)],
+        search_filter=lsdb.BoxSearch(ra=(0, 360), dec=(-80, -30)),
+    )
+    results = small_sky_order1_catalog.compute()
+    assert len(results) == 71
+    assert all(id > 750 for id in results["id"])
+    assert all(-80 <= ra <= -30 for ra in results["dec"])
+
+    # Confirm that, after adding another region search, the original filters are respected
+    ra_search_catalog = small_sky_order1_catalog.box_search(ra=(280, 300), dec=(-90, 90))
+    results = ra_search_catalog.compute()
+    assert len(results) == 19
+    assert all(id > 750 for id in results["id"])
+    assert all(280 <= ra <= 300 for ra in results["ra"])
+    assert all(-80 <= ra <= -30 for ra in results["dec"])
+
+
+def test_box_search_intersection(small_sky_order1_dir):
+    """Tests that repeated box search applies previous filters."""
+    small_sky_order1_catalog = lsdb.read_hats(small_sky_order1_dir).box_search(ra=(0, 360), dec=(-80, -30))
+    results = small_sky_order1_catalog.compute()
+    assert len(results) == 120
+    assert all(-80 <= ra <= -30 for ra in results["dec"])
+
+    # Confirm that, after adding another region search, the original region is also respected
+    ra_search_catalog = small_sky_order1_catalog.box_search(ra=(280, 300), dec=(-90, 90))
+    results = ra_search_catalog.compute()
+    assert len(results) == 33
+    assert all(280 <= ra <= 300 for ra in results["ra"])
+    assert all(-80 <= ra <= -30 for ra in results["dec"])
+
+
+def test_box_search_from_dataframe(small_sky_order1_df):
+    """Tests that repeated box search applies previous filters, even if loaded from a dataframe."""
+    small_sky_order1_catalog = lsdb.from_dataframe(
+        small_sky_order1_df,
+        catalog_name="small_sky_order1",
+        catalog_type="object",
+        margin_threshold=None,
+    )
+    small_sky_order1_catalog = small_sky_order1_catalog.box_search(ra=(0, 360), dec=(-80, -30))
+    results = small_sky_order1_catalog.compute()
+    assert len(results) == 120
+    assert all(-80 <= ra <= -30 for ra in results["dec"])
+
+    # Confirm that, after adding another region search, the original region is also respected
+    ra_search_catalog = small_sky_order1_catalog.box_search(ra=(280, 300), dec=(-90, 90))
+    results = ra_search_catalog.compute()
+    assert len(results) == 33
+    assert all(280 <= ra <= 300 for ra in results["ra"])
+    assert all(-80 <= ra <= -30 for ra in results["dec"])
 
 
 def test_box_search_ra_wrapped_filters_correct_points(small_sky_order1_catalog):
