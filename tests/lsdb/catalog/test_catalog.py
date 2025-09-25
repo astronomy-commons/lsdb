@@ -5,6 +5,7 @@ import astropy.units as u
 import dask.dataframe as dd
 import hats as hc
 import hats.pixel_math.healpix_shim as hp
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import nested_pandas as npd
 import numpy as np
@@ -22,6 +23,8 @@ import lsdb
 import lsdb.nested as nd
 from lsdb import Catalog, MarginCatalog
 from lsdb.core.search.region_search import MOCSearch
+
+mpl.use("Agg")
 
 
 @pytest.fixture(autouse=True)
