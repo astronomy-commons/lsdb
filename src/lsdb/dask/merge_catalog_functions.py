@@ -85,7 +85,7 @@ def apply_suffix_overlapping_columns(
     )
 
     if overlapping_columns and log_changes:
-        logging.info("Renaming overlapping columns:\n%s", table)
+        logging.warning("Renaming overlapping columns:\n%s", table)
 
     return left_df, right_df
 
@@ -111,16 +111,6 @@ def apply_suffixes(
     Returns:
         A tuple of the two dataframes with the suffixes applied
     """
-    if suffix_method is None:
-        suffix_method = DEFAULT_SUFFIX_METHOD
-        warnings.warn(
-            "The default suffix behavior will change from applying suffixes to all columns to only "
-            "applying suffixes to overlapping columns in a future release."
-            "To maintain the current behavior, explicitly set `suffix_method='all_columns'`. "
-            "To change to the new behavior, set `suffix_method='overlapping_columns'`.",
-            FutureWarning,
-        )
-
     if suffix_method == "all_columns":
         return apply_suffix_all_columns(left_df, right_df, suffixes)
     if suffix_method == "overlapping_columns":

@@ -35,7 +35,7 @@ from lsdb.dask.join_catalog_data import (
     join_catalog_data_through,
     merge_asof_catalog_data,
 )
-from lsdb.dask.merge_catalog_functions import create_merged_catalog_info
+from lsdb.dask.merge_catalog_functions import create_merged_catalog_info, DEFAULT_SUFFIX_METHOD
 from lsdb.dask.merge_map_catalog_data import merge_map_catalog_data
 from lsdb.io.schema import get_arrow_schema
 from lsdb.types import DaskDFPixelMap
@@ -269,6 +269,15 @@ class Catalog(HealpixDataset):
             suffixes = (f"_{self.name}", f"_{other.name}")
         if len(suffixes) != 2:
             raise ValueError("`suffixes` must be a tuple with two strings")
+        if suffix_method is None:
+            suffix_method = DEFAULT_SUFFIX_METHOD
+            warnings.warn(
+                "The default suffix behavior will change from applying suffixes to all columns to only "
+                "applying suffixes to overlapping columns in a future release."
+                "To maintain the current behavior, explicitly set `suffix_method='all_columns'`. "
+                "To change to the new behavior, set `suffix_method='overlapping_columns'`.",
+                FutureWarning,
+            )
         if other.margin is None and require_right_margin:
             raise ValueError("Right catalog margin cache is required for cross-match.")
         if output_catalog_name is None:
@@ -782,6 +791,16 @@ class Catalog(HealpixDataset):
         if len(suffixes) != 2:
             raise ValueError("`suffixes` must be a tuple with two strings")
 
+        if suffix_method is None:
+            suffix_method = DEFAULT_SUFFIX_METHOD
+            warnings.warn(
+                "The default suffix behavior will change from applying suffixes to all columns to only "
+                "applying suffixes to overlapping columns in a future release."
+                "To maintain the current behavior, explicitly set `suffix_method='all_columns'`. "
+                "To change to the new behavior, set `suffix_method='overlapping_columns'`.",
+                FutureWarning,
+            )
+
         ddf, ddf_map, alignment = merge_asof_catalog_data(
             self, other, suffixes=suffixes, direction=direction, suffix_method=suffix_method
         )
@@ -843,6 +862,16 @@ class Catalog(HealpixDataset):
 
         if len(suffixes) != 2:
             raise ValueError("`suffixes` must be a tuple with two strings")
+
+        if suffix_method is None:
+            suffix_method = DEFAULT_SUFFIX_METHOD
+            warnings.warn(
+                "The default suffix behavior will change from applying suffixes to all columns to only "
+                "applying suffixes to overlapping columns in a future release."
+                "To maintain the current behavior, explicitly set `suffix_method='all_columns'`. "
+                "To change to the new behavior, set `suffix_method='overlapping_columns'`.",
+                FutureWarning,
+            )
 
         self._check_unloaded_columns([left_on, right_on])
 
