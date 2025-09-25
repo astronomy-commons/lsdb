@@ -60,6 +60,11 @@ def test_box_search_with_filters(small_sky_order1_dir):
     assert len(large_ids) == 80
     assert all(id > 750 for id in large_ids["id"])
 
+    results = small_sky_order1_catalog.box_search(ra=(0, 360), dec=(-80, -30)).compute()
+    assert len(results) == 71
+    assert all(id > 750 for id in results["id"])
+    assert all(-80 <= ra <= -30 for ra in results["dec"])
+
     # Confirm that we see fewer results when we have both a `filters` and `search_filter` specified.
     small_sky_order1_catalog = lsdb.read_hats(
         small_sky_order1_dir,
