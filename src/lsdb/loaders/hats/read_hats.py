@@ -100,7 +100,8 @@ def open_catalog(
         columns (list[str] | str): Default `None`. The set of columns to filter the catalog on. If None,
             the catalog's default columns will be loaded. To load all catalog columns, use `columns="all"`.
         margin_cache (path-like): Default `None`. The margin for the main catalog, provided as a path.
-        error_empty_filter (bool): Default True. If loading with a filter results in empty result, throw error.
+        error_empty_filter (bool): Default True. If loading the catalog with a filter results in
+            an empty catalog, throw error.
         filters (list[tuple[str]]): Default `None`. Filters to apply when reading parquet files.
             These may be applied as pyarrow filters or URL parameters.
         **kwargs: Arguments to pass to the pandas parquet file reader
