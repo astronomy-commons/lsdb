@@ -15,7 +15,6 @@ from pandas._typing import Renamer
 from typing_extensions import Self
 from upath import UPath
 
-import lsdb.nested as nd
 from lsdb import io
 from lsdb.catalog.association_catalog import AssociationCatalog
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
@@ -23,8 +22,8 @@ from lsdb.catalog.map_catalog import MapCatalog
 from lsdb.catalog.margin_catalog import MarginCatalog
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
 from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorithm
-from lsdb.core.search import IndexSearch
 from lsdb.core.search.abstract_search import AbstractSearch
+from lsdb.core.search.index_search import IndexSearch
 from lsdb.dask.concat_catalog_data import concat_catalog_data, concat_margin_data
 from lsdb.dask.crossmatch_catalog_data import crossmatch_catalog_data, crossmatch_catalog_data_nested
 from lsdb.dask.join_catalog_data import (
@@ -36,6 +35,8 @@ from lsdb.dask.join_catalog_data import (
 from lsdb.dask.merge_catalog_functions import create_merged_catalog_info
 from lsdb.dask.merge_map_catalog_data import merge_map_catalog_data
 from lsdb.io.schema import get_arrow_schema
+from lsdb.loaders.hats.hats_loading_config import HatsLoadingConfig
+from lsdb.nested.core import NestedFrame
 from lsdb.types import DaskDFPixelMap
 
 
@@ -59,9 +60,11 @@ class Catalog(HealpixDataset):
 
     def __init__(
         self,
-        ddf: nd.NestedFrame,
+        ddf: NestedFrame,
         ddf_pixel_map: DaskDFPixelMap,
         hc_structure: hc.catalog.Catalog,
+        *,
+        loading_config: HatsLoadingConfig | None = None,
         margin: MarginCatalog | None = None,
     ):
         """Initialise a Catalog object.
@@ -74,18 +77,23 @@ class Catalog(HealpixDataset):
             ddf_pixel_map: Dictionary mapping HEALPix order and pixel to partition index of ddf
             hc_structure: `hats.Catalog` object with hats metadata of the catalog
         """
-        super().__init__(ddf, ddf_pixel_map, hc_structure)
+        super().__init__(ddf, ddf_pixel_map, hc_structure, loading_config)
         self.margin = margin
 
     def _create_updated_dataset(
         self,
-        ddf: nd.NestedFrame | None = None,
+        ddf: NestedFrame | None = None,
         ddf_pixel_map: DaskDFPixelMap | None = None,
         hc_structure: HCHealpixDataset | None = None,
         updated_catalog_info_params: dict | None = None,
         margin: MarginCatalog | None = None,
     ) -> Self:
-        cat = super()._create_updated_dataset(ddf, ddf_pixel_map, hc_structure, updated_catalog_info_params)
+        cat = super()._create_updated_dataset(
+            ddf,
+            ddf_pixel_map,
+            hc_structure,
+            updated_catalog_info_params,
+        )
         cat.margin = margin
         return cat
 
@@ -648,7 +656,7 @@ class Catalog(HealpixDataset):
         left_index: bool = False,
         right_index: bool = False,
         suffixes: tuple[str, str] | None = None,
-    ) -> nd.NestedFrame:
+    ) -> NestedFrame:
         """Performs the merge of two catalog Dataframes
 
         More information about pandas merge is available

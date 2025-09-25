@@ -10,7 +10,7 @@ import pytest
 from hats.pixel_math.healpix_shim import radec2pix
 
 import lsdb.nested as nd
-from lsdb.core.search import BoxSearch, ConeSearch, PixelSearch
+from lsdb.core.search.region_search import BoxSearch, ConeSearch, PixelSearch
 
 
 def test_generate_data():

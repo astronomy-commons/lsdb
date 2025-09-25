@@ -5,7 +5,7 @@ import pytest
 from hats.pixel_math.validators import ValidatorsErrors
 
 import lsdb.nested as nd
-from lsdb.core.search.polygon_search import get_cartesian_polygon
+from lsdb.core.search.region_search import get_cartesian_polygon
 
 
 @pytest.mark.sphgeom
