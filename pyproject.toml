@@ -1,7 +1,7 @@
 [project]
 name = "lsdb"
-license = "BSD-3-Clause"
-license-files = ["LICENSE", "CITATION.bib"]
+license = { file = "LICENSE" }
+#license = { text = "BSD-3-Clause" }
 readme = "README.md"
 description = "Spatial analysis for extremely large astronomical catalogs using dask"
 authors = [
@@ -76,6 +76,9 @@ addopts = "--doctest-modules --doctest-glob=*.rst"
 
 [tool.setuptools.package-data]
 lsdb = ["py.typed"]
+
+[tool.setuptools]
+license-files = ["LICENSE", "CITATION.bib"]
 
 [tool.coverage.report]
 omit = [
