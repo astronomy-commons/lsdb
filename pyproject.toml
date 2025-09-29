@@ -1,7 +1,7 @@
 [project]
 name = "lsdb"
-license = { file = "LICENSE" }
-#license = { text = "BSD-3-Clause" }
+license = "BSD-3-Clause"
+license-files = ["LICENSE", "CITATION.bib"]
 readme = "README.md"
 description = "Spatial analysis for extremely large astronomical catalogs using dask"
 authors = [
@@ -22,7 +22,7 @@ dependencies = [
     # dask diagnostics is required to spin up the dashboard for profiling.
     "dask[complete]>=2025.3.0",
     "deprecated",
-    "hats>=0.6.5",
+    "hats>=0.6.5,<0.7.0",
     "nested-pandas>=0.4.7,<0.5.0",
     "pyarrow>=14.0.1,<21.0.0; platform_system == 'Windows'",
     "pyarrow>=14.0.1; platform_system != 'Windows'",
@@ -76,9 +76,6 @@ addopts = "--doctest-modules --doctest-glob=*.rst"
 
 [tool.setuptools.package-data]
 lsdb = ["py.typed"]
-
-[tool.setuptools]
-license-files = ["LICENSE", "CITATION.bib"]
 
 [tool.coverage.report]
 omit = [
