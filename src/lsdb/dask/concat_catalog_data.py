@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import warnings
 from typing import TYPE_CHECKING
 
 import pandas as pd
@@ -20,6 +21,7 @@ from lsdb.types import DaskDFPixelMap
 
 if TYPE_CHECKING:
     from lsdb.catalog.catalog import Catalog
+    from lsdb.catalog.margin_catalog import MarginCatalog
 
 
 def _check_strict_column_types(meta1: pd.DataFrame, meta2: pd.DataFrame):
@@ -396,3 +398,91 @@ def concat_margin_data(
     )
 
     return construct_catalog_args(joined_partitions, meta_df, alignment)
+
+
+# pylint: disable=too-many-locals
+def handle_margins_for_concat(
+    left: Catalog,
+    right: Catalog,
+    *,
+    ignore_empty_margins: bool,
+    **kwargs,
+) -> MarginCatalog | None:
+    """Handle margin concatenation policy for Catalog.concat().
+
+    Args:
+        left (Catalog): Left catalog.
+        right (Catalog): Right catalog.
+        ignore_empty_margins (bool): If True and only one side has a margin, keep
+            the existing margin and treat the missing side as empty. If False,
+            drop margins when only one side has them.
+        **kwargs: Extra keyword arguments forwarded to `concat_margin_data`.
+
+    Returns:
+        MarginCatalog | None: Concatenated margin catalog, or None if margins
+        are not retained.
+    """
+    left_has_margin = left.margin is not None
+    right_has_margin = right.margin is not None
+
+    if left_has_margin and right_has_margin:
+        # Both sides have margins: standard path (unchanged behavior).
+        # Use the smallest radius between the two margins.
+        assert left.margin is not None and right.margin is not None
+        smallest_margin_radius = min(
+            left.margin.hc_structure.catalog_info.margin_threshold or 0.0,
+            right.margin.hc_structure.catalog_info.margin_threshold or 0.0,
+        )
+        margin_ddf, margin_ddf_map, margin_alignment = concat_margin_data(
+            left, right, smallest_margin_radius, **kwargs
+        )
+        margin_hc_catalog = left.margin.hc_structure.__class__(
+            left.margin.hc_structure.catalog_info,
+            margin_alignment.pixel_tree,
+        )
+        return left.margin._create_updated_dataset(  # pylint: disable=protected-access
+            ddf=margin_ddf,
+            ddf_pixel_map=margin_ddf_map,
+            hc_structure=margin_hc_catalog,
+            updated_catalog_info_params={"margin_threshold": smallest_margin_radius},
+        )
+
+    if left_has_margin != right_has_margin:
+        # Exactly one side has a margin.
+        if not ignore_empty_margins:
+            # Legacy behavior: drop margins entirely.
+            warnings.warn(
+                "One side has no margin; result will not include margin data. "
+                "Set ignore_empty_margins=True to keep the available margin "
+                "(treated as incomplete).",
+            )
+            return None
+
+        # New behavior: keep the available margin by treating the missing side as empty.
+        # Use the existing side's radius for the concatenated margin.
+        existing_margin = left.margin if left_has_margin else right.margin
+        assert existing_margin is not None
+        existing_radius = existing_margin.hc_structure.catalog_info.margin_threshold or 0.0
+
+        warnings.warn(
+            "ignore_empty_margins=True and only one side has a margin: the "
+            "missing margin is treated as empty at the same radius. The "
+            "resulting concatenated margin may be incomplete.",
+        )
+
+        margin_ddf, margin_ddf_map, margin_alignment = concat_margin_data(
+            left, right, existing_radius, **kwargs
+        )
+        margin_hc_catalog = existing_margin.hc_structure.__class__(
+            existing_margin.hc_structure.catalog_info,
+            margin_alignment.pixel_tree,
+        )
+        return existing_margin._create_updated_dataset(  # pylint: disable=protected-access
+            ddf=margin_ddf,
+            ddf_pixel_map=margin_ddf_map,
+            hc_structure=margin_hc_catalog,
+            updated_catalog_info_params={"margin_threshold": existing_radius},
+        )
+
+    # Neither side has margin: nothing to do for margins (unchanged).
+    return None

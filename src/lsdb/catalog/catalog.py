@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import warnings
 from pathlib import Path
 from typing import Any, Callable, Iterable, Type
 
@@ -24,7 +23,7 @@ from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatc
 from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorithm
 from lsdb.core.search.abstract_search import AbstractSearch
 from lsdb.core.search.index_search import IndexSearch
-from lsdb.dask.concat_catalog_data import concat_catalog_data, concat_margin_data
+from lsdb.dask.concat_catalog_data import concat_catalog_data, handle_margins_for_concat
 from lsdb.dask.crossmatch_catalog_data import crossmatch_catalog_data, crossmatch_catalog_data_nested
 from lsdb.dask.join_catalog_data import (
     join_catalog_data_nested,
@@ -368,117 +367,29 @@ class Catalog(HealpixDataset):
         ignore_empty_margins: bool = False,
         **kwargs,
     ) -> Catalog:
-        """
-        Concatenate two catalogs by aligned HEALPix pixels.
+        """Concatenate two catalogs by aligned HEALPix pixels.
 
         Args:
-            other (Catalog): The catalog to concatenate with.
-            ignore_empty_margins (bool, optional):
-                If False (default), behaves like legacy concat: when only one side
-                has a margin, the resulting catalog will have no margin at all.
-                If True, when exactly one side has a margin, the concatenation
-                proceeds as if the side without margin had an *empty* margin
-                with the same radius as the existing one, so the resulting
-                margin is retained (but may be incomplete).
-            **kwargs: Extra arguments forwarded to internal `pandas.concat` calls.
+            other (Catalog): Catalog to concatenate with.
+            ignore_empty_margins (bool, optional): If True, keep the available margin
+                when only one side has it (treated as incomplete). If False, drop
+                margins when only one side has them. Defaults to False.
+            **kwargs: Extra arguments forwarded to internal `pandas.concat`.
 
         Returns:
-            Catalog: A new catalog whose partitions correspond to the OUTER pixel alignment
-            and whose rows are the per-pixel concatenation of both inputs. If both inputs
-            provide a margin — or if `ignore_empty_margins=True` and at least one side
-            provides a margin — the result includes a concatenated margin dataset.
-
-        Warnings:
-            - If only one side has a margin and `ignore_empty_margins=True`, a warning is
-              emitted because the resulting margin can be incomplete (the absent side is
-              treated as an empty margin); follow-up operations (e.g., crossmatching) may
-              produce incomplete results near partition borders.
-
-        Notes:
-            - The main (non-margin) alignment is filtered by the catalogs’ MOCs when
-              available; the pixel-tree alignment itself is OUTER, so pixels present on
-              either side are preserved (within the MOC filter).
-            - This is a stacking operation, not a row-wise join or crossmatch; no
-              deduplication or key-based matching is applied.
-            - Column dtypes may be upcast by pandas to accommodate the unioned schema.
-              Row/column order is not guaranteed to be stable.
-            - `**kwargs` are forwarded to the internal pandas concatenations (e.g.,
-              `ignore_index`, etc.).
+            Catalog: New catalog with OUTER pixel alignment. If both inputs have a
+            margin — or if `ignore_empty_margins=True` and at least one side has it —
+            the result includes a concatenated margin dataset.
         """
-        # --- Margin handling -------------------------------------------------
-        left_has_margin = self.margin is not None
-        right_has_margin = other.margin is not None
+        # Delegate margin handling to helper
+        margin = handle_margins_for_concat(
+            self,
+            other,
+            ignore_empty_margins=ignore_empty_margins,
+            **kwargs,
+        )
 
-        margin = None
-
-        if left_has_margin and right_has_margin:
-            assert self.margin is not None
-            assert other.margin is not None
-
-            # Both sides have margins: standard path (unchanged behavior)
-            smallest_margin_radius = min(
-                self.margin.hc_structure.catalog_info.margin_threshold or 0,
-                other.margin.hc_structure.catalog_info.margin_threshold or 0,
-            )
-            margin_ddf, margin_ddf_map, margin_alignment = concat_margin_data(
-                self, other, smallest_margin_radius, **kwargs
-            )
-            margin_hc_catalog = self.margin.hc_structure.__class__(
-                self.margin.hc_structure.catalog_info,
-                margin_alignment.pixel_tree,
-            )
-            margin = self.margin._create_updated_dataset(
-                ddf=margin_ddf,
-                ddf_pixel_map=margin_ddf_map,
-                hc_structure=margin_hc_catalog,
-                updated_catalog_info_params={"margin_threshold": smallest_margin_radius},
-            )
-
-        elif left_has_margin != right_has_margin:
-            # Exactly one side has margin
-            if not ignore_empty_margins:
-                # Legacy behavior: drop margins entirely
-                warnings.warn(
-                    "One side has no margin; result will not include margin data. "
-                    "Set ignore_empty_margins=True to keep the available margin (treated as incomplete).",
-                )
-            else:
-                # New behavior: keep the available margin by treating the missing side as empty
-                # Use the existing side's radius for the concatenated margin
-                existing_margin = self.margin if left_has_margin else other.margin
-                assert existing_margin is not None
-                existing_radius = existing_margin.hc_structure.catalog_info.margin_threshold or 0.0
-
-                warnings.warn(
-                    "ignore_empty_margins=True and only one side has a margin: the missing margin is "
-                    "treated as empty at the same radius. The resulting concatenated margin may be "
-                    "incomplete and follow-up operations (e.g., crossmatching) can produce incomplete "
-                    "results near borders.",
-                )
-
-                margin_ddf, margin_ddf_map, margin_alignment = concat_margin_data(
-                    self, other, existing_radius, **kwargs
-                )
-                # Build a MarginCatalog matching the left side's margin type if present,
-                # otherwise the right's; update threshold to the chosen radius.
-                margin_base = self.margin if left_has_margin else other.margin
-                assert margin_base is not None
-                margin_hc_catalog = margin_base.hc_structure.__class__(
-                    margin_base.hc_structure.catalog_info,
-                    margin_alignment.pixel_tree,
-                )
-                margin = margin_base._create_updated_dataset(
-                    ddf=margin_ddf,
-                    ddf_pixel_map=margin_ddf_map,
-                    hc_structure=margin_hc_catalog,
-                    updated_catalog_info_params={"margin_threshold": existing_radius},
-                )
-
-        else:
-            # Neither side has margin: nothing to do for margins (unchanged)
-            pass
-
-        # --- Main catalog concatenation (unchanged) --------------------------
+        # Main catalog concatenation
         ddf, ddf_map, alignment = concat_catalog_data(self, other, **kwargs)
         hc_catalog = self.hc_structure.__class__(
             self.hc_structure.catalog_info,
