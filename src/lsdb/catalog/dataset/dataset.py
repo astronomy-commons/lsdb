@@ -9,6 +9,7 @@ from hats.catalog import TableProperties
 from upath import UPath
 
 import lsdb.nested as nd
+from lsdb.loaders.hats.hats_loading_config import HatsLoadingConfig
 
 
 class Dataset:
@@ -18,6 +19,7 @@ class Dataset:
         self,
         ddf: nd.NestedFrame,
         hc_structure: hc.catalog.Dataset,
+        loading_config: HatsLoadingConfig | None = None,
     ):
         """Initialise a Catalog object.
 
@@ -30,6 +32,7 @@ class Dataset:
         """
         self._ddf = ddf
         self.hc_structure = hc_structure
+        self.loading_config = loading_config
 
     def __repr__(self):
         return self._ddf.__repr__()

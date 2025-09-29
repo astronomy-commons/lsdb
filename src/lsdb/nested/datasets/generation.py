@@ -4,7 +4,7 @@ from cdshealpix.nested import healpix_to_lonlat
 from nested_pandas import datasets
 
 import lsdb
-from lsdb.core.search import BoxSearch, ConeSearch, PixelSearch
+from lsdb.core.search.region_search import BoxSearch, ConeSearch, PixelSearch
 from lsdb.nested.core import NestedFrame
 
 
@@ -51,7 +51,7 @@ def generate_data(
     >>> nf = generate_data(10, 100, ra_range=(0., 10.), dec_range=(-5., 0.))
 
     Using a search region:
-    >>> from lsdb.core.search import ConeSearch
+    >>> from lsdb import ConeSearch
     >>> nf = generate_data(10, 100, search_region=ConeSearch(5, 5, 1))
     """
 
@@ -212,7 +212,7 @@ def generate_catalog(
 
     Using a search region:
 
-    >>> from lsdb.core.search import ConeSearch # doctest: +SKIP
+    >>> from lsdb import ConeSearch
     >>> gen_cat = generate_data(10, 100, search_region=ConeSearch(5, 5, 1))
     """
 
