@@ -1243,11 +1243,11 @@ def test_handle_margins_one_side_has_margin_keep_existing_calls_concat(monkeypat
     with pytest.warns(UserWarning, match=r"ignore_empty_margins=True.*treated as empty"):
         got = m.handle_margins_for_concat(left, right, ignore_empty_margins=True)
 
-    # Verifica chamada com o raio do lado existente
+    # Check that it was called with the existing radius
     assert "args" in called
     _l, _r, radius_used, _kw = called["args"]
     assert radius_used == 2.0
 
-    # Verifica retorno do _create_updated_dataset
+    # Check return from _create_updated_dataset
     assert isinstance(got, tuple) and got[0] == "UPDATED"
     assert got[2]["margin_threshold"] == 2.0
