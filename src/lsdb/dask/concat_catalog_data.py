@@ -428,19 +428,25 @@ def handle_margins_for_concat(
     if left_has_margin and right_has_margin:
         # Both sides have margins: standard path (unchanged behavior).
         # Use the smallest radius between the two margins.
-        assert left.margin is not None and right.margin is not None
+
+        left_margin = left.margin
+        right_margin = right.margin
+        # Defensive (unreachable due to the guard above), also satisfies type checkers:
+        if left_margin is None or right_margin is None:
+            return None
+
         smallest_margin_radius = min(
-            left.margin.hc_structure.catalog_info.margin_threshold or 0.0,
-            right.margin.hc_structure.catalog_info.margin_threshold or 0.0,
+            left_margin.hc_structure.catalog_info.margin_threshold or 0.0,
+            right_margin.hc_structure.catalog_info.margin_threshold or 0.0,
         )
         margin_ddf, margin_ddf_map, margin_alignment = concat_margin_data(
             left, right, smallest_margin_radius, **kwargs
         )
-        margin_hc_catalog = left.margin.hc_structure.__class__(
-            left.margin.hc_structure.catalog_info,
+        margin_hc_catalog = left_margin.hc_structure.__class__(
+            left_margin.hc_structure.catalog_info,
             margin_alignment.pixel_tree,
         )
-        return left.margin._create_updated_dataset(  # pylint: disable=protected-access
+        return left_margin._create_updated_dataset(  # pylint: disable=protected-access
             ddf=margin_ddf,
             ddf_pixel_map=margin_ddf_map,
             hc_structure=margin_hc_catalog,
@@ -461,7 +467,10 @@ def handle_margins_for_concat(
         # New behavior: keep the available margin by treating the missing side as empty.
         # Use the existing side's radius for the concatenated margin.
         existing_margin = left.margin if left_has_margin else right.margin
-        assert existing_margin is not None
+        # Defensive (unreachable if the XOR above is correct), also satisfies type checkers:
+        if existing_margin is None:
+            return None
+
         existing_radius = existing_margin.hc_structure.catalog_info.margin_threshold or 0.0
 
         warnings.warn(
