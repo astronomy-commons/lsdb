@@ -19,7 +19,7 @@ something like: ``lsdb.open_catalog(path, search_filter=search_object)``
 
 We provide several built-in search types:
 
-.. currentmodule:: lsdb.core.search
+.. currentmodule:: lsdb.core.search.region_search
 
 .. autosummary::
     :toctree: api/
@@ -27,10 +27,16 @@ We provide several built-in search types:
     ConeSearch
     BoxSearch
     PolygonSearch
-    IndexSearch
     OrderSearch
     PixelSearch
     MOCSearch
+
+.. currentmodule:: lsdb.core.search.index_search
+
+.. autosummary::
+    :toctree: api/
+
+    IndexSearch
 
 Alternatively, you can call the ``search`` method after a catalog has been
 opened and other operations have been performed with ``catalog.search(search_object)``.
