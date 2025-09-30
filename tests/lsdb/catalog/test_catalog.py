@@ -22,7 +22,7 @@ from nested_pandas.datasets import generate_data
 import lsdb
 import lsdb.nested as nd
 from lsdb import Catalog, MarginCatalog
-from lsdb.core.search.moc_search import MOCSearch
+from lsdb.core.search.region_search import MOCSearch
 
 mpl.use("Agg")
 

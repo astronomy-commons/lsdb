@@ -32,13 +32,19 @@ import lsdb.nested as nd
 from lsdb import io
 from lsdb.catalog.dataset.dataset import Dataset
 from lsdb.core.plotting.plot_points import plot_points
-from lsdb.core.search import BoxSearch, ConeSearch, OrderSearch, PolygonSearch
 from lsdb.core.search.abstract_search import AbstractSearch
-from lsdb.core.search.moc_search import MOCSearch
-from lsdb.core.search.pixel_search import PixelSearch
+from lsdb.core.search.region_search import (
+    BoxSearch,
+    ConeSearch,
+    MOCSearch,
+    OrderSearch,
+    PixelSearch,
+    PolygonSearch,
+)
 from lsdb.dask.merge_catalog_functions import concat_metas
 from lsdb.dask.partition_indexer import PartitionIndexer
 from lsdb.io.schema import get_arrow_schema
+from lsdb.loaders.hats.hats_loading_config import HatsLoadingConfig
 from lsdb.types import DaskDFPixelMap
 
 
@@ -59,6 +65,7 @@ class HealpixDataset(Dataset):
         ddf: nd.NestedFrame,
         ddf_pixel_map: DaskDFPixelMap,
         hc_structure: HCHealpixDataset,
+        loading_config: HatsLoadingConfig | None = None,
     ):
         """Initialise a Catalog object.
 
@@ -70,7 +77,7 @@ class HealpixDataset(Dataset):
             ddf_pixel_map: Dictionary mapping HEALPix order and pixel to partition index of ddf
             hc_structure: `hats.Catalog` object with hats metadata of the catalog
         """
-        super().__init__(ddf, hc_structure)
+        super().__init__(ddf, hc_structure, loading_config=loading_config)
         self._ddf_pixel_map = ddf_pixel_map
 
     def __getitem__(self, item):
@@ -186,7 +193,7 @@ class HealpixDataset(Dataset):
         hc_structure = self._create_modified_hc_structure(
             hc_structure=hc_structure, updated_schema=updated_schema, **updated_catalog_info_params
         )
-        return self.__class__(ddf, ddf_pixel_map, hc_structure)
+        return self.__class__(ddf, ddf_pixel_map, hc_structure, loading_config=self.loading_config)
 
     def get_healpix_pixels(self) -> list[HealpixPixel]:
         """Get all HEALPix pixels that are contained in the catalog
@@ -646,7 +653,17 @@ class HealpixDataset(Dataset):
         columns = nonnested_basecols + [c for cs in loading_columns for c in cs]
 
         hc_structure = self._create_modified_hc_structure(updated_schema=self.hc_structure.original_schema)
-        return _load_catalog(hc_structure, search_filter=search, columns=columns, error_empty_filter=False)
+        new_loading_config = HatsLoadingConfig(
+            search_filter=search,
+            columns=columns,
+            margin_cache=None,
+            error_empty_filter=False,
+        )
+        if self.loading_config:
+            new_loading_config.filters = self.loading_config.filters
+            new_loading_config.kwargs = self.loading_config.kwargs
+
+        return _load_catalog(hc_structure, new_loading_config)
 
     def map_partitions(
         self,

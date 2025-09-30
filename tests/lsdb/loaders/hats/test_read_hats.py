@@ -13,7 +13,8 @@ from upath import UPath
 
 import lsdb
 import lsdb.nested as nd
-from lsdb.core.search import BoxSearch, ConeSearch, IndexSearch, OrderSearch, PolygonSearch
+from lsdb.core.search.index_search import IndexSearch
+from lsdb.core.search.region_search import BoxSearch, ConeSearch, OrderSearch, PolygonSearch
 
 
 def test_read_hats(small_sky_order1_dir, small_sky_order1_hats_catalog, helpers):
@@ -346,6 +347,8 @@ def test_read_hats_with_extra_kwargs(small_sky_order1_dir):
     catalog = lsdb.open_catalog(small_sky_order1_dir, filters=[("ra", ">", 300)])
     assert isinstance(catalog, lsdb.Catalog)
     assert np.greater(catalog.compute()["ra"].to_numpy(), 300).all()
+
+    assert catalog.loading_config.make_query_url_params() == {"filters": "ra>300"}
 
 
 def test_read_hats_with_mistaken_kwargs(small_sky_order1_dir, small_sky_xmatch_margin_dir):
