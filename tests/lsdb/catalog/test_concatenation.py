@@ -1112,3 +1112,49 @@ def test_concat_ignore_empty_margins_mixed_orders(
 
     # Symmetry with forwarded kwargs
     _assert_concat_symmetry_with_kwargs(left, right, ignore_empty_margins=True)
+
+
+class _FlakyMarginCatalog:  # pylint: disable=too-few-public-methods
+    """Returns sequential values from `.margin` on each access."""
+
+    def __init__(self, sequence):
+        self._seq = list(sequence)
+
+    @property
+    def margin(self):
+        # pop(0) simulates a change between consecutive reads
+        return self._seq.pop(0) if self._seq else None
+
+
+def test_handle_margins_defensive_guard_both_have_margin_but_second_read_none():
+    """
+    Covers:
+        if left_margin is None or right_margin is None:
+            return None
+
+    Scenario: the initial check sees a margin on both sides; on re-read,
+    one side becomes None and the function early-returns.
+    """
+    left = _FlakyMarginCatalog(sequence=[object(), None])
+    right = _FlakyMarginCatalog(sequence=[object(), None])
+
+    got = m.handle_margins_for_concat(left, right, ignore_empty_margins=False)
+    assert got is None  # hit the defensive guard
+
+
+def test_handle_margins_defensive_guard_xor_but_existing_margin_turns_none():
+    """
+    Covers:
+        if existing_margin is None:
+            return None
+
+    Scenario: XOR is True (only one side has a margin on the first read),
+    but when assigning `existing_margin`, the second read returns None.
+    """
+    # Left: appears to have a margin on the first read; becomes None on the second.
+    left = _FlakyMarginCatalog(sequence=[object(), None])
+    # Right: never has a margin
+    right = _FlakyMarginCatalog(sequence=[None])
+
+    got = m.handle_margins_for_concat(left, right, ignore_empty_margins=True)
+    assert got is None  # hit the `existing_margin` guard
