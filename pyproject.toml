@@ -27,7 +27,7 @@ dependencies = [
     "pyarrow>=14.0.1,<21.0.0; platform_system == 'Windows'",
     "pyarrow>=14.0.1; platform_system != 'Windows'",
     "scipy>=1.7.2", # kdtree
-    "universal-pathlib>=0.2.2",
+    "universal-pathlib>=0.2.2,<0.3.0",
 ]
 
 [project.urls]
@@ -37,8 +37,10 @@ documentation = "https://lsdb.readthedocs.io/"
 # On a mac, install optional dependencies with `pip install '.[dev]'` (include the single quotes)
 [project.optional-dependencies]
 dev = [
-    "asv", # Used to compute performance benchmarks
-    "jupyter", # Clear notebook output
+    "asv==0.6.4", # Used to compute performance benchmarks
+    "virtualenv==20.30", # Temporary fix to airspeed-velocity/asv#1484
+    "black", # Used for static linting of files
+    "jupyter", # Clears output from Jupyter notebooks
     "mypy", # Used for static type checking of files
     "pre-commit", # Used to run checks before finalizing a git commit
     "pylint", # Used for static linting of files
