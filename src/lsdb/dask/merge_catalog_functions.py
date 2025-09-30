@@ -446,14 +446,6 @@ def _get_right_tree_and_moc(right: Catalog, add_right_margin: bool = True):
             delta_order = int(np.ceil(np.log2(right_added_radius / right_moc_depth_resol)))
             right_moc = right_moc.degrade_to_order(right_moc.max_order - delta_order).add_neighbours()
 
-    # TODO: what it used to be before _merge_association_alignments
-    # return align_with_mocs(
-    #     left.hc_structure.pixel_tree,
-    #     right_tree,
-    #     left.hc_structure.moc,
-    #     right_moc,
-    #     alignment_type=alignment_type,
-    #     )
     return right_tree, right_moc
 
 
