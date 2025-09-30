@@ -30,7 +30,6 @@ if TYPE_CHECKING:
 
 
 # pylint: disable=too-many-arguments, unused-argument
-# TODO: plumb 'how' into this function
 def perform_crossmatch(
     left_df,
     right_df,
@@ -62,11 +61,37 @@ def perform_crossmatch(
     if len(left_df) == 0:
         return meta_df
 
-    # TODO: check right_df?
+    # TODO: check right_df?  only needed if None is possible for this and right_margin_df
 
     # TODO: does this work if either or both are None?
     right_joined_df = concat_partition_and_margin(right_df, right_margin_df)
     # TODO: check to see if right_joined_df is empty
+
+    # TODO: ?
+    # TODO: Sean suggests this happen within perform_crossmatch(), above
+    # TODO: because Dask DDFs don't understand the alignment here
+    # if how == "inner":
+    #     # This is the ordinary sense of crossmatching.  No change.
+    #     pass
+    # elif how == "left":
+    #     # Take *all* of the left-catalog partitions.
+    #     # NOTE: must also take non-matching *rows* from the left pixel.
+    #     nf = pd.concat([right_joined_df, left._ddf], ignore_index=True)
+    # elif how == "right":
+    #     # Same as above except it's all of the right-side partitions.
+    #     # NOTE:  makes the least sense because of how margin_caches are consulted and when n_neighbors > 1
+    #     nf = pd.concat([nf, right._ddf], ignore_index=True)
+    # elif how == "outer":
+    #     # Same, except it's ALL partitions.
+    #     # NOTE:  same problem as "right"
+    #     nf = pd.concat([nf, left._ddf, right._ddf], ignore_index=True)
+    # else:
+    #     raise ValueError(f"Unknown crossmatching approach: `how={how}`")
+
+    # TODO: and now rebalance/recalculate?
+    # TODO: So long as every point in the output comes from a point in the left-catalog, we're okay.
+    # TODO: still might be nice to "re-sort the partition" (do we have such a function? sort-by-healpix_29-index)
+    # TODO: ?
 
     return algorithm(
         left_df,
@@ -193,21 +218,6 @@ def crossmatch_catalog_data(
     # Otherwise there are mismatches between the cardinalities of the partitions and the
     # pixel_map.
     nf, pixel_map, alignment = construct_catalog_args(joined_partitions, meta_df, alignment)
-
-    # if how == "inner":
-    #     # This is the ordinary sense of crossmatching.  No change.
-    #     pass
-    # elif how == "left":
-    #     # Take *all* of the left-catalog partitions.
-    #     nf = pd.concat([nf, left._ddf], ignore_index=True)
-    # elif how == "right":
-    #     # Same as above except it's all of the right-side partitions.
-    #     nf = pd.concat([nf, right._ddf], ignore_index=True)
-    # elif how == "outer":
-    #     # Same, except it's ALL partitions.
-    #     nf = pd.concat([nf, left._ddf, right._ddf], ignore_index=True)
-    # else:
-    #     raise ValueError(f"Unknown crossmatching approach: `how={how}`")
 
     return nf, pixel_map, alignment
 
