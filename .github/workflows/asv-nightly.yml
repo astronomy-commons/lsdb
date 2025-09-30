@@ -31,7 +31,13 @@ jobs:
       with:
         fetch-depth: 0
     - name: Install dependencies
-      run: pip install asv[virtualenv]==$ASV_VERSION
+      run: |
+        pip install asv==${{env.ASV_VERSION}}
+        pip install virtualenv==20.30 # Temporary fix to airspeed-velocity/asv#1484
+    - name: Configure git
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
     - name: Create ASV machine config file
       run: asv machine --machine gh-runner --yes
     - name: Get nightly dates under comparison
