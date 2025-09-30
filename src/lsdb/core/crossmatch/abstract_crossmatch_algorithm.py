@@ -227,6 +227,7 @@ class AbstractCrossmatchAlgorithm(ABC):
             # TODO: handle duplicate results from left
             # TODO: try np.range, then exclude anything that appears in left_idx.  Try np.isin
             left_join_part = self.left.reset_index()
+            # TODO: want self.left[left_idx] and THEN concat self.left[~left_idx] with NAs for the xmatch columns (the _right columns)
             right_join_part = self.right.iloc[right_idx].reset_index(drop=True)
             out = pd.concat(
                 [
