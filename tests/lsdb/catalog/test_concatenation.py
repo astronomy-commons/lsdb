@@ -1,3 +1,4 @@
+import warnings
 from collections import Counter
 from types import SimpleNamespace
 from typing import cast
@@ -1114,47 +1115,139 @@ def test_concat_ignore_empty_margins_mixed_orders(
     _assert_concat_symmetry_with_kwargs(left, right, ignore_empty_margins=True)
 
 
-class _FlakyMarginCatalog:  # pylint: disable=too-few-public-methods
-    """Returns sequential values from `.margin` on each access."""
-
-    def __init__(self, sequence):
-        self._seq = list(sequence)
-
-    @property
-    def margin(self):
-        # pop(0) simulates a change between consecutive reads
-        return self._seq.pop(0) if self._seq else None
+# --- New lightweight unit tests for handle_margins_for_concat ---
 
 
-def test_handle_margins_defensive_guard_both_have_margin_but_second_read_none():
+class _DummyHCCatalog:  # pylint: disable=too-few-public-methods
+    """Minimal stub to mimic a HATS catalog-like structure."""
+
+    def __init__(self, catalog_info, pixel_tree=None):
+        self.catalog_info = catalog_info
+        self.pixel_tree = pixel_tree
+
+
+class _DummyMargin:  # pylint: disable=too-few-public-methods
+    """Margin stub with just enough surface for the function under test."""
+
+    def __init__(self, radius: float):
+        # catalog_info with margin_threshold
+        self.hc_structure = _DummyHCCatalog(catalog_info=SimpleNamespace(margin_threshold=radius))
+        # capture arguments passed to _create_updated_dataset
+        self._last_kwargs = None
+
+    def _create_updated_dataset(self, *, ddf, ddf_pixel_map, hc_structure, updated_catalog_info_params):
+        # store for assertions
+        self._last_kwargs = {
+            "ddf": ddf,
+            "ddf_pixel_map": ddf_pixel_map,
+            "hc_structure": hc_structure,
+            "updated_catalog_info_params": updated_catalog_info_params,
+        }
+        # return a sentinel we can assert on
+        return ("UPDATED", hc_structure, updated_catalog_info_params)
+
+
+def test_handle_margins_both_have_margin_uses_min_threshold_and_calls_concat(monkeypatch):
     """
-    Covers:
-        if left_margin is None or right_margin is None:
-            return None
-
-    Scenario: the initial check sees a margin on both sides; on re-read,
-    one side becomes None and the function early-returns.
+    When both sides have margins, the function must:
+      * use the smallest of the two thresholds,
+      * call concat_margin_data with that radius,
+      * return the result of _create_updated_dataset from the left margin.
     """
-    left = _FlakyMarginCatalog(sequence=[object(), None])
-    right = _FlakyMarginCatalog(sequence=[object(), None])
+    left_margin = _DummyMargin(radius=1.5)
+    right_margin = _DummyMargin(radius=2.5)
+
+    left = SimpleNamespace(margin=left_margin)
+    right = SimpleNamespace(margin=right_margin)
+
+    # Spy concat_margin_data to capture args and return a lightweight triple
+    called = {}
+
+    def _fake_concat_margin_data(left_arg, right_arg, radius, **kwargs):
+        called["args"] = (left_arg, right_arg, radius, kwargs)
+        # mimic (ddf, ddf_map, alignment) where alignment has pixel_tree
+        return ("DD", "MAP", SimpleNamespace(pixel_tree="PIXELS"))
+
+    monkeypatch.setattr(m, "concat_margin_data", _fake_concat_margin_data)
 
     got = m.handle_margins_for_concat(left, right, ignore_empty_margins=False)
-    assert got is None  # hit the defensive guard
+
+    # Check concat was called with the min radius (1.5)
+    assert "args" in called, "concat_margin_data was not called"
+    _left_arg, _right_arg, radius_used, _kwargs = called["args"]
+    assert pytest.approx(radius_used, rel=0, abs=0) == 1.5
+
+    # The return should be the sentinel from _create_updated_dataset
+    assert isinstance(got, tuple) and got[0] == "UPDATED"
+
+    # And the updated_catalog_info_params should carry the chosen radius
+    updated_params = got[2]
+    assert isinstance(updated_params, dict)
+    assert pytest.approx(updated_params.get("margin_threshold"), rel=0, abs=0) == 1.5
+
+    # Sanity: left margin recorded the kwargs we passed into _create_updated_dataset
+    assert left_margin._last_kwargs is not None
+    assert left_margin._last_kwargs["hc_structure"].catalog_info is left_margin.hc_structure.catalog_info
+    assert left_margin._last_kwargs["updated_catalog_info_params"]["margin_threshold"] == 1.5
 
 
-def test_handle_margins_defensive_guard_xor_but_existing_margin_turns_none():
+def test_handle_margins_neither_side_has_margin_returns_none_without_warning():
     """
-    Covers:
-        if existing_margin is None:
-            return None
-
-    Scenario: XOR is True (only one side has a margin on the first read),
-    but when assigning `existing_margin`, the second read returns None.
+    When neither side has a margin, the function must simply return None
+    and emit no warnings.
     """
-    # Left: appears to have a margin on the first read; becomes None on the second.
-    left = _FlakyMarginCatalog(sequence=[object(), None])
-    # Right: never has a margin
-    right = _FlakyMarginCatalog(sequence=[None])
+    left = SimpleNamespace(margin=None)
+    right = SimpleNamespace(margin=None)
 
-    got = m.handle_margins_for_concat(left, right, ignore_empty_margins=True)
-    assert got is None  # hit the `existing_margin` guard
+    with warnings.catch_warnings(record=True):
+        warnings.simplefilter("error")
+        got = m.handle_margins_for_concat(left, right, ignore_empty_margins=False)
+
+    assert got is None
+
+
+def test_handle_margins_one_side_has_margin_legacy_warns_and_returns_none():
+    """
+    When exactly one side has a margin and ignore_empty_margins=False:
+      * a warning must be emitted, and
+      * the function must return None (legacy behavior).
+    """
+    left_margin = _DummyMargin(radius=1.0)
+    left = SimpleNamespace(margin=left_margin)
+    right = SimpleNamespace(margin=None)
+
+    with pytest.warns(UserWarning, match=r"One side has no margin"):
+        got = m.handle_margins_for_concat(left, right, ignore_empty_margins=False)
+
+    assert got is None
+
+
+def test_handle_margins_one_side_has_margin_keep_existing_calls_concat(monkeypatch):
+    """
+    When exactly one side has a margin and ignore_empty_margins=True:
+      * concat_margin_data must be called with the existing radius, and
+      * the result must come from existing._create_updated_dataset.
+    """
+    existing = _DummyMargin(radius=2.0)
+    left = SimpleNamespace(margin=existing)
+    right = SimpleNamespace(margin=None)
+
+    called = {}
+
+    def _fake_concat_margin_data(left_arg, right_arg, radius, **kwargs):
+        called["args"] = (left_arg, right_arg, radius, kwargs)
+        return ("DD", "MAP", SimpleNamespace(pixel_tree="PIXELS"))
+
+    monkeypatch.setattr(m, "concat_margin_data", _fake_concat_margin_data)
+
+    with pytest.warns(UserWarning, match=r"ignore_empty_margins=True.*treated as empty"):
+        got = m.handle_margins_for_concat(left, right, ignore_empty_margins=True)
+
+    # Verifica chamada com o raio do lado existente
+    assert "args" in called
+    _l, _r, radius_used, _kw = called["args"]
+    assert radius_used == 2.0
+
+    # Verifica retorno do _create_updated_dataset
+    assert isinstance(got, tuple) and got[0] == "UPDATED"
+    assert got[2]["margin_threshold"] == 2.0

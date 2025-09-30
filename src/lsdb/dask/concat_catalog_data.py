@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import pandas as pd
 from hats.pixel_tree import PixelAlignment, PixelAlignmentType
@@ -422,39 +422,39 @@ def handle_margins_for_concat(
         MarginCatalog | None: Concatenated margin catalog, or None if margins
         are not retained.
     """
-    left_has_margin = left.margin is not None
-    right_has_margin = right.margin is not None
+    # Read once; helps both runtime clarity and type checkers.
+    lm: MarginCatalog | None = left.margin
+    rm: MarginCatalog | None = right.margin
 
-    if left_has_margin and right_has_margin:
+    if lm is not None and rm is not None:
         # Both sides have margins: standard path (unchanged behavior).
         # Use the smallest radius between the two margins.
-
-        left_margin = left.margin
-        right_margin = right.margin
-        # Defensive (unreachable due to the guard above), also satisfies type checkers:
-        if left_margin is None or right_margin is None:
-            return None
-
         smallest_margin_radius = min(
-            left_margin.hc_structure.catalog_info.margin_threshold or 0.0,
-            right_margin.hc_structure.catalog_info.margin_threshold or 0.0,
+            lm.hc_structure.catalog_info.margin_threshold or 0.0,
+            rm.hc_structure.catalog_info.margin_threshold or 0.0,
         )
         margin_ddf, margin_ddf_map, margin_alignment = concat_margin_data(
             left, right, smallest_margin_radius, **kwargs
         )
-        margin_hc_catalog = left_margin.hc_structure.__class__(
-            left_margin.hc_structure.catalog_info,
+        margin_hc_catalog = lm.hc_structure.__class__(
+            lm.hc_structure.catalog_info,
             margin_alignment.pixel_tree,
         )
-        return left_margin._create_updated_dataset(  # pylint: disable=protected-access
+        return lm._create_updated_dataset(  # pylint: disable=protected-access
             ddf=margin_ddf,
             ddf_pixel_map=margin_ddf_map,
             hc_structure=margin_hc_catalog,
             updated_catalog_info_params={"margin_threshold": smallest_margin_radius},
         )
 
-    if left_has_margin != right_has_margin:
+    if lm is not None or rm is not None:
         # Exactly one side has a margin.
+        existing: MarginCatalog
+        if lm is not None:
+            existing = lm
+        else:
+            existing = cast("MarginCatalog", rm)
+
         if not ignore_empty_margins:
             # Legacy behavior: drop margins entirely.
             warnings.warn(
@@ -466,12 +466,7 @@ def handle_margins_for_concat(
 
         # New behavior: keep the available margin by treating the missing side as empty.
         # Use the existing side's radius for the concatenated margin.
-        existing_margin = left.margin if left_has_margin else right.margin
-        # Defensive (unreachable if the XOR above is correct), also satisfies type checkers:
-        if existing_margin is None:
-            return None
-
-        existing_radius = existing_margin.hc_structure.catalog_info.margin_threshold or 0.0
+        existing_radius = existing.hc_structure.catalog_info.margin_threshold or 0.0
 
         warnings.warn(
             "ignore_empty_margins=True and only one side has a margin: the "
@@ -482,11 +477,11 @@ def handle_margins_for_concat(
         margin_ddf, margin_ddf_map, margin_alignment = concat_margin_data(
             left, right, existing_radius, **kwargs
         )
-        margin_hc_catalog = existing_margin.hc_structure.__class__(
-            existing_margin.hc_structure.catalog_info,
+        margin_hc_catalog = existing.hc_structure.__class__(
+            existing.hc_structure.catalog_info,
             margin_alignment.pixel_tree,
         )
-        return existing_margin._create_updated_dataset(  # pylint: disable=protected-access
+        return existing._create_updated_dataset(  # pylint: disable=protected-access
             ddf=margin_ddf,
             ddf_pixel_map=margin_ddf_map,
             hc_structure=margin_hc_catalog,
