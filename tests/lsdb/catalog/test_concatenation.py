@@ -1119,7 +1119,7 @@ def test_handle_margins_both_have_margin_uses_min_threshold_and_calls_concat(mon
     # Check concat was called with the min radius (1.5)
     assert "args" in called, "concat_margin_data was not called"
     _left_arg, _right_arg, radius_used, _kwargs = called["args"]
-    assert pytest.approx(radius_used, rel=0, abs=0) == 1.5
+    assert radius_used == 1.5
 
     # The return should be the sentinel from _create_updated_dataset
     assert isinstance(got, tuple) and got[0] == "UPDATED"
@@ -1127,7 +1127,7 @@ def test_handle_margins_both_have_margin_uses_min_threshold_and_calls_concat(mon
     # And the updated_catalog_info_params should carry the chosen radius
     updated_params = got[2]
     assert isinstance(updated_params, dict)
-    assert pytest.approx(updated_params.get("margin_threshold"), rel=0, abs=0) == 1.5
+    assert updated_params.get("margin_threshold") == 1.5
 
     # Sanity: left margin recorded the kwargs we passed into _create_updated_dataset
     assert left_margin._last_kwargs is not None
