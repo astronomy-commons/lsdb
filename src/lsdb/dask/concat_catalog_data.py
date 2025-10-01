@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 import pandas as pd
 from hats.pixel_tree import PixelAlignment, PixelAlignmentType
@@ -449,11 +449,12 @@ def handle_margins_for_concat(
 
     if lm is not None or rm is not None:
         # Exactly one side has a margin.
-        existing: MarginCatalog
         if lm is not None:
-            existing = lm
-        else:
-            existing = cast("MarginCatalog", rm)
+            existing: MarginCatalog = lm
+        elif rm is not None:
+            existing = rm
+        else:  # pragma: no cover - logically unreachable due to the condition above
+            return None
 
         if not ignore_empty_margins:
             # Legacy behavior: drop margins entirely.
