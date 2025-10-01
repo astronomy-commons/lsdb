@@ -2,6 +2,7 @@ import warnings
 from collections import Counter
 from types import SimpleNamespace
 from typing import cast
+from unittest.mock import MagicMock
 
 import nested_pandas as npd
 import numpy as np
@@ -1105,20 +1106,15 @@ def test_handle_margins_both_have_margin_uses_min_threshold_and_calls_concat(mon
     right = SimpleNamespace(margin=right_margin)
 
     # Spy concat_margin_data to capture args and return a lightweight triple
-    called = {}
-
-    def _fake_concat_margin_data(left_arg, right_arg, radius, **kwargs):
-        called["args"] = (left_arg, right_arg, radius, kwargs)
-        # mimic (ddf, ddf_map, alignment) where alignment has pixel_tree
-        return ("DD", "MAP", SimpleNamespace(pixel_tree="PIXELS"))
-
-    monkeypatch.setattr(concat_catalog_data, "concat_margin_data", _fake_concat_margin_data)
+    fake_concat = MagicMock(return_value=("DD", "MAP", SimpleNamespace(pixel_tree="PIXELS")))
+    monkeypatch.setattr(concat_catalog_data, "concat_margin_data", fake_concat)
 
     got = concat_catalog_data.handle_margins_for_concat(left, right, ignore_empty_margins=False)
 
     # Check concat was called with the min radius (1.5)
-    assert "args" in called, "concat_margin_data was not called"
-    _left_arg, _right_arg, radius_used, _kwargs = called["args"]
+    fake_concat.assert_called_once()
+    _left_arg, _right_arg, radius_used = fake_concat.call_args[0][:3]
+    _kwargs = fake_concat.call_args.kwargs
     assert radius_used == 1.5
 
     # The return should be the sentinel from _create_updated_dataset
@@ -1176,20 +1172,17 @@ def test_handle_margins_one_side_has_margin_keep_existing_calls_concat(monkeypat
     left = SimpleNamespace(margin=existing)
     right = SimpleNamespace(margin=None)
 
-    called = {}
-
-    def _fake_concat_margin_data(left_arg, right_arg, radius, **kwargs):
-        called["args"] = (left_arg, right_arg, radius, kwargs)
-        return ("DD", "MAP", SimpleNamespace(pixel_tree="PIXELS"))
-
-    monkeypatch.setattr(concat_catalog_data, "concat_margin_data", _fake_concat_margin_data)
+    # Spy concat_margin_data to capture args and return a lightweight triple
+    fake_concat = MagicMock(return_value=("DD", "MAP", SimpleNamespace(pixel_tree="PIXELS")))
+    monkeypatch.setattr(concat_catalog_data, "concat_margin_data", fake_concat)
 
     with pytest.warns(UserWarning, match=r"ignore_empty_margins=True.*treated as empty"):
         got = concat_catalog_data.handle_margins_for_concat(left, right, ignore_empty_margins=True)
 
     # Check that it was called with the existing radius
-    assert "args" in called
-    _l, _r, radius_used, _kw = called["args"]
+    fake_concat.assert_called_once()
+    _l, _r, radius_used = fake_concat.call_args[0][:3]
+    _kw = fake_concat.call_args.kwargs
     assert radius_used == 2.0
 
     # Check return from _create_updated_dataset
