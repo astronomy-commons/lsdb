@@ -83,34 +83,41 @@ def _align_columns(df1: pd.DataFrame, df2: pd.DataFrame) -> tuple[pd.DataFrame, 
     return df1.reindex(columns=all_cols), df2.reindex(columns=all_cols)
 
 
-def _assert_concat_symmetry(left_cat, right_cat, cols_subset: list[str] | None = None):
+def _assert_concat_symmetry(
+    left_cat: Catalog,
+    right_cat: Catalog,
+    cols_subset: list[str] | None = None,
+    **concat_kwargs,
+):
     """Assert that concatenation is symmetric between left and right catalogs.
 
-    This checks that `left.concat(right)` and `right.concat(left)` produce the
-    same content for both the main tables and the margin tables, regardless of
-    row or column order. The comparison includes the spatial-index column.
+    This checks that `left.concat(right, **concat_kwargs)` and
+    `right.concat(left, **concat_kwargs)` produce the same content for both the
+    main tables and the margin tables, regardless of row or column order.
+    The comparison includes the spatial-index column.
 
     Args:
-        left_cat: Left catalog object.
-        right_cat: Right catalog object.
+        left_cat (Catalog): Left catalog object.
+        right_cat (Catalog): Right catalog object.
         cols_subset (list[str] | None): If provided, restrict comparison to this
             subset of columns (plus spatial index).
+        **concat_kwargs: Keyword arguments forwarded to `Catalog.concat`.
 
     Raises:
         AssertionError: If the concatenated catalogs differ in content.
     """
-    lr = left_cat.concat(right_cat)
-    rl = right_cat.concat(left_cat)
+    lr = left_cat.concat(right_cat, **concat_kwargs)
+    rl = right_cat.concat(left_cat, **concat_kwargs)
 
     # Main tables
-    df_lr = lr.compute().reset_index()
-    df_rl = rl.compute().reset_index()
+    df_lr = lr.compute().reset_index(drop=True)
+    df_rl = rl.compute().reset_index(drop=True)
 
     # Margin tables (may be None)
     lr_margin = getattr(lr, "margin", None)
     rl_margin = getattr(rl, "margin", None)
-    df_lr_margin = lr_margin.compute().reset_index() if lr_margin is not None else None
-    df_rl_margin = rl_margin.compute().reset_index() if rl_margin is not None else None
+    df_lr_margin = lr_margin.compute().reset_index(drop=True) if lr_margin is not None else None
+    df_rl_margin = rl_margin.compute().reset_index(drop=True) if rl_margin is not None else None
 
     if cols_subset is not None:
         keep_main = [
@@ -820,68 +827,6 @@ def test__check_strict_column_types_raises_on_conflict():
 # ---------------------------- extra helpers -------------------------------- #
 
 
-def _assert_concat_symmetry_with_kwargs(
-    left_cat: Catalog,
-    right_cat: Catalog,
-    cols_subset: list[str] | None = None,
-    **concat_kwargs,
-):
-    """Assert symmetric concatenation while forwarding kwargs to Catalog.concat.
-
-    This mirrors `_assert_concat_symmetry` but forwards the provided kwargs to
-    `left.concat(right, **concat_kwargs)` and `right.concat(left, **concat_kwargs)`.
-    It compares both the main and margin tables as multisets of rows (order-insensitive).
-
-    Args:
-        left_cat (Catalog): Left catalog instance.
-        right_cat (Catalog): Right catalog instance.
-        cols_subset (list[str] | None): Optional subset of columns to compare
-            (plus the spatial-index column).
-        **concat_kwargs: Keyword arguments forwarded to `Catalog.concat`.
-    """
-    lr = left_cat.concat(right_cat, **concat_kwargs)
-    rl = right_cat.concat(left_cat, **concat_kwargs)
-
-    # Main tables
-    df_lr = lr.compute().reset_index()
-    df_rl = rl.compute().reset_index()
-
-    # Margins (may be None)
-    lr_margin = getattr(lr, "margin", None)
-    rl_margin = getattr(rl, "margin", None)
-    df_lr_margin = lr_margin.compute().reset_index() if lr_margin is not None else None
-    df_rl_margin = rl_margin.compute().reset_index() if rl_margin is not None else None
-
-    if cols_subset is not None:
-        keep_main = [
-            c for c in [SPATIAL_INDEX_COLUMN] + cols_subset if c in df_lr.columns or c in df_rl.columns
-        ]
-        df_lr = df_lr[keep_main]
-        df_rl = df_rl[keep_main]
-
-        if df_lr_margin is not None and df_rl_margin is not None:
-            keep_margin = [
-                c
-                for c in [SPATIAL_INDEX_COLUMN] + cols_subset
-                if c in df_lr_margin.columns or c in df_rl_margin.columns
-            ]
-            df_lr_margin = df_lr_margin[keep_margin]
-            df_rl_margin = df_rl_margin[keep_margin]
-
-    # Compare main tables as multisets
-    df_lr, df_rl = _align_columns(df_lr, df_rl)
-    ms_lr = _row_multiset(df_lr)
-    ms_rl = _row_multiset(df_rl)
-    assert ms_lr == ms_rl, "Main tables differ with forwarded kwargs."
-
-    # Compare margins as multisets (if both exist)
-    if df_lr_margin is not None and df_rl_margin is not None:
-        df_lr_margin, df_rl_margin = _align_columns(df_lr_margin, df_rl_margin)
-        ms_lr_margin = _row_multiset(df_lr_margin)
-        ms_rl_margin = _row_multiset(df_rl_margin)
-        assert ms_lr_margin == ms_rl_margin, "Margin tables differ with forwarded kwargs."
-
-
 def _make_plain_catalog_at_order(src_cat: Catalog, order: int) -> Catalog:
     """Materialize a no-margin catalog at a specific HEALPix order.
 
@@ -962,7 +907,7 @@ def test_concat_ignore_empty_margins_left_missing_keeps_right_margin(test_data_d
         assert cnt <= ms_right[row], "Concatenated margin contains rows not present in RIGHT's margin"
 
     # Symmetry with forwarded kwargs
-    _assert_concat_symmetry_with_kwargs(left_cat, right_cat, ignore_empty_margins=True)
+    _assert_concat_symmetry(left_cat, right_cat, ignore_empty_margins=True)
 
 
 def test_concat_ignore_empty_margins_right_missing_keeps_left_margin(test_data_dir):
@@ -1007,7 +952,7 @@ def test_concat_ignore_empty_margins_right_missing_keeps_left_margin(test_data_d
         assert cnt <= ms_left[row], "Concatenated margin contains rows not present in LEFT's margin"
 
     # Symmetry with forwarded kwargs
-    _assert_concat_symmetry_with_kwargs(left_cat, right_cat, ignore_empty_margins=True)
+    _assert_concat_symmetry(left_cat, right_cat, ignore_empty_margins=True)
 
 
 @pytest.mark.parametrize(
@@ -1112,7 +1057,7 @@ def test_concat_ignore_empty_margins_mixed_orders(
     ), f"[{left_kind} + {right_kind}] expected margin_threshold={exp_thr}, got {got_thr}"
 
     # Symmetry with forwarded kwargs
-    _assert_concat_symmetry_with_kwargs(left, right, ignore_empty_margins=True)
+    _assert_concat_symmetry(left, right, ignore_empty_margins=True)
 
 
 # --- New lightweight unit tests for handle_margins_for_concat ---
