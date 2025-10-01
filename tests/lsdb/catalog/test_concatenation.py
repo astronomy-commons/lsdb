@@ -10,11 +10,10 @@ import pytest
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 
 import lsdb
-import lsdb.dask.concat_catalog_data as m
-import lsdb.dask.merge_catalog_functions as mf
 import lsdb.nested as nd
 from lsdb import ConeSearch
 from lsdb.catalog.catalog import Catalog
+from lsdb.dask import concat_catalog_data, merge_catalog_functions
 
 # pylint: disable=too-many-lines
 
@@ -702,13 +701,13 @@ def test__is_all_na_returns_true_for_size_zero():
     """Verify _is_all_na correctness for empty, all-null, and mixed DataFrames."""
     df_empty = pd.DataFrame(columns=["a", "b"]).iloc[0:0]
     assert df_empty.size == 0
-    assert m._is_all_na(df_empty) is True
+    assert concat_catalog_data._is_all_na(df_empty) is True
 
     df_all_na = pd.DataFrame({"a": [np.nan, np.nan], "b": [pd.NA, pd.NA]})
-    assert m._is_all_na(df_all_na) is True
+    assert concat_catalog_data._is_all_na(df_all_na) is True
 
     df_some = pd.DataFrame({"a": [np.nan, 1.0]})
-    assert m._is_all_na(df_some) is False
+    assert concat_catalog_data._is_all_na(df_some) is False
 
 
 def test__concat_meta_safe_skips_none_and_all_na_parts():
@@ -720,7 +719,7 @@ def test__concat_meta_safe_skips_none_and_all_na_parts():
     p_all_na = pd.DataFrame({"a": [np.nan, np.nan], "b": [pd.NA, pd.NA]})
     p_data = pd.DataFrame({"a": [1.0, 2.0], "b": [3.0, 4.0]})
 
-    out = m._concat_meta_safe(meta, [p_none, p_empty, p_all_na, p_data], ignore_index=True)
+    out = concat_catalog_data._concat_meta_safe(meta, [p_none, p_empty, p_all_na, p_data], ignore_index=True)
 
     pd.testing.assert_frame_equal(
         out.reset_index(drop=True),
@@ -740,14 +739,14 @@ def test_filter_by_spatial_index_to_margin_raises_when_margin_order_smaller_than
     Args:
         monkeypatch: Pytest monkeypatch fixture.
     """
-    df = pd.DataFrame({"x": [1]}, index=pd.Index([0], name=mf.SPATIAL_INDEX_COLUMN))
+    df = pd.DataFrame({"x": [1]}, index=pd.Index([0], name=merge_catalog_functions.SPATIAL_INDEX_COLUMN))
 
-    monkeypatch.setattr(mf.hp, "margin2order", lambda arr: np.array([0], dtype=int))
+    monkeypatch.setattr(merge_catalog_functions.hp, "margin2order", lambda arr: np.array([0], dtype=int))
 
     with pytest.raises(
         ValueError, match=r"Margin order .* is smaller than the order .* Cannot generate margin"
     ):
-        mf.filter_by_spatial_index_to_margin(
+        merge_catalog_functions.filter_by_spatial_index_to_margin(
             dataframe=df,
             order=1,
             pixel=0,
@@ -758,7 +757,7 @@ def test_filter_by_spatial_index_to_margin_raises_when_margin_order_smaller_than
 def test_get_aligned_pixels_from_alignment_empty_mapping_returns_empty_list():
     """Return an empty list if alignment.pixel_mapping is empty."""
     dummy_alignment = SimpleNamespace(pixel_mapping=pd.DataFrame())
-    got = mf.get_aligned_pixels_from_alignment(dummy_alignment)
+    got = merge_catalog_functions.get_aligned_pixels_from_alignment(dummy_alignment)
     assert not got
     assert isinstance(got, list)
 
@@ -787,7 +786,7 @@ def test__reindex_and_coerce_dtypes_success():
         }
     )
 
-    out = m._reindex_and_coerce_dtypes(df, meta)
+    out = concat_catalog_data._reindex_and_coerce_dtypes(df, meta)
 
     # Explicitly build expected with pd.NA for string dtype consistency
     expected = pd.DataFrame(
@@ -812,7 +811,7 @@ def test__reindex_and_coerce_dtypes_raises_typeerror_on_incompatible():
     df = pd.DataFrame({"x": ["abc", "42"]})
 
     with pytest.raises(TypeError, match="Could not convert column 'x'"):
-        m._reindex_and_coerce_dtypes(df, meta)
+        concat_catalog_data._reindex_and_coerce_dtypes(df, meta)
 
 
 def test__check_strict_column_types_raises_on_conflict():
@@ -821,7 +820,7 @@ def test__check_strict_column_types_raises_on_conflict():
     meta2 = pd.DataFrame({"x": pd.Series(dtype="float64")}).iloc[0:0]
 
     with pytest.raises(TypeError, match="Column 'x' has conflicting dtypes"):
-        m._check_strict_column_types(meta1, meta2)
+        concat_catalog_data._check_strict_column_types(meta1, meta2)
 
 
 # ---------------------------- extra helpers -------------------------------- #
@@ -1113,9 +1112,9 @@ def test_handle_margins_both_have_margin_uses_min_threshold_and_calls_concat(mon
         # mimic (ddf, ddf_map, alignment) where alignment has pixel_tree
         return ("DD", "MAP", SimpleNamespace(pixel_tree="PIXELS"))
 
-    monkeypatch.setattr(m, "concat_margin_data", _fake_concat_margin_data)
+    monkeypatch.setattr(concat_catalog_data, "concat_margin_data", _fake_concat_margin_data)
 
-    got = m.handle_margins_for_concat(left, right, ignore_empty_margins=False)
+    got = concat_catalog_data.handle_margins_for_concat(left, right, ignore_empty_margins=False)
 
     # Check concat was called with the min radius (1.5)
     assert "args" in called, "concat_margin_data was not called"
@@ -1146,7 +1145,7 @@ def test_handle_margins_neither_side_has_margin_returns_none_without_warning():
 
     with warnings.catch_warnings(record=True):
         warnings.simplefilter("error")
-        got = m.handle_margins_for_concat(left, right, ignore_empty_margins=False)
+        got = concat_catalog_data.handle_margins_for_concat(left, right, ignore_empty_margins=False)
 
     assert got is None
 
@@ -1162,7 +1161,7 @@ def test_handle_margins_one_side_has_margin_legacy_warns_and_returns_none():
     right = SimpleNamespace(margin=None)
 
     with pytest.warns(UserWarning, match=r"One side has no margin"):
-        got = m.handle_margins_for_concat(left, right, ignore_empty_margins=False)
+        got = concat_catalog_data.handle_margins_for_concat(left, right, ignore_empty_margins=False)
 
     assert got is None
 
@@ -1183,10 +1182,10 @@ def test_handle_margins_one_side_has_margin_keep_existing_calls_concat(monkeypat
         called["args"] = (left_arg, right_arg, radius, kwargs)
         return ("DD", "MAP", SimpleNamespace(pixel_tree="PIXELS"))
 
-    monkeypatch.setattr(m, "concat_margin_data", _fake_concat_margin_data)
+    monkeypatch.setattr(concat_catalog_data, "concat_margin_data", _fake_concat_margin_data)
 
     with pytest.warns(UserWarning, match=r"ignore_empty_margins=True.*treated as empty"):
-        got = m.handle_margins_for_concat(left, right, ignore_empty_margins=True)
+        got = concat_catalog_data.handle_margins_for_concat(left, right, ignore_empty_margins=True)
 
     # Check that it was called with the existing radius
     assert "args" in called
