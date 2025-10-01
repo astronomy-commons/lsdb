@@ -23,7 +23,7 @@ from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatc
 from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorithm
 from lsdb.core.search.abstract_search import AbstractSearch
 from lsdb.core.search.index_search import IndexSearch
-from lsdb.dask.concat_catalog_data import concat_catalog_data, handle_margins_for_concat
+from lsdb.dask.concat_catalog_data import _assert_same_ra_dec, concat_catalog_data, handle_margins_for_concat
 from lsdb.dask.crossmatch_catalog_data import crossmatch_catalog_data, crossmatch_catalog_data_nested
 from lsdb.dask.join_catalog_data import (
     join_catalog_data_nested,
@@ -380,8 +380,15 @@ class Catalog(HealpixDataset):
             Catalog: New catalog with OUTER pixel alignment. If both inputs have a
             margin — or if `ignore_empty_margins=True` and at least one side has it —
             the result includes a concatenated margin dataset.
+
+        Raises:
+            ValueError: If RA/Dec column names differ between the input catalogs, or
+                between a catalog and its own margin.
         """
-        # Delegate margin handling to helper
+        # Fail fast if RA/Dec columns differ between the two catalogs.
+        _assert_same_ra_dec(self, other, context="Catalog concat")
+
+        # Delegate margin handling to helper (which also validates catalog vs margin)
         margin = handle_margins_for_concat(
             self,
             other,

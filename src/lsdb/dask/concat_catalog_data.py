@@ -24,6 +24,53 @@ if TYPE_CHECKING:
     from lsdb.catalog.margin_catalog import MarginCatalog
 
 
+def _get_ra_dec_from_info(hc_dataset) -> tuple[str | None, str | None]:
+    """
+    Return the (ra_column, dec_column) from a HATS-like dataset's catalog_info.
+
+    Notes:
+        Returns (None, None) if not present in the metadata; the caller decides how to handle it.
+    """
+    info = hc_dataset.hc_structure.catalog_info  # type: ignore[attr-defined]
+    return getattr(info, "ra_column", None), getattr(info, "dec_column", None)
+
+
+def _assert_same_ra_dec(
+    left_ds,
+    right_ds,
+    *,
+    context: str,
+) -> None:
+    """
+    Raise ValueError if RA/Dec column names differ between two datasets.
+
+    Args:
+        left_ds: Left dataset (Catalog or MarginCatalog).
+        right_ds: Right dataset (Catalog or MarginCatalog).
+        context (str): Human-readable context message for the error.
+
+    Raises:
+        ValueError: If either side is missing RA/Dec names or if they differ.
+    """
+    l_ra, l_dec = _get_ra_dec_from_info(left_ds)
+    r_ra, r_dec = _get_ra_dec_from_info(right_ds)
+
+    # We require both sides to specify RA/Dec and to match exactly.
+    if not l_ra or not l_dec or not r_ra or not r_dec:
+        raise ValueError(
+            f"{context}: RA/Dec column names must be defined on both sides "
+            f"(left: ra={l_ra!r}, dec={l_dec!r}; right: ra={r_ra!r}, dec={r_dec!r})."
+        )
+
+    if (l_ra != r_ra) or (l_dec != r_dec):
+        raise ValueError(
+            f"{context}: incompatible RA/Dec columns "
+            f"(left: ra={l_ra!r}, dec={l_dec!r} vs right: ra={r_ra!r}, dec={r_dec!r}). "
+            "Please rename columns so both catalogs (and their margins) share the same RA/Dec names "
+            "before calling concat()."
+        )
+
+
 def _check_strict_column_types(meta1: pd.DataFrame, meta2: pd.DataFrame):
     """
     Raises a TypeError if columns with the same name have different dtypes.
@@ -425,6 +472,12 @@ def handle_margins_for_concat(
     # Read once; helps both runtime clarity and type checkers.
     lm: MarginCatalog | None = left.margin
     rm: MarginCatalog | None = right.margin
+
+    # Ensure margin RA/Dec are consistent with their owning catalog (if margins exist).
+    if lm is not None:
+        _assert_same_ra_dec(left, lm, context="Left catalog vs left margin")
+    if rm is not None:
+        _assert_same_ra_dec(right, rm, context="Right catalog vs right margin")
 
     if lm is not None and rm is not None:
         # Both sides have margins: standard path (unchanged behavior).

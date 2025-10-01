@@ -41,6 +41,66 @@ def _normalize_na(df: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
+def normalize_ra_dec(cat: Catalog, ra_alias: str = "ra", dec_alias: str = "dec") -> Catalog:
+    """Return a catalog whose RA/Dec metadata points to standardized alias columns.
+
+    This helper preserves all original columns (e.g., ``source_ra``, ``ra_1``),
+    but ensures the catalog's metadata uses ``ra_alias``/``dec_alias`` as the
+    official RA/Dec column names. If the alias columns do not exist, they are
+    created by copying the values from the source RA/Dec columns.
+
+    Args:
+        cat (Catalog): Source catalog to normalize.
+        ra_alias (str): Name for the RA alias column to set in metadata. Defaults to "ra".
+        dec_alias (str): Name for the Dec alias column to set in metadata. Defaults to "dec".
+
+    Returns:
+        Catalog: A new catalog with identical rows and columns, whose
+        ``hc_structure.catalog_info.ra_column`` and ``.dec_column`` point to
+        ``ra_alias`` and ``dec_alias`` respectively. If the input catalog has a
+        margin, the returned catalog is created with the same ``margin_threshold``.
+
+    Raises:
+        ValueError: If the catalog's partition info does not provide the ``Norder``
+            column (or is empty), preventing us from preserving the original
+            HEALPix orders.
+    """
+    df = cat.compute().reset_index(drop=True).copy()
+    info = cat.hc_structure.catalog_info
+
+    src_ra = info.ra_column or "ra"
+    src_dec = info.dec_column or "dec"
+
+    if ra_alias not in df.columns:
+        df[ra_alias] = df[src_ra]
+    if dec_alias not in df.columns:
+        df[dec_alias] = df[src_dec]
+
+    # Do not use truthiness on margin objects (may call __len__); check is not None instead.
+    margin_obj = getattr(cat, "margin", None)
+    margin_thr = None
+    if margin_obj is not None:
+        margin_thr = margin_obj.hc_structure.catalog_info.margin_threshold
+
+    # Preserve original HEALPix orders by inspecting the current partition layout.
+    part_df = cat.hc_structure.partition_info.as_dataframe()
+    if part_df is None or part_df.empty or "Norder" not in part_df.columns:
+        raise ValueError(
+            "Cannot determine HEALPix orders: partition_info.as_dataframe() is empty or missing 'Norder'."
+        )
+    lowest_order = int(part_df["Norder"].min())
+    highest_order = int(part_df["Norder"].max())
+
+    return lsdb.from_dataframe(
+        df,
+        ra_column=ra_alias,
+        dec_column=dec_alias,
+        lowest_order=lowest_order,
+        highest_order=highest_order,
+        margin_threshold=margin_thr,
+    )
+
+
 def _row_multiset(df: pd.DataFrame) -> Counter:
     """Convert a DataFrame into a multiset of row tuples.
 
@@ -298,6 +358,11 @@ def test_concat_catalogs_with_different_schemas(small_sky_order1_collection_dir,
     right_margin = getattr(right_cat, "margin", None)
     assert right_margin is not None
 
+    # Normalize RA/Dec metadata so both sides advertise the same RA/Dec column names.
+    # This preserves original columns (e.g., source_ra/source_dec) and only adds/points
+    # metadata to 'ra'/'dec' aliases when needed.
+    right_cat = normalize_ra_dec(right_cat, ra_alias="ra", dec_alias="dec")
+
     left_df = left_cat.compute()
     right_df = right_cat.compute()
 
@@ -470,6 +535,7 @@ def test_concat_margin_with_different_schemas_and_orders(use_low_order):
     df_high = pd.concat([df_high_main, df_high_margin], ignore_index=True)
     df_low = pd.concat([df_low_main, df_low_into_df_high_margin], ignore_index=True)
 
+    # Build catalogs with their native RA/Dec column names.
     cat_high = lsdb.from_dataframe(
         df_high, ra_column="ra_1", dec_column="dec_1", lowest_order=order_high, highest_order=order_high
     )
@@ -481,6 +547,13 @@ def test_concat_margin_with_different_schemas_and_orders(use_low_order):
         cat_low = lsdb.from_dataframe(
             df_low, ra_column="ra_2", dec_column="dec_2", lowest_order=order_high, highest_order=order_high
         )
+
+    # Normalize RA/Dec metadata so both sides advertise the same RA/Dec column names.
+    # This preserves schema columns (ra_1/dec_1, ra_2/dec_2) and only adds/points
+    # metadata to 'ra'/'dec' aliases when needed. Also preserves original HEALPix orders
+    # and margin threshold without triggering margin truthiness (__len__) checks.
+    cat_high = normalize_ra_dec(cat_high, ra_alias="ra", dec_alias="dec")
+    cat_low = normalize_ra_dec(cat_low, ra_alias="ra", dec_alias="dec")
 
     concat_cat = cat_high.concat(cat_low)
     margin_obj = getattr(concat_cat, "margin", None)
@@ -641,6 +714,10 @@ def test_concat_both_margins_uses_smallest_threshold(small_sky_order1_collection
     right_thr = right_margin.hc_structure.catalog_info.margin_threshold
 
     assert left_thr is not None and right_thr is not None, "Input margin thresholds must be defined"
+
+    # Normalize RA/Dec metadata so both sides advertise the same RA/Dec column names.
+    # This preserves original columns and only adds/points metadata to 'ra'/'dec' aliases.
+    right_cat = normalize_ra_dec(right_cat, ra_alias="ra", dec_alias="dec")
 
     concat_cat = left_cat.concat(right_cat)
     concat_margin = getattr(concat_cat, "margin", None)
@@ -1038,6 +1115,11 @@ def test_concat_ignore_empty_margins_mixed_orders(
     right_m = getattr(right, "margin", None)
     assert (left_m is None) ^ (right_m is None), "Test setup error: expected exactly one side with margin."
 
+    # Normalize RA/Dec metadata so both sides advertise the same RA/Dec column names.
+    # This preserves original columns and only adds/points metadata to 'ra'/'dec' aliases.
+    left = normalize_ra_dec(left, ra_alias="ra", dec_alias="dec")
+    right = normalize_ra_dec(right, ra_alias="ra", dec_alias="dec")
+
     # Perform concat with ignore_empty_margins=True
     with pytest.warns(UserWarning, match=r"ignore_empty_margins.*treated as empty|treated as empty"):
         concatenated = left.concat(right, ignore_empty_margins=True)
@@ -1063,6 +1145,22 @@ def test_concat_ignore_empty_margins_mixed_orders(
 # --- New lightweight unit tests for handle_margins_for_concat ---
 
 
+class _DummyInfo:  # pylint: disable=too-few-public-methods
+    """Minimal metadata stub exposing RA/Dec names and optional margin threshold.
+
+    Args:
+        ra_column (str): Name of the RA column.
+        dec_column (str): Name of the Dec column.
+        margin_threshold (float | None): Margin radius when relevant.
+    """
+
+    def __init__(self, ra_column: str = "ra", dec_column: str = "dec", margin_threshold: float | None = None):
+        self.catalog_name = "dummy"
+        self.ra_column = ra_column
+        self.dec_column = dec_column
+        self.margin_threshold = margin_threshold
+
+
 class _DummyHCCatalog:  # pylint: disable=too-few-public-methods
     """Minimal stub to mimic a HATS catalog-like structure."""
 
@@ -1071,12 +1169,32 @@ class _DummyHCCatalog:  # pylint: disable=too-few-public-methods
         self.pixel_tree = pixel_tree
 
 
-class _DummyMargin:  # pylint: disable=too-few-public-methods
-    """Margin stub with just enough surface for the function under test."""
+class _DummyCat:  # pylint: disable=too-few-public-methods
+    """Dataset stub that looks like a Catalog or MarginCatalog to the helper checks.
 
-    def __init__(self, radius: float):
-        # catalog_info with margin_threshold
-        self.hc_structure = _DummyHCCatalog(catalog_info=SimpleNamespace(margin_threshold=radius))
+    Args:
+        ra (str): RA column name.
+        dec (str): Dec column name.
+        margin (_DummyMargin | None): Optional attached margin object.
+    """
+
+    def __init__(self, ra: str = "ra", dec: str = "dec", margin=None):
+        self.hc_structure = _DummyHCCatalog(_DummyInfo(ra_column=ra, dec_column=dec))
+        self.margin = margin
+
+
+class _DummyMargin:  # pylint: disable=too-few-public-methods
+    """Margin stub with just enough surface for the function under test.
+
+    Notes:
+        We also provide RA/Dec names in the margin's catalog_info so that
+        the RA/Dec consistency checks between catalog and margin pass.
+    """
+
+    def __init__(self, radius: float, ra: str = "ra", dec: str = "dec"):
+        # catalog_info carries both margin_threshold and RA/Dec names
+        info = _DummyInfo(ra_column=ra, dec_column=dec, margin_threshold=radius)
+        self.hc_structure = _DummyHCCatalog(catalog_info=info)
         # capture arguments passed to _create_updated_dataset
         self._last_kwargs = None
 
@@ -1102,8 +1220,8 @@ def test_handle_margins_both_have_margin_uses_min_threshold_and_calls_concat(mon
     left_margin = _DummyMargin(radius=1.5)
     right_margin = _DummyMargin(radius=2.5)
 
-    left = SimpleNamespace(margin=left_margin)
-    right = SimpleNamespace(margin=right_margin)
+    left = _DummyCat(margin=left_margin)
+    right = _DummyCat(margin=right_margin)
 
     # Spy concat_margin_data to capture args and return a lightweight triple
     fake_concat = MagicMock(return_value=("DD", "MAP", SimpleNamespace(pixel_tree="PIXELS")))
@@ -1117,7 +1235,7 @@ def test_handle_margins_both_have_margin_uses_min_threshold_and_calls_concat(mon
     _kwargs = fake_concat.call_args.kwargs
     assert radius_used == 1.5
 
-    # The return should be the sentinel from _create_updated_dataset
+    # The return should be the sentinel from _DummyMargin._create_updated_dataset
     assert isinstance(got, tuple) and got[0] == "UPDATED"
 
     # And the updated_catalog_info_params should carry the chosen radius
@@ -1136,8 +1254,8 @@ def test_handle_margins_neither_side_has_margin_returns_none_without_warning():
     When neither side has a margin, the function must simply return None
     and emit no warnings.
     """
-    left = SimpleNamespace(margin=None)
-    right = SimpleNamespace(margin=None)
+    left = _DummyCat(margin=None)
+    right = _DummyCat(margin=None)
 
     with warnings.catch_warnings(record=True):
         warnings.simplefilter("error")
@@ -1153,8 +1271,8 @@ def test_handle_margins_one_side_has_margin_legacy_warns_and_returns_none():
       * the function must return None (legacy behavior).
     """
     left_margin = _DummyMargin(radius=1.0)
-    left = SimpleNamespace(margin=left_margin)
-    right = SimpleNamespace(margin=None)
+    left = _DummyCat(margin=left_margin)
+    right = _DummyCat(margin=None)
 
     with pytest.warns(UserWarning, match=r"One side has no margin"):
         got = concat_catalog_data.handle_margins_for_concat(left, right, ignore_empty_margins=False)
@@ -1169,8 +1287,8 @@ def test_handle_margins_one_side_has_margin_keep_existing_calls_concat(monkeypat
       * the result must come from existing._create_updated_dataset.
     """
     existing = _DummyMargin(radius=2.0)
-    left = SimpleNamespace(margin=existing)
-    right = SimpleNamespace(margin=None)
+    left = _DummyCat(margin=existing)
+    right = _DummyCat(margin=None)
 
     # Spy concat_margin_data to capture args and return a lightweight triple
     fake_concat = MagicMock(return_value=("DD", "MAP", SimpleNamespace(pixel_tree="PIXELS")))
@@ -1188,3 +1306,64 @@ def test_handle_margins_one_side_has_margin_keep_existing_calls_concat(monkeypat
     # Check return from _create_updated_dataset
     assert isinstance(got, tuple) and got[0] == "UPDATED"
     assert got[2]["margin_threshold"] == 2.0
+
+
+# --- New lightweight unit tests for strict RA/Dec checks ---
+def test_concat_raises_when_ra_dec_names_differ_between_catalogs():
+    """Fail fast when the two catalogs declare different RA/Dec column names."""
+    df1 = pd.DataFrame({"id": [1, 2], "ra": [10.0, 20.0], "dec": [-5.0, -6.0]})
+    df2 = pd.DataFrame({"id": [3, 4], "ra2": [30.0, 40.0], "dec2": [-7.0, -8.0]})
+
+    left = lsdb.from_dataframe(df1, ra_column="ra", dec_column="dec")
+    right = lsdb.from_dataframe(df2, ra_column="ra2", dec_column="dec2")
+
+    with pytest.raises(ValueError, match=r"Catalog concat:.*incompatible RA/Dec columns"):
+        _ = left.concat(right)
+
+
+def test_concat_raises_when_left_margin_ra_dec_differs_from_its_catalog(monkeypatch):
+    """Fail fast if the left margin RA/Dec names differ from its owning catalog."""
+    df = pd.DataFrame({"id": [1, 2], "ra": [10.0, 20.0], "dec": [-5.0, -6.0]})
+    left = lsdb.from_dataframe(df, ra_column="ra", dec_column="dec", margin_threshold=1.0)
+    right = lsdb.from_dataframe(df, ra_column="ra", dec_column="dec", margin_threshold=1.0)
+
+    # Sanity: margin existe no left
+    assert getattr(left, "margin", None) is not None
+
+    # Monkeypatch: mude o metadata da margin para ter nomes diferentes
+    info = left.margin.hc_structure.catalog_info
+    monkeypatch.setattr(info, "ra_column", "RA_WRONG", raising=False)
+    monkeypatch.setattr(info, "dec_column", "DEC_WRONG", raising=False)
+
+    with pytest.raises(ValueError, match=r"Left catalog vs left margin:.*RA/Dec"):
+        _ = left.concat(right)
+
+
+def test_concat_raises_when_right_margin_ra_dec_differs_from_its_catalog(monkeypatch):
+    """Fail fast if the right margin RA/Dec names differ from its owning catalog."""
+    df = pd.DataFrame({"id": [1, 2], "ra": [10.0, 20.0], "dec": [-5.0, -6.0]})
+    left = lsdb.from_dataframe(df, ra_column="ra", dec_column="dec", margin_threshold=1.0)
+    right = lsdb.from_dataframe(df, ra_column="ra", dec_column="dec", margin_threshold=1.0)
+
+    assert getattr(right, "margin", None) is not None
+
+    info = right.margin.hc_structure.catalog_info
+    monkeypatch.setattr(info, "ra_column", "RA_WRONG", raising=False)
+    monkeypatch.setattr(info, "dec_column", "DEC_WRONG", raising=False)
+
+    with pytest.raises(ValueError, match=r"Right catalog vs right margin:.*RA/Dec"):
+        _ = left.concat(right)
+
+
+def test_concat_raises_when_ra_dec_missing_in_metadata(monkeypatch):
+    """Raise if either side lacks RA/Dec names in catalog_info."""
+    df = pd.DataFrame({"id": [1], "ra": [10.0], "dec": [-5.0]})
+    left = lsdb.from_dataframe(df, ra_column="ra", dec_column="dec")
+    right = lsdb.from_dataframe(df, ra_column="ra", dec_column="dec")
+
+    # Remova RA no metadata do right
+    info = right.hc_structure.catalog_info
+    monkeypatch.setattr(info, "ra_column", None, raising=False)
+
+    with pytest.raises(ValueError, match=r"Catalog concat:.*must be defined on both sides"):
+        _ = left.concat(right)
