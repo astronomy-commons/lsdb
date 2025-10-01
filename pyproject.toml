@@ -23,7 +23,7 @@ dependencies = [
     "dask[complete]>=2025.3.0",
     "deprecated",
     "hats>=0.6.5,<0.7.0",
-    "nested-pandas>=0.4.7,<0.5.0",
+    "nested-pandas>=0.4.7,<0.6.0",
     "pyarrow>=14.0.1,<21.0.0; platform_system == 'Windows'",
     "pyarrow>=14.0.1; platform_system != 'Windows'",
     "scipy>=1.7.2", # kdtree
