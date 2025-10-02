@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-import warnings
 from typing import TYPE_CHECKING, Callable, Literal, Sequence
 
 import hats.pixel_math.healpix_shim as hp

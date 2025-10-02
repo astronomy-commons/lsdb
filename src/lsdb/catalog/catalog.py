@@ -32,7 +32,7 @@ from lsdb.dask.join_catalog_data import (
     join_catalog_data_through,
     merge_asof_catalog_data,
 )
-from lsdb.dask.merge_catalog_functions import create_merged_catalog_info, DEFAULT_SUFFIX_METHOD
+from lsdb.dask.merge_catalog_functions import DEFAULT_SUFFIX_METHOD, create_merged_catalog_info
 from lsdb.dask.merge_map_catalog_data import merge_map_catalog_data
 from lsdb.io.schema import get_arrow_schema
 from lsdb.loaders.hats.hats_loading_config import HatsLoadingConfig
