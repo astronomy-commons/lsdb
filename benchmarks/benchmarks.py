@@ -10,8 +10,7 @@ import pandas as pd
 
 import lsdb
 from benchmarks.utils import upsample_array
-from lsdb.core.search.box_search import box_filter
-from lsdb.core.search.polygon_search import get_cartesian_polygon
+from lsdb.core.search.region_search import box_filter, get_cartesian_polygon
 
 TEST_DIR = Path(__file__).parent.parent / "tests"
 DATA_DIR_NAME = "data"
@@ -71,3 +70,18 @@ def time_create_midsize_catalog():
 
 def time_create_large_catalog():
     return lsdb.open_catalog(BENCH_DATA_DIR / "large_catalog")
+
+
+def time_open_many_columns_default():
+    return lsdb.open_catalog(BENCH_DATA_DIR / "object_collection")
+
+
+def time_open_many_columns_all():
+    return lsdb.open_catalog(BENCH_DATA_DIR / "object_collection", columns="all")
+
+
+def time_open_many_columns_list():
+    return lsdb.open_catalog(
+        BENCH_DATA_DIR / "object_collection",
+        columns=["objectId", "coord_dec", "coord_decErr", "coord_ra", "coord_raErr"],
+    )

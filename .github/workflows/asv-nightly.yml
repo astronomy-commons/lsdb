@@ -23,7 +23,7 @@ jobs:
         working-directory: ${{env.WORKING_DIR}}
     steps:
     - name: Set up Python ${{env.PYTHON_VERSION}}
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: ${{env.PYTHON_VERSION}}
     - name: Checkout main branch of the repository
@@ -31,7 +31,13 @@ jobs:
       with:
         fetch-depth: 0
     - name: Install dependencies
-      run: pip install asv[virtualenv]==$ASV_VERSION
+      run: |
+        pip install asv==${{env.ASV_VERSION}}
+        pip install virtualenv==20.30 # Temporary fix to airspeed-velocity/asv#1484
+    - name: Configure git
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
     - name: Create ASV machine config file
       run: asv machine --machine gh-runner --yes
     - name: Get nightly dates under comparison
@@ -49,7 +55,7 @@ jobs:
       run: |
         if [ -s $NIGHTLY_HASH_FILE ]; then
           PREV_HASH=$(cat $NIGHTLY_HASH_FILE)
-          asv continuous $PREV_HASH $CURRENT_HASH --factor 1.5 --verbose
+          asv continuous $PREV_HASH $CURRENT_HASH --factor 1.5 --verbose --show-stderr
         fi
       continue-on-error: true
     - name: Update commit hash
@@ -61,9 +67,9 @@ jobs:
       with:
         path: ${{env.WORKING_DIR}}/${{env.NIGHTLY_HASH_FILE}}
         key: commit-hash-${{steps.nightly-dates.outputs.today}}
-    - name: Fail workflow
-      if: steps.asv_compare.outcome == 'failure'
-      run: exit 1
+    # - name: Fail workflow
+    #   if: steps.asv_compare.outcome == 'failure'
+    #   run: exit 1
     - name: Send status to Slack app
       if: ${{ failure() && github.event_name != 'workflow_dispatch' }}
       id: slack

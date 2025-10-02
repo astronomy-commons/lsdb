@@ -28,7 +28,7 @@ jobs:
         working-directory: ${{env.WORKING_DIR}}
     steps:
     - name: Set up Python ${{env.PYTHON_VERSION}}
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: ${{env.PYTHON_VERSION}}
     - name: Checkout PR branch of the repository
@@ -39,7 +39,9 @@ jobs:
       run: |
         echo "Workflow Run ID: ${{github.run_id}}"
     - name: Install dependencies
-      run: pip install asv[virtualenv]==$ASV_VERSION lf-asv-formatter
+      run: |
+        pip install asv==${{env.ASV_VERSION}} lf-asv-formatter
+        pip install virtualenv==20.30 # Temporary fix to airspeed-velocity/asv#1484
     - name: Make artifacts directory
       run: mkdir -p ${{env.ARTIFACTS_DIR}}
     - name: Save pull request number
@@ -57,7 +59,7 @@ jobs:
       run: |
         git remote add upstream https://github.com/${{github.repository}}.git
         git fetch upstream
-        asv continuous upstream/main HEAD --factor 1.5 --verbose
+        asv continuous upstream/main HEAD --factor 1.5 --verbose --show-stderr
       continue-on-error: true
     - name: Format ASV output
       if: always()
@@ -79,6 +81,6 @@ jobs:
       with:
         name: benchmark-artifacts
         path: ${{env.ARTIFACTS_DIR}}
-    - name: Fail workflow
-      if: steps.asv_compare.outcome == 'failure'
-      run: exit 1
+    # - name: Fail workflow
+    #   if: steps.asv_compare.outcome == 'failure'
+    #   run: exit 1

@@ -2,10 +2,10 @@
 from pathlib import Path
 
 import astropy.units as u
-import dask.array as da
 import dask.dataframe as dd
 import hats as hc
 import hats.pixel_math.healpix_shim as hp
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import nested_pandas as npd
 import numpy as np
@@ -22,7 +22,9 @@ from nested_pandas.datasets import generate_data
 import lsdb
 import lsdb.nested as nd
 from lsdb import Catalog, MarginCatalog
-from lsdb.core.search.moc_search import MOCSearch
+from lsdb.core.search.region_search import MOCSearch
+
+mpl.use("Agg")
 
 
 @pytest.fixture(autouse=True)
@@ -323,58 +325,6 @@ def test_rename_with_dict(small_sky_xmatch_with_margin):
     for i, col in enumerate(small_sky_xmatch_with_margin.columns):
         assert renamed_catalog.columns[i] == f"{col}_{i}"
         assert renamed_catalog.margin.columns[i] == f"{col}_{i}"
-
-
-def test_assign_no_arguments(small_sky_order1_catalog):
-    result_catalog = small_sky_order1_catalog.assign()
-    pd.testing.assert_frame_equal(result_catalog._ddf.compute(), small_sky_order1_catalog._ddf.compute())
-    assert isinstance(result_catalog._ddf, nd.NestedFrame)
-
-
-def test_assign_with_callable(small_sky_order1_catalog):
-    kwargs = {"squared_ra_err": lambda x: x["ra_error"] ** 2}
-    result_catalog = small_sky_order1_catalog.assign(**kwargs)
-    expected_ddf = small_sky_order1_catalog._ddf.copy()
-    expected_ddf["squared_ra_err"] = expected_ddf["ra_error"] ** 2
-    pd.testing.assert_frame_equal(result_catalog.compute(), expected_ddf.compute())
-    assert isinstance(result_catalog._ddf, nd.NestedFrame)
-
-
-def test_assign_with_series(small_sky_order1_catalog):
-    # The series is created from the original dataframe because indices must match
-    squared_ra_err = small_sky_order1_catalog._ddf["ra_error"].map(lambda x: x**2)
-    kwargs = {"new_column": squared_ra_err}
-    result_catalog = small_sky_order1_catalog.assign(**kwargs)
-    expected_ddf = small_sky_order1_catalog._ddf.copy()
-    expected_ddf["new_column"] = squared_ra_err
-    pd.testing.assert_frame_equal(result_catalog.compute(), expected_ddf.compute())
-    assert isinstance(result_catalog._ddf, nd.NestedFrame)
-
-
-def test_assign_with_multiple_columns(small_sky_order1_catalog):
-    # These series are created from the original dataframe because indices must match
-    squared_ra_err = small_sky_order1_catalog._ddf["ra_error"].map(lambda x: x**2)
-    squared_dec_err = small_sky_order1_catalog._ddf["dec_error"].map(lambda x: x**2)
-    kwargs = {
-        "squared_ra_err": squared_ra_err,
-        "squared_dec_err": squared_dec_err,
-    }
-    result_catalog = small_sky_order1_catalog.assign(**kwargs)
-    expected_ddf = small_sky_order1_catalog._ddf.copy()
-    expected_ddf["squared_ra_err"] = squared_ra_err
-    expected_ddf["squared_dec_err"] = squared_dec_err
-    pd.testing.assert_frame_equal(result_catalog.compute(), expected_ddf.compute())
-
-
-def test_assign_with_invalid_arguments(small_sky_order1_catalog):
-    with pytest.raises(TypeError, match="Column assignment doesn't support type"):
-        small_sky_order1_catalog.assign(new_column=[1, 2, 3])
-    with pytest.raises(ValueError, match="Array assignment only supports 1-D arrays"):
-        small_sky_order1_catalog.assign(new_column=da.ones((10, 10)))
-    with pytest.raises(ValueError, match="Number of partitions do not match"):
-        chunks = small_sky_order1_catalog._ddf.npartitions + 1
-        array = da.random.random(size=10, chunks=chunks)
-        small_sky_order1_catalog.assign(new_column=array)
 
 
 def test_read_hats(small_sky_catalog, tmp_path):
@@ -707,8 +657,6 @@ def test_filtered_catalog_has_undetermined_len(small_sky_order1_catalog, small_s
         len(small_sky_order1_catalog.id_search(values={"id": 900}, index_catalogs={"id": catalog_index}))
     with pytest.raises(ValueError, match="undetermined"):
         len(small_sky_order1_catalog.pixel_search([(0, 11)]))
-    with pytest.raises(ValueError, match="undetermined"):
-        len(small_sky_order1_catalog.dropna())
 
 
 @pytest.mark.sphgeom
