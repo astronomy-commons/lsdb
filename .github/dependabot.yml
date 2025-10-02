@@ -1,9 +1,13 @@
 version: 2
 updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
   - package-ecosystem: "pip"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
     allow:
       # NOTE: package PINNED at <21.0.0, see https://github.com/astronomy-commons/lsdb/issues/974
       - dependency-name: "pyarrow"
