@@ -24,9 +24,14 @@ dependencies = [
     "deprecated",
     "hats>=0.6.5,<0.7.0",
     "nested-pandas>=0.4.7,<0.6.0",
+    
+    # NOTE: package PINNED at <21.0.0, see https://github.com/astronomy-commons/lsdb/issues/974
     "pyarrow>=14.0.1,<21.0.0; platform_system == 'Windows'",
+    
     "pyarrow>=14.0.1; platform_system != 'Windows'",
     "scipy>=1.7.2", # kdtree
+
+    # NOTE: package PINNED at <0.3.0, see https://github.com/astronomy-commons/lsdb/issues/1047
     "universal-pathlib>=0.2.2,<0.3.0",
 ]
 
