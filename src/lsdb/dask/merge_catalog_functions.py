@@ -106,7 +106,8 @@ def apply_suffixes(
         suffix_method (str | None): The method to use to generate suffixes. Options are 'all_columns',
             'overlapping_columns'. If None, defaults to 'all_columns' but will change to
             'overlapping_columns' in a future release.
-        log_changes (bool): If True, logs an info message for each column that is being renamed.
+        log_changes (bool): If True, logs an info message for each column that is being renamed. This only
+            applies when suffix_method is 'overlapping_columns'. Default: True
 
     Returns:
         A tuple of the two dataframes with the suffixes applied
@@ -134,7 +135,7 @@ def apply_left_suffix(
         suffix_method (str): The method to use to generate suffixes. Options are 'all_columns',
             'overlapping_columns'
         log_changes (bool): If True, logs an info message for each column that is being renamed.
-            Default: False
+            This only applies when suffix_method is 'overlapping_columns'. Default: False
 
     Returns:
         The column name with the left suffix applied
@@ -161,7 +162,7 @@ def apply_right_suffix(
         suffix_method (str): The method to use to generate suffixes. Options are 'all_columns',
             'overlapping_columns'
         log_changes (bool): If True, logs an info message for each column that is being renamed.
-            Default: False
+            This only applies when suffix_method is 'overlapping_columns'. Default: False
 
     Returns:
         The column name with the right suffix applied

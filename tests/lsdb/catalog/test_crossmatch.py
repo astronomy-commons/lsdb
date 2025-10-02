@@ -226,7 +226,7 @@ class TestCrossmatch:
     def test_overlapping_suffix_method(algo, small_sky_catalog, small_sky_xmatch_catalog, caplog):
         suffixes = ("_left", "_right")
         # Test that renamed columns are logged correctly
-        with caplog.at_level(logging.INFO):
+        with caplog.at_level(logging.WARNING):
             xmatched = small_sky_catalog.crossmatch(
                 small_sky_xmatch_catalog,
                 algorithm=algo,
@@ -234,9 +234,12 @@ class TestCrossmatch:
                 suffixes=suffixes,
             )
 
-        assert "Renaming overlapping columns" in caplog.text
+            assert caplog.text.count("Renaming overlapping columns") == 1
 
-        computed = xmatched.compute()
+            computed = xmatched.compute()
+
+            assert caplog.text.count("Renaming overlapping columns") == 1
+
         for col in small_sky_catalog.columns:
             if col in small_sky_xmatch_catalog.columns:
                 assert f"{col}{suffixes[0]}" in xmatched.columns
