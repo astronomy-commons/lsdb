@@ -8,17 +8,3 @@ updates:
     directory: "/"
     schedule:
       interval: "monthly"
-    allow:
-      # NOTE: package PINNED at <21.0.0, see https://github.com/astronomy-commons/lsdb/issues/974
-      - dependency-name: "pyarrow"
-        versions: "<21.0.0"
-      # NOTE: package PINNED at <0.3.0, see https://github.com/astronomy-commons/lsdb/issues/1047
-      - dependency-name: "universal-pathlib"
-        versions: "<0.3.0"
-    ignore:
-      # Ignore major updates for pyarrow, see https://github.com/astronomy-commons/lsdb/issues/974
-      - dependency-name: "pyarrow"
-        update-types: ["version-update:semver-major"]
-      # Ignore major updates for universal-pathlib, see https://github.com/astronomy-commons/lsdb/issues/1047
-      - dependency-name: "universal-pathlib"
-        update-types: ["version-update:semver-major"]
