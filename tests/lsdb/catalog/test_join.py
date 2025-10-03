@@ -193,6 +193,20 @@ def test_join_association_warnings(
         )
 
 
+def test_join_nested(small_sky_order1_catalog, small_sky_order1_source_with_margin, helpers):
+    new_small_sky = small_sky_order1_catalog.partitions[:2]
+    joined = new_small_sky.join_nested(
+        small_sky_order1_source_with_margin,
+        left_on="id",
+        right_on="object_id",
+        nested_column_name="sources",
+        how="left"
+    )
+    assert joined.get_healpix_pixels() == new_small_sky.get_healpix_pixels()
+    joined.compute()
+
+
+
 def test_join_nested(small_sky_catalog, small_sky_order1_source_with_margin, helpers):
     joined = small_sky_catalog.join_nested(
         small_sky_order1_source_with_margin,
