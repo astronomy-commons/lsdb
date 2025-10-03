@@ -8,7 +8,6 @@ import nested_pandas as npd
 import pandas as pd
 from hats.catalog import TableProperties
 from hats.pixel_math import HealpixPixel
-from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 from hats.pixel_tree import PixelAlignment
 from nested_pandas.series.packer import pack_flat
 
@@ -96,7 +95,7 @@ def perform_join_on(
     merged = left.reset_index().merge(
         right_joined_df, left_on=left_on + suffixes[0], right_on=right_on + suffixes[1]
     )
-    merged.set_index(SPATIAL_INDEX_COLUMN, inplace=True)
+    merged.set_index(left_catalog_info.healpix_column, inplace=True)
     return merged
 
 
@@ -143,7 +142,7 @@ def perform_join_nested(
     right_joined_df = pack_flat(npd.NestedFrame(right_joined_df.set_index(right_on))).rename(right_name)
 
     merged = left.reset_index().merge(right_joined_df, left_on=left_on, right_index=True)
-    merged.set_index(SPATIAL_INDEX_COLUMN, inplace=True)
+    merged.set_index(left_catalog_info.healpix_column, inplace=True)
     return merged
 
 
@@ -225,7 +224,7 @@ def perform_join_through(
         )
     )
 
-    merged.set_index(SPATIAL_INDEX_COLUMN, inplace=True)
+    merged.set_index(left_catalog_info.healpix_column, inplace=True)
     if len(join_columns_to_drop) > 0:
         merged.drop(join_columns_to_drop, axis=1, inplace=True)
     return merged

@@ -297,27 +297,22 @@ def _load_map_catalog(hc_catalog, config):
 def _load_dask_meta_schema(hc_catalog, config) -> npd.NestedFrame:
     """Loads the Dask meta DataFrame from the parquet _metadata file."""
     columns = config.columns
-    if (
-        columns is not None
-        and hc_catalog.schema is not None
-        and SPATIAL_INDEX_COLUMN in hc_catalog.schema.names
-        and SPATIAL_INDEX_COLUMN not in columns
-    ):
-        columns = columns + [SPATIAL_INDEX_COLUMN]
     dask_meta_schema = from_pyarrow(hc_catalog.schema.empty_table())
+    if not hc_catalog.has_healpix_column():
+        return dask_meta_schema
+    healpix_column = hc_catalog.catalog_info.healpix_column
+    if columns is not None and healpix_column not in columns:
+        columns = columns + [healpix_column]
     if columns is not None:
         dask_meta_schema = dask_meta_schema[columns]
-    if (
-        dask_meta_schema.index.name != SPATIAL_INDEX_COLUMN
-        and SPATIAL_INDEX_COLUMN in dask_meta_schema.columns
-    ):
-        dask_meta_schema = dask_meta_schema.set_index(SPATIAL_INDEX_COLUMN)
+    if dask_meta_schema.index.name != healpix_column and healpix_column in dask_meta_schema.columns:
+        dask_meta_schema = dask_meta_schema.set_index(healpix_column)
     if (
         config.columns is not None
-        and SPATIAL_INDEX_COLUMN in config.columns
-        and dask_meta_schema.index.name == SPATIAL_INDEX_COLUMN
+        and healpix_column in config.columns
+        and dask_meta_schema.index.name == healpix_column
     ):
-        config.columns.remove(SPATIAL_INDEX_COLUMN)
+        config.columns.remove(healpix_column)
     return dask_meta_schema
 
 
@@ -356,6 +351,7 @@ def read_pixel(
     npix_suffix: str,
     *,
     query_url_params: dict | None = None,
+    spatial_index_column: str = SPATIAL_INDEX_COLUMN,
     columns=None,
     schema=None,
     **kwargs,
@@ -369,6 +365,7 @@ def read_pixel(
         hc.io.pixel_catalog_file(catalog_base_dir, pixel, query_url_params, npix_suffix=npix_suffix),
         columns=columns,
         schema=schema,
+        spatial_index_column=spatial_index_column,
         **kwargs,
     )
 
@@ -378,18 +375,19 @@ def _read_parquet_file(
     *,
     columns=None,
     schema=None,
+    spatial_index_column=None,
     **kwargs,
 ):
     if (
         columns is not None
         and schema is not None
-        and SPATIAL_INDEX_COLUMN in schema.names
-        and SPATIAL_INDEX_COLUMN not in columns
+        and spatial_index_column in schema.names
+        and spatial_index_column not in columns
     ):
-        columns = columns + [SPATIAL_INDEX_COLUMN]
+        columns = columns + [spatial_index_column]
     dataframe = file_io.read_parquet_file_to_pandas(path, columns=columns, schema=schema, **kwargs)
 
-    if dataframe.index.name != SPATIAL_INDEX_COLUMN and SPATIAL_INDEX_COLUMN in dataframe.columns:
-        dataframe = dataframe.set_index(SPATIAL_INDEX_COLUMN)
+    if dataframe.index.name != spatial_index_column and spatial_index_column in dataframe.columns:
+        dataframe = dataframe.set_index(spatial_index_column)
 
     return dataframe
