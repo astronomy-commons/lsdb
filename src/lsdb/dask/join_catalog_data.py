@@ -114,6 +114,8 @@ def perform_join_nested(
     left_on: str,
     right_on: str,
     right_name: str,
+    how: str = "inner",
+    right_meta: npd.NestedFrame | None = None,
 ):
     """Performs a join on two catalog partitions by adding the right catalog a nested column using
     nested-pandas
@@ -135,14 +137,16 @@ def perform_join_nested(
     Returns:
         A dataframe with the result of merging the left and right partitions on the specified columns
     """
-    if right_pixel.order > left_pixel.order:
+    if right_pixel is not None and right_pixel.order > left_pixel.order:
         left = filter_by_spatial_index_to_pixel(left, right_pixel.order, right_pixel.pixel)
 
-    right_joined_df = concat_partition_and_margin(right, right_margin)
+    if right is None and how == "left":
+        right_joined_df = right_meta
+    else:
+        right_joined_df = concat_partition_and_margin(right, right_margin)
 
     right_joined_df = pack_flat(npd.NestedFrame(right_joined_df.set_index(right_on))).rename(right_name)
-
-    merged = left.reset_index().merge(right_joined_df, left_on=left_on, right_index=True)
+    merged = left.reset_index().merge(right_joined_df, left_on=left_on, right_index=True, how=how)
     merged.set_index(SPATIAL_INDEX_COLUMN, inplace=True)
     return merged
 
@@ -314,6 +318,7 @@ def join_catalog_data_nested(
     left_on: str,
     right_on: str,
     nested_column_name: str | None = None,
+    how: str = "inner",
 ) -> tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]:
     """Joins two catalogs spatially on a specified column, adding the right as a nested column with nested
     dask
@@ -340,9 +345,11 @@ def join_catalog_data_nested(
     if nested_column_name is None:
         nested_column_name = right.name
 
-    alignment = align_catalogs(left, right)
+    alignment = align_catalogs(left, right, alignment_type=how)
 
     left_pixels, right_pixels = get_healpix_pixels_from_alignment(alignment)
+
+    meta_df = generate_meta_df_for_nested_tables([left], right, nested_column_name, join_column_name=right_on)
 
     joined_partitions = align_and_apply(
         [(left, left_pixels), (right, right_pixels), (right.margin, right_pixels)],
@@ -350,9 +357,9 @@ def join_catalog_data_nested(
         left_on,
         right_on,
         nested_column_name,
+        how,
+        meta_df[[nested_column_name]],
     )
-
-    meta_df = generate_meta_df_for_nested_tables([left], right, nested_column_name, join_column_name=right_on)
 
     return construct_catalog_args(joined_partitions, meta_df, alignment)
 
