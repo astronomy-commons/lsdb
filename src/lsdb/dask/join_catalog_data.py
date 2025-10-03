@@ -336,6 +336,9 @@ def join_catalog_data_nested(
         pixel to partition index within the dataframe, and the PixelAlignment of the two input
         catalogs.
     """
+    if how not in ["inner", "left"]:
+        raise ValueError("`how` needs to be 'inner' or 'left'")
+
     if right.margin is None:
         warnings.warn(
             "Right catalog does not have a margin cache. Results may be incomplete and/or inaccurate.",
@@ -358,7 +361,7 @@ def join_catalog_data_nested(
         right_on,
         nested_column_name,
         how,
-        meta_df[[nested_column_name]],
+        meta_df[[nested_column_name, right_on]],
     )
 
     return construct_catalog_args(joined_partitions, meta_df, alignment)
