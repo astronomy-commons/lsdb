@@ -80,6 +80,20 @@ def time_open_many_columns_all():
     return lsdb.open_catalog(BENCH_DATA_DIR / "object_collection", columns="all")
 
 
+def time_lazy_crossmatch_many_columns_all_suffixes():
+    cat = lsdb.open_catalog(BENCH_DATA_DIR / "object_collection", columns="all")
+    return cat.crossmatch(
+        cat, require_right_margin=False, suffixes=("_left", "_right"), suffix_method="all_columns"
+    )
+
+
+def time_lazy_crossmatch_many_columns_overlapping_suffixes():
+    cat = lsdb.open_catalog(BENCH_DATA_DIR / "object_collection", columns="all")
+    return cat.crossmatch(
+        cat, require_right_margin=False, suffixes=("_left", "_right"), suffix_method="overlapping_columns"
+    )
+
+
 def time_open_many_columns_list():
     return lsdb.open_catalog(
         BENCH_DATA_DIR / "object_collection",
