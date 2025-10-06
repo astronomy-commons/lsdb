@@ -322,6 +322,7 @@ def _load_dask_df_and_map(catalog: HCHealpixDataset, config) -> tuple[nd.NestedF
     ordered_pixels = np.array(pixels)[get_pixel_argsort(pixels)]
     divisions = get_pixels_divisions(ordered_pixels)
     dask_meta_schema = _load_dask_meta_schema(catalog, config)
+    index_column = dask_meta_schema.index.name
     query_url_params = None
     if isinstance(get_upath(catalog.catalog_base_dir).fs, HTTPFileSystem):
         query_url_params = config.make_query_url_params()
@@ -335,6 +336,7 @@ def _load_dask_df_and_map(catalog: HCHealpixDataset, config) -> tuple[nd.NestedF
             columns=config.columns,
             schema=catalog.schema,
             filters=config.filters,
+            index_column=index_column,
             **config.kwargs,
             divisions=divisions,
             meta=dask_meta_schema,
@@ -351,7 +353,7 @@ def read_pixel(
     npix_suffix: str,
     *,
     query_url_params: dict | None = None,
-    spatial_index_column: str = SPATIAL_INDEX_COLUMN,
+    index_column: str = SPATIAL_INDEX_COLUMN,
     columns=None,
     schema=None,
     **kwargs,
@@ -365,7 +367,7 @@ def read_pixel(
         hc.io.pixel_catalog_file(catalog_base_dir, pixel, query_url_params, npix_suffix=npix_suffix),
         columns=columns,
         schema=schema,
-        spatial_index_column=spatial_index_column,
+        index_column=index_column,
         **kwargs,
     )
 
@@ -375,19 +377,19 @@ def _read_parquet_file(
     *,
     columns=None,
     schema=None,
-    spatial_index_column=None,
+    index_column=None,
     **kwargs,
 ):
     if (
         columns is not None
         and schema is not None
-        and spatial_index_column in schema.names
-        and spatial_index_column not in columns
+        and index_column in schema.names
+        and index_column not in columns
     ):
-        columns = columns + [spatial_index_column]
+        columns = columns + [index_column]
     dataframe = file_io.read_parquet_file_to_pandas(path, columns=columns, schema=schema, **kwargs)
 
-    if dataframe.index.name != spatial_index_column and spatial_index_column in dataframe.columns:
-        dataframe = dataframe.set_index(spatial_index_column)
+    if dataframe.index.name != index_column and index_column in dataframe.columns:
+        dataframe = dataframe.set_index(index_column)
 
     return dataframe

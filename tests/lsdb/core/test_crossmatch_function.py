@@ -83,6 +83,16 @@ def test_invalid_margin_args_crossmatch(algo, small_sky_catalog, small_sky_xmatc
         )
 
 
+def test_crossmatch_healpix_indexes(small_sky_healpix13_dir, small_sky_xmatch_catalog, xmatch_correct):
+    """Raise an error if an impossible margin argument combination is given."""
+    small_sky_catalog = lsdb.open_catalog(small_sky_healpix13_dir)
+    result = lsdb.crossmatch(
+        small_sky_xmatch_catalog, small_sky_catalog, radius_arcsec=0.01 * 3600, n_neighbors=2
+    ).compute()
+    assert isinstance(result, npd.NestedFrame)
+    assert len(result) == len(xmatch_correct)
+
+
 @pytest.mark.parametrize("algo", [KdTreeCrossmatch])
 def test_ra_dec_columns_crossmatch(algo, small_sky_catalog, small_sky_xmatch_catalog, xmatch_correct):
     """Raise an error if an impossible margin argument combination is given."""
