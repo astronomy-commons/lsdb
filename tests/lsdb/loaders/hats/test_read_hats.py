@@ -249,6 +249,29 @@ def test_read_hats_default_cols_invalid_selector(small_sky_order1_default_cols_d
         lsdb.open_catalog(small_sky_order1_default_cols_dir, columns="other")
 
 
+def test_read_hats_default_cols_with_ellipsis(small_sky_order1_default_cols_dir):
+    """Test that ellipsis in columns list is replaced with default columns."""
+    # Get the default columns from the catalog
+    catalog_info = lsdb.open_catalog(small_sky_order1_default_cols_dir).hc_structure.catalog_info
+    default_columns = catalog_info.default_columns
+
+    # Test ellipsis at the start of the columns list
+    catalog = lsdb.open_catalog(small_sky_order1_default_cols_dir, columns=[..., "ra_error"])
+    assert list(catalog.columns) == ["ra", "dec", "id", "ra_error"]
+
+    # Test ellipsis in the middle of the columns list
+    catalog = lsdb.open_catalog(small_sky_order1_default_cols_dir, columns=["id", ..., "ra_error"])
+    assert list(catalog.columns) == ["id", "ra", "dec", "ra_error"]
+
+    # Test ellipsis at the end of the columns list
+    catalog = lsdb.open_catalog(small_sky_order1_default_cols_dir, columns=["id", ...])
+    assert list(catalog.columns) == ["id", "ra", "dec"]
+
+    # Test columns list with only an ellipsis
+    catalog = lsdb.open_catalog(small_sky_order1_default_cols_dir, columns=[...])
+    assert list(catalog.columns) == ["ra", "dec", "id"]
+
+
 def test_read_hats_no_pandas(small_sky_order1_no_pandas_dir, helpers):
     catalog = lsdb.open_catalog(small_sky_order1_no_pandas_dir)
     assert isinstance(catalog, lsdb.Catalog)

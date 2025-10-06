@@ -56,6 +56,10 @@ class HatsLoadingConfig:
         elif pd.api.types.is_list_like(columns):
             columns = list(columns)  # type: ignore[arg-type]
 
+        if ... in columns:
+            elips_ind = columns.index(...)
+            columns = columns[:elips_ind] + catalog_info.default_columns + columns[elips_ind + 1 :]
+
         ra_col = catalog_info.ra_column
         dec_col = catalog_info.dec_column
         if columns is not None:
