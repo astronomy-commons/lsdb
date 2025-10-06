@@ -621,7 +621,7 @@ def generate_meta_df_for_nested_tables(
     hive_cols_to_drop = [c for c in paths.HIVE_COLUMNS if c in nested_catalog_meta.columns]
     nested_catalog_meta = nested_catalog_meta.drop(columns=hive_cols_to_drop)
 
-    meta_df = npd.NestedFrame(meta_df).add_nested(nested_catalog_meta, nested_column_name)
+    meta_df = npd.NestedFrame(meta_df).join_nested(nested_catalog_meta, nested_column_name)
 
     # Use nested-pandas to make the resulting meta with the nested catalog meta as a nested column
     return meta_df

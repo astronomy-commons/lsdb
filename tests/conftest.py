@@ -468,7 +468,9 @@ class Helpers:
                 assert (col_name, dtype) in joined_cat.dtypes.items()
         for col_name, dtype in right_cat.dtypes.items():
             if col_name not in right_ignore_columns and col_name not in paths.HIVE_COLUMNS:
-                assert (col_name, dtype.pyarrow_dtype) in joined_cat[nested_colname].dtypes.fields.items()
+                assert (col_name, dtype.pyarrow_dtype) in joined_cat[
+                    nested_colname
+                ].dtypes.column_dtypes.items()
 
     @staticmethod
     def assert_catalog_info_is_correct(expected_catalog_info, catalog_info, **properties_to_update):
@@ -510,12 +512,12 @@ def test_dataset():
     base_nd = nd.NestedFrame.from_pandas(base_nf, npartitions=5)
     layer_nd = nd.NestedFrame.from_pandas(layer_nf, npartitions=10)
 
-    return base_nd.add_nested(layer_nd, "nested")
+    return base_nd.join_nested(layer_nd, "nested")
 
 
 @pytest.fixture
 def test_dataset_with_nans():
-    """stop before add_nested"""
+    """stop before join_nested"""
     n_base = 50
     layer_size = 500
     randomstate = np.random.RandomState(seed=1)  # pylint: disable=no-member
@@ -540,12 +542,12 @@ def test_dataset_with_nans():
     base_nd = nd.NestedFrame.from_pandas(base_nf, npartitions=5)
     layer_nd = nd.NestedFrame.from_pandas(layer_nf, npartitions=10)
 
-    return base_nd.add_nested(layer_nd, "nested")
+    return base_nd.join_nested(layer_nd, "nested")
 
 
 @pytest.fixture
-def test_dataset_no_add_nested():
-    """stop before add_nested"""
+def test_dataset_no_join_nested():
+    """stop before join_nested"""
     n_base = 50
     layer_size = 500
     randomstate = np.random.RandomState(seed=1)  # pylint: disable=no-member

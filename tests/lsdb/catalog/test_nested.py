@@ -29,7 +29,7 @@ def test_nest_lists(small_sky_with_nested_sources):
     assert "id" in cat_ndf_renested.columns
     assert "ra" in cat_ndf_renested.columns
     assert "dec" in cat_ndf_renested.columns
-    assert cat_ndf_renested._ddf["nested"].nest.fields == cat_ndf["sources"].nest.fields
+    assert cat_ndf_renested._ddf["nested"].nest.columns == cat_ndf["sources"].nest.columns
 
     # try a compute call
     renested_flat = cat_ndf_renested.compute()["nested"].nest.to_flat()
@@ -49,14 +49,14 @@ def test_nest_lists_only_list_columns(small_sky_with_nested_sources):
 
     # Use the columns from the original catalog as the list columns. All other
     # columns are inferred to be "base" columns.
-    cat_ndf_renested = small_sky_with_nested_sources.nest_lists(list_columns=cat_ndf["sources"].nest.fields)
+    cat_ndf_renested = small_sky_with_nested_sources.nest_lists(list_columns=cat_ndf["sources"].nest.columns)
 
     # check column structure
     assert "nested" in cat_ndf_renested.columns
     assert "id" in cat_ndf_renested.columns
     assert "ra" in cat_ndf_renested.columns
     assert "dec" in cat_ndf_renested.columns
-    assert cat_ndf_renested._ddf["nested"].nest.fields == cat_ndf["sources"].nest.fields
+    assert cat_ndf_renested._ddf["nested"].nest.columns == cat_ndf["sources"].nest.columns
 
     # try a compute call
     renested_flat = cat_ndf_renested.compute()["nested"].nest.to_flat()
@@ -181,7 +181,7 @@ def test_reduce_infer_nesting(small_sky_with_nested_sources):
     res_true = small_sky_with_nested_sources.reduce(mean_mag, "ra", "dec", "sources.mag", meta=true_meta)
 
     assert "new_nested" in res_true.columns and "new_nested" in res_true._ddf.nested_columns
-    assert list(res_true["new_nested"].nest.fields) == ["ra_mag", "dec_mag"]
+    assert list(res_true["new_nested"].nest.columns) == ["ra_mag", "dec_mag"]
 
     # Without inferred nesting:
     false_meta = (

@@ -68,7 +68,7 @@ class NestedFrame(
     >>> import lsdb.nested as nd # doctest: +SKIP
     >>> base = nd.NestedFrame(base_data) # doctest: +SKIP
     >>> layer = nd.NestedFrame(layer_data) # doctest: +SKIP
-    >>> base.add_nested(layer, "layer") # doctest: +SKIP
+    >>> base.join_nested(layer, "layer") # doctest: +SKIP
     """
 
     _partition_type = npd.NestedFrame  # Tracks the underlying data type
@@ -465,8 +465,7 @@ Refer to the docstring for guidance on dtype requirements and assignment."""
             return False
         return False
 
-    # NOTE: Named join_nested in LSDB
-    def add_nested(self, nested, name, how="outer") -> NestedFrame:  # type: ignore[name-defined] # noqa: F821
+    def join_nested(self, nested, name, how="outer") -> NestedFrame:  # type: ignore[name-defined] # noqa: F821
         """Packs a dataframe into a nested column
 
         Parameters

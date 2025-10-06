@@ -95,7 +95,7 @@ def test_set_new_nested_col():
     ndf["new_nested.t_plus_flux"] = ndf["nested.t"] + ndf["nested.flux"]
 
     assert "new_nested" in ndf.nested_columns
-    assert "t_plus_flux" in ndf["new_nested"].nest.fields
+    assert "t_plus_flux" in ndf["new_nested"].nest.columns
 
     assert np.array_equal(
         ndf["new_nested.t_plus_flux"].compute().values.to_numpy(),
@@ -103,11 +103,11 @@ def test_set_new_nested_col():
     )
 
 
-def test_add_nested(test_dataset_no_add_nested):
-    """test the add_nested function"""
-    base, layer = test_dataset_no_add_nested
+def test_join_nested(test_dataset_no_join_nested):
+    """test the join_nested function"""
+    base, layer = test_dataset_no_join_nested
 
-    base_with_nested = base.add_nested(layer, "nested")
+    base_with_nested = base.join_nested(layer, "nested")
 
     # Check that the result is a nestedframe
     assert isinstance(base_with_nested, nd.NestedFrame)
@@ -140,55 +140,55 @@ def test_from_flat():
     # Check full inputs
     ndf = nd.NestedFrame.from_flat(nf, base_columns=["a", "b"], nested_columns=["c", "d"])
     assert list(ndf.columns) == ["a", "b", "nested"]
-    assert list(ndf["nested"].nest.fields) == ["c", "d"]
+    assert list(ndf["nested"].nest.columns) == ["c", "d"]
     ndf_comp = ndf.compute()
     assert list(ndf.columns) == list(ndf_comp.columns)
-    assert list(ndf["nested"].nest.fields) == list(ndf["nested"].nest.fields)
+    assert list(ndf["nested"].nest.columns) == list(ndf["nested"].nest.columns)
     assert len(ndf_comp) == 2
 
     # Check omitting a base column
     ndf = nd.NestedFrame.from_flat(nf, base_columns=["a"], nested_columns=["c", "d"])
     assert list(ndf.columns) == ["a", "nested"]
-    assert list(ndf["nested"].nest.fields) == ["c", "d"]
+    assert list(ndf["nested"].nest.columns) == ["c", "d"]
     ndf_comp = ndf.compute()
     assert list(ndf.columns) == list(ndf_comp.columns)
-    assert list(ndf["nested"].nest.fields) == list(ndf["nested"].nest.fields)
+    assert list(ndf["nested"].nest.columns) == list(ndf["nested"].nest.columns)
     assert len(ndf_comp) == 2
 
     # Check omitting a nested column
     ndf = nd.NestedFrame.from_flat(nf, base_columns=["a", "b"], nested_columns=["d"])
     assert list(ndf.columns) == ["a", "b", "nested"]
-    assert list(ndf["nested"].nest.fields) == ["d"]
+    assert list(ndf["nested"].nest.columns) == ["d"]
     ndf_comp = ndf.compute()
     assert list(ndf.columns) == list(ndf_comp.columns)
-    assert list(ndf["nested"].nest.fields) == list(ndf["nested"].nest.fields)
+    assert list(ndf["nested"].nest.columns) == list(ndf["nested"].nest.columns)
     assert len(ndf_comp) == 2
 
     # Check no base columns
     ndf = nd.NestedFrame.from_flat(nf, base_columns=[], nested_columns=["c", "d"])
     assert list(ndf.columns) == ["nested"]
-    assert list(ndf["nested"].nest.fields) == ["c", "d"]
+    assert list(ndf["nested"].nest.columns) == ["c", "d"]
     ndf_comp = ndf.compute()
     assert list(ndf.columns) == list(ndf_comp.columns)
-    assert list(ndf["nested"].nest.fields) == list(ndf["nested"].nest.fields)
+    assert list(ndf["nested"].nest.columns) == list(ndf["nested"].nest.columns)
     assert len(ndf_comp) == 2
 
     # Check inferred nested columns
     ndf = nd.NestedFrame.from_flat(nf, base_columns=["a", "b"])
     assert list(ndf.columns) == ["a", "b", "nested"]
-    assert list(ndf["nested"].nest.fields) == ["c", "d"]
+    assert list(ndf["nested"].nest.columns) == ["c", "d"]
     ndf_comp = ndf.compute()
     assert list(ndf.columns) == list(ndf_comp.columns)
-    assert list(ndf["nested"].nest.fields) == list(ndf["nested"].nest.fields)
+    assert list(ndf["nested"].nest.columns) == list(ndf["nested"].nest.columns)
     assert len(ndf_comp) == 2
 
     # Check using an index
     ndf = nd.NestedFrame.from_flat(nf, base_columns=["b"], on="a")
     assert list(ndf.columns) == ["b", "nested"]
-    assert list(ndf["nested"].nest.fields) == ["c", "d"]
+    assert list(ndf["nested"].nest.columns) == ["c", "d"]
     ndf_comp = ndf.compute()
     assert list(ndf.columns) == list(ndf_comp.columns)
-    assert list(ndf["nested"].nest.fields) == list(ndf["nested"].nest.fields)
+    assert list(ndf["nested"].nest.columns) == list(ndf["nested"].nest.columns)
     assert len(ndf_comp) == 2
 
 
@@ -211,35 +211,35 @@ def test_from_lists():
     # Check with just base_columns
     ndf = nd.NestedFrame.from_lists(nf, base_columns=["c", "d"])
     assert list(ndf.columns) == ["c", "d", "nested"]
-    assert list(ndf["nested"].nest.fields) == ["e", "f"]
+    assert list(ndf["nested"].nest.columns) == ["e", "f"]
     ndf_comp = ndf.compute()
     assert list(ndf.columns) == list(ndf_comp.columns)
-    assert list(ndf["nested"].nest.fields) == list(ndf["nested"].nest.fields)
+    assert list(ndf["nested"].nest.columns) == list(ndf["nested"].nest.columns)
     assert_frame_equal(ndf_comp.iloc[:0], ndf.meta)
 
     # Check with just list_columns
     ndf = nd.NestedFrame.from_lists(nf, list_columns=["e", "f"])
     assert list(ndf.columns) == ["c", "d", "nested"]
-    assert list(ndf["nested"].nest.fields) == ["e", "f"]
+    assert list(ndf["nested"].nest.columns) == ["e", "f"]
     ndf_comp = ndf.compute()
     assert list(ndf.columns) == list(ndf_comp.columns)
-    assert list(ndf["nested"].nest.fields) == list(ndf["nested"].nest.fields)
+    assert list(ndf["nested"].nest.columns) == list(ndf["nested"].nest.columns)
 
     # Check with base subset
     ndf = nd.NestedFrame.from_lists(nf, base_columns=["c"], list_columns=["e", "f"])
     assert list(ndf.columns) == ["c", "nested"]
-    assert list(ndf["nested"].nest.fields) == ["e", "f"]
+    assert list(ndf["nested"].nest.columns) == ["e", "f"]
     ndf_comp = ndf.compute()
     assert list(ndf.columns) == list(ndf_comp.columns)
-    assert list(ndf["nested"].nest.fields) == list(ndf["nested"].nest.fields)
+    assert list(ndf["nested"].nest.columns) == list(ndf["nested"].nest.columns)
 
     # Check with list subset
     ndf = nd.NestedFrame.from_lists(nf, base_columns=["c", "d"], list_columns=["f"])
     assert list(ndf.columns) == ["c", "d", "nested"]
-    assert list(ndf["nested"].nest.fields) == ["f"]
+    assert list(ndf["nested"].nest.columns) == ["f"]
     ndf_comp = ndf.compute()
     assert list(ndf.columns) == list(ndf_comp.columns)
-    assert list(ndf["nested"].nest.fields) == list(ndf["nested"].nest.fields)
+    assert list(ndf["nested"].nest.columns) == list(ndf["nested"].nest.columns)
 
 
 def test_from_lists_errors():
@@ -336,7 +336,7 @@ def test_reduce_output_type(meta):
     a = npd.NestedFrame({"a": pd.Series([1, 2, 3], dtype=pd.ArrowDtype(pa.int64()))}, index=[0, 0, 1])
     b = npd.NestedFrame({"b": pd.Series([1, 2], dtype=pd.ArrowDtype(pa.int64()))}, index=[0, 1])
 
-    ndf = b.add_nested(a, name="test")
+    ndf = b.join_nested(a, name="test")
     nddf = nd.NestedFrame.from_pandas(ndf, npartitions=1)
 
     if meta == "df":
@@ -430,7 +430,7 @@ def test_to_parquet_by_layer(test_dataset, tmp_path):
 
     # this is read as a large_string, just make it a string
     loaded_nested = loaded_nested.astype({"band": pd.ArrowDtype(pa.string())})
-    loaded_dataset = loaded_base.add_nested(loaded_nested, "nested")
+    loaded_dataset = loaded_base.join_nested(loaded_nested, "nested")
 
     # Check for equivalence
     assert test_dataset.divisions == loaded_dataset.divisions
@@ -460,7 +460,7 @@ def test_from_epyc():
         .persist()
     )
 
-    object_ndf = object_ndf.add_nested(source_ndf, "ztf_source")
+    object_ndf = object_ndf.join_nested(source_ndf, "ztf_source")
 
     # Apply a mean function
     meta = pd.DataFrame(columns=[0], dtype=float)
@@ -481,7 +481,7 @@ def test_from_pandas(pkg, with_nested):
         df = npd.NestedFrame({"a": [1, 2, 3]}, index=[1, 2, 3])
         if with_nested:
             nested = npd.NestedFrame({"b": [5, 10, 15, 20, 25, 30]}, index=[1, 1, 2, 2, 3, 3])
-            df = df.add_nested(nested, "nested")
+            df = df.join_nested(nested, "nested")
 
     ndf = nd.NestedFrame.from_pandas(df)
     assert isinstance(ndf, nd.NestedFrame)
