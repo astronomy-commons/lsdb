@@ -22,11 +22,16 @@ dependencies = [
     # dask diagnostics is required to spin up the dashboard for profiling.
     "dask[complete]>=2025.3.0",
     "deprecated",
-    "hats>=0.6.5,<0.7.0",
-    "nested-pandas>=0.4.7,<0.5.0",
+    "hats>=0.6.6,<0.7.0",
+    "nested-pandas>=0.4.7,<0.6.0",
+
+    # NOTE: package PINNED at <21.0.0, see https://github.com/astronomy-commons/lsdb/issues/974
     "pyarrow>=14.0.1,<21.0.0; platform_system == 'Windows'",
+
     "pyarrow>=14.0.1; platform_system != 'Windows'",
     "scipy>=1.7.2", # kdtree
+
+    # NOTE: package PINNED at <0.3.0, see https://github.com/astronomy-commons/lsdb/issues/1047
     "universal-pathlib>=0.2.2,<0.3.0",
 ]
 
@@ -37,8 +42,8 @@ documentation = "https://lsdb.readthedocs.io/"
 # On a mac, install optional dependencies with `pip install '.[dev]'` (include the single quotes)
 [project.optional-dependencies]
 dev = [
-    "asv==0.6.4", # Used to compute performance benchmarks
-    "virtualenv==20.30", # Temporary fix to airspeed-velocity/asv#1484
+    "asv==0.6.5", # Used to compute performance benchmarks
+    "virtualenv==20.34.0", # Temporary fix to airspeed-velocity/asv#1484
     "black", # Used for static linting of files
     "jupyter", # Clears output from Jupyter notebooks
     "mypy", # Used for static type checking of files

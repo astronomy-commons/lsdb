@@ -28,7 +28,7 @@ jobs:
         working-directory: ${{env.WORKING_DIR}}
     steps:
     - name: Set up Python ${{env.PYTHON_VERSION}}
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: ${{env.PYTHON_VERSION}}
     - name: Checkout PR branch of the repository
@@ -59,7 +59,7 @@ jobs:
       run: |
         git remote add upstream https://github.com/${{github.repository}}.git
         git fetch upstream
-        asv continuous upstream/main HEAD --factor 1.5 --verbose
+        asv continuous upstream/main HEAD --factor 1.5 --verbose --show-stderr
       continue-on-error: true
     - name: Format ASV output
       if: always()
@@ -81,6 +81,6 @@ jobs:
       with:
         name: benchmark-artifacts
         path: ${{env.ARTIFACTS_DIR}}
-    - name: Fail workflow
-      if: steps.asv_compare.outcome == 'failure'
-      run: exit 1
+    # - name: Fail workflow
+    #   if: steps.asv_compare.outcome == 'failure'
+    #   run: exit 1

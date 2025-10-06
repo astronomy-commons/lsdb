@@ -7,7 +7,6 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from asv_runner.benchmarks.mark import parameterize_func_with
 
 import lsdb
 from benchmarks.utils import upsample_array
@@ -73,8 +72,16 @@ def time_create_large_catalog():
     return lsdb.open_catalog(BENCH_DATA_DIR / "large_catalog")
 
 
-@parameterize_func_with(
-    {"columns": [None, "all", ["objectId", "coord_dec", "coord_decErr", "coord_ra", "coord_raErr"]]}
-)
-def time_open_many_columns_default(columns):
-    return lsdb.open_catalog(BENCH_DATA_DIR / "object_collection", columns=columns)
+def time_open_many_columns_default():
+    return lsdb.open_catalog(BENCH_DATA_DIR / "object_collection")
+
+
+def time_open_many_columns_all():
+    return lsdb.open_catalog(BENCH_DATA_DIR / "object_collection", columns="all")
+
+
+def time_open_many_columns_list():
+    return lsdb.open_catalog(
+        BENCH_DATA_DIR / "object_collection",
+        columns=["objectId", "coord_dec", "coord_decErr", "coord_ra", "coord_raErr"],
+    )
