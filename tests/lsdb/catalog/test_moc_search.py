@@ -4,6 +4,8 @@ import pandas as pd
 from hats.pixel_math import HealpixPixel
 from mocpy import MOC
 
+import lsdb
+
 
 def test_moc_search_filters_correct_points(small_sky_order1_catalog):
     search_moc = MOC.from_healpix_cells(ipix=np.array([176, 177]), depth=np.array([2, 2]), max_depth=2)
@@ -11,6 +13,23 @@ def test_moc_search_filters_correct_points(small_sky_order1_catalog):
     assert filtered_cat.get_healpix_pixels() == [HealpixPixel(1, 44)]
     filtered_cat_comp = filtered_cat.compute()
     cat_comp = small_sky_order1_catalog.compute()
+    assert np.all(
+        search_moc.contains_lonlat(
+            filtered_cat_comp["ra"].to_numpy() * u.deg, filtered_cat_comp["dec"].to_numpy() * u.deg
+        )
+    )
+    assert np.sum(
+        search_moc.contains_lonlat(cat_comp["ra"].to_numpy() * u.deg, cat_comp["dec"].to_numpy() * u.deg)
+    ) == len(filtered_cat_comp)
+
+
+def test_moc_search_filters_healpix13(small_sky_healpix13_dir):
+    catalog = lsdb.open_catalog(small_sky_healpix13_dir)
+    search_moc = MOC.from_healpix_cells(ipix=np.array([176, 177]), depth=np.array([2, 2]), max_depth=2)
+    filtered_cat = catalog.moc_search(search_moc)
+    assert filtered_cat.get_healpix_pixels() == [HealpixPixel(1, 44)]
+    filtered_cat_comp = filtered_cat.compute()
+    cat_comp = catalog.compute()
     assert np.all(
         search_moc.contains_lonlat(
             filtered_cat_comp["ra"].to_numpy() * u.deg, filtered_cat_comp["dec"].to_numpy() * u.deg

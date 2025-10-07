@@ -49,7 +49,9 @@ def perform_crossmatch(
     the result.
     """
     if right_pix.order > left_pix.order:
-        left_df = filter_by_spatial_index_to_pixel(left_df, right_pix.order, right_pix.pixel)
+        left_df = filter_by_spatial_index_to_pixel(
+            left_df, right_pix.order, right_pix.pixel, spatial_index_order=left_catalog_info.healpix_order
+        )
 
     if len(left_df) == 0:
         return meta_df
@@ -91,7 +93,9 @@ def perform_crossmatch_nested(
     the result.
     """
     if right_pix.order > left_pix.order:
-        left_df = filter_by_spatial_index_to_pixel(left_df, right_pix.order, right_pix.pixel)
+        left_df = filter_by_spatial_index_to_pixel(
+            left_df, right_pix.order, right_pix.pixel, spatial_index_order=left_catalog_info.healpix_order
+        )
 
     if len(left_df) == 0:
         return meta_df

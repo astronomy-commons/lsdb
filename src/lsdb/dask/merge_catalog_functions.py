@@ -349,7 +349,13 @@ def perform_align_and_apply_func(num_partitions, func, *args, **kwargs):
     )
 
 
-def filter_by_spatial_index_to_pixel(dataframe: npd.NestedFrame, order: int, pixel: int) -> npd.NestedFrame:
+def filter_by_spatial_index_to_pixel(
+    dataframe: npd.NestedFrame,
+    order: int,
+    pixel: int,
+    *,
+    spatial_index_order: int | None = SPATIAL_INDEX_ORDER,
+) -> npd.NestedFrame:
     """Filters a catalog dataframe to the points within a specified HEALPix pixel using the spatial index
 
     Args:
@@ -360,8 +366,11 @@ def filter_by_spatial_index_to_pixel(dataframe: npd.NestedFrame, order: int, pix
     Returns:
         The filtered dataframe with only the rows that are within the specified HEALPix pixel
     """
-    lower_bound = healpix_to_spatial_index(order, pixel)
-    upper_bound = healpix_to_spatial_index(order, pixel + 1)
+    if spatial_index_order is None:
+        # This is the default value, but needed for type-checking.
+        spatial_index_order = SPATIAL_INDEX_ORDER
+    lower_bound = healpix_to_spatial_index(order, pixel, spatial_index_order=spatial_index_order)
+    upper_bound = healpix_to_spatial_index(order, pixel + 1, spatial_index_order=spatial_index_order)
     filtered_df = dataframe[(dataframe.index >= lower_bound) & (dataframe.index < upper_bound)]
     return filtered_df
 
@@ -371,6 +380,7 @@ def filter_by_spatial_index_to_margin(
     order: int,
     pixel: int,
     margin_radius: float,
+    spatial_index_order: int = SPATIAL_INDEX_ORDER,
 ) -> npd.NestedFrame:
     """
     Filter rows to those that fall within the margin footprint of a
@@ -379,7 +389,7 @@ def filter_by_spatial_index_to_margin(
     Args:
         dataframe (nested_pandas.NestedFrame):
             DataFrame to be filtered. Its index must be the spatial
-            index at SPATIAL_INDEX_ORDER (NESTED scheme).
+            index at spatial_index_order (NESTED scheme).
         order (int): HEALPix order of the central pixel.
         pixel (int): HEALPix pixel number (NESTED numbering) at `order`.
         margin_radius (float):
@@ -403,7 +413,7 @@ def filter_by_spatial_index_to_margin(
                then to a margin order via `hp.margin2order`.
             2) Enumerate the margin pixels at margin order using
                `get_margin`.
-            3) Map each row’s index at SPATIAL_INDEX_ORDER down to
+            3) Map each row's index at spatial_index_order down to
                margin order (via `get_lower_order_pixel`) and keep rows
                whose mapped pixel is in the margin set.
     """
@@ -420,9 +430,9 @@ def filter_by_spatial_index_to_margin(
         )
 
     margin_pixels = get_margin(order, pixel, margin_order - order)
-    healpix_29 = dataframe.index.to_numpy()
+    spatial_index_values = dataframe.index.to_numpy()
     margin_order_hp_pix = get_lower_order_pixel(
-        SPATIAL_INDEX_ORDER, healpix_29, SPATIAL_INDEX_ORDER - margin_order
+        spatial_index_order, spatial_index_values, spatial_index_order - margin_order
     )
     mask = np.isin(margin_order_hp_pix, margin_pixels)
     filtered_df = dataframe[mask]
@@ -559,6 +569,8 @@ def generate_meta_df_for_joined_tables(
     if index_type is None:
         # pylint: disable=protected-access
         index_type = catalogs[0]._ddf._meta.index.dtype
+    if catalogs[0].hc_structure.has_healpix_column():
+        index_name = catalogs[0].hc_structure.catalog_info.healpix_column  # type: ignore[assignment]
     index = pd.Index(pd.Series(dtype=index_type), name=index_name)
     meta_df = npd.NestedFrame(pd.DataFrame(meta, index))
     return meta_df

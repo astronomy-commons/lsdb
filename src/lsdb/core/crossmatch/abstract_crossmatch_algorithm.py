@@ -8,7 +8,6 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 from hats.catalog import TableProperties
-from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 
 if TYPE_CHECKING:
     from lsdb.catalog import Catalog
@@ -145,10 +144,6 @@ class AbstractCrossmatchAlgorithm(ABC):
         This must accept any additional arguments the `crossmatch` method accepts.
         """
         # Check that we have the appropriate columns in our dataset.
-        if left._ddf.index.name != SPATIAL_INDEX_COLUMN:
-            raise ValueError(f"index of left table must be {SPATIAL_INDEX_COLUMN}")
-        if right._ddf.index.name != SPATIAL_INDEX_COLUMN:
-            raise ValueError(f"index of right table must be {SPATIAL_INDEX_COLUMN}")
         column_names = left._ddf.columns
         if left.hc_structure.catalog_info.ra_column not in column_names:
             raise ValueError(f"left table must have column {left.hc_structure.catalog_info.ra_column}")
