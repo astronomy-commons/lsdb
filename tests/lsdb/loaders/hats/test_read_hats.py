@@ -254,19 +254,33 @@ def test_read_hats_default_cols_with_ellipsis(small_sky_order1_default_cols_dir)
 
     # Test ellipsis at the start of the columns list
     catalog = lsdb.open_catalog(small_sky_order1_default_cols_dir, columns=[..., "ra_error"])
-    assert list(catalog.columns) == ["ra", "dec", "id", "ra_error"]
+    expected_columns = ["ra", "dec", "id", "ra_error"]
+    assert list(catalog.columns) == expected_columns
+    assert list(catalog.compute().columns) == expected_columns
 
     # Test ellipsis in the middle of the columns list
     catalog = lsdb.open_catalog(small_sky_order1_default_cols_dir, columns=["dec_error", ..., "ra_error"])
-    assert list(catalog.columns) == ["dec_error", "ra", "dec", "id", "ra_error"]
+    expected_columns = ["dec_error", "ra", "dec", "id", "ra_error"]
+    assert list(catalog.columns) == expected_columns
+    assert list(catalog.compute().columns) == expected_columns
 
     # Test ellipsis at the end of the columns list reorders default columns
     catalog = lsdb.open_catalog(small_sky_order1_default_cols_dir, columns=["id", ...])
-    assert list(catalog.columns) == ["id", "ra", "dec"]
+    expected_columns = ["id", "ra", "dec"]
+    assert list(catalog.columns) == expected_columns
+    assert list(catalog.compute().columns) == expected_columns
+
+    # Test ellipsis at the end of the columns list reorders default columns
+    catalog = lsdb.open_catalog(small_sky_order1_default_cols_dir, columns=[..., "ra"])
+    expected_columns = ["dec", "id", "ra"]
+    assert list(catalog.columns) == expected_columns
+    assert list(catalog.compute().columns) == expected_columns
 
     # Test columns list with only an ellipsis
     catalog = lsdb.open_catalog(small_sky_order1_default_cols_dir, columns=[...])
-    assert list(catalog.columns) == ["ra", "dec", "id"]
+    expected_columns = ["ra", "dec", "id"]
+    assert list(catalog.columns) == expected_columns
+    assert list(catalog.compute().columns) == expected_columns
 
 
 def test_read_hats_with_ellipsis_errors(small_sky_order1_default_cols_dir):

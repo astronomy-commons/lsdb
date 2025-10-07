@@ -62,7 +62,9 @@ class HatsLoadingConfig:
             if columns.count(...) > 1:
                 raise ValueError("`columns` argument can only contain one ellipses (...)")
             elips_ind = columns.index(...)
-            columns = columns[:elips_ind] + catalog_info.default_columns + columns[elips_ind + 1 :]
+            col_set = set(columns)
+            columns_to_add = [c for c in catalog_info.default_columns if c not in col_set]
+            columns = columns[:elips_ind] + columns_to_add + columns[elips_ind + 1 :]
 
         ra_col = catalog_info.ra_column
         dec_col = catalog_info.dec_column
