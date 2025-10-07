@@ -862,8 +862,16 @@ def create_merged_catalog_info(
         The catalog info of the resulting merged catalog
     """
     left_info = left.hc_structure.catalog_info
-    ra_col = apply_left_suffix(left_info.ra_column, right.columns, suffixes, suffix_method)
-    dec_col = apply_left_suffix(left_info.dec_column, right.columns, suffixes, suffix_method)
+    ra_col = (
+        apply_left_suffix(left_info.ra_column, right.columns, suffixes, suffix_method)
+        if left_info.ra_column is not None
+        else None
+    )
+    dec_col = (
+        apply_left_suffix(left_info.dec_column, right.columns, suffixes, suffix_method)
+        if left_info.dec_column is not None
+        else None
+    )
     return left_info.copy_and_update(
         catalog_name=updated_name,
         ra_column=ra_col,

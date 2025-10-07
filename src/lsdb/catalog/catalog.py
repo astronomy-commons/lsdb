@@ -265,7 +265,13 @@ class Catalog(HealpixDataset):
         if output_catalog_name is None:
             output_catalog_name = f"{self.name}_x_{other.name}"
         ddf, ddf_map, alignment = crossmatch_catalog_data(
-            self, other, suffixes, algorithm=algorithm, suffix_method=suffix_method, log_changes=log_changes, **kwargs
+            self,
+            other,
+            suffixes,
+            algorithm=algorithm,
+            suffix_method=suffix_method,
+            log_changes=log_changes,
+            **kwargs,
         )
         new_catalog_info = create_merged_catalog_info(
             self,
@@ -787,7 +793,12 @@ class Catalog(HealpixDataset):
             )
 
         ddf, ddf_map, alignment = merge_asof_catalog_data(
-            self, other, suffixes=suffixes, direction=direction, suffix_method=suffix_method, log_changes=log_changes
+            self,
+            other,
+            suffixes=suffixes,
+            direction=direction,
+            suffix_method=suffix_method,
+            log_changes=log_changes,
         )
 
         if output_catalog_name is None:
