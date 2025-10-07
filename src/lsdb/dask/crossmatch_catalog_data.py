@@ -94,7 +94,7 @@ def perform_crossmatch_nested(
     """
     if right_pix.order > left_pix.order:
         left_df = filter_by_spatial_index_to_pixel(
-            left_df, right_pix.order, right_pix.pixel, spatial_index_order=right_catalog_info.healpix_order
+            left_df, right_pix.order, right_pix.pixel, spatial_index_order=left_catalog_info.healpix_order
         )
 
     if len(left_df) == 0:
