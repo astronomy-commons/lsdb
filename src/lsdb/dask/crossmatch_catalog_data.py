@@ -121,6 +121,7 @@ def crossmatch_catalog_data(
         Type[AbstractCrossmatchAlgorithm] | BuiltInCrossmatchAlgorithm
     ) = BuiltInCrossmatchAlgorithm.KD_TREE,
     suffix_method: str | None = None,
+    log_changes: bool = True,
     **kwargs,
 ) -> tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]:
     """Cross-matches the data from two catalogs
@@ -133,6 +134,12 @@ def crossmatch_catalog_data(
         algorithm (BuiltInCrossmatchAlgorithm | Callable): The algorithm to use to perform the
             crossmatch. Can be specified using a string for a built-in algorithm, or a custom
             method. For more details, see `crossmatch` method in the `Catalog` class.
+        suffix_method (str): Method to use to add suffixes to columns. Options are:
+            - "overlapping_columns": only add suffixes to columns that are present in both catalogs
+            - "all_columns": add suffixes to all columns from both catalogs
+            Default: "all_columns"
+        log_changes (bool): If True, logs an info message for each column that is being renamed.
+            This only applies when suffix_method is 'overlapping_columns'. Default: True
         **kwargs: Additional arguments to pass to the cross-match algorithm
 
     Returns:
@@ -163,6 +170,7 @@ def crossmatch_catalog_data(
         suffixes,
         suffix_method=suffix_method,
         extra_columns=crossmatch_algorithm.extra_columns,
+        log_changes=log_changes,
     )
 
     # perform the crossmatch on each partition pairing using dask delayed for lazy computation

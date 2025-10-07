@@ -162,6 +162,7 @@ class Catalog(HealpixDataset):
         output_catalog_name: str | None = None,
         require_right_margin: bool = False,
         suffix_method: str | None = None,
+        log_changes: bool = True,
         **kwargs,
     ) -> Catalog:
         """Perform a cross-match between two catalogs
@@ -229,6 +230,8 @@ class Catalog(HealpixDataset):
                 - "all_columns": add suffixes to all columns from both catalogs
                 Default: "all_columns" Warning: This default will change to "overlapping_columns" in a future
                 release.
+            log_changes (bool): If True, logs an info message for each column that is being renamed.
+                This only applies when suffix_method is 'overlapping_columns'. Default: True
 
         Returns:
             A Catalog with the data from the left and right catalogs merged with one row for each
@@ -262,7 +265,7 @@ class Catalog(HealpixDataset):
         if output_catalog_name is None:
             output_catalog_name = f"{self.name}_x_{other.name}"
         ddf, ddf_map, alignment = crossmatch_catalog_data(
-            self, other, suffixes, algorithm=algorithm, suffix_method=suffix_method, **kwargs
+            self, other, suffixes, algorithm=algorithm, suffix_method=suffix_method, log_changes=log_changes, **kwargs
         )
         new_catalog_info = create_merged_catalog_info(
             self,
@@ -740,6 +743,7 @@ class Catalog(HealpixDataset):
         suffixes: tuple[str, str] | None = None,
         output_catalog_name: str | None = None,
         suffix_method: str | None = None,
+        log_changes: bool = True,
     ):
         """Uses the pandas `merge_asof` function to merge two catalogs on their indices by distance of keys
 
@@ -759,6 +763,8 @@ class Catalog(HealpixDataset):
                 - "all_columns": add suffixes to all columns from both catalogs
                 Default: "all_columns" Warning: This default will change to "overlapping_columns" in a future
                 release.
+            log_changes (bool): If True, logs an info message for each column that is being renamed.
+                This only applies when suffix_method is 'overlapping_columns'. Default: True
 
         Returns:
             A new catalog with the columns from each of the input catalogs with their respective suffixes
@@ -781,7 +787,7 @@ class Catalog(HealpixDataset):
             )
 
         ddf, ddf_map, alignment = merge_asof_catalog_data(
-            self, other, suffixes=suffixes, direction=direction, suffix_method=suffix_method
+            self, other, suffixes=suffixes, direction=direction, suffix_method=suffix_method, log_changes=log_changes
         )
 
         if output_catalog_name is None:
@@ -811,6 +817,7 @@ class Catalog(HealpixDataset):
         suffixes: tuple[str, str] | None = None,
         output_catalog_name: str | None = None,
         suffix_method: str | None = None,
+        log_changes: bool = True,
     ) -> Catalog:
         """Perform a spatial join to another catalog
 
@@ -831,6 +838,8 @@ class Catalog(HealpixDataset):
                 - "all_columns": add suffixes to all columns from both catalogs
                 Default: "all_columns" Warning: This default will change to "overlapping_columns" in a future
                 release.
+            log_changes (bool): If True, logs an info message for each column that is being renamed.
+                This only applies when suffix_method is 'overlapping_columns'. Default: True
 
         Returns:
             A new catalog with the columns from each of the input catalogs with their respective suffixes
@@ -856,7 +865,7 @@ class Catalog(HealpixDataset):
 
         if through is not None:
             ddf, ddf_map, alignment = join_catalog_data_through(
-                self, other, through, suffixes, suffix_method=suffix_method
+                self, other, through, suffixes, suffix_method=suffix_method, log_changes=log_changes
             )
         else:
             if left_on is None or right_on is None:
@@ -866,7 +875,7 @@ class Catalog(HealpixDataset):
             if right_on not in other._ddf.columns:
                 raise ValueError("right_on must be a column in the right catalog")
             ddf, ddf_map, alignment = join_catalog_data_on(
-                self, other, left_on, right_on, suffixes, suffix_method=suffix_method
+                self, other, left_on, right_on, suffixes, suffix_method=suffix_method, log_changes=log_changes
             )
 
         if output_catalog_name is None:

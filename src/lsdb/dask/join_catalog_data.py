@@ -288,6 +288,7 @@ def join_catalog_data_on(
     right_on: str,
     suffixes: tuple[str, str],
     suffix_method: str | None = None,
+    log_changes: bool = True,
 ) -> tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]:
     """Joins two catalogs spatially on a specified column
 
@@ -302,6 +303,8 @@ def join_catalog_data_on(
             - "all_columns": add suffixes to all columns from both catalogs
             Default: "all_columns" Warning: This default will change to "overlapping_columns" in a future
             release.
+        log_changes (bool): If True, logs an info message for each column that is being renamed.
+            This only applies when suffix_method is 'overlapping_columns'. Default: True
 
     Returns:
         A tuple of the dask dataframe with the result of the join, the pixel map from HEALPix
@@ -327,7 +330,9 @@ def join_catalog_data_on(
         suffix_method,
     )
 
-    meta_df = generate_meta_df_for_joined_tables((left, right), suffixes, suffix_method=suffix_method)
+    meta_df = generate_meta_df_for_joined_tables(
+        (left, right), suffixes, suffix_method=suffix_method, log_changes=log_changes
+    )
 
     return construct_catalog_args(joined_partitions, meta_df, alignment)
 
@@ -387,6 +392,7 @@ def join_catalog_data_through(
     association: AssociationCatalog,
     suffixes: tuple[str, str],
     suffix_method: str | None = None,
+    log_changes: bool = True,
 ) -> tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]:
     """Joins two catalogs with an association table
 
@@ -421,6 +427,7 @@ def join_catalog_data_through(
             association.hc_structure.catalog_info.join_column,
             suffixes,
             suffix_method=suffix_method,
+            log_changes=log_changes,
         )
 
     if right.margin is None:
@@ -466,7 +473,7 @@ def join_catalog_data_through(
     # pylint: disable=protected-access
     extra_df = association._ddf._meta.drop(non_joining_columns + association_join_columns, axis=1)
     meta_df = generate_meta_df_for_joined_tables(
-        (left, right), suffixes, extra_columns=extra_df, suffix_method=suffix_method
+        (left, right), suffixes, extra_columns=extra_df, suffix_method=suffix_method, log_changes=log_changes
     )
 
     return construct_catalog_args(joined_partitions, meta_df, alignment)
@@ -478,6 +485,7 @@ def merge_asof_catalog_data(
     suffixes: tuple[str, str],
     direction: str = "backward",
     suffix_method: str | None = None,
+    log_changes: bool = True,
 ) -> tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]:
     """Uses the pandas `merge_asof` function to merge two catalogs on their indices by distance of keys
 
@@ -497,6 +505,8 @@ def merge_asof_catalog_data(
             - "all_columns": add suffixes to all columns from both catalogs
             Default: "all_columns" Warning: This default will change to "overlapping_columns" in a future
             release.
+        log_changes (bool): If True, logs an info message for each column that is being renamed.
+            This only applies when suffix_method is 'overlapping_columns'. Default: True
 
     Returns:
         A tuple of the dask dataframe with the result of the join, the pixel map from HEALPix
@@ -512,6 +522,8 @@ def merge_asof_catalog_data(
         [(left, left_pixels), (right, right_pixels)], perform_merge_asof, suffixes, direction, suffix_method
     )
 
-    meta_df = generate_meta_df_for_joined_tables((left, right), suffixes, suffix_method=suffix_method)
+    meta_df = generate_meta_df_for_joined_tables(
+        (left, right), suffixes, suffix_method=suffix_method, log_changes=log_changes
+    )
 
     return construct_catalog_args(joined_partitions, meta_df, alignment)

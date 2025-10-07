@@ -120,7 +120,7 @@ def apply_suffixes(
 
 def apply_left_suffix(
     col_name: str,
-    right_col_names: list[str],
+    right_col_names: list[str] | pd.Index,
     suffixes: tuple[str, str],
     suffix_method: str | None = None,
     log_changes: bool = False,
@@ -669,6 +669,7 @@ def generate_meta_df_for_joined_tables(
     extra_columns: pd.DataFrame | None = None,
     index_name: str = SPATIAL_INDEX_COLUMN,
     index_type: npt.DTypeLike | None = None,
+    log_changes: bool = True,
 ) -> npd.NestedFrame:
     """Generates a Dask meta DataFrame that would result from joining two catalogs
 
@@ -683,6 +684,8 @@ def generate_meta_df_for_joined_tables(
         index_name (str): The name of the index in the resulting DataFrame
         index_type (npt.DTypeLike): The type of the index in the resulting DataFrame.
             Default: type of index in the first catalog
+        log_changes (bool): If True, logs an info message for each column that is being renamed.
+            This only applies when suffix_method is 'overlapping_columns'. Default: True
 
     Returns:
         An empty dataframe with the columns of each catalog with their respective suffix, and any extra
@@ -695,6 +698,7 @@ def generate_meta_df_for_joined_tables(
         catalogs[1]._ddf._meta,
         suffixes,
         suffix_method,
+        log_changes=log_changes,
     )
     meta = pd.concat([left_meta, right_meta], axis=1)
     # Construct meta for crossmatch result columns
@@ -858,8 +862,8 @@ def create_merged_catalog_info(
         The catalog info of the resulting merged catalog
     """
     left_info = left.hc_structure.catalog_info
-    ra_col = apply_left_suffix(left_info.ra_column, right.columns, suffixes, suffix_method)  # type: ignore
-    dec_col = apply_left_suffix(left_info.dec_column, right.columns, suffixes, suffix_method)  # type: ignore
+    ra_col = apply_left_suffix(left_info.ra_column, right.columns, suffixes, suffix_method)
+    dec_col = apply_left_suffix(left_info.dec_column, right.columns, suffixes, suffix_method)
     return left_info.copy_and_update(
         catalog_name=updated_name,
         ra_column=ra_col,
