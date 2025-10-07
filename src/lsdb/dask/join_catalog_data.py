@@ -88,7 +88,7 @@ def perform_join_on(
     """
     if right_pixel.order > left_pixel.order:
         left = filter_by_spatial_index_to_pixel(
-            left, right_pixel.order, right_pixel.pixel, left_catalog_info.healpix_order
+            left, right_pixel.order, right_pixel.pixel, spatial_index_order=left_catalog_info.healpix_order
         )
 
     right_joined_df = concat_partition_and_margin(right, right_margin)
@@ -138,7 +138,7 @@ def perform_join_nested(
     """
     if right_pixel.order > left_pixel.order:
         left = filter_by_spatial_index_to_pixel(
-            left, right_pixel.order, right_pixel.pixel, left_catalog_info.healpix_order
+            left, right_pixel.order, right_pixel.pixel, spatial_index_order=left_catalog_info.healpix_order
         )
 
     right_joined_df = concat_partition_and_margin(right, right_margin)
@@ -191,7 +191,7 @@ def perform_join_through(
         raise ValueError("Invalid catalog_info")
     if right_pixel.order > left_pixel.order:
         left = filter_by_spatial_index_to_pixel(
-            left, right_pixel.order, right_pixel.pixel, left_catalog_info.healpix_order
+            left, right_pixel.order, right_pixel.pixel, spatial_index_order=left_catalog_info.healpix_order
         )
 
     right_joined_df = concat_partition_and_margin(right, right_margin)
@@ -265,7 +265,7 @@ def perform_merge_asof(
     """
     if right_pixel.order > left_pixel.order:
         left = filter_by_spatial_index_to_pixel(
-            left, right_pixel.order, right_pixel.pixel, left_catalog_info.healpix_order
+            left, right_pixel.order, right_pixel.pixel, spatial_index_order=left_catalog_info.healpix_order
         )
 
     left, right = rename_columns_with_suffixes(left, right, suffixes)

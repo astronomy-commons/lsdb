@@ -350,7 +350,11 @@ def perform_align_and_apply_func(num_partitions, func, *args, **kwargs):
 
 
 def filter_by_spatial_index_to_pixel(
-    dataframe: npd.NestedFrame, order: int, pixel: int, spatial_index_order: int = SPATIAL_INDEX_ORDER
+    dataframe: npd.NestedFrame,
+    order: int,
+    pixel: int,
+    *,
+    spatial_index_order: int | None = SPATIAL_INDEX_ORDER,
 ) -> npd.NestedFrame:
     """Filters a catalog dataframe to the points within a specified HEALPix pixel using the spatial index
 
@@ -362,6 +366,9 @@ def filter_by_spatial_index_to_pixel(
     Returns:
         The filtered dataframe with only the rows that are within the specified HEALPix pixel
     """
+    if spatial_index_order is None:
+        # This is the default value, but needed for type-checking.
+        spatial_index_order = SPATIAL_INDEX_ORDER
     lower_bound = healpix_to_spatial_index(order, pixel, spatial_index_order=spatial_index_order)
     upper_bound = healpix_to_spatial_index(order, pixel + 1, spatial_index_order=spatial_index_order)
     filtered_df = dataframe[(dataframe.index >= lower_bound) & (dataframe.index < upper_bound)]

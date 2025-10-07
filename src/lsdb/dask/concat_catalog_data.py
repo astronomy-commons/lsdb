@@ -174,12 +174,15 @@ def perform_concat(
     # Filter to aligned pixel when needed (handles order differences)
     if left_pix is not None and aligned_pix.order > left_pix.order and left_df is not None:
         left_df = filter_by_spatial_index_to_pixel(
-            left_df, aligned_pix.order, aligned_pix.pixel, left_catalog_info.healpix_order
+            left_df, aligned_pix.order, aligned_pix.pixel, spatial_index_order=left_catalog_info.healpix_order
         )
 
     if right_pix is not None and aligned_pix.order > right_pix.order and right_df is not None:
         right_df = filter_by_spatial_index_to_pixel(
-            right_df, aligned_pix.order, aligned_pix.pixel, right_catalog_info.healpix_order
+            right_df,
+            aligned_pix.order,
+            aligned_pix.pixel,
+            spatial_index_order=right_catalog_info.healpix_order,
         )
 
     # Substitute None with meta to preserve schema
