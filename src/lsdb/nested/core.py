@@ -54,7 +54,7 @@ def _nested_meta_from_flat(flat, name):
             pyarrow_fields[field] = dtype.pyarrow_dtype
         else:  # or convert from numpy types
             pyarrow_fields[field] = pa.from_numpy_dtype(dtype)
-    return pd.Series(name=name, dtype=NestedDtype.from_fields(pyarrow_fields))
+    return pd.Series(name=name, dtype=NestedDtype.from_columns(pyarrow_fields))
 
 
 # pylint: disable=abstract-method
@@ -77,8 +77,8 @@ class NestedFrame(
         """Adds custom __getitem__ functionality for nested columns"""
         if isinstance(item, str) and self._is_known_hierarchical_column(item):
             nested, col = item.split(".")
-            meta = pd.Series(name=col, dtype=pd.ArrowDtype(self.dtypes[nested].fields[col]))
-            return self.map_partitions(lambda x: x[nested].nest.get_flat_series(col), meta=meta)
+            meta = pd.Series(name=col, dtype=pd.ArrowDtype(self.dtypes[nested].column_dtypes[col]))
+            return self.map_partitions(lambda x: x[nested].explode(columns=[col])[col], meta=meta)
         return super().__getitem__(item)
 
     def __setitem__(self, key, value):
@@ -442,7 +442,7 @@ Refer to the docstring for guidance on dtype requirements and assignment."""
         all_columns = {"base": self.columns}
         for column in self.columns:
             if isinstance(self[column].dtype, NestedDtype):
-                nest_cols = list(self.dtypes[column].fields.keys())
+                nest_cols = list(self.dtypes[column].column_dtypes.keys())
                 all_columns[column] = nest_cols
         return all_columns
 
@@ -465,7 +465,7 @@ Refer to the docstring for guidance on dtype requirements and assignment."""
             return False
         return False
 
-    def join_nested(self, nested, name, how="outer") -> NestedFrame:  # type: ignore[name-defined] # noqa: F821
+    def join_nested(self, nested, name, how="outer") -> NestedFrame:  # type: ignore[name-defined]
         """Packs a dataframe into a nested column
 
         Parameters
