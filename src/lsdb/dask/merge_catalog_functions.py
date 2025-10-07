@@ -563,7 +563,7 @@ def generate_meta_df_for_joined_tables(
         # pylint: disable=protected-access
         index_type = catalogs[0]._ddf._meta.index.dtype
     if catalogs[0].hc_structure.has_healpix_column():
-        index_name = catalogs[0].hc_structure.catalog_info.healpix_column
+        index_name = catalogs[0].hc_structure.catalog_info.healpix_column  # type: ignore[assignment]
     index = pd.Index(pd.Series(dtype=index_type), name=index_name)
     meta_df = npd.NestedFrame(pd.DataFrame(meta, index))
     return meta_df
