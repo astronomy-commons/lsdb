@@ -87,7 +87,9 @@ def perform_join_on(
         A dataframe with the result of merging the left and right partitions on the specified columns
     """
     if right_pixel.order > left_pixel.order:
-        left = filter_by_spatial_index_to_pixel(left, right_pixel.order, right_pixel.pixel)
+        left = filter_by_spatial_index_to_pixel(
+            left, right_pixel.order, right_pixel.pixel, left_catalog_info.healpix_order
+        )
 
     right_joined_df = concat_partition_and_margin(right, right_margin)
 
@@ -135,7 +137,9 @@ def perform_join_nested(
         A dataframe with the result of merging the left and right partitions on the specified columns
     """
     if right_pixel.order > left_pixel.order:
-        left = filter_by_spatial_index_to_pixel(left, right_pixel.order, right_pixel.pixel)
+        left = filter_by_spatial_index_to_pixel(
+            left, right_pixel.order, right_pixel.pixel, left_catalog_info.healpix_order
+        )
 
     right_joined_df = concat_partition_and_margin(right, right_margin)
 
@@ -186,7 +190,9 @@ def perform_join_through(
     if assoc_catalog_info.primary_column is None or assoc_catalog_info.join_column is None:
         raise ValueError("Invalid catalog_info")
     if right_pixel.order > left_pixel.order:
-        left = filter_by_spatial_index_to_pixel(left, right_pixel.order, right_pixel.pixel)
+        left = filter_by_spatial_index_to_pixel(
+            left, right_pixel.order, right_pixel.pixel, left_catalog_info.healpix_order
+        )
 
     right_joined_df = concat_partition_and_margin(right, right_margin)
 
@@ -258,7 +264,9 @@ def perform_merge_asof(
         `merge_asof`
     """
     if right_pixel.order > left_pixel.order:
-        left = filter_by_spatial_index_to_pixel(left, right_pixel.order, right_pixel.pixel)
+        left = filter_by_spatial_index_to_pixel(
+            left, right_pixel.order, right_pixel.pixel, left_catalog_info.healpix_order
+        )
 
     left, right = rename_columns_with_suffixes(left, right, suffixes)
     left.sort_index(inplace=True)

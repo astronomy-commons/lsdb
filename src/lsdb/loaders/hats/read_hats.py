@@ -299,6 +299,8 @@ def _load_dask_meta_schema(hc_catalog, config) -> npd.NestedFrame:
     columns = config.columns
     dask_meta_schema = from_pyarrow(hc_catalog.schema.empty_table())
     if not hc_catalog.has_healpix_column():
+        if columns is not None:
+            dask_meta_schema = dask_meta_schema[columns]
         return dask_meta_schema
     healpix_column = hc_catalog.catalog_info.healpix_column
     if columns is not None and healpix_column not in columns:

@@ -50,7 +50,7 @@ def perform_merge_map(
     """
     if map_pixel.order > catalog_pixel.order:
         catalog_partition = filter_by_spatial_index_to_pixel(
-            catalog_partition, map_pixel.order, map_pixel.pixel
+            catalog_partition, map_pixel.order, map_pixel.pixel, catalog_structure.healpix_order
         )
 
     catalog_partition.sort_index(inplace=True)
