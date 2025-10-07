@@ -300,6 +300,43 @@ class TestCrossmatch:
         assert xmatched.hc_structure.catalog_info.dec_column == "dec_unique"
 
     @staticmethod
+    def test_overlapping_suffix_log_changes_false(algo, small_sky_catalog, small_sky_xmatch_catalog, caplog):
+        suffixes = ("_left", "_right")
+        # Test that renamed columns are not logged correctly
+        with caplog.at_level(logging.WARNING):
+            xmatched = small_sky_catalog.crossmatch(
+                small_sky_xmatch_catalog,
+                algorithm=algo,
+                suffix_method="overlapping_columns",
+                suffixes=suffixes,
+                log_changes=False,
+            )
+
+            assert len(caplog.text) == 0
+            computed = xmatched.compute()
+            assert len(caplog.text) == 0
+
+        for col in small_sky_catalog.columns:
+            if col in small_sky_xmatch_catalog.columns:
+                assert f"{col}{suffixes[0]}" in xmatched.columns
+                assert f"{col}{suffixes[0]}" in computed.columns
+            else:
+                assert col in xmatched.columns
+                assert col in computed.columns
+        for col in small_sky_xmatch_catalog.columns:
+            if col in small_sky_catalog.columns:
+                assert f"{col}{suffixes[1]}" in xmatched.columns
+                assert f"{col}{suffixes[1]}" in computed.columns
+            else:
+                assert col in xmatched.columns
+                assert col in computed.columns
+
+        assert xmatched.hc_structure.catalog_info.ra_column in xmatched.columns
+        assert xmatched.hc_structure.catalog_info.dec_column in xmatched.columns
+        assert xmatched.hc_structure.catalog_info.ra_column == "ra_left"
+        assert xmatched.hc_structure.catalog_info.dec_column == "dec_left"
+
+    @staticmethod
     def test_wrong_suffixes(algo, small_sky_catalog, small_sky_xmatch_catalog):
         with pytest.raises(ValueError):
             small_sky_catalog.crossmatch(small_sky_xmatch_catalog, suffixes=("wrong",), algorithm=algo)
