@@ -1,3 +1,5 @@
+import logging
+
 import nested_pandas as npd
 import numpy as np
 import pandas as pd
@@ -12,7 +14,7 @@ from lsdb import Catalog
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
 from lsdb.core.crossmatch.bounded_kdtree_match import BoundedKdTreeCrossmatch
 from lsdb.core.crossmatch.kdtree_match import KdTreeCrossmatch
-from lsdb.dask.merge_catalog_functions import align_catalogs
+from lsdb.dask.merge_catalog_functions import align_catalogs, apply_suffixes
 
 
 @pytest.mark.parametrize("algo", [KdTreeCrossmatch])
@@ -37,6 +39,11 @@ class TestCrossmatch:
             xmatch_row = xmatched[xmatched["id_small_sky"] == correct_row["ss_id"]]
             assert xmatch_row["id_small_sky_xmatch"].to_numpy() == correct_row["xmatch_id"]
             assert xmatch_row["_dist_arcsec"].to_numpy() == pytest.approx(correct_row["dist"] * 3600)
+
+        assert xmatched_cat.hc_structure.catalog_info.ra_column in xmatched_cat.columns
+        assert xmatched_cat.hc_structure.catalog_info.dec_column in xmatched_cat.columns
+        assert xmatched_cat.hc_structure.catalog_info.ra_column == "ra_small_sky"
+        assert xmatched_cat.hc_structure.catalog_info.dec_column == "dec_small_sky"
 
     @staticmethod
     def test_kdtree_crossmatch_nested(algo, small_sky_catalog, small_sky_xmatch_catalog, xmatch_correct):
@@ -216,9 +223,128 @@ class TestCrossmatch:
             assert xmatch_row["_dist_arcsec"].to_numpy() == pytest.approx(correct_row["dist"] * 3600)
 
     @staticmethod
+    def test_overlapping_suffix_method(algo, small_sky_catalog, small_sky_xmatch_catalog, caplog):
+        suffixes = ("_left", "_right")
+        # Test that renamed columns are logged correctly
+        with caplog.at_level(logging.WARNING):
+            xmatched = small_sky_catalog.crossmatch(
+                small_sky_xmatch_catalog,
+                algorithm=algo,
+                suffix_method="overlapping_columns",
+                suffixes=suffixes,
+            )
+
+            assert caplog.text.count("Renaming overlapping columns") == 1
+
+            computed = xmatched.compute()
+
+            assert caplog.text.count("Renaming overlapping columns") == 1
+
+        for col in small_sky_catalog.columns:
+            if col in small_sky_xmatch_catalog.columns:
+                assert f"{col}{suffixes[0]}" in xmatched.columns
+                assert f"{col}{suffixes[0]}" in computed.columns
+                assert col in caplog.text
+                assert f"{col}{suffixes[0]}" in caplog.text
+            else:
+                assert col in xmatched.columns
+                assert col in computed.columns
+        for col in small_sky_xmatch_catalog.columns:
+            if col in small_sky_catalog.columns:
+                assert f"{col}{suffixes[1]}" in xmatched.columns
+                assert f"{col}{suffixes[1]}" in computed.columns
+                assert f"{col}{suffixes[1]}" in caplog.text
+            else:
+                assert col in xmatched.columns
+                assert col in computed.columns
+
+        assert xmatched.hc_structure.catalog_info.ra_column in xmatched.columns
+        assert xmatched.hc_structure.catalog_info.dec_column in xmatched.columns
+        assert xmatched.hc_structure.catalog_info.ra_column == "ra_left"
+        assert xmatched.hc_structure.catalog_info.dec_column == "dec_left"
+
+    @staticmethod
+    def test_overlapping_suffix_method_no_overlaps(algo, small_sky_catalog, small_sky_xmatch_catalog, caplog):
+        suffixes = ("_left", "_right")
+        small_sky_catalog = small_sky_catalog.rename(
+            {col: f"{col}_unique" for col in small_sky_catalog.columns}
+        )
+        small_sky_catalog.hc_structure.catalog_info.ra_column = (
+            f"{small_sky_catalog.hc_structure.catalog_info.ra_column}_unique"
+        )
+        small_sky_catalog.hc_structure.catalog_info.dec_column = (
+            f"{small_sky_catalog.hc_structure.catalog_info.dec_column}_unique"
+        )
+        # Test that renamed columns are logged correctly
+        with caplog.at_level(logging.INFO):
+            xmatched = small_sky_catalog.crossmatch(
+                small_sky_xmatch_catalog,
+                algorithm=algo,
+                suffix_method="overlapping_columns",
+                suffixes=suffixes,
+            )
+
+        assert len(caplog.text) == 0
+
+        computed = xmatched.compute()
+        for col in small_sky_catalog.columns:
+            assert col in xmatched.columns
+            assert col in computed.columns
+        for col in small_sky_xmatch_catalog.columns:
+            assert col in xmatched.columns
+            assert col in computed.columns
+
+        assert xmatched.hc_structure.catalog_info.ra_column in xmatched.columns
+        assert xmatched.hc_structure.catalog_info.dec_column in xmatched.columns
+        assert xmatched.hc_structure.catalog_info.ra_column == "ra_unique"
+        assert xmatched.hc_structure.catalog_info.dec_column == "dec_unique"
+
+    @staticmethod
+    def test_overlapping_suffix_log_changes_false(algo, small_sky_catalog, small_sky_xmatch_catalog, caplog):
+        suffixes = ("_left", "_right")
+        # Test that renamed columns are not logged correctly
+        with caplog.at_level(logging.WARNING):
+            xmatched = small_sky_catalog.crossmatch(
+                small_sky_xmatch_catalog,
+                algorithm=algo,
+                suffix_method="overlapping_columns",
+                suffixes=suffixes,
+                log_changes=False,
+            )
+
+            assert len(caplog.text) == 0
+            computed = xmatched.compute()
+            assert len(caplog.text) == 0
+
+        for col in small_sky_catalog.columns:
+            if col in small_sky_xmatch_catalog.columns:
+                assert f"{col}{suffixes[0]}" in xmatched.columns
+                assert f"{col}{suffixes[0]}" in computed.columns
+            else:
+                assert col in xmatched.columns
+                assert col in computed.columns
+        for col in small_sky_xmatch_catalog.columns:
+            if col in small_sky_catalog.columns:
+                assert f"{col}{suffixes[1]}" in xmatched.columns
+                assert f"{col}{suffixes[1]}" in computed.columns
+            else:
+                assert col in xmatched.columns
+                assert col in computed.columns
+
+        assert xmatched.hc_structure.catalog_info.ra_column in xmatched.columns
+        assert xmatched.hc_structure.catalog_info.dec_column in xmatched.columns
+        assert xmatched.hc_structure.catalog_info.ra_column == "ra_left"
+        assert xmatched.hc_structure.catalog_info.dec_column == "dec_left"
+
+    @staticmethod
     def test_wrong_suffixes(algo, small_sky_catalog, small_sky_xmatch_catalog):
         with pytest.raises(ValueError):
             small_sky_catalog.crossmatch(small_sky_xmatch_catalog, suffixes=("wrong",), algorithm=algo)
+
+    @staticmethod
+    def test_wrong_suffix_method(algo, small_sky_catalog, small_sky_xmatch_catalog):
+        with pytest.raises(ValueError, match="Invalid suffix method"):
+            small_sky_catalog.crossmatch(small_sky_xmatch_catalog, suffix_method="wrong", algorithm=algo)
 
     @staticmethod
     def test_right_margin_missing(algo, small_sky_catalog, small_sky_xmatch_catalog):
@@ -440,11 +566,10 @@ class MockCrossmatchAlgorithmOverwrite(AbstractCrossmatchAlgorithm):
 
     extra_columns = pd.DataFrame({"_DIST": pd.Series(dtype=np.float64)})
 
-    def crossmatch(self, suffixes, mock_results: pd.DataFrame = None):  # type: ignore
+    def crossmatch(self, suffixes, suffix_method="all_columns", mock_results: pd.DataFrame = None, **kwargs):
         left_reset = self.left.reset_index(drop=True)
         right_reset = self.right.reset_index(drop=True)
-        self._rename_columns_with_suffix(self.left, suffixes[0])
-        self._rename_columns_with_suffix(self.right, suffixes[1])
+        self.left, self.right = apply_suffixes(self.left, self.right, suffixes, suffix_method)
         mock_results = mock_results[mock_results["ss_id"].isin(left_reset["id"].to_numpy())]
         left_indexes = mock_results.apply(
             lambda row: left_reset[left_reset["id"] == row["ss_id"]].index[0], axis=1

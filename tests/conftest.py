@@ -458,13 +458,6 @@ class Helpers:
                 assert col in cat._ddf.columns
 
     @staticmethod
-    def assert_columns_in_joined_catalog(joined_cat, cats, suffixes):
-        for cat, suffix in zip(cats, suffixes):
-            for col_name, dtype in cat.dtypes.items():
-                if col_name not in paths.HIVE_COLUMNS:
-                    assert (col_name + suffix, dtype) in joined_cat.dtypes.items()
-
-    @staticmethod
     def assert_columns_in_nested_joined_catalog(
         joined_cat, left_cat, right_cat, right_ignore_columns, nested_colname
     ):

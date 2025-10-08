@@ -40,6 +40,7 @@ def perform_crossmatch(
     right_margin_catalog_info,
     algorithm,
     suffixes,
+    suffix_method,
     meta_df,
     **kwargs,
 ):
@@ -68,7 +69,7 @@ def perform_crossmatch(
         left_catalog_info,
         right_catalog_info,
         right_margin_catalog_info,
-    ).crossmatch(suffixes, **kwargs)
+    ).crossmatch(suffixes, suffix_method=suffix_method, **kwargs)
 
 
 # pylint: disable=too-many-arguments, unused-argument
@@ -123,6 +124,8 @@ def crossmatch_catalog_data(
     algorithm: (
         Type[AbstractCrossmatchAlgorithm] | BuiltInCrossmatchAlgorithm
     ) = BuiltInCrossmatchAlgorithm.KD_TREE,
+    suffix_method: str | None = None,
+    log_changes: bool = True,
     **kwargs,
 ) -> tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]:
     """Cross-matches the data from two catalogs
@@ -135,6 +138,12 @@ def crossmatch_catalog_data(
         algorithm (BuiltInCrossmatchAlgorithm | Callable): The algorithm to use to perform the
             crossmatch. Can be specified using a string for a built-in algorithm, or a custom
             method. For more details, see `crossmatch` method in the `Catalog` class.
+        suffix_method (str): Method to use to add suffixes to columns. Options are:
+            - "overlapping_columns": only add suffixes to columns that are present in both catalogs
+            - "all_columns": add suffixes to all columns from both catalogs
+            Default: "all_columns"
+        log_changes (bool): If True, logs an info message for each column that is being renamed.
+            This only applies when suffix_method is 'overlapping_columns'. Default: True
         **kwargs: Additional arguments to pass to the cross-match algorithm
 
     Returns:
@@ -161,7 +170,11 @@ def crossmatch_catalog_data(
 
     # generate meta table structure for dask df
     meta_df = generate_meta_df_for_joined_tables(
-        [left, right], suffixes, extra_columns=crossmatch_algorithm.extra_columns
+        (left, right),
+        suffixes,
+        suffix_method=suffix_method,
+        extra_columns=crossmatch_algorithm.extra_columns,
+        log_changes=log_changes,
     )
 
     # perform the crossmatch on each partition pairing using dask delayed for lazy computation
@@ -170,6 +183,7 @@ def crossmatch_catalog_data(
         perform_crossmatch,
         crossmatch_algorithm,
         suffixes,
+        suffix_method,
         meta_df,
         **kwargs,
     )
