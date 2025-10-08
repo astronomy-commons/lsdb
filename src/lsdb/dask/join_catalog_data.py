@@ -8,7 +8,6 @@ import nested_pandas as npd
 import pandas as pd
 from hats.catalog import TableProperties
 from hats.pixel_math import HealpixPixel
-from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 from hats.pixel_tree import PixelAlignment
 from nested_pandas.series.packer import pack_flat
 
@@ -88,7 +87,9 @@ def perform_join_on(
         A dataframe with the result of merging the left and right partitions on the specified columns
     """
     if right_pixel.order > left_pixel.order:
-        left = filter_by_spatial_index_to_pixel(left, right_pixel.order, right_pixel.pixel)
+        left = filter_by_spatial_index_to_pixel(
+            left, right_pixel.order, right_pixel.pixel, spatial_index_order=left_catalog_info.healpix_order
+        )
 
     right_joined_df = concat_partition_and_margin(right, right_margin)
 
@@ -96,7 +97,7 @@ def perform_join_on(
     merged = left.reset_index().merge(
         right_joined_df, left_on=left_on + suffixes[0], right_on=right_on + suffixes[1]
     )
-    merged.set_index(SPATIAL_INDEX_COLUMN, inplace=True)
+    merged.set_index(left_catalog_info.healpix_column, inplace=True)
     return merged
 
 
@@ -136,14 +137,16 @@ def perform_join_nested(
         A dataframe with the result of merging the left and right partitions on the specified columns
     """
     if right_pixel.order > left_pixel.order:
-        left = filter_by_spatial_index_to_pixel(left, right_pixel.order, right_pixel.pixel)
+        left = filter_by_spatial_index_to_pixel(
+            left, right_pixel.order, right_pixel.pixel, spatial_index_order=left_catalog_info.healpix_order
+        )
 
     right_joined_df = concat_partition_and_margin(right, right_margin)
 
     right_joined_df = pack_flat(npd.NestedFrame(right_joined_df.set_index(right_on))).rename(right_name)
 
     merged = left.reset_index().merge(right_joined_df, left_on=left_on, right_index=True)
-    merged.set_index(SPATIAL_INDEX_COLUMN, inplace=True)
+    merged.set_index(left_catalog_info.healpix_column, inplace=True)
     return merged
 
 
@@ -187,7 +190,9 @@ def perform_join_through(
     if assoc_catalog_info.primary_column is None or assoc_catalog_info.join_column is None:
         raise ValueError("Invalid catalog_info")
     if right_pixel.order > left_pixel.order:
-        left = filter_by_spatial_index_to_pixel(left, right_pixel.order, right_pixel.pixel)
+        left = filter_by_spatial_index_to_pixel(
+            left, right_pixel.order, right_pixel.pixel, spatial_index_order=left_catalog_info.healpix_order
+        )
 
     right_joined_df = concat_partition_and_margin(right, right_margin)
 
@@ -225,7 +230,7 @@ def perform_join_through(
         )
     )
 
-    merged.set_index(SPATIAL_INDEX_COLUMN, inplace=True)
+    merged.set_index(left_catalog_info.healpix_column, inplace=True)
     if len(join_columns_to_drop) > 0:
         merged.drop(join_columns_to_drop, axis=1, inplace=True)
     return merged
@@ -259,7 +264,9 @@ def perform_merge_asof(
         `merge_asof`
     """
     if right_pixel.order > left_pixel.order:
-        left = filter_by_spatial_index_to_pixel(left, right_pixel.order, right_pixel.pixel)
+        left = filter_by_spatial_index_to_pixel(
+            left, right_pixel.order, right_pixel.pixel, spatial_index_order=left_catalog_info.healpix_order
+        )
 
     left, right = rename_columns_with_suffixes(left, right, suffixes)
     left.sort_index(inplace=True)
