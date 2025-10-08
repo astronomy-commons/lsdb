@@ -3,8 +3,6 @@ from __future__ import annotations
 import warnings
 from typing import TYPE_CHECKING, Type
 
-import nested_dask as nd
-import pandas as pd
 from hats.pixel_tree import PixelAlignment, PixelAlignmentType
 
 import lsdb.nested as nd
@@ -125,7 +123,8 @@ def perform_crossmatch(
 
     # TODO: and now rebalance/recalculate?
     # TODO: So long as every point in the output comes from a point in the left-catalog, we're okay.
-    # TODO: still might be nice to "re-sort the partition" (do we have such a function? sort-by-healpix_29-index)
+    # TODO: still might be nice to "re-sort the partition"
+    # TODO:     (do we have such a function? sort-by-healpix_29-index)
     # TODO: ?
 
     return algorithm(
