@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import warnings
 from pathlib import Path
 from typing import Any, Callable, Iterable, Type
 
@@ -24,7 +23,7 @@ from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatc
 from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorithm
 from lsdb.core.search.abstract_search import AbstractSearch
 from lsdb.core.search.index_search import IndexSearch
-from lsdb.dask.concat_catalog_data import concat_catalog_data, concat_margin_data
+from lsdb.dask.concat_catalog_data import _assert_same_ra_dec, concat_catalog_data, handle_margins_for_concat
 from lsdb.dask.crossmatch_catalog_data import crossmatch_catalog_data, crossmatch_catalog_data_nested
 from lsdb.dask.join_catalog_data import (
     join_catalog_data_nested,
@@ -392,68 +391,40 @@ class Catalog(HealpixDataset):
     def concat(
         self,
         other: Catalog,
+        *,
+        ignore_empty_margins: bool = False,
         **kwargs,
     ) -> Catalog:
-        """
-        Concatenate two catalogs by aligned HEALPix pixels.
+        """Concatenate two catalogs by aligned HEALPix pixels.
 
         Args:
-            other (Catalog): The catalog to concatenate with.
-            **kwargs: Extra arguments forwarded to internal `pandas.concat` calls.
+            other (Catalog): Catalog to concatenate with.
+            ignore_empty_margins (bool, optional): If True, keep the available margin
+                when only one side has it (treated as incomplete). If False, drop
+                margins when only one side has them. Defaults to False.
+            **kwargs: Extra arguments forwarded to internal `pandas.concat`.
 
         Returns:
-            Catalog: A new catalog whose partitions correspond to the OUTER pixel alignment
-            and whose rows are the per-pixel concatenation of both inputs. If both
-            inputs provide a margin, the result includes a concatenated margin
-            dataset as described above.
+            Catalog: New catalog with OUTER pixel alignment. If both inputs have a
+            margin — or if `ignore_empty_margins=True` and at least one side has it —
+            the result includes a concatenated margin dataset.
 
         Raises:
-            Warning: If only one side has a margin, a warning is emitted and the result will
-            not include a margin dataset.
-
-        Notes:
-            - The main (non-margin) alignment is filtered by the catalogs’ MOCs when
-              available; the pixel-tree alignment itself is OUTER, so pixels present on
-              either side are preserved (within the MOC filter).
-            - This is a stacking operation, not a row-wise join or crossmatch; no
-              deduplication or key-based matching is applied.
-            - Column dtypes may be upcast by pandas to accommodate the unioned schema.
-              Row/column order is not guaranteed to be stable.
-            - `**kwargs` are forwarded to the internal pandas concatenations (e.g.,
-              `ignore_index`, etc.).
+            ValueError: If RA/Dec column names differ between the input catalogs, or
+                between a catalog and its own margin.
         """
-        # check if the catalogs have margins
-        margin = None
-        if self.margin is None and other.margin is not None:
-            warnings.warn(
-                "Left catalog has no margin, result will not include margin data.",
-            )
+        # Fail fast if RA/Dec columns differ between the two catalogs.
+        _assert_same_ra_dec(self, other, context="Catalog concat")
 
-        if self.margin is not None and other.margin is None:
-            warnings.warn(
-                "Right catalog has no margin, result will not include margin data.",
-            )
+        # Delegate margin handling to helper (which also validates catalog vs margin)
+        margin = handle_margins_for_concat(
+            self,
+            other,
+            ignore_empty_margins=ignore_empty_margins,
+            **kwargs,
+        )
 
-        if self.margin is not None and other.margin is not None:
-            smallest_margin_radius = min(
-                self.margin.hc_structure.catalog_info.margin_threshold or 0,
-                other.margin.hc_structure.catalog_info.margin_threshold or 0,
-            )
-
-            margin_ddf, margin_ddf_map, margin_alignment = concat_margin_data(
-                self, other, smallest_margin_radius, **kwargs
-            )
-            margin_hc_catalog = self.margin.hc_structure.__class__(
-                self.margin.hc_structure.catalog_info,
-                margin_alignment.pixel_tree,
-            )
-            margin = self.margin._create_updated_dataset(
-                ddf=margin_ddf,
-                ddf_pixel_map=margin_ddf_map,
-                hc_structure=margin_hc_catalog,
-                updated_catalog_info_params={"margin_threshold": smallest_margin_radius},
-            )
-
+        # Main catalog concatenation
         ddf, ddf_map, alignment = concat_catalog_data(self, other, **kwargs)
         hc_catalog = self.hc_structure.__class__(
             self.hc_structure.catalog_info,
