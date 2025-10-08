@@ -88,9 +88,10 @@ class AbstractCrossmatchAlgorithm(ABC):
                 name, with the first appended to the left columns and the second to the right
                 columns
         """
+        self.left = left.copy(deep=False)
         # TODO: don't clamp to None in case both left and right have objects in the pixel
-        self.left = left.copy(deep=False) if how != "right" else None
         self.right = right.copy(deep=False) if how != "left" else None
+
         self.left_order = left_order
         self.left_pixel = left_pixel
         self.right_order = right_order
@@ -228,6 +229,7 @@ class AbstractCrossmatchAlgorithm(ABC):
             # TODO: try np.range, then exclude anything that appears in left_idx.  Try np.isin
             left_join_part = self.left.reset_index()
             # TODO: want self.left[left_idx] and THEN concat self.left[~left_idx] with NAs for the xmatch columns (the _right columns)
+            # TODO: mypy complains that "item None of Any | None has no attribute iloc"
             right_join_part = self.right.iloc[right_idx].reset_index(drop=True)
             out = pd.concat(
                 [
@@ -236,20 +238,6 @@ class AbstractCrossmatchAlgorithm(ABC):
                 ],
                 axis=1,
             )
-        elif self.how == "right":
-            # TODO: handle duplicate results from right
-            left_join_part = self.left.iloc[left_idx].reset_index()
-            right_join_part = self.right.reset_index(drop=True)
-            out = pd.concat(
-                [
-                    left_join_part,
-                    right_join_part,
-                ],
-                axis=1,
-            )
-        elif self.how == "outer":
-            # TODO: what is the right answer here?
-            pass
         elif self.how == "inner":
             left_join_part = self.left.iloc[left_idx].reset_index()
             right_join_part = self.right.iloc[right_idx].reset_index(drop=True)

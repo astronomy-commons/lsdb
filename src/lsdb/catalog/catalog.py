@@ -178,7 +178,7 @@ class Catalog(HealpixDataset):
         Args:
             other (Catalog): The right catalog to cross-match against
             how (str): How to handle the crossmatch of the two catalogs.
-                One of {'left', 'right', 'outer', 'inner'}; defaults to 'inner'.
+                One of {'left', 'inner'}; defaults to 'inner'.
             suffixes (Tuple[str, str]): A pair of suffixes to be appended to the end of each column
                 name when they are joined. Default: uses the name of the catalog for the suffix
             algorithm (BuiltInCrossmatchAlgorithm | Type[AbstractCrossmatchAlgorithm]): The
@@ -668,7 +668,7 @@ class Catalog(HealpixDataset):
         Args:
             other (Catalog): The right catalog to merge with.
             how (str): How to handle the merge of the two catalogs.
-                One of {'left', 'right', 'outer', 'inner'}; defaults to 'inner'.
+                One of {'left', 'inner'}; defaults to 'inner'.
             on (str | List): Column or index names to join on. Defaults to the
                 intersection of columns in both Dataframes if on is None and not
                 merging on indexes.
