@@ -32,7 +32,7 @@ from lsdb.dask.join_catalog_data import (
     join_catalog_data_through,
     merge_asof_catalog_data,
 )
-from lsdb.dask.merge_catalog_functions import create_merged_catalog_info
+from lsdb.dask.merge_catalog_functions import DEFAULT_SUFFIX_METHOD, create_merged_catalog_info
 from lsdb.dask.merge_map_catalog_data import merge_map_catalog_data
 from lsdb.io.schema import get_arrow_schema
 from lsdb.loaders.hats.hats_loading_config import HatsLoadingConfig
@@ -161,6 +161,8 @@ class Catalog(HealpixDataset):
         ) = BuiltInCrossmatchAlgorithm.KD_TREE,
         output_catalog_name: str | None = None,
         require_right_margin: bool = False,
+        suffix_method: str | None = None,
+        log_changes: bool = True,
         **kwargs,
     ) -> Catalog:
         """Perform a cross-match between two catalogs
@@ -223,6 +225,13 @@ class Catalog(HealpixDataset):
                 Default: {left_name}_x_{right_name}
             require_right_margin (bool): If true, raises an error if the right margin is missing which could
                 lead to incomplete crossmatches. Default: False
+            suffix_method (str): Method to use to add suffixes to columns. Options are:
+                - "overlapping_columns": only add suffixes to columns that are present in both catalogs
+                - "all_columns": add suffixes to all columns from both catalogs
+                Default: "all_columns" Warning: This default will change to "overlapping_columns" in a future
+                release.
+            log_changes (bool): If True, logs an info message for each column that is being renamed.
+                This only applies when suffix_method is 'overlapping_columns'. Default: True
 
         Returns:
             A Catalog with the data from the left and right catalogs merged with one row for each
@@ -242,15 +251,34 @@ class Catalog(HealpixDataset):
             suffixes = (f"_{self.name}", f"_{other.name}")
         if len(suffixes) != 2:
             raise ValueError("`suffixes` must be a tuple with two strings")
+        if suffix_method is None:
+            suffix_method = DEFAULT_SUFFIX_METHOD
+            warnings.warn(
+                "The default suffix behavior will change from applying suffixes to all columns to only "
+                "applying suffixes to overlapping columns in a future release."
+                "To maintain the current behavior, explicitly set `suffix_method='all_columns'`. "
+                "To change to the new behavior, set `suffix_method='overlapping_columns'`.",
+                FutureWarning,
+            )
         if other.margin is None and require_right_margin:
             raise ValueError("Right catalog margin cache is required for cross-match.")
         if output_catalog_name is None:
             output_catalog_name = f"{self.name}_x_{other.name}"
         ddf, ddf_map, alignment = crossmatch_catalog_data(
-            self, other, suffixes, algorithm=algorithm, **kwargs
+            self,
+            other,
+            suffixes,
+            algorithm=algorithm,
+            suffix_method=suffix_method,
+            log_changes=log_changes,
+            **kwargs,
         )
         new_catalog_info = create_merged_catalog_info(
-            self.hc_structure.catalog_info, other.hc_structure.catalog_info, output_catalog_name, suffixes
+            self,
+            other,
+            output_catalog_name,
+            suffixes,
+            suffix_method,
         )
         hc_catalog = self.hc_structure.__class__(
             new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(ddf), moc=alignment.moc
@@ -720,6 +748,8 @@ class Catalog(HealpixDataset):
         direction: str = "backward",
         suffixes: tuple[str, str] | None = None,
         output_catalog_name: str | None = None,
+        suffix_method: str | None = None,
+        log_changes: bool = True,
     ):
         """Uses the pandas `merge_asof` function to merge two catalogs on their indices by distance of keys
 
@@ -733,6 +763,14 @@ class Catalog(HealpixDataset):
             other (lsdb.Catalog): the right catalog to merge to
             suffixes (Tuple[str,str]): the suffixes to apply to each partition's column names
             direction (str): the direction to perform the merge_asof
+            output_catalog_name (str): The name of the resulting catalog to be stored in metadata
+            suffix_method (str): Method to use to add suffixes to columns. Options are:
+                - "overlapping_columns": only add suffixes to columns that are present in both catalogs
+                - "all_columns": add suffixes to all columns from both catalogs
+                Default: "all_columns" Warning: This default will change to "overlapping_columns" in a future
+                release.
+            log_changes (bool): If True, logs an info message for each column that is being renamed.
+                This only applies when suffix_method is 'overlapping_columns'. Default: True
 
         Returns:
             A new catalog with the columns from each of the input catalogs with their respective suffixes
@@ -744,7 +782,24 @@ class Catalog(HealpixDataset):
         if len(suffixes) != 2:
             raise ValueError("`suffixes` must be a tuple with two strings")
 
-        ddf, ddf_map, alignment = merge_asof_catalog_data(self, other, suffixes=suffixes, direction=direction)
+        if suffix_method is None:
+            suffix_method = DEFAULT_SUFFIX_METHOD
+            warnings.warn(
+                "The default suffix behavior will change from applying suffixes to all columns to only "
+                "applying suffixes to overlapping columns in a future release."
+                "To maintain the current behavior, explicitly set `suffix_method='all_columns'`. "
+                "To change to the new behavior, set `suffix_method='overlapping_columns'`.",
+                FutureWarning,
+            )
+
+        ddf, ddf_map, alignment = merge_asof_catalog_data(
+            self,
+            other,
+            suffixes=suffixes,
+            direction=direction,
+            suffix_method=suffix_method,
+            log_changes=log_changes,
+        )
 
         if output_catalog_name is None:
             output_catalog_name = (
@@ -753,7 +808,11 @@ class Catalog(HealpixDataset):
             )
 
         new_catalog_info = create_merged_catalog_info(
-            self.hc_structure.catalog_info, other.hc_structure.catalog_info, output_catalog_name, suffixes
+            self,
+            other,
+            output_catalog_name,
+            suffixes,
+            suffix_method,
         )
         hc_catalog = hc.catalog.Catalog(
             new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(ddf), moc=alignment.moc
@@ -768,6 +827,8 @@ class Catalog(HealpixDataset):
         through: AssociationCatalog | None = None,
         suffixes: tuple[str, str] | None = None,
         output_catalog_name: str | None = None,
+        suffix_method: str | None = None,
+        log_changes: bool = True,
     ) -> Catalog:
         """Perform a spatial join to another catalog
 
@@ -783,6 +844,13 @@ class Catalog(HealpixDataset):
                 between pixels and individual rows.
             suffixes (Tuple[str,str]): suffixes to apply to the columns of each table
             output_catalog_name (str): The name of the resulting catalog to be stored in metadata
+            suffix_method (str): Method to use to add suffixes to columns. Options are:
+                - "overlapping_columns": only add suffixes to columns that are present in both catalogs
+                - "all_columns": add suffixes to all columns from both catalogs
+                Default: "all_columns" Warning: This default will change to "overlapping_columns" in a future
+                release.
+            log_changes (bool): If True, logs an info message for each column that is being renamed.
+                This only applies when suffix_method is 'overlapping_columns'. Default: True
 
         Returns:
             A new catalog with the columns from each of the input catalogs with their respective suffixes
@@ -794,10 +862,22 @@ class Catalog(HealpixDataset):
         if len(suffixes) != 2:
             raise ValueError("`suffixes` must be a tuple with two strings")
 
+        if suffix_method is None:
+            suffix_method = DEFAULT_SUFFIX_METHOD
+            warnings.warn(
+                "The default suffix behavior will change from applying suffixes to all columns to only "
+                "applying suffixes to overlapping columns in a future release."
+                "To maintain the current behavior, explicitly set `suffix_method='all_columns'`. "
+                "To change to the new behavior, set `suffix_method='overlapping_columns'`.",
+                FutureWarning,
+            )
+
         self._check_unloaded_columns([left_on, right_on])
 
         if through is not None:
-            ddf, ddf_map, alignment = join_catalog_data_through(self, other, through, suffixes)
+            ddf, ddf_map, alignment = join_catalog_data_through(
+                self, other, through, suffixes, suffix_method=suffix_method, log_changes=log_changes
+            )
         else:
             if left_on is None or right_on is None:
                 raise ValueError("Either both of left_on and right_on, or through must be set")
@@ -805,13 +885,19 @@ class Catalog(HealpixDataset):
                 raise ValueError("left_on must be a column in the left catalog")
             if right_on not in other._ddf.columns:
                 raise ValueError("right_on must be a column in the right catalog")
-            ddf, ddf_map, alignment = join_catalog_data_on(self, other, left_on, right_on, suffixes)
+            ddf, ddf_map, alignment = join_catalog_data_on(
+                self, other, left_on, right_on, suffixes, suffix_method=suffix_method, log_changes=log_changes
+            )
 
         if output_catalog_name is None:
             output_catalog_name = self.hc_structure.catalog_info.catalog_name
 
         new_catalog_info = create_merged_catalog_info(
-            self.hc_structure.catalog_info, other.hc_structure.catalog_info, output_catalog_name, suffixes
+            self,
+            other,
+            output_catalog_name,
+            suffixes,
+            suffix_method,
         )
         hc_catalog = hc.catalog.Catalog(
             new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(ddf), moc=alignment.moc
