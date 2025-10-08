@@ -120,14 +120,6 @@ def perform_crossmatch(
     #     # Take *all* of the left-catalog partitions.
     #     # NOTE: must also take non-matching *rows* from the left pixel.
     #     nf = pd.concat([right_joined_df, left._ddf], ignore_index=True)
-    # elif how == "right":
-    #     # Same as above except it's all of the right-side partitions.
-    #     # NOTE:  makes the least sense because of how margin_caches are consulted and when n_neighbors > 1
-    #     nf = pd.concat([nf, right._ddf], ignore_index=True)
-    # elif how == "outer":
-    #     # Same, except it's ALL partitions.
-    #     # NOTE:  same problem as "right"
-    #     nf = pd.concat([nf, left._ddf, right._ddf], ignore_index=True)
     # else:
     #     raise ValueError(f"Unknown crossmatching approach: `how={how}`")
 
@@ -139,10 +131,13 @@ def perform_crossmatch(
     return algorithm(
         left_df,
         right_joined_df,
+        # TODO: are these okay to be None?  It's not okay to ask None.pixel
+        # TODO: before, these were all unconditional
         left_pix.order if left_pix else None,
         left_pix.pixel if left_pix else None,
         right_pix.order if right_pix else None,
         right_pix.pixel if right_pix else None,
+        # TODO: end of None checks
         left_catalog_info,
         right_catalog_info,
         right_margin_catalog_info,
@@ -324,6 +319,7 @@ def crossmatch_catalog_data(
     # with the inner-match partitions, and then union the outer partitions later.
     # Otherwise there are mismatches between the cardinalities of the partitions and the
     # pixel_map.
+    # TODO: more discussion here of why 'left' and 'inner' are the only possibilities
     nf, pixel_map, alignment = construct_catalog_args(joined_partitions, meta_df, alignment)
 
     return nf, pixel_map, alignment
