@@ -131,6 +131,11 @@ def small_sky_order1_source_dir(test_data_dir):
 
 
 @pytest.fixture
+def small_sky_healpix13_dir(test_data_dir):
+    return test_data_dir / "small_sky_healpix13"
+
+
+@pytest.fixture
 def small_sky_order1_source_object_id_index_dir(test_data_dir):
     return (
         test_data_dir
