@@ -335,6 +335,50 @@ def test_join_association_warnings(
         )
 
 
+def test_join_nested_how_left(small_sky_order1_catalog, small_sky_order1_source_with_margin, helpers):
+    # All pixels in the object catalog have a corresponding source pixel
+    object_pixels = small_sky_order1_catalog.get_healpix_pixels()
+    source_pixels = small_sky_order1_source_with_margin.get_healpix_pixels()
+    assert all(p in source_pixels for p in object_pixels)
+
+    # Now we will select only two pixels from the source catalog
+    selected_pixels = [HealpixPixel(1, 46), HealpixPixel(1, 47)]
+    smaller_sky_sources = small_sky_order1_source_with_margin.pixel_search(selected_pixels)
+
+    # If we `join_nested` with `how="left"`, we keep all objects on the left
+    nested_left = small_sky_order1_catalog.join_nested(
+        smaller_sky_sources,
+        left_on="id",
+        right_on="object_id",
+        nested_column_name="sources",
+        how="left",
+    )
+    helpers.assert_columns_in_nested_joined_catalog(
+        nested_left, small_sky_order1_catalog, smaller_sky_sources, ["object_id"], "sources"
+    )
+    helpers.assert_divisions_are_correct(nested_left)
+
+    # All object pixels will show up in the final result
+    assert object_pixels == nested_left.get_healpix_pixels()
+    nested_left_compute = nested_left.compute()
+    assert len(small_sky_order1_catalog) == len(nested_left_compute)
+
+    source_compute = smaller_sky_sources.compute()
+    for _, row in nested_left_compute.iterrows():
+        row_id = row["id"]
+        if row["sources"] is not None:
+            pd.testing.assert_frame_equal(
+                row["sources"].sort_values("source_ra").reset_index(drop=True),
+                pd.DataFrame(source_compute[source_compute["object_id"] == row_id].set_index("object_id"))
+                .sort_values("source_ra")
+                .reset_index(drop=True)
+                .drop(columns=[c for c in paths.HIVE_COLUMNS if c in source_compute.columns]),
+                check_dtype=False,
+                check_column_type=False,
+                check_index_type=False,
+            )
+
+
 def test_join_nested(small_sky_catalog, small_sky_order1_source_with_margin, helpers):
     joined = small_sky_catalog.join_nested(
         small_sky_order1_source_with_margin,

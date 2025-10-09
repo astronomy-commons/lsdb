@@ -8,7 +8,7 @@ import nested_pandas as npd
 import pandas as pd
 from hats.catalog import TableProperties
 from hats.pixel_math import HealpixPixel
-from hats.pixel_tree import PixelAlignment
+from hats.pixel_tree import PixelAlignment, PixelAlignmentType
 from nested_pandas.series.packer import pack_flat
 
 import lsdb.nested as nd
@@ -25,6 +25,7 @@ from lsdb.dask.merge_catalog_functions import (
     filter_by_spatial_index_to_pixel,
     generate_meta_df_for_joined_tables,
     generate_meta_df_for_nested_tables,
+    get_aligned_pixels_from_alignment,
     get_healpix_pixels_from_alignment,
     get_healpix_pixels_from_association,
 )
@@ -32,7 +33,6 @@ from lsdb.types import DaskDFPixelMap
 
 if TYPE_CHECKING:
     from lsdb.catalog.catalog import Catalog
-
 
 NON_JOINING_ASSOCIATION_COLUMNS = ["Norder", "Dir", "Npix", "join_Norder", "join_Dir", "join_Npix"]
 
@@ -92,20 +92,25 @@ def perform_join_on(
     return merged
 
 
-# pylint: disable=too-many-arguments, unused-argument
+# pylint: disable=too-many-arguments, too-many-positional-arguments, unused-argument
 def perform_join_nested(
     left: npd.NestedFrame,
     right: npd.NestedFrame,
     right_margin: npd.NestedFrame,
+    aligned_df: npd.NestedFrame,
     left_pixel: HealpixPixel,
     right_pixel: HealpixPixel,
     right_margin_pixel: HealpixPixel,
+    aligned_pixel: HealpixPixel,
     left_catalog_info: TableProperties,
     right_catalog_info: TableProperties,
     right_margin_catalog_info: TableProperties,
+    aligned_catalog_info: TableProperties,
     left_on: str,
     right_on: str,
     right_name: str,
+    right_meta: npd.NestedFrame,
+    how: str,
 ):
     """Performs a join on two catalog partitions by adding the right catalog a nested column using
     nested-pandas
@@ -114,29 +119,36 @@ def perform_join_nested(
         left (npd.NestedFrame): the left partition to merge
         right (npd.NestedFrame): the right partition to merge
         right_margin (npd.NestedFrame): the right margin partition to merge
+        aligned_df (npd.NestedFrame): the partition of the aligned pixel
         left_pixel (HealpixPixel): the HEALPix pixel of the left partition
         right_pixel (HealpixPixel): the HEALPix pixel of the right partition
         right_margin_pixel (HealpixPixel): the HEALPix pixel of the right margin partition
+        aligned_pixel (HealpixPixel): the HEALPix pixel of the aligned partition
         left_catalog_info (hc.TableProperties): the catalog info of the left catalog
         right_catalog_info (hc.TableProperties): the catalog info of the right catalog
         right_margin_catalog_info (hc.TableProperties): the catalog info of the right margin catalog
         left_on (str): the column to join on from the left partition
         right_on (str): the column to join on from the right partition
         right_name (str): the name of the nested column in the resulting df to join the right catalog into
+        right_meta (npd.NestedFrame): the meta for the right catalog (needed for how=`left`)
+        how (str): One of {‘inner’, ‘left’}. How to handle the alignment (Default: 'inner').
 
     Returns:
         A dataframe with the result of merging the left and right partitions on the specified columns
     """
-    if right_pixel.order > left_pixel.order:
+    if aligned_pixel.order > left_pixel.order:
         left = filter_by_spatial_index_to_pixel(
-            left, right_pixel.order, right_pixel.pixel, spatial_index_order=left_catalog_info.healpix_order
+            left,
+            aligned_pixel.order,
+            aligned_pixel.pixel,
+            spatial_index_order=left_catalog_info.healpix_order,
         )
 
-    right_joined_df = concat_partition_and_margin(right, right_margin)
+    right_joined_df = right_meta if right is None else concat_partition_and_margin(right, right_margin)
 
     right_joined_df = pack_flat(npd.NestedFrame(right_joined_df.set_index(right_on))).rename(right_name)
 
-    merged = left.reset_index().merge(right_joined_df, left_on=left_on, right_index=True)
+    merged = left.reset_index().merge(right_joined_df, left_on=left_on, right_index=True, how=how)
     merged.set_index(left_catalog_info.healpix_column, inplace=True)
     return merged
 
@@ -350,6 +362,7 @@ def join_catalog_data_nested(
     left_on: str,
     right_on: str,
     nested_column_name: str | None = None,
+    how: str = "inner",
 ) -> tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]:
     """Joins two catalogs spatially on a specified column, adding the right as a nested column with nested
     dask
@@ -361,12 +374,18 @@ def join_catalog_data_nested(
         right_on (str): the column to join on from the right partition
         nested_column_name (str): the name of the nested column in the final output, if None, defaults to
             name of the right catalog
+        how (str): One of {‘inner’, ‘left’}. How to handle the alignment (Default: 'inner').
 
     Returns:
         A tuple of the dask dataframe with the result of the join, the pixel map from HEALPix
         pixel to partition index within the dataframe, and the PixelAlignment of the two input
         catalogs.
     """
+    if how not in ["inner", "left"]:
+        raise ValueError("`how` needs to be 'inner' or 'left'")
+
+    alignment_type = PixelAlignmentType(how)
+
     if right.margin is None:
         warnings.warn(
             "Right catalog does not have a margin cache. Results may be incomplete and/or inaccurate.",
@@ -376,16 +395,18 @@ def join_catalog_data_nested(
     if nested_column_name is None:
         nested_column_name = right.name
 
-    alignment = align_catalogs(left, right)
-
+    alignment = align_catalogs(left, right, alignment_type=alignment_type)
     left_pixels, right_pixels = get_healpix_pixels_from_alignment(alignment)
+    aligned_pixels = get_aligned_pixels_from_alignment(alignment)
 
     joined_partitions = align_and_apply(
-        [(left, left_pixels), (right, right_pixels), (right.margin, right_pixels)],
+        [(left, left_pixels), (right, right_pixels), (right.margin, right_pixels), (None, aligned_pixels)],
         perform_join_nested,
         left_on,
         right_on,
         nested_column_name,
+        right._ddf._meta,  # pylint: disable=protected-access
+        how,
     )
 
     meta_df = generate_meta_df_for_nested_tables([left], right, nested_column_name, join_column_name=right_on)
