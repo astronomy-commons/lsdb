@@ -883,6 +883,7 @@ class Catalog(HealpixDataset):
         right_on: str | None = None,
         nested_column_name: str | None = None,
         output_catalog_name: str | None = None,
+        how: str = "inner",
     ) -> Catalog:
         """Perform a spatial join to another catalog by adding the other catalog as a nested column
 
@@ -904,6 +905,7 @@ class Catalog(HealpixDataset):
             nested_column_name (str): the name of the nested column in the resulting dataframe storing the
                 joined columns in the right catalog. (Default: name of right catalog)
             output_catalog_name (str): The name of the resulting catalog to be stored in metadata
+            how (str): One of {‘inner’, ‘left’}. How to handle the alignment (Default: 'inner').
 
         Returns:
             A new catalog with the columns from each of the input catalogs with their respective suffixes
@@ -922,7 +924,7 @@ class Catalog(HealpixDataset):
             raise ValueError("right_on must be a column in the right catalog")
 
         ddf, ddf_map, alignment = join_catalog_data_nested(
-            self, other, left_on, right_on, nested_column_name=nested_column_name
+            self, other, left_on, right_on, nested_column_name=nested_column_name, how=how
         )
 
         if output_catalog_name is None:
