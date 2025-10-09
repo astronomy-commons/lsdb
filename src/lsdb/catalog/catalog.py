@@ -1039,8 +1039,8 @@ class Catalog(HealpixDataset):
         >>> import lsdb
         >>> import pandas as pd
         >>> catalog = lsdb.from_dataframe(
-        >>>     pd.DataFrame({"ra": [0, 10], "dec": [5, 15], "mag": [21, 22], "mag_err": [0.1, 0.2]})
-        >>> )
+        ...     pd.DataFrame({"ra": [0, 10], "dec": [5, 15], "mag": [21, 22], "mag_err": [0.1, 0.2]})
+        ... )
         >>> def my_sigma(col1, col2):
         ...    '''reduce will return a NestedFrame with two columns'''
         ...    return {"plus_one": col1+col2, "minus_one": col1-col2}
