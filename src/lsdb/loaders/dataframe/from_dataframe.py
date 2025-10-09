@@ -60,7 +60,29 @@ def from_dataframe(
 
     Returns:
         Catalog object loaded from the given parameters
+
+    Raises:
+        ValueError: If RA/Dec columns are not found or contain NaN values.
     """
+    # Get RA/Dec columns if not provided.
+    ra_col = (
+        ra_column
+        if ra_column is not None
+        else next((c for c in dataframe.columns if c.lower() == "ra"), None)
+    )
+    dec_col = (
+        dec_column
+        if dec_column is not None
+        else next((c for c in dataframe.columns if c.lower() == "dec"), None)
+    )
+
+    # Validate RA/Dec columns.
+    if ra_col is not None and dec_col is not None:
+        if dataframe[ra_col].isna().any() or dataframe[dec_col].isna().any():
+            colnames = f"{ra_col}/{dec_col}" if ra_column or dec_column else "RA/Dec"
+            raise ValueError(f"NaN values found in {colnames} columns")
+
+    # Load the catalog.
     catalog = DataframeCatalogLoader(
         dataframe,
         ra_column=ra_column,
