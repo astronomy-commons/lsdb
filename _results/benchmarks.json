@@ -59,6 +59,36 @@
         "version": "331530da4eac25967595fcb3d58955d2f5f4c35ba05b97c36a13f66d0cb0c800",
         "warmup_time": -1
     },
+    "benchmarks.time_lazy_crossmatch_many_columns_all_suffixes": {
+        "code": "def time_lazy_crossmatch_many_columns_all_suffixes():\n    cat = lsdb.open_catalog(BENCH_DATA_DIR / \"object_collection\", columns=\"all\")\n    return cat.crossmatch(\n        cat, require_right_margin=False, suffixes=(\"_left\", \"_right\"), suffix_method=\"all_columns\"\n    )",
+        "min_run_count": 2,
+        "name": "benchmarks.time_lazy_crossmatch_many_columns_all_suffixes",
+        "number": 0,
+        "param_names": [],
+        "params": [],
+        "repeat": 0,
+        "rounds": 2,
+        "sample_time": 0.01,
+        "type": "time",
+        "unit": "seconds",
+        "version": "499bcc315a346f56ab9a40b5e2f04de3a2fb2492c69446ad119d416b2c213cd6",
+        "warmup_time": -1
+    },
+    "benchmarks.time_lazy_crossmatch_many_columns_overlapping_suffixes": {
+        "code": "def time_lazy_crossmatch_many_columns_overlapping_suffixes():\n    cat = lsdb.open_catalog(BENCH_DATA_DIR / \"object_collection\", columns=\"all\")\n    return cat.crossmatch(\n        cat, require_right_margin=False, suffixes=(\"_left\", \"_right\"), suffix_method=\"overlapping_columns\"\n    )",
+        "min_run_count": 2,
+        "name": "benchmarks.time_lazy_crossmatch_many_columns_overlapping_suffixes",
+        "number": 0,
+        "param_names": [],
+        "params": [],
+        "repeat": 0,
+        "rounds": 2,
+        "sample_time": 0.01,
+        "type": "time",
+        "unit": "seconds",
+        "version": "2c690ac4f70fbbffeee17e012a1b8766b6fad2a36fcae3e6abb5232086df8636",
+        "warmup_time": -1
+    },
     "benchmarks.time_open_many_columns_all": {
         "code": "def time_open_many_columns_all():\n    return lsdb.open_catalog(BENCH_DATA_DIR / \"object_collection\", columns=\"all\")",
         "min_run_count": 2,
