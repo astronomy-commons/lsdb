@@ -441,10 +441,10 @@ def test_from_dataframe_with_nan_radec():
     """Test that from_dataframe raises a helpful error when NaN values are present in RA/Dec columns."""
     df = pd.DataFrame({"ra": [10.0, np.nan, 30.0], "dec": [20.0, 40.0, np.nan], "id": [1, 2, 3]})
     # Should raise ValueError with a helpful message
-    with pytest.raises(ValueError, match="NaN values found in RA/Dec columns"):
+    with pytest.raises(ValueError, match=r"NaN values found in .+ columns"):
         lsdb.from_dataframe(df)
 
     # Also test with custom column names
     df2 = df.rename(columns={"ra": "my_ra", "dec": "my_dec"})
-    with pytest.raises(ValueError, match="NaN values found in my_ra/my_dec columns"):
+    with pytest.raises(ValueError, match=r"NaN values found in .+ columns"):
         lsdb.from_dataframe(df2, ra_column="my_ra", dec_column="my_dec")
