@@ -323,6 +323,7 @@ def test_from_dataframe_margin_is_empty(small_sky_order1_df):
     assert catalog.margin._ddf.index.name == catalog._ddf.index.name
     assert catalog.margin.hc_structure.catalog_info.margin_threshold == 5.0
     _validate_margin_catalog(catalog.margin.hc_structure, catalog.hc_structure)
+    pd.testing.assert_frame_equal(catalog.margin._ddf._meta, catalog._ddf._meta)
 
 
 def test_from_dataframe_margin_threshold_zero(small_sky_order1_df):

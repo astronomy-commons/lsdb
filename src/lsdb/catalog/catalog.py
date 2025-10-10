@@ -1062,6 +1062,7 @@ class Catalog(HealpixDataset):
         default_columns: list[str] | None = None,
         as_collection: bool = True,
         overwrite: bool = False,
+        error_if_empty: bool = True,
         **kwargs,
     ):
         """Save the catalog to disk in the HATS format. See write_catalog()."""
@@ -1071,6 +1072,7 @@ class Catalog(HealpixDataset):
             default_columns=default_columns,
             as_collection=as_collection,
             overwrite=overwrite,
+            error_if_empty=error_if_empty,
             **kwargs,
         )
 
@@ -1082,6 +1084,7 @@ class Catalog(HealpixDataset):
         default_columns: list[str] | None = None,
         as_collection: bool = True,
         overwrite: bool = False,
+        error_if_empty: bool = True,
         **kwargs,
     ):
         """Save the catalog to disk in HATS format.
@@ -1094,6 +1097,7 @@ class Catalog(HealpixDataset):
                 original hats catalog if they exist.
             as_collection (bool): If True, saves the catalog and its margin as a collection
             overwrite (bool): If True existing catalog is overwritten
+            error_if_empty (bool): If True, raises an error if the catalog is empty.
             **kwargs: Arguments to pass to the parquet write operations
         """
         if as_collection:
@@ -1104,6 +1108,7 @@ class Catalog(HealpixDataset):
                 catalog_name=catalog_name,
                 default_columns=default_columns,
                 overwrite=overwrite,
+                error_if_empty=error_if_empty,
                 **kwargs,
             )
         else:
@@ -1113,5 +1118,6 @@ class Catalog(HealpixDataset):
                 default_columns=default_columns,
                 overwrite=overwrite,
                 create_thumbnail=True,
+                error_if_empty=error_if_empty,
                 **kwargs,
             )

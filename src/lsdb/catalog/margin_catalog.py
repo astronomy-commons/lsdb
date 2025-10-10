@@ -1,5 +1,8 @@
+from pathlib import Path
+
 import hats as hc
 from hats.io import paths
+from upath import UPath
 
 import lsdb.nested as nd
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
@@ -26,6 +29,44 @@ class MarginCatalog(HealpixDataset):
         loading_config: HatsLoadingConfig | None = None,
     ):
         super().__init__(ddf, ddf_pixel_map, hc_structure, loading_config=loading_config)
+
+    def to_hats(
+        self,
+        base_catalog_path: str | Path | UPath,
+        *,
+        catalog_name: str | None = None,
+        default_columns: list[str] | None = None,
+        overwrite: bool = False,
+        error_if_empty: bool = False,
+        **kwargs,
+    ):
+        super().to_hats(
+            base_catalog_path,
+            catalog_name=catalog_name,
+            default_columns=default_columns,
+            overwrite=overwrite,
+            error_if_empty=error_if_empty,
+            **kwargs,
+        )
+
+    def write_catalog(
+        self,
+        base_catalog_path: str | Path | UPath,
+        *,
+        catalog_name: str | None = None,
+        default_columns: list[str] | None = None,
+        overwrite: bool = False,
+        error_if_empty: bool = False,
+        **kwargs,
+    ):
+        super().write_catalog(
+            base_catalog_path,
+            catalog_name=catalog_name,
+            default_columns=default_columns,
+            overwrite=overwrite,
+            error_if_empty=error_if_empty,
+            **kwargs,
+        )
 
 
 def _validate_margin_catalog(margin_hc_catalog, hc_catalog):

@@ -10,9 +10,11 @@ import nested_pandas as npd
 import numpy as np
 from hats.catalog import CatalogType, PartitionInfo
 from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
+from hats.io import file_io
 from hats.io.skymap import write_skymap
 from hats.pixel_math import HealpixPixel, spatial_index_to_healpix
 from hats.pixel_math.sparse_histogram import HistogramAggregator, SparseHistogram
+import pyarrow.parquet as pq
 from upath import UPath
 
 from lsdb.catalog.dataset.dataset import Dataset
@@ -81,6 +83,7 @@ def to_hats(
     create_thumbnail: bool = False,
     skymap_alt_orders: list[int] | None = None,
     addl_hats_properties: dict | None = None,
+    error_if_empty: bool = True,
     **kwargs,
 ):
     """Writes a catalog to disk, in HATS format.
@@ -105,6 +108,7 @@ def to_hats(
             but can also write down-sampled skymaps, for easier previewing of the data.
         addl_hats_properties (dict): key-value pairs of additional properties to write in the
             ``hats.properties`` file.
+        error_if_empty (bool): If True, raises an error if the output catalog is empty
         **kwargs: Arguments to pass to the parquet write operations
     """
     # Create the output directory for the catalog
@@ -121,17 +125,33 @@ def to_hats(
         if catalog.hc_structure.catalog_info.skymap_order is not None:
             histogram_order = catalog.hc_structure.catalog_info.skymap_order
         else:
-            max_catalog_depth = catalog.hc_structure.pixel_tree.get_max_depth()
+            max_catalog_depth = (
+                catalog.hc_structure.pixel_tree.get_max_depth()
+                if len(catalog.get_healpix_pixels()) > 0
+                else 0
+            )
             histogram_order = max(max_catalog_depth, 8)
     # Save partition parquet files
     pixels, counts, histograms = write_partitions(
-        catalog, base_catalog_dir_fp=base_catalog_path, histogram_order=histogram_order, **kwargs
+        catalog,
+        base_catalog_dir_fp=base_catalog_path,
+        histogram_order=histogram_order,
+        error_if_empty=error_if_empty,
+        **kwargs,
     )
     # Save parquet metadata and create a data thumbnail if needed
-    hats_max_rows = max(counts)
-    hc.io.write_parquet_metadata(
-        base_catalog_path, create_thumbnail=create_thumbnail, thumbnail_threshold=hats_max_rows
-    )
+    hats_max_rows = max(counts) if counts else 0
+
+    if len(pixels) > 0:
+        hc.io.write_parquet_metadata(
+            base_catalog_path, create_thumbnail=create_thumbnail, thumbnail_threshold=hats_max_rows
+        )
+    else:
+        common_metadata_path = hc.io.paths.get_common_metadata_pointer(base_catalog_path)
+        file_io.make_directory(common_metadata_path.parent, exist_ok=True)
+        pq.write_metadata(
+            catalog.hc_structure.schema, common_metadata_path.path, filesystem=common_metadata_path.fs
+        )
     # Save partition info
     PartitionInfo(pixels).write_to_file(base_catalog_path / "partition_info.csv")
     # Save catalog info
@@ -176,7 +196,11 @@ def to_hats(
 
 
 def write_partitions(
-    catalog: HealpixDataset, base_catalog_dir_fp: str | Path | UPath, histogram_order: int, **kwargs
+    catalog: HealpixDataset,
+    base_catalog_dir_fp: str | Path | UPath,
+    histogram_order: int,
+    error_if_empty: bool = True,
+    **kwargs,
 ) -> tuple[list[HealpixPixel], list[int], list[SparseHistogram]]:
     """Saves catalog partitions as parquet to disk and computes the sparse
     count histogram for each partition. The histogram is either of order 8
@@ -186,6 +210,7 @@ def write_partitions(
         catalog (HealpixDataset): A catalog to export
         base_catalog_dir_fp (path-like): Path to the base directory of the catalog
         histogram_order: The order of the count histogram to generate
+        error_if_empty: If True, raises an error if the output catalog is empty
         **kwargs: Arguments to pass to the parquet write operations
 
     Returns:
@@ -207,8 +232,11 @@ def write_partitions(
         )
         pixels.append(pixel)
 
-    results = dask.compute(*results)
-    counts, histograms = list(zip(*results))
+    if len(results) > 0:
+        results = dask.compute(*results)
+        counts, histograms = list(zip(*results))
+    else:
+        counts, histograms = [], []
 
     non_empty_indices = np.nonzero(counts)
     non_empty_pixels = np.array(pixels)[non_empty_indices]
@@ -216,7 +244,7 @@ def write_partitions(
     non_empty_hists = np.array(histograms)[non_empty_indices]
 
     # Check that the catalog is not empty
-    if len(non_empty_pixels) == 0:
+    if error_if_empty and len(non_empty_pixels) == 0:
         raise RuntimeError("The output catalog is empty")
 
     return list(non_empty_pixels), list(non_empty_counts), list(non_empty_hists)

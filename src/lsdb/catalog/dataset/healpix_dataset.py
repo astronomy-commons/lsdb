@@ -828,6 +828,7 @@ class HealpixDataset(Dataset):
         catalog_name: str | None = None,
         default_columns: list[str] | None = None,
         overwrite: bool = False,
+        error_if_empty: bool = True,
         **kwargs,
     ):
         """Save the catalog to disk in the HATS format. See write_catalog()."""
@@ -836,6 +837,7 @@ class HealpixDataset(Dataset):
             catalog_name=catalog_name,
             default_columns=default_columns,
             overwrite=overwrite,
+            error_if_empty=error_if_empty,
             **kwargs,
         )
 
@@ -846,6 +848,7 @@ class HealpixDataset(Dataset):
         catalog_name: str | None = None,
         default_columns: list[str] | None = None,
         overwrite: bool = False,
+        error_if_empty: bool = True,
         **kwargs,
     ):
         """Save the catalog to disk in HATS format.
@@ -857,6 +860,7 @@ class HealpixDataset(Dataset):
                 be loaded by default. By default, uses the default columns from the original hats catalogs if
                 they exist.
             overwrite (bool): If True existing catalog is overwritten
+            error_if_empty (bool): If True, raises an error if the catalog is empty.
             **kwargs: Arguments to pass to the parquet write operations
         """
         self._check_unloaded_columns(default_columns)
@@ -866,6 +870,7 @@ class HealpixDataset(Dataset):
             catalog_name=catalog_name,
             default_columns=default_columns,
             overwrite=overwrite,
+            error_if_empty=error_if_empty,
             **kwargs,
         )
 
