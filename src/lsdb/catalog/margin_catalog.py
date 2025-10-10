@@ -1,13 +1,19 @@
+from __future__ import annotations
+
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import hats as hc
-from hats.io import paths
+import pandas as pd
 from upath import UPath
 
 import lsdb.nested as nd
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
 from lsdb.loaders.hats.hats_loading_config import HatsLoadingConfig
 from lsdb.types import DaskDFPixelMap
+
+if TYPE_CHECKING:
+    from lsdb.catalog import Catalog
 
 
 class MarginCatalog(HealpixDataset):
@@ -69,17 +75,16 @@ class MarginCatalog(HealpixDataset):
         )
 
 
-def _validate_margin_catalog(margin_hc_catalog, hc_catalog):
-    """Validate that the margin and main catalogs have compatible schemas. The order of
-    the pyarrow fields should not matter."""
-    margin_catalog_fields = set((f.name, f.type) for f in margin_hc_catalog.schema)
-    main_catalog_fields = set((f.name, f.type) for f in hc_catalog.schema)
-
-    dropped_fields = main_catalog_fields - margin_catalog_fields
-    dropped_fields = [f for f in dropped_fields if f[0] not in paths.HIVE_COLUMNS]
-
-    added_fields = margin_catalog_fields - main_catalog_fields
-    added_fields = [f for f in added_fields if f[0] not in paths.HIVE_COLUMNS]
-
-    if len(dropped_fields) or len(added_fields):
-        raise ValueError("The margin catalog and the main catalog must have the same schema.")
+def _validate_margin_catalog(margin_catalog: MarginCatalog, catalog: Catalog):
+    """Validate that the margin and main catalogs have compatible columns and types."""
+    try:
+        # pylint: disable=protected-access
+        pd.testing.assert_frame_equal(margin_catalog._ddf._meta, catalog._ddf._meta)
+    except AssertionError as e:
+        raise ValueError(
+            f"The margin catalog and the main catalog must have the same schema. Schemas do not match:\n{e}"
+        ) from None
+    if margin_catalog.hc_structure.catalog_info.ra_column != catalog.hc_structure.catalog_info.ra_column:
+        raise ValueError("RA column names do not match between margin and main catalog")
+    if margin_catalog.hc_structure.catalog_info.dec_column != catalog.hc_structure.catalog_info.dec_column:
+        raise ValueError("Dec column names do not match between margin and main catalog")

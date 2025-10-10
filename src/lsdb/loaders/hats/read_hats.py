@@ -256,7 +256,7 @@ def _load_object_catalog(hc_catalog, config):
     if config.margin_cache is not None:
         margin_hc_catalog = hc.read_hats(config.margin_cache)
         margin = _load_margin_catalog(margin_hc_catalog, config)
-        # _validate_margin_catalog(margin_hc_catalog, hc_catalog)
+        _validate_margin_catalog(margin, catalog)
         catalog.margin = margin
     return catalog
 

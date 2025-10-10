@@ -17,9 +17,9 @@ from lsdb import Catalog
 from lsdb.catalog.dataset.dataset import Dataset
 from lsdb.catalog.margin_catalog import MarginCatalog
 from lsdb.loaders.dataframe.from_dataframe_utils import (
+    _convert_dtypes_to_pyarrow,
     _format_margin_partition_dataframe,
     _generate_dask_dataframe,
-    _convert_dtypes_to_pyarrow,
 )
 
 

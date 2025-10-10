@@ -8,13 +8,13 @@ import dask
 import hats as hc
 import nested_pandas as npd
 import numpy as np
+import pyarrow.parquet as pq
 from hats.catalog import CatalogType, PartitionInfo
 from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
 from hats.io import file_io
 from hats.io.skymap import write_skymap
 from hats.pixel_math import HealpixPixel, spatial_index_to_healpix
 from hats.pixel_math.sparse_histogram import HistogramAggregator, SparseHistogram
-import pyarrow.parquet as pq
 from upath import UPath
 
 from lsdb.catalog.dataset.dataset import Dataset
@@ -236,7 +236,7 @@ def write_partitions(
         results = dask.compute(*results)
         counts, histograms = list(zip(*results))
     else:
-        counts, histograms = [], []
+        counts, histograms = (), ()
 
     non_empty_indices = np.nonzero(counts)
     non_empty_pixels = np.array(pixels)[non_empty_indices]
