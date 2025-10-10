@@ -87,6 +87,10 @@ class DataframeCatalogLoader:
         if dec_column is None:
             dec_column = self._find_column("dec")
 
+        # Validate RA/Dec columns.
+        if dataframe[ra_column].isna().any() or dataframe[dec_column].isna().any():
+            raise ValueError(f"NaN values found in {ra_column}/{dec_column} columns")
+
         self.catalog_info = self._create_catalog_info(
             ra_column=ra_column,
             dec_column=dec_column,
