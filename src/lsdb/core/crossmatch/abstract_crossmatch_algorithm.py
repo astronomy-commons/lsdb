@@ -8,7 +8,8 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 from hats.catalog import TableProperties
-from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
+
+from lsdb.dask.merge_catalog_functions import apply_suffixes
 
 if TYPE_CHECKING:
     from lsdb.catalog import Catalog
@@ -96,14 +97,14 @@ class AbstractCrossmatchAlgorithm(ABC):
         self.right_catalog_info = right_catalog_info
         self.right_margin_catalog_info = right_margin_catalog_info
 
-    def crossmatch(self, suffixes, **kwargs) -> npd.NestedFrame:
+    def crossmatch(self, suffixes, suffix_method="all_columns", **kwargs) -> npd.NestedFrame:
         """Perform a crossmatch"""
         l_inds, r_inds, extra_cols = self.perform_crossmatch(**kwargs)
         if not len(l_inds) == len(r_inds) == len(extra_cols):
             raise ValueError(
                 "Crossmatch algorithm must return left and right indices and extra columns with same length"
             )
-        return self._create_crossmatch_df(l_inds, r_inds, extra_cols, suffixes)
+        return self._create_crossmatch_df(l_inds, r_inds, extra_cols, suffixes, suffix_method)
 
     def crossmatch_nested(self, nested_column_name, **kwargs) -> npd.NestedFrame:
         """Perform a crossmatch"""
@@ -145,10 +146,6 @@ class AbstractCrossmatchAlgorithm(ABC):
         This must accept any additional arguments the `crossmatch` method accepts.
         """
         # Check that we have the appropriate columns in our dataset.
-        if left._ddf.index.name != SPATIAL_INDEX_COLUMN:
-            raise ValueError(f"index of left table must be {SPATIAL_INDEX_COLUMN}")
-        if right._ddf.index.name != SPATIAL_INDEX_COLUMN:
-            raise ValueError(f"index of right table must be {SPATIAL_INDEX_COLUMN}")
         column_names = left._ddf.columns
         if left.hc_structure.catalog_info.ra_column not in column_names:
             raise ValueError(f"left table must have column {left.hc_structure.catalog_info.ra_column}")
@@ -196,6 +193,7 @@ class AbstractCrossmatchAlgorithm(ABC):
         right_idx: npt.NDArray[np.int64],
         extra_cols: pd.DataFrame,
         suffixes: tuple[str, str],
+        suffix_method="all_columns",
     ) -> npd.NestedFrame:
         """Creates a df containing the crossmatch result from matching indices and additional columns
 
@@ -209,8 +207,9 @@ class AbstractCrossmatchAlgorithm(ABC):
             additional columns added
         """
         # rename columns so no same names during merging
-        self._rename_columns_with_suffix(self.left, suffixes[0])
-        self._rename_columns_with_suffix(self.right, suffixes[1])
+        self.left, self.right = apply_suffixes(
+            self.left, self.right, suffixes, suffix_method, log_changes=False
+        )
         # concat dataframes together
         index_name = self.left.index.name if self.left.index.name is not None else "index"
         left_join_part = self.left.iloc[left_idx].reset_index()

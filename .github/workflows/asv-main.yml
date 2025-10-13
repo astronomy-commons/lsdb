@@ -1,11 +1,11 @@
-# This workflow will run benchmarks with airspeed velocity (asv), 
+# This workflow will run benchmarks with airspeed velocity (asv),
 # store the new results in the "benchmarks" branch and publish them
 # to a dashboard on GH Pages.
 name: Run ASV benchmarks for main
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
 
 env:
   PYTHON_VERSION: "3.11"
@@ -26,7 +26,7 @@ jobs:
         working-directory: ${{env.WORKING_DIR}}
     steps:
     - name: Set up Python ${{env.PYTHON_VERSION}}
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: ${{env.PYTHON_VERSION}}
     - name: Checkout main branch of the repository
@@ -52,7 +52,7 @@ jobs:
           mv ../_results .
         fi
     - name: Run ASV for the main branch
-      run: asv run ALL --skip-existing --verbose || true
+      run: asv run ALL --skip-existing --verbose --show-stderr || true
     - name: Submit new results to the "benchmarks" branch
       uses: JamesIves/github-pages-deploy-action@v4
       with:

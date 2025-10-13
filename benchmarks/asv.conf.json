@@ -15,8 +15,8 @@
         "HEAD"
     ],
     "install_command": [
-        "python -mpip install -r requirements.txt {wheel_file}",
-        "python -mpip install .[full]"
+        "python -m pip install -r requirements.txt {wheel_file}",
+        "python -m pip install .[full]"
     ],
     "build_command": [
         "python -m build --wheel -o {build_cache_dir} {build_dir}"

@@ -435,3 +435,16 @@ def test_from_dataframe_finds_radec_columns(small_sky_order1_df):
     small_sky_order1_df["RA"] = small_sky_order1_df["ra"].copy()
     with pytest.raises(ValueError, match="possible columns"):
         lsdb.from_dataframe(small_sky_order1_df)
+
+
+def test_from_dataframe_with_nan_radec():
+    """Test that from_dataframe raises a helpful error when NaN values are present in RA/Dec columns."""
+    df = pd.DataFrame({"ra": [10.0, np.nan, 30.0], "dec": [20.0, 40.0, np.nan], "id": [1, 2, 3]})
+    # Should raise ValueError with a helpful message
+    with pytest.raises(ValueError, match=r"NaN values found in .+ columns"):
+        lsdb.from_dataframe(df)
+
+    # Also test with custom column names
+    df2 = df.rename(columns={"ra": "my_ra", "dec": "my_dec"})
+    with pytest.raises(ValueError, match=r"NaN values found in .+ columns"):
+        lsdb.from_dataframe(df2, ra_column="my_ra", dec_column="my_dec")

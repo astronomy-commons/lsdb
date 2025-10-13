@@ -3,6 +3,7 @@ from hats.io import paths
 
 import lsdb.nested as nd
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
+from lsdb.loaders.hats.hats_loading_config import HatsLoadingConfig
 from lsdb.types import DaskDFPixelMap
 
 
@@ -22,8 +23,9 @@ class MarginCatalog(HealpixDataset):
         ddf: nd.NestedFrame,
         ddf_pixel_map: DaskDFPixelMap,
         hc_structure: hc.catalog.MarginCatalog,
+        loading_config: HatsLoadingConfig | None = None,
     ):
-        super().__init__(ddf, ddf_pixel_map, hc_structure)
+        super().__init__(ddf, ddf_pixel_map, hc_structure, loading_config=loading_config)
 
 
 def _validate_margin_catalog(margin_hc_catalog, hc_catalog):

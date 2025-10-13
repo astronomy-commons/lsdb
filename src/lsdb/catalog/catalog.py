@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import warnings
 from pathlib import Path
-from typing import Any, Callable, Iterable, Literal, Type
+from typing import Any, Callable, Iterable, Type
 
 import dask.dataframe as dd
 import hats as hc
@@ -11,13 +11,10 @@ import pandas as pd
 from hats.catalog.catalog_collection import CatalogCollection
 from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
 from hats.catalog.index.index_catalog import IndexCatalog as HCIndexCatalog
-from pandas._libs import lib
-from pandas._typing import AnyAll, Axis, IndexLabel, Renamer
-from pandas.api.extensions import no_default
+from pandas._typing import Renamer
 from typing_extensions import Self
 from upath import UPath
 
-import lsdb.nested as nd
 from lsdb import io
 from lsdb.catalog.association_catalog import AssociationCatalog
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
@@ -25,9 +22,9 @@ from lsdb.catalog.map_catalog import MapCatalog
 from lsdb.catalog.margin_catalog import MarginCatalog
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
 from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorithm
-from lsdb.core.search import IndexSearch
 from lsdb.core.search.abstract_search import AbstractSearch
-from lsdb.dask.concat_catalog_data import concat_catalog_data, concat_margin_data
+from lsdb.core.search.index_search import IndexSearch
+from lsdb.dask.concat_catalog_data import _assert_same_ra_dec, concat_catalog_data, handle_margins_for_concat
 from lsdb.dask.crossmatch_catalog_data import crossmatch_catalog_data, crossmatch_catalog_data_nested
 from lsdb.dask.join_catalog_data import (
     join_catalog_data_nested,
@@ -35,9 +32,11 @@ from lsdb.dask.join_catalog_data import (
     join_catalog_data_through,
     merge_asof_catalog_data,
 )
-from lsdb.dask.merge_catalog_functions import create_merged_catalog_info
+from lsdb.dask.merge_catalog_functions import DEFAULT_SUFFIX_METHOD, create_merged_catalog_info
 from lsdb.dask.merge_map_catalog_data import merge_map_catalog_data
 from lsdb.io.schema import get_arrow_schema
+from lsdb.loaders.hats.hats_loading_config import HatsLoadingConfig
+from lsdb.nested.core import NestedFrame
 from lsdb.types import DaskDFPixelMap
 
 
@@ -61,9 +60,11 @@ class Catalog(HealpixDataset):
 
     def __init__(
         self,
-        ddf: nd.NestedFrame,
+        ddf: NestedFrame,
         ddf_pixel_map: DaskDFPixelMap,
         hc_structure: hc.catalog.Catalog,
+        *,
+        loading_config: HatsLoadingConfig | None = None,
         margin: MarginCatalog | None = None,
     ):
         """Initialise a Catalog object.
@@ -76,18 +77,23 @@ class Catalog(HealpixDataset):
             ddf_pixel_map: Dictionary mapping HEALPix order and pixel to partition index of ddf
             hc_structure: `hats.Catalog` object with hats metadata of the catalog
         """
-        super().__init__(ddf, ddf_pixel_map, hc_structure)
+        super().__init__(ddf, ddf_pixel_map, hc_structure, loading_config)
         self.margin = margin
 
     def _create_updated_dataset(
         self,
-        ddf: nd.NestedFrame | None = None,
+        ddf: NestedFrame | None = None,
         ddf_pixel_map: DaskDFPixelMap | None = None,
         hc_structure: HCHealpixDataset | None = None,
         updated_catalog_info_params: dict | None = None,
         margin: MarginCatalog | None = None,
     ) -> Self:
-        cat = super()._create_updated_dataset(ddf, ddf_pixel_map, hc_structure, updated_catalog_info_params)
+        cat = super()._create_updated_dataset(
+            ddf,
+            ddf_pixel_map,
+            hc_structure,
+            updated_catalog_info_params,
+        )
         cat.margin = margin
         return cat
 
@@ -146,33 +152,6 @@ class Catalog(HealpixDataset):
             catalog.margin = self.margin.rename(columns)
         return catalog
 
-    def assign(self, **kwargs) -> Catalog:
-        """Assigns new columns to a catalog
-
-        Args:
-            **kwargs: Arguments to pass to the assign method. This dictionary
-                should contain the column names as keys and either a
-                function or a 1-D Dask array as their corresponding value.
-
-        Returns:
-            The catalog containing both the old columns and the newly created columns
-
-        Examples:
-            Create a new column using a function::
-
-                catalog = Catalog(...)
-                catalog = catalog.assign(new_col=lambda df: df['existing_col'] * 2)
-
-            Add a column from a 1-D Dask array::
-
-                import dask.array as da
-                new_data = da.arange(...)
-                catalog = catalog.assign(new_col=new_data)
-        """
-        self._check_unloaded_columns(list(kwargs.keys()))
-        ddf = self._ddf.assign(**kwargs)
-        return self._create_updated_dataset(ddf=ddf)
-
     def crossmatch(
         self,
         other: Catalog,
@@ -182,6 +161,8 @@ class Catalog(HealpixDataset):
         ) = BuiltInCrossmatchAlgorithm.KD_TREE,
         output_catalog_name: str | None = None,
         require_right_margin: bool = False,
+        suffix_method: str | None = None,
+        log_changes: bool = True,
         **kwargs,
     ) -> Catalog:
         """Perform a cross-match between two catalogs
@@ -244,6 +225,13 @@ class Catalog(HealpixDataset):
                 Default: {left_name}_x_{right_name}
             require_right_margin (bool): If true, raises an error if the right margin is missing which could
                 lead to incomplete crossmatches. Default: False
+            suffix_method (str): Method to use to add suffixes to columns. Options are:
+                - "overlapping_columns": only add suffixes to columns that are present in both catalogs
+                - "all_columns": add suffixes to all columns from both catalogs
+                Default: "all_columns" Warning: This default will change to "overlapping_columns" in a future
+                release.
+            log_changes (bool): If True, logs an info message for each column that is being renamed.
+                This only applies when suffix_method is 'overlapping_columns'. Default: True
 
         Returns:
             A Catalog with the data from the left and right catalogs merged with one row for each
@@ -263,15 +251,34 @@ class Catalog(HealpixDataset):
             suffixes = (f"_{self.name}", f"_{other.name}")
         if len(suffixes) != 2:
             raise ValueError("`suffixes` must be a tuple with two strings")
+        if suffix_method is None:
+            suffix_method = DEFAULT_SUFFIX_METHOD
+            warnings.warn(
+                "The default suffix behavior will change from applying suffixes to all columns to only "
+                "applying suffixes to overlapping columns in a future release."
+                "To maintain the current behavior, explicitly set `suffix_method='all_columns'`. "
+                "To change to the new behavior, set `suffix_method='overlapping_columns'`.",
+                FutureWarning,
+            )
         if other.margin is None and require_right_margin:
             raise ValueError("Right catalog margin cache is required for cross-match.")
         if output_catalog_name is None:
             output_catalog_name = f"{self.name}_x_{other.name}"
         ddf, ddf_map, alignment = crossmatch_catalog_data(
-            self, other, suffixes, algorithm=algorithm, **kwargs
+            self,
+            other,
+            suffixes,
+            algorithm=algorithm,
+            suffix_method=suffix_method,
+            log_changes=log_changes,
+            **kwargs,
         )
         new_catalog_info = create_merged_catalog_info(
-            self.hc_structure.catalog_info, other.hc_structure.catalog_info, output_catalog_name, suffixes
+            self,
+            other,
+            output_catalog_name,
+            suffixes,
+            suffix_method,
         )
         hc_catalog = self.hc_structure.__class__(
             new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(ddf), moc=alignment.moc
@@ -385,68 +392,40 @@ class Catalog(HealpixDataset):
     def concat(
         self,
         other: Catalog,
+        *,
+        ignore_empty_margins: bool = False,
         **kwargs,
     ) -> Catalog:
-        """
-        Concatenate two catalogs by aligned HEALPix pixels.
+        """Concatenate two catalogs by aligned HEALPix pixels.
 
         Args:
-            other (Catalog): The catalog to concatenate with.
-            **kwargs: Extra arguments forwarded to internal `pandas.concat` calls.
+            other (Catalog): Catalog to concatenate with.
+            ignore_empty_margins (bool, optional): If True, keep the available margin
+                when only one side has it (treated as incomplete). If False, drop
+                margins when only one side has them. Defaults to False.
+            **kwargs: Extra arguments forwarded to internal `pandas.concat`.
 
         Returns:
-            Catalog: A new catalog whose partitions correspond to the OUTER pixel alignment
-            and whose rows are the per-pixel concatenation of both inputs. If both
-            inputs provide a margin, the result includes a concatenated margin
-            dataset as described above.
+            Catalog: New catalog with OUTER pixel alignment. If both inputs have a
+            margin — or if `ignore_empty_margins=True` and at least one side has it —
+            the result includes a concatenated margin dataset.
 
         Raises:
-            Warning: If only one side has a margin, a warning is emitted and the result will
-            not include a margin dataset.
-
-        Notes:
-            - The main (non-margin) alignment is filtered by the catalogs’ MOCs when
-              available; the pixel-tree alignment itself is OUTER, so pixels present on
-              either side are preserved (within the MOC filter).
-            - This is a stacking operation, not a row-wise join or crossmatch; no
-              deduplication or key-based matching is applied.
-            - Column dtypes may be upcast by pandas to accommodate the unioned schema.
-              Row/column order is not guaranteed to be stable.
-            - `**kwargs` are forwarded to the internal pandas concatenations (e.g.,
-              `ignore_index`, etc.).
+            ValueError: If RA/Dec column names differ between the input catalogs, or
+                between a catalog and its own margin.
         """
-        # check if the catalogs have margins
-        margin = None
-        if self.margin is None and other.margin is not None:
-            warnings.warn(
-                "Left catalog has no margin, result will not include margin data.",
-            )
+        # Fail fast if RA/Dec columns differ between the two catalogs.
+        _assert_same_ra_dec(self, other, context="Catalog concat")
 
-        if self.margin is not None and other.margin is None:
-            warnings.warn(
-                "Right catalog has no margin, result will not include margin data.",
-            )
+        # Delegate margin handling to helper (which also validates catalog vs margin)
+        margin = handle_margins_for_concat(
+            self,
+            other,
+            ignore_empty_margins=ignore_empty_margins,
+            **kwargs,
+        )
 
-        if self.margin is not None and other.margin is not None:
-            smallest_margin_radius = min(
-                self.margin.hc_structure.catalog_info.margin_threshold or 0,
-                other.margin.hc_structure.catalog_info.margin_threshold or 0,
-            )
-
-            margin_ddf, margin_ddf_map, margin_alignment = concat_margin_data(
-                self, other, smallest_margin_radius, **kwargs
-            )
-            margin_hc_catalog = self.margin.hc_structure.__class__(
-                self.margin.hc_structure.catalog_info,
-                margin_alignment.pixel_tree,
-            )
-            margin = self.margin._create_updated_dataset(
-                ddf=margin_ddf,
-                ddf_pixel_map=margin_ddf_map,
-                hc_structure=margin_hc_catalog,
-                updated_catalog_info_params={"margin_threshold": smallest_margin_radius},
-            )
-
+        # Main catalog concatenation
         ddf, ddf_map, alignment = concat_catalog_data(self, other, **kwargs)
         hc_catalog = self.hc_structure.__class__(
             self.hc_structure.catalog_info,
@@ -677,7 +656,7 @@ class Catalog(HealpixDataset):
         left_index: bool = False,
         right_index: bool = False,
         suffixes: tuple[str, str] | None = None,
-    ) -> nd.NestedFrame:
+    ) -> NestedFrame:
         """Performs the merge of two catalog Dataframes
 
         More information about pandas merge is available
@@ -741,6 +720,8 @@ class Catalog(HealpixDataset):
         direction: str = "backward",
         suffixes: tuple[str, str] | None = None,
         output_catalog_name: str | None = None,
+        suffix_method: str | None = None,
+        log_changes: bool = True,
     ):
         """Uses the pandas `merge_asof` function to merge two catalogs on their indices by distance of keys
 
@@ -754,6 +735,14 @@ class Catalog(HealpixDataset):
             other (lsdb.Catalog): the right catalog to merge to
             suffixes (Tuple[str,str]): the suffixes to apply to each partition's column names
             direction (str): the direction to perform the merge_asof
+            output_catalog_name (str): The name of the resulting catalog to be stored in metadata
+            suffix_method (str): Method to use to add suffixes to columns. Options are:
+                - "overlapping_columns": only add suffixes to columns that are present in both catalogs
+                - "all_columns": add suffixes to all columns from both catalogs
+                Default: "all_columns" Warning: This default will change to "overlapping_columns" in a future
+                release.
+            log_changes (bool): If True, logs an info message for each column that is being renamed.
+                This only applies when suffix_method is 'overlapping_columns'. Default: True
 
         Returns:
             A new catalog with the columns from each of the input catalogs with their respective suffixes
@@ -765,7 +754,24 @@ class Catalog(HealpixDataset):
         if len(suffixes) != 2:
             raise ValueError("`suffixes` must be a tuple with two strings")
 
-        ddf, ddf_map, alignment = merge_asof_catalog_data(self, other, suffixes=suffixes, direction=direction)
+        if suffix_method is None:
+            suffix_method = DEFAULT_SUFFIX_METHOD
+            warnings.warn(
+                "The default suffix behavior will change from applying suffixes to all columns to only "
+                "applying suffixes to overlapping columns in a future release."
+                "To maintain the current behavior, explicitly set `suffix_method='all_columns'`. "
+                "To change to the new behavior, set `suffix_method='overlapping_columns'`.",
+                FutureWarning,
+            )
+
+        ddf, ddf_map, alignment = merge_asof_catalog_data(
+            self,
+            other,
+            suffixes=suffixes,
+            direction=direction,
+            suffix_method=suffix_method,
+            log_changes=log_changes,
+        )
 
         if output_catalog_name is None:
             output_catalog_name = (
@@ -774,7 +780,11 @@ class Catalog(HealpixDataset):
             )
 
         new_catalog_info = create_merged_catalog_info(
-            self.hc_structure.catalog_info, other.hc_structure.catalog_info, output_catalog_name, suffixes
+            self,
+            other,
+            output_catalog_name,
+            suffixes,
+            suffix_method,
         )
         hc_catalog = hc.catalog.Catalog(
             new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(ddf), moc=alignment.moc
@@ -789,6 +799,8 @@ class Catalog(HealpixDataset):
         through: AssociationCatalog | None = None,
         suffixes: tuple[str, str] | None = None,
         output_catalog_name: str | None = None,
+        suffix_method: str | None = None,
+        log_changes: bool = True,
     ) -> Catalog:
         """Perform a spatial join to another catalog
 
@@ -804,6 +816,13 @@ class Catalog(HealpixDataset):
                 between pixels and individual rows.
             suffixes (Tuple[str,str]): suffixes to apply to the columns of each table
             output_catalog_name (str): The name of the resulting catalog to be stored in metadata
+            suffix_method (str): Method to use to add suffixes to columns. Options are:
+                - "overlapping_columns": only add suffixes to columns that are present in both catalogs
+                - "all_columns": add suffixes to all columns from both catalogs
+                Default: "all_columns" Warning: This default will change to "overlapping_columns" in a future
+                release.
+            log_changes (bool): If True, logs an info message for each column that is being renamed.
+                This only applies when suffix_method is 'overlapping_columns'. Default: True
 
         Returns:
             A new catalog with the columns from each of the input catalogs with their respective suffixes
@@ -815,10 +834,22 @@ class Catalog(HealpixDataset):
         if len(suffixes) != 2:
             raise ValueError("`suffixes` must be a tuple with two strings")
 
+        if suffix_method is None:
+            suffix_method = DEFAULT_SUFFIX_METHOD
+            warnings.warn(
+                "The default suffix behavior will change from applying suffixes to all columns to only "
+                "applying suffixes to overlapping columns in a future release."
+                "To maintain the current behavior, explicitly set `suffix_method='all_columns'`. "
+                "To change to the new behavior, set `suffix_method='overlapping_columns'`.",
+                FutureWarning,
+            )
+
         self._check_unloaded_columns([left_on, right_on])
 
         if through is not None:
-            ddf, ddf_map, alignment = join_catalog_data_through(self, other, through, suffixes)
+            ddf, ddf_map, alignment = join_catalog_data_through(
+                self, other, through, suffixes, suffix_method=suffix_method, log_changes=log_changes
+            )
         else:
             if left_on is None or right_on is None:
                 raise ValueError("Either both of left_on and right_on, or through must be set")
@@ -826,13 +857,19 @@ class Catalog(HealpixDataset):
                 raise ValueError("left_on must be a column in the left catalog")
             if right_on not in other._ddf.columns:
                 raise ValueError("right_on must be a column in the right catalog")
-            ddf, ddf_map, alignment = join_catalog_data_on(self, other, left_on, right_on, suffixes)
+            ddf, ddf_map, alignment = join_catalog_data_on(
+                self, other, left_on, right_on, suffixes, suffix_method=suffix_method, log_changes=log_changes
+            )
 
         if output_catalog_name is None:
             output_catalog_name = self.hc_structure.catalog_info.catalog_name
 
         new_catalog_info = create_merged_catalog_info(
-            self.hc_structure.catalog_info, other.hc_structure.catalog_info, output_catalog_name, suffixes
+            self,
+            other,
+            output_catalog_name,
+            suffixes,
+            suffix_method,
         )
         hc_catalog = hc.catalog.Catalog(
             new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(ddf), moc=alignment.moc
@@ -846,6 +883,7 @@ class Catalog(HealpixDataset):
         right_on: str | None = None,
         nested_column_name: str | None = None,
         output_catalog_name: str | None = None,
+        how: str = "inner",
     ) -> Catalog:
         """Perform a spatial join to another catalog by adding the other catalog as a nested column
 
@@ -867,6 +905,7 @@ class Catalog(HealpixDataset):
             nested_column_name (str): the name of the nested column in the resulting dataframe storing the
                 joined columns in the right catalog. (Default: name of right catalog)
             output_catalog_name (str): The name of the resulting catalog to be stored in metadata
+            how (str): One of {‘inner’, ‘left’}. How to handle the alignment (Default: 'inner').
 
         Returns:
             A new catalog with the columns from each of the input catalogs with their respective suffixes
@@ -885,7 +924,7 @@ class Catalog(HealpixDataset):
             raise ValueError("right_on must be a column in the right catalog")
 
         ddf, ddf_map, alignment = join_catalog_data_nested(
-            self, other, left_on, right_on, nested_column_name=nested_column_name
+            self, other, left_on, right_on, nested_column_name=nested_column_name, how=how
         )
 
         if output_catalog_name is None:
@@ -951,81 +990,6 @@ class Catalog(HealpixDataset):
             )
         return catalog
 
-    def dropna(
-        self,
-        *,
-        axis: Axis = 0,
-        how: AnyAll | lib.NoDefault = no_default,
-        thresh: int | lib.NoDefault = no_default,
-        on_nested: bool = False,
-        subset: IndexLabel | None = None,
-        ignore_index: bool = False,
-    ) -> Catalog:
-        """Remove missing values for one layer of nested columns in the catalog.
-
-        Parameters
-        ----------
-        axis : {0 or 'index', 1 or 'columns'}, default 0
-            Determine if rows or columns which contain missing values are
-            removed.
-
-            * 0, or 'index' : Drop rows which contain missing values.
-            * 1, or 'columns' : Drop columns which contain missing value.
-
-            Only a single axis is allowed.
-
-        how : {'any', 'all'}, default 'any'
-            Determine if row or column is removed from catalog, when we have
-            at least one NA or all NA.
-
-            * 'any' : If any NA values are present, drop that row or column.
-            * 'all' : If all values are NA, drop that row or column.
-        thresh : int, optional
-            Require that many non-NA values. Cannot be combined with how.
-        on_nested : str or bool, optional
-            If not False, applies the call to the nested dataframe in the
-            column with label equal to the provided string. If specified,
-            the nested dataframe should align with any columns given in
-            `subset`.
-        subset : column label or sequence of labels, optional
-            Labels along other axis to consider, e.g. if you are dropping rows
-            these would be a list of columns to include.
-
-            Access nested columns using `nested_df.nested_col` (where
-            `nested_df` refers to a particular nested dataframe and
-            `nested_col` is a column of that nested dataframe).
-        ignore_index : bool, default ``False``
-            If ``True``, the resulting axis will be labeled 0, 1, …, n - 1.
-
-        Returns
-        -------
-        Catalog
-            Catalog with NA entries dropped from it.
-
-        Notes
-        -----
-        Operations that target a particular nested structure return a dataframe
-        with rows of that particular nested structure affected.
-
-        Values for `on_nested` and `subset` should be consistent in pointing
-        to a single layer, multi-layer operations are not supported at this
-        time.
-        """
-        self._check_unloaded_columns(subset)
-        catalog = super().dropna(
-            axis=axis, how=how, thresh=thresh, on_nested=on_nested, subset=subset, ignore_index=ignore_index
-        )
-        if self.margin is not None:
-            catalog.margin = self.margin.dropna(
-                axis=axis,
-                how=how,
-                thresh=thresh,
-                on_nested=on_nested,
-                subset=subset,
-                ignore_index=ignore_index,
-            )
-        return catalog
-
     def reduce(self, func, *args, meta=None, append_columns=False, infer_nesting=True, **kwargs) -> Catalog:
         """
         Takes a function and applies it to each top-level row of the Catalog.
@@ -1073,7 +1037,10 @@ class Catalog(HealpixDataset):
 
         >>> import numpy as np
         >>> import lsdb
-        >>> catalog = lsdb.from_dataframe({"ra":[0, 10], "dec":[5, 15], "mag":[21, 22], "mag_err":[.1, .2]})
+        >>> import pandas as pd
+        >>> catalog = lsdb.from_dataframe(
+        ...     pd.DataFrame({"ra": [0, 10], "dec": [5, 15], "mag": [21, 22], "mag_err": [0.1, 0.2]})
+        ... )
         >>> def my_sigma(col1, col2):
         ...    '''reduce will return a NestedFrame with two columns'''
         ...    return {"plus_one": col1+col2, "minus_one": col1-col2}
@@ -1089,55 +1056,6 @@ class Catalog(HealpixDataset):
         if self.margin is not None:
             catalog.margin = self.margin.reduce(
                 func, *args, meta=meta, append_columns=append_columns, infer_nesting=infer_nesting, **kwargs
-            )
-        return catalog
-
-    def sort_nested_values(
-        self,
-        by: str | list[str],
-        ascending: bool | list[bool] = True,
-        na_position: Literal["first"] | Literal["last"] = "last",
-        ignore_index: bool | None = False,
-        **options,
-    ) -> Catalog:
-        # pylint: disable=duplicate-code
-        """Sort nested columns for each row in the catalog.
-
-        Note that this does NOT sort rows, only nested values within rows.
-
-        Args:
-            by: str or list[str]
-                Column(s) to sort by.
-            ascending: bool or list[bool], optional
-                Sort ascending vs. descending. Defaults to True. Specify list for
-                multiple sort orders. If this is a list of bools, must match the
-                length of the `by`.
-            na_position: {‘last’, ‘first’}, optional
-                Puts NaNs at the beginning if ‘first’, puts NaN at the end if
-                ‘last’. Defaults to ‘last’.
-            ignore_index: bool, optional
-                If True, the resulting axis will be labeled 0, 1, …, n - 1.
-                Defaults to False.
-            **options: keyword arguments, optional
-                Additional options to pass to the sorting function.
-
-        Returns:
-            A new catalog where the specified nested columns are sorted.
-        """
-        catalog = super().sort_nested_values(
-            by=by,
-            ascending=ascending,
-            na_position=na_position,
-            ignore_index=ignore_index,
-            **options,
-        )
-        if self.margin is not None:
-            catalog.margin = self.margin.sort_nested_values(
-                by=by,
-                ascending=ascending,
-                na_position=na_position,
-                ignore_index=ignore_index,
-                **options,
             )
         return catalog
 

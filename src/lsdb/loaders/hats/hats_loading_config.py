@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+import pandas as pd
 from upath import UPath
 
 from lsdb.core.search.abstract_search import AbstractSearch
@@ -19,7 +20,7 @@ class HatsLoadingConfig:
     search_filter: AbstractSearch | None = None
     """The spatial filter to apply to the catalog"""
 
-    columns: list[str] | None = None
+    columns: list[str] | str | None = None
     """Columns to load from the catalog. If not specified, all columns are loaded"""
 
     margin_cache: str | Path | UPath | None = None
@@ -27,6 +28,9 @@ class HatsLoadingConfig:
 
     error_empty_filter: bool = True
     """If loading raises an error for an empty filter result. Defaults to True."""
+
+    filters: Any = None
+    """Pyarrow filters to apply on reading parquet"""
 
     kwargs: dict = field(default_factory=dict)
     """Extra kwargs for the pandas parquet file reader"""
@@ -39,6 +43,38 @@ class HatsLoadingConfig:
                     f"Invalid keyword argument '{nonused_kwarg}' found. Did you mean 'margin_cache'?"
                 )
 
+    def set_columns_from_catalog_info(self, catalog_info):
+        """Set the appropriate columns to load, based on the user-provided `columns` argument
+        and the actual columns of the dataset."""
+        columns = self.columns
+        if columns is None and catalog_info.default_columns is not None:
+            columns = catalog_info.default_columns
+        if isinstance(columns, str):
+            if columns != "all":
+                raise TypeError("`columns` argument must be a sequence of strings, None, or 'all'")
+            columns = None
+        elif pd.api.types.is_list_like(columns):
+            columns = list(columns)  # type: ignore[arg-type]
+        elif columns is not None:
+            raise TypeError("`columns` argument must be a sequence of strings, None, or 'all'")
+
+        if columns is not None and ... in columns:
+            if columns.count(...) > 1:
+                raise ValueError("`columns` argument can only contain one ellipses (...)")
+            elips_ind = columns.index(...)
+            col_set = set(columns)
+            columns_to_add = [c for c in catalog_info.default_columns if c not in col_set]
+            columns = columns[:elips_ind] + columns_to_add + columns[elips_ind + 1 :]
+
+        ra_col = catalog_info.ra_column
+        dec_col = catalog_info.dec_column
+        if columns is not None:
+            if ra_col is not None and ra_col not in columns:
+                columns.append(ra_col)
+            if dec_col is not None and dec_col not in columns:
+                columns.append(dec_col)
+        self.columns = columns
+
     def make_query_url_params(self) -> dict:
         """
         Generates a dictionary of URL parameters with `columns` and `filters` attributes.
@@ -48,10 +84,10 @@ class HatsLoadingConfig:
         if self.columns and len(self.columns) > 0:
             url_params["columns"] = self.columns
 
-        if "filters" in self.kwargs and self.kwargs["filters"]:
+        if self.filters:
             filters = []
             join_char = ","
-            for filtr in self.kwargs["filters"]:
+            for filtr in self.filters:
                 # This is how HATS expects the filters to add to the url, supporting the list forms matching
                 # pyarrow https://arrow.apache.org/docs/python/generated/pyarrow.parquet.ParquetDataset.html
                 if isinstance(filtr[0], str):
@@ -70,8 +106,3 @@ class HatsLoadingConfig:
             url_params["filters"] = join_char.join(filters)
 
         return url_params
-
-    def get_read_kwargs(self):
-        """Clumps existing kwargs and `dtype_backend`, if specified."""
-        kwargs = dict(self.kwargs)
-        return kwargs

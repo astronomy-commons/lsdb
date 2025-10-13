@@ -1,6 +1,7 @@
 [project]
 name = "lsdb"
-license = {file = "LICENSE"}
+license = "BSD-3-Clause"
+license-files = ["LICENSE", "CITATION.bib"]
 readme = "README.md"
 description = "Spatial analysis for extremely large astronomical catalogs using dask"
 authors = [
@@ -8,7 +9,6 @@ authors = [
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
-    "License :: OSI Approved :: BSD License",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
     "Operating System :: OS Independent",
@@ -22,11 +22,18 @@ dependencies = [
     # dask diagnostics is required to spin up the dashboard for profiling.
     "dask[complete]>=2025.3.0",
     "deprecated",
-    "hats>=0.6.4",
-    "nested-pandas>=0.4.7,<0.5.0",
-    "pyarrow>=14.0.1",
+    "hats>=0.6.7,<0.7.0",
+    "nested-pandas>=0.4.7,<0.6.0",
+
+    # NOTE: package PINNED at <21.0.0, see https://github.com/astronomy-commons/lsdb/issues/974
+    "pyarrow>=14.0.1,<21.0.0; platform_system == 'Windows'",
+
+    "pyarrow>=14.0.1; platform_system != 'Windows'",
     "scipy>=1.7.2", # kdtree
-    "universal-pathlib>=0.2.2",
+
+    # NOTE: package PINNED at <0.3.0, see https://github.com/astronomy-commons/lsdb/issues/1047
+    "universal-pathlib>=0.2.2,<0.3.0",
+    "tabulate>=0.7.0",
 ]
 
 [project.urls]
@@ -36,15 +43,17 @@ documentation = "https://lsdb.readthedocs.io/"
 # On a mac, install optional dependencies with `pip install '.[dev]'` (include the single quotes)
 [project.optional-dependencies]
 dev = [
-    "asv", # Used to compute performance benchmarks
+    "asv==0.6.5", # Used to compute performance benchmarks
     "virtualenv==20.34.0", # Temporary fix to airspeed-velocity/asv#1484
-    "jupyter", # Clear notebook output
+    "black", # Used for static linting of files
+    "jupyter", # Clears output from Jupyter notebooks
     "mypy", # Used for static type checking of files
     "pre-commit", # Used to run checks before finalizing a git commit
     "pylint", # Used for static linting of files
     "pytest",
     "pytest-cov", # Used to report total code coverage
     "pytest-mock", # Used to mock objects in tests
+    "types-tabulate", # Type information for tabulate
 ]
 full = [
     "fsspec[full]", # complete file system specs.
@@ -89,6 +98,7 @@ target-version = ["py38"]
 [tool.isort]
 profile = "black"
 line_length = 110
+skip_glob = ["benchmarks/env/*"]
 
 [tool.coverage.run]
 omit=["src/lsdb/_version.py"]
