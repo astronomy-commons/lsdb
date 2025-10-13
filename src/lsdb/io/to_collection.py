@@ -14,6 +14,7 @@ def to_collection(
     catalog_name: str | None = None,
     default_columns: list[str] | None = None,
     overwrite: bool = False,
+    error_if_empty: bool = True,
     **kwargs,
 ):
     """Saves the catalog collection to disk in the HATS format.
@@ -28,6 +29,7 @@ def to_collection(
             catalog to be loaded by default. By default, uses the default columns from the
             original hats catalog if they exist.
         overwrite (bool): If True existing collection is overwritten
+        error_if_empty (bool): If True, raises an error if the catalog is empty
         **kwargs: Arguments to pass to the parquet write operations
     """
     base_collection_path = hc.io.file_io.get_upath(base_collection_path)
@@ -40,10 +42,11 @@ def to_collection(
         default_columns=default_columns,
         overwrite=overwrite,
         as_collection=False,
+        error_if_empty=error_if_empty,
         **kwargs,
     )
 
-    if catalog.margin is not None and len(catalog.margin.get_healpix_pixels()) > 0:
+    if catalog.margin is not None:
         margin_name = f"{catalog_name}_{int(catalog.margin.hc_structure.catalog_info.margin_threshold)}arcs"
         catalog.margin.to_hats(
             base_collection_path / margin_name,

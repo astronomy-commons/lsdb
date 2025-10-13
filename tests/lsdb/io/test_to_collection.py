@@ -80,7 +80,7 @@ def test_save_collection_from_dataframe(small_sky_order1_df, tmp_path):
 
 
 def test_save_collection_with_empty_margin(small_sky_order1_df, tmp_path):
-    catalog = lsdb.from_dataframe(
+    expected_catalog = lsdb.from_dataframe(
         small_sky_order1_df,
         catalog_name="small_sky_order1",
         catalog_type="object",
@@ -88,9 +88,13 @@ def test_save_collection_with_empty_margin(small_sky_order1_df, tmp_path):
     )
 
     base_collection_path = Path(tmp_path) / "small_sky_order1_collection"
-    catalog.write_catalog(base_collection_path, catalog_name="small_sky_order1")
+    expected_catalog.write_catalog(base_collection_path, catalog_name="small_sky_order1")
 
     catalog = lsdb.read_hats(base_collection_path)
     assert isinstance(catalog, lsdb.Catalog)
     assert catalog.hc_structure.catalog_base_dir == base_collection_path / "small_sky_order1"
-    assert catalog.margin is None
+
+    assert catalog.margin is not None
+    assert catalog.margin.hc_structure.catalog_base_dir == base_collection_path / "small_sky_order1_10arcs"
+    assert catalog.margin.hc_structure.catalog_info.margin_threshold == 10
+    pd.testing.assert_frame_equal(expected_catalog.margin.compute(), catalog.margin.compute())

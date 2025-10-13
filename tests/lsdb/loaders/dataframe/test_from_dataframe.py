@@ -223,7 +223,9 @@ def test_catalog_pixels_nested_ordering(small_sky_source_df):
     npt.assert_array_equal(argsort, np.arange(0, 14))
 
 
-def test_from_dataframe_small_sky_source_with_margins(small_sky_source_df, small_sky_source_margin_catalog):
+def test_from_dataframe_small_sky_source_with_margins(
+    small_sky_source_df, small_sky_source_margin_catalog, helpers
+):
     kwargs = {
         "catalog_name": "small_sky_source",
         "catalog_type": "source",
@@ -267,10 +269,12 @@ def test_from_dataframe_small_sky_source_with_margins(small_sky_source_df, small
     assert margin.hc_structure.catalog_info.__pydantic_extra__["hats_builder"].startswith("lsdb")
 
     # The margin and main catalog's schemas are valid
-    _validate_margin_catalog(margin.hc_structure, catalog.hc_structure)
+    _validate_margin_catalog(margin, catalog)
+    helpers.assert_schema_correct(margin)
+    helpers.assert_schema_correct(catalog)
 
 
-def test_from_dataframe_margin_threshold_from_order(small_sky_source_df):
+def test_from_dataframe_margin_threshold_from_order(small_sky_source_df, helpers):
     # By default, the threshold is set to 5 arcsec, triggering a warning
     with pytest.warns(RuntimeWarning, match="Ignoring margin_threshold"):
         catalog = lsdb.from_dataframe(
@@ -286,7 +290,9 @@ def test_from_dataframe_margin_threshold_from_order(small_sky_source_df):
     margin_threshold_order3 = hp.order2mindist(3) * 60.0
     assert catalog.margin.hc_structure.catalog_info.margin_threshold == margin_threshold_order3
     assert catalog.margin._ddf.index.name == catalog._ddf.index.name
-    _validate_margin_catalog(catalog.margin.hc_structure, catalog.hc_structure)
+    _validate_margin_catalog(catalog.margin, catalog)
+    helpers.assert_schema_correct(catalog.margin)
+    helpers.assert_schema_correct(catalog)
 
 
 def test_from_dataframe_invalid_margin_args(small_sky_source_df):
@@ -310,7 +316,7 @@ def test_from_dataframe_invalid_margin_args(small_sky_source_df):
         )
 
 
-def test_from_dataframe_margin_is_empty(small_sky_order1_df):
+def test_from_dataframe_margin_is_empty(small_sky_order1_df, helpers):
     catalog = lsdb.from_dataframe(
         small_sky_order1_df,
         catalog_name="small_sky_order1",
@@ -322,10 +328,12 @@ def test_from_dataframe_margin_is_empty(small_sky_order1_df):
     assert catalog.margin._ddf_pixel_map == {}
     assert catalog.margin._ddf.index.name == catalog._ddf.index.name
     assert catalog.margin.hc_structure.catalog_info.margin_threshold == 5.0
-    _validate_margin_catalog(catalog.margin.hc_structure, catalog.hc_structure)
+    _validate_margin_catalog(catalog.margin, catalog)
+    helpers.assert_schema_correct(catalog.margin)
+    helpers.assert_schema_correct(catalog)
 
 
-def test_from_dataframe_margin_threshold_zero(small_sky_order1_df):
+def test_from_dataframe_margin_threshold_zero(small_sky_order1_df, helpers):
     catalog = lsdb.from_dataframe(
         small_sky_order1_df,
         catalog_name="small_sky_order1",
@@ -338,7 +346,9 @@ def test_from_dataframe_margin_threshold_zero(small_sky_order1_df):
     assert catalog.margin._ddf_pixel_map == {}
     assert catalog.margin._ddf.index.name == catalog._ddf.index.name
     assert catalog.margin.hc_structure.catalog_info.margin_threshold == 0
-    _validate_margin_catalog(catalog.margin.hc_structure, catalog.hc_structure)
+    _validate_margin_catalog(catalog.margin, catalog)
+    helpers.assert_schema_correct(catalog.margin)
+    helpers.assert_schema_correct(catalog)
 
 
 def test_from_dataframe_moc(small_sky_order1_catalog):

@@ -17,6 +17,7 @@ from lsdb import Catalog
 from lsdb.catalog.dataset.dataset import Dataset
 from lsdb.catalog.margin_catalog import MarginCatalog
 from lsdb.loaders.dataframe.from_dataframe_utils import (
+    _convert_dtypes_to_pyarrow,
     _format_margin_partition_dataframe,
     _generate_dask_dataframe,
 )
@@ -111,6 +112,8 @@ class MarginCatalogGenerator:
         """Create an empty margin catalog"""
         if self.hc_structure.schema:
             dask_meta_schema = self.hc_structure.schema.empty_table().to_pandas()
+            if self.use_pyarrow_types:
+                dask_meta_schema = _convert_dtypes_to_pyarrow(dask_meta_schema)
         else:
             dask_meta_schema = pd.DataFrame()
         if SPATIAL_INDEX_COLUMN in dask_meta_schema.columns:
