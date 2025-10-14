@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable, Sequence
+import logging
+from typing import TYPE_CHECKING, Callable, Literal, Sequence
 
 import hats.pixel_math.healpix_shim as hp
 import nested_pandas as npd
@@ -18,6 +19,7 @@ from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN, SPATIAL_INDEX_OR
 from hats.pixel_tree import PixelAlignment, PixelAlignmentType, align_trees
 from hats.pixel_tree.moc_utils import copy_moc
 from hats.pixel_tree.pixel_alignment import align_with_mocs
+from tabulate import tabulate
 
 import lsdb.nested as nd
 from lsdb.dask.divisions import get_pixels_divisions
@@ -31,6 +33,143 @@ if TYPE_CHECKING:
 
 ASSOC_NORDER = "assoc_Norder"
 ASSOC_NPIX = "assoc_Npix"
+
+DEFAULT_SUFFIX_METHOD: Literal["all_columns", "overlapping_columns"] = "all_columns"
+
+
+def apply_suffix_all_columns(
+    left_df: npd.NestedFrame, right_df: npd.NestedFrame, suffixes: tuple[str, str]
+) -> tuple[npd.NestedFrame, npd.NestedFrame]:
+    """Applies suffixes to all columns in both dataframes
+
+    Args:
+        left_df (npd.NestedFrame): The left dataframe
+        right_df (npd.NestedFrame): The right dataframe
+        suffixes (tuple[str, str]): The suffixes to apply to the left and right dataframes
+
+    Returns:
+        A tuple of the two dataframes with the suffixes applied
+    """
+    left_suffix, right_suffix = suffixes
+    left_df = left_df.add_suffix(left_suffix)
+    right_df = right_df.add_suffix(right_suffix)
+    return left_df, right_df
+
+
+def apply_suffix_overlapping_columns(
+    left_df: npd.NestedFrame, right_df: npd.NestedFrame, suffixes: tuple[str, str], log_changes: bool = True
+) -> tuple[npd.NestedFrame, npd.NestedFrame]:
+    """Applies suffixes to overlapping columns in both dataframes
+
+    Logs an info message for each column that is being renamed.
+
+    Args:
+        left_df (npd.NestedFrame): The left dataframe
+        right_df (npd.NestedFrame): The right dataframe
+        suffixes (tuple[str, str]): The suffixes to apply to the left and right dataframes
+        log_changes (bool): If True, logs an info message for each column that is being renamed.
+
+    Returns:
+        A tuple of the two dataframes with the suffixes applied
+    """
+    left_suffix, right_suffix = suffixes
+    overlapping_columns = set(left_df.columns).intersection(set(right_df.columns))
+    left_df = left_df.rename(columns={c: c + left_suffix for c in overlapping_columns})
+    right_df = right_df.rename(columns={c: c + right_suffix for c in overlapping_columns})
+
+    table = tabulate(
+        [(c, c + left_suffix, c + right_suffix) for c in overlapping_columns],
+        headers=["Column", f"Left (suffix={left_suffix})", f"Right (suffix={right_suffix})"],
+        tablefmt="pretty",
+    )
+
+    if overlapping_columns and log_changes:
+        logging.warning("Renaming overlapping columns:\n%s", table)
+
+    return left_df, right_df
+
+
+def apply_suffixes(
+    left_df: npd.NestedFrame,
+    right_df: npd.NestedFrame,
+    suffixes: tuple[str, str],
+    suffix_method: str | None = None,
+    log_changes: bool = True,
+) -> tuple[npd.NestedFrame, npd.NestedFrame]:
+    """Applies suffixes to the columns of two dataframes using the specified suffix method
+
+    Args:
+        left_df (npd.NestedFrame): The left dataframe
+        right_df (npd.NestedFrame): The right dataframe
+        suffixes (tuple[str, str]): The suffixes to apply to the left and right dataframes
+        suffix_method (str | None): The method to use to generate suffixes. Options are 'all_columns',
+            'overlapping_columns'. If None, defaults to 'all_columns' but will change to
+            'overlapping_columns' in a future release.
+        log_changes (bool): If True, logs an info message for each column that is being renamed. This only
+            applies when suffix_method is 'overlapping_columns'. Default: True
+
+    Returns:
+        A tuple of the two dataframes with the suffixes applied
+    """
+    if suffix_method == "all_columns":
+        return apply_suffix_all_columns(left_df, right_df, suffixes)
+    if suffix_method == "overlapping_columns":
+        return apply_suffix_overlapping_columns(left_df, right_df, suffixes, log_changes)
+    raise ValueError(f"Invalid suffix method: {suffix_method}")
+
+
+def apply_left_suffix(
+    col_name: str,
+    right_col_names: list[str] | pd.Index,
+    suffixes: tuple[str, str],
+    suffix_method: str | None = None,
+    log_changes: bool = False,
+) -> str:
+    """Applies the left suffix to a column name using the specified suffix function
+
+    Args:
+        col_name (str): The column name to apply the suffix to
+        right_col_names (list[str]): The list of column names in the right dataframe
+        suffixes (tuple[str, str]): The suffixes to apply to the left and right dataframes
+        suffix_method (str): The method to use to generate suffixes. Options are 'all_columns',
+            'overlapping_columns'
+        log_changes (bool): If True, logs an info message for each column that is being renamed.
+            This only applies when suffix_method is 'overlapping_columns'. Default: False
+
+    Returns:
+        The column name with the left suffix applied
+    """
+    left_df = npd.NestedFrame(columns=[col_name])
+    right_df = npd.NestedFrame(columns=right_col_names)
+    left_df, _ = apply_suffixes(left_df, right_df, suffixes, suffix_method, log_changes=log_changes)
+    return left_df.columns[0]
+
+
+def apply_right_suffix(
+    col_name: str,
+    left_col_names: list[str],
+    suffixes: tuple[str, str],
+    suffix_method: str | None = None,
+    log_changes: bool = False,
+) -> str:
+    """Applies the right suffix to a column name using the specified suffix function
+
+    Args:
+        col_name (str): The column name to apply the suffix to
+        left_col_names (list[str]): The column names in the left dataframe
+        suffixes (tuple[str, str]): The suffixes to apply to the left and right dataframes
+        suffix_method (str): The method to use to generate suffixes. Options are 'all_columns',
+            'overlapping_columns'
+        log_changes (bool): If True, logs an info message for each column that is being renamed.
+            This only applies when suffix_method is 'overlapping_columns'. Default: False
+
+    Returns:
+        The column name with the right suffix applied
+    """
+    left_df = npd.NestedFrame(columns=left_col_names)
+    right_df = npd.NestedFrame(columns=[col_name])
+    _, right_df = apply_suffixes(left_df, right_df, suffixes, suffix_method, log_changes=log_changes)
+    return right_df.columns[0]
 
 
 def concat_partition_and_margin(
@@ -349,7 +488,13 @@ def perform_align_and_apply_func(num_partitions, func, *args, **kwargs):
     )
 
 
-def filter_by_spatial_index_to_pixel(dataframe: npd.NestedFrame, order: int, pixel: int) -> npd.NestedFrame:
+def filter_by_spatial_index_to_pixel(
+    dataframe: npd.NestedFrame,
+    order: int,
+    pixel: int,
+    *,
+    spatial_index_order: int | None = SPATIAL_INDEX_ORDER,
+) -> npd.NestedFrame:
     """Filters a catalog dataframe to the points within a specified HEALPix pixel using the spatial index
 
     Args:
@@ -360,8 +505,11 @@ def filter_by_spatial_index_to_pixel(dataframe: npd.NestedFrame, order: int, pix
     Returns:
         The filtered dataframe with only the rows that are within the specified HEALPix pixel
     """
-    lower_bound = healpix_to_spatial_index(order, pixel)
-    upper_bound = healpix_to_spatial_index(order, pixel + 1)
+    if spatial_index_order is None:
+        # This is the default value, but needed for type-checking.
+        spatial_index_order = SPATIAL_INDEX_ORDER
+    lower_bound = healpix_to_spatial_index(order, pixel, spatial_index_order=spatial_index_order)
+    upper_bound = healpix_to_spatial_index(order, pixel + 1, spatial_index_order=spatial_index_order)
     filtered_df = dataframe[(dataframe.index >= lower_bound) & (dataframe.index < upper_bound)]
     return filtered_df
 
@@ -371,6 +519,7 @@ def filter_by_spatial_index_to_margin(
     order: int,
     pixel: int,
     margin_radius: float,
+    spatial_index_order: int = SPATIAL_INDEX_ORDER,
 ) -> npd.NestedFrame:
     """
     Filter rows to those that fall within the margin footprint of a
@@ -379,7 +528,7 @@ def filter_by_spatial_index_to_margin(
     Args:
         dataframe (nested_pandas.NestedFrame):
             DataFrame to be filtered. Its index must be the spatial
-            index at SPATIAL_INDEX_ORDER (NESTED scheme).
+            index at spatial_index_order (NESTED scheme).
         order (int): HEALPix order of the central pixel.
         pixel (int): HEALPix pixel number (NESTED numbering) at `order`.
         margin_radius (float):
@@ -403,7 +552,7 @@ def filter_by_spatial_index_to_margin(
                then to a margin order via `hp.margin2order`.
             2) Enumerate the margin pixels at margin order using
                `get_margin`.
-            3) Map each row’s index at SPATIAL_INDEX_ORDER down to
+            3) Map each row's index at spatial_index_order down to
                margin order (via `get_lower_order_pixel`) and keep rows
                whose mapped pixel is in the margin set.
     """
@@ -420,9 +569,9 @@ def filter_by_spatial_index_to_margin(
         )
 
     margin_pixels = get_margin(order, pixel, margin_order - order)
-    healpix_29 = dataframe.index.to_numpy()
+    spatial_index_values = dataframe.index.to_numpy()
     margin_order_hp_pix = get_lower_order_pixel(
-        SPATIAL_INDEX_ORDER, healpix_29, SPATIAL_INDEX_ORDER - margin_order
+        spatial_index_order, spatial_index_values, spatial_index_order - margin_order
     )
     mask = np.isin(margin_order_hp_pix, margin_pixels)
     filtered_df = dataframe[mask]
@@ -524,11 +673,13 @@ def get_healpix_pixels_from_association(
 
 
 def generate_meta_df_for_joined_tables(
-    catalogs: Sequence[Catalog],
-    suffixes: Sequence[str],
+    catalogs: tuple[Catalog, Catalog],
+    suffixes: tuple[str, str],
+    suffix_method: str | None = None,
     extra_columns: pd.DataFrame | None = None,
     index_name: str = SPATIAL_INDEX_COLUMN,
     index_type: npt.DTypeLike | None = None,
+    log_changes: bool = True,
 ) -> npd.NestedFrame:
     """Generates a Dask meta DataFrame that would result from joining two catalogs
 
@@ -538,27 +689,36 @@ def generate_meta_df_for_joined_tables(
     Args:
         catalogs (Sequence[lsdb.Catalog]): The catalogs to merge together
         suffixes (Sequence[Str]): The column suffixes to apply each catalog
+        suffix_method (str): The method to use to generate suffixes.
         extra_columns (pd.Dataframe): Any additional columns to the merged catalogs
         index_name (str): The name of the index in the resulting DataFrame
         index_type (npt.DTypeLike): The type of the index in the resulting DataFrame.
             Default: type of index in the first catalog
+        log_changes (bool): If True, logs an info message for each column that is being renamed.
+            This only applies when suffix_method is 'overlapping_columns'. Default: True
 
     Returns:
         An empty dataframe with the columns of each catalog with their respective suffix, and any extra
         columns specified, with the index name set.
     """
-    meta = {}
     # Construct meta for crossmatched catalog columns
-    for table, suffix in zip(catalogs, suffixes):
-        for name, col_type in table.dtypes.items():
-            if name not in paths.HIVE_COLUMNS:
-                meta[name + suffix] = pd.Series(dtype=col_type)
+    # pylint: disable=protected-access
+    left_meta, right_meta = apply_suffixes(
+        catalogs[0]._ddf._meta,
+        catalogs[1]._ddf._meta,
+        suffixes,
+        suffix_method,
+        log_changes=log_changes,
+    )
+    meta = pd.concat([left_meta, right_meta], axis=1)
     # Construct meta for crossmatch result columns
     if extra_columns is not None:
-        meta.update(extra_columns)
+        meta = pd.concat([meta, extra_columns], axis=1)
     if index_type is None:
         # pylint: disable=protected-access
         index_type = catalogs[0]._ddf._meta.index.dtype
+    if catalogs[0].hc_structure.has_healpix_column():
+        index_name = catalogs[0].hc_structure.catalog_info.healpix_column  # type: ignore[assignment]
     index = pd.Index(pd.Series(dtype=index_type), name=index_name)
     meta_df = npd.NestedFrame(pd.DataFrame(meta, index))
     return meta_df
@@ -691,7 +851,11 @@ def align_catalog_to_partitions(
 
 
 def create_merged_catalog_info(
-    left_info: TableProperties, right_info: TableProperties, updated_name: str, suffixes: tuple[str, str]
+    left: Catalog,
+    right: Catalog,
+    updated_name: str,
+    suffixes: tuple[str, str],
+    suffix_method: str | None = None,
 ) -> TableProperties:
     """Creates the catalog info of the resulting catalog from merging two catalogs
 
@@ -699,24 +863,31 @@ def create_merged_catalog_info(
     catalog name, and sets the total rows to 0
 
     Args:
-        left_info (TableProperties): The catalog_info of the left catalog
-        right_info (TableProperties): The catalog_info of the right catalog
+        left (Catalog): The left catalog being merged
+        right (Catalog): The right catalog being merged
         updated_name (str): The updated name of the catalog
         suffixes (tuple[str, str]): The suffixes of the catalogs in the merged result
+        suffix_method (str): The method used to generate suffixes. Options are 'all_columns',
+            'overlapping_columns'
+
+    Returns:
+        The catalog info of the resulting merged catalog
     """
-    default_cols = (
-        [c + suffixes[0] for c in left_info.default_columns] if left_info.default_columns is not None else []
+    left_info = left.hc_structure.catalog_info
+    ra_col = (
+        apply_left_suffix(left_info.ra_column, right.columns, suffixes, suffix_method)
+        if left_info.ra_column is not None
+        else None
     )
-    default_cols = (
-        default_cols + [c + suffixes[1] for c in right_info.default_columns]
-        if right_info.default_columns is not None
-        else default_cols
+    dec_col = (
+        apply_left_suffix(left_info.dec_column, right.columns, suffixes, suffix_method)
+        if left_info.dec_column is not None
+        else None
     )
-    default_cols_to_use = default_cols if len(default_cols) > 0 else None
     return left_info.copy_and_update(
         catalog_name=updated_name,
-        ra_column=left_info.ra_column + suffixes[0],
-        dec_column=left_info.dec_column + suffixes[0],
+        ra_column=ra_col,
+        dec_column=dec_col,
         total_rows=0,
-        default_columns=default_cols_to_use,
+        default_columns=None,
     )

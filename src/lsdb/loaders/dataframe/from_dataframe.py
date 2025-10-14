@@ -60,7 +60,11 @@ def from_dataframe(
 
     Returns:
         Catalog object loaded from the given parameters
+
+    Raises:
+        ValueError: If RA/Dec columns are not found or contain NaN values.
     """
+    # Load the catalog.
     catalog = DataframeCatalogLoader(
         dataframe,
         ra_column=ra_column,

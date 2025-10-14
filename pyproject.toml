@@ -22,7 +22,7 @@ dependencies = [
     # dask diagnostics is required to spin up the dashboard for profiling.
     "dask[complete]>=2025.3.0",
     "deprecated",
-    "hats>=0.6.6,<0.7.0",
+    "hats>=0.6.7,<0.7.0",
     "nested-pandas>=0.6.0,<0.7.0",
 
     # NOTE: package PINNED at <21.0.0, see https://github.com/astronomy-commons/lsdb/issues/974
@@ -33,6 +33,7 @@ dependencies = [
 
     # NOTE: package PINNED at <0.3.0, see https://github.com/astronomy-commons/lsdb/issues/1047
     "universal-pathlib>=0.2.2,<0.3.0",
+    "tabulate>=0.7.0",
 ]
 
 [project.urls]
@@ -52,6 +53,7 @@ dev = [
     "pytest",
     "pytest-cov", # Used to report total code coverage
     "pytest-mock", # Used to mock objects in tests
+    "types-tabulate", # Type information for tabulate
 ]
 full = [
     "fsspec[full]", # complete file system specs.

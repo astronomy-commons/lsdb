@@ -55,6 +55,16 @@ class HatsLoadingConfig:
             columns = None
         elif pd.api.types.is_list_like(columns):
             columns = list(columns)  # type: ignore[arg-type]
+        elif columns is not None:
+            raise TypeError("`columns` argument must be a sequence of strings, None, or 'all'")
+
+        if columns is not None and ... in columns:
+            if columns.count(...) > 1:
+                raise ValueError("`columns` argument can only contain one ellipses (...)")
+            elips_ind = columns.index(...)
+            col_set = set(columns)
+            columns_to_add = [c for c in catalog_info.default_columns if c not in col_set]
+            columns = columns[:elips_ind] + columns_to_add + columns[elips_ind + 1 :]
 
         ra_col = catalog_info.ra_column
         dec_col = catalog_info.dec_column

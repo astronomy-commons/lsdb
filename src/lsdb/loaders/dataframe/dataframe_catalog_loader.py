@@ -15,6 +15,7 @@ from hats.pixel_math import HealpixPixel, generate_histogram
 from hats.pixel_math.healpix_pixel_function import get_pixel_argsort
 from hats.pixel_math.spatial_index import (
     SPATIAL_INDEX_COLUMN,
+    SPATIAL_INDEX_ORDER,
     compute_spatial_index,
     healpix_to_spatial_index,
 )
@@ -85,6 +86,10 @@ class DataframeCatalogLoader:
             ra_column = self._find_column("ra")
         if dec_column is None:
             dec_column = self._find_column("dec")
+
+        # Validate RA/Dec columns.
+        if dataframe[ra_column].isna().any() or dataframe[dec_column].isna().any():
+            raise ValueError(f"NaN values found in {ra_column}/{dec_column} columns")
 
         self.catalog_info = self._create_catalog_info(
             ra_column=ra_column,
@@ -182,6 +187,8 @@ class DataframeCatalogLoader:
             ra_column=ra_column,
             dec_column=dec_column,
             catalog_type=catalog_type,
+            healpix_column=SPATIAL_INDEX_COLUMN,
+            healpix_order=SPATIAL_INDEX_ORDER,
             **kwargs,
         )
 

@@ -249,6 +249,54 @@ def test_read_hats_default_cols_invalid_selector(small_sky_order1_default_cols_d
         lsdb.open_catalog(small_sky_order1_default_cols_dir, columns="other")
 
 
+def test_read_hats_default_cols_with_ellipsis(small_sky_order1_default_cols_dir):
+    """Test that ellipsis in columns list is replaced with default columns."""
+
+    # Test ellipsis at the start of the columns list
+    catalog = lsdb.open_catalog(small_sky_order1_default_cols_dir, columns=[..., "ra_error"])
+    expected_columns = ["ra", "dec", "id", "ra_error"]
+    assert list(catalog.columns) == expected_columns
+    assert list(catalog.compute().columns) == expected_columns
+
+    # Test ellipsis in the middle of the columns list
+    catalog = lsdb.open_catalog(small_sky_order1_default_cols_dir, columns=["dec_error", ..., "ra_error"])
+    expected_columns = ["dec_error", "ra", "dec", "id", "ra_error"]
+    assert list(catalog.columns) == expected_columns
+    assert list(catalog.compute().columns) == expected_columns
+
+    # Test ellipsis at the end of the columns list reorders default columns
+    catalog = lsdb.open_catalog(small_sky_order1_default_cols_dir, columns=["id", ...])
+    expected_columns = ["id", "ra", "dec"]
+    assert list(catalog.columns) == expected_columns
+    assert list(catalog.compute().columns) == expected_columns
+
+    # Test ellipsis at the end of the columns list reorders default columns
+    catalog = lsdb.open_catalog(small_sky_order1_default_cols_dir, columns=[..., "ra"])
+    expected_columns = ["dec", "id", "ra"]
+    assert list(catalog.columns) == expected_columns
+    assert list(catalog.compute().columns) == expected_columns
+
+    # Test columns list with only an ellipsis
+    catalog = lsdb.open_catalog(small_sky_order1_default_cols_dir, columns=[...])
+    expected_columns = ["ra", "dec", "id"]
+    assert list(catalog.columns) == expected_columns
+    assert list(catalog.compute().columns) == expected_columns
+
+
+def test_read_hats_with_ellipsis_errors(small_sky_order1_default_cols_dir):
+    # Test that multiple ellipses raise an error
+    with pytest.raises(ValueError, match="one ellipses"):
+        lsdb.open_catalog(small_sky_order1_default_cols_dir, columns=[..., "ra_error", ...])
+
+    # Test that ellipsis with non-list-like columns raises an error
+    with pytest.raises(TypeError, match="`columns` argument must be a sequence"):
+        lsdb.open_catalog(small_sky_order1_default_cols_dir, columns=...)
+
+    # Test that ellipsis with missing columns raises an error
+    with pytest.raises(KeyError, match="not in index"):
+        lsdb.open_catalog(small_sky_order1_default_cols_dir, columns=[..., "wrong"])
+
+
 def test_read_hats_no_pandas(small_sky_order1_no_pandas_dir, helpers):
     catalog = lsdb.open_catalog(small_sky_order1_no_pandas_dir)
     assert isinstance(catalog, lsdb.Catalog)

@@ -829,6 +829,7 @@ class HealpixDataset(Dataset):
         catalog_name: str | None = None,
         default_columns: list[str] | None = None,
         overwrite: bool = False,
+        error_if_empty: bool = True,
         **kwargs,
     ):
         """Save the catalog to disk in the HATS format. See write_catalog()."""
@@ -837,6 +838,7 @@ class HealpixDataset(Dataset):
             catalog_name=catalog_name,
             default_columns=default_columns,
             overwrite=overwrite,
+            error_if_empty=error_if_empty,
             **kwargs,
         )
 
@@ -847,6 +849,7 @@ class HealpixDataset(Dataset):
         catalog_name: str | None = None,
         default_columns: list[str] | None = None,
         overwrite: bool = False,
+        error_if_empty: bool = True,
         **kwargs,
     ):
         """Save the catalog to disk in HATS format.
@@ -858,6 +861,7 @@ class HealpixDataset(Dataset):
                 be loaded by default. By default, uses the default columns from the original hats catalogs if
                 they exist.
             overwrite (bool): If True existing catalog is overwritten
+            error_if_empty (bool): If True, raises an error if the catalog is empty.
             **kwargs: Arguments to pass to the parquet write operations
         """
         self._check_unloaded_columns(default_columns)
@@ -867,6 +871,7 @@ class HealpixDataset(Dataset):
             catalog_name=catalog_name,
             default_columns=default_columns,
             overwrite=overwrite,
+            error_if_empty=error_if_empty,
             **kwargs,
         )
 
@@ -966,7 +971,10 @@ class HealpixDataset(Dataset):
 
         >>> import numpy as np
         >>> import lsdb
-        >>> catalog = lsdb.from_dataframe({"ra":[0, 10], "dec":[5, 15], "mag":[21, 22], "mag_err":[.1, .2]})
+        >>> import pandas as pd
+        >>> catalog = lsdb.from_dataframe(
+        ...     pd.DataFrame({"ra": [0, 10], "dec": [5, 15], "mag": [21, 22], "mag_err": [0.1, 0.2]})
+        ... )
         >>> def my_sigma(col1, col2):
         ...    '''reduce will return a NestedFrame with two columns'''
         ...    return {"plus_one": col1+col2, "minus_one": col1-col2}

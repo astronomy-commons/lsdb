@@ -192,6 +192,28 @@ def test_save_catalog_when_catalog_is_empty(small_sky_order1_catalog, tmp_path):
         cone_search_catalog.to_hats(base_catalog_path)
 
 
+def test_save_empty_catalog_no_error(small_sky_order1_catalog, tmp_path):
+    base_catalog_path = tmp_path / "small_sky"
+
+    # The result of this cone search is known to be empty
+    cone_search_catalog = small_sky_order1_catalog.cone_search(0, -80, 1)
+    assert cone_search_catalog._ddf.npartitions == 1
+
+    non_empty_pixels = []
+    for pixel, partition_index in cone_search_catalog._ddf_pixel_map.items():
+        if len(cone_search_catalog._ddf.partitions[partition_index]) > 0:
+            non_empty_pixels.append(pixel)
+    assert len(non_empty_pixels) == 0
+
+    # The catalog is not written to disk
+    cone_search_catalog.to_hats(base_catalog_path, error_if_empty=False)
+
+    catalog = lsdb.read_hats(base_catalog_path)
+    assert len(catalog.get_healpix_pixels()) == 0
+    pd.testing.assert_frame_equal(cone_search_catalog._ddf._meta, catalog._ddf._meta)
+    pd.testing.assert_frame_equal(cone_search_catalog.compute(), catalog.compute())
+
+
 def test_save_big_catalog(tmp_path):
     """Load a catalog with many partitions, and save with to_hats."""
     mock_partition_df = pd.DataFrame(

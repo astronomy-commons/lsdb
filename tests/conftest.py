@@ -131,6 +131,11 @@ def small_sky_order1_source_dir(test_data_dir):
 
 
 @pytest.fixture
+def small_sky_healpix13_dir(test_data_dir):
+    return test_data_dir / "small_sky_healpix13"
+
+
+@pytest.fixture
 def small_sky_order1_source_object_id_index_dir(test_data_dir):
     return (
         test_data_dir
@@ -451,13 +456,6 @@ class Helpers:
         if cat.hc_structure.catalog_info.default_columns is not None:
             for col in cat.hc_structure.catalog_info.default_columns:
                 assert col in cat._ddf.columns
-
-    @staticmethod
-    def assert_columns_in_joined_catalog(joined_cat, cats, suffixes):
-        for cat, suffix in zip(cats, suffixes):
-            for col_name, dtype in cat.dtypes.items():
-                if col_name not in paths.HIVE_COLUMNS:
-                    assert (col_name + suffix, dtype) in joined_cat.dtypes.items()
 
     @staticmethod
     def assert_columns_in_nested_joined_catalog(
