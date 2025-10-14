@@ -12,7 +12,7 @@ import pandas as pd
 import pyarrow as pa
 from dask.dataframe.dask_expr._collection import new_collection
 from dask.dataframe.dask_expr._expr import no_default as dsk_no_default
-from deprecated import deprecated
+from deprecated import deprecated  # type: ignore
 from nested_pandas.series.dtype import NestedDtype
 from nested_pandas.series.packer import pack, pack_flat, pack_lists
 from typing_extensions import Self

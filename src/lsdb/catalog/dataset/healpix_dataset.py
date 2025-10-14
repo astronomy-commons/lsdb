@@ -18,7 +18,7 @@ from astropy.units import Quantity
 from astropy.visualization.wcsaxes import WCSAxes
 from astropy.visualization.wcsaxes.frame import BaseFrame
 from dask.dataframe.core import _repr_data_series
-from deprecated import deprecated
+from deprecated import deprecated  # type: ignore
 from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
 from hats.inspection.visualize_catalog import get_fov_moc_from_wcs, initialize_wcs_axes
 from hats.pixel_math import HealpixPixel
@@ -1090,7 +1090,8 @@ class HealpixDataset(Dataset):
         >>> import numpy as np
         >>> import lsdb
         >>> import pandas as pd
-        >>> catalog = lsdb.from_dataframe(pd.DataFrame({"ra":[0, 10], "dec":[5, 15], "mag":[21, 22], "mag_err":[.1, .2]}))
+        >>> catalog = lsdb.from_dataframe(pd.DataFrame({"ra":[0, 10], "dec":[5, 15],
+        ...                                             "mag":[21, 22], "mag_err":[.1, .2]}))
 
         >>> def my_sigma(row):
         ...    '''map_rows will return a NestedFrame with two columns'''

@@ -8,7 +8,7 @@ import dask.dataframe as dd
 import hats as hc
 import nested_pandas as npd
 import pandas as pd
-from deprecated import deprecated
+from deprecated import deprecated  # type: ignore
 from hats.catalog.catalog_collection import CatalogCollection
 from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
 from hats.catalog.index.index_catalog import IndexCatalog as HCIndexCatalog
@@ -1145,7 +1145,8 @@ class Catalog(HealpixDataset):
         >>> import numpy as np
         >>> import lsdb
         >>> import pandas as pd
-        >>> catalog = lsdb.from_dataframe(pd.DataFrame({"ra":[0, 10], "dec":[5, 15], "mag":[21, 22], "mag_err":[.1, .2]}))
+        >>> catalog = lsdb.from_dataframe(pd.DataFrame({"ra":[0, 10], "dec":[5, 15],
+        ...                                             "mag":[21, 22], "mag_err":[.1, .2]}))
 
         >>> def my_sigma(row):
         ...    '''map_rows will return a NestedFrame with two columns'''
