@@ -1089,7 +1089,9 @@ class HealpixDataset(Dataset):
 
         >>> import numpy as np
         >>> import lsdb
-        >>> catalog = lsdb.from_dataframe({"ra":[0, 10], "dec":[5, 15], "mag":[21, 22], "mag_err":[.1, .2]})
+        >>> import pandas as pd
+        >>> catalog = lsdb.from_dataframe(pd.DataFrame({"ra":[0, 10], "dec":[5, 15], "mag":[21, 22], "mag_err":[.1, .2]}))
+
         >>> def my_sigma(row):
         ...    '''map_rows will return a NestedFrame with two columns'''
         ...    return row["mag"] + row["mag_err"], row["mag"] - row["mag_err"]
