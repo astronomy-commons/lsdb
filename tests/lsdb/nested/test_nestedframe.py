@@ -311,27 +311,33 @@ def test_sort_values(test_dataset):
         test_dataset.sort_values(by=["a", "nested.flux"])
 
 
-def test_reduce(test_dataset):
-    """test the reduce function"""
+def test_map_rows(test_dataset):
+    """test the map_rows function"""
 
     def reflect_inputs(*args):
         return args
 
-    res = test_dataset.reduce(reflect_inputs, "a", "nested.t", meta={0: float, 1: float})
+    res = test_dataset.map_rows(
+        reflect_inputs,
+        columns=["a", "nested.t"],
+        row_container="args",
+        output_names=["a_out", "t_out"],
+        meta={"a_out": float, "t_out": float},
+    )
 
     assert len(res) == 50
     assert isinstance(res.compute().loc[0][0], float)
     assert isinstance(res.compute().loc[0][1], np.ndarray)
 
-    res2 = test_dataset.reduce(np.mean, "nested.flux", meta={0: float})
+    res2 = test_dataset.map_rows(np.mean, columns="nested.flux", row_container="args", meta={0: float})
 
     assert pytest.approx(res2.compute()[0][15], 0.1) == 53.635174
     assert pytest.approx(sum(res2.compute()[0]), 0.1) == 2488.960119
 
 
 @pytest.mark.parametrize("meta", ["df", "series"])
-def test_reduce_output_type(meta):
-    """test the meta handling of reduce"""
+def test_map_rows_output_type(meta):
+    """test the meta handling of map_rows"""
 
     a = npd.NestedFrame({"a": pd.Series([1, 2, 3], dtype=pd.ArrowDtype(pa.int64()))}, index=[0, 0, 1])
     b = npd.NestedFrame({"b": pd.Series([1, 2], dtype=pd.ArrowDtype(pa.int64()))}, index=[0, 1])
@@ -344,21 +350,23 @@ def test_reduce_output_type(meta):
         def mean_arr(b, arr):  # type: ignore
             return {"b": b, "mean": np.mean(arr)}  # type: ignore
 
-        reduced = nddf.reduce(mean_arr, "b", "test.a", meta={"b": int, "mean": float})
+        reduced = nddf.map_rows(
+            mean_arr, columns=["b", "test.a"], row_container="args", meta={"b": int, "mean": float}
+        )
     elif meta == "series":
 
         def mean_arr(arr):  # type: ignore
             return np.mean(arr)  # type: ignore
 
-        reduced = nddf.reduce(mean_arr, "test.a", meta=(0, "float"))
+        reduced = nddf.map_rows(mean_arr, columns=["test.a"], row_container="args", meta=(0, "float"))
     else:
         reduced = None
     assert isinstance(reduced, nd.NestedFrame)
     assert isinstance(reduced.compute(), npd.NestedFrame)
 
 
-def test_reduce_output_inference():
-    """test the extension of the reduce result nesting inference"""
+def test_map_rows_output_inference():
+    """test the extension of the map_rows result nesting inference"""
 
     ndd = generate_data(20, 20, npartitions=2, seed=1)
 
@@ -388,7 +396,9 @@ def test_reduce_output_inference():
             "meta": pd.Series([], dtype=NestedDtype(pa.struct([pa.field("colors", pa.list_(pa.string()))]))),
         }
     )
-    result = ndd.reduce(complex_output, "nested.flux", infer_nesting=True, meta=result_meta)
+    result = ndd.map_rows(
+        complex_output, columns=["nested.flux"], row_container="args", infer_nesting=True, meta=result_meta
+    )
 
     assert list(result.dtypes) == list(result.compute().dtypes)
     assert list(result.columns) == list(result.compute().columns)
@@ -464,7 +474,9 @@ def test_from_epyc():
 
     # Apply a mean function
     meta = pd.DataFrame(columns=[0], dtype=float)
-    result = object_ndf.reduce(np.mean, "ztf_source.mag", meta=meta).compute()
+    result = object_ndf.map_rows(
+        np.mean, columns=["ztf_source.mag"], row_container="args", meta=meta
+    ).compute()
 
     # just make sure the result was successfully computed
     assert len(result) == 9817

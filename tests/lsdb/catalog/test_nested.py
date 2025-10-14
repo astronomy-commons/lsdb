@@ -65,12 +65,15 @@ def test_nest_lists_only_list_columns(small_sky_with_nested_sources):
     pd.testing.assert_frame_equal(renested_flat, original_flat)
 
 
-def test_reduce(small_sky_with_nested_sources):
+def test_map_rows(small_sky_with_nested_sources):
     def mean_mag(ra, dec, mag):
         return {"ra": ra, "dec": dec, "mean_mag": np.mean(mag)}
 
-    reduced_cat = small_sky_with_nested_sources.reduce(
-        mean_mag, "ra", "dec", "sources.mag", meta={"ra": float, "dec": float, "mean_mag": float}
+    reduced_cat = small_sky_with_nested_sources.map_rows(
+        mean_mag,
+        columns=["ra", "dec", "sources.mag"],
+        row_container="args",
+        meta={"ra": float, "dec": float, "mean_mag": float},
     )
 
     assert isinstance(reduced_cat, Catalog)
@@ -82,19 +85,22 @@ def test_reduce(small_sky_with_nested_sources):
     reduced_cat_compute = reduced_cat.compute()
     assert isinstance(reduced_cat_compute, npd.NestedFrame)
 
-    reduced_ddf = small_sky_with_nested_sources._ddf.reduce(
-        mean_mag, "ra", "dec", "sources.mag", meta={"ra": float, "dec": float, "mean_mag": float}
+    reduced_ddf = small_sky_with_nested_sources._ddf.map_rows(
+        mean_mag,
+        columns=["ra", "dec", "sources.mag"],
+        row_container="args",
+        meta={"ra": float, "dec": float, "mean_mag": float},
     )
 
     pd.testing.assert_frame_equal(reduced_cat_compute, reduced_ddf.compute())
 
 
-def test_reduce_append_columns(small_sky_with_nested_sources):
+def test_map_rows_append_columns(small_sky_with_nested_sources):
     def mean_mag(mag):
         return {"mean_mag": np.mean(mag)}
 
-    reduced_cat = small_sky_with_nested_sources.reduce(
-        mean_mag, "sources.mag", meta={"mean_mag": float}, append_columns=True
+    reduced_cat = small_sky_with_nested_sources.map_rows(
+        mean_mag, columns=["sources.mag"], row_container="args", meta={"mean_mag": float}, append_columns=True
     )
 
     assert isinstance(reduced_cat, Catalog)
@@ -103,7 +109,12 @@ def test_reduce_append_columns(small_sky_with_nested_sources):
     reduced_cat_compute = reduced_cat.compute()
     assert isinstance(reduced_cat_compute, npd.NestedFrame)
 
-    reduced_ddf = small_sky_with_nested_sources._ddf.reduce(mean_mag, "sources.mag", meta={"mean_mag": float})
+    reduced_ddf = small_sky_with_nested_sources._ddf.map_rows(
+        mean_mag,
+        columns=["sources.mag"],
+        row_container="args",
+        meta={"mean_mag": float},
+    )
 
     pd.testing.assert_series_equal(reduced_cat_compute["mean_mag"], reduced_ddf.compute()["mean_mag"])
     pd.testing.assert_frame_equal(
@@ -111,12 +122,16 @@ def test_reduce_append_columns(small_sky_with_nested_sources):
     )
 
 
-def test_reduce_no_return_column(small_sky_with_nested_sources):
+def test_map_rows_no_return_column(small_sky_with_nested_sources):
     def mean_mag(mag):
         return np.mean(mag)
 
-    reduced_cat = small_sky_with_nested_sources.reduce(
-        mean_mag, "sources.mag", meta={0: float}, append_columns=True
+    reduced_cat = small_sky_with_nested_sources.map_rows(
+        mean_mag,
+        columns=["sources.mag"],
+        row_container="args",
+        meta={0: float},
+        append_columns=True,
     )
 
     assert isinstance(reduced_cat, Catalog)
@@ -125,7 +140,12 @@ def test_reduce_no_return_column(small_sky_with_nested_sources):
     reduced_cat_compute = reduced_cat.compute()
     assert isinstance(reduced_cat_compute, npd.NestedFrame)
 
-    reduced_ddf = small_sky_with_nested_sources._ddf.reduce(mean_mag, "sources.mag", meta={0: float})
+    reduced_ddf = small_sky_with_nested_sources._ddf.map_rows(
+        mean_mag,
+        columns=["sources.mag"],
+        row_container="args",
+        meta={0: float},
+    )
 
     pd.testing.assert_series_equal(reduced_cat_compute[0], reduced_ddf.compute()[0])
     pd.testing.assert_frame_equal(
@@ -133,12 +153,16 @@ def test_reduce_no_return_column(small_sky_with_nested_sources):
     )
 
 
-def test_reduce_invalid_return_column(small_sky_with_nested_sources):
+def test_map_rows_invalid_return_column(small_sky_with_nested_sources):
     def mean_mag(mag):
         return pd.DataFrame.from_dict({"mean_mag": [np.mean(mag)]})
 
-    reduced_cat = small_sky_with_nested_sources.reduce(
-        mean_mag, "sources.mag", meta={0: float}, append_columns=True
+    reduced_cat = small_sky_with_nested_sources.map_rows(
+        mean_mag,
+        columns=["sources.mag"],
+        row_container="args",
+        meta={0: float},
+        append_columns=True,
     )
 
     assert isinstance(reduced_cat, Catalog)
@@ -148,22 +172,21 @@ def test_reduce_invalid_return_column(small_sky_with_nested_sources):
         reduced_cat.compute()
 
 
-def test_reduce_append_columns_raises_error(small_sky_with_nested_sources):
+def test_map_rows_append_columns_raises_error(small_sky_with_nested_sources):
     def mean_mag(ra, dec, mag):
         return {"ra": ra, "dec": dec, "mean_mag": np.mean(mag)}
 
     with pytest.raises(ValueError):
-        small_sky_with_nested_sources.reduce(
+        small_sky_with_nested_sources.map_rows(
             mean_mag,
-            "ra",
-            "dec",
-            "sources.mag",
+            columns=["ra", "dec", "sources.mag"],
+            row_container="args",
             meta={"ra": float, "dec": float, "mean_mag": float},
             append_columns=True,
         ).compute()
 
 
-def test_reduce_infer_nesting(small_sky_with_nested_sources):
+def test_map_rows_infer_nesting(small_sky_with_nested_sources):
     def mean_mag(ra, dec, mag):
         ra = np.asarray(ra)
         dec = np.asarray(dec)
@@ -178,7 +201,12 @@ def test_reduce_infer_nesting(small_sky_with_nested_sources):
     # use the lc_dtype in meta creation
     true_meta = npd.NestedFrame({"new_nested": pd.Series([], dtype=new_dtype)})
 
-    res_true = small_sky_with_nested_sources.reduce(mean_mag, "ra", "dec", "sources.mag", meta=true_meta)
+    res_true = small_sky_with_nested_sources.map_rows(
+        mean_mag,
+        columns=["ra", "dec", "sources.mag"],
+        row_container="args",
+        meta=true_meta,
+    )
 
     assert "new_nested" in res_true.columns and "new_nested" in res_true._ddf.nested_columns
     assert list(res_true["new_nested"].nest.columns) == ["ra_mag", "dec_mag"]
@@ -186,12 +214,21 @@ def test_reduce_infer_nesting(small_sky_with_nested_sources):
     # Without inferred nesting:
     false_meta = (
         small_sky_with_nested_sources.compute()
-        .reduce(mean_mag, "ra", "dec", "sources.mag", infer_nesting=False)
+        .map_rows(
+            mean_mag,
+            columns=["ra", "dec", "sources.mag"],
+            row_container="args",
+            infer_nesting=False,
+        )
         .head(0)
     )
 
-    res_false = small_sky_with_nested_sources.reduce(
-        mean_mag, "ra", "dec", "sources.mag", infer_nesting=False, meta=false_meta
+    res_false = small_sky_with_nested_sources.map_rows(
+        mean_mag,
+        columns=["ra", "dec", "sources.mag"],
+        row_container="args",
+        infer_nesting=False,
+        meta=false_meta,
     )
 
     assert list(res_false.columns) == ["new_nested.ra_mag", "new_nested.dec_mag"]
