@@ -27,6 +27,7 @@ from lsdb.core.search.abstract_search import AbstractSearch
 from lsdb.dask.divisions import get_pixels_divisions
 from lsdb.io.schema import get_arrow_schema
 from lsdb.loaders.hats.hats_loading_config import HatsLoadingConfig
+from lsdb.loaders.hats.path_generator import PathGenerator
 
 MAX_PYARROW_FILTERS = 10
 
@@ -49,7 +50,8 @@ def open_catalog(
     columns: list[str] | str | None = None,
     margin_cache: str | Path | UPath | None = None,
     error_empty_filter: bool = True,
-    filters=None,
+    filters: list[tuple[str]] | None = None,
+    path_generator_class: type[PathGenerator] = PathGenerator,
     **kwargs,
 ) -> Dataset:
     """Open a catalog from a HATS path.
@@ -104,6 +106,8 @@ def open_catalog(
             an empty catalog, throw error.
         filters (list[tuple[str]]): Default `None`. Filters to apply when reading parquet files.
             These may be applied as pyarrow filters or URL parameters.
+        path_generator_class (PathGenerator): Default `PathGenerator`. The class that addresses the
+            discoverability of HEALPix leaf parquet.
         **kwargs: Arguments to pass to the pandas parquet file reader
 
     Returns:
@@ -124,6 +128,7 @@ def open_catalog(
         margin_cache=margin_cache,
         filters=filters,
         kwargs=kwargs,
+        path_generator_class=path_generator_class,
     )
 
     if isinstance(hc_catalog, CatalogCollection):
@@ -158,6 +163,7 @@ def _get_collection_margin(
 
 def _load_catalog(hc_catalog: hc.catalog.Dataset, config: HatsLoadingConfig) -> Dataset:
     config.set_columns_from_catalog_info(hc_catalog.catalog_info)
+    config.make_path_generator(hc_catalog)
     if hc_catalog.schema is None:
         raise ValueError(
             "The catalog schema could not be loaded from metadata."
@@ -332,9 +338,7 @@ def _load_dask_df_and_map(catalog: HCHealpixDataset, config) -> tuple[nd.NestedF
         ddf = nd.NestedFrame.from_map(
             read_pixel,
             ordered_pixels,
-            catalog_base_dir=catalog.catalog_base_dir,
-            npix_suffix=catalog.catalog_info.npix_suffix,
-            query_url_params=query_url_params,
+            path_generator=config.path_generator,
             columns=config.columns,
             schema=catalog.schema,
             filters=config.filters,
@@ -351,10 +355,8 @@ def _load_dask_df_and_map(catalog: HCHealpixDataset, config) -> tuple[nd.NestedF
 
 def read_pixel(
     pixel: HealpixPixel,
-    catalog_base_dir: str | Path | UPath,
-    npix_suffix: str,
     *,
-    query_url_params: dict | None = None,
+    path_generator: Callable | None = None,
     index_column: str = SPATIAL_INDEX_COLUMN,
     columns=None,
     schema=None,
@@ -364,9 +366,10 @@ def read_pixel(
 
     NB: `columns` is necessary as an argument, even if None, so that dask-expr
     optimizes the execution plan."""
-
+    if path_generator is None:
+        raise ValueError("Path generator not defined")
     return _read_parquet_file(
-        hc.io.pixel_catalog_file(catalog_base_dir, pixel, query_url_params, npix_suffix=npix_suffix),
+        path_generator(pixel),
         columns=columns,
         schema=schema,
         index_column=index_column,

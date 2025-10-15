@@ -4,10 +4,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+import hats as hc
 import pandas as pd
 from upath import UPath
 
 from lsdb.core.search.abstract_search import AbstractSearch
+from lsdb.loaders.hats.path_generator import PathGenerator
 
 
 @dataclass
@@ -16,6 +18,11 @@ class HatsLoadingConfig:
 
     Contains all parameters needed for a user to specify how to correctly read a hats-sharded catalog.
     """
+
+    path_generator: PathGenerator | None = None
+    """Callable that generates the path to a given Healpix pixel."""
+
+    path_generator_class: type[PathGenerator] | None = None
 
     search_filter: AbstractSearch | None = None
     """The spatial filter to apply to the catalog"""
@@ -42,6 +49,12 @@ class HatsLoadingConfig:
                 raise ValueError(
                     f"Invalid keyword argument '{nonused_kwarg}' found. Did you mean 'margin_cache'?"
                 )
+
+    def make_path_generator(self, hc_catalog: hc.catalog.Catalog):
+        """Creates a PathGenerator for the healpix parquet files."""
+        self.path_generator = self.path_generator_class(
+            hc_catalog, query_url_params=self.make_query_url_params()
+        )
 
     def set_columns_from_catalog_info(self, catalog_info):
         """Set the appropriate columns to load, based on the user-provided `columns` argument
