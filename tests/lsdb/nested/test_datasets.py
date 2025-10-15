@@ -9,9 +9,9 @@ import numpy as np
 import pytest
 from hats.pixel_math.healpix_shim import radec2pix
 
-import lsdb.nested as nd
-from lsdb.core.search.region_search import BoxSearch, ConeSearch, PixelSearch
+from hats.search.region_search import BoxSearch, ConeSearch, PixelSearch
 
+import lsdb.nested as nd
 
 def test_generate_data():
     """test the dataset generator function"""

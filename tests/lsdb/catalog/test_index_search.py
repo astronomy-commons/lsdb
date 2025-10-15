@@ -5,9 +5,9 @@ import nested_pandas as npd
 import pytest
 from hats.catalog.dataset.collection_properties import CollectionProperties
 
+from hats.search.index_search import IndexSearch
 import lsdb
 import lsdb.nested as nd
-from lsdb.core.search.index_search import IndexSearch
 
 
 def test_id_search_with_single_field(small_sky_order1_source_collection_catalog, helpers):

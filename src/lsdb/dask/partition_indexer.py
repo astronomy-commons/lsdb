@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from lsdb.core.search.region_search import PixelSearch
+from hats.search.region_search import PixelSearch
 
 
 # pylint: disable=protected-access

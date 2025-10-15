@@ -11,11 +11,11 @@ from hats.pixel_math import HealpixPixel
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 from upath import UPath
 
+from hats.search.index_search import IndexSearch
+from hats.search.region_search import BoxSearch, ConeSearch, OrderSearch, PolygonSearch
+
 import lsdb
 import lsdb.nested as nd
-from lsdb.core.search.index_search import IndexSearch
-from lsdb.core.search.region_search import BoxSearch, ConeSearch, OrderSearch, PolygonSearch
-
 
 def test_read_hats(small_sky_order1_dir, small_sky_order1_hats_catalog, helpers):
     catalog = lsdb.open_catalog(small_sky_order1_dir)
