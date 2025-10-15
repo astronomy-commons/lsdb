@@ -658,11 +658,11 @@ class HealpixDataset(Dataset):
             columns=columns,
             margin_cache=None,
             error_empty_filter=False,
-            path_generator_class=self.loading_config.path_generator_class,
         )
         if self.loading_config:
             new_loading_config.filters = self.loading_config.filters
             new_loading_config.kwargs = self.loading_config.kwargs
+            new_loading_config.path_generator_type = self.loading_config.path_generator_type
 
         return _load_catalog(hc_structure, new_loading_config)
 

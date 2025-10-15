@@ -51,7 +51,7 @@ def open_catalog(
     margin_cache: str | Path | UPath | None = None,
     error_empty_filter: bool = True,
     filters: list[tuple[str]] | None = None,
-    path_generator_class: type[PathGenerator] = PathGenerator,
+    path_generator_type: type[PathGenerator] = PathGenerator,
     **kwargs,
 ) -> Dataset:
     """Open a catalog from a HATS path.
@@ -106,7 +106,7 @@ def open_catalog(
             an empty catalog, throw error.
         filters (list[tuple[str]]): Default `None`. Filters to apply when reading parquet files.
             These may be applied as pyarrow filters or URL parameters.
-        path_generator_class (PathGenerator): Default `PathGenerator`. The class that addresses the
+        path_generator_type (type[PathGenerator]): Default `PathGenerator`. The class that addresses the
             discoverability of HEALPix leaf parquet.
         **kwargs: Arguments to pass to the pandas parquet file reader
 
@@ -128,7 +128,7 @@ def open_catalog(
         margin_cache=margin_cache,
         filters=filters,
         kwargs=kwargs,
-        path_generator_class=path_generator_class,
+        path_generator_type=path_generator_type,
     )
 
     if isinstance(hc_catalog, CatalogCollection):
@@ -163,7 +163,6 @@ def _get_collection_margin(
 
 def _load_catalog(hc_catalog: hc.catalog.Dataset, config: HatsLoadingConfig) -> Dataset:
     config.set_columns_from_catalog_info(hc_catalog.catalog_info)
-    config.make_path_generator(hc_catalog)
     if hc_catalog.schema is None:
         raise ValueError(
             "The catalog schema could not be loaded from metadata."
@@ -331,21 +330,24 @@ def _load_dask_df_and_map(catalog: HCHealpixDataset, config) -> tuple[nd.NestedF
     divisions = get_pixels_divisions(ordered_pixels)
     dask_meta_schema = _load_dask_meta_schema(catalog, config)
     index_column = dask_meta_schema.index.name
+
     query_url_params = None
     if isinstance(get_upath(catalog.catalog_base_dir).fs, HTTPFileSystem):
         query_url_params = config.make_query_url_params()
+    path_generator = config.path_generator_type(catalog, query_url_params=query_url_params)
+
     if len(ordered_pixels) > 0:
         ddf = nd.NestedFrame.from_map(
             read_pixel,
             ordered_pixels,
-            path_generator=config.path_generator,
+            path_generator=path_generator,
             columns=config.columns,
             schema=catalog.schema,
             filters=config.filters,
             index_column=index_column,
-            **config.kwargs,
             divisions=divisions,
             meta=dask_meta_schema,
+            **config.kwargs,
         )
     else:
         ddf = nd.NestedFrame.from_pandas(dask_meta_schema, npartitions=1)
@@ -356,8 +358,8 @@ def _load_dask_df_and_map(catalog: HCHealpixDataset, config) -> tuple[nd.NestedF
 def read_pixel(
     pixel: HealpixPixel,
     *,
-    path_generator: Callable | None = None,
-    index_column: str = SPATIAL_INDEX_COLUMN,
+    path_generator: PathGenerator,
+    index_column=SPATIAL_INDEX_COLUMN,
     columns=None,
     schema=None,
     **kwargs,
@@ -366,8 +368,6 @@ def read_pixel(
 
     NB: `columns` is necessary as an argument, even if None, so that dask-expr
     optimizes the execution plan."""
-    if path_generator is None:
-        raise ValueError("Path generator not defined")
     return _read_parquet_file(
         path_generator(pixel),
         columns=columns,

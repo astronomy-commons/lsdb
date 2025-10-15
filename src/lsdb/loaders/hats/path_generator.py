@@ -4,7 +4,7 @@ from upath import UPath
 
 
 class PathGenerator:
-    """Generates custom paths for loading parquet Healpix pixel files."""
+    """Generates custom paths for loading parquet HEALPix pixel files."""
 
     def __init__(self, hc_catalog, query_url_params=None):
         self.base_dir = hc_catalog.catalog_base_dir
