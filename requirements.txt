@@ -1,1 +1,1 @@
-hats @ git+https://github.com/sedonaprice/hats@main
+hats @ git+https://github.com/sedonaprice/hats.git@main
