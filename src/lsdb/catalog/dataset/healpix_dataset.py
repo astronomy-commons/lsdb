@@ -322,6 +322,164 @@ class HealpixDataset(Dataset):
         partition_index = self._ddf_pixel_map[hp_pixel]
         return partition_index
 
+    def get_partition_file_paths(self) -> dict[HealpixPixel, str]:
+        """Get the file paths for all partitions in the catalog.
+
+        Returns:
+            Dictionary mapping HEALPix pixels to their parquet file paths.
+            The paths are returned as strings and may be local file paths or remote URIs.
+        """
+        import hats.io as hc_io
+
+        pixels = self.get_healpix_pixels()
+        file_paths = {}
+        for pixel in pixels:
+            file_path = hc_io.pixel_catalog_file(
+                self.hc_structure.catalog_base_dir, pixel, npix_suffix=self.hc_structure.catalog_info.npix_suffix
+            )
+            file_paths[pixel] = str(file_path)
+        return file_paths
+
+    def get_partition_metadata(self) -> pd.DataFrame:
+        """Get detailed metadata for all partitions including file paths and sizes.
+
+        This method reads the Parquet file metadata for each partition to determine:
+        - The file path
+        - The total compressed size of the file
+        - The size of each column in the file
+
+        This provides an upper bound on the amount of data that would need to be
+        transferred or read when computing the catalog, since actual operations may
+        filter rows or benefit from compression.
+
+        Returns:
+            DataFrame with one row per partition, containing:
+            - pixel: The HEALPix pixel
+            - file_path: Path to the parquet file
+            - total_size_bytes: Total compressed size of all data in the file
+            - column_sizes: Dictionary mapping column names to their compressed sizes in bytes
+
+        Note:
+            For remote catalogs (e.g., HTTP, S3), this will make network requests to read
+            the parquet file metadata (footers). The actual data is not transferred.
+        """
+        import pyarrow.parquet as pq
+
+        file_paths = self.get_partition_file_paths()
+        metadata_list = []
+
+        for pixel, file_path in file_paths.items():
+            try:
+                parquet_file = pq.ParquetFile(file_path)
+                metadata = parquet_file.metadata
+
+                # Calculate total size across all row groups
+                total_size = 0
+                column_sizes = {}
+
+                for i in range(metadata.num_row_groups):
+                    rg = metadata.row_group(i)
+                    total_size += rg.total_byte_size
+
+                    # Accumulate column sizes
+                    for j in range(rg.num_columns):
+                        col = rg.column(j)
+                        col_name = col.path_in_schema
+                        if col_name not in column_sizes:
+                            column_sizes[col_name] = 0
+                        column_sizes[col_name] += col.total_compressed_size
+
+                metadata_list.append(
+                    {
+                        "pixel": pixel,
+                        "file_path": file_path,
+                        "total_size_bytes": total_size,
+                        "column_sizes": column_sizes,
+                    }
+                )
+            except Exception as e:  # pylint: disable=broad-except
+                # If we can't read metadata for a partition, include it with None values
+                metadata_list.append(
+                    {
+                        "pixel": pixel,
+                        "file_path": file_path,
+                        "total_size_bytes": None,
+                        "column_sizes": None,
+                    }
+                )
+
+        return pd.DataFrame(metadata_list)
+
+    def get_memory_estimate(self, include_index: bool = False) -> dict:
+        """Estimate the upper bound of memory usage for the loaded columns.
+
+        This method provides an estimate of the amount of data that would need to be
+        read from disk (or transferred over the network) to compute the catalog with
+        the currently selected columns. The estimate is based on the compressed size
+        of the columns in the parquet files.
+
+        The actual memory usage may be lower due to:
+        - Row filtering (queries, searches)
+        - Decompression ratios (compressed size < uncompressed size usually)
+        - Dask's lazy evaluation (not all partitions may be computed)
+
+        Args:
+            include_index (bool): Whether to include the HEALPix index column in the estimate.
+                Default is False.
+
+        Returns:
+            Dictionary containing:
+            - total_bytes: Total estimated bytes across all partitions and selected columns
+            - total_kb: Total in kilobytes
+            - total_mb: Total in megabytes
+            - total_gb: Total in gigabytes
+            - per_column_bytes: Dictionary of column names to their total sizes
+            - num_partitions: Number of partitions included in the estimate
+            - columns: List of columns included in the estimate
+
+        Example:
+            >>> catalog = lsdb.open_catalog("my_catalog", columns=["ra", "dec"])
+            >>> estimate = catalog.get_memory_estimate()
+            >>> print(f"Estimated data size: {estimate['total_mb']:.2f} MB")
+            >>> print(f"Columns: {estimate['columns']}")
+        """
+        partition_metadata = self.get_partition_metadata()
+
+        # Get the currently loaded columns (schema columns)
+        loaded_columns = set(self._ddf.columns)
+
+        # Determine index column and add it to loaded columns if requested
+        index_column = self._ddf.index.name
+        if include_index and index_column:
+            # Include the index column if requested
+            loaded_columns.add(index_column)
+
+        # Calculate total size for loaded columns
+        total_bytes = 0
+        per_column_bytes = {}
+
+        for _, row in partition_metadata.iterrows():
+            column_sizes = row["column_sizes"]
+            if column_sizes is None:
+                continue
+
+            for col_name, col_size in column_sizes.items():
+                if col_name in loaded_columns:
+                    if col_name not in per_column_bytes:
+                        per_column_bytes[col_name] = 0
+                    per_column_bytes[col_name] += col_size
+                    total_bytes += col_size
+
+        return {
+            "total_bytes": total_bytes,
+            "total_kb": total_bytes / 1024,
+            "total_mb": total_bytes / (1024**2),
+            "total_gb": total_bytes / (1024**3),
+            "per_column_bytes": per_column_bytes,
+            "num_partitions": len(partition_metadata),
+            "columns": sorted(list(loaded_columns)),
+        }
+
     @property
     def partitions(self):
         """Returns the partitions of the catalog"""
