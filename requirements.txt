@@ -1,1 +1,1 @@
-hats @ git+https://github.com/astronomy-commons/hats.git@mv-search-funcs
+hats @ git+https://github.com/astronomy-commons/hats.git@main
