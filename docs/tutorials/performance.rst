@@ -8,6 +8,48 @@ the `HATS <https://github.com/astronomy-commons/hats>`_ data format,
 efficient algorithms,
 and `Dask <https://dask.org/>`_ framework for parallel computing.
 
+Estimating Memory Usage
+------------------------
+
+When working with large catalogs, especially remote ones, it's useful to estimate how much data will need to be
+transferred or loaded before performing computations. LSDB provides methods to help you estimate memory usage
+based on the selected columns and spatial regions.
+
+The ``get_memory_estimate()`` method provides an upper bound on the amount of data that will be read from
+disk (or transferred over the network) for the currently loaded columns and partitions::
+
+    import lsdb
+    
+    # Load catalog with selected columns
+    catalog = lsdb.open_catalog("my_catalog", columns=["ra", "dec", "mag"])
+    
+    # Get memory estimate
+    estimate = catalog.get_memory_estimate()
+    print(f"Estimated data size: {estimate['total_mb']:.2f} MB")
+    print(f"Columns: {estimate['columns']}")
+    print(f"Number of partitions: {estimate['num_partitions']}")
+
+The estimate is based on the compressed size of columns in the Parquet files. Actual memory usage may be
+lower due to:
+
+- Row filtering from queries or searches
+- Parquet compression (compressed size is typically smaller than in-memory size)
+- Dask's lazy evaluation (not all partitions may need to be computed)
+
+You can also get detailed metadata about each partition::
+
+    # Get detailed partition metadata
+    metadata = catalog.get_partition_metadata()
+    print(metadata[["pixel", "total_size_bytes"]])
+    
+    # Or get the file paths for each partition
+    file_paths = catalog.get_partition_file_paths()
+    for pixel, path in file_paths.items():
+        print(f"{pixel}: {path}")
+
+This is particularly useful when working with remote catalogs to understand the amount of data transfer
+required before starting a computation.
+
 Here, we demonstrate the results of LSDB performance tests for cross-matching operations,
 performed on the `Bridges2 cluster at Pittsburgh Supercomputing Center <https://www.psc.edu/resources/bridges-2/>`_ 
 using a single node with 128 cores and 256 GB of memory.

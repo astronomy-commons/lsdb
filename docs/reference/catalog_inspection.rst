@@ -8,6 +8,9 @@ Inspection Methods
 
     Catalog.get_healpix_pixels
     Catalog.get_ordered_healpix_pixels
+    Catalog.get_partition_file_paths
+    Catalog.get_partition_metadata
+    Catalog.get_memory_estimate
     Catalog.aggregate_column_statistics
     Catalog.per_pixel_statistics
     Catalog.partitions
