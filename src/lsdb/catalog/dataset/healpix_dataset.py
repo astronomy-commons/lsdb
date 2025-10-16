@@ -335,7 +335,9 @@ class HealpixDataset(Dataset):
         file_paths = {}
         for pixel in pixels:
             file_path = hc_io.pixel_catalog_file(
-                self.hc_structure.catalog_base_dir, pixel, npix_suffix=self.hc_structure.catalog_info.npix_suffix
+                self.hc_structure.catalog_base_dir,
+                pixel,
+                npix_suffix=self.hc_structure.catalog_info.npix_suffix,
             )
             file_paths[pixel] = str(file_path)
         return file_paths
