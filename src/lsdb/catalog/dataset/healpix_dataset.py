@@ -399,8 +399,9 @@ class HealpixDataset(Dataset):
                         "column_sizes": column_sizes,
                     }
                 )
-            except Exception as e:  # pylint: disable=broad-except
-                # If we can't read metadata for a partition, include it with None values
+            except (FileNotFoundError, PermissionError, OSError) as e:
+                # If we can't read metadata for a partition (file not found, permission denied,
+                # or other I/O errors), include it with None values
                 metadata_list.append(
                     {
                         "pixel": pixel,
