@@ -3,8 +3,9 @@ from astropy.coordinates import Angle, SkyCoord
 from cdshealpix.nested import healpix_to_lonlat
 from nested_pandas import datasets
 
+from hats.search.region_search import BoxSearch, ConeSearch, PixelSearch
+
 import lsdb
-from lsdb.core.search.region_search import BoxSearch, ConeSearch, PixelSearch
 from lsdb.nested.core import NestedFrame
 
 

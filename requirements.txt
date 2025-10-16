@@ -1,1 +1,1 @@
-hats @ git+https://github.com/astronomy-commons/hats.git@main
+hats @ git+https://github.com/sedonaprice/hats.git@main

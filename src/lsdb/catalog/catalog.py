@@ -15,6 +15,9 @@ from pandas._typing import Renamer
 from typing_extensions import Self
 from upath import UPath
 
+from hats.search.abstract_search import AbstractSearch
+from hats.search.index_search import IndexSearch
+
 from lsdb import io
 from lsdb.catalog.association_catalog import AssociationCatalog
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
@@ -22,8 +25,6 @@ from lsdb.catalog.map_catalog import MapCatalog
 from lsdb.catalog.margin_catalog import MarginCatalog
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
 from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorithm
-from lsdb.core.search.abstract_search import AbstractSearch
-from lsdb.core.search.index_search import IndexSearch
 from lsdb.dask.concat_catalog_data import _assert_same_ra_dec, concat_catalog_data, handle_margins_for_concat
 from lsdb.dask.crossmatch_catalog_data import crossmatch_catalog_data, crossmatch_catalog_data_nested
 from lsdb.dask.join_catalog_data import (

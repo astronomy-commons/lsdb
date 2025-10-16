@@ -16,6 +16,8 @@ from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 from nested_pandas.nestedframe.io import from_pyarrow
 from upath import UPath
 
+from hats.search.abstract_search import AbstractSearch
+
 import lsdb.nested as nd
 from lsdb.catalog.association_catalog import AssociationCatalog
 from lsdb.catalog.catalog import Catalog, DaskDFPixelMap, MarginCatalog
@@ -23,7 +25,6 @@ from lsdb.catalog.dataset.dataset import Dataset
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
 from lsdb.catalog.map_catalog import MapCatalog
 from lsdb.catalog.margin_catalog import _validate_margin_catalog
-from lsdb.core.search.abstract_search import AbstractSearch
 from lsdb.dask.divisions import get_pixels_divisions
 from lsdb.io.schema import get_arrow_schema
 from lsdb.loaders.hats.hats_loading_config import HatsLoadingConfig

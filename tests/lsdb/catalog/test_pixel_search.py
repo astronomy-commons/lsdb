@@ -2,8 +2,8 @@ import pandas as pd
 import pytest
 from hats.pixel_math import HealpixPixel
 
+from hats.search.region_search import PixelSearch
 import lsdb.nested as nd
-from lsdb.core.search.region_search import PixelSearch
 
 
 def test_pixel_search(small_sky_catalog, small_sky_order1_catalog):

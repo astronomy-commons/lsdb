@@ -28,12 +28,8 @@ from pandas._typing import Renamer
 from typing_extensions import Self
 from upath import UPath
 
-import lsdb.nested as nd
-from lsdb import io
-from lsdb.catalog.dataset.dataset import Dataset
-from lsdb.core.plotting.plot_points import plot_points
-from lsdb.core.search.abstract_search import AbstractSearch
-from lsdb.core.search.region_search import (
+from hats.search.abstract_search import AbstractSearch
+from hats.search.region_search import (
     BoxSearch,
     ConeSearch,
     MOCSearch,
@@ -41,6 +37,11 @@ from lsdb.core.search.region_search import (
     PixelSearch,
     PolygonSearch,
 )
+
+import lsdb.nested as nd
+from lsdb import io
+from lsdb.catalog.dataset.dataset import Dataset
+from lsdb.core.plotting.plot_points import plot_points
 from lsdb.dask.merge_catalog_functions import concat_metas
 from lsdb.dask.partition_indexer import PartitionIndexer
 from lsdb.io.schema import get_arrow_schema

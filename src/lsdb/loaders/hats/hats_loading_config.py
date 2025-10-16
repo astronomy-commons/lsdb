@@ -7,7 +7,7 @@ from typing import Any
 import pandas as pd
 from upath import UPath
 
-from lsdb.core.search.abstract_search import AbstractSearch
+from hats.search.abstract_search import AbstractSearch
 
 
 @dataclass

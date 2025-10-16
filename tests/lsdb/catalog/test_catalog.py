@@ -19,10 +19,11 @@ from hats.pixel_math import HealpixPixel
 from mocpy import WCS
 from nested_pandas.datasets import generate_data
 
+from hats.search.region_search import MOCSearch
+
 import lsdb
 import lsdb.nested as nd
 from lsdb import Catalog, MarginCatalog
-from lsdb.core.search.region_search import MOCSearch
 
 mpl.use("Agg")
 
