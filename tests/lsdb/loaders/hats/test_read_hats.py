@@ -7,12 +7,14 @@ import numpy as np
 import pandas as pd
 import pytest
 from hats.io.file_io import get_upath_for_protocol
+from hats.io.paths import HIVE_COLUMNS, PARTITION_ORDER, PARTITION_PIXEL
 from hats.pixel_math import HealpixPixel
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 from upath import UPath
 
 import lsdb
 import lsdb.nested as nd
+from lsdb.catalog.margin_catalog import _validate_margin_catalog
 from lsdb.core.search.index_search import IndexSearch
 from lsdb.core.search.region_search import BoxSearch, ConeSearch, OrderSearch, PolygonSearch
 
@@ -658,3 +660,11 @@ def test_read_nested_column_selection_errors(small_sky_with_nested_sources_dir):
         lsdb.open_catalog(
             small_sky_with_nested_sources_dir, columns=["ra", "dec", "wrong.source_id", "sources.source_ra"]
         )
+
+
+def test_read_hats_margin_hive_columns(small_sky_order1_catalog, small_sky_order1_margin_1deg_catalog):
+    margin_cat_with_hive_cols = small_sky_order1_margin_1deg_catalog.map_partitions(
+        lambda df, pix: df.assign(**{PARTITION_ORDER: pix.order, PARTITION_PIXEL: pix.pixel}),
+        include_pixel=True,
+    )
+    _validate_margin_catalog(margin_cat_with_hive_cols, small_sky_order1_catalog)

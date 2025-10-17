@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 import hats as hc
 import pandas as pd
+from hats.io import paths
 from upath import UPath
 
 import lsdb.nested as nd
@@ -77,9 +78,15 @@ class MarginCatalog(HealpixDataset):
 
 def _validate_margin_catalog(margin_catalog: MarginCatalog, catalog: Catalog):
     """Validate that the margin and main catalogs have compatible columns and types."""
+    margin_meta = margin_catalog._ddf._meta  # pylint: disable=protected-access
+    catalog_meta = catalog._ddf._meta  # pylint: disable=protected-access
+    margin_meta_hips_cols = [col for col in paths.HIVE_COLUMNS if col in margin_meta.columns]
+    catalog_meta_hips_cols = [col for col in paths.HIVE_COLUMNS if col in catalog_meta.columns]
+    margin_meta = margin_meta.drop(columns=margin_meta_hips_cols)
+    catalog_meta = catalog_meta.drop(columns=catalog_meta_hips_cols)
     try:
         # pylint: disable=protected-access
-        pd.testing.assert_frame_equal(margin_catalog._ddf._meta, catalog._ddf._meta)
+        pd.testing.assert_frame_equal(margin_meta, catalog_meta)
     except AssertionError as e:
         raise ValueError(
             f"The margin catalog and the main catalog must have the same schema. Schemas do not match:\n{e}"
