@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 import pytest
 from hats.io.file_io import get_upath_for_protocol
-from hats.io.paths import HIVE_COLUMNS, PARTITION_ORDER, PARTITION_PIXEL
+from hats.io.paths import PARTITION_ORDER, PARTITION_PIXEL
 from hats.pixel_math import HealpixPixel
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 from upath import UPath
