@@ -23,9 +23,9 @@ def test_nest_accessor(test_dataset):
         _ = test_dataset.ra.nest
 
 
-def test_fields(test_dataset):
-    """test the fields accessor property"""
-    assert test_dataset.nested.nest.fields == ["t", "flux", "band"]
+def test_columns(test_dataset):
+    """test the columns accessor property"""
+    assert test_dataset.nested.nest.columns == ["t", "flux", "band"]
 
 
 def test_to_flat():
@@ -49,11 +49,11 @@ def test_to_flat():
     assert one_row["band"] == "r"
 
 
-def test_to_flat_with_fields():
+def test_to_flat_with_columns():
     """test the to_flat function"""
     nf = nd.datasets.generate_data(10, 100, npartitions=2, seed=1)
 
-    flat_nf = nf.nested.nest.to_flat(fields=["t", "flux"])
+    flat_nf = nf.nested.nest.to_flat(columns=["t", "flux"])
 
     assert "band" not in flat_nf.columns
 
@@ -94,10 +94,10 @@ def test_to_lists():
     assert one_row["band"][0] == "g"
 
 
-def test_to_lists_with_fields():
+def test_to_lists_with_columns():
     """test the to_lists function"""
     nf = nd.datasets.generate_data(10, 100, npartitions=2, seed=1)
-    list_nf = nf.nested.nest.to_lists(fields=["t", "flux"])
+    list_nf = nf.nested.nest.to_lists(columns=["t", "flux"])
 
     assert "band" not in list_nf.columns
 

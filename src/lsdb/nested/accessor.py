@@ -33,40 +33,40 @@ class DaskNestSeriesAccessor(npd.NestSeriesAccessor):
             raise AttributeError(f"Can only use .nest accessor with a Series of NestedDtype, got {dtype}")
 
     @property
-    def fields(self) -> list[str]:
+    def columns(self) -> list[str]:
         """Names of the nested columns"""
 
-        return list(self._series.dtype.fields)
+        return list(self._series.dtype.column_dtypes)
 
-    def to_lists(self, fields: list[str] | None = None) -> dd.DataFrame:
+    def to_lists(self, columns: list[str] | None = None) -> dd.DataFrame:
         """Convert nested series into dataframe of list-array columns
 
         Parameters
         ----------
-        fields : list[str] or None, optional
-            Names of the fields to include. Default is None, which means all fields.
+        columns : list[str] or None, optional
+            Names of the columns to include. Default is None, which means all columns.
 
         Returns
         -------
         dd.DataFrame
             Dataframe of list-arrays.
         """
-        return self._series.map_partitions(lambda x: x.nest.to_lists(fields=fields))
+        return self._series.map_partitions(lambda x: x.nest.to_lists(columns=columns))
 
-    def to_flat(self, fields: list[str] | None = None) -> dd.DataFrame:
+    def to_flat(self, columns: list[str] | None = None) -> dd.DataFrame:
         """Convert nested series into dataframe of flat arrays
 
         Parameters
         ----------
-        fields : list[str] or None, optional
-            Names of the fields to include. Default is None, which means all fields.
+        columns : list[str] or None, optional
+            Names of the columns to include. Default is None, which means all columns.
 
         Returns
         -------
         dd.DataFrame
             Dataframe of flat arrays.
         """
-        return self._series.map_partitions(lambda x: x.nest.to_flat(fields=fields))
+        return self._series.map_partitions(lambda x: x.nest.to_flat(columns=columns))
 
     def clear(self):
         """Clear method implementation"""

@@ -640,7 +640,7 @@ def test_read_nested_column_selection(small_sky_with_nested_sources_dir):
         small_sky_with_nested_sources_dir, columns=["ra", "dec", "sources.source_id", "sources.source_ra"]
     )
     assert np.all(cat.columns == ["ra", "dec", "sources"])
-    assert cat.dtypes["sources"].field_names == ["source_id", "source_ra"]
+    assert cat["sources"].columns == ["source_id", "source_ra"]
     computed = cat.compute()
     assert np.all(computed.columns == ["ra", "dec", "sources"])
     assert np.all(computed["sources"].iloc[0].columns == ["source_id", "source_ra"])

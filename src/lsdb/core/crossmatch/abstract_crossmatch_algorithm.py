@@ -251,6 +251,6 @@ class AbstractCrossmatchAlgorithm(ABC):
         right_join_part["new_index_col"] = left_idx
         right_join_part = right_join_part.set_index("new_index_col")
         self._append_extra_columns(right_join_part, extra_cols)
-        out = left_join_part.add_nested(right_join_part, nested_column_name)
+        out = left_join_part.join_nested(right_join_part, nested_column_name)
         out.set_index(index_name, inplace=True)
         return npd.NestedFrame(out)
