@@ -54,6 +54,16 @@ def test_nested_columns(test_dataset):
     assert test_dataset.nested_columns == ["nested"]
 
 
+def test_exploded_columns(test_dataset):
+    base_columns = test_dataset._meta.base_columns
+    assert base_columns == ["a", "b"]
+    subcolumns = test_dataset._meta.get_subcolumns()
+    assert test_dataset.nested_columns == ["nested"]
+    assert test_dataset["nested"].nest.columns == ["t", "flux", "band"]
+    assert subcolumns == ["nested.t", "nested.flux", "nested.band"]
+    assert test_dataset.exploded_columns == base_columns + subcolumns
+
+
 def test_getitem_on_nested():
     """test getitem with nested columns"""
     ndf = generate_data(10, 10, npartitions=3, seed=1)
