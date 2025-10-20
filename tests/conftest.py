@@ -446,7 +446,9 @@ class Helpers:
 
     @staticmethod
     def assert_schema_correct(cat, types_mapper=pd.ArrowDtype):
-        schema_to_pandas = cat.hc_structure.schema.empty_table().to_pandas(types_mapper=types_mapper)
+        schema_to_pandas = npd.NestedFrame(
+            cat.hc_structure.schema.empty_table().to_pandas(types_mapper=types_mapper)
+        )
         if SPATIAL_INDEX_COLUMN in schema_to_pandas.columns:
             schema_to_pandas = schema_to_pandas.set_index(SPATIAL_INDEX_COLUMN)
         pd.testing.assert_frame_equal(cat._ddf._meta, schema_to_pandas)
@@ -455,7 +457,7 @@ class Helpers:
     def assert_default_columns_in_columns(cat):
         if cat.hc_structure.catalog_info.default_columns is not None:
             for col in cat.hc_structure.catalog_info.default_columns:
-                assert col in cat._ddf.columns
+                assert col in cat._ddf.exploded_columns
 
     @staticmethod
     def assert_columns_in_nested_joined_catalog(

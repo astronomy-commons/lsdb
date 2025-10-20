@@ -63,10 +63,10 @@ def test_save_catalog_initializes_upath_once(small_sky_catalog, tmp_path, mocker
     mocked_upath_call.assert_called_once_with(base_catalog_path)
 
 
-def test_save_catalog_default_columns(small_sky_order1_default_cols_catalog, tmp_path, helpers):
-    default_columns = ["ra", "dec"]
-    cat = small_sky_order1_default_cols_catalog[default_columns]
-    new_catalog_name = "small_sky_order1"
+def test_save_catalog_default_columns(small_sky_with_nested_sources, tmp_path, helpers):
+    default_columns = ["ra", "dec", "sources.mjd", "sources.mag"]
+    cat = small_sky_with_nested_sources[default_columns]
+    new_catalog_name = "small_sky_order1_nested_sources"
     base_catalog_path = Path(tmp_path) / new_catalog_name
     cat.to_hats(base_catalog_path, catalog_name=new_catalog_name, default_columns=default_columns)
     expected_catalog = lsdb.read_hats(base_catalog_path)

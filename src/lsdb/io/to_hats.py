@@ -156,7 +156,7 @@ def to_hats(
     PartitionInfo(pixels).write_to_file(base_catalog_path / "partition_info.csv")
     # Save catalog info
     if default_columns:
-        missing_columns = set(default_columns) - set(catalog.columns)
+        missing_columns = set(default_columns) - set(catalog._ddf.exploded_columns)
         if missing_columns:
             raise ValueError(f"Default columns `{missing_columns}` not found in catalog")
     else:
