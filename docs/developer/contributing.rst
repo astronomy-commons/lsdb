@@ -31,6 +31,14 @@ Finally, to check that your package has been correctly installed, run the packag
 
     python -m pytest
 
+
+.. tip::
+    If you are doing development work on both HATS and LSDB simultaneously, the 
+    [development version of HATS](https://hats.readthedocs.io/en/latest/guide/contributing.html) 
+    should be **installed first**, as otherwise the ``setup_dev`` script will install the 
+    most recent non-development version of HATS.
+
+
 Find (or make) a new GitHub issue
 -------------------------------------------------------------------------------
 
@@ -74,6 +82,19 @@ unit tests locally simply with:
 
     pytest
 
+
+.. tip::
+    While developing tests, it can be helpful to run only specific test method(s), 
+    as demonstrated in the 
+    `pytest documentation <https://docs.pytest.org/en/stable/how-to/usage.html#specifying-which-tests-to-run>`__. 
+    However, the before committing, the full test suite should be run to ensure the new changes 
+    to not break existing functionality.
+
+.. tip::
+    If there are unexpected pytest failures that suggest removing pycache folders/files, 
+    this can often be resolved by removing the pycache folders/files for the submodule(s) 
+    that are being modified/developed.
+
 If you're making changes to the sphinx documentation (anything under ``docs``),
 you can build the documentation locally with a command like:
 
@@ -88,6 +109,48 @@ can run against all staged changes with the command:
 .. code-block:: bash
 
     pre-commit
+
+
+.. admonition:: Staging changes
+
+    Changes can be staged by running the following within 
+    the repository directory: 
+
+    .. code-block:: bash
+        
+        $ git add -A
+
+    In many cases, linting changes can be made automatically, which can 
+    be verified by rerunning the staging & ``pre-commit`` steps again.
+
+.. admonition:: ``pre-commit`` python version mismatch
+
+    If the python version within your development environment does not 
+    match the specified ``pre-commit`` ``black-jupyter`` hook language version 
+    (in the ``.pre-commit-config.yaml`` file), ``pre-commit`` will fail.
+
+    To solve this, the ``language_version`` variable can be temporarily changed. 
+    ``pre-commit`` can then be run as needed. After finishing, 
+    this variable should be reset to its original value. 
+    Commiting changes will then require bypassing ``pre-commit`` (see below).
+
+.. admonition:: Bypassing ``pre-commit``
+
+    In some cases, there can be problems committing due to re-commit failures 
+    that are unrelated to the staged changes (e.g., problems building an 
+    unchanged part of the documentation).
+
+    If the full test suite runs successfully, the ``pre-commit`` checks 
+    can be skipped by running:
+
+    .. code-block:: bash
+
+         $ git commit -m "Commit message" --no-verify
+
+    (These checks will still be run in the github CI/CD pipeline. 
+    Thus, this bypass should only be used when necessary, 
+    as resolving issues locally ensures successful CI/CD checks.)
+    
 
 Create a branch
 -------------------------------------------------------------------------------
