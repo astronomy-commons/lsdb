@@ -437,8 +437,8 @@ Refer to the docstring for guidance on dtype requirements and assignment."""
 
     @property
     def exploded_columns(self) -> list[str]:
-        """returns the list of base column names and nested subcolumn names (in exploded, dot notation)"""
-        return self._meta.base_columns + self._meta.get_subcolumns()
+        """returns the list of column names and nested subcolumn names (in exploded, dot notation)"""
+        return self.columns.to_list() + self._meta.get_subcolumns()
 
     # NOTE: Naming conflict with LSDB.catalog.all_columns
     # Not wrapped in LSDB

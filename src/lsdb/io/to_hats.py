@@ -154,11 +154,10 @@ def to_hats(
         )
     # Save partition info
     PartitionInfo(pixels).write_to_file(base_catalog_path / "partition_info.csv")
+
     # Save catalog info
     if default_columns:
-        missing_columns = set(default_columns) - set(catalog._ddf.exploded_columns)
-        if missing_columns:
-            raise ValueError(f"Default columns `{missing_columns}` not found in catalog")
+        _validate_default_columns(catalog, default_columns)
     else:
         default_columns = None
 
@@ -193,6 +192,25 @@ def to_hats(
         **addl_hats_properties,
     )
     new_hc_structure.catalog_info.to_properties_file(base_catalog_path)
+
+
+def _validate_default_columns(catalog: HealpixDataset, default_columns: list[str]):
+    """Checks that the provided default columns are valid"""
+    # Check if any of the default columns is missing
+    missing_columns = set(default_columns) - set(catalog._ddf.exploded_columns)
+    if missing_columns:
+        raise ValueError(f"Default columns `{missing_columns}` not found in catalog")
+    # Check for full and partial load of the same column and error
+    all_subcolumns = catalog._ddf._meta.get_subcolumns()
+    for col in default_columns:
+        if col in all_subcolumns:
+            nested_col = col.split(".")[0]
+            if nested_col in default_columns:
+                raise ValueError(
+                    f"The provided default column list contains both a "
+                    f"full and partial load of the column '{nested_col}'. "
+                    f"Please either remove the partial load or the full load."
+                )
 
 
 def write_partitions(

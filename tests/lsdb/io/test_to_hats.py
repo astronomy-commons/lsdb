@@ -64,6 +64,24 @@ def test_save_catalog_initializes_upath_once(small_sky_catalog, tmp_path, mocker
 
 
 def test_save_catalog_default_columns(small_sky_with_nested_sources, tmp_path, helpers):
+    # Including the entirety of "sources" which is a nested column
+    default_columns = ["ra", "dec", "sources"]
+    cat = small_sky_with_nested_sources[default_columns]
+    new_catalog_name = "small_sky_order1_nested_sources"
+    base_catalog_path = Path(tmp_path) / new_catalog_name
+    cat.to_hats(base_catalog_path, catalog_name=new_catalog_name, default_columns=default_columns)
+    expected_catalog = lsdb.read_hats(base_catalog_path)
+    assert expected_catalog.hc_structure.catalog_name == new_catalog_name
+    assert expected_catalog.get_healpix_pixels() == cat.get_healpix_pixels()
+    assert expected_catalog.hc_structure.catalog_info.default_columns == default_columns
+    assert len(expected_catalog["sources"].nest.columns) == 8
+    pd.testing.assert_frame_equal(expected_catalog.compute(), cat.compute())
+    helpers.assert_schema_correct(expected_catalog)
+    helpers.assert_default_columns_in_columns(expected_catalog)
+
+
+def test_save_catalog_default_nested_columns(small_sky_with_nested_sources, tmp_path, helpers):
+    # Selecting just some of the nested columns
     default_columns = ["ra", "dec", "sources.mjd", "sources.mag"]
     cat = small_sky_with_nested_sources[default_columns]
     new_catalog_name = "small_sky_order1_nested_sources"
@@ -73,6 +91,7 @@ def test_save_catalog_default_columns(small_sky_with_nested_sources, tmp_path, h
     assert expected_catalog.hc_structure.catalog_name == new_catalog_name
     assert expected_catalog.get_healpix_pixels() == cat.get_healpix_pixels()
     assert expected_catalog.hc_structure.catalog_info.default_columns == default_columns
+    assert len(expected_catalog["sources"].nest.columns) == 2
     pd.testing.assert_frame_equal(expected_catalog.compute(), cat.compute())
     helpers.assert_schema_correct(expected_catalog)
     helpers.assert_default_columns_in_columns(expected_catalog)
@@ -98,6 +117,18 @@ def test_save_catalog_invalid_default_columns(small_sky_order1_default_cols_cata
     with pytest.raises(ValueError, match="not found"):
         small_sky_order1_default_cols_catalog.to_hats(
             base_catalog_path, catalog_name=new_catalog_name, default_columns=["id", "abc"]
+        )
+
+
+def test_save_catalog_invalid_default_nested_columns(small_sky_with_nested_sources, tmp_path):
+    new_catalog_name = "small_sky_order1_nested_sources"
+    base_catalog_path = Path(tmp_path) / new_catalog_name
+    # Cannot specify partial and full load of a column
+    with pytest.raises(ValueError, match="'sources'"):
+        small_sky_with_nested_sources.to_hats(
+            base_catalog_path,
+            catalog_name=new_catalog_name,
+            default_columns=["ra", "dec", "sources", "sources.mjd"],
         )
 
 

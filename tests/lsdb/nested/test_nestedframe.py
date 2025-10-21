@@ -55,11 +55,12 @@ def test_nested_columns(test_dataset):
 
 
 def test_exploded_columns(test_dataset):
-    base_columns = test_dataset._meta.base_columns
-    assert base_columns == ["a", "b"]
-    subcolumns = test_dataset._meta.get_subcolumns()
+    """exploded_columns property test"""
+    base_columns = test_dataset.columns.to_list()
+    assert base_columns == ["a", "b", "nested"]
     assert test_dataset.nested_columns == ["nested"]
     assert test_dataset["nested"].nest.columns == ["t", "flux", "band"]
+    subcolumns = test_dataset._meta.get_subcolumns()
     assert subcolumns == ["nested.t", "nested.flux", "nested.band"]
     assert test_dataset.exploded_columns == base_columns + subcolumns
 
