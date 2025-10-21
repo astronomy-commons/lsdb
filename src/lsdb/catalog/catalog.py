@@ -8,6 +8,7 @@ import dask.dataframe as dd
 import hats as hc
 import nested_pandas as npd
 import pandas as pd
+from deprecated import deprecated  # type: ignore
 from hats.catalog.catalog_collection import CatalogCollection
 from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
 from hats.catalog.index.index_catalog import IndexCatalog as HCIndexCatalog
@@ -990,6 +991,7 @@ class Catalog(HealpixDataset):
             )
         return catalog
 
+    @deprecated(version="0.6.7", reason="`reduce` will be removed in the future, " "use `map_rows` instead.")
     def reduce(self, func, *args, meta=None, append_columns=False, infer_nesting=True, **kwargs) -> Catalog:
         """
         Takes a function and applies it to each top-level row of the Catalog.
@@ -1056,6 +1058,146 @@ class Catalog(HealpixDataset):
         if self.margin is not None:
             catalog.margin = self.margin.reduce(
                 func, *args, meta=meta, append_columns=append_columns, infer_nesting=infer_nesting, **kwargs
+            )
+        return catalog
+
+    def map_rows(
+        self,
+        func,
+        columns=None,
+        row_container="dict",
+        output_names=None,
+        infer_nesting=True,
+        append_columns=False,
+        meta=None,
+        **kwargs,
+    ) -> Catalog:
+        """
+        Takes a function and applies it to each top-level row of the Catalog.
+
+        docstring copied from nested-pandas
+
+        Nested columns are packaged alongside base columns and available for function use, where base columns
+        are passed as scalars and nested columns are passed as numpy arrays. The way in which the row data is
+        packaged is configurable (by default, a dictionary) and controlled by the `row_container` argument.
+
+        Parameters
+        ----------
+        func : callable
+            Function to apply to each nested dataframe. The first arguments to `func` should be which
+            columns to apply the function to. See the Notes for recommendations
+            on writing func outputs.
+        columns : None | str | list of str
+            Specifies which columns to pass to the function in the row_container format.
+            If None, all columns are passed. If list of str, those columns are passed.
+            If str, a single column is passed or if the string is a nested column, then all nested sub-columns
+            are passed (e.g. columns="nested" passes all columns of the nested dataframe "nested"). To pass
+            individual nested sub-columns, use the hierarchical column name (e.g. columns=["nested.t",...]).
+        row_container : 'dict' or 'args', default 'dict'
+            Specifies how the row data will be packaged when passed as an input to the function.
+            If 'dict', the function will be called as `func({"col1": value, ...}, **kwargs)`, so func should
+            expect a single dictionary input with keys corresponding to column names.
+            If 'args', the function will be called as `func(value, ..., **kwargs)`, so func should expect
+            positional arguments corresponding to the columns specified in `args`.
+        output_names : None | str | list of str
+            Specifies the names of the output columns in the resulting NestedFrame. If None, the function
+            will return whatever names the user function returns. If specified will override any names
+            returned by the user function provided the number of names matches the number of outputs. When not
+            specified and the user function returns values without names (e.g. a list or tuple), the output
+            columns will be enumerated (e.g. "0", "1", ...).
+        infer_nesting : bool, default True
+            If True, the function will pack output columns into nested
+            structures based on column names adhering to a nested naming
+            scheme. E.g. "nested.b" and "nested.c" will be packed into a column
+            called "nested" with columns "b" and "c". If False, all outputs
+            will be returned as base columns. Note that this will trigger off of names specified in
+            `output_names` in addition to names returned by the user function.
+        append_columns : bool, default False
+            if True, the output columns should be appended to those in the original NestedFrame.
+        meta : dataframe or series-like, optional
+            The dask meta of the output. If append_columns is True, the meta should specify just the
+            additional columns output by func.
+        kwargs : keyword arguments, optional
+            Keyword arguments to pass to the function.
+
+        Returns
+        -------
+        `Catalog`
+            `Catalog` with the results of the function applied to the columns of the frame.
+
+        Notes
+        -----
+        If concerned about performance, specify `columns` to only include the columns
+        needed for the function, as this will avoid the overhead of packaging
+        all columns for each row.
+
+        By default, `map_rows` will produce a `NestedFrame` with enumerated
+        column names for each returned value of the function. It's recommended
+        to either specify `output_names` or have `func` return a dictionary
+        where each key is an output column of the dataframe returned by
+        `map_rows` (as shown above).
+
+        Examples
+        --------
+
+        Writing a function that takes a row as a dictionary:
+
+        >>> import numpy as np
+        >>> import lsdb
+        >>> import pandas as pd
+        >>> catalog = lsdb.from_dataframe(pd.DataFrame({"ra":[0, 10], "dec":[5, 15],
+        ...                                             "mag":[21, 22], "mag_err":[.1, .2]}))
+
+        >>> def my_sigma(row):
+        ...    '''map_rows will return a NestedFrame with two columns'''
+        ...    return row["mag"] + row["mag_err"], row["mag"] - row["mag_err"]
+        >>> meta = {"plus_one": np.float64, "minus_one": np.float64}
+        >>> catalog.map_rows(my_sigma,
+        ...                  columns=["mag","mag_err"],
+        ...                  output_names=["plus_one", "minus_one"],
+        ...                  meta=meta).compute().reset_index()
+                   _healpix_29  plus_one  minus_one
+        0  1372475556631677955      21.1       20.9
+        1  1389879706834706546      22.2       21.8
+
+
+        Writing the same function using positional arguments:
+
+        >>> def my_sigma(col1, col2):
+        ...    '''map_rows will return a NestedFrame with two columns'''
+        ...    return col1 + col2, col1 - col2
+        >>> meta = {"plus_one": np.float64, "minus_one": np.float64}
+        >>> catalog.map_rows(my_sigma,
+        ...                  columns=["mag","mag_err"],
+        ...                  row_container='args', # send columns as positional args
+        ...                  output_names=["plus_one", "minus_one"],
+        ...                  meta=meta).compute().reset_index()
+                   _healpix_29  plus_one  minus_one
+        0  1372475556631677955      21.1       20.9
+        1  1389879706834706546      22.2       21.8
+
+        See more examples in the nested-pandas documentation.
+        """
+        catalog = super().map_rows(
+            func,
+            columns=columns,
+            row_container=row_container,
+            output_names=output_names,
+            infer_nesting=infer_nesting,
+            append_columns=append_columns,
+            meta=meta,
+            **kwargs,
+        )
+        if self.margin is not None:
+            catalog.margin = self.margin.map_rows(
+                func,
+                columns=columns,
+                row_container=row_container,
+                output_names=output_names,
+                infer_nesting=infer_nesting,
+                append_columns=append_columns,
+                meta=meta,
+                **kwargs,
             )
         return catalog
 

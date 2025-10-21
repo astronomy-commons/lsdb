@@ -23,7 +23,7 @@ dependencies = [
     "dask[complete]>=2025.3.0",
     "deprecated",
     "hats>=0.6.7,<0.7.0",
-    "nested-pandas>=0.4.7,<0.6.0",
+    "nested-pandas>=0.6.0,<0.7.0",
 
     # NOTE: package PINNED at <21.0.0, see https://github.com/astronomy-commons/lsdb/issues/974
     "pyarrow>=14.0.1,<21.0.0; platform_system == 'Windows'",

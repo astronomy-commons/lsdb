@@ -198,13 +198,16 @@ def _load_catalog(hc_catalog: hc.catalog.Dataset, config: HatsLoadingConfig) -> 
 def _update_hc_structure(catalog: HealpixDataset):
     """Create the modified schema of the catalog after all the processing on the `read_hats` call"""
     # pylint: disable=protected-access
+    default_columns = None
+    if catalog.hc_structure.catalog_info.default_columns is not None:
+        default_columns = [
+            col
+            for col in catalog.hc_structure.catalog_info.default_columns
+            if col in catalog._ddf.exploded_columns
+        ]
     return catalog._create_modified_hc_structure(
         updated_schema=get_arrow_schema(catalog._ddf),
-        default_columns=(
-            [col for col in catalog.hc_structure.catalog_info.default_columns if col in catalog._ddf.columns]
-            if catalog.hc_structure.catalog_info.default_columns is not None
-            else None
-        ),
+        default_columns=default_columns,
     )
 
 

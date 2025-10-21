@@ -31,7 +31,7 @@ def test_read_parquet(test_dataset, tmp_path):
 
     # this is read as a large_string, just make it a string
     nested = nested.astype({"band": pd.ArrowDtype(pa.string())})
-    base = base.add_nested(nested, "nested")
+    base = base.join_nested(nested, "nested")
 
     # Check the loaded dataset against the original
     assert base.divisions == test_dataset.divisions  # equal divisions

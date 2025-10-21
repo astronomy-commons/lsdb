@@ -451,18 +451,26 @@ def test_aggregate_column_statistics(small_sky_order1_catalog):
 
 def test_per_pixel_statistics(small_sky_order1_catalog):
     result_frame = small_sky_order1_catalog.per_pixel_statistics()
-    assert result_frame.shape == (4, 20)
+    # 4 = 4 pixels
+    # 30 = 5 columns * 6 stats per-column
+    assert result_frame.shape == (4, 30)
 
     result_frame = small_sky_order1_catalog.per_pixel_statistics(exclude_hats_columns=False)
-    assert result_frame.shape == (4, 24)
+    # 4 = 4 pixels
+    # 36 = 6 columns * 6 stats per-column
+    assert result_frame.shape == (4, 36)
 
     result_frame = small_sky_order1_catalog.per_pixel_statistics(include_columns=["ra", "dec"])
-    assert result_frame.shape == (4, 8)
+    # 4 = 4 pixels
+    # 12 = 2 columns * 6 stats per-column
+    assert result_frame.shape == (4, 12)
 
     filtered_catalog = small_sky_order1_catalog.cone_search(315, -66.443, 0.1, fine=False)
     result_frame = filtered_catalog.per_pixel_statistics(
         include_stats=["row_count"], include_columns=["ra", "dec"]
     )
+    # 1 = 1 pixel
+    # 2 = 2 columns * 1 stats per-column
     assert result_frame.shape == (1, 2)
 
 
