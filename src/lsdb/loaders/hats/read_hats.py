@@ -5,6 +5,7 @@ from pathlib import Path
 import hats as hc
 import nested_pandas as npd
 import numpy as np
+import pyarrow as pa
 from fsspec.implementations.http import HTTPFileSystem
 from hats.catalog import CatalogType
 from hats.catalog.catalog_collection import CatalogCollection
@@ -106,8 +107,8 @@ def open_catalog(
             an empty catalog, throw error.
         filters (list[tuple[str]]): Default `None`. Filters to apply when reading parquet files.
             These may be applied as pyarrow filters or URL parameters.
-        path_generator_type (type[PathGenerator]): Default `PathGenerator`. The class that addresses the
-            discoverability of HEALPix leaf parquet.
+        path_generator_type (type[PathGenerator]): Default `PathGenerator`. The type of class that
+            addresses the discoverability of leaf HEALPix parquet.
         **kwargs: Arguments to pass to the pandas parquet file reader
 
     Returns:
@@ -362,9 +363,9 @@ def read_pixel(
     pixel: HealpixPixel,
     *,
     path_generator: PathGenerator,
-    index_column=SPATIAL_INDEX_COLUMN,
-    columns=None,
-    schema=None,
+    index_column: str = SPATIAL_INDEX_COLUMN,
+    columns: list[str] | str | None = None,
+    schema: pa.Schema | None = None,
     **kwargs,
 ):
     """Utility method to read a single pixel's parquet file from disk.
