@@ -6,11 +6,10 @@ import hats as hc
 import nested_pandas as npd
 import numpy as np
 import pyarrow as pa
-from fsspec.implementations.http import HTTPFileSystem
 from hats.catalog import CatalogType
 from hats.catalog.catalog_collection import CatalogCollection
 from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
-from hats.io.file_io import file_io, get_upath
+from hats.io.file_io import file_io
 from hats.pixel_math import HealpixPixel
 from hats.pixel_math.healpix_pixel_function import get_pixel_argsort
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
@@ -39,10 +38,14 @@ def read_hats(
     columns: list[str] | str | None = None,
     margin_cache: str | Path | UPath | None = None,
     error_empty_filter: bool = True,
+    filters: list[tuple[str]] | None = None,
+    path_generator: PathGenerator | None = None,
     **kwargs,
 ) -> Dataset:
     """Load catalog from a HATS path. See open_catalog()."""
-    return open_catalog(path, search_filter, columns, margin_cache, error_empty_filter, **kwargs)
+    return open_catalog(
+        path, search_filter, columns, margin_cache, error_empty_filter, filters, path_generator, **kwargs
+    )
 
 
 def open_catalog(
@@ -52,7 +55,7 @@ def open_catalog(
     margin_cache: str | Path | UPath | None = None,
     error_empty_filter: bool = True,
     filters: list[tuple[str]] | None = None,
-    path_generator_type: type[PathGenerator] = PathGenerator,
+    path_generator: PathGenerator | None = None,
     **kwargs,
 ) -> Dataset:
     """Open a catalog from a HATS path.
@@ -107,8 +110,8 @@ def open_catalog(
             an empty catalog, throw error.
         filters (list[tuple[str]]): Default `None`. Filters to apply when reading parquet files.
             These may be applied as pyarrow filters or URL parameters.
-        path_generator_type (type[PathGenerator]): Default `PathGenerator`. The type of class that
-            addresses the discoverability of leaf HEALPix parquet.
+        path_generator (PathGenerator): Default `PathGenerator`. The path generator instance that addresses
+            the discoverability of leaf HEALPix parquet.
         **kwargs: Arguments to pass to the pandas parquet file reader
 
     Returns:
@@ -128,8 +131,8 @@ def open_catalog(
         error_empty_filter=error_empty_filter,
         margin_cache=margin_cache,
         filters=filters,
+        path_generator=path_generator,
         kwargs=kwargs,
-        path_generator_type=path_generator_type,
     )
 
     if isinstance(hc_catalog, CatalogCollection):
@@ -334,17 +337,12 @@ def _load_dask_df_and_map(catalog: HCHealpixDataset, config) -> tuple[nd.NestedF
     divisions = get_pixels_divisions(ordered_pixels)
     dask_meta_schema = _load_dask_meta_schema(catalog, config)
     index_column = dask_meta_schema.index.name
-
-    query_url_params = None
-    if isinstance(get_upath(catalog.catalog_base_dir).fs, HTTPFileSystem):
-        query_url_params = config.make_query_url_params()
-    path_generator = config.path_generator_type(catalog, query_url_params=query_url_params)
-
+    config.make_path_generator(catalog)
     if len(ordered_pixels) > 0:
         ddf = nd.NestedFrame.from_map(
             read_pixel,
             ordered_pixels,
-            path_generator=path_generator,
+            path_generator=config.path_generator,
             columns=config.columns,
             schema=catalog.schema,
             filters=config.filters,
