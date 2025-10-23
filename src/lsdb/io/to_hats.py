@@ -166,7 +166,7 @@ def to_hats(
 
     if catalog.hc_structure.catalog_info.catalog_type in (CatalogType.OBJECT, CatalogType.SOURCE):
         addl_hats_properties = addl_hats_properties | {
-            "skymap_order": histogram_order,
+            "skymap_order": int(histogram_order),
             "skymap_alt_orders": skymap_alt_orders,
         }
 
