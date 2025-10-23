@@ -189,14 +189,14 @@ def test_save_catalog_point_map(small_sky_order1_df, tmp_path):
     assert len(small_sky_order1_catalog) == np.sum(skymap_histogram)
     npt.assert_array_equal(histogram, skymap_histogram)
 
-    # skymap_path = main_catalog_path / "skymap.1.fits"
-    # assert skymap_path.exists()
+    skymap_path = main_catalog_path / "skymap.1.fits"
+    assert skymap_path.exists()
 
-    # skymap_path = main_catalog_path / "skymap.2.fits"
-    # assert skymap_path.exists()
+    skymap_path = main_catalog_path / "skymap.2.fits"
+    assert skymap_path.exists()
 
     new_catalog = lsdb.open_catalog(base_catalog_path)
-    # assert new_catalog.hc_structure.catalog_info.skymap_alt_orders == [1, 2]
+    assert new_catalog.hc_structure.catalog_info.skymap_alt_orders == [1, 2]
     assert new_catalog.hc_structure.catalog_info.skymap_order == 8
 
 
