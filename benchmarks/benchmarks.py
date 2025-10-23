@@ -3,6 +3,7 @@
 For more information on writing benchmarks:
 https://asv.readthedocs.io/en/stable/writing_benchmarks.html."""
 
+import tempfile
 from pathlib import Path
 
 import hats
@@ -91,7 +92,11 @@ def time_lazy_crossmatch_many_columns_all_suffixes():
 def time_lazy_crossmatch_many_columns_overlapping_suffixes():
     cat = lsdb.open_catalog(BENCH_DATA_DIR / "object_collection", columns="all")
     return cat.crossmatch(
-        cat, require_right_margin=False, suffixes=("_left", "_right"), suffix_method="overlapping_columns"
+        cat,
+        require_right_margin=False,
+        suffixes=("_left", "_right"),
+        suffix_method="overlapping_columns",
+        log_changes=False,
     )
 
 
@@ -102,7 +107,7 @@ def time_open_many_columns_list():
     )
 
 
-def time_save_big_catalog(tmp_path):
+def time_save_big_catalog():
     """Load a catalog with many partitions, and save with to_hats."""
     mock_partition_df = pd.DataFrame(
         {
@@ -112,19 +117,18 @@ def time_save_big_catalog(tmp_path):
         }
     )
 
-    base_catalog_path = tmp_path / "big_sky"
+    with tempfile.TemporaryDirectory() as tmp_path:
+        kwargs = {
+            "catalog_name": "big_sky",
+            "catalog_type": "object",
+            "lowest_order": 6,
+            "highest_order": 10,
+            "threshold": 500,
+        }
 
-    kwargs = {
-        "catalog_name": "big_sky",
-        "catalog_type": "object",
-        "lowest_order": 6,
-        "highest_order": 10,
-        "threshold": 500,
-    }
+        catalog = lsdb.from_dataframe(mock_partition_df, margin_threshold=None, **kwargs)
 
-    catalog = lsdb.from_dataframe(mock_partition_df, margin_threshold=None, **kwargs)
+        catalog.to_hats(tmp_path)
 
-    catalog.to_hats(base_catalog_path)
-
-    read_catalog = hats.read_hats(base_catalog_path)
-    assert len(read_catalog.get_healpix_pixels()) == len(catalog.get_healpix_pixels())
+        read_catalog = hats.read_hats(tmp_path)
+        assert len(read_catalog.get_healpix_pixels()) == len(catalog.get_healpix_pixels())

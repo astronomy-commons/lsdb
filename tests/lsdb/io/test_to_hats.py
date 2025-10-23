@@ -153,15 +153,23 @@ def test_save_crossmatch_catalog(
     helpers.assert_schema_correct(expected_catalog)
 
 
-def test_save_catalog_point_map(small_sky_order1_catalog, tmp_path):
+def test_save_catalog_point_map(small_sky_order1_df, tmp_path):
     new_catalog_name = "small_sky_order1"
     base_catalog_path = Path(tmp_path) / new_catalog_name
+
+    small_sky_order1_catalog = lsdb.from_dataframe(
+        small_sky_order1_df,
+        margin_threshold=None,
+        catalog_name="small_sky_order1",
+        lowest_order=6,
+        highest_order=8,
+        threshold=500,
+    )
 
     small_sky_order1_catalog.to_hats(
         base_catalog_path,
         catalog_name=new_catalog_name,
         skymap_alt_orders=[1, 2],
-        histogram_order=8,
     )
 
     main_catalog_path = base_catalog_path / new_catalog_name
