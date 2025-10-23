@@ -121,11 +121,15 @@ def _reindex_and_coerce_dtypes(
         - This function is useful to ensure all partitions in a Dask
           DataFrame have consistent schema.
     """
+    meta_columns = meta.columns
     if df is None:
         df = meta.copy()
     else:
-        df = df.reindex(columns=meta.columns, copy=False)
-    for col in meta.columns:
+        df = df.reindex(columns=meta_columns, copy=False)
+    df_types = df.dtypes
+    meta_types = meta.dtypes
+    coerce_columns = [col for col in meta_columns if df_types[col] != meta_types[col]]
+    for col in coerce_columns:
         try:
             df[col] = df[col].astype(meta[col].dtype, copy=False)
         except (TypeError, ValueError) as e:

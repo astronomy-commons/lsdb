@@ -170,14 +170,14 @@ def _assert_concat_symmetry(
     rl = right_cat.concat(left_cat, **concat_kwargs)
 
     # Main tables
-    df_lr = lr.compute().reset_index(drop=True)
-    df_rl = rl.compute().reset_index(drop=True)
+    df_lr = lr.compute()
+    df_rl = rl.compute()
 
     # Margin tables (may be None)
     lr_margin = getattr(lr, "margin", None)
     rl_margin = getattr(rl, "margin", None)
-    df_lr_margin = lr_margin.compute().reset_index(drop=True) if lr_margin is not None else None
-    df_rl_margin = rl_margin.compute().reset_index(drop=True) if rl_margin is not None else None
+    df_lr_margin = lr_margin.compute() if lr_margin is not None else None
+    df_rl_margin = rl_margin.compute() if rl_margin is not None else None
 
     if cols_subset is not None:
         keep_main = [
@@ -458,6 +458,7 @@ def test_concat_margin_with_low_and_high_orders(use_low_order):
     """
     order_low = 1
     order_high = 2
+    margin_order = 6
 
     df_high_main = pd.DataFrame({"id": [1, 2], "ra": [314, 350], "dec": [-50, -70]})
     df_high_margin = pd.DataFrame({"id": [3, 4], "ra": [324.4, 324.4], "dec": [-60.099, -60.1]})
@@ -467,11 +468,17 @@ def test_concat_margin_with_low_and_high_orders(use_low_order):
     df_high = pd.concat([df_high_main, df_high_margin], ignore_index=True)
     df_low = pd.concat([df_low_main, df_low_into_df_high_margin], ignore_index=True)
 
-    cat_high = lsdb.from_dataframe(df_high, lowest_order=order_high, highest_order=order_high)
+    cat_high = lsdb.from_dataframe(
+        df_high, lowest_order=order_high, highest_order=order_high, margin_order=margin_order
+    )
     if use_low_order:
-        cat_low = lsdb.from_dataframe(df_low, lowest_order=order_low, highest_order=order_low)
+        cat_low = lsdb.from_dataframe(
+            df_low, lowest_order=order_low, highest_order=order_low, margin_order=margin_order
+        )
     else:
-        cat_low = lsdb.from_dataframe(df_low, lowest_order=order_high, highest_order=order_high)
+        cat_low = lsdb.from_dataframe(
+            df_low, lowest_order=order_high, highest_order=order_high, margin_order=margin_order
+        )
 
     concat_cat = cat_high.concat(cat_low)
     margin_obj = getattr(concat_cat, "margin", None)
@@ -524,6 +531,7 @@ def test_concat_margin_with_different_schemas_and_orders(use_low_order):
     """
     order_low = 1
     order_high = 2
+    margin_order = 6
 
     df_high_main = pd.DataFrame({"id_1": [1, 2], "ra_1": [314, 350], "dec_1": [-50, -70]})
     df_high_margin = pd.DataFrame({"id_1": [3, 4], "ra_1": [324.4, 324.4], "dec_1": [-60.099, -60.1]})
@@ -537,15 +545,30 @@ def test_concat_margin_with_different_schemas_and_orders(use_low_order):
 
     # Build catalogs with their native RA/Dec column names.
     cat_high = lsdb.from_dataframe(
-        df_high, ra_column="ra_1", dec_column="dec_1", lowest_order=order_high, highest_order=order_high
+        df_high,
+        ra_column="ra_1",
+        dec_column="dec_1",
+        lowest_order=order_high,
+        highest_order=order_high,
+        margin_order=margin_order,
     )
     if use_low_order:
         cat_low = lsdb.from_dataframe(
-            df_low, ra_column="ra_2", dec_column="dec_2", lowest_order=order_low, highest_order=order_low
+            df_low,
+            ra_column="ra_2",
+            dec_column="dec_2",
+            lowest_order=order_low,
+            highest_order=order_low,
+            margin_order=margin_order,
         )
     else:
         cat_low = lsdb.from_dataframe(
-            df_low, ra_column="ra_2", dec_column="dec_2", lowest_order=order_high, highest_order=order_high
+            df_low,
+            ra_column="ra_2",
+            dec_column="dec_2",
+            lowest_order=order_high,
+            highest_order=order_high,
+            margin_order=margin_order,
         )
 
     # Normalize RA/Dec metadata so both sides advertise the same RA/Dec column names.
@@ -753,8 +776,12 @@ def test_concat_preserves_all_na_columns(test_data_dir, na_sentinel):
     left_df["only_na"] = na_value
     right_df["only_na"] = na_value
 
-    left2 = lsdb.from_dataframe(left_df, ra_column="source_ra", dec_column="source_dec")
-    right2 = lsdb.from_dataframe(right_df, ra_column="source_ra", dec_column="source_dec")
+    left2 = lsdb.from_dataframe(
+        left_df, ra_column="source_ra", dec_column="source_dec", margin_threshold=None
+    )
+    right2 = lsdb.from_dataframe(
+        right_df, ra_column="source_ra", dec_column="source_dec", margin_threshold=None
+    )
 
     concat_cat = left2.concat(right2)
     concat_df = concat_cat.compute()
@@ -1314,8 +1341,8 @@ def test_concat_raises_when_ra_dec_names_differ_between_catalogs():
     df1 = pd.DataFrame({"id": [1, 2], "ra": [10.0, 20.0], "dec": [-5.0, -6.0]})
     df2 = pd.DataFrame({"id": [3, 4], "ra2": [30.0, 40.0], "dec2": [-7.0, -8.0]})
 
-    left = lsdb.from_dataframe(df1, ra_column="ra", dec_column="dec")
-    right = lsdb.from_dataframe(df2, ra_column="ra2", dec_column="dec2")
+    left = lsdb.from_dataframe(df1, ra_column="ra", dec_column="dec", margin_threshold=None)
+    right = lsdb.from_dataframe(df2, ra_column="ra2", dec_column="dec2", margin_threshold=None)
 
     with pytest.raises(ValueError, match=r"Catalog concat:.*incompatible RA/Dec columns"):
         _ = left.concat(right)
@@ -1324,8 +1351,12 @@ def test_concat_raises_when_ra_dec_names_differ_between_catalogs():
 def test_concat_raises_when_left_margin_ra_dec_differs_from_its_catalog(monkeypatch):
     """Fail fast if the left margin RA/Dec names differ from its owning catalog."""
     df = pd.DataFrame({"id": [1, 2], "ra": [10.0, 20.0], "dec": [-5.0, -6.0]})
-    left = lsdb.from_dataframe(df, ra_column="ra", dec_column="dec", margin_threshold=1.0)
-    right = lsdb.from_dataframe(df, ra_column="ra", dec_column="dec", margin_threshold=1.0)
+    left = lsdb.from_dataframe(
+        df, ra_column="ra", dec_column="dec", margin_order=2, lowest_order=0, highest_order=1
+    )
+    right = lsdb.from_dataframe(
+        df, ra_column="ra", dec_column="dec", margin_order=2, lowest_order=0, highest_order=1
+    )
 
     # Sanity: margin existe no left
     assert getattr(left, "margin", None) is not None
@@ -1342,8 +1373,12 @@ def test_concat_raises_when_left_margin_ra_dec_differs_from_its_catalog(monkeypa
 def test_concat_raises_when_right_margin_ra_dec_differs_from_its_catalog(monkeypatch):
     """Fail fast if the right margin RA/Dec names differ from its owning catalog."""
     df = pd.DataFrame({"id": [1, 2], "ra": [10.0, 20.0], "dec": [-5.0, -6.0]})
-    left = lsdb.from_dataframe(df, ra_column="ra", dec_column="dec", margin_threshold=1.0)
-    right = lsdb.from_dataframe(df, ra_column="ra", dec_column="dec", margin_threshold=1.0)
+    left = lsdb.from_dataframe(
+        df, ra_column="ra", dec_column="dec", margin_order=2, lowest_order=0, highest_order=1
+    )
+    right = lsdb.from_dataframe(
+        df, ra_column="ra", dec_column="dec", margin_order=2, lowest_order=0, highest_order=1
+    )
 
     assert getattr(right, "margin", None) is not None
 
@@ -1358,8 +1393,8 @@ def test_concat_raises_when_right_margin_ra_dec_differs_from_its_catalog(monkeyp
 def test_concat_raises_when_ra_dec_missing_in_metadata(monkeypatch):
     """Raise if either side lacks RA/Dec names in catalog_info."""
     df = pd.DataFrame({"id": [1], "ra": [10.0], "dec": [-5.0]})
-    left = lsdb.from_dataframe(df, ra_column="ra", dec_column="dec")
-    right = lsdb.from_dataframe(df, ra_column="ra", dec_column="dec")
+    left = lsdb.from_dataframe(df, ra_column="ra", dec_column="dec", margin_threshold=None)
+    right = lsdb.from_dataframe(df, ra_column="ra", dec_column="dec", margin_threshold=None)
 
     # Remova RA no metadata do right
     info = right.hc_structure.catalog_info
