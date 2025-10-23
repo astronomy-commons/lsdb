@@ -149,5 +149,20 @@
         "version": "93daaa30339670b204c524d53201aa70deb674f43f2716fc7d19aa827f4a1f95",
         "warmup_time": -1
     },
+    "benchmarks.time_save_big_catalog": {
+        "code": "def time_save_big_catalog(tmp_path):\n    \"\"\"Load a catalog with many partitions, and save with to_hats.\"\"\"\n    mock_partition_df = pd.DataFrame(\n        {\n            \"ra\": np.linspace(0, 360, 100_000),\n            \"dec\": np.linspace(-90, 90, 100_000),\n            \"id\": np.arange(100_000, 200_000),\n        }\n    )\n\n    base_catalog_path = tmp_path / \"big_sky\"\n\n    kwargs = {\n        \"catalog_name\": \"big_sky\",\n        \"catalog_type\": \"object\",\n        \"lowest_order\": 6,\n        \"highest_order\": 10,\n        \"threshold\": 500,\n    }\n\n    catalog = lsdb.from_dataframe(mock_partition_df, margin_threshold=None, **kwargs)\n\n    catalog.to_hats(base_catalog_path)\n\n    read_catalog = hats.read_hats(base_catalog_path)\n    assert len(read_catalog.get_healpix_pixels()) == len(catalog.get_healpix_pixels())",
+        "min_run_count": 2,
+        "name": "benchmarks.time_save_big_catalog",
+        "number": 0,
+        "param_names": [],
+        "params": [],
+        "repeat": 0,
+        "rounds": 2,
+        "sample_time": 0.01,
+        "type": "time",
+        "unit": "seconds",
+        "version": "83ff79bc9fe6cb1f5e2415f7566815e3674539e5d47e93d3b12b03fb9d810f15",
+        "warmup_time": -1
+    },
     "version": 2
 }
