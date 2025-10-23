@@ -17,6 +17,7 @@ import lsdb.nested as nd
 from lsdb.catalog.margin_catalog import _validate_margin_catalog
 from lsdb.core.search.index_search import IndexSearch
 from lsdb.core.search.region_search import BoxSearch, ConeSearch, OrderSearch, PolygonSearch
+from lsdb.loaders.hats.path_generator import PathGenerator
 
 
 def test_read_hats(small_sky_order1_dir, small_sky_order1_hats_catalog, helpers):
@@ -398,7 +399,7 @@ def test_read_hats_with_extra_kwargs(small_sky_order1_dir):
     assert isinstance(catalog, lsdb.Catalog)
     assert np.greater(catalog.compute()["ra"].to_numpy(), 300).all()
 
-    assert catalog.loading_config.make_query_url_params() == {"filters": "ra>300"}
+    assert catalog.loading_config._make_query_url_params() == {"filters": "ra>300"}
 
 
 def test_read_hats_with_mistaken_kwargs(small_sky_order1_dir, small_sky_xmatch_margin_dir):
@@ -668,3 +669,54 @@ def test_read_hats_margin_hive_columns(small_sky_order1_catalog, small_sky_order
         include_pixel=True,
     )
     _validate_margin_catalog(margin_cat_with_hive_cols, small_sky_order1_catalog)
+
+
+# pylint: disable=too-few-public-methods
+class CustomPathGenerator(PathGenerator):
+    # Path Generator for catalogs structured by the following paths:
+    # {base_dir}/{data_dir}/{pixel_order}_{pixel_number}.parquet
+    def __init__(self, data_dir: str):
+        self.data_dir = data_dir
+
+    def __call__(self, pixel: HealpixPixel) -> UPath:
+        pixel_filename = f"{pixel.order}_{pixel.pixel}{self.npix_suffix}"
+        return self.catalog_base_dir / self.data_dir / pixel_filename
+
+
+def test_read_hats_catalog_with_custom_tree(
+    small_sky_order1_custom_tree_dir, small_sky_order1_catalog, helpers
+):
+    path_generator = CustomPathGenerator(data_dir="parquet")
+    cat = lsdb.open_catalog(small_sky_order1_custom_tree_dir, path_generator=path_generator)
+    assert isinstance(cat, lsdb.Catalog)
+    assert isinstance(cat._ddf, nd.NestedFrame)
+    assert cat.hc_structure.catalog_base_dir == small_sky_order1_custom_tree_dir
+    assert cat.hc_structure.catalog_info.total_rows == len(small_sky_order1_catalog)
+    assert cat.get_healpix_pixels() == small_sky_order1_catalog.get_healpix_pixels()
+    assert isinstance(cat.loading_config.path_generator, CustomPathGenerator)
+    pd.testing.assert_frame_equal(cat.compute(), small_sky_order1_catalog.compute())
+    helpers.assert_divisions_are_correct(cat)
+    helpers.assert_index_correct(cat)
+    helpers.assert_schema_correct(cat)
+
+
+def test_read_hats_catalog_with_custom_tree_and_search(
+    small_sky_order1_custom_tree_dir, small_sky_order1_catalog
+):
+    path_generator = CustomPathGenerator(data_dir="parquet")
+    cat = lsdb.open_catalog(small_sky_order1_custom_tree_dir, path_generator=path_generator)
+
+    # When reloading with search filter the loading config carries the custom path generator
+    pixels = [HealpixPixel(1, 45), HealpixPixel(1, 47)]
+    search_cat = cat.pixel_search(pixels)
+    assert isinstance(cat.loading_config.path_generator, CustomPathGenerator)
+    assert search_cat.hc_structure.catalog_base_dir == small_sky_order1_custom_tree_dir
+    assert search_cat.get_healpix_pixels() == pixels
+    expected_search = small_sky_order1_catalog.pixel_search(pixels)
+    assert isinstance(expected_search.loading_config.path_generator, PathGenerator)
+    pd.testing.assert_frame_equal(search_cat.compute(), expected_search.compute())
+
+
+def test_read_hats_catalog_with_wrong_path_generator(small_sky_order1_custom_tree_dir):
+    with pytest.raises(FileNotFoundError):
+        lsdb.open_catalog(small_sky_order1_custom_tree_dir).compute()

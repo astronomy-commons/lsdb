@@ -29,6 +29,7 @@ SMALL_SKY_XMATCH_MARGIN_NAME = "small_sky_xmatch_margin"
 SMALL_SKY_TO_XMATCH_NAME = "small_sky_to_xmatch"
 SMALL_SKY_NPIX_ALT_SUFFIX_NAME = "small_sky_npix_alt_suffix"
 SMALL_SKY_NPIX_AS_DIR_NAME = "small_sky_npix_as_dir"
+SMALL_SKY_ORDER1_CUSTOM_TREE_DIR_NAME = "small_sky_order1_custom_tree"
 SMALL_SKY_ORDER1_DIR_NAME = "small_sky_order1"
 SMALL_SKY_ORDER1_MARGIN_1DEG_DIR_NAME = "small_sky_order1_margin_1deg"
 SMALL_SKY_ORDER1_MARGIN_2DEG_DIR_NAME = "small_sky_order1_margin_2deg"
@@ -93,6 +94,11 @@ def small_sky_npix_alt_suffix_dir(test_data_dir):
 @pytest.fixture
 def small_sky_npix_as_dir_dir(test_data_dir):
     return test_data_dir / SMALL_SKY_NPIX_AS_DIR_NAME
+
+
+@pytest.fixture
+def small_sky_order1_custom_tree_dir(test_data_dir):
+    return test_data_dir / SMALL_SKY_ORDER1_CUSTOM_TREE_DIR_NAME
 
 
 @pytest.fixture
