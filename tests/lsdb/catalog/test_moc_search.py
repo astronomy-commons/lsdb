@@ -28,6 +28,10 @@ def test_moc_search_filters_healpix13(small_sky_healpix13_dir):
     search_moc = MOC.from_healpix_cells(ipix=np.array([176, 177]), depth=np.array([2, 2]), max_depth=2)
     filtered_cat = catalog.moc_search(search_moc)
     assert filtered_cat.get_healpix_pixels() == [HealpixPixel(1, 44)]
+    assert filtered_cat.hc_structure.catalog_info.healpix_column == "healpix13"
+    assert filtered_cat.loading_config.filters == [
+        [("healpix13", ">=", 176 << 22), ("healpix13", "<", 178 << 22)]
+    ]
     filtered_cat_comp = filtered_cat.compute()
     cat_comp = catalog.compute()
     assert np.all(
