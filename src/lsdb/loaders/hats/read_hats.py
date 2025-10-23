@@ -5,11 +5,11 @@ from pathlib import Path
 import hats as hc
 import nested_pandas as npd
 import numpy as np
-from fsspec.implementations.http import HTTPFileSystem
+import pyarrow as pa
 from hats.catalog import CatalogType
 from hats.catalog.catalog_collection import CatalogCollection
 from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
-from hats.io.file_io import file_io, get_upath
+from hats.io.file_io import file_io
 from hats.pixel_math import HealpixPixel
 from hats.pixel_math.healpix_pixel_function import get_pixel_argsort
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
@@ -27,6 +27,7 @@ from lsdb.core.search.abstract_search import AbstractSearch
 from lsdb.dask.divisions import get_pixels_divisions
 from lsdb.io.schema import get_arrow_schema
 from lsdb.loaders.hats.hats_loading_config import HatsLoadingConfig
+from lsdb.loaders.hats.path_generator import PathGenerator
 
 MAX_PYARROW_FILTERS = 10
 
@@ -37,10 +38,14 @@ def read_hats(
     columns: list[str] | str | None = None,
     margin_cache: str | Path | UPath | None = None,
     error_empty_filter: bool = True,
+    filters: list[tuple[str]] | None = None,
+    path_generator: PathGenerator | None = None,
     **kwargs,
 ) -> Dataset:
     """Load catalog from a HATS path. See open_catalog()."""
-    return open_catalog(path, search_filter, columns, margin_cache, error_empty_filter, **kwargs)
+    return open_catalog(
+        path, search_filter, columns, margin_cache, error_empty_filter, filters, path_generator, **kwargs
+    )
 
 
 def open_catalog(
@@ -49,7 +54,8 @@ def open_catalog(
     columns: list[str] | str | None = None,
     margin_cache: str | Path | UPath | None = None,
     error_empty_filter: bool = True,
-    filters=None,
+    filters: list[tuple[str]] | None = None,
+    path_generator: PathGenerator | None = None,
     **kwargs,
 ) -> Dataset:
     """Open a catalog from a HATS path.
@@ -104,6 +110,8 @@ def open_catalog(
             an empty catalog, throw error.
         filters (list[tuple[str]]): Default `None`. Filters to apply when reading parquet files.
             These may be applied as pyarrow filters or URL parameters.
+        path_generator (PathGenerator): Default `PathGenerator`. The path generator instance that addresses
+            the discoverability of leaf HEALPix parquet.
         **kwargs: Arguments to pass to the pandas parquet file reader
 
     Returns:
@@ -123,6 +131,7 @@ def open_catalog(
         error_empty_filter=error_empty_filter,
         margin_cache=margin_cache,
         filters=filters,
+        path_generator=path_generator,
         kwargs=kwargs,
     )
 
@@ -328,23 +337,19 @@ def _load_dask_df_and_map(catalog: HCHealpixDataset, config) -> tuple[nd.NestedF
     divisions = get_pixels_divisions(ordered_pixels)
     dask_meta_schema = _load_dask_meta_schema(catalog, config)
     index_column = dask_meta_schema.index.name
-    query_url_params = None
-    if isinstance(get_upath(catalog.catalog_base_dir).fs, HTTPFileSystem):
-        query_url_params = config.make_query_url_params()
+    config.make_path_generator(catalog)
     if len(ordered_pixels) > 0:
         ddf = nd.NestedFrame.from_map(
             read_pixel,
             ordered_pixels,
-            catalog_base_dir=catalog.catalog_base_dir,
-            npix_suffix=catalog.catalog_info.npix_suffix,
-            query_url_params=query_url_params,
+            path_generator=config.path_generator,
             columns=config.columns,
             schema=catalog.schema,
             filters=config.filters,
             index_column=index_column,
-            **config.kwargs,
             divisions=divisions,
             meta=dask_meta_schema,
+            **config.kwargs,
         )
     else:
         ddf = nd.NestedFrame.from_pandas(dask_meta_schema, npartitions=1)
@@ -354,22 +359,19 @@ def _load_dask_df_and_map(catalog: HCHealpixDataset, config) -> tuple[nd.NestedF
 
 def read_pixel(
     pixel: HealpixPixel,
-    catalog_base_dir: str | Path | UPath,
-    npix_suffix: str,
     *,
-    query_url_params: dict | None = None,
+    path_generator: PathGenerator,
     index_column: str = SPATIAL_INDEX_COLUMN,
-    columns=None,
-    schema=None,
+    columns: list[str] | str | None = None,
+    schema: pa.Schema | None = None,
     **kwargs,
 ):
     """Utility method to read a single pixel's parquet file from disk.
 
     NB: `columns` is necessary as an argument, even if None, so that dask-expr
     optimizes the execution plan."""
-
     return _read_parquet_file(
-        hc.io.pixel_catalog_file(catalog_base_dir, pixel, query_url_params, npix_suffix=npix_suffix),
+        path_generator(pixel),
         columns=columns,
         schema=schema,
         index_column=index_column,

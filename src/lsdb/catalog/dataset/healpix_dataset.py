@@ -663,6 +663,7 @@ class HealpixDataset(Dataset):
         if self.loading_config:
             new_loading_config.filters = self.loading_config.filters
             new_loading_config.kwargs = self.loading_config.kwargs
+            new_loading_config.path_generator = self.loading_config.path_generator
 
         return _load_catalog(hc_structure, new_loading_config)
 
