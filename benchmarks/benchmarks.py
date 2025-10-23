@@ -5,6 +5,7 @@ https://asv.readthedocs.io/en/stable/writing_benchmarks.html."""
 
 from pathlib import Path
 
+import hats
 import numpy as np
 import pandas as pd
 
@@ -99,3 +100,31 @@ def time_open_many_columns_list():
         BENCH_DATA_DIR / "object_collection",
         columns=["objectId", "coord_dec", "coord_decErr", "coord_ra", "coord_raErr"],
     )
+
+
+def time_save_big_catalog(tmp_path):
+    """Load a catalog with many partitions, and save with to_hats."""
+    mock_partition_df = pd.DataFrame(
+        {
+            "ra": np.linspace(0, 360, 100_000),
+            "dec": np.linspace(-90, 90, 100_000),
+            "id": np.arange(100_000, 200_000),
+        }
+    )
+
+    base_catalog_path = tmp_path / "big_sky"
+
+    kwargs = {
+        "catalog_name": "big_sky",
+        "catalog_type": "object",
+        "lowest_order": 6,
+        "highest_order": 10,
+        "threshold": 500,
+    }
+
+    catalog = lsdb.from_dataframe(mock_partition_df, margin_threshold=None, **kwargs)
+
+    catalog.to_hats(base_catalog_path)
+
+    read_catalog = hats.read_hats(base_catalog_path)
+    assert len(read_catalog.get_healpix_pixels()) == len(catalog.get_healpix_pixels())
