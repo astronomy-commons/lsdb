@@ -275,10 +275,21 @@ def _load_object_catalog(hc_catalog, config):
 
 def _generate_pyarrow_filters_from_moc(filtered_catalog):
     pyarrow_filter = []
-    if SPATIAL_INDEX_COLUMN not in filtered_catalog.schema.names:
+    if not (
+        filtered_catalog.has_healpix_column()
+        and filtered_catalog.catalog_info.healpix_column in filtered_catalog.schema.names
+    ):
         return pyarrow_filter
+    healpix_column = filtered_catalog.catalog_info.healpix_column
+    healpix_order = filtered_catalog.catalog_info.healpix_order
     if filtered_catalog.moc is not None:
-        depth_array = filtered_catalog.moc.to_depth29_ranges
+        moc = (
+            filtered_catalog.moc
+            if healpix_order >= filtered_catalog.moc.max_order
+            else filtered_catalog.moc.degrade_to_order(healpix_order)
+        )
+        depth_array = moc.to_depth29_ranges
+        depth_array = depth_array >> (2 * (29 - healpix_order))
         if len(depth_array) > MAX_PYARROW_FILTERS:
             starts = depth_array.T[0]
             ends = depth_array.T[1]
@@ -290,9 +301,7 @@ def _generate_pyarrow_filters_from_moc(filtered_catalog):
                 reduced_filters.append([starts[i_start], ends[i_end]])
             depth_array = np.array(reduced_filters)
         for hpx_range in depth_array:
-            pyarrow_filter.append(
-                [(SPATIAL_INDEX_COLUMN, ">=", hpx_range[0]), (SPATIAL_INDEX_COLUMN, "<", hpx_range[1])]
-            )
+            pyarrow_filter.append([(healpix_column, ">=", hpx_range[0]), (healpix_column, "<", hpx_range[1])])
     return pyarrow_filter
 
 
