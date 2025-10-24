@@ -51,12 +51,12 @@ from lsdb.types import DaskDFPixelMap
 
 # pylint: disable=protected-access,too-many-public-methods,too-many-lines,import-outside-toplevel,cyclic-import
 class HealpixDataset(Dataset):
-    """LSDB Catalog DataFrame to perform analysis of sky catalogs and efficient
-    spatial operations.
+    """LSDB Catalog to perform analysis of sky catalogs and efficient spatial operations.
 
-    Attributes:
-        hc_structure: `hats.Dataset` object representing the structure
-                      and metadata of the HATS catalog
+    Attributes
+    ----------
+    hc_structure: `hats.Dataset`
+        Object representing the structure and metadata of the HATS catalog
     """
 
     hc_structure: HCHealpixDataset
@@ -73,10 +73,16 @@ class HealpixDataset(Dataset):
         Not to be used to load a catalog directly, use one of the `lsdb.from_...` or
         `lsdb.open_...` methods
 
-        Args:
-            ddf: Dask DataFrame with the source data of the catalog
-            ddf_pixel_map: Dictionary mapping HEALPix order and pixel to partition index of ddf
-            hc_structure: `hats.Catalog` object with hats metadata of the catalog
+        Parameters
+        ----------
+        ddf: nd.NestedFrame
+            Dask Nested DataFrame with the source data of the catalog
+        ddf_pixel_map: DaskDFPixelMap
+            Dictionary mapping HEALPix order and pixel to partition index of ddf
+        hc_structure: HCHealpixDataset
+            Object with hats metadata of the catalog
+        loading_config: `HatsLoadingConfig` or None, default None
+            The configuration used to read the catalog from disk
         """
         super().__init__(ddf, hc_structure, loading_config=loading_config)
         self._ddf_pixel_map = ddf_pixel_map
@@ -98,7 +104,9 @@ class HealpixDataset(Dataset):
     def __len__(self):
         """The number of rows in the catalog.
 
-        Returns:
+        Returns
+        -------
+        int
             The number of rows in the catalog, as specified in its metadata.
             This value is undetermined when the catalog is modified, and
             therefore an error is raised.
@@ -109,7 +117,9 @@ class HealpixDataset(Dataset):
     def nested_columns(self) -> list[str]:
         """The names of the columns of the catalog that are nested.
 
-        Returns:
+        Returns
+        -------
+        list[str]
             The list of nested columns in the catalog.
         """
         return self._ddf.nested_columns
@@ -138,11 +148,7 @@ class HealpixDataset(Dataset):
     def _create_modified_hc_structure(
         self, hc_structure=None, updated_schema=None, **kwargs
     ) -> HCHealpixDataset:
-        """Copy the catalog structure and override the specified catalog info parameters.
-
-        Returns:
-            A copy of the catalog's structure with updated info parameters.
-        """
+        """Copy the catalog structure and override the specified catalog info parameters."""
         if hc_structure is None:
             hc_structure = self.hc_structure
         return hc_structure.__class__(
@@ -167,13 +173,20 @@ class HealpixDataset(Dataset):
         Updates the hc_structure with any provided catalog info parameters, resets the total rows, removes
         any default columns that don't exist, and updates the pyarrow schema to reflect the new ddf.
 
-        Args:
-            ddf (nd.NestedFrame): The catalog ddf to update in the new catalog
-            ddf_pixel_map (DaskDFPixelMap): The partition to healpix pixel map to update in the new catalog
-            hc_structure (hats.HealpixDataset): The hats HealpixDataset object to update in the new catalog
-            updated_catalog_info_params (dict): The dictionary of updates to the parameters of the hats
-                dataset object's catalog_info
-        Returns:
+        Parameters
+        ----------
+        ddf : nd.NestedFrame or None, default None
+            The catalog ddf to update in the new catalog
+        ddf_pixel_map : DaskDFPixelMap or None, default None
+            The partition to healpix pixel map to update in the new catalog
+        hc_structure : HCHealpixDataset or None, default None
+            The hats HealpixDataset object to update in the new catalog
+        updated_catalog_info_params : dict or None, default None
+            The dictionary of updates to the parameters of the hats dataset object's catalog_info
+
+        Returns
+        -------
+        Self
             A new dataset object with the arguments updated to those provided to the function, and the
             hc_structure metadata updated to match the new ddf
         """
@@ -199,7 +212,9 @@ class HealpixDataset(Dataset):
     def get_healpix_pixels(self) -> list[HealpixPixel]:
         """Get all HEALPix pixels that are contained in the catalog
 
-        Returns:
+        Returns
+        -------
+        list[HealpixPixel]
             List of all Healpix pixels in the catalog
         """
         return self.hc_structure.get_healpix_pixels()
@@ -208,7 +223,9 @@ class HealpixDataset(Dataset):
         """Get all HEALPix pixels that are contained in the catalog,
         ordered by breadth-first nested ordering.
 
-        Returns:
+        Returns
+        -------
+        list[HealpixPixel]
             List of all Healpix pixels in the catalog
         """
         pixels = self.get_healpix_pixels()
@@ -221,23 +238,30 @@ class HealpixDataset(Dataset):
         exclude_columns: list[str] | None = None,
         include_columns: list[str] | None = None,
         include_pixels: list[HealpixPixel] | None = None,
-    ) -> list[HealpixPixel]:
+    ) -> pd.DataFrame:
         """Read footer statistics in parquet metadata, and report on global min/max values.
 
-        Args:
-            use_default_columns (bool): should we use only the columns that are loaded
-                by default (will be set in the metadata by the catalog provider).
-                Defaults to True.
-            exclude_hats_columns (bool): exclude HATS spatial and partitioning fields
-                from the statistics. Defaults to True.
-            exclude_columns (List[str]): additional columns to exclude from the statistics.
-            include_columns (List[str]): if specified, only return statistics for the column
-                names provided. Defaults to None, and returns all non-hats columns.
-            include_pixels (list[HealpixPixel]): if specified, only return statistics
-                for the pixels indicated. Defaults to none, and returns all pixels.
+        Parameters
+        ----------
+        use_default_columns : bool, default True
+            Should we use only the columns that are loaded by default (will be set in the
+            metadata by the catalog provider). Defaults to True.
+        exclude_hats_columns : bool, default True
+            Exclude HATS spatial and partitioning fields from the statistics. Defaults to True.
+        exclude_columns : list[str] or None, default None
+            Additional columns to exclude from the statistics.
+        include_columns : list[str] or None, default None
+            If specified, only return statistics for the column
+            names provided. Defaults to None, and returns all non-hats columns.
+        include_pixels : list[HealpixPixel] or None, default None
+            If specified, only return statistics for the pixels indicated. Defaults to none,
+            and returns all pixels.
 
-        Returns:
-            dataframe with global summary statistics"""
+        Returns
+        -------
+        pd.DataFrame
+            Dataframe with global summary statistics
+        """
         if use_default_columns and include_columns is None:
             include_columns = self.hc_structure.catalog_info.default_columns
 
@@ -257,28 +281,37 @@ class HealpixDataset(Dataset):
         include_stats: list[str] | None = None,
         multi_index=False,
         include_pixels: list[HealpixPixel] | None = None,
-    ) -> list[HealpixPixel]:
-        """Read footer statistics in parquet metadata, and report on min/max values for
-        for each data partition.
+    ) -> pd.DataFrame:
+        """Read footer statistics in parquet metadata, and report on
+        min/max values for for each data partition.
 
-        Args:
-            use_default_columns (bool): should we use only the columns that are loaded
-                by default (will be set in the metadata by the catalog provider).
-                Defaults to True.
-            exclude_hats_columns (bool): exclude HATS spatial and partitioning fields
-                from the statistics. Defaults to True.
-            exclude_columns (List[str]): additional columns to exclude from the statistics.
-            include_columns (List[str]): if specified, only return statistics for the column
-                names provided. Defaults to None, and returns all non-hats columns.
-            include_stats (List[str]): if specified, only return the kinds of values from list
-                (min_value, max_value, null_count, row_count). Defaults to None, and returns all values.
-            multi_index (bool): should the returned frame be created with a multi-index, first on
-                pixel, then on column name? Default is False, and instead indexes on pixel, with
-                separate columns per-data-column and stat value combination.
-            include_pixels (list[HealpixPixel]): if specified, only return statistics
-                for the pixels indicated. Defaults to none, and returns all pixels.
-        Returns:
-            dataframe with granular per-pixel statistics
+        Parameters
+        ----------
+        use_default_columns : bool, default True
+            Should we use only the columns that are loaded by default (will be set in the
+            metadata by the catalog provider). Defaults to True.
+        exclude_hats_columns : bool, default True
+            Exclude HATS spatial and partitioning fields from the statistics. Defaults to True.
+        exclude_columns : list[str] or None, default None
+            Additional columns to exclude from the statistics.
+        include_columns : list[str] or None, default None
+            If specified, only return statistics for the column
+            names provided. Defaults to None, and returns all non-hats columns.
+        include_stats : list[str] or None, default None
+            If specified, only return the kinds of values from list (min_value, max_value,
+            null_count, row_count). Defaults to None, and returns all values.
+        multi_index : bool, default False
+            Should the returned frame be created with a multi-index, first on
+            pixel, then on column name? Default is False, and instead indexes on pixel, with
+            separate columns per-data-column and stat value combination.
+        include_pixels : list[HealpixPixel] or None, default None
+            If specified, only return statistics for the pixels indicated. Defaults to none,
+            and returns all pixels.
+
+        Returns
+        -------
+        pd.Dataframe
+            Dataframe with granular per-pixel statistics
         """
         if use_default_columns and include_columns is None:
             include_columns = self.hc_structure.catalog_info.default_columns
@@ -295,13 +328,22 @@ class HealpixDataset(Dataset):
     def get_partition(self, order: int, pixel: int) -> nd.NestedFrame:
         """Get the dask partition for a given HEALPix pixel
 
-        Args:
-            order: Order of HEALPix pixel
-            pixel: HEALPix pixel number in NESTED ordering scheme
-        Returns:
+        Parameters
+        ----------
+        order: int
+            Order of HEALPix pixel
+        pixel: int
+            HEALPix pixel number in NESTED ordering scheme
+
+        Returns
+        -------
+        nd.NestedFrame
             Dask Dataframe with a single partition with data at that pixel
-        Raises:
-            ValueError: if no data exists for the specified pixel
+
+        Raises
+        ------
+        ValueError
+            If no data exists for the specified pixel
         """
         partition_index = self.get_partition_index(order, pixel)
         return self._ddf.partitions[partition_index]
@@ -309,13 +351,22 @@ class HealpixDataset(Dataset):
     def get_partition_index(self, order: int, pixel: int) -> int:
         """Get the dask partition for a given HEALPix pixel
 
-        Args:
-            order: Order of HEALPix pixel
-            pixel: HEALPix pixel number in NESTED ordering scheme
-        Returns:
-            Dask Dataframe with a single partition with data at that pixel
-        Raises:
-            ValueError: if no data exists for the specified pixel
+        Parameters
+        ----------
+        order: int
+            Order of HEALPix pixel
+        pixel: int
+            HEALPix pixel number in NESTED ordering scheme
+
+        Returns
+        -------
+        int
+            The index of the partition with data at that pixel
+
+        Raises
+        ------
+        ValueError
+            If no data exists for the specified pixel
         """
         hp_pixel = HealpixPixel(order, pixel)
         if hp_pixel not in self._ddf_pixel_map:
@@ -336,10 +387,14 @@ class HealpixDataset(Dataset):
     def head(self, n: int = 5) -> npd.NestedFrame:
         """Returns a few rows of initial data for previewing purposes.
 
-        Args:
-            n (int): The number of desired rows.
+        Parameters
+        ----------
+        n : int, default 5
+            The number of desired rows.
 
-        Returns:
+        Returns
+        -------
+        npd.NestedFrame
             A NestedFrame with up to `n` rows of data.
         """
         dfs = []
@@ -358,10 +413,14 @@ class HealpixDataset(Dataset):
     def tail(self, n: int = 5) -> npd.NestedFrame:
         """Returns a few rows of data from the end of the catalog for previewing purposes.
 
-        Args:
-            n (int): The number of desired rows.
+        Parameters
+        ----------
+        n : int, default 5
+            The number of desired rows.
 
-        Returns:
+        Returns
+        -------
+        npd.NestedFrame
             A NestedFrame with up to `n` rows of data.
         """
         dfs = []
@@ -380,10 +439,14 @@ class HealpixDataset(Dataset):
     def sample(self, partition_id: int, n: int = 5, seed: int | None = None) -> npd.NestedFrame:
         """Returns a few randomly sampled rows from a given partition.
 
-        Args:
-            partition_id (int): the partition to sample.
-            n (int): the number of desired rows.
-            seed (int): random seed
+        Parameters
+        ----------
+        partition_id : int
+            The partition to sample.
+        n: int, default 5
+            The number of desired rows.
+        seed : int or None, default None
+            Random seed
 
         As with `NestedFrame.sample`, `n` is an approximate number of
         items to return.  The exact number of elements selected will
@@ -394,7 +457,9 @@ class HealpixDataset(Dataset):
         to assist with creating predictable outputs when wanted, such
         as in unit tests.
 
-        Returns:
+        Returns
+        -------
+        npd.NestedFrame
             A NestedFrame with up to `n` rows of data.
         """
         random.seed(seed)
@@ -414,13 +479,15 @@ class HealpixDataset(Dataset):
         return partition.sample(frac=fraction).compute()
 
     def random_sample(self, n: int = 5, seed: int | None = None) -> npd.NestedFrame:
-        """Returns a few randomly sampled rows, like self.sample(),
-        except that it randomly samples all partitions in order to
-        fulfill the rows.
+        """Returns a few randomly sampled rows, like self.sample(), except that
+        it randomly samples all partitions in order to fulfill the rows.
 
-        Args:
-            n (int): the number of desired rows.
-            seed (int): random seed
+        Parameters
+        ----------
+        n : int, default 5
+            The number of desired rows.
+        seed : int or None, default None
+            Random seed
 
         As with `.sample`, `n` is an approximate number of items to
         return.  The exact number of elements selected will depend on
@@ -431,7 +498,9 @@ class HealpixDataset(Dataset):
         to assist with creating predictable outputs when wanted, such
         as in unit tests.
 
-        Returns:
+        Returns
+        -------
+        npd.NestedFrame
             A NestedFrame with up to `n` rows of data.
         """
         random.seed(seed)
@@ -465,16 +534,20 @@ class HealpixDataset(Dataset):
         return self._ddf._meta
 
     def query(self, expr: str) -> Self:
-        """Filters catalog using a complex query expression
+        """Filters catalog using a complex query expression.
 
-        Args:
-            expr (str): Query expression to evaluate. The column names that are not valid Python
-                variables names should be wrapped in backticks, and any variable values can be
-                injected using f-strings. The use of '@' to reference variables is not supported.
-                More information about pandas query strings is available
-                `here <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.query.html>`__.
+        Parameters
+        ----------
+        expr : str
+            Query expression to evaluate. The column names that are not valid Python
+            variables names should be wrapped in backticks, and any variable values can be
+            injected using f-strings. The use of '@' to reference variables is not supported.
+            More information about pandas query strings is available
+            `here <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.query.html>`__.
 
-        Returns:
+        Returns
+        -------
+        Self
             A catalog that contains the data from the original catalog that complies
             with the query expression
         """
@@ -484,52 +557,71 @@ class HealpixDataset(Dataset):
     def rename(self, columns: Renamer) -> Self:
         """Renames catalog columns (not indices) using a dictionary or function mapping.
 
-        Args:
-            columns (dict-like or function): transformations to apply to column names.
+        Parameters
+        ----------
+        columns : dict-like or function
+            Transformations to apply to column names.
 
-        Returns:
+        Returns
+        -------
+        Self
             A catalog that contains the data from the original catalog with renamed columns.
         """
         ndf = self._ddf.rename(columns=columns)
         return self._create_updated_dataset(ddf=ndf)
 
-    def cone_search(self, ra: float, dec: float, radius_arcsec: float, fine: bool = True):
-        """Perform a cone search to filter the catalog
+    def cone_search(self, ra: float, dec: float, radius_arcsec: float, fine: bool = True) -> Self:
+        """Perform a cone search to filter the catalog.
 
         Filters to points within radius great circle distance to the point specified by ra and dec in degrees.
         Filters partitions in the catalog to those that have some overlap with the cone.
 
-        Args:
-            ra (float): Right Ascension of the center of the cone in degrees
-            dec (float): Declination of the center of the cone in degrees
-            radius_arcsec (float): Radius of the cone in arcseconds
-            fine (bool): True if points are to be filtered, False if not. Defaults to True.
+        Parameters
+        ----------
+        ra : float
+            Right Ascension of the center of the cone in degrees
+        dec : float
+            Declination of the center of the cone in degrees
+        radius_arcsec : float
+            Radius of the cone in arcseconds
+        fine : bool, default True
+            True if points are to be filtered, False if not. Defaults to True.
 
-        Returns:
+        Returns
+        -------
+        Self
             A new Catalog containing the points filtered to those within the cone, and the partitions that
             overlap the cone.
         """
         return self.search(ConeSearch(ra, dec, radius_arcsec, fine))
 
-    def box_search(self, ra: tuple[float, float], dec: tuple[float, float], fine: bool = True):
-        """Performs filtering according to right ascension and declination ranges. The right ascension
-        edges follow great arc circles and the declination edges follow small arc circles.
+    def box_search(self, ra: tuple[float, float], dec: tuple[float, float], fine: bool = True) -> Self:
+        """Performs filtering according to right ascension and declination ranges.
+
+        The right ascension edges follow great arc circles and the declination edges
+        follow small arc circles.
 
         Filters to points within the region specified in degrees.
         Filters partitions in the catalog to those that have some overlap with the region.
 
-        Args:
-            ra (Tuple[float, float]): The right ascension minimum and maximum values.
-            dec (Tuple[float, float]): The declination minimum and maximum values.
-            fine (bool): True if points are to be filtered, False if not. Defaults to True.
+        Parameters
+        ----------
+        ra : tuple[float, float]
+            The right ascension minimum and maximum values.
+        dec : tuple[float, float]
+            The declination minimum and maximum values.
+        fine : bool, default True
+            True if points are to be filtered, False if not. Defaults to True.
 
-        Returns:
+        Returns
+        -------
+        Self
             A new catalog containing the points filtered to those within the region, and the
             partitions that have some overlap with it.
         """
         return self.search(BoxSearch(ra, dec, fine))
 
-    def polygon_search(self, vertices: list[tuple[float, float]], fine: bool = True):
+    def polygon_search(self, vertices: list[tuple[float, float]], fine: bool = True) -> Self:
         """Perform a polygonal search to filter the catalog.
 
         IMPORTANT: Requires additional ``lsst-sphgeom`` package
@@ -537,49 +629,69 @@ class HealpixDataset(Dataset):
         Filters to points within the polygonal region specified in ra and dec, in degrees.
         Filters partitions in the catalog to those that have some overlap with the region.
 
-        Args:
-            vertices (list[tuple[float, float]]): The list of vertices of the polygon to
-                filter pixels with, as a list of (ra,dec) coordinates, in degrees.
-            fine (bool): True if points are to be filtered, False if not. Defaults to True.
+        Parameters
+        ----------
+        vertices : list[tuple[float, float]]
+            The list of vertices of the polygon to filter pixels with, as a list
+            of (ra,dec) coordinates, in degrees.
+        fine : bool, default True
+            True if points are to be filtered, False if not. Defaults to True.
 
-        Returns:
+        Returns
+        -------
+        Self
             A new catalog containing the points filtered to those within the
             polygonal region, and the partitions that have some overlap with it.
         """
         return self.search(PolygonSearch(vertices, fine))
 
-    def order_search(self, min_order: int = 0, max_order: int | None = None):
+    def order_search(self, min_order: int = 0, max_order: int | None = None) -> Self:
         """Filter catalog by order of HEALPix.
 
-        Args:
-            min_order (int): Minimum HEALPix order to select. Defaults to 0.
-            max_order (int): Maximum HEALPix order to select. Defaults to maximum catalog order.
+        Parameters
+        ----------
+        min_order : int, default 0
+            Minimum HEALPix order to select. Defaults to 0.
+        max_order : int or None, default None
+            Maximum HEALPix order to select. Defaults to maximum catalog order.
 
-        Returns:
+        Returns
+        -------
+        Self
             A new Catalog containing only the pixels of orders specified (inclusive).
         """
         return self.search(OrderSearch(min_order, max_order))
 
-    def pixel_search(self, pixels: tuple[int, int] | HealpixPixel | list[tuple[int, int] | HealpixPixel]):
+    def pixel_search(
+        self, pixels: tuple[int, int] | HealpixPixel | list[tuple[int, int] | HealpixPixel]
+    ) -> Self:
         """Finds all catalog pixels that overlap with the requested pixel set.
 
-        Args:
-            pixels (List[Tuple[int, int]]): The list of HEALPix tuples (order, pixel)
-                that define the region for the search.
+        Parameters
+        ----------
+        pixels : list[tuple[int, int]]
+            The list of HEALPix tuples (order, pixel) that define the region for the search.
 
-        Returns:
+        Returns
+        -------
+        Self
             A new Catalog containing only the pixels that overlap with the requested pixel set.
         """
         return self.search(PixelSearch(pixels))
 
-    def moc_search(self, moc: MOC, fine: bool = True):
+    def moc_search(self, moc: MOC, fine: bool = True) -> Self:
         """Finds all catalog points that are contained within a moc.
 
-        Args:
-            moc (mocpy.MOC): The moc that defines the region for the search.
-            fine (bool): True if points are to be filtered, False if only partitions. Defaults to True.
+        Parameters
+        ----------
+        moc : mocpy.MOC
+            The moc that defines the region for the search.
+        fine : bool, default True
+            True if points are to be filtered, False if only partitions. Defaults to True.
 
-        Returns:
+        Returns
+        -------
+        Self
             A new Catalog containing only the points that are within the moc.
         """
         return self.search(MOCSearch(moc, fine=fine))
@@ -591,13 +703,17 @@ class HealpixDataset(Dataset):
     ) -> tuple[DaskDFPixelMap, nd.NestedFrame]:
         """Performs a search on the catalog from a list of pixels to search in
 
-        Args:
-            metadata (hc.catalog.Catalog | hc.catalog.MarginCatalog): The metadata of
-                the hats catalog after the coarse filtering is applied. The partitions
-                it contains are only those that overlap with the spatial region.
-            search (AbstractSearch): Instance of AbstractSearch.
+        Parameters
+        ----------
+        metadata : HCHealpixDataset
+            The metadata of the hats catalog after the coarse filtering is applied.
+            The partitions it contains are only those that overlap with the spatial region.
+        search : AbstractSearch
+            Instance of AbstractSearch.
 
-        Returns:
+        Returns
+        -------
+        tuple[DaskDFPixelMap, nd.NestedFrame]
             A tuple containing a dictionary mapping pixel to partition index and a dask dataframe
             containing the search results
         """
@@ -616,16 +732,20 @@ class HealpixDataset(Dataset):
         ddf_partition_map = {pixel: i for i, pixel in enumerate(filtered_pixels)}
         return ddf_partition_map, filtered_partitions_ddf
 
-    def search(self, search: AbstractSearch):
+    def search(self, search: AbstractSearch) -> Self:
         """Find rows by reusable search algorithm.
 
         Filters partitions in the catalog to those that match some rough criteria.
         Filters to points that match some finer criteria.
 
-        Args:
-            search (AbstractSearch): Instance of AbstractSearch.
+        Parameters
+        ----------
+        search : AbstractSearch
+            Instance of AbstractSearch.
 
-        Returns:
+        Returns
+        -------
+        Self
             A new Catalog containing the points filtered to those matching the search parameters.
         """
         if (
@@ -641,8 +761,9 @@ class HealpixDataset(Dataset):
         )
 
     def _reload_with_filter(self, search: AbstractSearch):
-        """Reloads the catalog from storage, applying a given search filter. Uses the columns of the current
-        catalog to select the same columns to reload."""
+        """Reloads the catalog from storage, applying a given search filter.
+
+        Uses the columns of the current catalog to select the same columns to reload."""
         from lsdb.loaders.hats.read_hats import _load_catalog
 
         all_columns = self._ddf._meta.all_columns
@@ -679,31 +800,38 @@ class HealpixDataset(Dataset):
 
         The ra and dec of each row is assumed to remain unchanged.
 
-        Args:
-            func (Callable): The function applied to each partition, which will be called with:
-                `func(partition: npd.NestedFrame, *args, **kwargs)` with the additional args and kwargs passed
-                to the `map_partitions` function. If the `include_pixel` parameter is set, the function will
-                be called with the `healpix_pixel` as the second positional argument set to the healpix pixel
-                of the partition as
-                `func(partition: npd.NestedFrame, healpix_pixel: HealpixPixel, *args, **kwargs)`
-            *args: Additional positional arguments to call `func` with.
-            meta (pd.DataFrame | pd.Series | Dict | Iterable | Tuple | None): An empty pandas DataFrame that
-                has columns matching the output of the function applied to a partition. Other types are
-                accepted to describe the output dataframe format, for full details see the dask documentation
-                https://blog.dask.org/2022/08/09/understanding-meta-keyword-argument
-                If meta is None (default), LSDB will try to work out the output schema of the function by
-                calling the function with an empty DataFrame. If the function does not work with an empty
-                DataFrame, this will raise an error and meta must be set. Note that some operations in LSDB
-                will generate empty partitions, though these can be removed by calling the
-                `Catalog.prune_empty_partitions` method.
-            include_pixel (bool): Whether to pass the Healpix Pixel of the partition as a `HealpixPixel`
-                object to the second positional argument of the function
-            **kwargs: Additional keyword args to pass to the function. These are passed to the Dask DataFrame
-                `dask.dataframe.map_partitions` function, so any of the dask function's keyword args such as
-                `transform_divisions` will be passed through and work as described in the dask documentation
-                https://docs.dask.org/en/stable/generated/dask.dataframe.DataFrame.map_partitions.html
+        Parameters
+        ----------
+        func : Callable
+            The function applied to each partition, which will be called with:
+            `func(partition: npd.NestedFrame, *args, **kwargs)` with the additional args and kwargs passed
+            to the `map_partitions` function. If the `include_pixel` parameter is set, the function will
+            be called with the `healpix_pixel` as the second positional argument set to the healpix pixel
+            of the partition as
+            `func(partition: npd.NestedFrame, healpix_pixel: HealpixPixel, *args, **kwargs)`
+        *args
+            Additional positional arguments to call `func` with.
+        meta : pd.DataFrame or pd.Series or Dict or Iterable or Tuple or None, default None
+            An empty pandas DataFrame that has columns matching the output of the function applied to a
+            partition. Other types are accepted to describe the output dataframe format, for full details
+            see the dask documentation https://blog.dask.org/2022/08/09/understanding-meta-keyword-argument
+            If meta is None (default), LSDB will try to work out the output schema of the function by
+            calling the function with an empty DataFrame. If the function does not work with an empty
+            DataFrame, this will raise an error and meta must be set. Note that some operations in LSDB
+            will generate empty partitions, though these can be removed by calling the
+            `Catalog.prune_empty_partitions` method.
+        include_pixel : bool, default False
+            Whether to pass the Healpix Pixel of the partition as a `HealpixPixel`
+            object to the second positional argument of the function
+        **kwargs
+            Additional keyword args to pass to the function. These are passed to the Dask DataFrame
+            `dask.dataframe.map_partitions` function, so any of the dask function's keyword args such as
+            `transform_divisions` will be passed through and work as described in the dask documentation
+            https://docs.dask.org/en/stable/generated/dask.dataframe.DataFrame.map_partitions.html
 
-        Returns:
+        Returns
+        -------
+        Self or dd.Series
             A new catalog with each partition replaced with the output of the function applied to the original
             partition. If the function returns a non dataframe output, a dask Series will be returned.
         """
@@ -763,10 +891,14 @@ class HealpixDataset(Dataset):
     def prune_empty_partitions(self, persist: bool = False) -> Self:
         """Prunes the catalog of its empty partitions
 
-        Args:
-            persist (bool): If True previous computations are saved. Defaults to False.
+        Parameters
+        ----------
+        persist : bool, default False
+            If True previous computations are saved. Defaults to False.
 
-        Returns:
+        Returns
+        -------
+        Self
             A new catalog containing only its non-empty partitions
         """
         warnings.warn("Pruning empty partitions is expensive. It may run slow!", RuntimeWarning)
@@ -787,7 +919,9 @@ class HealpixDataset(Dataset):
     def _get_non_empty_partitions(self) -> tuple[list[HealpixPixel], np.ndarray]:
         """Determines which pixels and partitions of a catalog are not empty
 
-        Returns:
+        Returns
+        -------
+        tuple[list[HealpixPixel], np.ndarray]
             A tuple with the non-empty pixels and respective partitions
         """
 
@@ -808,18 +942,31 @@ class HealpixDataset(Dataset):
     def plot_pixels(self, projection: str = "MOL", **kwargs) -> tuple[Figure, WCSAxes]:
         """Create a visual map of the pixel density of the catalog.
 
-        Args:
-            projection (str) The map projection to use. Available projections listed at
-                https://docs.astropy.org/en/stable/wcs/supported_projections.html
-                kwargs (dict): additional keyword arguments to pass to plotting call.
+        Parameters
+        ----------
+        projection : str, default "MOL"
+            The map projection to use. Available projections listed at
+            https://docs.astropy.org/en/stable/wcs/supported_projections.html
+        **kwargs
+            Additional keyword arguments to pass to plotting call.
+
+        Returns
+        -------
+        tuple[Figure, WCSAxes]
         """
         return self.hc_structure.plot_pixels(projection=projection, **kwargs)
 
     def plot_coverage(self, **kwargs) -> tuple[Figure, WCSAxes]:
         """Create a visual map of the coverage of the catalog.
 
-        Args:
-            kwargs: additional keyword arguments to pass to hats.Catalog.plot_moc
+        Parameters
+        ----------
+        **kwargs
+            Additional keyword arguments to pass to hats.Catalog.plot_moc
+
+        Returns
+        -------
+        tuple[Figure, WCSAxes]
         """
         return self.hc_structure.plot_moc(**kwargs)
 
@@ -855,15 +1002,22 @@ class HealpixDataset(Dataset):
     ):
         """Save the catalog to disk in HATS format.
 
-        Args:
-            base_catalog_path (str): Location where catalog is saved to
-            catalog_name (str): The name of the catalog to be saved
-            default_columns (list[str]): A metadata property with the list of the columns in the catalog to
-                be loaded by default. By default, uses the default columns from the original hats catalogs if
-                they exist.
-            overwrite (bool): If True existing catalog is overwritten
-            error_if_empty (bool): If True, raises an error if the catalog is empty.
-            **kwargs: Arguments to pass to the parquet write operations
+        Parameters
+        ----------
+        base_catalog_path : str | Path | UPath
+            Location where catalog is saved to
+        catalog_name : str or None, default None
+            The name of the catalog to be saved
+        default_columns : list[str] or None, default None
+            A metadata property with the list of the columns in the catalog to
+            be loaded by default. By default, uses the default columns from the
+            original hats catalogs if they exist.
+        overwrite : bool, default False
+            If True existing catalog is overwritten
+        error_if_empty : bool, default True
+            If True, raises an error if the catalog is empty.
+        **kwargs
+            Arguments to pass to the parquet write operations
         """
         self._check_unloaded_columns(default_columns)
         io.to_hats(
@@ -882,31 +1036,36 @@ class HealpixDataset(Dataset):
         list_columns: list[str] | None = None,
         name: str = "nested",
     ) -> Self:  # type: ignore[name-defined] # noqa: F821:
-        """Creates a new catalog with a set of list columns packed into a
-        nested column.
+        """Creates a new catalog with a set of list columns packed into a nested column.
 
-        Args:
-            base_columns (list-like or None): Any columns that have non-list values in the input catalog.
-                These will simply be kept as identical columns in the result. If None, is inferred to be
-                all columns in the input catalog that are not considered list-value columns.
-            list_columns (list-like or None): The list-value columns that should be packed into a nested
-                column. All columns in the list will attempt to be packed into a single nested column
-                with the name provided in `nested_name`. All columns in list_columns must have pyarrow
-                list dtypes, otherwise the operation will fail. If None, is defined as all columns not in
-                `base_columns`.
-            name (str): The name of the output column the `nested_columns` are packed into.
+        Parameters
+        ----------
+        base_columns : list-like or None, default None
+            Any columns that have non-list values in the input catalog.
+            These will simply be kept as identical columns in the result. If None, is inferred to be
+            all columns in the input catalog that are not considered list-value columns.
+        list_columns : list-like or None, default None
+            The list-value columns that should be packed into a nested
+            column. All columns in the list will attempt to be packed into a single nested column
+            with the name provided in `nested_name`. All columns in list_columns must have pyarrow
+            list dtypes, otherwise the operation will fail. If None, is defined as all columns not in
+            `base_columns`.
+        name : str, default "nested"
+            The name of the output column the `nested_columns` are packed into.
 
-        Returns:
+        Returns
+        -------
+        Self
             A new catalog with specified list columns nested into a new nested column.
 
-        Note:
+        Notes
+        -----
             As noted above, all columns in `list_columns` must have a pyarrow
             ListType dtype. This is needed for proper meta propagation. To convert
             a list column to this dtype, you can use this command structure:
             `nf= nf.astype({"colname": pd.ArrowDtype(pa.list_(pa.int64()))})`
             Where pa.int64 above should be replaced with the correct dtype of the
-            underlying data accordingly.
-            Additionally, it's a known issue in Dask
+            underlying data accordingly. Additionally, it's a known issue in Dask
             (https://github.com/dask/dask/issues/10139) that columns with list
             values will by default be converted to the string type. This will
             interfere with the ability to recast these to pyarrow lists. We
@@ -925,8 +1084,7 @@ class HealpixDataset(Dataset):
 
     @deprecated(version="0.6.7", reason="`reduce` will be removed in the future, " "use `map_rows` instead.")
     def reduce(self, func, *args, meta=None, append_columns=False, infer_nesting=True, **kwargs) -> Self:
-        """
-        Takes a function and applies it to each top-level row of the Catalog.
+        """Takes a function and applies it to each top-level row of the Catalog.
 
         docstring copied from nested-pandas
 
@@ -1018,8 +1176,7 @@ class HealpixDataset(Dataset):
         meta=None,
         **kwargs,
     ) -> Self:
-        """
-        Takes a function and applies it to each top-level row of the Catalog.
+        """Takes a function and applies it to each top-level row of the Catalog.
 
         docstring copied from nested-pandas
 
@@ -1174,40 +1331,54 @@ class HealpixDataset(Dataset):
 
         Performs a scatter plot on a WCSAxes after computing the points of the catalog.
         This will perform compute on the catalog, and so may be slow/resource intensive.
-        If the fov or wcs args are set, only the partitions in the catalog visible to the plot will be
-        computed.
-        The scatter points can be colored by a column of the catalog by using the `color_col` kwarg
+        If the fov or wcs args are set, only the partitions in the catalog visible to the
+        plot will be computed. The scatter points can be colored by a column of the catalog
+        by using the `color_col` kwarg.
 
-        Args:
-            ra_column (str | None): The column to use as the RA of the points to plot. Defaults to the
-                catalog's default RA column. Useful for plotting joined or cross-matched points
-            dec_column (str | None): The column to use as the Declination of the points to plot. Defaults to
-                the catalog's default Declination column. Useful for plotting joined or cross-matched points
-            color_col (str | None): The column to use as the color array for the scatter plot. Allows coloring
-                of the points by the values of a given column.
-            projection (str): The projection to use in the WCS. Available projections listed at
-                https://docs.astropy.org/en/stable/wcs/supported_projections.html
-            title (str): The title of the plot
-            fov (Quantity or Sequence[Quantity, Quantity] | None): The Field of View of the WCS. Must be an
-                astropy Quantity with an angular unit, or a tuple of quantities for different longitude and \
-                latitude FOVs (Default covers the full sky)
-            center (SkyCoord | None): The center of the projection in the WCS (Default: SkyCoord(0, 0))
-            wcs (WCS | None): The WCS to specify the projection of the plot. If used, all other WCS parameters
-                are ignored and the parameters from the WCS object is used.
-            frame_class (Type[BaseFrame] | None): The class of the frame for the WCSAxes to be initialized
-                with. if the `ax` kwarg is used, this value is ignored (By Default uses EllipticalFrame for
-                full sky projection. If FOV is set, RectangularFrame is used)
-            ax (WCSAxes | None): The matplotlib axes to plot onto. If None, an axes will be created to be
-                used. If specified, the axes must be an astropy WCSAxes, and the `wcs` parameter must be set
-                with the WCS object used in the axes. (Default: None)
-            fig (Figure | None): The matplotlib figure to add the axes to. If None, one will be created,
-                unless ax is specified (Default: None)
-            **kwargs: Additional kwargs to pass to creating the matplotlib `scatter` function. These include
-                `c` for color, `s` for the size of hte points, `marker` for the maker type, `cmap` and `norm`
-                if `color_col` is used
+        Parameters
+        ----------
+        ra_column : str | None, default None
+            The column to use as the RA of the points to plot. Defaults to the
+            catalog's default RA column. Useful for plotting joined or cross-matched points
+        dec_column : str | None, default None
+            The column to use as the Declination of the points to plot. Defaults to
+            the catalog's default Declination column. Useful for plotting joined or cross-matched points
+        color_col : str | None, default None
+            The column to use as the color array for the scatter plot. Allows coloring
+            of the points by the values of a given column.
+        projection : str, default "MOL"
+            The projection to use in the WCS. Available projections listed at
+            https://docs.astropy.org/en/stable/wcs/supported_projections.html
+        title : str, default None
+            The title of the plot
+        fov : Quantity or Sequence[Quantity, Quantity] | None, default None
+            The Field of View of the WCS. Must be an astropy Quantity with an angular unit, or a tuple of
+            quantities for different longitude and latitude FOVs (Default covers the full sky)
+        center : SkyCoord | None, default None
+            The center of the projection in the WCS (Default: SkyCoord(0, 0))
+        wcs : WCS | None, default None
+            The WCS to specify the projection of the plot. If used, all other WCS parameters
+            are ignored and the parameters from the WCS object is used.
+        frame_class : Type[BaseFrame] | None, default None
+            The class of the frame for the WCSAxes to be initialized
+            with. if the `ax` kwarg is used, this value is ignored (By Default uses EllipticalFrame for
+            full sky projection. If FOV is set, RectangularFrame is used)
+        ax : WCSAxes | None, default None
+            The matplotlib axes to plot onto. If None, an axes will be created to be
+            used. If specified, the axes must be an astropy WCSAxes, and the `wcs` parameter must be set
+            with the WCS object used in the axes. (Default: None)
+        fig : Figure | None, default None
+            The matplotlib figure to add the axes to. If None, one will be created,
+            unless ax is specified (Default: None)
+        **kwargs
+            Additional kwargs to pass to creating the matplotlib `scatter` function. These include
+            `c` for color, `s` for the size of hte points, `marker` for the maker type, `cmap` and `norm`
+            if `color_col` is used
 
-        Returns:
-            Tuple[Figure, WCSAxes] - The figure and axes used for the plot
+        Returns
+        -------
+        tuple[Figure, WCSAxes]
+            The figure and axes used for the plot
         """
         fig, ax, wcs = initialize_wcs_axes(
             projection=projection,

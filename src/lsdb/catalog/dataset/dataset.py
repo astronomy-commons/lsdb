@@ -26,9 +26,14 @@ class Dataset:
         Not to be used to load a catalog directly, use one of the `lsdb.from_...` or
         `lsdb.open_...` methods
 
-        Args:
-            ddf: Dask DataFrame with the source data of the catalog
-            hc_structure: `hats.Catalog` object with hats metadata of the catalog
+        Parameters
+        ----------
+        ddf: nd.NestedFrame
+            Dask Nested DataFrame with the source data of the catalog
+        hc_structure: hc.catalog.Dataset
+            Object with hats metadata of the catalog
+        loading_config: HatsLoadingConfig or None, default None
+            The configuration used to read the catalog from disk
         """
         self._ddf = ddf
         self.hc_structure = hc_structure
@@ -63,9 +68,11 @@ class Dataset:
         must be converted to a Dask DataFrame and used with extra metadata to construct an
         LSDB Dataset.
 
-        Args:
-            optimize_graph (bool): If True [default], the graph is optimized before converting into
-                ``dask.delayed`` objects.
+        Parameters
+        ----------
+        optimize_graph : bool, default True
+            If True [default], the graph is optimized before converting
+            into ``dask.delayed`` objects.
         """
         return self._ddf.to_delayed(optimize_graph=optimize_graph)
 
@@ -111,8 +118,7 @@ class Dataset:
 
     def _check_unloaded_columns(self, column_names: Sequence[str | None] | None):
         """Check the list of given column names for any that are valid
-        but unavailable because they were not loaded.
-        """
+        but unavailable because they were not loaded."""
         if not column_names:
             return
         # Quick local optimization
