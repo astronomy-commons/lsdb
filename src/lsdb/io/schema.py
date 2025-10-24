@@ -7,10 +7,14 @@ import pyarrow as pa
 def get_arrow_schema(ddf: dd.DataFrame) -> pa.Schema:
     """Constructs the pyarrow schema from the meta of a Dask DataFrame.
 
-    Args:
-        ddf (dd.DataFrame): A Dask DataFrame.
+    Parameters
+    ----------
+    ddf : dd.DataFrame
+        A Dask DataFrame.
 
-    Returns:
+    Returns
+    -------
+    pa.Schema
         The arrow schema for the provided Dask DataFrame.
     """
     # pylint: disable=protected-access

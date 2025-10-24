@@ -51,13 +51,7 @@ from lsdb.types import DaskDFPixelMap
 
 # pylint: disable=protected-access,too-many-public-methods,too-many-lines,import-outside-toplevel,cyclic-import
 class HealpixDataset(Dataset):
-    """LSDB Catalog to perform analysis of sky catalogs and efficient spatial operations.
-
-    Attributes
-    ----------
-    hc_structure: `hats.Dataset`
-        Object representing the structure and metadata of the HATS catalog
-    """
+    """LSDB Catalog to perform analysis of sky catalogs and efficient spatial operations."""
 
     hc_structure: HCHealpixDataset
 
@@ -81,7 +75,7 @@ class HealpixDataset(Dataset):
             Dictionary mapping HEALPix order and pixel to partition index of ddf
         hc_structure: HCHealpixDataset
             Object with hats metadata of the catalog
-        loading_config: `HatsLoadingConfig` or None, default None
+        loading_config: HatsLoadingConfig or None, default None
             The configuration used to read the catalog from disk
         """
         super().__init__(ddf, hc_structure, loading_config=loading_config)
@@ -330,9 +324,9 @@ class HealpixDataset(Dataset):
 
         Parameters
         ----------
-        order: int
+        order : int
             Order of HEALPix pixel
-        pixel: int
+        pixel : int
             HEALPix pixel number in NESTED ordering scheme
 
         Returns
@@ -443,7 +437,7 @@ class HealpixDataset(Dataset):
         ----------
         partition_id : int
             The partition to sample.
-        n: int, default 5
+        n : int, default 5
             The number of desired rows.
         seed : int or None, default None
             Random seed
@@ -811,7 +805,7 @@ class HealpixDataset(Dataset):
             `func(partition: npd.NestedFrame, healpix_pixel: HealpixPixel, *args, **kwargs)`
         *args
             Additional positional arguments to call `func` with.
-        meta : pd.DataFrame or pd.Series or Dict or Iterable or Tuple or None, default None
+        meta : pd.DataFrame | pd.Series | Dict | Iterable | Tuple | None, default None
             An empty pandas DataFrame that has columns matching the output of the function applied to a
             partition. Other types are accepted to describe the output dataframe format, for full details
             see the dask documentation https://blog.dask.org/2022/08/09/understanding-meta-keyword-argument
@@ -1101,12 +1095,12 @@ class HealpixDataset(Dataset):
         args : positional arguments
             A list of string column names to pull from the NestedFrame to pass along to the function.
             If the function has additional arguments, pass them as keyword arguments (e.g. arg_name=value)
-        meta : dataframe or series-like, optional
+        meta : dataframe or series-like, default None
             The dask meta of the output. If append_columns is True, the meta should specify just the
             additional columns output by func.
-        append_columns : bool
+        append_columns : bool, default False
             If the output columns should be appended to the orignal dataframe.
-        infer_nesting : bool
+        infer_nesting : bool, default True
             If True, the function will pack output columns into nested structures based on column names
             adhering to a nested naming scheme. E.g. “nested.b” and “nested.c” will be packed into a
             column called “nested” with columns “b” and “c”. If False, all outputs will be returned as base
@@ -1127,7 +1121,6 @@ class HealpixDataset(Dataset):
         key is an output column of the dataframe returned by `reduce`.
 
         Example User Function:
-
         >>> import numpy as np
         >>> import lsdb
         >>> import pandas as pd
@@ -1190,7 +1183,7 @@ class HealpixDataset(Dataset):
             Function to apply to each nested dataframe. The first arguments to `func` should be which
             columns to apply the function to. See the Notes for recommendations
             on writing func outputs.
-        columns : None | str | list of str
+        columns : None | str | list of str, default None
             Specifies which columns to pass to the function in the row_container format.
             If None, all columns are passed. If list of str, those columns are passed.
             If str, a single column is passed or if the string is a nested column, then all nested sub-columns
@@ -1202,7 +1195,7 @@ class HealpixDataset(Dataset):
             expect a single dictionary input with keys corresponding to column names.
             If 'args', the function will be called as `func(value, ..., **kwargs)`, so func should expect
             positional arguments corresponding to the columns specified in `args`.
-        output_names : None | str | list of str
+        output_names : None | str | list of str, default None
             Specifies the names of the output columns in the resulting NestedFrame. If None, the function
             will return whatever names the user function returns. If specified will override any names
             returned by the user function provided the number of names matches the number of outputs. When not
@@ -1217,7 +1210,7 @@ class HealpixDataset(Dataset):
             `output_names` in addition to names returned by the user function.
         append_columns : bool, default False
             if True, the output columns should be appended to those in the original NestedFrame.
-        meta : dataframe or series-like, optional
+        meta : dataframe or series-like, default None
             The dask meta of the output. If append_columns is True, the meta should specify just the
             additional columns output by func.
         kwargs : keyword arguments, optional
@@ -1239,7 +1232,6 @@ class HealpixDataset(Dataset):
         to either specify `output_names` or have `func` return a dictionary
         where each key is an output column of the dataframe returned by
         `map_rows` (as shown above).
-
         Examples
         --------
 

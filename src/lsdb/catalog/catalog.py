@@ -43,9 +43,7 @@ from lsdb.types import DaskDFPixelMap
 
 # pylint: disable=protected-access,too-many-public-methods, too-many-lines
 class Catalog(HealpixDataset):
-    """LSDB Catalog DataFrame to perform analysis of sky catalogs and efficient
-    spatial operations.
-    """
+    """LSDB Catalog to perform analysis of sky catalogs and efficient spatial operations."""
 
     hc_structure: hc.catalog.Catalog
     """`hats.Catalog` object representing (only) the structure and metadata of the HATS catalog"""
@@ -73,10 +71,18 @@ class Catalog(HealpixDataset):
         Not to be used to load a catalog directly, use one of the `lsdb.from_...` or
         `lsdb.open_...` methods
 
-        Args:
-            ddf: Dask DataFrame with the source data of the catalog
-            ddf_pixel_map: Dictionary mapping HEALPix order and pixel to partition index of ddf
-            hc_structure: `hats.Catalog` object with hats metadata of the catalog
+        Parameters
+        ----------
+        ddf: nd.NestedFrame
+            Dask Nested DataFrame with the source data of the catalog
+        ddf_pixel_map: DaskDFPixelMap
+            Dictionary mapping HEALPix order and pixel to partition index of ddf
+        hc_structure: HCHealpixDataset
+            Object with hats metadata of the catalog
+        loading_config: HatsLoadingConfig or None, default None
+            The configuration used to read the catalog from disk
+        margin: MarginCatalog or None, default None
+            The margin catalog.
         """
         super().__init__(ddf, ddf_pixel_map, hc_structure, loading_config)
         self.margin = margin
@@ -121,14 +127,18 @@ class Catalog(HealpixDataset):
     def query(self, expr: str) -> Catalog:
         """Filters catalog and respective margin, if it exists, using a complex query expression
 
-        Args:
-            expr (str): Query expression to evaluate. The column names that are not valid Python
-                variables names should be wrapped in backticks, and any variable values can be
-                injected using f-strings. The use of '@' to reference variables is not supported.
-                More information about pandas query strings is available
-                `here <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.query.html>`__.
+        Parameters
+        ----------
+        expr : str
+            Query expression to evaluate. The column names that are not valid Python
+            variables names should be wrapped in backticks, and any variable values can be
+            injected using f-strings. The use of '@' to reference variables is not supported.
+            More information about pandas query strings is available
+            `here <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.query.html>`__.
 
-        Returns:
+        Returns
+        -------
+        Catalog
             A catalog that contains the data from the original catalog that complies with the query
             expression. If a margin exists, it is filtered according to the same query expression.
         """
@@ -141,10 +151,14 @@ class Catalog(HealpixDataset):
         """Renames catalog columns (not indices) and that of its margin if it exists using a
         dictionary or function mapping.
 
-        Args:
-            columns (dict-like or function): transformations to apply to column names.
+        Parameters
+        ----------
+        columns : dict-like or function
+            Transformations to apply to column names.
 
-        Returns:
+        Returns
+        -------
+        Catalog
             A catalog that contains the data from the original catalog with renamed columns.
             If a margin exists, it is renamed according to the same column name mapping.
         """
@@ -177,70 +191,76 @@ class Catalog(HealpixDataset):
         index for each row will be the same as the index from the corresponding row in the left
         catalog's index.
 
-        Args:
-            other (Catalog): The right catalog to cross-match against
-            suffixes (Tuple[str, str]): A pair of suffixes to be appended to the end of each column
-                name when they are joined. Default: uses the name of the catalog for the suffix
-            algorithm (BuiltInCrossmatchAlgorithm | Type[AbstractCrossmatchAlgorithm]): The
-                algorithm to use to perform the crossmatch. Can be either a string to specify one of
-                the built-in cross-matching methods, or a custom method defined by subclassing
-                AbstractCrossmatchAlgorithm.
+        Parameters
+        ----------
+        other : Catalog
+            The right catalog to cross-match against
+        suffixes : Tuple[str,str] or None
+            A pair of suffixes to be appended to the end of each column
+            name when they are joined. Default uses the name of the catalog for the suffix.
+        algorithm : BuiltInCrossmatchAlgorithm | Type[AbstractCrossmatchAlgorithm], default BuiltInCrossmatchAlgorithm.KD_TREE
+            The algorithm to use to perform the crossmatch. Can be either a string to specify one of
+            the built-in cross-matching methods, or a custom method defined by subclassing
+            AbstractCrossmatchAlgorithm.
+            Built-in methods:
+            - `kd_tree`: find the k-nearest neighbors using a kd_tree
+            Custom function:
+            To specify a custom function, write a class that subclasses the
+            `AbstractCrossmatchAlgorithm` class, and overwrite the `perform_crossmatch` function.
+            The function should be able to perform a crossmatch on two pandas DataFrames
+            from a partition from each catalog. It should return two 1d numpy arrays of equal lengths
+            with the indices of the matching rows from the left and right dataframes, and a dataframe
+            with any extra columns generated by the crossmatch algorithm, also with the same length.
+            These columns are specified in {AbstractCrossmatchAlgorithm.extra_columns}, with
+            their respective data types, by means of an empty pandas dataframe. As an example,
+            the KdTreeCrossmatch algorithm outputs a "_dist_arcsec" column with the distance between
+            data points. Its extra_columns attribute is specified as follows::
+            pd.DataFrame({"_dist_arcsec": pd.Series(dtype=np.dtype("float64"))})
+            The class will have been initialized with the following parameters, which the
+            crossmatch function should use:
+            - left: npd.NestedFrame,
+            - right: npd.NestedFrame,
+            - left_order: int,
+            - left_pixel: int,
+            - right_order: int,
+            - right_pixel: int,
+            - left_metadata: hc.catalog.Catalog,
+            - right_metadata: hc.catalog.Catalog,
+            - right_margin_hc_structure: hc.margin.MarginCatalog,
+            You may add any additional keyword argument parameters to the crossmatch
+            function definition, and the user will be able to pass them in as kwargs in the
+            `Catalog.crossmatch` method. Any additional keyword arguments must also be added to the
+            `CrossmatchAlgorithm.validate` classmethod by overwriting the method.
+        output_catalog_name : str, default {left_name}_x_{right_name}
+            The name of the resulting catalog.
+        require_right_margin : bool, default False
+            If true, raises an error if the right margin is missing which could
+            lead to incomplete crossmatches.
+        suffix_method : str or None, default "all_columns"
+            Method to use to add suffixes to columns. Options are:
+            - "overlapping_columns": only add suffixes to columns that are present in both catalogs
+            - "all_columns": add suffixes to all columns from both catalogs
+            Warning: This default will change to "overlapping_columns" in a future release.
+        log_changes : bool, default True
+            If True, logs an info message for each column that is being renamed.
+            This only applies when suffix_method is 'overlapping_columns'.
 
-                Built-in methods:
-                    - `kd_tree`: find the k-nearest neighbors using a kd_tree
-
-                Custom function:
-                    To specify a custom function, write a class that subclasses the
-                    `AbstractCrossmatchAlgorithm` class, and overwrite the `perform_crossmatch` function.
-
-                    The function should be able to perform a crossmatch on two pandas DataFrames
-                    from a partition from each catalog. It should return two 1d numpy arrays of equal lengths
-                    with the indices of the matching rows from the left and right dataframes, and a dataframe
-                    with any extra columns generated by the crossmatch algorithm, also with the same length.
-                    These columns are specified in {AbstractCrossmatchAlgorithm.extra_columns}, with
-                    their respective data types, by means of an empty pandas dataframe. As an example,
-                    the KdTreeCrossmatch algorithm outputs a "_dist_arcsec" column with the distance between
-                    data points. Its extra_columns attribute is specified as follows::
-
-                        pd.DataFrame({"_dist_arcsec": pd.Series(dtype=np.dtype("float64"))})
-
-                    The class will have been initialized with the following parameters, which the
-                    crossmatch function should use:
-
-                    - left: npd.NestedFrame,
-                    - right: npd.NestedFrame,
-                    - left_order: int,
-                    - left_pixel: int,
-                    - right_order: int,
-                    - right_pixel: int,
-                    - left_metadata: hc.catalog.Catalog,
-                    - right_metadata: hc.catalog.Catalog,
-                    - right_margin_hc_structure: hc.margin.MarginCatalog,
-
-                    You may add any additional keyword argument parameters to the crossmatch
-                    function definition, and the user will be able to pass them in as kwargs in the
-                    `Catalog.crossmatch` method. Any additional keyword arguments must also be added to the
-                    `CrossmatchAlgorithm.validate` classmethod by overwriting the method.
-
-            output_catalog_name (str): The name of the resulting catalog.
-                Default: {left_name}_x_{right_name}
-            require_right_margin (bool): If true, raises an error if the right margin is missing which could
-                lead to incomplete crossmatches. Default: False
-            suffix_method (str): Method to use to add suffixes to columns. Options are:
-                - "overlapping_columns": only add suffixes to columns that are present in both catalogs
-                - "all_columns": add suffixes to all columns from both catalogs
-                Default: "all_columns" Warning: This default will change to "overlapping_columns" in a future
-                release.
-            log_changes (bool): If True, logs an info message for each column that is being renamed.
-                This only applies when suffix_method is 'overlapping_columns'. Default: True
-
-        Returns:
+        Returns
+        -------
+        Catalog
             A Catalog with the data from the left and right catalogs merged with one row for each
             pair of neighbors found from cross-matching.
-
             The resulting table contains all columns from the left and right catalogs with their
             respective suffixes and, whenever specified, a set of extra columns generated by the
             crossmatch algorithm.
+
+        Raises
+        ------
+        TypeError
+            If the `other` catalog is not of type `Catalog`
+        ValueError
+            If the `suffixes` provided is not a tuple of two strings.
+            If the right catalog has no margin and `require_right_margin` is True.
         """
         if not isinstance(other, Catalog):
             raise TypeError(
@@ -312,62 +332,64 @@ class Catalog(HealpixDataset):
         index for each row will be the same as the index from the corresponding row in the left
         catalog's index.
 
-        Args:
-            other (Catalog): The right catalog to cross-match against
-            nested_column_name (str): The name of the nested column that will contain the crossmatched rows
-                from the right catalog. Default: uses the name of the right catalog
-            algorithm (BuiltInCrossmatchAlgorithm | Type[AbstractCrossmatchAlgorithm]): The
-                algorithm to use to perform the crossmatch. Can be either a string to specify one of
-                the built-in cross-matching methods, or a custom method defined by subclassing
-                AbstractCrossmatchAlgorithm.
+        Parameters
+        ----------
+        other : Catalog
+            The right catalog to cross-match against
+        nested_column_name : str, default uses the name of the right catalog
+            The name of the nested column that will contain the crossmatched rows
+            from the right catalog.
+        algorithm : BuiltInCrossmatchAlgorithm | Type[AbstractCrossmatchAlgorithm], default BuiltInCrossmatchAlgorithm.KD_TREE
+            The algorithm to use to perform the crossmatch. Can be either a string to specify one of
+            the built-in cross-matching methods, or a custom method defined by subclassing
+            AbstractCrossmatchAlgorithm.
+            Built-in methods:
+            - `kd_tree`: find the k-nearest neighbors using a kd_tree
+            Custom function:
+            To specify a custom function, write a class that subclasses the
+            `AbstractCrossmatchAlgorithm` class, and overwrite the `perform_crossmatch` function.
+            The function should be able to perform a crossmatch on two pandas DataFrames
+            from a partition from each catalog. It should return two 1d numpy arrays of equal lengths
+            with the indices of the matching rows from the left and right dataframes, and a dataframe
+            with any extra columns generated by the crossmatch algorithm, also with the same length.
+            These columns are specified in {AbstractCrossmatchAlgorithm.extra_columns}, with
+            their respective data types, by means of an empty pandas dataframe. As an example,
+            the KdTreeCrossmatch algorithm outputs a "_dist_arcsec" column with the distance between
+            data points. Its extra_columns attribute is specified as follows::
+            pd.DataFrame({"_dist_arcsec": pd.Series(dtype=np.dtype("float64"))})
+            The class will have been initialized with the following parameters, which the
+            crossmatch function should use:
+            - left: npd.NestedFrame,
+            - right: npd.NestedFrame,
+            - left_order: int,
+            - left_pixel: int,
+            - right_order: int,
+            - right_pixel: int,
+            - left_metadata: hc.catalog.Catalog,
+            - right_metadata: hc.catalog.Catalog,
+            - right_margin_hc_structure: hc.margin.MarginCatalog,
+            You may add any additional keyword argument parameters to the crossmatch
+            function definition, and the user will be able to pass them in as kwargs in the
+            `Catalog.crossmatch` method. Any additional keyword arguments must also be added to the
+            `CrossmatchAlgorithm.validate` classmethod by overwriting the method.
+        output_catalog_name : str, default {left_name}_x_{right_name}
+            The name of the resulting catalog.
+        require_right_margin : bool, default False
+            If true, raises an error if the right margin is missing which could
+            lead to incomplete crossmatches.
 
-                Built-in methods:
-                    - `kd_tree`: find the k-nearest neighbors using a kd_tree
-
-                Custom function:
-                    To specify a custom function, write a class that subclasses the
-                    `AbstractCrossmatchAlgorithm` class, and overwrite the `perform_crossmatch` function.
-
-                    The function should be able to perform a crossmatch on two pandas DataFrames
-                    from a partition from each catalog. It should return two 1d numpy arrays of equal lengths
-                    with the indices of the matching rows from the left and right dataframes, and a dataframe
-                    with any extra columns generated by the crossmatch algorithm, also with the same length.
-                    These columns are specified in {AbstractCrossmatchAlgorithm.extra_columns}, with
-                    their respective data types, by means of an empty pandas dataframe. As an example,
-                    the KdTreeCrossmatch algorithm outputs a "_dist_arcsec" column with the distance between
-                    data points. Its extra_columns attribute is specified as follows::
-
-                        pd.DataFrame({"_dist_arcsec": pd.Series(dtype=np.dtype("float64"))})
-
-                    The class will have been initialized with the following parameters, which the
-                    crossmatch function should use:
-
-                    - left: npd.NestedFrame,
-                    - right: npd.NestedFrame,
-                    - left_order: int,
-                    - left_pixel: int,
-                    - right_order: int,
-                    - right_pixel: int,
-                    - left_metadata: hc.catalog.Catalog,
-                    - right_metadata: hc.catalog.Catalog,
-                    - right_margin_hc_structure: hc.margin.MarginCatalog,
-
-                    You may add any additional keyword argument parameters to the crossmatch
-                    function definition, and the user will be able to pass them in as kwargs in the
-                    `Catalog.crossmatch` method. Any additional keyword arguments must also be added to the
-                    `CrossmatchAlgorithm.validate` classmethod by overwriting the method.
-
-            output_catalog_name (str): The name of the resulting catalog.
-                Default: {left_name}_x_{right_name}
-            require_right_margin (bool): If true, raises an error if the right margin is missing which could
-                lead to incomplete crossmatches. Default: False
-
-        Returns:
+        Returns
+        -------
+        Catalog
             A Catalog with the data from the left and right catalogs joined with the cross-matched rows from
             the right catalog added in a new nested column.
-
             The resulting table contains all columns from the left catalog and a new nested column with all
             the columns from the right catalog and any extra columns generated by the crossmatch algorithm.
+
+        Raises
+        ------
+        ValueError
+            If the right catalog has no margin and  `require_right_margin` is True.
         """
         if nested_column_name is None:
             nested_column_name = other.name
@@ -399,21 +421,29 @@ class Catalog(HealpixDataset):
     ) -> Catalog:
         """Concatenate two catalogs by aligned HEALPix pixels.
 
-        Args:
-            other (Catalog): Catalog to concatenate with.
-            ignore_empty_margins (bool, optional): If True, keep the available margin
-                when only one side has it (treated as incomplete). If False, drop
-                margins when only one side has them. Defaults to False.
-            **kwargs: Extra arguments forwarded to internal `pandas.concat`.
+        Parameters
+        ----------
+        other : Catalog
+            Catalog to concatenate with.
+        ignore_empty_margins : bool, default False
+            If True, keep the available margin when only one side has it
+            (treated as incomplete). If False, drop margins when only one
+            side has them. Defaults to False.
+        **kwargs
+            Extra arguments forwarded to internal `pandas.concat`.
 
-        Returns:
-            Catalog: New catalog with OUTER pixel alignment. If both inputs have a
+        Returns
+        -------
+        Catalog
+            New catalog with OUTER pixel alignment. If both inputs have a
             margin — or if `ignore_empty_margins=True` and at least one side has it —
             the result includes a concatenated margin dataset.
 
-        Raises:
-            ValueError: If RA/Dec column names differ between the input catalogs, or
-                between a catalog and its own margin.
+        Raises
+        ------
+        ValueError
+            If RA/Dec column names differ between the input catalogs, or
+            between a catalog and its own margin.
         """
         # Fail fast if RA/Dec columns differ between the two catalogs.
         _assert_same_ra_dec(self, other, context="Catalog concat")
@@ -454,31 +484,38 @@ class Catalog(HealpixDataset):
         are passed to the function. The resulting catalog will have the same partitions as the point
         source catalog.
 
-        Args:
-            map_catalog (MapCatalog): The continuous map to merge.
-            func (Callable): The function applied to each catalog partition, which will be called with:
-                `func(catalog_partition: npd.NestedFrame, map_partition: npd.NestedFrame, `
-                ` healpix_pixel: HealpixPixel, *args, **kwargs)`
-                with the additional args and kwargs passed to the `merge_map` function.
-            *args: Additional positional arguments to call `func` with.
-            meta (pd.DataFrame | pd.Series | Dict | Iterable | Tuple | None): An empty pandas DataFrame that
-                has columns matching the output of the function applied to the catalog partition. Other types
-                are accepted to describe the output dataframe format, for full details see the dask
-                documentation https://blog.dask.org/2022/08/09/understanding-meta-keyword-argument
-                If meta is None (default), LSDB will try to work out the output schema of the function by
-                calling the function with an empty DataFrame. If the function does not work with an empty
-                DataFrame, this will raise an error and meta must be set. Note that some operations in LSDB
-                will generate empty partitions, though these can be removed by calling the
-                `Catalog.prune_empty_partitions` method.
-            **kwargs: Additional keyword args to pass to the function. These are passed to the Dask DataFrame
-                `dask.dataframe.map_partitions` function, so any of the dask function's keyword args such as
-                `transform_divisions` will be passed through and work as described in the dask documentation
-                https://docs.dask.org/en/stable/generated/dask.dataframe.DataFrame.map_partitions.html
+        Parameters
+        ----------
+        map_catalog : MapCatalog
+            The continuous map to merge.
+        func : Callable
+            The function applied to each catalog partition, which will be called with:
+            `func(catalog_partition: npd.NestedFrame, map_partition: npd.NestedFrame, `
+            ` healpix_pixel: HealpixPixel, *args, **kwargs)`
+            with the additional args and kwargs passed to the `merge_map` function.
+        *args :
+            Additional positional arguments to call `func` with.
+        meta : pd.DataFrame | pd.Series | Dict | Iterable | Tuple | None, default None
+            An empty pandas DataFrame that
+            has columns matching the output of the function applied to the catalog partition. Other types
+            are accepted to describe the output dataframe format, for full details see the dask
+            documentation https://blog.dask.org/2022/08/09/understanding-meta-keyword-argument
+            If meta is None (default), LSDB will try to work out the output schema of the function by
+            calling the function with an empty DataFrame. If the function does not work with an empty
+            DataFrame, this will raise an error and meta must be set. Note that some operations in LSDB
+            will generate empty partitions, though these can be removed by calling the
+            `Catalog.prune_empty_partitions` method.
+        **kwargs
+            Additional keyword args to pass to the function. These are passed to the Dask DataFrame
+            `dask.dataframe.map_partitions` function, so any of the dask function's keyword args such as
+            `transform_divisions` will be passed through and work as described in the dask documentation
+            https://docs.dask.org/en/stable/generated/dask.dataframe.DataFrame.map_partitions.html
 
-        Returns:
+        Returns
+        -------
+        Catalog
             A Catalog with the data from the left and right catalogs merged with one row for each
             pair of neighbors found from cross-matching.
-
             The resulting table contains all columns from the left and right catalogs with their
             respective suffixes and, whenever specified, a set of extra columns generated by the
             crossmatch algorithm.
@@ -508,38 +545,54 @@ class Catalog(HealpixDataset):
         of field names to HATS index catalog paths or their instances and they take
         precedence over the catalogs specified in the collection.
 
-        Args:
-            values (dict[str, Any]): The mapping of field names (as string) to their search values.
-                Values can be single values or lists of values (but only one list of values is
-                allowed per search). If a list is specified, the search will return rows that match
-                any of the values in the list.
-            index_catalogs (dict[str, str|HCIndexCatalog]): The mapping of field names (as string)
-                to their respective index catalog paths or instance of `HCIndexCatalog`. Use this
-                argument to specify index catalogs for stand-alone catalogs or for collections where
-                there is no index catalog for the fields you are querying for.
-            fine (bool): If True, the rows of the partitions where a column match occurred are
-                filtered. If False, all the rows of those partitions are kept. Defaults to True.
+        Parameters
+        ----------
+        values : dict[str, Any]
+            The mapping of field names (as string) to their search values.
+            Values can be single values or lists of values (but only one list of values is
+            allowed per search). If a list is specified, the search will return rows that match
+            any of the values in the list.
+        index_catalogs : dict[str, str | HCIndexCatalog] | None, default None
+            The mapping of field names (as string)
+            to their respective index catalog paths or instance of `HCIndexCatalog`. Use this
+            argument to specify index catalogs for stand-alone catalogs or for collections where
+            there is no index catalog for the fields you are querying for.
+        fine : bool, default True
+            If True, the rows of the partitions where a column match occurred are
+            filtered. If False, all the rows of those partitions are kept. Defaults to True.
 
-        Example:
-            To query by "objid" where an index for this field is available in the collection::
-
-                catalog.id_search(values={"objid":"GAIA_123"})
-
-            To query by "fieldid" and "ccid", if "fieldid" has an index catalog in the collection
-            and the index catalog for "ccid" is present in a directory named "ccid_id_index_catalog"
-            on the current working directory::
-
-                catalog.id_search(
-                    values={"fieldid": 700, "ccid": 300},
-                    index_catalogs={"ccid": "ccid_id_index_catalog"}
-                )
-
-            To query for multiple values in a column, use a list of values::
-
-                catalog.id_search(values={"objid": [1, 2, 3, ...]})
-
-        Returns:
+        Returns
+        -------
+        Catalog
             A new Catalog containing the results of the column match.
+
+        Raises
+        ------
+        ValueError
+            If no values were provided for the search.
+            If more than one column contains a list of values to search for.
+        TypeError
+            If index catalog for field is not of type `HCIndexCatalog`.
+
+        Examples
+        --------
+
+        To query by "objid" where an index for this field is available in the collection::
+
+            catalog.id_search(values={"objid":"GAIA_123"})
+
+        To query by "fieldid" and "ccid", if "fieldid" has an index catalog in the collection
+        and the index catalog for "ccid" is present in a directory named "ccid_id_index_catalog"
+        on the current working directory::
+
+            catalog.id_search(
+                values={"fieldid": 700, "ccid": 300},
+                index_catalogs={"ccid": "ccid_id_index_catalog"}
+            )
+
+        To query for multiple values in a column, use a list of values::
+
+            catalog.id_search(values={"objid": [1, 2, 3, ...]})
         """
         # Only one column may contain a list of values (multiple columns may be specified, so long
         # as only one of them is a list).
@@ -578,11 +631,16 @@ class Catalog(HealpixDataset):
         Filters partitions in the catalog to those that match some rough criteria.
         Filters to points that match some finer criteria.
 
-        Args:
-            search (AbstractSearch): Instance of AbstractSearch.
+        Parameters
+        ----------
+        search : AbstractSearch
+            Instance of AbstractSearch.
 
-        Returns:
+        Returns
+        -------
+        Catalog
             A new Catalog containing the points filtered to those matching the search parameters.
+
         """
         cat = super().search(search)
         cat.margin = self.margin.search(search) if self.margin is not None else None
@@ -602,31 +660,39 @@ class Catalog(HealpixDataset):
         an LSDB Catalog is constructed and its respective margin is updated accordingly, if it exists.
         Otherwise, only the main catalog Dask object is returned.
 
-        Args:
-            func (Callable): The function applied to each partition, which will be called with:
-                `func(partition: npd.NestedFrame, *args, **kwargs)` with the additional args and kwargs passed
-                to the `map_partitions` function. If the `include_pixel` parameter is set, the function will
-                be called with the `healpix_pixel` as the second positional argument set to the healpix pixel
-                of the partition as
-                `func(partition: npd.NestedFrame, healpix_pixel: HealpixPixel, *args, **kwargs)`
-            *args: Additional positional arguments to call `func` with.
-            meta (pd.DataFrame | pd.Series | Dict | Iterable | Tuple | None): An empty pandas DataFrame that
-                has columns matching the output of the function applied to a partition. Other types are
-                accepted to describe the output dataframe format, for full details see the dask documentation
-                https://blog.dask.org/2022/08/09/understanding-meta-keyword-argument
-                If meta is None (default), LSDB will try to work out the output schema of the function by
-                calling the function with an empty DataFrame. If the function does not work with an empty
-                DataFrame, this will raise an error and meta must be set. Note that some operations in LSDB
-                will generate empty partitions, though these can be removed by calling the
-                `Catalog.prune_empty_partitions` method.
-            include_pixel (bool): Whether to pass the Healpix Pixel of the partition as a `HealpixPixel`
-                object to the second positional argument of the function
-            **kwargs: Additional keyword args to pass to the function. These are passed to the Dask DataFrame
-                `dask.dataframe.map_partitions` function, so any of the dask function's keyword args such as
-                `transform_divisions` will be passed through and work as described in the dask documentation
-                https://docs.dask.org/en/stable/generated/dask.dataframe.DataFrame.map_partitions.html
+        Parameters
+        ----------
+        func : Callable
+            The function applied to each partition, which will be called with:
+            `func(partition: npd.NestedFrame, *args, **kwargs)` with the additional args and kwargs passed
+            to the `map_partitions` function. If the `include_pixel` parameter is set, the function will
+            be called with the `healpix_pixel` as the second positional argument set to the healpix pixel
+            of the partition as
+            `func(partition: npd.NestedFrame, healpix_pixel: HealpixPixel, *args, **kwargs)`
+        *args
+            Additional positional arguments to call `func` with.
+        meta : pd.DataFrame | pd.Series | Dict | Iterable | Tuple | None, default None
+            An empty pandas DataFrame that
+            has columns matching the output of the function applied to a partition. Other types are
+            accepted to describe the output dataframe format, for full details see the dask documentation
+            https://blog.dask.org/2022/08/09/understanding-meta-keyword-argument
+            If meta is None (default), LSDB will try to work out the output schema of the function by
+            calling the function with an empty DataFrame. If the function does not work with an empty
+            DataFrame, this will raise an error and meta must be set. Note that some operations in LSDB
+            will generate empty partitions, though these can be removed by calling the
+            `Catalog.prune_empty_partitions` method.
+        include_pixel : bool, default False
+            Whether to pass the Healpix Pixel of the partition as a `HealpixPixel`
+            object to the second positional argument of the function
+        **kwargs
+            Additional keyword args to pass to the function. These are passed to the Dask DataFrame
+            `dask.dataframe.map_partitions` function, so any of the dask function's keyword args such as
+            `transform_divisions` will be passed through and work as described in the dask documentation
+            https://docs.dask.org/en/stable/generated/dask.dataframe.DataFrame.map_partitions.html
 
-        Returns:
+        Returns
+        -------
+        Catalog | dd.Series
             A new catalog with each partition replaced with the output of the function applied to the original
             partition. If the function returns a non dataframe output, a dask Series will be returned.
         """
@@ -663,26 +729,34 @@ class Catalog(HealpixDataset):
         More information about pandas merge is available
         `here <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.merge.html>`__.
 
-        Args:
-            other (Catalog): The right catalog to merge with.
-            how (str): How to handle the merge of the two catalogs.
-                One of {'left', 'right', 'outer', 'inner'}, defaults to 'inner'.
-            on (str | List): Column or index names to join on. Defaults to the
-                intersection of columns in both Dataframes if on is None and not
-                merging on indexes.
-            left_on (str | List): Column to join on the left Dataframe. Lists are
-                supported if their length is one.
-            right_on (str | List): Column to join on the right Dataframe. Lists are
-                supported if their length is one.
-            left_index (bool): Use the index of the left Dataframe as the join key.
-                Defaults to False.
-            right_index (bool): Use the index of the right Dataframe as the join key.
-                Defaults to False.
-            suffixes (Tuple[str, str]): A pair of suffixes to be appended to the
-                end of each column name when they are joined. Defaults to using the
-                name of the catalog for the suffix.
+        Parameters
+        ----------
+        other : Catalog
+            The right catalog to merge with.
+        how : {'left', 'right', 'outer', 'inner'}, default 'inner'
+            How to handle the merge of the two catalogs.
+        on : str | List
+            Column or index names to join on. Defaults to the
+            intersection of columns in both Dataframes if on is None and not
+            merging on indexes.
+        left_on : str | List
+            Column to join on the left Dataframe. Lists are
+            supported if their length is one.
+        right_on : str | List
+            Column to join on the right Dataframe. Lists are
+            supported if their length is one.
+        left_index : bool, default False
+            Use the index of the left Dataframe as the join key.
+        right_index : bool, default False
+            Use the index of the right Dataframe as the join key.
+        suffixes : tuple[str,str]
+            A pair of suffixes to be appended to the end of each column name
+            when they are joined. Defaults to using the name of the catalog
+            for the suffix.
 
-        Returns:
+        Returns
+        -------
+        Catalog
             A new Dask Dataframe containing the data points that result from the merge
             of the two catalogs.
         """
@@ -732,20 +806,28 @@ class Catalog(HealpixDataset):
         This function is intended for use in special cases such as Dust Map Catalogs, for general merges,
         the ``crossmatch`` and ``join`` functions should be used.
 
-        Args:
-            other (lsdb.Catalog): the right catalog to merge to
-            suffixes (Tuple[str,str]): the suffixes to apply to each partition's column names
-            direction (str): the direction to perform the merge_asof
-            output_catalog_name (str): The name of the resulting catalog to be stored in metadata
-            suffix_method (str): Method to use to add suffixes to columns. Options are:
-                - "overlapping_columns": only add suffixes to columns that are present in both catalogs
-                - "all_columns": add suffixes to all columns from both catalogs
-                Default: "all_columns" Warning: This default will change to "overlapping_columns" in a future
-                release.
-            log_changes (bool): If True, logs an info message for each column that is being renamed.
-                This only applies when suffix_method is 'overlapping_columns'. Default: True
+        Parameters
+        ----------
+        other : lsdb.Catalog
+            The right catalog to merge to
+        suffixes : tuple[str,str]
+            The suffixes to apply to each partition's column names
+        direction : str, default "backward"
+            The direction to perform the merge_asof
+        output_catalog_name : str
+            The name of the resulting catalog to be stored in metadata
+        suffix_method : str, default "all_columns"
+            Method to use to add suffixes to columns. Options are:
+            - "overlapping_columns": only add suffixes to columns that are present in both catalogs
+            - "all_columns": add suffixes to all columns from both catalogs
+            Warning: This default will change to "overlapping_columns" in a future release.
+        log_changes : bool, default True
+            If True, logs an info message for each column that is being renamed.
+            This only applies when suffix_method is 'overlapping_columns'.
 
-        Returns:
+        Returns
+        -------
+        Catalog
             A new catalog with the columns from each of the input catalogs with their respective suffixes
             added, and the rows merged using merge_asof on the specified columns.
         """
@@ -809,23 +891,33 @@ class Catalog(HealpixDataset):
         only joins data from matching partitions, and does not join rows that have a matching column value but
         are in separate partitions in the sky. For a more general join, see the `merge` function.
 
-        Args:
-            other (Catalog): the right catalog to join to
-            left_on (str): the name of the column in the left catalog to join on
-            right_on (str): the name of the column in the right catalog to join on
-            through (AssociationCatalog): an association catalog that provides the alignment
-                between pixels and individual rows.
-            suffixes (Tuple[str,str]): suffixes to apply to the columns of each table
-            output_catalog_name (str): The name of the resulting catalog to be stored in metadata
-            suffix_method (str): Method to use to add suffixes to columns. Options are:
-                - "overlapping_columns": only add suffixes to columns that are present in both catalogs
-                - "all_columns": add suffixes to all columns from both catalogs
-                Default: "all_columns" Warning: This default will change to "overlapping_columns" in a future
-                release.
-            log_changes (bool): If True, logs an info message for each column that is being renamed.
-                This only applies when suffix_method is 'overlapping_columns'. Default: True
+        Parameters
+        ----------
+        other : Catalog
+            The right catalog to join to
+        left_on : str
+            The name of the column in the left catalog to join on
+        right_on : str
+            The name of the column in the right catalog to join on
+        through : AssociationCatalog
+            An association catalog that provides the alignment
+            between pixels and individual rows.
+        suffixes : tuple[str,str]
+            Suffixes to apply to the columns of each table
+        output_catalog_name : str
+            The name of the resulting catalog to be stored in metadata
+        suffix_method : str, default "all_columns"
+            Method to use to add suffixes to columns. Options are:
+            - "overlapping_columns": only add suffixes to columns that are present in both catalogs
+            - "all_columns": add suffixes to all columns from both catalogs
+            Warning: This default will change to "overlapping_columns" in a future release.
+        log_changes : bool, default True
+            If True, logs an info message for each column that is being renamed.
+            This only applies when suffix_method is 'overlapping_columns'.
 
-        Returns:
+        Returns
+        -------
+        Catalog
             A new catalog with the columns from each of the input catalogs with their respective suffixes
             added, and the rows merged on the specified columns.
         """
@@ -899,16 +991,25 @@ class Catalog(HealpixDataset):
         that have a matching column value but are in separate partitions in the sky. For a more general join,
         see the `merge` function.
 
-        Args:
-            other (Catalog): the right catalog to join to
-            left_on (str): the name of the column in the left catalog to join on
-            right_on (str): the name of the column in the right catalog to join on
-            nested_column_name (str): the name of the nested column in the resulting dataframe storing the
-                joined columns in the right catalog. (Default: name of right catalog)
-            output_catalog_name (str): The name of the resulting catalog to be stored in metadata
-            how (str): One of {‘inner’, ‘left’}. How to handle the alignment (Default: 'inner').
+        Parameters
+        ----------
+        other : Catalog
+            the right catalog to join to
+        left_on : str
+            the name of the column in the left catalog to join on
+        right_on : str
+            the name of the column in the right catalog to join on
+        nested_column_name : str
+            the name of the nested column in the resulting dataframe storing the
+            joined columns in the right catalog. (Default: name of right catalog)
+        output_catalog_name : str
+            The name of the resulting catalog to be stored in metadata
+        how : str, {'inner', 'left'}, default 'inner'
+            How to handle the alignment
 
-        Returns:
+        Returns
+        -------
+        Catalog
             A new catalog with the columns from each of the input catalogs with their respective suffixes
             added, and the rows merged on the specified columns.
         """
@@ -947,36 +1048,41 @@ class Catalog(HealpixDataset):
     ) -> Catalog:
         """Creates a new catalog with a set of list columns packed into a nested column.
 
-        Args:
-            base_columns (list-like or None): Any columns that have non-list values in the input catalog.
-                These will simply be kept as identical columns in the result. If None, is inferred to be
-                all columns in the input catalog that are not considered list-value columns.
-            list_columns (list-like or None): The list-value columns that should be packed into a nested
-                column. All columns in the list will attempt to be packed into a single nested column with
-                the name provided in ``nested_name``. All columns in list_columns must have pyarrow list
-                dtypes, otherwise the operation will fail. If None, is defined as all columns not in
-                ``base_columns``.
-            name (str): The name of the output column the `nested_columns` are packed into.
+        Parameters
+        ----------
+        base_columns : list-like or None
+            Any columns that have non-list values in the input catalog.
+            These will simply be kept as identical columns in the result. If None, is inferred to be
+            all columns in the input catalog that are not considered list-value columns.
+        list_columns : list-like or None
+            The list-value columns that should be packed into a nested
+            column. All columns in the list will attempt to be packed into a single nested column with
+            the name provided in ``nested_name``. All columns in list_columns must have pyarrow list
+            dtypes, otherwise the operation will fail. If None, is defined as all columns not in
+            ``base_columns``.
 
-        Returns:
+        Returns
+        -------
+        Catalog
             A new catalog with specified list columns nested into a new nested column.
 
-        Note:
-            As noted above, all columns in `list_columns` must have a pyarrow
-            ListType dtype. This is needed for proper meta propagation. To convert
-            a list column to this dtype, you can use this command structure:
+        Notes
+        -----
+        As noted above, all columns in `list_columns` must have a pyarrow
+        ListType dtype. This is needed for proper meta propagation. To convert
+        a list column to this dtype, you can use this command structure:
 
-                nf= nf.astype({"colname": pd.ArrowDtype(pa.list_(pa.int64()))})
+            nf= nf.astype({"colname": pd.ArrowDtype(pa.list_(pa.int64()))})
 
-            Where pa.int64 above should be replaced with the correct dtype of the
-            underlying data accordingly.
-            Additionally, it's a known issue in Dask
-            (https://github.com/dask/dask/issues/10139) that columns with list
-            values will by default be converted to the string type. This will
-            interfere with the ability to recast these to pyarrow lists. We
-            recommend setting the following dask config setting to prevent this:
+        Where pa.int64 above should be replaced with the correct dtype of the
+        underlying data accordingly.
+        Additionally, it's a known issue in Dask
+        (https://github.com/dask/dask/issues/10139) that columns with list
+        values will by default be converted to the string type. This will
+        interfere with the ability to recast these to pyarrow lists. We
+        recommend setting the following dask config setting to prevent this:
 
-                `dask.config.set({"dataframe.convert-string":False})`
+            `dask.config.set({"dataframe.convert-string":False})`
         """
         catalog = super().nest_lists(
             base_columns=base_columns,
@@ -993,8 +1099,7 @@ class Catalog(HealpixDataset):
 
     @deprecated(version="0.6.7", reason="`reduce` will be removed in the future, " "use `map_rows` instead.")
     def reduce(self, func, *args, meta=None, append_columns=False, infer_nesting=True, **kwargs) -> Catalog:
-        """
-        Takes a function and applies it to each top-level row of the Catalog.
+        """Takes a function and applies it to each top-level row of the Catalog.
 
         docstring copied from nested-pandas
 
@@ -1012,14 +1117,14 @@ class Catalog(HealpixDataset):
             If the function has additional arguments, pass them as keyword arguments (e.g. arg_name=value)
         meta : dataframe or series-like, optional
             The dask meta of the output. If append_columns is True, the meta should specify just the
-            additional columns output by func.
+            additional columns output by func. (Default value = None)
         append_columns : bool
-            If True, the output columns should be appended to those in the original catalog.
+            If True, the output columns should be appended to those in the original catalog. (Default value = False)
         infer_nesting : bool
             If True, the function will pack output columns into nested structures based on column names
             adhering to a nested naming scheme. E.g. `nested.b` and `nested.c` will be packed into a
             column called `nested` with columns `b` and `c`. If False, all outputs will be returned as base
-            columns.
+            columns. (Default value = True)
         kwargs : keyword arguments, optional
             Keyword arguments to pass to the function.
 
@@ -1036,7 +1141,6 @@ class Catalog(HealpixDataset):
         key is an output column of the dataframe returned by computing `reduce`.
 
         Example User Function:
-
         >>> import numpy as np
         >>> import lsdb
         >>> import pandas as pd
@@ -1072,8 +1176,7 @@ class Catalog(HealpixDataset):
         meta=None,
         **kwargs,
     ) -> Catalog:
-        """
-        Takes a function and applies it to each top-level row of the Catalog.
+        """Takes a function and applies it to each top-level row of the Catalog.
 
         docstring copied from nested-pandas
 
@@ -1092,31 +1195,31 @@ class Catalog(HealpixDataset):
             If None, all columns are passed. If list of str, those columns are passed.
             If str, a single column is passed or if the string is a nested column, then all nested sub-columns
             are passed (e.g. columns="nested" passes all columns of the nested dataframe "nested"). To pass
-            individual nested sub-columns, use the hierarchical column name (e.g. columns=["nested.t",...]).
+            individual nested sub-columns, use the hierarchical column name (e.g. columns=["nested.t",...]). (Default value = None)
         row_container : 'dict' or 'args', default 'dict'
             Specifies how the row data will be packaged when passed as an input to the function.
             If 'dict', the function will be called as `func({"col1": value, ...}, **kwargs)`, so func should
             expect a single dictionary input with keys corresponding to column names.
             If 'args', the function will be called as `func(value, ..., **kwargs)`, so func should expect
-            positional arguments corresponding to the columns specified in `args`.
+            positional arguments corresponding to the columns specified in `args`. (Default value = "dict")
         output_names : None | str | list of str
             Specifies the names of the output columns in the resulting NestedFrame. If None, the function
             will return whatever names the user function returns. If specified will override any names
             returned by the user function provided the number of names matches the number of outputs. When not
             specified and the user function returns values without names (e.g. a list or tuple), the output
-            columns will be enumerated (e.g. "0", "1", ...).
+            columns will be enumerated (e.g. "0", "1", ...). (Default value = None)
         infer_nesting : bool, default True
             If True, the function will pack output columns into nested
             structures based on column names adhering to a nested naming
             scheme. E.g. "nested.b" and "nested.c" will be packed into a column
             called "nested" with columns "b" and "c". If False, all outputs
             will be returned as base columns. Note that this will trigger off of names specified in
-            `output_names` in addition to names returned by the user function.
+            `output_names` in addition to names returned by the user function. (Default value = True)
         append_columns : bool, default False
-            if True, the output columns should be appended to those in the original NestedFrame.
+            if True, the output columns should be appended to those in the original NestedFrame. (Default value = False)
         meta : dataframe or series-like, optional
             The dask meta of the output. If append_columns is True, the meta should specify just the
-            additional columns output by func.
+            additional columns output by func. (Default value = None)
         kwargs : keyword arguments, optional
             Keyword arguments to pass to the function.
 
@@ -1140,13 +1243,13 @@ class Catalog(HealpixDataset):
         Examples
         --------
 
-        Writing a function that takes a row as a dictionary:
-
         >>> import numpy as np
         >>> import lsdb
         >>> import pandas as pd
         >>> catalog = lsdb.from_dataframe(pd.DataFrame({"ra":[0, 10], "dec":[5, 15],
         ...                                             "mag":[21, 22], "mag_err":[.1, .2]}))
+
+        Writing a function that takes a row as a dictionary:
 
         >>> def my_sigma(row):
         ...    '''map_rows will return a NestedFrame with two columns'''
@@ -1159,7 +1262,6 @@ class Catalog(HealpixDataset):
                    _healpix_29  plus_one  minus_one
         0  1372475556631677955      21.1       20.9
         1  1389879706834706546      22.2       21.8
-
 
         Writing the same function using positional arguments:
 
@@ -1236,16 +1338,24 @@ class Catalog(HealpixDataset):
     ):
         """Save the catalog to disk in HATS format.
 
-        Args:
-            base_catalog_path (str): Location where catalog is saved to
-            catalog_name (str): The name of the catalog to be saved
-            default_columns (list[str]): A metadata property with the list of the columns in the
-                catalog to be loaded by default. By default, uses the default columns from the
-                original hats catalog if they exist.
-            as_collection (bool): If True, saves the catalog and its margin as a collection
-            overwrite (bool): If True existing catalog is overwritten
-            error_if_empty (bool): If True, raises an error if the catalog is empty.
-            **kwargs: Arguments to pass to the parquet write operations
+        Parameters
+        ----------
+        base_catalog_path : str | Path | UPath,
+            Location where catalog is saved to
+        catalog_name : str
+            The name of the catalog to be saved
+        default_columns : list[str]
+            A metadata property with the list of the columns in the
+            catalog to be loaded by default. By default, uses the default columns from the
+            original hats catalog if they exist.
+        as_collection : bool, default True
+            If True, saves the catalog and its margin as a collection
+        overwrite : bool, default False
+            If True existing catalog is overwritten
+        error_if_empty : bool, default True
+            If True, raises an error if the catalog is empty.
+        **kwargs
+            Arguments to pass to the parquet write operations
         """
         if as_collection:
             self._check_unloaded_columns(default_columns)
