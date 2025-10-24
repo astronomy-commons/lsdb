@@ -42,36 +42,46 @@ def crossmatch(
     right_args: dict | None = None,
     **kwargs,
 ) -> Catalog:
-    """Perform a cross-match between two frames, two catalogs, a catalog and a frame, or a frame and
-    a catalog.
+    """Perform a cross-match between two frames, two catalogs,
+    a catalog and a frame, or a frame and a catalog.
 
     See Catalog.crossmatch for more information on cross-matching.
 
-    Args:
-        left (Catalog | NestedFrame): The left catalog or frame to crossmatch.
-        right (Catalog | NestedFrame): The right catalog or frame to crossmatch.
-        ra_column (str, optional): The name of the right ascension column for both catalogs,
-            if passing dataframes. Can be specified in the left_args or right_args dictionaries if
-            left and right catalogs have different RA column names. Defaults to None, which will use
-            the default column names "ra", "Ra", or "RA" if they exist in the DataFrame.
-        dec_column (str, optional): The name of the declination column for both catalogs,
-            if passing dataframes. Can be specified in the left_args or right_args dictionaries if
-            left and right catalogs have different dec column names. Defaults to None, which will use
-            the default column names "dec", "Dec", or "DEC" if they exist in the DataFrame.
-        suffixes (tuple[str, str], optional): Suffixes to append to overlapping column names.
-            Defaults to None.
-        algorithm (Type[AbstractCrossmatchAlgorithm] | BuiltInCrossmatchAlgorithm, optional): The
-            crossmatch algorithm to use. Defaults to BuiltInCrossmatchAlgorithm.KD_TREE.
-        output_catalog_name (str, optional): The name of the output catalog. Defaults to None.
-        require_right_margin (bool, optional): Whether to require a right margin. Defaults to False.
-        left_args (dict, optional): Keyword arguments to pass to from_dataframe for the left
-            catalog. Defaults to None.
-        right_args (dict, optional): Keyword arguments to pass to from_dataframe for the right
-            catalog. Defaults to None.
-        **kwargs: Additional keyword arguments to pass to Catalog.crossmatch.
+    Parameters
+    ----------
+    left : Catalog | NestedFrame
+        The left catalog or frame to crossmatch.
+    right : Catalog | NestedFrame
+        The right catalog or frame to crossmatch.
+    ra_column : str, default None
+        The name of the right ascension column for both catalogs,
+        if passing dataframes. Can be specified in the left_args or right_args dictionaries if
+        left and right catalogs have different RA column names. Defaults to None, which will use
+        the default column names "ra", "Ra", or "RA" if they exist in the DataFrame.
+    dec_column : str, default None
+        The name of the declination column for both catalogs,
+        if passing dataframes. Can be specified in the left_args or right_args dictionaries if
+        left and right catalogs have different dec column names. Defaults to None, which will use
+        the default column names "dec", "Dec", or "DEC" if they exist in the DataFrame.
+    suffixes : tuple[str,str], default None
+        Suffixes to append to overlapping column names.
+    algorithm : Type[AbstractCrossmatchAlgorithm] | BuiltInCrossmatchAlgorithm, default BuiltInCrossmatchAlgorithm.KD_TREE
+        The crossmatch algorithm to use.
+    output_catalog_name : str, default None
+        The name of the output catalog.
+    require_right_margin : bool, default False
+        Whether to require a right margin.
+    left_args : dict, default None
+        Keyword arguments to pass to from_dataframe for the left catalog.
+    right_args : dict, default None
+        Keyword arguments to pass to from_dataframe for the right catalog.
+    **kwargs :
+        Additional keyword arguments to pass to Catalog.crossmatch.
 
-    Returns:
-        Catalog: The crossmatched catalog.
+    Returns
+    -------
+    Catalog
+        The crossmatched catalog.
     """
     # Initialize dictionaries if not given.
     left_args = left_args or {}

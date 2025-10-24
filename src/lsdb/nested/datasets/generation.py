@@ -23,15 +23,15 @@ def generate_data(
         The number of rows per n_base row to generate for a nested layer.
         Alternatively, a dictionary of layer label, layer_size pairs may be
         specified to created multiple nested columns with custom sizing.
-    npartitions: int
-        The number of partitions to split the data into.
-    seed : int
+    npartitions : int, default 1
+        The number of partitions to split the data into
+    seed : int, default None
         A seed to use for random generation of data
-    ra_range : tuple
+    ra_range : tuple, default (0.0, 360.0)
         A tuple of the min and max values for the ra column in degrees
-    dec_range : tuple
+    dec_range : tuple, default (-90, 90)
         A tuple of the min and max values for the dec column in degrees
-    search_region : AbstractSearch
+    search_region : AbstractSearch, default None
         A search region to apply to the generated data. Currently supports the
         ConeSearch, BoxSearch, and PixelSearch regions. Note that if provided,
         this will override the `ra_range` and `dec_range` parameters.
@@ -43,6 +43,7 @@ def generate_data(
 
     Examples
     --------
+
     >>> from lsdb.nested.datasets import generate_data
     >>> nf = generate_data(10,100)
     >>> nf = generate_data(10, {"nested_a": 100, "nested_b": 200})
@@ -129,7 +130,7 @@ def _generate_box_radec(ra_range, dec_range, n_base, seed=None):
         A tuple of the min and max values for the dec column in degrees
     n_base : int
         The number of rows to generate for the base layer
-    seed : int
+    seed : int, default None
         A seed to use for random generation of data
 
     Returns
@@ -182,13 +183,13 @@ def generate_catalog(
         The number of rows per n_base row to generate for a nested layer.
         Alternatively, a dictionary of layer label, layer_size pairs may be
         specified to created multiple nested columns with custom sizing.
-    seed : int
+    seed : int, default None
         A seed to use for random generation of data
-    ra_range : tuple
+    ra_range : tuple, default (0.0, 360.0)
         A tuple of the min and max values for the ra column in degrees
-    dec_range : tuple
+    dec_range : tuple, default (-90, 90)
         A tuple of the min and max values for the dec column in degrees
-    search_region : AbstractSearch
+    search_region : AbstractSearch, default None
         A search region to apply to the generated data. Currently supports the
         ConeSearch and BoxSearch regions. Note that if provided,
         this will override the `ra_range` and `dec_range` parameters.
@@ -202,6 +203,7 @@ def generate_catalog(
 
     Examples
     --------
+
     >>> from lsdb.nested.datasets import generate_catalog
     >>> gen_cat = generate_catalog(10,100)
     >>> gen_cat = generate_catalog(1000, 10, ra_range=(0.,10.), dec_range=(-5.,0.))

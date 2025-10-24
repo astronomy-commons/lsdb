@@ -70,9 +70,13 @@ class Dataset:
 
         Parameters
         ----------
-        optimize_graph : bool, default True
-            If True [default], the graph is optimized before converting
-            into ``dask.delayed`` objects.
+        optimize_graph: bool, default True
+            Whether to optimize the Dask task graph.
+
+        Returns
+        -------
+        list[Delayed]
+            A list of Dask delayed partitions.
         """
         return self._ddf.to_delayed(optimize_graph=optimize_graph)
 
@@ -136,5 +140,18 @@ class Dataset:
 
     @staticmethod
     def new_provenance_properties(path: str | Path | UPath | None = None, **kwargs) -> dict:
-        """Create a new provenance properties dictionary for the dataset."""
+        """Create a new provenance properties dictionary for the dataset.
+
+        Parameters
+        ----------
+        path: str | Path | UPath | None, default None
+            The path to the catalog.
+        **kwargs
+            Additional provenance properties.
+
+        Returns
+        -------
+        dict
+            A new provenance dictionary.
+        """
         return TableProperties.new_provenance_dict(path, builder=f"lsdb v{version('lsdb')}", **kwargs)
