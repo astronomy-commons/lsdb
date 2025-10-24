@@ -286,7 +286,7 @@ def _generate_pyarrow_filters_from_moc(filtered_catalog):
         moc = (
             filtered_catalog.moc
             if healpix_order >= filtered_catalog.moc.max_order
-            else filtered_catalog.moc.degrade_to_order()
+            else filtered_catalog.moc.degrade_to_order(healpix_order)
         )
         depth_array = moc.to_depth29_ranges
         depth_array = depth_array >> (2 * (29 - healpix_order))
