@@ -26,12 +26,13 @@ version = ".".join(release.split(".")[:2])
 
 extensions = [
     "sphinx.ext.mathjax",
-    "sphinx.ext.napoleon",
     "sphinx.ext.viewcode",
     "sphinx.ext.intersphinx",
     "sphinx.ext.graphviz",
     "sphinx_design",
+    "numpydoc",
     "sphinx.ext.autosummary",
+    "sphinx.ext.autodoc",
 ]
 
 extensions.append("nbsphinx")

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import warnings
 from pathlib import Path
-from typing import Any, Callable, Iterable, Type
+from typing import Any, Callable, Iterable
 
 import dask.dataframe as dd
 import hats as hc
@@ -172,7 +172,7 @@ class Catalog(HealpixDataset):
         other: Catalog,
         suffixes: tuple[str, str] | None = None,
         algorithm: (
-            Type[AbstractCrossmatchAlgorithm] | BuiltInCrossmatchAlgorithm
+            type[AbstractCrossmatchAlgorithm] | BuiltInCrossmatchAlgorithm
         ) = BuiltInCrossmatchAlgorithm.KD_TREE,
         output_catalog_name: str | None = None,
         require_right_margin: bool = False,
@@ -198,10 +198,11 @@ class Catalog(HealpixDataset):
         suffixes : Tuple[str,str] or None
             A pair of suffixes to be appended to the end of each column
             name when they are joined. Default uses the name of the catalog for the suffix.
-        algorithm : BuiltInCrossmatchAlgorithm | Type[AbstractCrossmatchAlgorithm], default BuiltInCrossmatchAlgorithm.KD_TREE
+        algorithm : BuiltInCrossmatchAlgorithm | type[AbstractCrossmatchAlgorithm]
             The algorithm to use to perform the crossmatch. Can be either a string to specify one of
             the built-in cross-matching methods, or a custom method defined by subclassing
             AbstractCrossmatchAlgorithm.
+            (Default value = BuiltInCrossmatchAlgorithm.KD_TREE)
 
             Built-in methods:
                 - `kd_tree`: find the k-nearest neighbors using a kd_tree
@@ -319,7 +320,7 @@ class Catalog(HealpixDataset):
         other: Catalog,
         nested_column_name: str | None = None,
         algorithm: (
-            Type[AbstractCrossmatchAlgorithm] | BuiltInCrossmatchAlgorithm
+            type[AbstractCrossmatchAlgorithm] | BuiltInCrossmatchAlgorithm
         ) = BuiltInCrossmatchAlgorithm.KD_TREE,
         output_catalog_name: str | None = None,
         require_right_margin: bool = False,
@@ -347,10 +348,11 @@ class Catalog(HealpixDataset):
         nested_column_name : str, default uses the name of the right catalog
             The name of the nested column that will contain the crossmatched rows
             from the right catalog.
-        algorithm : BuiltInCrossmatchAlgorithm | Type[AbstractCrossmatchAlgorithm], default BuiltInCrossmatchAlgorithm.KD_TREE
+        algorithm : BuiltInCrossmatchAlgorithm | type[AbstractCrossmatchAlgorithm]
             The algorithm to use to perform the crossmatch. Can be either a string to specify one of
             the built-in cross-matching methods, or a custom method defined by subclassing
             AbstractCrossmatchAlgorithm.
+            (Default value = BuiltInCrossmatchAlgorithm.KD_TREE)
 
             Built-in methods:
                 - `kd_tree`: find the k-nearest neighbors using a kd_tree
@@ -1130,16 +1132,16 @@ class Catalog(HealpixDataset):
         args : positional arguments
             A list of string column names to pull from the NestedFrame to pass along to the function.
             If the function has additional arguments, pass them as keyword arguments (e.g. arg_name=value)
-        meta : dataframe or series-like, optional
+        meta : dataframe or series-like, optional, default None
             The dask meta of the output. If append_columns is True, the meta should specify just the
-            additional columns output by func. (Default value = None)
-        append_columns : bool
-            If True, the output columns should be appended to those in the original catalog. (Default value = False)
-        infer_nesting : bool
+            additional columns output by func.
+        append_columns : bool, default False
+            If True, the output columns should be appended to those in the original catalog.
+        infer_nesting : bool, default True
             If True, the function will pack output columns into nested structures based on column names
             adhering to a nested naming scheme. E.g. `nested.b` and `nested.c` will be packed into a
             column called `nested` with columns `b` and `c`. If False, all outputs will be returned as base
-            columns. (Default value = True)
+            columns.
         kwargs : keyword arguments, optional
             Keyword arguments to pass to the function.
 
@@ -1205,12 +1207,12 @@ class Catalog(HealpixDataset):
             Function to apply to each nested dataframe. The first arguments to `func` should be which
             columns to apply the function to. See the Notes for recommendations
             on writing func outputs.
-        columns : None | str | list of str
+        columns : None | str | list of str, default None
             Specifies which columns to pass to the function in the row_container format.
             If None, all columns are passed. If list of str, those columns are passed.
             If str, a single column is passed or if the string is a nested column, then all nested sub-columns
             are passed (e.g. columns="nested" passes all columns of the nested dataframe "nested"). To pass
-            individual nested sub-columns, use the hierarchical column name (e.g. columns=["nested.t",...]). (Default value = None)
+            individual nested sub-columns, use the hierarchical column name (e.g. columns=["nested.t",...]).
         row_container : 'dict' or 'args', default 'dict'
             Specifies how the row data will be packaged when passed as an input to the function.
             If 'dict', the function will be called as `func({"col1": value, ...}, **kwargs)`, so func should
@@ -1231,10 +1233,10 @@ class Catalog(HealpixDataset):
             will be returned as base columns. Note that this will trigger off of names specified in
             `output_names` in addition to names returned by the user function. (Default value = True)
         append_columns : bool, default False
-            if True, the output columns should be appended to those in the original NestedFrame. (Default value = False)
-        meta : dataframe or series-like, optional
+            if True, the output columns should be appended to those in the original NestedFrame
+        meta : dataframe or series-like, optional, default None
             The dask meta of the output. If append_columns is True, the meta should specify just the
-            additional columns output by func. (Default value = None)
+            additional columns output by func.
         kwargs : keyword arguments, optional
             Keyword arguments to pass to the function.
 

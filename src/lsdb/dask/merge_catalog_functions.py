@@ -1,3 +1,4 @@
+# pylint: disable=too-many-lines
 from __future__ import annotations
 
 import logging
@@ -232,7 +233,7 @@ def concat_partition_and_margin(
     return npd.NestedFrame(joined_df)
 
 
-def remove_hips_columns(df: npd.NestedFrame | None) -> npd.NestedFrame:
+def remove_hips_columns(df: npd.NestedFrame | None):
     """Removes any HIPS Norder, Dir, and Npix columns from a dataframe
 
     Parameters
@@ -562,7 +563,7 @@ def filter_by_spatial_index_to_pixel(
     order: int,
     pixel: int,
     *,
-    spatial_index_order: int = SPATIAL_INDEX_ORDER,
+    spatial_index_order: int | None = SPATIAL_INDEX_ORDER,
 ) -> npd.NestedFrame:
     """Filters a catalog dataframe to the points within a specified HEALPix pixel using the spatial index
 
@@ -574,7 +575,7 @@ def filter_by_spatial_index_to_pixel(
         The order of the HEALPix pixel to filter to
     pixel : int
         The pixel number in NESTED numbering of the HEALPix pixel to filter to
-    spatial_index_order: int, default SPATIAL_INDEX_ORDER
+    spatial_index_order: int or None, default SPATIAL_INDEX_ORDER
         The order of the healpix index.
 
     Returns

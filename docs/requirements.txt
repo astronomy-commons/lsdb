@@ -10,6 +10,7 @@ sphinx
 sphinx-copybutton
 sphinx-book-theme
 sphinx-design
+numpydoc
 git+https://github.com/astronomy-commons/hats.git@main
 git+https://github.com/astronomy-commons/hats-import.git@main
 git+https://github.com/lincc-frameworks/nested-pandas.git@main

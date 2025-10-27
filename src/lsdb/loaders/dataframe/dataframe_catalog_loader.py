@@ -58,15 +58,18 @@ class DataframeCatalogLoader:
             dataframe : pd.Dataframe
                 Catalog Pandas Dataframe.
             ra_column : str or None
-                The name of the right ascension column. By default, case-insensitive versions of 'ra' are detected.
+                The name of the right ascension column.
+                By default, case-insensitive versions of 'ra' are detected.
             dec_column : str or None
-                The name of the declination column. By default, case-insensitive versions of 'dec' are detected.
+                The name of the declination column.
+                By default, case-insensitive versions of 'dec' are detected.
             lowest_order : int, default 0
                 The lowest partition order.
             highest_order : int, default 7
-                The highest partition order. Defaults to 7.
+                The highest partition order.
             drop_empty_siblings : bool, default False
-                When determining final partitionining, if 3 of 4 pixels are empty, keep only the non-empty pixel
+                When determining final partitionining, if 3 of 4 pixels are empty,
+                keep only the non-empty pixel
             partition_size : int or None, default None
                 The desired partition size, in number of rows.
             threshold : int or None, default None
