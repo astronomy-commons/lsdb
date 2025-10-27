@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 # pylint: disable=too-many-instance-attributes, too-many-arguments
 class AbstractSearch(ABC):
     """Abstract class used to write a reusable search query.
-
+    
     These consist of two parts:
         - partition search - a (usually) coarse method of restricting
           the search space to just the partitions(/pixels) of interest
@@ -33,7 +33,18 @@ class AbstractSearch(ABC):
         self.fine = fine
 
     def filter_hc_catalog(self, hc_structure: HCCatalogTypeVar) -> HCCatalogTypeVar:
-        """Determine the target partitions for further filtering."""
+        """Determine the target partitions for further filtering.
+
+        Parameters
+        ----------
+        hc_structure: HCCatalogTypeVar
+            The hats catalog where partitions will be filtered.
+
+        Returns
+        -------
+        HCCatalogTypeVar
+            The filtered hats catalog.
+        """
         filtered_cat = self.perform_hc_catalog_filter(hc_structure)
         if not self.fine:
             # If running a coarse search, the coverage of the catalog will match the healpix pixels the
@@ -42,14 +53,38 @@ class AbstractSearch(ABC):
         return filtered_cat
 
     def perform_hc_catalog_filter(self, hc_structure: HCCatalogTypeVar) -> HCCatalogTypeVar:
-        """Determine the target partitions for further filtering."""
+        """Determine the target partitions for further filtering.
+
+        Parameters
+        ----------
+        hc_structure: HCCatalogTypeVar
+            The hats catalog where partitions will be filtered.
+
+        Returns
+        -------
+        HCCatalogTypeVar
+            The filtered hats catalog.
+        """
         raise NotImplementedError(
             "Search Class must implement `perform_hc_catalog_filter` method or `filter_hc_catalog`"
         )
 
     @abstractmethod
     def search_points(self, frame: npd.NestedFrame, metadata: TableProperties) -> npd.NestedFrame:
-        """Determine the search results within a data frame"""
+        """Determine the search results within a data frame
+
+        Parameters
+        ----------
+        frame: npd.NestedFrame
+            A pixel data frame.
+        metadata: hc.catalog.TableProperties
+            The HATS catalog properties.
+
+        Returns
+        -------
+        npd.NestedFrame
+            The filtered pixel data frame.
+        """
 
     def plot(
         self,
@@ -65,28 +100,40 @@ class AbstractSearch(ABC):
     ):
         """Plot the search region
 
-        Args:
-            projection (str): The projection to use in the WCS. Available projections listed at
-                https://docs.astropy.org/en/stable/wcs/supported_projections.html
-            title (str): The title of the plot
-            fov (Quantity or Sequence[Quantity, Quantity] | None): The Field of View of the WCS. Must be an
-                astropy Quantity with an angular unit, or a tuple of quantities for different longitude and
-                latitude FOVs (Default covers the full sky)
-            center (SkyCoord | None): The center of the projection in the WCS (Default: SkyCoord(0, 0))
-            wcs (WCS | None): The WCS to specify the projection of the plot. If used, all other WCS parameters
-                are ignored and the parameters from the WCS object is used.
-            frame_class (Type[BaseFrame] | None): The class of the frame for the WCSAxes to be initialized
-                with. if the `ax` kwarg is used, this value is ignored (By Default uses EllipticalFrame for
-                full sky projection. If FOV is set, RectangularFrame is used)
-            ax (WCSAxes | None): The matplotlib axes to plot onto. If None, an axes will be created to be
-                used. If specified, the axes must be an astropy WCSAxes, and the `wcs` parameter must be set
-                with the WCS object used in the axes. (Default: None)
-            fig (Figure | None): The matplotlib figure to add the axes to. If None, one will be created,
-                unless ax is specified (Default: None)
-            **kwargs: Additional kwargs to pass to creating the matplotlib patch object for the search region
+        Parameters
+        ----------
+        projection : str, default 'MOL'
+            The projection to use in the WCS. Available projections listed at
+            https://docs.astropy.org/en/stable/wcs/supported_projections.html
+        title : str
+            The title of the plot
+        fov : Quantity or Sequence[Quantity, Quantity] or None
+            The Field of View of the WCS. Must be an
+            astropy Quantity with an angular unit, or a tuple of quantities for different longitude and
+            latitude FOVs (Default covers the full sky)
+        center : SkyCoord | None
+            The center of the projection in the WCS (Default: SkyCoord(0, 0))
+        wcs : WCS | None
+            The WCS to specify the projection of the plot. If used, all other WCS parameters
+            are ignored and the parameters from the WCS object is used.
+        frame_class : Type[BaseFrame] | None
+            The class of the frame for the WCSAxes to be initialized
+            with. if the `ax` kwarg is used, this value is ignored (By Default uses EllipticalFrame for
+            full sky projection. If FOV is set, RectangularFrame is used)
+        ax : WCSAxes | None
+            The matplotlib axes to plot onto. If None, an axes will be created to be
+            used. If specified, the axes must be an astropy WCSAxes, and the `wcs` parameter must be set
+            with the WCS object used in the axes. (Default: None)
+        fig : Figure | None
+            The matplotlib figure to add the axes to. If None, one will be created,
+            unless ax is specified (Default: None)
+        **kwargs :
+            Additional kwargs to pass to creating the matplotlib patch object for the search region
 
-        Returns:
-            Tuple[Figure, WCSAxes] - The figure and axes used for the plot
+        Returns
+        -------
+        tuple[Figure, WCSAxes]
+            The figure and axes used for the plot
         """
         fig, ax, wcs = initialize_wcs_axes(
             projection=projection,

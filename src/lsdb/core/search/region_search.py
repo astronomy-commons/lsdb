@@ -29,7 +29,7 @@ class BoxSearch(AbstractSearch):
     """Perform a box search to filter the catalog. This type of search is used for a
     range of right ascension or declination, where the right ascension edges follow
     great arc circles and the declination edges follow small arc circles.
-
+    
     Filters to points within the ra / dec region, specified in degrees.
     Filters partitions in the catalog to those that have some overlap with the region.
     """
@@ -51,7 +51,7 @@ class BoxSearch(AbstractSearch):
 
 class ConeSearch(AbstractSearch):
     """Perform a cone search to filter the catalog
-
+    
     Filters to points within radius great circle distance to the point specified by ra and dec in degrees.
     Filters partitions in the catalog to those that have some overlap with the cone.
     """
@@ -87,7 +87,7 @@ class ConeSearch(AbstractSearch):
 
 class MOCSearch(AbstractSearch):
     """Filter the catalog by a MOC.
-
+    
     Filters partitions in the catalog to those that are in a specified moc.
     """
 
@@ -96,9 +96,11 @@ class MOCSearch(AbstractSearch):
         self.moc = moc
 
     def perform_hc_catalog_filter(self, hc_structure: HCCatalogTypeVar) -> HCCatalogTypeVar:
+        """Filters catalog pixels according to the MOC"""
         return hc_structure.filter_by_moc(self.moc)
 
     def search_points(self, frame: npd.NestedFrame, metadata: TableProperties) -> npd.NestedFrame:
+        """Determine the search results within a data frame"""
         df_ras = frame[metadata.ra_column].to_numpy()
         df_decs = frame[metadata.dec_column].to_numpy()
         mask = self.moc.contains_lonlat(df_ras * u.deg, df_decs * u.deg)
@@ -107,7 +109,7 @@ class MOCSearch(AbstractSearch):
 
 class OrderSearch(AbstractSearch):
     """Filter the catalog by HEALPix order.
-
+    
     Filters partitions in the catalog to those that are in the orders specified.
     Does not filter points inside those partitions.
     """
@@ -120,6 +122,7 @@ class OrderSearch(AbstractSearch):
         self.max_order = max_order
 
     def perform_hc_catalog_filter(self, hc_structure: HCCatalogTypeVar) -> HCCatalogTypeVar:
+        """Filters catalog pixels according to the provided orders"""
         max_catalog_order = hc_structure.pixel_tree.get_max_depth()
         max_order = max_catalog_order if self.max_order is None else self.max_order
         if self.min_order > max_order:
@@ -128,13 +131,13 @@ class OrderSearch(AbstractSearch):
         return hc_structure.filter_from_pixel_list(pixels)
 
     def search_points(self, frame: npd.NestedFrame, _) -> npd.NestedFrame:
-        """Determine the search results within a data frame."""
+        """Determine the search results within a data frame"""
         return frame
 
 
 class PixelSearch(AbstractSearch):
     """Filter the catalog by HEALPix pixels.
-
+    
     Filters partitions in the catalog to those that are in a specified pixel set.
     Does not filter points inside those partitions.
     """
@@ -156,26 +159,36 @@ class PixelSearch(AbstractSearch):
     def from_radec(cls, ra: float | list[float], dec: float | list[float]) -> PixelSearch:
         """Create a pixel search region, based on radec points.
 
-        Args:
-            ra (float|list[float]): celestial coordinates, right ascension in degrees
-            dec (float|list[float]): celestial coordinates, declination in degrees
+        Parameters
+        ----------
+        ra : float or list[float]
+            Celestial coordinates, right ascension in degrees
+        dec : float or list[float]
+            Celestial coordinates, declination in degrees
+
+        Returns
+        -------
+        PixelSearch
+            A pixel search object.
         """
         pixels = list(spatial_index.compute_spatial_index(ra, dec))
         pixels = [(spatial_index.SPATIAL_INDEX_ORDER, pix) for pix in pixels]
         return cls(pixels)
 
     def perform_hc_catalog_filter(self, hc_structure: HCCatalogTypeVar) -> HCCatalogTypeVar:
+        """Filters catalog pixels according to the provided pixel set"""
         return hc_structure.filter_from_pixel_list(self.pixels)
 
     def search_points(self, frame: npd.NestedFrame, _) -> npd.NestedFrame:
+        """Determine the search results within a data frame"""
         return frame
 
 
 class PolygonSearch(AbstractSearch):
     """Perform a polygonal search to filter the catalog.
-
+    
     IMPORTANT: Requires additional ``lsst-sphgeom`` package
-
+    
     Filters to points within the polygonal region specified in ra and dec, in degrees.
     Filters partitions in the catalog to those that have some overlap with the region.
     """
@@ -187,7 +200,7 @@ class PolygonSearch(AbstractSearch):
         self.polygon = get_cartesian_polygon(vertices)
 
     def perform_hc_catalog_filter(self, hc_structure: HCCatalogTypeVar) -> HCCatalogTypeVar:
-        """Filters catalog pixels according to the polygon"""
+        """Filters catalog pixels according to the provided pixel set"""
         return hc_structure.filter_by_polygon(self.vertices)
 
     def search_points(self, frame: npd.NestedFrame, metadata: TableProperties) -> npd.NestedFrame:
