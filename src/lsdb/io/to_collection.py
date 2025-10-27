@@ -18,19 +18,27 @@ def to_collection(
     **kwargs,
 ):
     """Saves the catalog collection to disk in the HATS format.
-
+    
     The output contains the main catalog and its margin cache, if it exists.
 
-    Args:
-        catalog (HealpixDataset): A catalog to export
-        base_catalog_path (str): Location where catalog is saved to
-        catalog_name (str): The name of the catalog to be saved
-        default_columns (list[str]): A metadata property with the list of the columns in the
-            catalog to be loaded by default. By default, uses the default columns from the
-            original hats catalog if they exist.
-        overwrite (bool): If True existing collection is overwritten
-        error_if_empty (bool): If True, raises an error if the catalog is empty
-        **kwargs: Arguments to pass to the parquet write operations
+    Parameters
+    ----------
+    catalog : HealpixDataset
+        A catalog to export
+    base_catalog_path : path-like
+        Location where catalog is saved to
+    catalog_name : str or None, default None
+        The name of the catalog to be saved
+    default_columns : list[str] or None, default None
+        A metadata property with the list of the columns in the
+        catalog to be loaded by default. By default, uses the default columns from the
+        original hats catalog if they exist.
+    overwrite : bool, default False
+        If True existing collection is overwritten
+    error_if_empty : bool, default True
+        If True, raises an error if the catalog is empty
+    **kwargs
+        Arguments to pass to the parquet write operations
     """
     base_collection_path = hc.io.file_io.get_upath(base_collection_path)
     catalog_name = catalog_name if catalog_name else catalog.hc_structure.catalog_name
