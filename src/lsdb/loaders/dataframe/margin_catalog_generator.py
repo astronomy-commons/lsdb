@@ -37,10 +37,14 @@ class MarginCatalogGenerator:
         """Initialize a MarginCatalogGenerator
 
         Args:
-            catalog (Catalog): The LSDB catalog to generate margins for
-            margin_order (int): The order at which to generate the margin cache
-            margin_threshold (float): The size of the margin cache boundary, in arcseconds
-            use_pyarrow_types (bool): If True, use pyarrow types. Defaults to True.
+            catalog : Catalog
+                The LSDB catalog to generate margins for
+            margin_order : int
+                The order at which to generate the margin cache
+            margin_threshold : float
+                The size of the margin cache boundary, in arcseconds
+            use_pyarrow_types : bool
+                If True, use pyarrow types. Defaults to True.
             **kwargs: Arguments to pass to the creation of the catalog info.
         """
         self.dataframe: npd.NestedFrame = catalog.compute().copy()
@@ -51,13 +55,16 @@ class MarginCatalogGenerator:
         self.catalog_info_kwargs = kwargs
 
     def _resolve_margin_order(self):
-        """Calculate the order of the margin cache to be generated. If not provided
-        the margin will be calculated based on the smallest pixel possible for the threshold.
+        """Calculate the order of the margin cache to be generated.
 
-        Raises:
-            ValueError: if the margin order and thresholds are incompatible with the catalog.
+        If not provided the margin will be calculated based on the smallest pixel
+        possible for the threshold.
+
+        Raises
+        ------
+        ValueError
+            If the margin order and thresholds are incompatible with the catalog.
         """
-
         highest_order = int(self.hc_structure.partition_info.get_highest_order())
 
         if self.margin_order < 0:
@@ -82,7 +89,9 @@ class MarginCatalogGenerator:
         is not specified: if the threshold is zero the margin is an empty catalog;
         if the threshold is None, the margin is not generated (it is None).
 
-        Returns:
+        Returns
+        -------
+        MarginCatalog or None
             Margin catalog object or None if the margin is not generated.
         """
         if self.margin_order < 0:
@@ -124,12 +133,15 @@ class MarginCatalogGenerator:
         return MarginCatalog(ddf, {}, margin_structure)
 
     def _get_margins(self) -> tuple[list[HealpixPixel], list[npd.NestedFrame]]:
-        """Generates the list of pixels that have margin data, and the dataframes with the margin data for
-        each partition
+        """Generates the list of pixels that have margin data, and the dataframes
+        with the margin data for each partition
 
-        Returns:
-            A tuple of the list of HealpixPixels corresponding to partitions that have margin data, and
-            a list of the dataframes with the margin data for each partition.
+        Returns
+        -------
+        tuple[list[HealpixPixel], list[npd.NestedFrame]]
+            A tuple of the list of HealpixPixels corresponding to partitions
+            that have margin data, and a list of the dataframes with the margin
+            data for each partition.
         """
         combined_pixels = (
             self.hc_structure.get_healpix_pixels() + self.hc_structure.generate_negative_tree_pixels()
@@ -145,12 +157,17 @@ class MarginCatalogGenerator:
         """Create the Dask Dataframe containing the data points in the margins
         for the catalog as well as the mapping of those HEALPix to Dataframes
 
-        Args:
-            pixels (List[HealpixPixel]): The list of healpix pixels in the catalog with margins
-            partitions (List[pd.DataFrame]): The list of dataframes containing the margin rows for each
-                partition, aligned with the pixels list
+        Parameters
+        ----------
+        pixels : list[HealpixPixel]
+            The list of healpix pixels in the catalog with margins
+        partitions : list[pd.DataFrame]
+            The list of dataframes containing the margin rows for each
+            partition, aligned with the pixels list
 
-        Returns:
+        Returns
+        -------
+        tuple[nd.NestedFrame, dict[HealpixPixel, int], int]
             Tuple containing the Dask Dataframe, the mapping of margin HEALPix
             to the respective partitions and the total number of rows.
         """
@@ -166,11 +183,15 @@ class MarginCatalogGenerator:
     def _find_margin_pixel_pairs(self, pixels: list[HealpixPixel]) -> pd.DataFrame:
         """Calculate the pairs of catalog pixels and their margin pixels
 
-        Args:
-            pixels (List[HealpixPixel]): The list of HEALPix to compute margin pixels for.
-                These include the catalog pixels as well as the negative pixels.
+        Parameters
+        ----------
+        pixels : list[HealpixPixel]
+            The list of HEALPix to compute margin pixels for.
+            These include the catalog pixels as well as the negative pixels.
 
-        Returns:
+        Returns
+        -------
+        pd.DataFrame
             A Pandas Dataframe with the many-to-many mapping between each catalog HEALPix
             and the respective margin pixels.
         """
@@ -196,11 +217,15 @@ class MarginCatalogGenerator:
     def _create_margins(self, margin_pairs_df: pd.DataFrame) -> dict[HealpixPixel, pd.DataFrame]:
         """Compute the margins for all the pixels in the catalog
 
-        Args:
-            margin_pairs_df (pd.DataFrame): A DataFrame containing all the combinations
-                of catalog pixels and respective margin pixels
+        Parameters
+        ----------
+        margin_pairs_df : pd.DataFrame
+            A DataFrame containing all the combinations of catalog pixels
+            and respective margin pixels
 
-        Returns:
+        Returns
+        -------
+        dict[HealpixPixel, pd.DataFrame]
             A dictionary mapping each margin pixel to the respective DataFrame.
         """
         margin_pixel_df_map: dict[HealpixPixel, npd.NestedFrame] = {}
@@ -221,12 +246,17 @@ class MarginCatalogGenerator:
     def _create_catalog_info(self, catalog_name: str | None = None, **kwargs) -> TableProperties:
         """Create the margin catalog info object
 
-        Args:
-            catalog_name (str): name of the PRIMARY catalog being created. this margin
-                catalog will take on a name like `<catalog_name>_margin`.
-            **kwargs: Arguments to pass to the creation of the catalog info.
+        Parameters
+        ----------
+        catalog_name : str or None
+            Name of the PRIMARY catalog being created. this margin
+            catalog will take on a name like `<catalog_name>_margin`.
+        **kwargs
+            Arguments to pass to the creation of the catalog info.
 
-        Returns:
+        Returns
+        -------
+        hats.catalog.TableProperties
             The margin catalog info object.
         """
         if kwargs is None:

@@ -18,10 +18,10 @@ if TYPE_CHECKING:
 # pylint: disable=too-many-instance-attributes, too-many-arguments
 class AbstractCrossmatchAlgorithm(ABC):
     """Abstract class used to write a crossmatch algorithm
-    
+
     To specify a custom function, write a class that subclasses the
     `AbstractCrossmatchAlgorithm` class, and overwrite the `perform_crossmatch` function.
-    
+
     The function should be able to perform a crossmatch on two pandas DataFrames
     from a partition from each catalog. It should return two 1d numpy arrays of equal lengths
     with the indices of the matching rows from the left and right dataframes, and a dataframe
@@ -30,12 +30,12 @@ class AbstractCrossmatchAlgorithm(ABC):
     their respective data types, by means of an empty pandas dataframe. As an example,
     the KdTreeCrossmatch algorithm outputs a "_dist_arcsec" column with the distance between
     data points. Its extra_columns attribute is specified as follows::
-    
+
         pd.DataFrame({"_dist_arcsec": pd.Series(dtype=np.dtype("float64"))})
-    
+
     The class will have been initialized with the following parameters, which the
     crossmatch function should use:
-    
+
     - left: npd.NestedFrame,
     - right: npd.NestedFrame,
     - left_order: int,
@@ -45,7 +45,7 @@ class AbstractCrossmatchAlgorithm(ABC):
     - left_catalog_info: hc.catalog.TableProperties,
     - right_catalog_info: hc.catalog.TableProperties,
     - right_margin_catalog_info: hc.catalog.TableProperties,
-    
+
     You may add any additional keyword argument parameters to the crossmatch
     function definition, and the user will be able to pass them in as kwargs in the
     `Catalog.crossmatch` method. Any additional keyword arguments must also be added to the
@@ -148,7 +148,7 @@ class AbstractCrossmatchAlgorithm(ABC):
 
     def perform_crossmatch(self) -> tuple[np.ndarray, np.ndarray, pd.DataFrame]:
         """Performs a crossmatch to get the indices of the matching rows and any extra columns
-        
+
         Any additional keyword arguments needed can be added to this method in the subclass, and the user
         will be able to pass them through the `Catalog.crossmatch` method.
 
@@ -168,12 +168,12 @@ class AbstractCrossmatchAlgorithm(ABC):
     @classmethod
     def validate(cls, left: Catalog, right: Catalog):
         """Validate the metadata and arguments.
-        
+
         This method will be called **once**, after the algorithm object has
         been initialized, during the lazy construction of the execution graph.
         This can be used to catch simple errors without waiting for an
         expensive ``.compute()`` call.
-        
+
         This must accept any additional arguments the `crossmatch` method accepts.
 
         Parameters

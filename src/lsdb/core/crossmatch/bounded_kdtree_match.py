@@ -53,7 +53,7 @@ class BoundedKdTreeCrossmatch(KdTreeCrossmatch):
         min_radius_arcsec: float = 0,
     ) -> tuple[np.ndarray, np.ndarray, pd.DataFrame]:
         """Perform a cross-match between the data from two HEALPix pixels
-        
+
         Finds the n closest neighbors in the right catalog for each point in the left catalog that
         are within a threshold distance by using a K-D Tree.
 

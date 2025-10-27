@@ -100,7 +100,7 @@ def to_hats(
     **kwargs,
 ):
     """Writes a catalog to disk, in HATS format.
-    
+
     The output catalog comprises  partitioned parquet files and respective metadata,
     as well as text and CSV files detailing partition, catalog and provenance info.
 

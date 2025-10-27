@@ -77,7 +77,7 @@ def to_association(
 ):
     """Writes a crossmatching product to disk, in HATS association table format.
     The output catalog comprises partition parquet files and respective metadata.
-    
+
     The column name arguments should reflect the column names on the corresponding
     primary and join OBJECT catalogs, so that the association table can be used
     to perform equijoins on the two sides and recreate the crossmatch.

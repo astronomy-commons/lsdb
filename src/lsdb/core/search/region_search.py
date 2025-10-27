@@ -29,7 +29,7 @@ class BoxSearch(AbstractSearch):
     """Perform a box search to filter the catalog. This type of search is used for a
     range of right ascension or declination, where the right ascension edges follow
     great arc circles and the declination edges follow small arc circles.
-    
+
     Filters to points within the ra / dec region, specified in degrees.
     Filters partitions in the catalog to those that have some overlap with the region.
     """
@@ -51,7 +51,7 @@ class BoxSearch(AbstractSearch):
 
 class ConeSearch(AbstractSearch):
     """Perform a cone search to filter the catalog
-    
+
     Filters to points within radius great circle distance to the point specified by ra and dec in degrees.
     Filters partitions in the catalog to those that have some overlap with the cone.
     """
@@ -87,7 +87,7 @@ class ConeSearch(AbstractSearch):
 
 class MOCSearch(AbstractSearch):
     """Filter the catalog by a MOC.
-    
+
     Filters partitions in the catalog to those that are in a specified moc.
     """
 
@@ -109,7 +109,7 @@ class MOCSearch(AbstractSearch):
 
 class OrderSearch(AbstractSearch):
     """Filter the catalog by HEALPix order.
-    
+
     Filters partitions in the catalog to those that are in the orders specified.
     Does not filter points inside those partitions.
     """
@@ -137,7 +137,7 @@ class OrderSearch(AbstractSearch):
 
 class PixelSearch(AbstractSearch):
     """Filter the catalog by HEALPix pixels.
-    
+
     Filters partitions in the catalog to those that are in a specified pixel set.
     Does not filter points inside those partitions.
     """
@@ -186,9 +186,9 @@ class PixelSearch(AbstractSearch):
 
 class PolygonSearch(AbstractSearch):
     """Perform a polygonal search to filter the catalog.
-    
+
     IMPORTANT: Requires additional ``lsst-sphgeom`` package
-    
+
     Filters to points within the polygonal region specified in ra and dec, in degrees.
     Filters partitions in the catalog to those that have some overlap with the region.
     """

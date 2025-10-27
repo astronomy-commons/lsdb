@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 # pylint: disable=too-many-instance-attributes, too-many-arguments
 class AbstractSearch(ABC):
     """Abstract class used to write a reusable search query.
-    
+
     These consist of two parts:
         - partition search - a (usually) coarse method of restricting
           the search space to just the partitions(/pixels) of interest

@@ -42,7 +42,7 @@ def crossmatch(
 ) -> Catalog:
     """Perform a cross-match between two frames, two catalogs,
     a catalog and a frame, or a frame and a catalog.
-    
+
     See `Catalog.crossmatch()` for more information on cross-matching.
 
     Parameters

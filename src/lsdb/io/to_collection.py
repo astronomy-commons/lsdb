@@ -18,7 +18,7 @@ def to_collection(
     **kwargs,
 ):
     """Saves the catalog collection to disk in the HATS format.
-    
+
     The output contains the main catalog and its margin cache, if it exists.
 
     Parameters
