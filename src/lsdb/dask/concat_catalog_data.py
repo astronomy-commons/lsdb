@@ -25,12 +25,7 @@ if TYPE_CHECKING:
 
 
 def _get_ra_dec_from_info(hc_dataset) -> tuple[str | None, str | None]:
-    """
-    Return the (ra_column, dec_column) from a HATS-like dataset's catalog_info.
-
-    Notes:
-        Returns (None, None) if not present in the metadata; the caller decides how to handle it.
-    """
+    """Return the (ra_column, dec_column) from a HATS-like dataset's catalog_info"""
     info = hc_dataset.hc_structure.catalog_info  # type: ignore[attr-defined]
     return getattr(info, "ra_column", None), getattr(info, "dec_column", None)
 
@@ -40,17 +35,13 @@ def _assert_same_ra_dec(
     right_ds,
     *,
     context: str,
-) -> None:
-    """
-    Raise ValueError if RA/Dec column names differ between two datasets.
+):
+    """Raise ValueError if RA/Dec column names differ between two datasets.
 
-    Args:
-        left_ds: Left dataset (Catalog or MarginCatalog).
-        right_ds: Right dataset (Catalog or MarginCatalog).
-        context (str): Human-readable context message for the error.
-
-    Raises:
-        ValueError: If either side is missing RA/Dec names or if they differ.
+    Raises
+    ------
+    ValueError
+        If either side is missing RA
     """
     l_ra, l_dec = _get_ra_dec_from_info(left_ds)
     r_ra, r_dec = _get_ra_dec_from_info(right_ds)
@@ -72,19 +63,31 @@ def _assert_same_ra_dec(
 
 
 def _check_strict_column_types(meta1: pd.DataFrame, meta2: pd.DataFrame):
-    """
-    Raises a TypeError if columns with the same name have different dtypes.
+    """Raises a TypeError if columns with the same name have different dtypes.
 
-    Args:
-        meta1 (pd.DataFrame): First DataFrame to compare.
-        meta2 (pd.DataFrame): Second DataFrame to compare.
+    Parameters
+    ----------
+    meta1 : pd.DataFrame
+        First DataFrame to compare.
+    meta2 : pd.DataFrame
+        Second DataFrame to compare.
 
-    Raises:
-        TypeError: If any columns with the same name have conflicting dtypes.
-
-    Notes:
+    Raises
+    ------
+    TypeError
+        If any columns with the same name have conflicting dtypes.
+        Notes:
+    TypeError
+        If any columns with the same name have conflicting dtypes.
+        Notes:
         This function is useful for ensuring strict schema consistency when concatenating
-        or merging DataFrames. It checks only columns present in both DataFrames.
+    TypeError
+        If any columns with the same name have conflicting dtypes.
+
+    Notes
+    -----
+    This function is useful for ensuring strict schema consistency when concatenating
+    or merging DataFrames. It checks only columns present in both DataFrames.
     """
     for col in set(meta1.columns) & set(meta2.columns):
         dtype1 = meta1[col].dtype
@@ -97,29 +100,34 @@ def _reindex_and_coerce_dtypes(
     df: pd.DataFrame | None,
     meta: pd.DataFrame,
 ) -> pd.DataFrame:
-    """
-    Reindex DataFrame columns and coerce dtypes to match a reference
+    """Reindex DataFrame columns and coerce dtypes to match a reference
     meta DataFrame.
 
-    Args:
-        df (pd.DataFrame | None):
-            DataFrame to be reindexed and coerced. If None, returns meta.
-        meta (pd.DataFrame):
-            Reference DataFrame whose columns and dtypes should be
-            matched.
+    Parameters
+    ----------
+    df : pd.DataFrame | None
+        DataFrame to be reindexed and coerced. If None, returns meta.
+    meta : pd.DataFrame
+        Reference DataFrame whose columns and dtypes should be matched.
 
-    Returns:
-        pd.DataFrame:
-            DataFrame with columns and dtypes matching `meta`. Missing
-            columns are filled with NA values and correct dtype.
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with columns and dtypes matching `meta`. Missing
+        columns are filled with NA values and correct dtype.
 
-    Raises:
-        TypeError:
-            If dtype conversion fails for any column.
+    Raises
+    ------
+    TypeError
+        If dtype conversion fails for any column.
+        Notes:
+    TypeError
+        If dtype conversion fails for any column.
 
-    Notes:
-        - This function is useful to ensure all partitions in a Dask
-          DataFrame have consistent schema.
+    Notes
+    -----
+    This function is useful to ensure all partitions in a Dask DataFrame
+    have consistent schema.
     """
     meta_columns = meta.columns
     if df is None:
@@ -138,14 +146,17 @@ def _reindex_and_coerce_dtypes(
 
 
 def _is_all_na(df: pd.DataFrame) -> bool:
-    """
-    Check if a DataFrame contains only null values or is empty.
+    """Check if a DataFrame contains only null values or is empty.
 
-    Args:
-        df (pd.DataFrame): DataFrame to check.
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame to check.
 
-    Returns:
-        bool: True if all values are null or DataFrame is empty, False otherwise.
+    Returns
+    -------
+    bool
+        True if all values are null or DataFrame is empty, False otherwise.
     """
     if df.size == 0:
         return True
@@ -153,21 +164,31 @@ def _is_all_na(df: pd.DataFrame) -> bool:
 
 
 def _concat_meta_safe(meta: pd.DataFrame, parts: list[pd.DataFrame | None], **kwargs) -> pd.DataFrame:
-    """
-    Concatenate only non-empty and non-all-NA DataFrames, preserving meta schema and dtypes.
+    """Concatenate only non-empty and non-all-NA DataFrames, preserving meta schema and dtypes.
 
-    Args:
-        meta (pd.DataFrame): Reference DataFrame for schema and dtypes.
-        parts (list[pd.DataFrame | None]): List of DataFrames to concatenate.
-        **kwargs: Additional keyword arguments for pandas.concat.
+    Parameters
+    ----------
+    meta : pd.DataFrame
+        Reference DataFrame for schema and dtypes.
+    parts : list[pd.DataFrame | None]
+        List of DataFrames to concatenate.
+    **kwargs
+        Additional keyword arguments for pandas.concat.
 
-    Returns:
-        pd.DataFrame: Concatenated DataFrame with schema and dtypes matching meta.
+    Returns
+    -------
+    pd.DataFrame
+        Concatenated DataFrame with schema and dtypes matching meta.
 
-    Notes:
-        - All output columns will match the order and dtypes of meta.
-        - Missing columns are filled with NA values and correct dtype.
-        - Empty result returns meta.iloc[0:0].copy() coerced to meta dtypes.
+    Notes
+    -----
+        Concatenated DataFrame with schema and dtypes matching meta.
+
+    Notes
+    -----
+    - All output columns will match the order and dtypes of meta.
+    - Missing columns are filled with NA values and correct dtype.
+    - Empty result returns meta.iloc[0:0].copy() coerced to meta dtypes.
     """
     keep: list[pd.DataFrame] = []
     for p in parts:
@@ -205,24 +226,37 @@ def perform_concat(
     aligned_meta,
     **kwargs,
 ):
-    """
-    Concatenate partitions for a single aligned pixel from two catalogs.
+    """Concatenate partitions for a single aligned pixel from two catalogs.
 
-    Args:
-        left_df (pd.DataFrame | None): Partition from the left catalog.
-        right_df (pd.DataFrame | None): Partition from the right catalog.
-        aligned_df (pd.DataFrame | None): Partition for the aligned pixel.
-        left_pix: HealpixPixel for the left partition.
-        right_pix: HealpixPixel for the right partition.
-        aligned_pix: HealpixPixel for the aligned partition.
-        left_catalog_info: Catalog info for the left partition.
-        right_catalog_info: Catalog info for the right partition.
-        aligned_catalog_info: Catalog info for the aligned partition.
-        aligned_meta (pd.DataFrame): Meta DataFrame for column order and dtypes.
-        **kwargs: Additional keyword arguments for pandas.concat.
+    Parameters
+    ----------
+    left_df : npd.NestedFrame | None
+        Partition from the left catalog.
+    right_df : npd.NestedFrame | None
+        Partition from the right catalog.
+    aligned_df : npd.NestedFrame | None
+        Partition for the aligned pixel.
+    left_pix : HealpixPixel | None
+        HealpixPixel for the left partition.
+    right_pix : HealpixPixel | None
+        HealpixPixel for the right partition.
+    aligned_pix : HealpixPixel | None
+        HealpixPixel for the aligned partition.
+    left_catalog_info : hats.catalog.TableProperties
+        Catalog info for the left partition.
+    right_catalog_info : hats.catalog.TableProperties
+        Catalog info for the right partition.
+    aligned_catalog_info : hats.catalog.TableProperties
+        Catalog info for the aligned partition.
+    aligned_meta : npd.NestedFrame
+        Meta DataFrame for column order and dtypes.
+    **kwargs
+        Additional keyword arguments for pandas.concat.
 
-    Returns:
-        pd.DataFrame: Concatenated DataFrame for the aligned pixel.
+    Returns
+    -------
+    npd.NestedFrame
+        Concatenated DataFrame for the aligned pixel.
     """
     # Filter to aligned pixel when needed (handles order differences)
     if left_pix is not None and aligned_pix.order > left_pix.order and left_df is not None:
@@ -273,31 +307,51 @@ def perform_margin_concat(
     aligned_meta,
     **kwargs,
 ):
-    """
-    Concatenate margin partitions for a single aligned pixel from two catalogs.
+    """Concatenate margin partitions for a single aligned pixel from two catalogs.
 
-    Args:
-        left_df (pd.DataFrame | None): Partition from the left catalog.
-        left_margin_df (pd.DataFrame | None): Margin partition from the left catalog.
-        right_df (pd.DataFrame | None): Partition from the right catalog.
-        right_margin_df (pd.DataFrame | None): Margin partition from the right catalog.
-        aligned_df (pd.DataFrame | None): Partition for the aligned pixel.
-        left_pix: HealpixPixel for the left partition.
-        left_margin_pix: HealpixPixel for the left margin partition.
-        right_pix: HealpixPixel for the right partition.
-        right_margin_pix: HealpixPixel for the right margin partition.
-        aligned_pix: HealpixPixel for the aligned partition.
-        left_catalog_info: Catalog info for the left partition.
-        left_margin_catalog_info: Catalog info for the left margin partition.
-        right_catalog_info: Catalog info for the right partition.
-        right_margin_catalog_info: Catalog info for the right margin partition.
-        aligned_catalog_info: Catalog info for the aligned partition.
-        margin_radius (float): Margin radius in arcseconds.
-        aligned_meta (pd.DataFrame): Meta DataFrame for column order and dtypes.
-        **kwargs: Additional keyword arguments for pandas.concat.
+    Parameters
+    ----------
+    left_df : npd.NestedFrame | None
+        Partition from the left catalog.
+    left_margin_df : npd.NestedFrame | None
+        Margin partition from the left catalog.
+    right_df : npd.NestedFrame | None
+        Partition from the right catalog.
+    right_margin_df : npd.NestedFrame | None
+        Margin partition from the right catalog.
+    aligned_df : npd.NestedFrame | None
+        Partition for the aligned pixel.
+    left_pix : HealpixPixel | None
+        HealpixPixel for the left partition.
+    left_margin_pix : HealpixPixel | None
+        HealpixPixel for the left margin partition.
+    right_pix : HealpixPixel | None
+        HealpixPixel for the right partition.
+    right_margin_pix : HealpixPixel | None
+        HealpixPixel for the right margin partition.
+    aligned_pix : HealpixPixel | None
+        HealpixPixel for the aligned partition.
+    left_catalog_info : hats.catalog.TableProperties
+        Catalog info for the left partition.
+    left_margin_catalog_info : hats.catalog.TableProperties
+        Catalog info for the left margin partition.
+    right_catalog_info : hats.catalog.TableProperties
+        Catalog info for the right partition.
+    right_margin_catalog_info : hats.catalog.TableProperties
+        Catalog info for the right margin partition.
+    aligned_catalog_info : hats.catalog.TableProperties
+        Catalog info for the aligned partition.
+    margin_radius : float
+        Margin radius in arcseconds.
+    aligned_meta : npd.NestedFrame
+        Meta DataFrame for column order and dtypes.
+    **kwargs
+        Additional keyword arguments for pandas.concat.
 
-    Returns:
-        pd.DataFrame: Concatenated DataFrame for the aligned pixel margin.
+    Returns
+    -------
+    npd.NestedFrame
+        Concatenated DataFrame for the aligned pixel margin.
     """
     if left_pix is None:
         # Only right side contributes to this aligned pixel
@@ -355,17 +409,21 @@ def concat_catalog_data(
     right: Catalog,
     **kwargs,
 ) -> tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]:
-    """
-    Concatenate main catalog data for two catalogs using pixel alignment.
+    """Concatenate main catalog data for two catalogs using pixel alignment.
 
-    Args:
-        left (Catalog): The left catalog.
-        right (Catalog): The right catalog.
-        **kwargs: Additional keyword arguments for pandas.concat.
+    Parameters
+    ----------
+    left : Catalog
+        The left catalog.
+    right : Catalog
+        The right catalog.
+    **kwargs
+        Additional keyword arguments for pandas.concat.
 
-    Returns:
-        tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]: Tuple containing the concatenated
-            NestedFrame, pixel map, and pixel alignment.
+    Returns
+    -------
+    tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]
+        Tuple containing the concatenated NestedFrame, pixel map, and pixel alignment.
     """
     # Build alignment across both trees (including margins as pixel trees, but filtered by MOCs)
     alignment = concat_align_catalogs(
@@ -406,18 +464,24 @@ def concat_margin_data(
     margin_radius: float,
     **kwargs,
 ) -> tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]:
-    """
-    Concatenate margin data for two catalogs using pixel alignment.
+    """Concatenate margin data for two catalogs using pixel alignment.
 
-    Args:
-        left (Catalog): The left catalog.
-        right (Catalog): The right catalog.
-        margin_radius (float): Margin radius in arcseconds.
-        **kwargs: Additional keyword arguments for pandas.concat.
+    Parameters
+    ----------
+    left : Catalog
+        The left catalog.
+    right : Catalog
+        The right catalog.
+    margin_radius : float
+        Margin radius in arcseconds.
+    **kwargs
+        Additional keyword arguments for pandas.concat.
 
-    Returns:
-        tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]: Tuple containing the concatenated
-            NestedFrame, pixel map, and pixel alignment for the margin data.
+    Returns
+    -------
+    tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]
+        Tuple containing the concatenated NestedFrame, pixel map,
+        and pixel alignment for the margin data.
     """
     # Build alignment across both trees (including margins as pixel trees), no MOC filtering
     alignment = concat_align_catalogs(
@@ -468,17 +532,23 @@ def handle_margins_for_concat(
 ) -> MarginCatalog | None:
     """Handle margin concatenation policy for Catalog.concat().
 
-    Args:
-        left (Catalog): Left catalog.
-        right (Catalog): Right catalog.
-        ignore_empty_margins (bool): If True and only one side has a margin, keep
-            the existing margin and treat the missing side as empty. If False,
-            drop margins when only one side has them.
-        **kwargs: Extra keyword arguments forwarded to `concat_margin_data`.
+    Parameters
+    ----------
+    left : Catalog
+        Left catalog.
+    right : Catalog
+        Right catalog.
+    ignore_empty_margins : bool
+        If True and only one side has a margin, keep
+        the existing margin and treat the missing side as empty. If False,
+        drop margins when only one side has them.
+    **kwargs
+        Extra keyword arguments forwarded to `concat_margin_data`.
 
-    Returns:
-        MarginCatalog | None: Concatenated margin catalog, or None if margins
-        are not retained.
+    Returns
+    -------
+    MarginCatalog | None
+        Concatenated margin catalog, or None if margins are not retained.
     """
     # Read once; helps both runtime clarity and type checkers.
     lm: MarginCatalog | None = left.margin

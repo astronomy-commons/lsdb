@@ -1010,13 +1010,13 @@ class Catalog(HealpixDataset):
         Parameters
         ----------
         other : Catalog
-            the right catalog to join to
+            The right catalog to join to
         left_on : str
-            the name of the column in the left catalog to join on
+            The name of the column in the left catalog to join on
         right_on : str
-            the name of the column in the right catalog to join on
+            The name of the column in the right catalog to join on
         nested_column_name : str
-            the name of the nested column in the resulting dataframe storing the
+            The name of the nested column in the resulting dataframe storing the
             joined columns in the right catalog. (Default: name of right catalog)
         output_catalog_name : str
             The name of the resulting catalog to be stored in metadata
@@ -1029,7 +1029,6 @@ class Catalog(HealpixDataset):
             A new catalog with the columns from each of the input catalogs with their respective suffixes
             added, and the rows merged on the specified columns.
         """
-
         if left_on is None or right_on is None:
             raise ValueError("Both of left_on and right_on must be set")
 

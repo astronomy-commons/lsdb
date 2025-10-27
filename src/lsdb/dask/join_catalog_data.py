@@ -55,25 +55,40 @@ def perform_join_on(
 ):
     """Performs a join on two catalog partitions
 
-    Args:
-        left (npd.NestedFrame): the left partition to merge
-        right (npd.NestedFrame): the right partition to merge
-        right_margin (npd.NestedFrame): the right margin partition to merge
-        left_pixel (HealpixPixel): the HEALPix pixel of the left partition
-        right_pixel (HealpixPixel): the HEALPix pixel of the right partition
-        right_margin_pixel (HealpixPixel): the HEALPix pixel of the right margin partition
-        left_catalog_info (hc.TableProperties): the catalog info of the left catalog
-        right_catalog_info (hc.TableProperties): the catalog info of the right catalog
-        right_margin_catalog_info (hc.TableProperties): the catalog info of the right margin catalog
-        left_on (str): the column to join on from the left partition
-        right_on (str): the column to join on from the right partition
-        suffixes (Tuple[str,str]): the suffixes to apply to each partition's column names
-        suffix_method (str): Method to use to add suffixes to columns. Options are:
-            - "overlapping_columns": only add suffixes to columns that are present in both catalogs
-            - "all_columns": add suffixes to all columns from both catalogs
-            Default: "all_columns"
+    Parameters
+    ----------
+    left : npd.NestedFrame
+        The left partition to merge
+    right : npd.NestedFrame
+        The right partition to merge
+    right_margin : npd.NestedFrame
+        The right margin partition to merge
+    left_pixel : HealpixPixel
+        The HEALPix pixel of the left partition
+    right_pixel : HealpixPixel
+        The HEALPix pixel of the right partition
+    right_margin_pixel : HealpixPixel
+        The HEALPix pixel of the right margin partition
+    left_catalog_info : hc.TableProperties
+        The catalog info of the left catalog
+    right_catalog_info : hc.TableProperties
+        The catalog info of the right catalog
+    right_margin_catalog_info : hc.TableProperties
+        The catalog info of the right margin catalog
+    left_on : str
+        The column to join on from the left partition
+    right_on : str
+        The column to join on from the right partition
+    suffixes : tuple[str, str]
+        The suffixes to apply to each partition's column names
+    suffix_method : str, default 'all_columns'
+        Method to use to add suffixes to columns. Options are:
+        - "overlapping_columns": only add suffixes to columns that are present in both catalogs
+        - "all_columns": add suffixes to all columns from both catalogs
 
-    Returns:
+    Returns
+    -------
+    npd.NestedFrame
         A dataframe with the result of merging the left and right partitions on the specified columns
     """
     if right_pixel.order > left_pixel.order:
@@ -115,25 +130,44 @@ def perform_join_nested(
     """Performs a join on two catalog partitions by adding the right catalog a nested column using
     nested-pandas
 
-    Args:
-        left (npd.NestedFrame): the left partition to merge
-        right (npd.NestedFrame): the right partition to merge
-        right_margin (npd.NestedFrame): the right margin partition to merge
-        aligned_df (npd.NestedFrame): the partition of the aligned pixel
-        left_pixel (HealpixPixel): the HEALPix pixel of the left partition
-        right_pixel (HealpixPixel): the HEALPix pixel of the right partition
-        right_margin_pixel (HealpixPixel): the HEALPix pixel of the right margin partition
-        aligned_pixel (HealpixPixel): the HEALPix pixel of the aligned partition
-        left_catalog_info (hc.TableProperties): the catalog info of the left catalog
-        right_catalog_info (hc.TableProperties): the catalog info of the right catalog
-        right_margin_catalog_info (hc.TableProperties): the catalog info of the right margin catalog
-        left_on (str): the column to join on from the left partition
-        right_on (str): the column to join on from the right partition
-        right_name (str): the name of the nested column in the resulting df to join the right catalog into
-        right_meta (npd.NestedFrame): the meta for the right catalog (needed for how=`left`)
-        how (str): One of {‘inner’, ‘left’}. How to handle the alignment (Default: 'inner').
+    Parameters
+    ----------
+    left : npd.NestedFrame
+        The left partition to merge
+    right : npd.NestedFrame
+        The right partition to merge
+    right_margin : npd.NestedFrame
+        The right margin partition to merge
+    aligned_df : npd.NestedFrame
+        The partition of the aligned pixel
+    left_pixel : HealpixPixel
+        The HEALPix pixel of the left partition
+    right_pixel : HealpixPixel
+        The HEALPix pixel of the right partition
+    right_margin_pixel : HealpixPixel
+        The HEALPix pixel of the right margin partition
+    aligned_pixel : HealpixPixel
+        The HEALPix pixel of the aligned partition
+    left_catalog_info : hc.TableProperties
+        The catalog info of the left catalog
+    right_catalog_info : hc.TableProperties
+        The catalog info of the right catalog
+    right_margin_catalog_info : hc.TableProperties
+        The catalog info of the right margin catalog
+    left_on : str
+        The column to join on from the left partition
+    right_on : str
+        The column to join on from the right partition
+    right_name : str
+        The name of the nested column in the resulting df to join the right catalog into
+    right_meta : npd.NestedFrame
+        The meta for the right catalog (needed for how=`left`)
+    how : One of {‘inner’, ‘left’}, default 'inner'
+        How to handle the alignment.
 
-    Returns:
+    Returns
+    -------
+    npd.NestedFrame
         A dataframe with the result of merging the left and right partitions on the specified columns
     """
     if aligned_pixel.order > left_pixel.order:
@@ -172,27 +206,42 @@ def perform_join_through(
 ):
     """Performs a join on two catalog partitions through an association catalog
 
-    Args:
-        left (npd.NestedFrame): the left partition to merge
-        right (npd.NestedFrame): the right partition to merge
-        right_margin (npd.NestedFrame): the right margin partition to merge
-        through (npd.NestedFrame): the association column partition to merge with
-        left_pixel (HealpixPixel): the HEALPix pixel of the left partition
-        right_pixel (HealpixPixel): the HEALPix pixel of the right partition
-        right_margin_pixel (HealpixPixel): the HEALPix pixel of the right margin partition
-        through_pixel (HealpixPixel): the HEALPix pixel of the association partition
-        left_catalog_info (hc.TableProperties): the hats structure of the left catalog
-        right_catalog_info (hc.TableProperties): the hats structure of the right catalog
-        right_margin_catalog_info (hc.TableProperties): the hats structure of the right margin
-            catalog
-        assoc_catalog_info (hc.TableProperties): the hats structure of the association catalog
-        suffixes (Tuple[str,str]): the suffixes to apply to each partition's column names
-        suffix_method (str): Method to use to add suffixes to columns. Options are:
-            - "overlapping_columns": only add suffixes to columns that are present in both catalogs
-            - "all_columns": add suffixes to all columns from both catalogs
-            Default: "all_columns"
+    Parameters
+    ----------
+    left : npd.NestedFrame
+        The left partition to merge
+    right : npd.NestedFrame
+        The right partition to merge
+    right_margin : npd.NestedFrame
+        The right margin partition to merge
+    through : npd.NestedFrame
+        The association column partition to merge with
+    left_pixel : HealpixPixel
+        The HEALPix pixel of the left partition
+    right_pixel : HealpixPixel
+        The HEALPix pixel of the right partition
+    right_margin_pixel : HealpixPixel
+        The HEALPix pixel of the right margin partition
+    through_pixel : HealpixPixel
+        The HEALPix pixel of the association partition
+    left_catalog_info : hc.TableProperties
+        The hats structure of the left catalog
+    right_catalog_info : hc.TableProperties
+        The hats structure of the right catalog
+    right_margin_catalog_info : hc.TableProperties
+        The hats structure of the right margin catalog
+    assoc_catalog_info : hc.TableProperties
+        The hats structure of the association catalog
+    suffixes : tuple[str, str]
+        The suffixes to apply to each partition's column names
+    suffix_method : str, default 'all_columns'
+        Method to use to add suffixes to columns. Options are:
+        - "overlapping_columns": only add suffixes to columns that are present in both catalogs
+        - "all_columns": add suffixes to all columns from both catalogs
 
-    Returns:
+    Returns
+    -------
+    npd.NestedFrame
         A dataframe with the result of merging the left and right partitions on the specified columns
     """
     if assoc_catalog_info.primary_column is None or assoc_catalog_info.join_column is None:
@@ -270,23 +319,34 @@ def perform_merge_asof(
 ):
     """Performs a merge_asof on two catalog partitions
 
-    Args:
-        left (npd.NestedFrame): the left partition to merge
-        right (npd.NestedFrame): the right partition to merge
-        left_pixel (HealpixPixel): the HEALPix pixel of the left partition
-        right_pixel (HealpixPixel): the HEALPix pixel of the right partition
-        left_catalog_info (hc.TableProperties): the catalog info of the left catalog
-        right_catalog_info (hc.TableProperties): the catalog info of the right catalog
-        suffixes (Tuple[str,str]): the suffixes to apply to each partition's column names
-        direction (str): The direction to perform the merge_asof
-        suffix_method (str): Method to use to add suffixes to columns. Options are:
-            - "overlapping_columns": only add suffixes to columns that are present in both catalogs
-            - "all_columns": add suffixes to all columns from both catalogs
-            Default: "all_columns"
+    Parameters
+    ----------
+    left : npd.NestedFrame
+        The left partition to merge
+    right : npd.NestedFrame
+        The right partition to merge
+    left_pixel : HealpixPixel
+        The HEALPix pixel of the left partition
+    right_pixel : HealpixPixel
+        The HEALPix pixel of the right partition
+    left_catalog_info : hc.TableProperties
+        The catalog info of the left catalog
+    right_catalog_info : hc.TableProperties
+        The catalog info of the right catalog
+    suffixes : Tuple[str
+        The suffixes to apply to each partition's column names
+    direction : str
+        The direction to perform the merge_asof
+    suffix_method : str, default 'all_columns'
+        Method to use to add suffixes to columns. Options are:
+        - "overlapping_columns": only add suffixes to columns that are present in both catalogs
+        - "all_columns": add suffixes to all columns from both catalogs
 
-    Returns:
-        A dataframe with the result of merging the left and right partitions on the specified columns with
-        `merge_asof`
+    Returns
+    -------
+    npd.NestedFrame
+        A dataframe with the result of merging the left and right partitions on the
+        specified columns with `merge_asof`
     """
     if right_pixel.order > left_pixel.order:
         left = filter_by_spatial_index_to_pixel(
@@ -311,21 +371,30 @@ def join_catalog_data_on(
 ) -> tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]:
     """Joins two catalogs spatially on a specified column
 
-    Args:
-        left (lsdb.Catalog): the left catalog to join
-        right (lsdb.Catalog): the right catalog to join
-        left_on (str): the column to join on from the left partition
-        right_on (str): the column to join on from the right partition
-        suffixes (Tuple[str,str]): the suffixes to apply to each partition's column names
-        suffix_method (str): Method to use to add suffixes to columns. Options are:
-            - "overlapping_columns": only add suffixes to columns that are present in both catalogs
-            - "all_columns": add suffixes to all columns from both catalogs
-            Default: "all_columns" Warning: This default will change to "overlapping_columns" in a future
-            release.
-        log_changes (bool): If True, logs an info message for each column that is being renamed.
-            This only applies when suffix_method is 'overlapping_columns'. Default: True
+    Parameters
+    ----------
+    left : lsdb.Catalog
+        The left catalog to join
+    right : lsdb.Catalog
+        The right catalog to join
+    left_on : str
+        The column to join on from the left partition
+    right_on : str
+        The column to join on from the right partition
+    suffixes : tuple[str, str]
+        The suffixes to apply to each partition's column names
+    suffix_method : str, default 'all_columns'
+        Method to use to add suffixes to columns. Options are:
+        - "overlapping_columns": only add suffixes to columns that are present in both catalogs
+        - "all_columns": add suffixes to all columns from both catalogs
+        Warning: This default will change to "overlapping_columns" in a future release.
+    log_changes : bool, default True
+        If True, logs an info message for each column that is being renamed.
+        This only applies when suffix_method is 'overlapping_columns'.
 
-    Returns:
+    Returns
+    -------
+    npd.NestedFrame
         A tuple of the dask dataframe with the result of the join, the pixel map from HEALPix
         pixel to partition index within the dataframe, and the PixelAlignment of the two input
         catalogs.
@@ -367,16 +436,25 @@ def join_catalog_data_nested(
     """Joins two catalogs spatially on a specified column, adding the right as a nested column with nested
     dask
 
-    Args:
-        left (lsdb.Catalog): the left catalog to join
-        right (lsdb.Catalog): the right catalog to join
-        left_on (str): the column to join on from the left partition
-        right_on (str): the column to join on from the right partition
-        nested_column_name (str): the name of the nested column in the final output, if None, defaults to
-            name of the right catalog
-        how (str): One of {‘inner’, ‘left’}. How to handle the alignment (Default: 'inner').
+    Parameters
+    ----------
+    left : lsdb.Catalog
+        The left catalog to join
+    right : lsdb.Catalog
+        The right catalog to join
+    left_on : str
+        The column to join on from the left partition
+    right_on : str
+        The column to join on from the right partition
+    nested_column_name : str
+        The name of the nested column in the final output, if None, defaults to
+        name of the right catalog
+    how : One of {'left', 'inner'}, default 'inner'
+        How to handle the alignment (Default: 'inner').
 
-    Returns:
+    Returns
+    -------
+    npd.NestedFrame
         A tuple of the dask dataframe with the result of the join, the pixel map from HEALPix
         pixel to partition index within the dataframe, and the PixelAlignment of the two input
         catalogs.
@@ -424,22 +502,31 @@ def join_catalog_data_through(
 ) -> tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]:
     """Joins two catalogs with an association table
 
-    Args:
-        left (lsdb.Catalog): the left catalog to join
-        right (lsdb.Catalog): the right catalog to join
-        association (AssociationCatalog): the association catalog to join the catalogs with
-        suffixes (Tuple[str,str]): the suffixes to apply to each partition's column names
-        suffix_method (str): Method to use to add suffixes to columns. Options are:
-            - "overlapping_columns": only add suffixes to columns that are present in both catalogs
-            - "all_columns": add suffixes to all columns from both catalogs
-            Default: "all_columns" Warning: This default will change to "overlapping_columns" in a future
-            release.
+    Parameters
+    ----------
+    left : lsdb.Catalog
+        the left catalog to join
+    right : lsdb.Catalog
+        the right catalog to join
+    association : AssociationCatalog
+        the association catalog to join the catalogs with
+    suffixes : Tuple[str
+        the suffixes to apply to each partition's column names
+    suffix_method : str, default 'all_columns'
+        Method to use to add suffixes to columns. Options are:
+        - "overlapping_columns": only add suffixes to columns that are present in both catalogs
+        - "all_columns": add suffixes to all columns from both catalogs
+        Warning: This default will change to "overlapping_columns" in a future release.
+    log_changes : bool, default True
+        If True, logs an info message for each column that is being renamed.
+        This only applies when suffix_method is 'overlapping_columns'.
 
-    Returns:
+    Returns
+    -------
+    tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]
         A tuple of the dask dataframe with the result of the join, the pixel map from HEALPix
         pixel to partition index within the dataframe, and the PixelAlignment of the two input
         catalogs.
-
     """
     if (
         association.hc_structure.catalog_info.primary_column is None
@@ -523,25 +610,32 @@ def merge_asof_catalog_data(
     This function is intended for use in special cases such as Dust Map Catalogs, for general merges,
     the `crossmatch`and `join` functions should be used.
 
-    Args:
-        left (lsdb.Catalog): the left catalog to join
-        right (lsdb.Catalog): the right catalog to join
-        suffixes (Tuple[str,str]): the suffixes to apply to each partition's column names
-        direction (str): the direction to perform the merge_asof
-        suffix_method (str): Method to use to add suffixes to columns. Options are:
-            - "overlapping_columns": only add suffixes to columns that are present in both catalogs
-            - "all_columns": add suffixes to all columns from both catalogs
-            Default: "all_columns" Warning: This default will change to "overlapping_columns" in a future
-            release.
-        log_changes (bool): If True, logs an info message for each column that is being renamed.
-            This only applies when suffix_method is 'overlapping_columns'. Default: True
+    Parameters
+    ----------
+    left : lsdb.Catalog
+        the left catalog to join
+    right : lsdb.Catalog
+        the right catalog to join
+    suffixes : Tuple[str
+        the suffixes to apply to each partition's column names
+    direction : str
+        the direction to perform the merge_asof
+    suffix_method : str, default 'all_columns'
+        Method to use to add suffixes to columns. Options are:
+        - "overlapping_columns": only add suffixes to columns that are present in both catalogs
+        - "all_columns": add suffixes to all columns from both catalogs
+        Warning: This default will change to "overlapping_columns" in a future release.
+    log_changes : bool, default True
+        If True, logs an info message for each column that is being renamed.
+        This only applies when suffix_method is 'overlapping_columns'.
 
-    Returns:
+    Returns
+    -------
+    tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]
         A tuple of the dask dataframe with the result of the join, the pixel map from HEALPix
         pixel to partition index within the dataframe, and the PixelAlignment of the two input
         catalogs.
     """
-
     alignment = align_catalogs(left, right)
 
     left_pixels, right_pixels = get_healpix_pixels_from_alignment(alignment)

@@ -70,9 +70,9 @@ class AbstractCrossmatchAlgorithm(ABC):
         """Initializes a crossmatch algorithm
 
         Args:
-            left : npd.DataFrame
+            left : npd.NestedFrame
                 Data from the pixel in the left tree
-            right : npd.DataFrame
+            right : npd.NestedFrame
                 Data from the pixel in the right tree
             left_order : int
                 The HEALPix order of the left pixel
