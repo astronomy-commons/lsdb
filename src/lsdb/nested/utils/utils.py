@@ -12,21 +12,21 @@ def count_nested(df, nested, by=None, join=True) -> NestedFrame:
 
     Parameters
     ----------
-    df : NestedFrame
-        A NestedFrame that contains the desired `nested` series to count.
-    nested : 'str'
+    df: NestedFrame
+        A NestedFrame that contains the desired `nested` series
+        to count.
+    nested: 'str'
         The label of the nested series to count.
-    by : 'str', optional, default None
+    by: 'str', optional
         Specifies a column within nested to count by, returning
         a count for each unique value in `by`.
-    join : bool, optional, default True
+    join: bool, optional
         Join the output count columns to df and return df, otherwise
-        just return a NestedFrame containing only the count columns
+        just return a NestedFrame containing only the count columns.
 
     Returns
     -------
     NestedFrame
-        A nested frame with the counts on the number of rows.
     """
 
     # The meta varies depending on the parameters

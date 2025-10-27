@@ -29,7 +29,8 @@ def read_parquet(
     filesystem=None,
     **kwargs,
 ) -> NestedFrame:
-    """Read a Parquet file into a Dask DataFrame
+    """
+    Read a Parquet file into a Dask DataFrame
 
     This reads a directory of Parquet data into a Dask.dataframe, one file per
     partition.  It selects the index among the sorted columns if any exist.
@@ -52,10 +53,12 @@ def read_parquet(
     filters : Union[List[Tuple[str, str, Any]], List[List[Tuple[str, str, Any]]]], default None
         List of filters to apply, like ``[[('col1', '==', 0), ...], ...]``.
         Using this argument will result in row-wise filtering of the final partitions.
+
         Predicates can be expressed in disjunctive normal form (DNF). This means that
         the inner-most tuple describes a single column predicate. These inner predicates
         are combined with an AND conjunction into a larger predicate. The outer-most
         list then combines all of the combined filters with an OR disjunction.
+
         Predicates can also be expressed as a ``List[Tuple]``. These are evaluated
         as an AND conjunction. To express OR in predicates, one must use the
         (preferred for "pyarrow") ``List[List[Tuple]]`` notation.
@@ -90,8 +93,11 @@ def read_parquet(
         This is also used by third-party packages (e.g. CuDF) to inject bespoke engines.
     use_nullable_dtypes : {False, True}
         Whether to use extension dtypes for the resulting ``DataFrame``.
+
         .. note::
-        This option is deprecated. Use "dtype_backend" instead.
+
+            This option is deprecated. Use "dtype_backend" instead.
+
     dtype_backend : {'numpy_nullable', 'pyarrow'}, defaults to NumPy backed DataFrames
         Which dtype_backend to use, e.g. whether a DataFrame should have NumPy arrays,
         nullable dtypes are used for all dtypes that have a nullable implementation
@@ -139,11 +145,13 @@ def read_parquet(
     aggregate_files : bool or str, default None
         WARNING: Passing a string argument to ``aggregate_files`` will result
         in experimental behavior. This behavior may change in the future.
+
         Whether distinct file paths may be aggregated into the same output
         partition. This parameter is only used when `split_row_groups` is set to
         'infer', 'adaptive' or to an integer >1. A setting of True means that any
         two file paths may be aggregated into the same output partition, while
         False means that inter-file aggregation is prohibited.
+
         For "hive-partitioned" datasets, a "partition"-column name can also be
         specified. In this case, we allow the aggregation of any two files
         sharing a file path up to, and including, the corresponding directory name.
@@ -153,35 +161,39 @@ def read_parquet(
         If, however, ``aggregate_files`` is set to ``"region"``, ``01.parquet``
         may be aggregated with ``02.parquet``, and ``03.parquet`` may be aggregated
         with ``04.parquet``::
-        dataset-path/
-        ├── region=1/
-        │   ├── section=a/
-        │   │   └── 01.parquet
-        │   ├── section=b/
-        │   └── └── 02.parquet
-        └── region=2/
-        ├── section=a/
-        │   ├── 03.parquet
-        └── └── 04.parquet
+
+            dataset-path/
+            ├── region=1/
+            │   ├── section=a/
+            │   │   └── 01.parquet
+            │   ├── section=b/
+            │   └── └── 02.parquet
+            └── region=2/
+                ├── section=a/
+                │   ├── 03.parquet
+                └── └── 04.parquet
+
         Note that the default behavior of ``aggregate_files`` is ``False``.
-    parquet_file_extension : str, tuple[str], or None, default (".parq", ".parquet", ".pq")
+    parquet_file_extension: str, tuple[str], or None, default (".parq", ".parquet", ".pq")
         A file extension or an iterable of extensions to use when discovering
         parquet files in a directory. Files that don't match these extensions
         will be ignored. This argument only applies when ``paths`` corresponds
         to a directory and no ``_metadata`` file is present (or
         ``ignore_metadata_file=True``). Passing in ``parquet_file_extension=None``
         will treat all files in the directory as parquet files.
+
         The purpose of this argument is to ensure that the engine will ignore
         unsupported metadata files (like Spark's '_SUCCESS' and 'crc' files).
         It may be necessary to change this argument if the data files in your
         parquet dataset do not end in ".parq", ".parquet", or ".pq".
-    filesystem : "fsspec", "arrow", or fsspec.AbstractFileSystem backend to use, default None
+    filesystem: "fsspec", "arrow", or fsspec.AbstractFileSystem backend to use.
         Specifies the backend to use.
-    dataset : dict, default None
+    dataset: dict, default None
         Dictionary of options to use when creating a ``pyarrow.dataset.Dataset`` object.
         These options may include a "filesystem" key to configure the desired
         file-system backend. However, the top-level ``filesystem`` argument will always
         take precedence.
+
         **Note**: The ``dataset`` options may include a "partitioning" key.
         However, since ``pyarrow.dataset.Partitioning``
         objects cannot be serialized, the value can be a dict of key-word
@@ -189,24 +201,17 @@ def read_parquet(
         (e.g. ``dataset={"partitioning": {"flavor": "hive", "schema": ...}}``).
         Note that partitioned columns will not be converted to categorical
         dtypes when a custom partitioning schema is specified in this way.
-    read : dict, default None
+    read: dict, default None
         Dictionary of options to pass through to ``engine.read_partitions``
         using the ``read`` key-word argument.
-    arrow_to_pandas : dict, default None
+    arrow_to_pandas: dict, default None
         Dictionary of options to use when converting from ``pyarrow.Table`` to
         a pandas ``DataFrame`` object. Only used by the "arrow" engine.
-    **kwargs : dict (of dicts)
+    **kwargs: dict (of dicts)
         Options to pass through to ``engine.read_partitions`` as stand-alone
         key-word arguments. Note that these options will be ignored by the
         engines defined in ``dask.dataframe``, but may be used by other custom
         implementations.
-    use_nullable_dtypes: bool | None, default None
-        Whether to use nullable dtypes.
-
-    Returns
-    -------
-    nd.NestedFrame
-        A Dask NestedFrame.
 
     Examples
     --------
