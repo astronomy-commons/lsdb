@@ -76,13 +76,6 @@ def _check_strict_column_types(meta1: pd.DataFrame, meta2: pd.DataFrame):
     ------
     TypeError
         If any columns with the same name have conflicting dtypes.
-        Notes:
-    TypeError
-        If any columns with the same name have conflicting dtypes.
-        Notes:
-        This function is useful for ensuring strict schema consistency when concatenating
-    TypeError
-        If any columns with the same name have conflicting dtypes.
 
     Notes
     -----
@@ -120,14 +113,10 @@ def _reindex_and_coerce_dtypes(
     ------
     TypeError
         If dtype conversion fails for any column.
-        Notes:
-    TypeError
-        If dtype conversion fails for any column.
 
     Notes
     -----
-    This function is useful to ensure all partitions in a Dask DataFrame
-    have consistent schema.
+    This function is useful to ensure all partitions in a Dask DataFrame have consistent schema.
     """
     meta_columns = meta.columns
     if df is None:
@@ -178,10 +167,6 @@ def _concat_meta_safe(meta: pd.DataFrame, parts: list[pd.DataFrame | None], **kw
     Returns
     -------
     pd.DataFrame
-        Concatenated DataFrame with schema and dtypes matching meta.
-
-    Notes
-    -----
         Concatenated DataFrame with schema and dtypes matching meta.
 
     Notes

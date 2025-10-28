@@ -323,6 +323,7 @@ def concat_align_catalogs(
     Notes
     -----
     Compared to `align_catalogs`, this function:
+
     - Expands both sides with their margin pixel trees when available.
     - Allows opting out of MOC filtering via `filter_by_mocs=False`.
     """
@@ -496,6 +497,7 @@ def align_and_apply(
         aligned partitions of the catalogs as dataframes as the first arguments, followed by the healpix
         pixel of each partition, the hc_structures of the catalogs, and any additional arguments and
         keyword arguments. For example::
+
             def func(
                 cat1_partition_df,
                 cat2_partition_df,
@@ -629,16 +631,15 @@ def filter_by_spatial_index_to_margin(
         If the derived margin order is smaller than `order`. In
         that case, a valid margin ring around the target pixel
         cannot be constructed.
-        Notes:
-    Implementation steps
-        1) Convert `margin_radius` from arcseconds to arcminutes,
-        then to a margin order via `hp.margin2order`.
-        2) Enumerate the margin pixels at margin order using
-        `get_margin`.
-        3) Map each row's index at spatial_index_order down to
-        margin order (via `get_lower_order_pixel`) and keep rows
-        whose mapped pixel is in the margin set.
+    
+    Notes
+    -----
+    Implementation steps:
 
+    1. Convert `margin_radius` from arcseconds to arcminutes, then to a margin order via `hp.margin2order`.
+    2) Enumerate the margin pixels at margin order using `get_margin`.
+    3) Map each row's index at spatial_index_order down to margin order (via `get_lower_order_pixel`) and 
+       keep rows whose mapped pixel is in the margin set.
     """
     # margin_radius is in arcsec; convert to arcmin
     margin_min = margin_radius / 60.0

@@ -77,6 +77,7 @@ def perform_crossmatch(
         The suffixes to append to the column names from the left and right catalogs respectively
     suffix_method : str, default 'all_columns'
         Method to use to add suffixes to columns. Options are:
+
         - "overlapping_columns": only add suffixes to columns that are present in both catalogs
         - "all_columns": add suffixes to all columns from both catalogs
     meta_df : npd.NestedFrame
@@ -224,6 +225,7 @@ def crossmatch_catalog_data(
         (Default value = BuiltInCrossmatchAlgorithm.KD_TREE)
     suffix_method : str | None, default 'all_columns'
         Method to use to add suffixes to columns. Options are:
+        
         - "overlapping_columns": only add suffixes to columns that are present in both catalogs
         - "all_columns": add suffixes to all columns from both catalogs
     log_changes : bool, default True

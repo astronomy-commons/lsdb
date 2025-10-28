@@ -247,9 +247,12 @@ class Catalog(HealpixDataset):
             lead to incomplete crossmatches.
         suffix_method : str or None, default "all_columns"
             Method to use to add suffixes to columns. Options are:
+
             - "overlapping_columns": only add suffixes to columns that are present in both catalogs
             - "all_columns": add suffixes to all columns from both catalogs
-            Warning: This default will change to "overlapping_columns" in a future release.
+
+            .. warning:: This default will change to "overlapping_columns" in a future release.
+
         log_changes : bool, default True
             If True, logs an info message for each column that is being renamed.
             This only applies when suffix_method is 'overlapping_columns'.
@@ -836,9 +839,12 @@ class Catalog(HealpixDataset):
             The name of the resulting catalog to be stored in metadata
         suffix_method : str, default "all_columns"
             Method to use to add suffixes to columns. Options are:
+
             - "overlapping_columns": only add suffixes to columns that are present in both catalogs
             - "all_columns": add suffixes to all columns from both catalogs
-            Warning: This default will change to "overlapping_columns" in a future release.
+
+            .. warning:: This default will change to "overlapping_columns" in a future release.
+
         log_changes : bool, default True
             If True, logs an info message for each column that is being renamed.
             This only applies when suffix_method is 'overlapping_columns'.
@@ -926,9 +932,12 @@ class Catalog(HealpixDataset):
             The name of the resulting catalog to be stored in metadata
         suffix_method : str, default "all_columns"
             Method to use to add suffixes to columns. Options are:
+
             - "overlapping_columns": only add suffixes to columns that are present in both catalogs
             - "all_columns": add suffixes to all columns from both catalogs
-            Warning: This default will change to "overlapping_columns" in a future release.
+
+            .. warning:: This default will change to "overlapping_columns" in a future release.
+
         log_changes : bool, default True
             If True, logs an info message for each column that is being renamed.
             This only applies when suffix_method is 'overlapping_columns'.
@@ -1087,7 +1096,7 @@ class Catalog(HealpixDataset):
         -----
         As noted above, all columns in `list_columns` must have a pyarrow
         ListType dtype. This is needed for proper meta propagation. To convert
-        a list column to this dtype, you can use this command structure:
+        a list column to this dtype, you can use this command structure::
 
             nf= nf.astype({"colname": pd.ArrowDtype(pa.list_(pa.int64()))})
 
@@ -1097,9 +1106,9 @@ class Catalog(HealpixDataset):
         (https://github.com/dask/dask/issues/10139) that columns with list
         values will by default be converted to the string type. This will
         interfere with the ability to recast these to pyarrow lists. We
-        recommend setting the following dask config setting to prevent this:
+        recommend setting the following dask config setting to prevent this::
 
-            `dask.config.set({"dataframe.convert-string":False})`
+            dask.config.set({"dataframe.convert-string":False})
         """
         catalog = super().nest_lists(
             base_columns=base_columns,

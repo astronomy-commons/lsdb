@@ -36,16 +36,18 @@ class MarginCatalogGenerator:
     ) -> None:
         """Initialize a MarginCatalogGenerator
 
-        Args:
-            catalog : Catalog
-                The LSDB catalog to generate margins for
-            margin_order : int
-                The order at which to generate the margin cache
-            margin_threshold : float
-                The size of the margin cache boundary, in arcseconds
-            use_pyarrow_types : bool
-                If True, use pyarrow types. Defaults to True.
-            **kwargs: Arguments to pass to the creation of the catalog info.
+        Parameters
+        ----------
+        catalog : Catalog
+            The LSDB catalog to generate margins for
+        margin_order : int
+            The order at which to generate the margin cache
+        margin_threshold : float
+            The size of the margin cache boundary, in arcseconds
+        use_pyarrow_types : bool
+            If True, use pyarrow types. Defaults to True.
+        **kwargs
+            Arguments to pass to the creation of the catalog info.
         """
         self.dataframe: npd.NestedFrame = catalog.compute().copy()
         self.hc_structure = catalog.hc_structure

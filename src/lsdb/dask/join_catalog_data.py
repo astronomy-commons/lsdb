@@ -83,6 +83,7 @@ def perform_join_on(
         The suffixes to apply to each partition's column names
     suffix_method : str, default 'all_columns'
         Method to use to add suffixes to columns. Options are:
+
         - "overlapping_columns": only add suffixes to columns that are present in both catalogs
         - "all_columns": add suffixes to all columns from both catalogs
 
@@ -162,7 +163,7 @@ def perform_join_nested(
         The name of the nested column in the resulting df to join the right catalog into
     right_meta : npd.NestedFrame
         The meta for the right catalog (needed for how=`left`)
-    how : One of {‘inner’, ‘left’}, default 'inner'
+    how : One of {'inner', 'left'}, default 'inner'
         How to handle the alignment.
 
     Returns
@@ -236,6 +237,7 @@ def perform_join_through(
         The suffixes to apply to each partition's column names
     suffix_method : str, default 'all_columns'
         Method to use to add suffixes to columns. Options are:
+
         - "overlapping_columns": only add suffixes to columns that are present in both catalogs
         - "all_columns": add suffixes to all columns from both catalogs
 
@@ -339,6 +341,7 @@ def perform_merge_asof(
         The direction to perform the merge_asof
     suffix_method : str, default 'all_columns'
         Method to use to add suffixes to columns. Options are:
+
         - "overlapping_columns": only add suffixes to columns that are present in both catalogs
         - "all_columns": add suffixes to all columns from both catalogs
 
@@ -385,9 +388,12 @@ def join_catalog_data_on(
         The suffixes to apply to each partition's column names
     suffix_method : str, default 'all_columns'
         Method to use to add suffixes to columns. Options are:
+
         - "overlapping_columns": only add suffixes to columns that are present in both catalogs
         - "all_columns": add suffixes to all columns from both catalogs
-        Warning: This default will change to "overlapping_columns" in a future release.
+
+        .. warning:: This default will change to "overlapping_columns" in a future release.
+
     log_changes : bool, default True
         If True, logs an info message for each column that is being renamed.
         This only applies when suffix_method is 'overlapping_columns'.
@@ -514,9 +520,11 @@ def join_catalog_data_through(
         the suffixes to apply to each partition's column names
     suffix_method : str, default 'all_columns'
         Method to use to add suffixes to columns. Options are:
+
         - "overlapping_columns": only add suffixes to columns that are present in both catalogs
         - "all_columns": add suffixes to all columns from both catalogs
-        Warning: This default will change to "overlapping_columns" in a future release.
+
+        .. warning:: This default will change to "overlapping_columns" in a future release.
     log_changes : bool, default True
         If True, logs an info message for each column that is being renamed.
         This only applies when suffix_method is 'overlapping_columns'.
@@ -622,9 +630,11 @@ def merge_asof_catalog_data(
         the direction to perform the merge_asof
     suffix_method : str, default 'all_columns'
         Method to use to add suffixes to columns. Options are:
+
         - "overlapping_columns": only add suffixes to columns that are present in both catalogs
         - "all_columns": add suffixes to all columns from both catalogs
-        Warning: This default will change to "overlapping_columns" in a future release.
+
+        .. warning:: This default will change to "overlapping_columns" in a future release.
     log_changes : bool, default True
         If True, logs an info message for each column that is being renamed.
         This only applies when suffix_method is 'overlapping_columns'.

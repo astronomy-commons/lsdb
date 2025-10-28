@@ -54,37 +54,39 @@ class DataframeCatalogLoader:
     ) -> None:
         """Initializes a DataframeCatalogLoader
 
-        Args:
-            dataframe : pd.Dataframe
-                Catalog Pandas Dataframe.
-            ra_column : str or None
-                The name of the right ascension column.
-                By default, case-insensitive versions of 'ra' are detected.
-            dec_column : str or None
-                The name of the declination column.
-                By default, case-insensitive versions of 'dec' are detected.
-            lowest_order : int, default 0
-                The lowest partition order.
-            highest_order : int, default 7
-                The highest partition order.
-            drop_empty_siblings : bool, default False
-                When determining final partitionining, if 3 of 4 pixels are empty,
-                keep only the non-empty pixel
-            partition_size : int or None, default None
-                The desired partition size, in number of rows.
-            threshold : int or None, default None
-                The maximum number of data points per pixel.
-            should_generate_moc : bool, default True
-                Should we generate a MOC (multi-order coverage map) of the data.
-                It can improve performance when joining/crossmatching to other hats-sharded datasets.
-            moc_max_order : int, default 10
-                If generating a MOC, what to use as the max order.
-            use_pyarrow_types : bool, default True
-                If True, the data is backed by pyarrow, otherwise we keep the original data types.
-            schema : pa.Schema or None
-                The arrow schema to create the catalog with. If None, the schema is
-                automatically inferred from the provided DataFrame using `pa.Schema.from_pandas`.
-            **kwargs: Arguments to pass to the creation of the catalog info.
+        Parameters
+        ----------
+        dataframe : pd.Dataframe
+            Catalog Pandas Dataframe.
+        ra_column : str or None
+            The name of the right ascension column.
+            By default, case-insensitive versions of 'ra' are detected.
+        dec_column : str or None
+            The name of the declination column.
+            By default, case-insensitive versions of 'dec' are detected.
+        lowest_order : int, default 0
+            The lowest partition order.
+        highest_order : int, default 7
+            The highest partition order.
+        drop_empty_siblings : bool, default False
+            When determining final partitionining, if 3 of 4 pixels are empty,
+            keep only the non-empty pixel
+        partition_size : int or None, default None
+            The desired partition size, in number of rows.
+        threshold : int or None, default None
+            The maximum number of data points per pixel.
+        should_generate_moc : bool, default True
+            Should we generate a MOC (multi-order coverage map) of the data.
+            It can improve performance when joining/crossmatching to other hats-sharded datasets.
+        moc_max_order : int, default 10
+            If generating a MOC, what to use as the max order.
+        use_pyarrow_types : bool, default True
+            If True, the data is backed by pyarrow, otherwise we keep the original data types.
+        schema : pa.Schema or None
+            The arrow schema to create the catalog with. If None, the schema is
+            automatically inferred from the provided DataFrame using `pa.Schema.from_pandas`.
+        **kwargs
+            Arguments to pass to the creation of the catalog info.
         """
         self.dataframe = npd.NestedFrame(dataframe)
         self.lowest_order = lowest_order
