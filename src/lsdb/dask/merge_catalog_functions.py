@@ -631,14 +631,14 @@ def filter_by_spatial_index_to_margin(
         If the derived margin order is smaller than `order`. In
         that case, a valid margin ring around the target pixel
         cannot be constructed.
-    
+
     Notes
     -----
     Implementation steps:
 
     1. Convert `margin_radius` from arcseconds to arcminutes, then to a margin order via `hp.margin2order`.
     2) Enumerate the margin pixels at margin order using `get_margin`.
-    3) Map each row's index at spatial_index_order down to margin order (via `get_lower_order_pixel`) and 
+    3) Map each row's index at spatial_index_order down to margin order (via `get_lower_order_pixel`) and
        keep rows whose mapped pixel is in the margin set.
     """
     # margin_radius is in arcsec; convert to arcmin
