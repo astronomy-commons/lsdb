@@ -8,6 +8,7 @@ Inter-catalog Methods
 
     Catalog.crossmatch
     Catalog.crossmatch_nested
+    Catalog.concat
     Catalog.merge_map
     Catalog.merge
     Catalog.merge_asof

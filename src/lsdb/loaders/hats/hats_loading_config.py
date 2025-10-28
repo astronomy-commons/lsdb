@@ -84,9 +84,7 @@ class HatsLoadingConfig:
         self.columns = columns
 
     def _make_query_url_params(self) -> dict:
-        """
-        Generates a dictionary of URL parameters with `columns` and `filters` attributes.
-        """
+        """Generates a dictionary of URL parameters with `columns` and `filters` attributes"""
         url_params: dict[str, Any] = {}
 
         if self.columns and len(self.columns) > 0:
@@ -116,7 +114,13 @@ class HatsLoadingConfig:
         return url_params
 
     def make_path_generator(self, hc_catalog: HCHealpixDataset):
-        """Create a PathGenerator with all its required catalog information and URL params"""
+        """Create a PathGenerator with all its required catalog information and URL params
+
+        Parameters
+        ----------
+        hc_catalog: HCHealpixDataset
+            The hats catalog.
+        """
         path_generator = deepcopy(self.path_generator)
         if path_generator is None:
             path_generator = PathGenerator()

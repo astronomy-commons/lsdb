@@ -34,14 +34,22 @@ def perform_write(
     """Writes a pandas dataframe to a single parquet file and returns the total count
     for the partition as well as a count histogram at the specified order.
 
-    Args:
-        df (npd.NestedFrame): dataframe to write to file
-        hp_pixel (HealpixPixel): HEALPix pixel of file to be written
-        base_catalog_dir (path-like): Location of the base catalog directory to write to
-        histogram_order (int): Order of the count histogram
-        **kwargs: other kwargs to pass to pq.write_table method
+    Parameters
+    ----------
+    df : npd.NestedFrame
+        Dataframe to write to file
+    hp_pixel : HealpixPixel
+        HEALPix pixel of file to be written
+    base_catalog_dir : path-like
+        Location of the base catalog directory to write to
+    histogram_order : int
+        Order of the count histogram
+    **kwargs
+        Other kwargs to pass to pq.write_table method
 
-    Returns:
+    Returns
+    -------
+    tuple[int, SparseHistogram]
         The total number of points on the partition and the sparse count histogram
         at the specified order.
     """
@@ -58,11 +66,16 @@ def calculate_histogram(df: npd.NestedFrame, histogram_order: int) -> SparseHist
     """Splits a partition into pixels at a specified order and computes
     the sparse histogram with the respective counts.
 
-    Args:
-        df (npd.NestedFrame): Partition data frame
-        histogram_order (int): Order of the count histogram
+    Parameters
+    ----------
+    df : npd.NestedFrame
+        Partition data frame
+    histogram_order : int
+        Order of the count histogram
 
-    Returns:
+    Returns
+    -------
+    SparseHistogram
         The sparse count histogram for the partition, at the specified order.
     """
     order_pixels = spatial_index_to_healpix(df.index.to_numpy(), target_order=histogram_order)
@@ -91,25 +104,37 @@ def to_hats(
     The output catalog comprises  partitioned parquet files and respective metadata,
     as well as text and CSV files detailing partition, catalog and provenance info.
 
-    Args:
-        catalog (HealpixDataset): A catalog to export
-        base_catalog_path (str): Location where catalog is saved to
-        catalog_name (str): The name of the output catalog
-        default_columns (list[str]): A metadata property with the list of the columns in the
-            catalog to be loaded by default. Uses the default columns from the original hats
-            catalog if they exist.
-        histogram_order (int): The default order for the count histogram. Defaults to the same
-            skymap order as original catalog, or the highest order healpix of the current
-            catalog data partitions.
-        overwrite (bool): If True existing catalog is overwritten
-        create_thumbnail (bool): If True, create a data thumbnail of the catalog for
-            previewing purposes. Defaults to False.
-        skymap_alt_orders (list[int]): We will write a skymap file at the ``histogram_order``,
-            but can also write down-sampled skymaps, for easier previewing of the data.
-        addl_hats_properties (dict): key-value pairs of additional properties to write in the
-            ``hats.properties`` file.
-        error_if_empty (bool): If True, raises an error if the output catalog is empty
-        **kwargs: Arguments to pass to the parquet write operations
+    Parameters
+    ----------
+    catalog : HealpixDataset
+        A catalog to export
+    base_catalog_path : path-like
+        Location where catalog is saved to
+    catalog_name : str or None, default None
+        The name of the output catalog
+    default_columns : list[str] or None, default None
+        A metadata property with the list of the columns in the
+        catalog to be loaded by default. Uses the default columns from the original hats
+        catalog if they exist.
+    histogram_order : int or None, default None
+        The default order for the count histogram. Defaults to the same
+        skymap order as original catalog, or the highest order healpix of the current
+        catalog data partitions.
+    overwrite : bool, default False
+        If True existing catalog is overwritten
+    create_thumbnail : bool, default False
+        If True, create a data thumbnail of the catalog for
+        previewing purposes. Defaults to False.
+    skymap_alt_orders : list[int] or None, default None
+        We will write a skymap file at the ``histogram_order``,
+        but can also write down-sampled skymaps, for easier previewing of the data.
+    addl_hats_properties : dict or None, default None
+        key-value pairs of additional properties to write in the
+        ``hats.properties`` file.
+    error_if_empty : bool, default True
+        If True, raises an error if the output catalog is empty
+    **kwargs :
+        Arguments to pass to the parquet write operations
     """
     # Create the output directory for the catalog
     base_catalog_path = hc.io.file_io.get_upath(base_catalog_path)
@@ -224,14 +249,22 @@ def write_partitions(
     count histogram for each partition. The histogram is either of order 8
     or the maximum pixel order in the catalog, whichever is greater.
 
-    Args:
-        catalog (HealpixDataset): A catalog to export
-        base_catalog_dir_fp (path-like): Path to the base directory of the catalog
-        histogram_order: The order of the count histogram to generate
-        error_if_empty: If True, raises an error if the output catalog is empty
-        **kwargs: Arguments to pass to the parquet write operations
+    Parameters
+    ----------
+    catalog : HealpixDataset
+        A catalog to export
+    base_catalog_dir_fp : path-like
+        Path to the base directory of the catalog
+    histogram_order : int
+        The order of the count histogram to generate
+    error_if_empty : bool, default True
+        If True, raises an error if the output catalog is empty
+    **kwargs
+        Arguments to pass to the parquet write operations
 
-    Returns:
+    Returns
+    -------
+    tuple[list[HealpixPixel], list[int], list[SparseHistogram]]
         A tuple with the array of non-empty pixels, the array with the total counts
         as well as the array with the sparse count histograms.
     """
@@ -273,13 +306,20 @@ def create_modified_catalog_structure(
 ) -> HCHealpixDataset:
     """Creates a modified version of the HATS catalog structure
 
-    Args:
-        catalog_structure (hc.catalog.Catalog): HATS catalog structure
-        catalog_base_dir (UPath): Base location for the catalog
-        catalog_name (str): The name of the catalog to be saved
-        **kwargs: The remaining parameters to be updated in the catalog info object
+    Parameters
+    ----------
+    catalog_structure : HCHealpixDataset
+        HATS catalog structure
+    catalog_base_dir : path-like
+        Base location for the catalog
+    catalog_name : str
+        The name of the catalog to be saved
+    **kwargs
+        The remaining parameters to be updated in the catalog info object
 
-    Returns:
+    Returns
+    -------
+    HCHealpixDataset
         A HATS structure, modified with the parameters provided.
     """
     new_hc_structure = copy(catalog_structure)

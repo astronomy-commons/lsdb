@@ -18,13 +18,7 @@ if TYPE_CHECKING:
 
 
 class MarginCatalog(HealpixDataset):
-    """LSDB Catalog DataFrame to contain the "margin" of another HATS catalog.
-    spatial operations.
-
-    Attributes:
-        hc_structure: `hats.MarginCatalog` object representing the structure
-                      and metadata of the HATS catalog
-    """
+    """LSDB Catalog that contains the margin of another HATS catalog."""
 
     hc_structure: hc.catalog.MarginCatalog
 

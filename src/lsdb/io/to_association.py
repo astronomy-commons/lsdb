@@ -28,14 +28,22 @@ def perform_write(
     """Writes a pandas dataframe to a single parquet file and returns the total count
     for the partition as well as a count histogram at the specified order.
 
-    Args:
-        df (npd.NestedFrame): dataframe to write to file
-        hp_pixel (HealpixPixel): HEALPix pixel of file to be written
-        base_catalog_dir (path-like): Location of the base catalog directory to write to
-        separation_column (str): The name of the crossmatch separation column
-        **kwargs: other kwargs to pass to pq.write_table method
+    Parameters
+    ----------
+    df : npd.NestedFrame
+        Dataframe to write to file
+    hp_pixel : HealpixPixel
+        HEALPix pixel of file to be written
+    base_catalog_dir : path-like
+        Location of the base catalog directory to write to
+    separation_column : str or None, default None
+        The name of the crossmatch separation column
+    **kwargs
+        Other kwargs to pass to pq.write_table method
 
-    Returns:
+    Returns
+    -------
+    tuple[int, float]
         The total number of points on the partition and the maximum separation between
         any two of its points. It returns a maximum separation of -1 if a separation
         column is not provided.
@@ -74,69 +82,83 @@ def to_association(
     primary and join OBJECT catalogs, so that the association table can be used
     to perform equijoins on the two sides and recreate the crossmatch.
 
-    Args:
-        catalog (HealpixDataset): A catalog to export
-        base_catalog_path (str): Location where catalog is saved to
-        catalog_name (str): The name of the output catalog
-        primary_catalog_dir (path-like): The path to the primary catalog
-        primary_column_association (str): The column in the association catalog
-            that matches the primary (left) side of join
-        primary_id_column (str): The id column in the primary catalog
-        join_catalog_dir (path-like): The path to the join catalog
-        join_column_association (str): The column in the association catalog
-            that matches the joining (right) side of join
-        join_id_column (str): The id column in the join catalog
-        separation_column (str): The name of the crossmatch separation column
-        overwrite (bool): If True existing catalog is overwritten
-        **kwargs: Arguments to pass to the parquet write operations
+    Parameters
+    ----------
+    catalog : HealpixDataset
+        A catalog to export
+    base_catalog_path : path-like
+        Location where catalog is saved to
+    catalog_name : str or None, default None
+        The name of the output catalog
+    primary_catalog_dir : path-like or None, default None
+        The path to the primary catalog
+    primary_column_association : str or None, default None
+        The column in the association catalog
+        that matches the primary (left) side of join
+    primary_id_column : str or None, default none
+        The id column in the primary catalog
+    join_catalog_dir : path-like or None, default None
+        The path to the join catalog
+    join_column_association : str or None, default None
+        The column in the association catalog
+        that matches the joining (right) side of join
+    join_id_column : str or None, default None
+        The id column in the join catalog
+    separation_column : str or None, default None
+        The name of the crossmatch separation column
+    overwrite : bool, default False
+        If True existing catalog is overwritten
+    **kwargs
+        Arguments to pass to the parquet write operations
 
-    Notes:
-        To configure the appropriate column names, consider two tables that do not
-        share an identifier space (e.g. two surveys), and the way you could go about
-        joining them together with an association table::
+    Notes
+    -----
+    To configure the appropriate column names, consider two tables that do not
+    share an identifier space (e.g. two surveys), and the way you could go about
+    joining them together with an association table::
 
-            TABLE GAIA_SOURCE {
-                DESIGNATION <primary key>
-            }
+        TABLE GAIA_SOURCE {
+            DESIGNATION <primary key>
+        }
 
-            TABLE SDSS {
-                SDSS_ID <primary key>
-            }
+        TABLE SDSS {
+            SDSS_ID <primary key>
+        }
 
-        And a SQL query to join them with as association table would look like::
+    And a SQL query to join them with as association table would look like::
 
-            SELECT g.DESIGNATION as gaia_id, s.SDSS_ID as sdss_id
-            FROM GAIA_SOURCE g
-            JOIN association_table a
-                ON a.primary_id_column = g.DESIGNATION
-            JOIN SDSS s
-                ON a.join_id_column = s.SDSS_ID
+        SELECT g.DESIGNATION as gaia_id, s.SDSS_ID as sdss_id
+        FROM GAIA_SOURCE g
+        JOIN association_table a
+            ON a.primary_id_column = g.DESIGNATION
+        JOIN SDSS s
+            ON a.join_id_column = s.SDSS_ID
 
-        Consider instead an object table, joining to a detection table::
+    Consider instead an object table, joining to a detection table::
 
-            TABLE OBJECT {
-                ID <primary key>
-            }
+        TABLE OBJECT {
+            ID <primary key>
+        }
 
-            TABLE DETECTION {
-                DETECTION_ID <primary key>
-                OBJECT_ID <foreign key>
-            }
+        TABLE DETECTION {
+            DETECTION_ID <primary key>
+            OBJECT_ID <foreign key>
+        }
 
-        And a SQL query to join them would look like::
+    And a SQL query to join them would look like::
 
-            SELECT o.ID as object_id, d.DETECTION_ID as detection_id
-            FROM OBJECT o
-            JOIN DETECTION d
-                ON o.ID = d.OBJECT_ID
+        SELECT o.ID as object_id, d.DETECTION_ID as detection_id
+        FROM OBJECT o
+        JOIN DETECTION d
+            ON o.ID = d.OBJECT_ID
 
-        This is important, as there are three different column names, but really only
-        two meaningful identifiers. For this example, the arguments for this method would
-        be as follows::
+    This is important, as there are three different column names, but really only
+    two meaningful identifiers. For this example, the arguments for this method would
+    be as follows::
 
-            primary_id_column = "ID",
-            join_to_primary_id_column = "OBJECT_ID",
-            join_id_column = "DETECTION_ID",
+        primary_id_column = "ID",
+        join_to_primary_id_column = "OBJECT_ID",
+        join_id_column = "DETECTION_ID",
     """
     column_args = _check_catalogs_and_columns(
         catalog.columns,
@@ -202,12 +224,20 @@ def write_partitions(
     count histogram for each partition. The histogram is either of order 8
     or the maximum pixel order in the catalog, whichever is greater.
 
-    Args:
-        catalog (HealpixDataset): A catalog to export
-        base_catalog_dir_fp (path-like): Path to the base directory of the catalog
-        **kwargs: Arguments to pass to the parquet write operations
+    Parameters
+    ----------
+    catalog : HealpixDataset
+        A catalog to export
+    base_catalog_dir_fp : path-like
+        Path to the base directory of the catalog
+    separation_column : str or None
+        The name of the crossmatch separation column
+    **kwargs
+        Arguments to pass to the parquet write operations
 
-    Returns:
+    Returns
+    -------
+    tuple[list[HealpixPixel], list[int], list[float]]
         A tuple with the array of non-empty pixels, the array with the total counts
         as well as the array with the maximum point separations.
     """
@@ -254,8 +284,10 @@ def _check_catalogs_and_columns(
 ):
     """Helper function to perform validation of user-inputted catalog and column arguments.
 
-    Returns:
-        dictionary to be used in creation of TableProperties
+    Returns
+    -------
+    dict
+        Dictionary to be used in creation of TableProperties
     """
     # Verify that the association columns are present.
     if not primary_column_association:
