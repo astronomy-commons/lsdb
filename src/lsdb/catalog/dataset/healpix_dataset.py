@@ -442,6 +442,13 @@ class HealpixDataset(Dataset):
         seed : int or None, default None
             Random seed
 
+        Returns
+        -------
+        npd.NestedFrame
+            A NestedFrame with up to `n` rows of data.
+
+        Notes
+        -----            
         As with `NestedFrame.sample`, `n` is an approximate number of
         items to return.  The exact number of elements selected will
         depend on how your data is partitioned.  (In practice, it
@@ -450,11 +457,6 @@ class HealpixDataset(Dataset):
         The `seed` argument is passed directly to `random.seed` in order
         to assist with creating predictable outputs when wanted, such
         as in unit tests.
-
-        Returns
-        -------
-        npd.NestedFrame
-            A NestedFrame with up to `n` rows of data.
         """
         random.seed(seed)
         # Get the number of partitions so that we can range-check the input argument
@@ -483,6 +485,13 @@ class HealpixDataset(Dataset):
         seed : int or None, default None
             Random seed
 
+        Returns
+        -------
+        npd.NestedFrame
+            A NestedFrame with up to `n` rows of data.
+
+        Notes
+        -----
         As with `.sample`, `n` is an approximate number of items to
         return.  The exact number of elements selected will depend on
         how your data is partitioned.  (In practice, it should be
@@ -491,11 +500,6 @@ class HealpixDataset(Dataset):
         The `seed` argument is passed directly to `random.seed` in order
         to assist with creating predictable outputs when wanted, such
         as in unit tests.
-
-        Returns
-        -------
-        npd.NestedFrame
-            A NestedFrame with up to `n` rows of data.
         """
         random.seed(seed)
         dfs = []
