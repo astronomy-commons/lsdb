@@ -223,17 +223,17 @@ class Catalog(HealpixDataset):
                     pd.DataFrame({"_dist_arcsec": pd.Series(dtype=np.dtype("float64"))})
 
                 The class will have been initialized with the following parameters, which the
-                crossmatch function should use:
+                crossmatch function should use::
 
-                - left: npd.NestedFrame,
-                - right: npd.NestedFrame,
-                - left_order: int,
-                - left_pixel: int,
-                - right_order: int,
-                - right_pixel: int,
-                - left_metadata: hc.catalog.Catalog,
-                - right_metadata: hc.catalog.Catalog,
-                - right_margin_hc_structure: hc.margin.MarginCatalog,
+                    - left: npd.NestedFrame
+                    - right: npd.NestedFrame
+                    - left_order: int
+                    - left_pixel: int
+                    - right_order: int
+                    - right_pixel: int
+                    - left_metadata: hc.catalog.Catalog
+                    - right_metadata: hc.catalog.Catalog
+                    - right_margin_hc_structure: hc.margin.MarginCatalog
 
                 You may add any additional keyword argument parameters to the crossmatch
                 function definition, and the user will be able to pass them in as kwargs in the
@@ -376,17 +376,17 @@ class Catalog(HealpixDataset):
                     pd.DataFrame({"_dist_arcsec": pd.Series(dtype=np.dtype("float64"))})
 
                 The class will have been initialized with the following parameters, which the
-                crossmatch function should use:
+                crossmatch function should use::
 
-                - left: npd.NestedFrame,
-                - right: npd.NestedFrame,
-                - left_order: int,
-                - left_pixel: int,
-                - right_order: int,
-                - right_pixel: int,
-                - left_metadata: hc.catalog.Catalog,
-                - right_metadata: hc.catalog.Catalog,
-                - right_margin_hc_structure: hc.margin.MarginCatalog,
+                    - left: npd.NestedFrame
+                    - right: npd.NestedFrame
+                    - left_order: int
+                    - left_pixel: int
+                    - right_order: int
+                    - right_pixel: int
+                    - left_metadata: hc.catalog.Catalog
+                    - right_metadata: hc.catalog.Catalog
+                    - right_margin_hc_structure: hc.margin.MarginCatalog
 
                 You may add any additional keyword argument parameters to the crossmatch
                 function definition, and the user will be able to pass them in as kwargs in the
