@@ -448,7 +448,7 @@ class HealpixDataset(Dataset):
             A NestedFrame with up to `n` rows of data.
 
         Notes
-        -----            
+        -----
         As with `NestedFrame.sample`, `n` is an approximate number of
         items to return.  The exact number of elements selected will
         depend on how your data is partitioned.  (In practice, it
