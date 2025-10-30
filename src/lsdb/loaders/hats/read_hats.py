@@ -40,7 +40,7 @@ def read_hats(
     margin_cache: str | Path | UPath | None = None,
     error_empty_filter: bool = True,
     filters: list[tuple[str]] | None = None,
-    path_generator: Callable[[UPath, HealpixPixel, dict | None, str], UPath] | None = None,
+    path_generator: Callable[[UPath, HealpixPixel, dict | None, str], UPath] = hc.io.pixel_catalog_file,
     **kwargs,
 ) -> Dataset:
     """Load catalog from a HATS path. See open_catalog()."""
@@ -56,7 +56,7 @@ def open_catalog(
     margin_cache: str | Path | UPath | None = None,
     error_empty_filter: bool = True,
     filters: list[tuple[str]] | None = None,
-    path_generator: Callable[[UPath, HealpixPixel, dict | None, str], UPath] | None = None,
+    path_generator: Callable[[UPath, HealpixPixel, dict | None, str], UPath] = hc.io.pixel_catalog_file,
     **kwargs,
 ) -> Dataset:
     """Open a catalog from a HATS path.
@@ -117,7 +117,7 @@ def open_catalog(
     filters : list[tuple[str]] or None, default None
         Filters to apply when reading parquet files. These may be applied as pyarrow
         filters or URL parameters.
-    path_generator : Callable[[UPath, HealpixPixel, dict | None, str], UPath] or None
+    path_generator : Callable[[UPath, HealpixPixel, dict | None, str], UPath], optional
         The function `f(catalog_base_dir, pixel, query_params, npix_suffix)`
         that translates HEALPix into partition data paths. Its arguments are the following:
           - catalog_base_dir: UPath - path passed to `open_catalog`/`read_hats`
@@ -125,7 +125,7 @@ def open_catalog(
           - query_params: dict | None - dictionary used to generate HTTP query string
           - npix_suffix: str - "/" for leaf directory, filename suffix like ".parquet" for leaf file
         The catalog metadata files need to live where the HATS standard expects them.
-        By default, the path generator is `hats.io.pixel_catalog_file`.
+        Defaults to `hats.io.pixel_catalog_file`.
     **kwargs
         Arguments to pass to the pandas parquet file reader
 
@@ -365,20 +365,14 @@ def _load_dask_df_and_map(catalog: HCHealpixDataset, config) -> tuple[nd.NestedF
     divisions = get_pixels_divisions(ordered_pixels)
     dask_meta_schema = _load_dask_meta_schema(catalog, config)
     index_column = dask_meta_schema.index.name
-
     query_url_params = None
     if isinstance(file_io.get_upath(catalog.catalog_base_dir).fs, HTTPFileSystem):
         query_url_params = config.make_query_url_params()
-
-    path_generator = config.path_generator
-    if path_generator is None:
-        path_generator = hc.io.pixel_catalog_file
-
     if len(ordered_pixels) > 0:
         ddf = nd.NestedFrame.from_map(
             read_pixel,
             ordered_pixels,
-            path_generator=path_generator,
+            path_generator=config.path_generator,
             catalog_base_dir=catalog.catalog_base_dir,
             npix_suffix=catalog.catalog_info.npix_suffix,
             query_url_params=query_url_params,

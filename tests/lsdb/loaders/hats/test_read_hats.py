@@ -19,8 +19,7 @@ from lsdb.core.search.index_search import IndexSearch
 from lsdb.core.search.region_search import BoxSearch, ConeSearch, OrderSearch, PolygonSearch
 
 
-def test_read_hats(small_sky_order1_dir, small_sky_order1_hats_catalog, mocker, helpers):
-    path_generator = mocker.spy(hc.io, hc.io.pixel_catalog_file.__name__)
+def test_read_hats(small_sky_order1_dir, small_sky_order1_hats_catalog, helpers):
     catalog = lsdb.open_catalog(small_sky_order1_dir)
     assert isinstance(catalog, lsdb.Catalog)
     assert isinstance(catalog._ddf, nd.NestedFrame)
@@ -29,7 +28,6 @@ def test_read_hats(small_sky_order1_dir, small_sky_order1_hats_catalog, mocker, 
     assert catalog.get_healpix_pixels() == small_sky_order1_hats_catalog.get_healpix_pixels()
     assert len(catalog.compute().columns) == 5
     assert isinstance(catalog.compute(), npd.NestedFrame)
-    path_generator.assert_called()
     helpers.assert_divisions_are_correct(catalog)
     helpers.assert_index_correct(catalog)
     helpers.assert_schema_correct(catalog)
