@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Callable
 
 import hats as hc
 import nested_pandas as npd
 import numpy as np
 import pyarrow as pa
+from fsspec.implementations.http import HTTPFileSystem
 from hats.catalog import CatalogType
 from hats.catalog.catalog_collection import CatalogCollection
 from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
@@ -27,7 +29,6 @@ from lsdb.core.search.abstract_search import AbstractSearch
 from lsdb.dask.divisions import get_pixels_divisions
 from lsdb.io.schema import get_arrow_schema
 from lsdb.loaders.hats.hats_loading_config import HatsLoadingConfig
-from lsdb.loaders.hats.path_generator import PathGenerator
 
 MAX_PYARROW_FILTERS = 10
 
@@ -39,7 +40,7 @@ def read_hats(
     margin_cache: str | Path | UPath | None = None,
     error_empty_filter: bool = True,
     filters: list[tuple[str]] | None = None,
-    path_generator: PathGenerator | None = None,
+    path_generator: Callable[[UPath, HealpixPixel, dict | None, str], UPath] | None = None,
     **kwargs,
 ) -> Dataset:
     """Load catalog from a HATS path. See open_catalog()."""
@@ -55,7 +56,7 @@ def open_catalog(
     margin_cache: str | Path | UPath | None = None,
     error_empty_filter: bool = True,
     filters: list[tuple[str]] | None = None,
-    path_generator: PathGenerator | None = None,
+    path_generator: Callable[[UPath, HealpixPixel, dict | None, str], UPath] | None = None,
     **kwargs,
 ) -> Dataset:
     """Open a catalog from a HATS path.
@@ -116,8 +117,14 @@ def open_catalog(
     filters : list[tuple[str]] or None, default None
         Filters to apply when reading parquet files. These may be applied as pyarrow
         filters or URL parameters.
-    path_generator : PathGenerator or None
-        The path generator instance that addresses the discoverability of leaf HEALPix parquet.
+    path_generator : Callable[[UPath, HealpixPixel, dict | None, str], UPath] or None
+        The path generator callable that translates HEALPix into partition data paths.
+        The callable arguments are the following::
+          - catalog_base_dir: UPath
+          - pixel: HealpixPixel
+          - query_params: dict | None
+          - npix_suffix: str
+        By default, `hats.io.pixel_catalog_file` is used.
     **kwargs
         Arguments to pass to the pandas parquet file reader
 
@@ -357,12 +364,23 @@ def _load_dask_df_and_map(catalog: HCHealpixDataset, config) -> tuple[nd.NestedF
     divisions = get_pixels_divisions(ordered_pixels)
     dask_meta_schema = _load_dask_meta_schema(catalog, config)
     index_column = dask_meta_schema.index.name
-    config.make_path_generator(catalog)
+
+    query_url_params = None
+    if isinstance(file_io.get_upath(catalog.catalog_base_dir).fs, HTTPFileSystem):
+        query_url_params = config.make_query_url_params()
+
+    path_generator = config.path_generator
+    if path_generator is None:
+        path_generator = hc.io.pixel_catalog_file
+
     if len(ordered_pixels) > 0:
         ddf = nd.NestedFrame.from_map(
             read_pixel,
             ordered_pixels,
-            path_generator=config.path_generator,
+            path_generator=path_generator,
+            catalog_base_dir=catalog.catalog_base_dir,
+            npix_suffix=catalog.catalog_info.npix_suffix,
+            query_url_params=query_url_params,
             columns=config.columns,
             schema=catalog.schema,
             filters=config.filters,
@@ -380,7 +398,10 @@ def _load_dask_df_and_map(catalog: HCHealpixDataset, config) -> tuple[nd.NestedF
 def read_pixel(
     pixel: HealpixPixel,
     *,
-    path_generator: PathGenerator,
+    path_generator: Callable[[UPath, HealpixPixel, dict | None, str], UPath],
+    catalog_base_dir: UPath,
+    npix_suffix: str,
+    query_url_params: dict | None = None,
     index_column: str = SPATIAL_INDEX_COLUMN,
     columns: list[str] | str | None = None,
     schema: pa.Schema | None = None,
@@ -395,7 +416,7 @@ def read_pixel(
     ----------
     pixel : HealpixPixel
         The HEALPix file whose file is to be read.
-    path_generator : PathGenerator
+    path_generator : Callable[[UPath, HealpixPixel, dict | None, str], UPath]
         The object that translates HEALPix to their respective files.
     index_column : str, default SPATIAL_INDEX_COLUMN
         The index column.
@@ -410,7 +431,12 @@ def read_pixel(
         The pixel data, as read from its parquet file.
     """
     return _read_parquet_file(
-        path_generator(pixel),
+        path_generator(
+            catalog_base_dir,
+            pixel,
+            query_url_params,
+            npix_suffix,
+        ),
         columns=columns,
         schema=schema,
         index_column=index_column,
