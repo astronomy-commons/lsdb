@@ -42,10 +42,9 @@ class AbstractCrossmatchAlgorithm(ABC):
     - left_pixel: int,
     - right_order: int,
     - right_pixel: int,
-    - left_metadata: hc.catalog.Catalog,
-    - right_metadata: hc.catalog.Catalog,
-    - right_margin_hc_structure: hc.margin.MarginCatalog,
-    - suffixes: Tuple[str, str]
+    - left_catalog_info: hc.catalog.TableProperties,
+    - right_catalog_info: hc.catalog.TableProperties,
+    - right_margin_catalog_info: hc.catalog.TableProperties,
 
     You may add any additional keyword argument parameters to the crossmatch
     function definition, and the user will be able to pass them in as kwargs in the
@@ -71,21 +70,24 @@ class AbstractCrossmatchAlgorithm(ABC):
         """Initializes a crossmatch algorithm
 
         Args:
-            left (pd.DataFrame): Data from the pixel in the left tree
-            right (pd.DataFrame): Data from the pixel in the right tree
-            left_order (int): The HEALPix order of the left pixel
-            left_pixel (int): The HEALPix pixel number in NESTED ordering of the left pixel
-            right_order (int): The HEALPix order of the right pixel
-            right_pixel (int): The HEALPix pixel number in NESTED ordering of the right pixel
-            left_catalog_info (hats.TableProperties): The hats TableProperties object with the
-                metadata of the left catalog
-            right_catalog_info (hats.TableProperties): The hats TableProperties object with the
-                metadata of the right catalog
-            right_margin_catalog_info (hats.TableProperties): The hats TableProperties
-                objects with the metadata of the right **margin** catalog
-            suffixes (Tuple[str,str]): A pair of suffixes to be appended to the end of each column
-                name, with the first appended to the left columns and the second to the right
-                columns
+            left : npd.NestedFrame
+                Data from the pixel in the left tree
+            right : npd.NestedFrame
+                Data from the pixel in the right tree
+            left_order : int
+                The HEALPix order of the left pixel
+            left_pixel : int
+                The HEALPix pixel number in NESTED ordering of the left pixel
+            right_order : int
+                The HEALPix order of the right pixel
+            right_pixel : int
+                The HEALPix pixel number in NESTED ordering of the right pixel
+            left_catalog_info : hats.TableProperties
+                The hats TableProperties object with the metadata of the left catalog
+            right_catalog_info : hc.catalog.TableProperties
+                The hats TableProperties object with the metadata of the right catalog
+            right_margin_catalog_info : hc.catalog.TableProperties or None
+                The hats TableProperties objects with the metadata of the right **margin** catalog
         """
         self.left = left.copy(deep=False)
         self.right = right.copy(deep=False)
@@ -98,7 +100,23 @@ class AbstractCrossmatchAlgorithm(ABC):
         self.right_margin_catalog_info = right_margin_catalog_info
 
     def crossmatch(self, suffixes, suffix_method="all_columns", **kwargs) -> npd.NestedFrame:
-        """Perform a crossmatch"""
+        """Perform a crossmatch.
+
+        Parameters
+        ----------
+        suffixes : tuple[str,str]
+            A pair of suffixes to be appended to the end of each column name, with the first
+            appended to the left columns and the second to the right columns.
+        suffix_method, default 'all_columns'
+             The suffix method to use.
+        **kwargs
+            Additional keyword arguments to pass to the crossmatch method.
+
+        Returns
+        -------
+        npd.NestedFrame
+            The dataframe containing the results of the crossmatch.
+        """
         l_inds, r_inds, extra_cols = self.perform_crossmatch(**kwargs)
         if not len(l_inds) == len(r_inds) == len(extra_cols):
             raise ValueError(
@@ -107,7 +125,20 @@ class AbstractCrossmatchAlgorithm(ABC):
         return self._create_crossmatch_df(l_inds, r_inds, extra_cols, suffixes, suffix_method)
 
     def crossmatch_nested(self, nested_column_name, **kwargs) -> npd.NestedFrame:
-        """Perform a crossmatch"""
+        """Perform a crossmatch and store results in nested column.
+
+        Parameters
+        ----------
+        nested_column_name : str
+            The name of the column where the matches should be stored.
+        **kwargs
+            Additional keyword arguments to pass to the crossmatch method.
+
+        Returns
+        -------
+        npd.NestedFrame
+            The dataframe containing the results of the crossmatch.
+        """
         l_inds, r_inds, extra_cols = self.perform_crossmatch(**kwargs)
         if not len(l_inds) == len(r_inds) == len(extra_cols):
             raise ValueError(
@@ -121,13 +152,13 @@ class AbstractCrossmatchAlgorithm(ABC):
         Any additional keyword arguments needed can be added to this method in the subclass, and the user
         will be able to pass them through the `Catalog.crossmatch` method.
 
-        Returns:
-            A tuple of:
-                - a numpy array with the indices of the matching rows from the left table
-                - a numpy array with the indices of the matching rows from the right table
-                - a pandas dataframe with any additional columns generated by the algorithm
-
-            These all must have the same lengths
+        Returns
+        -------
+        tuple[np.ndarray, np.ndarray, pd.DataFrame]
+            - a numpy array with the indices of the matching rows from the left table
+            - a numpy array with the indices of the matching rows from the right table
+            - a pandas dataframe with any additional columns generated by the algorithm
+        These all must have the same lengths.
         """
         raise NotImplementedError(
             "CrossmatchAlgorithm must either implement `perform_crossmatch` or overwrite `crossmatch`"
@@ -144,6 +175,13 @@ class AbstractCrossmatchAlgorithm(ABC):
         expensive ``.compute()`` call.
 
         This must accept any additional arguments the `crossmatch` method accepts.
+
+        Parameters
+        ----------
+        left: Catalog
+            The left catalog for the crossmatch.
+        right: Catalog
+            The right catalog for the crossmatch.
         """
         # Check that we have the appropriate columns in our dataset.
         column_names = left._ddf.columns
@@ -197,14 +235,25 @@ class AbstractCrossmatchAlgorithm(ABC):
     ) -> npd.NestedFrame:
         """Creates a df containing the crossmatch result from matching indices and additional columns
 
-        Args:
-            left_idx (np.ndarray): indices of the matching rows from the left table
-            right_idx (np.ndarray): indices of the matching rows from the right table
-            extra_cols (pd.DataFrame): dataframe containing additional columns from crossmatching
+        Parameters
+        ----------
+        left_idx : np.ndarray
+            indices of the matching rows from the left table
+        right_idx : np.ndarray
+            indices of the matching rows from the right table
+        extra_cols : pd.DataFrame
+            dataframe containing additional columns from crossmatching
+        suffixes : tuple[str,str]
+            A pair of suffixes to be appended to the end of each column name, with the first
+            appended to the left columns and the second to the right columns.
+        suffix_method, default 'all_columns'
+             The suffix method to use.
 
-        Returns:
-            A dataframe with the matching rows from the left and right table concatenated together, with the
-            additional columns added
+        Returns
+        -------
+        npd.NestedFrame
+            A dataframe with the matching rows from the left and right table
+            concatenated together, with the additional columns added.
         """
         # rename columns so no same names during merging
         self.left, self.right = apply_suffixes(
@@ -235,14 +284,22 @@ class AbstractCrossmatchAlgorithm(ABC):
     ) -> npd.NestedFrame:
         """Creates a df containing the crossmatch result from matching indices and additional columns
 
-        Args:
-            left_idx (np.ndarray): indices of the matching rows from the left table
-            right_idx (np.ndarray): indices of the matching rows from the right table
-            extra_cols (pd.DataFrame): dataframe containing additional columns from crossmatching
+        Parameters
+        ----------
+        left_idx : np.ndarray
+            Indices of the matching rows from the left table
+        right_idx : np.ndarray
+            Indices of the matching rows from the right table
+        extra_cols : pd.DataFrame
+            Dataframe containing additional columns from crossmatching
+        nested_column_name : str
+            The name of the column where the matches should be stored.
 
-        Returns:
-            A dataframe with the matching rows from the left and right table concatenated together, with the
-            additional columns added
+        Returns
+        -------
+        npd.NestedFrame
+            A dataframe with the matching rows from the left and right table
+            concatenated together, with the additional columns added.
         """
         # concat dataframes together
         index_name = self.left.index.name if self.left.index.name is not None else "index"

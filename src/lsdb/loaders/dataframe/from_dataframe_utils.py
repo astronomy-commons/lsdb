@@ -14,12 +14,18 @@ def _generate_dask_dataframe(
 ) -> tuple[nd.NestedFrame, int]:
     """Create the Dask Dataframe from the list of HEALPix pixel Dataframes
 
-    Args:
-        pixel_dfs (List[npd.NestedFrame]): The list of HEALPix pixel Dataframes
-        pixels (List[HealpixPixel]): The list of HEALPix pixels in the catalog
-        use_pyarrow_types (bool): If True, use pyarrow types. Defaults to True.
+    Parameters
+    ----------
+    pixel_dfs : list[npd.NestedFrame]
+        The list of HEALPix pixel Dataframes
+    pixels : list[HealpixPixel]
+        The list of HEALPix pixels in the catalog
+    use_pyarrow_types : bool, default True
+        If True, use pyarrow types.
 
-    Returns:
+    Returns
+    -------
+    tuple[nd.NestedFrame, int]
         The catalog's Dask Dataframe and its total number of rows.
     """
     pixel_dfs = [_convert_dtypes_to_pyarrow(df) for df in pixel_dfs] if use_pyarrow_types else pixel_dfs
@@ -33,10 +39,14 @@ def _generate_dask_dataframe(
 def _convert_dtypes_to_pyarrow(df: pd.DataFrame) -> pd.DataFrame:
     """Transform the columns (and index) of a Pandas DataFrame to pyarrow types.
 
-    Args:
-        df (pd.DataFrame): A Pandas DataFrame
+    Parameters
+    ----------
+    df : pd.DataFrame
+        A Pandas DataFrame
 
-    Returns:
+    Returns
+    -------
+    pd.DataFrame
         A new DataFrame, with columns of pyarrow types. The return value is a
         shallow copy of the initial DataFrame to avoid copying the data.
     """
@@ -52,10 +62,14 @@ def _convert_dtypes_to_pyarrow(df: pd.DataFrame) -> pd.DataFrame:
 def _format_margin_partition_dataframe(dataframe: npd.NestedFrame) -> npd.NestedFrame:
     """Finalizes the dataframe for a margin catalog partition
 
-    Args:
-        dataframe (pd.DataFrame): The partition dataframe
+    Parameters
+    ----------
+    dataframe : pd.DataFrame
+        The partition dataframe
 
-    Returns:
+    Returns
+    -------
+    npd.NestedFrame
         The dataframe for a margin partition with the data points and
         the respective pixel information.
     """
@@ -68,6 +82,16 @@ def _has_named_index(dataframe: npd.NestedFrame) -> bool:
 
     This will reject dataframes with no index name for a single index,
     or empty names for multi-index (e.g. [] or [None]).
+
+    Parameters
+    ----------
+    dataframe : npd.NestedFrame
+        The partition dataframe
+
+    Returns
+    -------
+    bool
+        True if the dataframe has a meaningful index, False otherwise.
     """
     if dataframe.index.name is not None:
         ## Single index with a given name.

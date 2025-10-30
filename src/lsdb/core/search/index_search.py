@@ -31,7 +31,18 @@ class IndexSearch(AbstractSearch):
         self.index_catalogs = index_catalogs
 
     def perform_hc_catalog_filter(self, hc_structure: HCCatalogTypeVar) -> HCCatalogTypeVar:
-        """Determine the pixels for which there is a result in each field"""
+        """Determine the pixels for which there is a result in each field
+
+        Parameters
+        ----------
+        hc_structure: HCCatalogTypeVar
+            The hats catalog where partitions will be filtered.
+
+        Returns
+        -------
+        HCCatalogTypeVar
+            The filtered hats catalog.
+        """
         all_pixels = set(hc_structure.get_healpix_pixels())
         for field_name, field_value in self.values.items():
             field_value = field_value if isinstance(field_value, list) else [field_value]
@@ -40,7 +51,20 @@ class IndexSearch(AbstractSearch):
         return hc_structure.filter_from_pixel_list(list(all_pixels))
 
     def search_points(self, frame: npd.NestedFrame, _) -> npd.NestedFrame:
-        """Determine the search results within a data frame"""
+        """Determine the search results within a data frame
+
+        Parameters
+        ----------
+        frame: npd.NestedFrame
+            A pixel data frame.
+        _: hc.catalog.TableProperties
+            The HATS catalog properties.
+
+        Returns
+        -------
+        npd.NestedFrame
+            The filtered pixel data frame.
+        """
         filter_mask = np.ones(len(frame), dtype=np.bool)
         for field_name, field_index_catalog in self.index_catalogs.items():
             index_column = field_index_catalog.catalog_info.indexing_column

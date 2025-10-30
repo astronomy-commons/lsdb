@@ -100,28 +100,31 @@ def open_catalog(
 
         lsdb.open_catalog(path='./my_collection_dir/main_catalog')
 
-    Args:
-        path (UPath | Path): The path that locates the root of the HATS collection or stand-alone catalog.
-        search_filter (Type[AbstractSearch]): Default `None`. The filter method to be applied.
-        columns (list[str] | str): Default `None`. The set of columns to filter the catalog on. If None,
-            the catalog's default columns will be loaded. To load all catalog columns, use `columns="all"`.
-        margin_cache (path-like): Default `None`. The margin for the main catalog, provided as a path.
-        error_empty_filter (bool): Default True. If loading the catalog with a filter results in
-            an empty catalog, throw error.
-        filters (list[tuple[str]]): Default `None`. Filters to apply when reading parquet files.
-            These may be applied as pyarrow filters or URL parameters.
-        path_generator (PathGenerator): Default `PathGenerator`. The path generator instance that addresses
-            the discoverability of leaf HEALPix parquet.
-        **kwargs: Arguments to pass to the pandas parquet file reader
+    Parameters
+    ----------
+    path : path-like
+        The path that locates the root of the HATS collection or stand-alone catalog.
+    search_filter : type[AbstractSearch] or None, default None
+        The spatial filter method to be applied.
+    columns : list[str] or str or None, default None
+        The set of columns to filter the catalog on. If None, the catalog's default columns
+        will be loaded. To load all catalog columns, use `columns="all"`.
+    margin_cache : path-like or None, default None
+        The margin for the main catalog, provided as a path.
+    error_empty_filter : bool, default True
+        If loading the catalog with a filter results in an empty catalog, throw error.
+    filters : list[tuple[str]] or None, default None
+        Filters to apply when reading parquet files. These may be applied as pyarrow
+        filters or URL parameters.
+    path_generator : PathGenerator or None
+        The path generator instance that addresses the discoverability of leaf HEALPix parquet.
+    **kwargs
+        Arguments to pass to the pandas parquet file reader
 
-    Returns:
-        A `Catalog` object, and affiliated table links.
-
-    Examples:
-        To read a collection from a public S3 bucket, call it as follows::
-
-            from upath import UPath
-            collection = lsdb.open_catalog(UPath(..., anon=True))
+    Returns
+    -------
+    Dataset
+        The catalog loaded according to the specified arguments.
     """
     hc_catalog = hc.read_hats(path)
 
@@ -218,7 +221,9 @@ def _update_hc_structure(catalog: HealpixDataset):
 def _load_association_catalog(hc_catalog, config):
     """Load a catalog from the configuration specified when the loader was created
 
-    Returns:
+    Returns
+    -------
+    AssociationCatalog
         Catalog object with data from the source given at loader initialization
     """
     if hc_catalog.catalog_info.contains_leaf_files:
@@ -233,7 +238,9 @@ def _load_association_catalog(hc_catalog, config):
 def _load_margin_catalog(hc_catalog, config):
     """Load a catalog from the configuration specified when the loader was created
 
-    Returns:
+    Returns
+    -------
+    MarginCatalog
         Catalog object with data from the source given at loader initialization
     """
     if config.search_filter:
@@ -251,7 +258,9 @@ def _load_margin_catalog(hc_catalog, config):
 def _load_object_catalog(hc_catalog, config):
     """Load a catalog from the configuration specified when the loader was created
 
-    Returns:
+    Returns
+    -------
+    Catalog
         Catalog object with data from the source given at loader initialization
     """
     if config.search_filter:
@@ -308,7 +317,9 @@ def _generate_pyarrow_filters_from_moc(filtered_catalog):
 def _load_map_catalog(hc_catalog, config):
     """Load a catalog from the configuration specified when the loader was created
 
-    Returns:
+    Returns
+    -------
+    MapCatalog
         Catalog object with data from the source given at loader initialization
     """
     dask_df, dask_df_pixel_map = _load_dask_df_and_map(hc_catalog, config)
@@ -316,7 +327,7 @@ def _load_map_catalog(hc_catalog, config):
 
 
 def _load_dask_meta_schema(hc_catalog, config) -> npd.NestedFrame:
-    """Loads the Dask meta DataFrame from the parquet _metadata file."""
+    """Loads the Dask meta DataFrame from the parquet _metadata file"""
     columns = config.columns
     dask_meta_schema = from_pyarrow(hc_catalog.schema.empty_table())
     if not hc_catalog.has_healpix_column():
@@ -374,11 +385,30 @@ def read_pixel(
     columns: list[str] | str | None = None,
     schema: pa.Schema | None = None,
     **kwargs,
-):
+) -> npd.NestedFrame:
     """Utility method to read a single pixel's parquet file from disk.
 
     NB: `columns` is necessary as an argument, even if None, so that dask-expr
-    optimizes the execution plan."""
+    optimizes the execution plan.
+
+    Parameters
+    ----------
+    pixel : HealpixPixel
+        The HEALPix file whose file is to be read.
+    path_generator : PathGenerator
+        The object that translates HEALPix to their respective files.
+    index_column : str, default SPATIAL_INDEX_COLUMN
+        The index column.
+    columns: list[str] or str or None, default None
+        The columns to load.
+    schema: pa.Schema or None, default None
+        The pyarrow schema expected for the file.
+
+    Returns
+    -------
+    npd.NestedFrame
+        The pixel data, as read from its parquet file.
+    """
     return _read_parquet_file(
         path_generator(pixel),
         columns=columns,
@@ -395,7 +425,7 @@ def _read_parquet_file(
     schema=None,
     index_column=None,
     **kwargs,
-):
+) -> npd.NestedFrame:
     if (
         columns is not None
         and schema is not None

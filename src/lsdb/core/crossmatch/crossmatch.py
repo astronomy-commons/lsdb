@@ -1,5 +1,3 @@
-from typing import Type
-
 import nested_pandas as npd
 import pandas as pd
 
@@ -34,7 +32,7 @@ def crossmatch(
     dec_column: str | None = None,
     suffixes: tuple[str, str] | None = None,
     algorithm: (
-        Type[AbstractCrossmatchAlgorithm] | BuiltInCrossmatchAlgorithm
+        type[AbstractCrossmatchAlgorithm] | BuiltInCrossmatchAlgorithm
     ) = BuiltInCrossmatchAlgorithm.KD_TREE,
     output_catalog_name: str | None = None,
     require_right_margin: bool = False,
@@ -42,36 +40,46 @@ def crossmatch(
     right_args: dict | None = None,
     **kwargs,
 ) -> Catalog:
-    """Perform a cross-match between two frames, two catalogs, a catalog and a frame, or a frame and
-    a catalog.
+    """Perform a cross-match between two frames, two catalogs,
+    a catalog and a frame, or a frame and a catalog.
 
-    See Catalog.crossmatch for more information on cross-matching.
+    See `Catalog.crossmatch()` for more information on cross-matching.
 
-    Args:
-        left (Catalog | NestedFrame): The left catalog or frame to crossmatch.
-        right (Catalog | NestedFrame): The right catalog or frame to crossmatch.
-        ra_column (str, optional): The name of the right ascension column for both catalogs,
-            if passing dataframes. Can be specified in the left_args or right_args dictionaries if
-            left and right catalogs have different RA column names. Defaults to None, which will use
-            the default column names "ra", "Ra", or "RA" if they exist in the DataFrame.
-        dec_column (str, optional): The name of the declination column for both catalogs,
-            if passing dataframes. Can be specified in the left_args or right_args dictionaries if
-            left and right catalogs have different dec column names. Defaults to None, which will use
-            the default column names "dec", "Dec", or "DEC" if they exist in the DataFrame.
-        suffixes (tuple[str, str], optional): Suffixes to append to overlapping column names.
-            Defaults to None.
-        algorithm (Type[AbstractCrossmatchAlgorithm] | BuiltInCrossmatchAlgorithm, optional): The
-            crossmatch algorithm to use. Defaults to BuiltInCrossmatchAlgorithm.KD_TREE.
-        output_catalog_name (str, optional): The name of the output catalog. Defaults to None.
-        require_right_margin (bool, optional): Whether to require a right margin. Defaults to False.
-        left_args (dict, optional): Keyword arguments to pass to from_dataframe for the left
-            catalog. Defaults to None.
-        right_args (dict, optional): Keyword arguments to pass to from_dataframe for the right
-            catalog. Defaults to None.
-        **kwargs: Additional keyword arguments to pass to Catalog.crossmatch.
+    Parameters
+    ----------
+    left : Catalog or npd.NestedFrame or pd.DataFrame
+        The left catalog or frame to crossmatch.
+    right : Catalog or npd.NestedFrame or pd.DataFrame
+        The right catalog or frame to crossmatch.
+    ra_column : str or None, default None
+        The name of the right ascension column for both catalogs,
+        if passing dataframes. Can be specified in the left_args or right_args dictionaries if
+        left and right catalogs have different RA column names. Defaults to None, which will use
+        the default column names "ra", "Ra", or "RA" if they exist in the DataFrame.
+    dec_column : str or None, default None
+        The name of the declination column for both catalogs,
+        if passing dataframes. Can be specified in the left_args or right_args dictionaries if
+        left and right catalogs have different dec column names. Defaults to None, which will use
+        the default column names "dec", "Dec", or "DEC" if they exist in the DataFrame.
+    suffixes : tuple[str,str] or None, default None
+        Suffixes to append to overlapping column names.
+    algorithm : type[AbstractCrossmatchAlgorithm] or BuiltInCrossmatchAlgorithm
+        The crossmatch algorithm to use. (Default value = BuiltInCrossmatchAlgorithm.KD_TREE)
+    output_catalog_name : str or None, default None
+        The name of the output catalog.
+    require_right_margin : bool, default False
+        Whether to require a right margin.
+    left_args : dict or None, default None
+        Keyword arguments to pass to from_dataframe for the left catalog.
+    right_args : dict or None, default None
+        Keyword arguments to pass to from_dataframe for the right catalog.
+    **kwargs
+        Additional keyword arguments to pass to Catalog.crossmatch.
 
-    Returns:
-        Catalog: The crossmatched catalog.
+    Returns
+    -------
+    Catalog
+        A new catalog with the result of the crossmatch.
     """
     # Initialize dictionaries if not given.
     left_args = left_args or {}

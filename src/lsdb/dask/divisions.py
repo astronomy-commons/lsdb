@@ -13,12 +13,16 @@ def get_pixels_divisions(healpix_pixels: list[HealpixPixel]) -> tuple[int, ...] 
     and the maximum value of the last HEALPix pixel spatial_index. In practice
     they represent the bounds of spatial_index values for the target pixels.
 
-    Args:
-        healpix_pixels (List[HealpixPixel]): The list of HEALPix pixels to
-            calculate the spatial_index bounds for.
+    Parameters
+    ----------
+    healpix_pixels : List[HealpixPixel]
+        The list of HEALPix pixels to calculate the spatial_index bounds for.
 
-    Returns:
-        The Dask Dataframe divisions, as a tuple of integer.
+    Returns
+    -------
+    tuple[int, ...] | None
+        The Dask Dataframe divisions, as a tuple of integer, or None if
+        no healpix pixels were provided.
     """
     if len(healpix_pixels) == 0:
         return None

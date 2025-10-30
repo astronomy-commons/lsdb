@@ -18,12 +18,23 @@ class PathGenerator:
     def set_internal_info(
         self, catalog_base_dir: UPath | None, npix_suffix: str, query_url_params: dict | None = None
     ):
-        """Set catalog information and URL params"""
+        """Set catalog information and URL params
+
+        Parameters
+        ----------
+        catalog_base_dir: UPath or None
+            The base catalog dir.
+        npix_suffix: str
+            The catalog suffix for the partition data.
+        query_url_params: dict | None, default None
+            If via HTTP, the URL parameters to be passed on the request.
+        """
         self.catalog_base_dir = catalog_base_dir
         self.npix_suffix = npix_suffix
         self.query_url_params = query_url_params
 
     def __call__(self, pixel: HealpixPixel) -> UPath:
+        """Convert pixel to partition data path"""
         return hc.io.pixel_catalog_file(
             catalog_base_dir=self.catalog_base_dir,
             pixel=pixel,
