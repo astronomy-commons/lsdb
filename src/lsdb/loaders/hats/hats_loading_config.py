@@ -1,18 +1,14 @@
 from __future__ import annotations
 
-from copy import deepcopy
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import pandas as pd
-from fsspec.implementations.http import HTTPFileSystem
-from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
-from hats.io.file_io import get_upath
+from hats.pixel_math.healpix_pixel import HealpixPixel
 from upath import UPath
 
 from lsdb.core.search.abstract_search import AbstractSearch
-from lsdb.loaders.hats.path_generator import PathGenerator
 
 
 @dataclass
@@ -22,8 +18,10 @@ class HatsLoadingConfig:
     Contains all parameters needed for a user to specify how to correctly read a hats-sharded catalog.
     """
 
-    path_generator: PathGenerator | None = None
-    """Generates the path to a given HEALPix pixel file."""
+    path_generator: Callable[[UPath, HealpixPixel, dict | None, str], UPath] | None = None
+    """Generates the path to the partition data. It takes the base catalog directory as the
+    first argument, followed by the pixel, the query URL params (if they exist) and the
+    catalog's npix suffix."""
 
     search_filter: AbstractSearch | None = None
     """The spatial filter to apply to the catalog"""
@@ -83,7 +81,7 @@ class HatsLoadingConfig:
                 columns.append(dec_col)
         self.columns = columns
 
-    def _make_query_url_params(self) -> dict:
+    def make_query_url_params(self) -> dict:
         """Generates a dictionary of URL parameters with `columns` and `filters` attributes"""
         url_params: dict[str, Any] = {}
 
@@ -112,24 +110,3 @@ class HatsLoadingConfig:
             url_params["filters"] = join_char.join(filters)
 
         return url_params
-
-    def make_path_generator(self, hc_catalog: HCHealpixDataset):
-        """Create a PathGenerator with all its required catalog information and URL params
-
-        Parameters
-        ----------
-        hc_catalog: HCHealpixDataset
-            The hats catalog.
-        """
-        path_generator = deepcopy(self.path_generator)
-        if path_generator is None:
-            path_generator = PathGenerator()
-        query_url_params = None
-        if isinstance(get_upath(hc_catalog.catalog_base_dir).fs, HTTPFileSystem):
-            query_url_params = self._make_query_url_params()
-        path_generator.set_internal_info(
-            catalog_base_dir=hc_catalog.catalog_base_dir,
-            npix_suffix=hc_catalog.catalog_info.npix_suffix,
-            query_url_params=query_url_params,
-        )
-        self.path_generator = path_generator
