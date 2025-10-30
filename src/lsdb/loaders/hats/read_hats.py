@@ -118,13 +118,14 @@ def open_catalog(
         Filters to apply when reading parquet files. These may be applied as pyarrow
         filters or URL parameters.
     path_generator : Callable[[UPath, HealpixPixel, dict | None, str], UPath] or None
-        The path generator callable that translates HEALPix into partition data paths.
-        The callable arguments are the following::
+        The function that translates HEALPix into partition data paths. Its arguments
+        are the following::
           - catalog_base_dir: UPath
           - pixel: HealpixPixel
           - query_params: dict | None
           - npix_suffix: str
-        By default, `hats.io.pixel_catalog_file` is used.
+        The catalog metadata files need to live where the HATS standard expects them.
+        By default, the path generator is `hats.io.pixel_catalog_file`.
     **kwargs
         Arguments to pass to the pandas parquet file reader
 
