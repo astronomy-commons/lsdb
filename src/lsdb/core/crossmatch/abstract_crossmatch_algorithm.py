@@ -66,7 +66,7 @@ class AbstractCrossmatchAlgorithm(ABC):
         left_catalog_info: TableProperties,
         right_catalog_info: TableProperties,
         right_margin_catalog_info: TableProperties | None,
-        suffixes: tuple[str, str],
+        suffixes: tuple[str, str] | None = None,
         how: str = "inner",
     ):
         """Initializes a crossmatch algorithm
@@ -102,6 +102,10 @@ class AbstractCrossmatchAlgorithm(ABC):
         self.left_catalog_info = left_catalog_info
         self.right_catalog_info = right_catalog_info
         self.right_margin_catalog_info = right_margin_catalog_info
+        # suffixes may not be available at construction time for some callers
+        # (e.g. when the algorithm class is instantiated by internal helpers).
+        # Allow None and store it for later use. The `crossmatch` method still
+        # accepts explicit `suffixes` when performing the join.
         self.suffixes = suffixes
         self.how = how
 
