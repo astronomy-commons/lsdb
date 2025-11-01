@@ -32,7 +32,7 @@ dependencies = [
     "scipy>=1.7.2", # kdtree
 
     # NOTE: package PINNED at <0.3.0, see https://github.com/astronomy-commons/lsdb/issues/1047
-    "universal-pathlib>=0.2.2,<0.3.0",
+    "universal-pathlib>=0.2.2,<0.4.0",
     "tabulate>=0.7.0",
 ]
 
