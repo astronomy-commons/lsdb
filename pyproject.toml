@@ -26,7 +26,7 @@ dependencies = [
     "nested-pandas>=0.6.0,<0.7.0",
 
     # NOTE: package PINNED at <21.0.0, see https://github.com/astronomy-commons/lsdb/issues/974
-    "pyarrow>=14.0.1,<21.0.0; platform_system == 'Windows'",
+    "pyarrow>=14.0.1,<23.0.0; platform_system == 'Windows'",
 
     "pyarrow>=14.0.1; platform_system != 'Windows'",
     "scipy>=1.7.2", # kdtree
