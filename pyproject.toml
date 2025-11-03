@@ -44,7 +44,6 @@ documentation = "https://lsdb.readthedocs.io/"
 [project.optional-dependencies]
 dev = [
     "asv==0.6.5", # Used to compute performance benchmarks
-    "virtualenv==20.34.0", # Temporary fix to airspeed-velocity/asv#1484
     "black", # Used for static linting of files
     "jupyter", # Clears output from Jupyter notebooks
     "mypy", # Used for static type checking of files
