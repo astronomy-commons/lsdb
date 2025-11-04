@@ -22,7 +22,7 @@ dependencies = [
     # dask diagnostics is required to spin up the dashboard for profiling.
     "dask[complete]>=2025.3.0",
     "deprecated",
-    "hats>=0.6.7,<0.7.0",
+    "hats>=0.7,<0.8",
     "nested-pandas>=0.6.0,<0.7.0",
     "scipy>=1.7.2", # kdtree
     # NOTE: package PINNED at <0.3.0, see https://github.com/astronomy-commons/lsdb/issues/1047
