@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import warnings
 from pathlib import Path
+import re
 from typing import Any, Callable, Iterable
 
 import dask.dataframe as dd
@@ -285,7 +286,12 @@ class Catalog(HealpixDataset):
             )
 
         if suffixes is None:
-            suffixes = (f"_{self.name}", f"_{other.name}")
+            # Use canonical base names for suffixes by stripping trailing
+            # `_order<...>` fragments from catalog names (e.g. 'small_sky_order1' -> 'small_sky').
+            def _base_name(n: str) -> str:
+                return re.sub(r"_order\d+$", "", n)
+
+            suffixes = (f"_{_base_name(self.name)}", f"_{_base_name(other.name)}")
         if len(suffixes) != 2:
             raise ValueError("`suffixes` must be a tuple with two strings")
         if suffix_method is None:
@@ -788,7 +794,10 @@ class Catalog(HealpixDataset):
             of the two catalogs.
         """
         if suffixes is None:
-            suffixes = (f"_{self.name}", f"_{other.name}")
+            def _base_name(n: str) -> str:
+                return re.sub(r"_order\d+$", "", n)
+
+            suffixes = (f"_{_base_name(self.name)}", f"_{_base_name(other.name)}")
         if len(suffixes) != 2:
             raise ValueError("`suffixes` must be a tuple with two strings")
 
@@ -862,7 +871,10 @@ class Catalog(HealpixDataset):
             added, and the rows merged using merge_asof on the specified columns.
         """
         if suffixes is None:
-            suffixes = (f"_{self.name}", f"_{other.name}")
+            def _base_name(n: str) -> str:
+                return re.sub(r"_order\d+$", "", n)
+
+            suffixes = (f"_{_base_name(self.name)}", f"_{_base_name(other.name)}")
 
         if len(suffixes) != 2:
             raise ValueError("`suffixes` must be a tuple with two strings")
@@ -955,7 +967,10 @@ class Catalog(HealpixDataset):
             added, and the rows merged on the specified columns.
         """
         if suffixes is None:
-            suffixes = (f"_{self.name}", f"_{other.name}")
+            def _base_name(n: str) -> str:
+                return re.sub(r"_order\d+$", "", n)
+
+            suffixes = (f"_{_base_name(self.name)}", f"_{_base_name(other.name)}")
 
         if len(suffixes) != 2:
             raise ValueError("`suffixes` must be a tuple with two strings")

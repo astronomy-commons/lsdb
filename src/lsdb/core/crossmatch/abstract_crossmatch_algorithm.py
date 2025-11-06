@@ -284,11 +284,20 @@ class AbstractCrossmatchAlgorithm(ABC):
 
             # Build empty right-side columns (same names and dtypes as right_matched) filled with NA
             if len(right_matched.columns) > 0:
+                # Build NA-filled columns matching the dtypes of right_matched.
+                # Use numpy.nan for numpy numeric dtypes (float/int) since pd.NA
+                # may not cast to numpy dtypes; use pd.NA for other/extension dtypes.
+                def _na_series_for_dtype(dtype, length):
+                    try:
+                        kind = getattr(dtype, "kind", None)
+                    except Exception:
+                        kind = None
+                    if kind in ("f", "i", "u", "b"):
+                        return pd.Series([np.nan] * length, dtype=dtype)
+                    return pd.Series([pd.NA] * length, dtype=dtype)
+
                 unmatched_right = pd.DataFrame(
-                    {
-                        col: pd.Series([pd.NA] * len(left_unmatched), dtype=right_matched[col].dtype)
-                        for col in right_matched.columns
-                    }
+                    {col: _na_series_for_dtype(right_matched[col].dtype, len(left_unmatched)) for col in right_matched.columns}
                 )
             else:
                 unmatched_right = pd.DataFrame(index=range(len(left_unmatched)))
