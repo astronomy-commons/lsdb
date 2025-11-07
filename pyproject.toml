@@ -26,7 +26,7 @@ dependencies = [
     "nested-pandas>=0.6.0,<0.7.0",
     "scipy>=1.7.2", # kdtree
     "tabulate>=0.7.0",
-    "universal-pathlib>=0.3.1",
+    "universal-pathlib",
 ]
 
 [project.urls]
