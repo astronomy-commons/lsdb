@@ -93,12 +93,10 @@ def perform_crossmatch(
     npd.NestedFrame
         DataFrame with the results of crossmatching for the pair of partitions.
     """
-    # TODO: no need to check right_pix for None??
-    # TODO: why didn't the earlier version test right_pix?
-    # TODO: this looks like "implied inner"
     # If there's no left partition for this aligned pixel, return an empty/meta frame
     if left_df is None:
         return meta_df
+    # TODO: why didn't the earlier version test right_pix for None?  Because it was implied inner?
     if right_pix and right_pix.order > left_pix.order:
         left_df = filter_by_spatial_index_to_pixel(
             left_df, right_pix.order, right_pix.pixel, spatial_index_order=left_catalog_info.healpix_order
@@ -106,8 +104,6 @@ def perform_crossmatch(
 
     if len(left_df) == 0:
         return meta_df
-
-    # TODO: check right_df?  only needed if None is possible for this and right_margin_df
 
     # TODO: does this work if either or both are None?
     right_joined_df = concat_partition_and_margin(right_df, right_margin_df)
@@ -142,30 +138,13 @@ def perform_crossmatch(
         # so that algorithms that expect concrete partition data (pandas NestedFrame) work.
         right_joined_df = npd.NestedFrame(pd.DataFrame(cols))
 
-    # TODO: ?
     # TODO: Sean suggests this happen within perform_crossmatch(), above
     # TODO: because Dask DDFs don't understand the alignment here
-    # if how == "inner":
-    #     # This is the ordinary sense of crossmatching.  No change.
-    #     pass
-    # elif how == "left":
-    #     # Take *all* of the left-catalog partitions.
-    #     # NOTE: must also take non-matching *rows* from the left pixel.
-    #     nf = pd.concat([right_joined_df, left._ddf], ignore_index=True)
-    # else:
-    #     raise ValueError(f"Unknown crossmatching approach: `how={how}`")
-
-    # TODO: and now rebalance/recalculate?
-    # TODO: So long as every point in the output comes from a point in the left-catalog, we're okay.
-    # TODO: still might be nice to "re-sort the partition"
-    # TODO:     (do we have such a function? sort-by-healpix_29-index)
-    # TODO: ?
+    # TODO: but it seems to work
 
     return algorithm(
         left_df,
         right_joined_df,
-        # TODO: are these okay to be None?  It's not okay to ask None.pixel
-        # TODO: before, these were all unconditional
         left_pix.order if left_pix else None,
         left_pix.pixel if left_pix else None,
         right_pix.order if right_pix else None,
@@ -352,11 +331,6 @@ def crossmatch_catalog_data(
         **kwargs,
     )
 
-    # In the case of non-inner joins, we are obliged to first construct the catalog arguments
-    # with the inner-match partitions, and then union the outer partitions later.
-    # Otherwise there are mismatches between the cardinalities of the partitions and the
-    # pixel_map.
-    # TODO: more discussion here of why 'left' and 'inner' are the only possibilities
     nf, pixel_map, alignment = construct_catalog_args(joined_partitions, meta_df, alignment)
 
     return nf, pixel_map, alignment

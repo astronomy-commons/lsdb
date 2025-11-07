@@ -118,13 +118,9 @@ class AbstractCrossmatchAlgorithm(ABC):
         npd.NestedFrame
             The dataframe containing the results of the crossmatch.
         """
-        # TODO: check self.how to see whether we even need to do a crossmatch
         print(
             f"Crossmatching how={how} pixels L{self.left_order}_{self.left_pixel} R{self.right_order}_{self.right_pixel}"
         )
-        # TODO: extra_cols contains not only items from left and right, but new ones from crossmatch
-        # TODO: extra_cols can be self.extra_columns once constructed, which is true here
-        # TODO: where are the columns from the right?  Best if it's an empty dataframe
         l_inds, r_inds, extra_cols = self.perform_crossmatch(**kwargs)
         if not len(l_inds) == len(r_inds) == len(extra_cols):
             raise ValueError(
