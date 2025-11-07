@@ -223,7 +223,9 @@ def test_catalog_pixels_nested_ordering(small_sky_source_df):
     npt.assert_array_equal(argsort, np.arange(0, 14))
 
 
-def test_from_dataframe_small_sky_source_with_margins(small_sky_source_df, small_sky_source_margin_catalog):
+def test_from_dataframe_small_sky_source_with_margins(
+    small_sky_source_df, small_sky_source_margin_catalog, helpers
+):
     kwargs = {
         "catalog_name": "small_sky_source",
         "catalog_type": "source",
@@ -267,10 +269,12 @@ def test_from_dataframe_small_sky_source_with_margins(small_sky_source_df, small
     assert margin.hc_structure.catalog_info.__pydantic_extra__["hats_builder"].startswith("lsdb")
 
     # The margin and main catalog's schemas are valid
-    _validate_margin_catalog(margin.hc_structure, catalog.hc_structure)
+    _validate_margin_catalog(margin, catalog)
+    helpers.assert_schema_correct(margin)
+    helpers.assert_schema_correct(catalog)
 
 
-def test_from_dataframe_margin_threshold_from_order(small_sky_source_df):
+def test_from_dataframe_margin_threshold_from_order(small_sky_source_df, helpers):
     # By default, the threshold is set to 5 arcsec, triggering a warning
     with pytest.warns(RuntimeWarning, match="Ignoring margin_threshold"):
         catalog = lsdb.from_dataframe(
@@ -286,7 +290,9 @@ def test_from_dataframe_margin_threshold_from_order(small_sky_source_df):
     margin_threshold_order3 = hp.order2mindist(3) * 60.0
     assert catalog.margin.hc_structure.catalog_info.margin_threshold == margin_threshold_order3
     assert catalog.margin._ddf.index.name == catalog._ddf.index.name
-    _validate_margin_catalog(catalog.margin.hc_structure, catalog.hc_structure)
+    _validate_margin_catalog(catalog.margin, catalog)
+    helpers.assert_schema_correct(catalog.margin)
+    helpers.assert_schema_correct(catalog)
 
 
 def test_from_dataframe_invalid_margin_args(small_sky_source_df):
@@ -310,7 +316,7 @@ def test_from_dataframe_invalid_margin_args(small_sky_source_df):
         )
 
 
-def test_from_dataframe_margin_is_empty(small_sky_order1_df):
+def test_from_dataframe_margin_is_empty(small_sky_order1_df, helpers):
     catalog = lsdb.from_dataframe(
         small_sky_order1_df,
         catalog_name="small_sky_order1",
@@ -322,10 +328,12 @@ def test_from_dataframe_margin_is_empty(small_sky_order1_df):
     assert catalog.margin._ddf_pixel_map == {}
     assert catalog.margin._ddf.index.name == catalog._ddf.index.name
     assert catalog.margin.hc_structure.catalog_info.margin_threshold == 5.0
-    _validate_margin_catalog(catalog.margin.hc_structure, catalog.hc_structure)
+    _validate_margin_catalog(catalog.margin, catalog)
+    helpers.assert_schema_correct(catalog.margin)
+    helpers.assert_schema_correct(catalog)
 
 
-def test_from_dataframe_margin_threshold_zero(small_sky_order1_df):
+def test_from_dataframe_margin_threshold_zero(small_sky_order1_df, helpers):
     catalog = lsdb.from_dataframe(
         small_sky_order1_df,
         catalog_name="small_sky_order1",
@@ -338,7 +346,9 @@ def test_from_dataframe_margin_threshold_zero(small_sky_order1_df):
     assert catalog.margin._ddf_pixel_map == {}
     assert catalog.margin._ddf.index.name == catalog._ddf.index.name
     assert catalog.margin.hc_structure.catalog_info.margin_threshold == 0
-    _validate_margin_catalog(catalog.margin.hc_structure, catalog.hc_structure)
+    _validate_margin_catalog(catalog.margin, catalog)
+    helpers.assert_schema_correct(catalog.margin)
+    helpers.assert_schema_correct(catalog)
 
 
 def test_from_dataframe_moc(small_sky_order1_catalog):
@@ -346,7 +356,7 @@ def test_from_dataframe_moc(small_sky_order1_catalog):
     pixels = [44, 45, 46]
     partitions = [small_sky_order1_catalog.get_partition(order, p).compute() for p in pixels]
     df = pd.concat(partitions)
-    subset_catalog = lsdb.from_dataframe(df)
+    subset_catalog = lsdb.from_dataframe(df, margin_threshold=None)
     assert subset_catalog.hc_structure.moc is not None
     assert np.all(subset_catalog.hc_structure.moc.degrade_to_order(1).flatten() == pixels)
     correct_moc = MOC.from_lonlat(
@@ -361,7 +371,7 @@ def test_from_dataframe_moc_params(small_sky_order1_catalog):
     max_order = 5
     partitions = [small_sky_order1_catalog.get_partition(order, p).compute() for p in pixels]
     df = pd.concat(partitions)
-    subset_catalog = lsdb.from_dataframe(df, moc_max_order=max_order)
+    subset_catalog = lsdb.from_dataframe(df, moc_max_order=max_order, margin_threshold=None)
     assert subset_catalog.hc_structure.moc is not None
     assert subset_catalog.hc_structure.moc.max_order == max_order
     assert np.all(subset_catalog.hc_structure.moc.degrade_to_order(1).flatten() == pixels)
@@ -377,20 +387,22 @@ def test_from_dataframe_without_moc(small_sky_order1_catalog):
     max_order = 5
     partitions = [small_sky_order1_catalog.get_partition(order, p).compute() for p in pixels]
     df = pd.concat(partitions)
-    subset_catalog = lsdb.from_dataframe(df, moc_max_order=max_order, should_generate_moc=False)
+    subset_catalog = lsdb.from_dataframe(
+        df, moc_max_order=max_order, should_generate_moc=False, margin_threshold=None
+    )
     assert subset_catalog.hc_structure.moc is None
 
 
 def test_from_dataframe_with_arrow_schema(small_sky_order1_df, small_sky_order1_dir):
     expected_schema = hc.read_hats(small_sky_order1_dir).schema
-    catalog = lsdb.from_dataframe(small_sky_order1_df, schema=expected_schema)
+    catalog = lsdb.from_dataframe(small_sky_order1_df, schema=expected_schema, margin_threshold=None)
     assert catalog.hc_structure.schema is expected_schema
 
 
 def test_from_dataframe_keeps_named_index(small_sky_order1_df):
     assert small_sky_order1_df.index.name is None
     small_sky_order1_df.set_index("id", inplace=True)
-    catalog = lsdb.from_dataframe(small_sky_order1_df)
+    catalog = lsdb.from_dataframe(small_sky_order1_df, margin_threshold=None)
     assert catalog._ddf.index.name == "_healpix_29"
     assert "id" in catalog.columns
     ids = catalog["id"].compute().to_numpy()
@@ -402,7 +414,7 @@ def test_from_dataframe_does_not_keep_unnamed_index(small_sky_order1_df):
     assert small_sky_order1_df.index.name is None
     range_index = pd.RangeIndex(start=0, stop=len(small_sky_order1_df), step=1)
     assert small_sky_order1_df.index.equals(range_index)
-    catalog = lsdb.from_dataframe(small_sky_order1_df)
+    catalog = lsdb.from_dataframe(small_sky_order1_df, margin_threshold=None)
     assert catalog._ddf.index.name == "_healpix_29"
     assert "index" not in catalog.columns
 
@@ -412,7 +424,9 @@ def test_from_dataframe_all_sky(sm_all_sky_df):
 
     TypeError: cannot unpack non-iterable numpy.int32 object
     """
-    catalog = lsdb.from_dataframe(sm_all_sky_df, ra_column="RA", dec_column="DEC", drop_empty_siblings=True)
+    catalog = lsdb.from_dataframe(
+        sm_all_sky_df, ra_column="RA", dec_column="DEC", drop_empty_siblings=True, margin_threshold=None
+    )
     assert catalog._ddf.index.name == "_healpix_29"
     assert len(catalog.get_healpix_pixels()) == 12
 
@@ -421,20 +435,20 @@ def test_from_dataframe_finds_radec_columns(small_sky_order1_df):
     """Check that the RA and Dec columns are identified
     case-insensitively when omitted by the user."""
     # The columns are named "ra" and "dec"
-    catalog = lsdb.from_dataframe(small_sky_order1_df)
+    catalog = lsdb.from_dataframe(small_sky_order1_df, margin_threshold=None)
     assert {"ra", "dec"}.issubset(catalog.columns)
     # It would also work if they were named "Ra" and "Dec"
     df_renamed = small_sky_order1_df.rename(columns={"ra": "Ra", "dec": "Dec"})
-    catalog = lsdb.from_dataframe(df_renamed)
+    catalog = lsdb.from_dataframe(df_renamed, margin_threshold=None)
     assert {"Ra", "Dec"}.issubset(catalog.columns)
     # If no matches are found, an error is raised
     df_no_radec = small_sky_order1_df.drop(columns=["ra", "dec"])
     with pytest.raises(ValueError, match="No column found"):
-        lsdb.from_dataframe(df_no_radec)
+        lsdb.from_dataframe(df_no_radec, margin_threshold=None)
     # If multiple matches are found it's ambiguous, and an error is raised
     small_sky_order1_df["RA"] = small_sky_order1_df["ra"].copy()
     with pytest.raises(ValueError, match="possible columns"):
-        lsdb.from_dataframe(small_sky_order1_df)
+        lsdb.from_dataframe(small_sky_order1_df, margin_threshold=None)
 
 
 def test_from_dataframe_with_nan_radec():
@@ -442,9 +456,9 @@ def test_from_dataframe_with_nan_radec():
     df = pd.DataFrame({"ra": [10.0, np.nan, 30.0], "dec": [20.0, 40.0, np.nan], "id": [1, 2, 3]})
     # Should raise ValueError with a helpful message
     with pytest.raises(ValueError, match=r"NaN values found in .+ columns"):
-        lsdb.from_dataframe(df)
+        lsdb.from_dataframe(df, margin_threshold=None)
 
     # Also test with custom column names
     df2 = df.rename(columns={"ra": "my_ra", "dec": "my_dec"})
     with pytest.raises(ValueError, match=r"NaN values found in .+ columns"):
-        lsdb.from_dataframe(df2, ra_column="my_ra", dec_column="my_dec")
+        lsdb.from_dataframe(df2, ra_column="my_ra", dec_column="my_dec", margin_threshold=None)

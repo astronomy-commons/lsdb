@@ -1,7 +1,6 @@
 from importlib.metadata import version
 from pathlib import Path
 
-import hats as hc
 import numpy as np
 import numpy.testing as npt
 import pandas as pd
@@ -64,16 +63,35 @@ def test_save_catalog_initializes_upath_once(small_sky_catalog, tmp_path, mocker
     mocked_upath_call.assert_called_once_with(base_catalog_path)
 
 
-def test_save_catalog_default_columns(small_sky_order1_default_cols_catalog, tmp_path, helpers):
-    default_columns = ["ra", "dec"]
-    cat = small_sky_order1_default_cols_catalog[default_columns]
-    new_catalog_name = "small_sky_order1"
+def test_save_catalog_default_columns(small_sky_with_nested_sources, tmp_path, helpers):
+    # Including the entirety of "sources" which is a nested column
+    default_columns = ["ra", "dec", "sources"]
+    cat = small_sky_with_nested_sources[default_columns]
+    new_catalog_name = "small_sky_order1_nested_sources"
     base_catalog_path = Path(tmp_path) / new_catalog_name
     cat.to_hats(base_catalog_path, catalog_name=new_catalog_name, default_columns=default_columns)
     expected_catalog = lsdb.read_hats(base_catalog_path)
     assert expected_catalog.hc_structure.catalog_name == new_catalog_name
     assert expected_catalog.get_healpix_pixels() == cat.get_healpix_pixels()
     assert expected_catalog.hc_structure.catalog_info.default_columns == default_columns
+    assert len(expected_catalog["sources"].nest.columns) == 8
+    pd.testing.assert_frame_equal(expected_catalog.compute(), cat.compute())
+    helpers.assert_schema_correct(expected_catalog)
+    helpers.assert_default_columns_in_columns(expected_catalog)
+
+
+def test_save_catalog_default_nested_columns(small_sky_with_nested_sources, tmp_path, helpers):
+    # Selecting just some of the nested columns
+    default_columns = ["ra", "dec", "sources.mjd", "sources.mag"]
+    cat = small_sky_with_nested_sources[default_columns]
+    new_catalog_name = "small_sky_order1_nested_sources"
+    base_catalog_path = Path(tmp_path) / new_catalog_name
+    cat.to_hats(base_catalog_path, catalog_name=new_catalog_name, default_columns=default_columns)
+    expected_catalog = lsdb.read_hats(base_catalog_path)
+    assert expected_catalog.hc_structure.catalog_name == new_catalog_name
+    assert expected_catalog.get_healpix_pixels() == cat.get_healpix_pixels()
+    assert expected_catalog.hc_structure.catalog_info.default_columns == default_columns
+    assert len(expected_catalog["sources"].nest.columns) == 2
     pd.testing.assert_frame_equal(expected_catalog.compute(), cat.compute())
     helpers.assert_schema_correct(expected_catalog)
     helpers.assert_default_columns_in_columns(expected_catalog)
@@ -119,6 +137,18 @@ def test_save_catalog_invalid_default_columns(small_sky_order1_default_cols_cata
         )
 
 
+def test_save_catalog_invalid_default_nested_columns(small_sky_with_nested_sources, tmp_path):
+    new_catalog_name = "small_sky_order1_nested_sources"
+    base_catalog_path = Path(tmp_path) / new_catalog_name
+    # Cannot specify partial and full load of a column
+    with pytest.raises(ValueError, match="'sources'"):
+        small_sky_with_nested_sources.to_hats(
+            base_catalog_path,
+            catalog_name=new_catalog_name,
+            default_columns=["ra", "dec", "sources", "sources.mjd"],
+        )
+
+
 def test_save_crossmatch_catalog(
     small_sky_order1_default_cols_catalog, small_sky_xmatch_catalog, tmp_path, helpers
 ):
@@ -141,15 +171,23 @@ def test_save_crossmatch_catalog(
     helpers.assert_schema_correct(expected_catalog)
 
 
-def test_save_catalog_point_map(small_sky_order1_catalog, tmp_path):
+def test_save_catalog_point_map(small_sky_order1_df, tmp_path):
     new_catalog_name = "small_sky_order1"
     base_catalog_path = Path(tmp_path) / new_catalog_name
+
+    small_sky_order1_catalog = lsdb.from_dataframe(
+        small_sky_order1_df,
+        margin_threshold=None,
+        catalog_name="small_sky_order1",
+        lowest_order=6,
+        highest_order=8,
+        threshold=500,
+    )
 
     small_sky_order1_catalog.to_hats(
         base_catalog_path,
         catalog_name=new_catalog_name,
         skymap_alt_orders=[1, 2],
-        histogram_order=8,
     )
 
     main_catalog_path = base_catalog_path / new_catalog_name
@@ -210,32 +248,26 @@ def test_save_catalog_when_catalog_is_empty(small_sky_order1_catalog, tmp_path):
         cone_search_catalog.to_hats(base_catalog_path)
 
 
-def test_save_big_catalog(tmp_path):
-    """Load a catalog with many partitions, and save with to_hats."""
-    mock_partition_df = pd.DataFrame(
-        {
-            "ra": np.linspace(0, 360, 100_000),
-            "dec": np.linspace(-90, 90, 100_000),
-            "id": np.arange(100_000, 200_000),
-        }
-    )
+def test_save_empty_catalog_no_error(small_sky_order1_catalog, tmp_path):
+    base_catalog_path = tmp_path / "small_sky"
 
-    base_catalog_path = tmp_path / "big_sky"
+    # The result of this cone search is known to be empty
+    cone_search_catalog = small_sky_order1_catalog.cone_search(0, -80, 1)
+    assert cone_search_catalog._ddf.npartitions == 1
 
-    kwargs = {
-        "catalog_name": "big_sky",
-        "catalog_type": "object",
-        "lowest_order": 6,
-        "highest_order": 10,
-        "threshold": 500,
-    }
+    non_empty_pixels = []
+    for pixel, partition_index in cone_search_catalog._ddf_pixel_map.items():
+        if len(cone_search_catalog._ddf.partitions[partition_index]) > 0:
+            non_empty_pixels.append(pixel)
+    assert len(non_empty_pixels) == 0
 
-    catalog = lsdb.from_dataframe(mock_partition_df, margin_threshold=None, **kwargs)
+    # The catalog is not written to disk
+    cone_search_catalog.to_hats(base_catalog_path, error_if_empty=False)
 
-    catalog.to_hats(base_catalog_path)
-
-    read_catalog = hc.read_hats(base_catalog_path)
-    assert len(read_catalog.get_healpix_pixels()) == len(catalog.get_healpix_pixels())
+    catalog = lsdb.read_hats(base_catalog_path)
+    assert len(catalog.get_healpix_pixels()) == 0
+    pd.testing.assert_frame_equal(cone_search_catalog._ddf._meta, catalog._ddf._meta)
+    pd.testing.assert_frame_equal(cone_search_catalog.compute(), catalog.compute())
 
 
 def test_save_catalog_with_some_empty_partitions(small_sky_order1_catalog, tmp_path):

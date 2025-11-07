@@ -1,15 +1,17 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Callable
 
 import hats as hc
 import nested_pandas as npd
 import numpy as np
+import pyarrow as pa
 from fsspec.implementations.http import HTTPFileSystem
 from hats.catalog import CatalogType
 from hats.catalog.catalog_collection import CatalogCollection
 from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
-from hats.io.file_io import file_io, get_upath
+from hats.io.file_io import file_io
 from hats.pixel_math import HealpixPixel
 from hats.pixel_math.healpix_pixel_function import get_pixel_argsort
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
@@ -37,10 +39,14 @@ def read_hats(
     columns: list[str] | str | None = None,
     margin_cache: str | Path | UPath | None = None,
     error_empty_filter: bool = True,
+    filters: list[tuple[str]] | None = None,
+    path_generator: Callable[[UPath, HealpixPixel, dict | None, str], UPath] = hc.io.pixel_catalog_file,
     **kwargs,
 ) -> Dataset:
     """Load catalog from a HATS path. See open_catalog()."""
-    return open_catalog(path, search_filter, columns, margin_cache, error_empty_filter, **kwargs)
+    return open_catalog(
+        path, search_filter, columns, margin_cache, error_empty_filter, filters, path_generator, **kwargs
+    )
 
 
 def open_catalog(
@@ -49,7 +55,8 @@ def open_catalog(
     columns: list[str] | str | None = None,
     margin_cache: str | Path | UPath | None = None,
     error_empty_filter: bool = True,
-    filters=None,
+    filters: list[tuple[str]] | None = None,
+    path_generator: Callable[[UPath, HealpixPixel, dict | None, str], UPath] = hc.io.pixel_catalog_file,
     **kwargs,
 ) -> Dataset:
     """Open a catalog from a HATS path.
@@ -94,26 +101,38 @@ def open_catalog(
 
         lsdb.open_catalog(path='./my_collection_dir/main_catalog')
 
-    Args:
-        path (UPath | Path): The path that locates the root of the HATS collection or stand-alone catalog.
-        search_filter (Type[AbstractSearch]): Default `None`. The filter method to be applied.
-        columns (list[str] | str): Default `None`. The set of columns to filter the catalog on. If None,
-            the catalog's default columns will be loaded. To load all catalog columns, use `columns="all"`.
-        margin_cache (path-like): Default `None`. The margin for the main catalog, provided as a path.
-        error_empty_filter (bool): Default True. If loading the catalog with a filter results in
-            an empty catalog, throw error.
-        filters (list[tuple[str]]): Default `None`. Filters to apply when reading parquet files.
-            These may be applied as pyarrow filters or URL parameters.
-        **kwargs: Arguments to pass to the pandas parquet file reader
+    Parameters
+    ----------
+    path : path-like
+        The path that locates the root of the HATS collection or stand-alone catalog.
+    search_filter : type[AbstractSearch] or None, default None
+        The spatial filter method to be applied.
+    columns : list[str] or str or None, default None
+        The set of columns to filter the catalog on. If None, the catalog's default columns
+        will be loaded. To load all catalog columns, use `columns="all"`.
+    margin_cache : path-like or None, default None
+        The margin for the main catalog, provided as a path.
+    error_empty_filter : bool, default True
+        If loading the catalog with a filter results in an empty catalog, throw error.
+    filters : list[tuple[str]] or None, default None
+        Filters to apply when reading parquet files. These may be applied as pyarrow
+        filters or URL parameters.
+    path_generator : Callable[[UPath, HealpixPixel, dict | None, str], UPath], optional
+        The function `f(catalog_base_dir, pixel, query_params, npix_suffix)`
+        that translates HEALPix into partition data paths. Its arguments are the following:
+          - catalog_base_dir: UPath - path passed to `open_catalog`/`read_hats`
+          - pixel: HealpixPixel - pixel to generate path for
+          - query_params: dict | None - dictionary used to generate HTTP query string
+          - npix_suffix: str - "/" for leaf directory, filename suffix like ".parquet" for leaf file
+        The catalog metadata files need to live where the HATS standard expects them.
+        Defaults to `hats.io.pixel_catalog_file`.
+    **kwargs
+        Arguments to pass to the pandas parquet file reader
 
-    Returns:
-        A `Catalog` object, and affiliated table links.
-
-    Examples:
-        To read a collection from a public S3 bucket, call it as follows::
-
-            from upath import UPath
-            collection = lsdb.open_catalog(UPath(..., anon=True))
+    Returns
+    -------
+    Dataset
+        The catalog loaded according to the specified arguments.
     """
     hc_catalog = hc.read_hats(path)
 
@@ -123,6 +142,7 @@ def open_catalog(
         error_empty_filter=error_empty_filter,
         margin_cache=margin_cache,
         filters=filters,
+        path_generator=path_generator,
         kwargs=kwargs,
     )
 
@@ -193,20 +213,25 @@ def _load_catalog(hc_catalog: hc.catalog.Dataset, config: HatsLoadingConfig) -> 
 def _update_hc_structure(catalog: HealpixDataset):
     """Create the modified schema of the catalog after all the processing on the `read_hats` call"""
     # pylint: disable=protected-access
+    default_columns = None
+    if catalog.hc_structure.catalog_info.default_columns is not None:
+        default_columns = [
+            col
+            for col in catalog.hc_structure.catalog_info.default_columns
+            if col in catalog._ddf.exploded_columns
+        ]
     return catalog._create_modified_hc_structure(
         updated_schema=get_arrow_schema(catalog._ddf),
-        default_columns=(
-            [col for col in catalog.hc_structure.catalog_info.default_columns if col in catalog._ddf.columns]
-            if catalog.hc_structure.catalog_info.default_columns is not None
-            else None
-        ),
+        default_columns=default_columns,
     )
 
 
 def _load_association_catalog(hc_catalog, config):
     """Load a catalog from the configuration specified when the loader was created
 
-    Returns:
+    Returns
+    -------
+    AssociationCatalog
         Catalog object with data from the source given at loader initialization
     """
     if hc_catalog.catalog_info.contains_leaf_files:
@@ -221,7 +246,9 @@ def _load_association_catalog(hc_catalog, config):
 def _load_margin_catalog(hc_catalog, config):
     """Load a catalog from the configuration specified when the loader was created
 
-    Returns:
+    Returns
+    -------
+    MarginCatalog
         Catalog object with data from the source given at loader initialization
     """
     if config.search_filter:
@@ -239,7 +266,9 @@ def _load_margin_catalog(hc_catalog, config):
 def _load_object_catalog(hc_catalog, config):
     """Load a catalog from the configuration specified when the loader was created
 
-    Returns:
+    Returns
+    -------
+    Catalog
         Catalog object with data from the source given at loader initialization
     """
     if config.search_filter:
@@ -256,17 +285,28 @@ def _load_object_catalog(hc_catalog, config):
     if config.margin_cache is not None:
         margin_hc_catalog = hc.read_hats(config.margin_cache)
         margin = _load_margin_catalog(margin_hc_catalog, config)
-        _validate_margin_catalog(margin_hc_catalog, hc_catalog)
+        _validate_margin_catalog(margin, catalog)
         catalog.margin = margin
     return catalog
 
 
 def _generate_pyarrow_filters_from_moc(filtered_catalog):
     pyarrow_filter = []
-    if SPATIAL_INDEX_COLUMN not in filtered_catalog.schema.names:
+    if not (
+        filtered_catalog.has_healpix_column()
+        and filtered_catalog.catalog_info.healpix_column in filtered_catalog.schema.names
+    ):
         return pyarrow_filter
+    healpix_column = filtered_catalog.catalog_info.healpix_column
+    healpix_order = filtered_catalog.catalog_info.healpix_order
     if filtered_catalog.moc is not None:
-        depth_array = filtered_catalog.moc.to_depth29_ranges
+        moc = (
+            filtered_catalog.moc
+            if healpix_order >= filtered_catalog.moc.max_order
+            else filtered_catalog.moc.degrade_to_order(healpix_order)
+        )
+        depth_array = moc.to_depth29_ranges
+        depth_array = depth_array >> (2 * (29 - healpix_order))
         if len(depth_array) > MAX_PYARROW_FILTERS:
             starts = depth_array.T[0]
             ends = depth_array.T[1]
@@ -278,16 +318,16 @@ def _generate_pyarrow_filters_from_moc(filtered_catalog):
                 reduced_filters.append([starts[i_start], ends[i_end]])
             depth_array = np.array(reduced_filters)
         for hpx_range in depth_array:
-            pyarrow_filter.append(
-                [(SPATIAL_INDEX_COLUMN, ">=", hpx_range[0]), (SPATIAL_INDEX_COLUMN, "<", hpx_range[1])]
-            )
+            pyarrow_filter.append([(healpix_column, ">=", hpx_range[0]), (healpix_column, "<", hpx_range[1])])
     return pyarrow_filter
 
 
 def _load_map_catalog(hc_catalog, config):
     """Load a catalog from the configuration specified when the loader was created
 
-    Returns:
+    Returns
+    -------
+    MapCatalog
         Catalog object with data from the source given at loader initialization
     """
     dask_df, dask_df_pixel_map = _load_dask_df_and_map(hc_catalog, config)
@@ -295,7 +335,7 @@ def _load_map_catalog(hc_catalog, config):
 
 
 def _load_dask_meta_schema(hc_catalog, config) -> npd.NestedFrame:
-    """Loads the Dask meta DataFrame from the parquet _metadata file."""
+    """Loads the Dask meta DataFrame from the parquet _metadata file"""
     columns = config.columns
     dask_meta_schema = from_pyarrow(hc_catalog.schema.empty_table())
     if not hc_catalog.has_healpix_column():
@@ -326,12 +366,13 @@ def _load_dask_df_and_map(catalog: HCHealpixDataset, config) -> tuple[nd.NestedF
     dask_meta_schema = _load_dask_meta_schema(catalog, config)
     index_column = dask_meta_schema.index.name
     query_url_params = None
-    if isinstance(get_upath(catalog.catalog_base_dir).fs, HTTPFileSystem):
+    if isinstance(file_io.get_upath(catalog.catalog_base_dir).fs, HTTPFileSystem):
         query_url_params = config.make_query_url_params()
     if len(ordered_pixels) > 0:
         ddf = nd.NestedFrame.from_map(
             read_pixel,
             ordered_pixels,
+            path_generator=config.path_generator,
             catalog_base_dir=catalog.catalog_base_dir,
             npix_suffix=catalog.catalog_info.npix_suffix,
             query_url_params=query_url_params,
@@ -339,9 +380,9 @@ def _load_dask_df_and_map(catalog: HCHealpixDataset, config) -> tuple[nd.NestedF
             schema=catalog.schema,
             filters=config.filters,
             index_column=index_column,
-            **config.kwargs,
             divisions=divisions,
             meta=dask_meta_schema,
+            **config.kwargs,
         )
     else:
         ddf = nd.NestedFrame.from_pandas(dask_meta_schema, npartitions=1)
@@ -351,22 +392,46 @@ def _load_dask_df_and_map(catalog: HCHealpixDataset, config) -> tuple[nd.NestedF
 
 def read_pixel(
     pixel: HealpixPixel,
-    catalog_base_dir: str | Path | UPath,
-    npix_suffix: str,
     *,
+    path_generator: Callable[[UPath, HealpixPixel, dict | None, str], UPath],
+    catalog_base_dir: UPath,
+    npix_suffix: str,
     query_url_params: dict | None = None,
     index_column: str = SPATIAL_INDEX_COLUMN,
-    columns=None,
-    schema=None,
+    columns: list[str] | str | None = None,
+    schema: pa.Schema | None = None,
     **kwargs,
-):
+) -> npd.NestedFrame:
     """Utility method to read a single pixel's parquet file from disk.
 
     NB: `columns` is necessary as an argument, even if None, so that dask-expr
-    optimizes the execution plan."""
+    optimizes the execution plan.
 
+    Parameters
+    ----------
+    pixel : HealpixPixel
+        The HEALPix file whose file is to be read.
+    path_generator : Callable[[UPath, HealpixPixel, dict | None, str], UPath]
+        The object that translates HEALPix to their respective files.
+    index_column : str, default SPATIAL_INDEX_COLUMN
+        The index column.
+    columns: list[str] or str or None, default None
+        The columns to load.
+    schema: pa.Schema or None, default None
+        The pyarrow schema expected for the file.
+
+    Returns
+    -------
+    npd.NestedFrame
+        The pixel data, as read from its parquet file.
+    """
     return _read_parquet_file(
-        hc.io.pixel_catalog_file(catalog_base_dir, pixel, query_url_params, npix_suffix=npix_suffix),
+        path_generator(
+            catalog_base_dir,
+            pixel,
+            query_url_params,
+            npix_suffix,
+        ),
         columns=columns,
         schema=schema,
         index_column=index_column,
@@ -381,7 +446,7 @@ def _read_parquet_file(
     schema=None,
     index_column=None,
     **kwargs,
-):
+) -> npd.NestedFrame:
     if (
         columns is not None
         and schema is not None

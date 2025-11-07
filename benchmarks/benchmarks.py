@@ -3,8 +3,10 @@
 For more information on writing benchmarks:
 https://asv.readthedocs.io/en/stable/writing_benchmarks.html."""
 
+import tempfile
 from pathlib import Path
 
+import hats
 import numpy as np
 import pandas as pd
 
@@ -90,7 +92,11 @@ def time_lazy_crossmatch_many_columns_all_suffixes():
 def time_lazy_crossmatch_many_columns_overlapping_suffixes():
     cat = lsdb.open_catalog(BENCH_DATA_DIR / "object_collection", columns="all")
     return cat.crossmatch(
-        cat, require_right_margin=False, suffixes=("_left", "_right"), suffix_method="overlapping_columns"
+        cat,
+        require_right_margin=False,
+        suffixes=("_left", "_right"),
+        suffix_method="overlapping_columns",
+        log_changes=False,
     )
 
 
@@ -99,3 +105,30 @@ def time_open_many_columns_list():
         BENCH_DATA_DIR / "object_collection",
         columns=["objectId", "coord_dec", "coord_decErr", "coord_ra", "coord_raErr"],
     )
+
+
+def time_save_big_catalog():
+    """Load a catalog with many partitions, and save with to_hats."""
+    mock_partition_df = pd.DataFrame(
+        {
+            "ra": np.linspace(0, 360, 100_000),
+            "dec": np.linspace(-90, 90, 100_000),
+            "id": np.arange(100_000, 200_000),
+        }
+    )
+
+    with tempfile.TemporaryDirectory() as tmp_path:
+        kwargs = {
+            "catalog_name": "big_sky",
+            "catalog_type": "object",
+            "lowest_order": 6,
+            "highest_order": 10,
+            "threshold": 500,
+        }
+
+        catalog = lsdb.from_dataframe(mock_partition_df, margin_threshold=None, **kwargs)
+
+        catalog.to_hats(tmp_path)
+
+        read_catalog = hats.read_hats(tmp_path)
+        assert len(read_catalog.get_healpix_pixels()) == len(catalog.get_healpix_pixels())

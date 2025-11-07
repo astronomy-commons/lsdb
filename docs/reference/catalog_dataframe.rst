@@ -6,7 +6,7 @@ Dataframe Methods
 .. autosummary::
     :toctree: api/
 
-    Catalog.reduce
+    Catalog.map_rows
     Catalog.map_partitions
     Catalog.to_hats
     Catalog.compute

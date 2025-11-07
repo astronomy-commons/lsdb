@@ -18,7 +18,7 @@ builtin_crossmatch_algorithms = {
 
 
 def is_builtin_algorithm(algorithm_type) -> bool:
-    """Check if a given algorithm is built-in."""
+    """Check if a given algorithm is built-in"""
     return (
         algorithm_type in builtin_crossmatch_algorithms
         or algorithm_type in builtin_crossmatch_algorithms.values()

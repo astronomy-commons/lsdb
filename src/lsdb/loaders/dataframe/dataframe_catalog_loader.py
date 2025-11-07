@@ -54,27 +54,39 @@ class DataframeCatalogLoader:
     ) -> None:
         """Initializes a DataframeCatalogLoader
 
-        Args:
-            dataframe (pd.Dataframe): Catalog Pandas Dataframe.
-            ra_column (str): The name of the right ascension column. By default,
-                case-insensitive versions of 'ra' are detected.
-            dec_column (str): The name of the declination column. By default,
-                case-insensitive versions of 'dec' are detected.
-            lowest_order (int): The lowest partition order. Defaults to 3.
-            highest_order (int): The highest partition order. Defaults to 7.
-            drop_empty_siblings (bool): When determining final partitionining,
-                if 3 of 4 pixels are empty, keep only the non-empty pixel
-            partition_size (int): The desired partition size, in number of rows.
-            threshold (int): The maximum number of data points per pixel.
-            should_generate_moc (bool): should we generate a MOC (multi-order coverage map)
-                of the data. can improve performance when joining/crossmatching to
-                other hats-sharded datasets.
-            moc_max_order (int): if generating a MOC, what to use as the max order. Defaults to 10.
-            use_pyarrow_types (bool): If True, the data is backed by pyarrow, otherwise we keep the
-                original data types. Defaults to True.
-            schema (pa.Schema): the arrow schema to create the catalog with. If None, the schema is
-                automatically inferred from the provided DataFrame using `pa.Schema.from_pandas`.
-            **kwargs: Arguments to pass to the creation of the catalog info.
+        Parameters
+        ----------
+        dataframe : pd.Dataframe
+            Catalog Pandas Dataframe.
+        ra_column : str or None
+            The name of the right ascension column.
+            By default, case-insensitive versions of 'ra' are detected.
+        dec_column : str or None
+            The name of the declination column.
+            By default, case-insensitive versions of 'dec' are detected.
+        lowest_order : int, default 0
+            The lowest partition order.
+        highest_order : int, default 7
+            The highest partition order.
+        drop_empty_siblings : bool, default False
+            When determining final partitionining, if 3 of 4 pixels are empty,
+            keep only the non-empty pixel
+        partition_size : int or None, default None
+            The desired partition size, in number of rows.
+        threshold : int or None, default None
+            The maximum number of data points per pixel.
+        should_generate_moc : bool, default True
+            Should we generate a MOC (multi-order coverage map) of the data.
+            It can improve performance when joining/crossmatching to other hats-sharded datasets.
+        moc_max_order : int, default 10
+            If generating a MOC, what to use as the max order.
+        use_pyarrow_types : bool, default True
+            If True, the data is backed by pyarrow, otherwise we keep the original data types.
+        schema : pa.Schema or None
+            The arrow schema to create the catalog with. If None, the schema is
+            automatically inferred from the provided DataFrame using `pa.Schema.from_pandas`.
+        **kwargs
+            Arguments to pass to the creation of the catalog info.
         """
         self.dataframe = npd.NestedFrame(dataframe)
         self.lowest_order = lowest_order
@@ -107,14 +119,7 @@ class DataframeCatalogLoader:
         """Finds the column in the data frame matching the search term.
 
         The search is case-insensitive and unambiguous. An error is raised
-        if there are zero or multiple matches.
-
-        Args:
-            search_term (str): The column name to search for.
-
-        Returns:
-            The column name.
-        """
+        if there are zero or multiple matches."""
         matches = [
             c for c in self.dataframe.columns if re.fullmatch(re.escape(search_term), c, re.IGNORECASE)
         ]
@@ -126,16 +131,7 @@ class DataframeCatalogLoader:
         return matches[0]
 
     def _calculate_threshold(self, partition_size: int | None = None, threshold: int | None = None) -> int:
-        """Calculates the number of pixels per HEALPix pixel (threshold) for the
-        desired partition size.
-
-        Args:
-            partition_size (int): The desired partition size, in number of rows
-            threshold (int): The maximum number of data points per pixel
-
-        Returns:
-            The HEALPix pixel threshold
-        """
+        """Calculates the number of points per HEALPix pixel (threshold) for the desired partition size."""
         self.df_total_memory = self.dataframe.memory_usage(deep=True).sum()
         if self.df_total_memory > (1 << 30) or len(self.dataframe) > 1_000_000:
             warnings.warn(
@@ -167,14 +163,22 @@ class DataframeCatalogLoader:
     ) -> TableProperties:
         """Creates the catalog info object
 
-        Args:
-            catalog_name: it is recommended to provide a new name for your catalog
-            ra_column: column to find right ascension coordinate
-            dec_column: column to find declination coordinate
-            catalog_type: type of table being created (e.g. OBJECT, SOURCE, MAP)
-            **kwargs: Arguments to pass to the creation of the catalog info
+        Parameters
+        ----------
+        catalog_name : str, default 'from_lsdb_dataframe'
+            It is recommended to provide a new name for your catalog
+        ra_column : str, default 'ra'
+            Column to find right ascension coordinate
+        dec_column : str, default 'dec'
+            Column to find declination coordinate
+        catalog_type : str, default 'object'
+            Type of table being created (e.g. OBJECT, SOURCE, MAP)
+        **kwargs
+            Arguments to pass to the creation of the catalog info
 
-        Returns:
+        Returns
+        -------
+        hats.catalog.TableProperties
             The catalog info object
         """
         if kwargs is None:
@@ -195,8 +199,10 @@ class DataframeCatalogLoader:
     def load_catalog(self) -> Catalog:
         """Load a catalog from a Pandas Dataframe
 
-        Returns:
-            Catalog object with data from the source given at loader initialization
+        Returns
+        -------
+        Catalog
+            Catalog object with data from the source given at loader initialization.
         """
         self._set_spatial_index()
         pixel_list = self._compute_pixel_list()
@@ -227,8 +233,10 @@ class DataframeCatalogLoader:
         """Compute object histogram and generate the sorted list of
         HEALPix pixels. The pixels are sorted by ascending spatial index.
 
-        Returns:
-            List of HEALPix pixels for the final partitioning.
+        Returns
+        -------
+        list[HealpixPixel]
+            HEALPix pixels for the final partitioning.
         """
         raw_histogram = generate_histogram(
             self.dataframe,
@@ -252,10 +260,9 @@ class DataframeCatalogLoader:
         """Load Dask DataFrame from HEALPix pixel Dataframes and
         generate a mapping of HEALPix pixels to HEALPix Dataframes
 
-        Args:
-            pixel_list (List[HealpixPixel]): final partitioning of data
-
-        Returns:
+        Returns
+        -------
+        tuple[nd.NestedFrame, DaskDFPixelMap, int]
             Tuple containing the Dask Dataframe, the mapping of HEALPix pixels
             to the respective Pandas Dataframes and the total number of rows.
         """

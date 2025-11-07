@@ -128,17 +128,23 @@ def _query_min_max_neighbors(
 def _lon_lat_to_xyz(lon: npt.NDArray[np.float64], lat: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
     """Converts longitude and latitude to cartesian coordinates on the unit sphere
 
-    Args:
-        lon (np.ndarray[np.float64]): longitude in radians
-        lat (np.ndarray[np.float64]): latitude in radians
+    Parameters
+    ----------
+    lon : np.ndarray[np.float64]
+        Longitude in radians
+    lat : np.ndarray[np.float64]
+        Latitude in radians
+
+    Returns
+    -------
+    np.ndarray[np.float64]
+        The numpy array with the cartesian coordinates.
     """
     lon = np.radians(lon)
     lat = np.radians(lat)
-
     x = np.cos(lat) * np.cos(lon)
     y = np.cos(lat) * np.sin(lon)
     z = np.sin(lat)
-
     return np.stack([x, y, z], axis=1)
 
 
@@ -146,10 +152,14 @@ def _get_chord_distance(radius_arcsec: float) -> float:
     """Calculates the distance between two points on the surface of the unit sphere,
     for a given radius, in arcseconds
 
-    Args:
-        radius_arcsec (float): Tbe radius, in arcseconds
+    Parameters
+    ---------
+    radius_arcsec : float
+        The radius, in arcseconds
 
-    Returns:
+    Returns
+    -------
+    float
         The chord distance between the two points on the unit sphere.
     """
     radius_degrees = radius_arcsec / 3600.0

@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import pandas as pd
+from hats.pixel_math.healpix_pixel import HealpixPixel
 from upath import UPath
 
 from lsdb.core.search.abstract_search import AbstractSearch
@@ -16,6 +17,11 @@ class HatsLoadingConfig:
 
     Contains all parameters needed for a user to specify how to correctly read a hats-sharded catalog.
     """
+
+    path_generator: Callable[[UPath, HealpixPixel, dict | None, str], UPath] | None = None
+    """Generates the path to the partition data. It takes the base catalog directory as the
+    first argument, followed by the pixel, the query URL params (if they exist) and the
+    catalog's npix suffix."""
 
     search_filter: AbstractSearch | None = None
     """The spatial filter to apply to the catalog"""
@@ -76,9 +82,7 @@ class HatsLoadingConfig:
         self.columns = columns
 
     def make_query_url_params(self) -> dict:
-        """
-        Generates a dictionary of URL parameters with `columns` and `filters` attributes.
-        """
+        """Generates a dictionary of URL parameters with `columns` and `filters` attributes"""
         url_params: dict[str, Any] = {}
 
         if self.columns and len(self.columns) > 0:
