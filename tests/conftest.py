@@ -395,6 +395,7 @@ def cone_search_expected(cone_search_expected_dir):
 def cone_search_margin_expected(cone_search_expected_dir):
     return pd.read_csv(cone_search_expected_dir / "margin.csv", index_col=SPATIAL_INDEX_COLUMN)
 
+
 class Helpers:
     @staticmethod
     def assert_divisions_are_correct(catalog):
