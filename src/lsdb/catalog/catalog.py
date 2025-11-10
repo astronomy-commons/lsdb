@@ -42,6 +42,21 @@ from lsdb.nested.core import NestedFrame
 from lsdb.types import DaskDFPixelMap
 
 
+def _base_name(n: str) -> str:
+    """Return the base catalog name with trailing "_order<digits>" removed.
+
+    This is used to generate stable, human-friendly suffixes for merged/joined
+    catalogs (e.g. 'small_sky_order1' -> 'small_sky'). Centralising the logic
+    prevents duplication across Catalog methods.
+    """
+    return re.sub(r"_order\d+$", "", n)
+
+
+def _default_suffixes(left_name: str, right_name: str) -> tuple[str, str]:
+    """Return the default pair of suffixes for left/right catalog names."""
+    return (f"_{_base_name(left_name)}", f"_{_base_name(right_name)}")
+
+
 # pylint: disable=protected-access,too-many-public-methods, too-many-lines
 class Catalog(HealpixDataset):
     """LSDB Catalog to perform analysis of sky catalogs and efficient spatial operations."""
@@ -286,12 +301,7 @@ class Catalog(HealpixDataset):
             )
 
         if suffixes is None:
-            # Use canonical base names for suffixes by stripping trailing
-            # `_order<...>` fragments from catalog names (e.g. 'small_sky_order1' -> 'small_sky').
-            def _base_name(n: str) -> str:
-                return re.sub(r"_order\d+$", "", n)
-
-            suffixes = (f"_{_base_name(self.name)}", f"_{_base_name(other.name)}")
+            suffixes = _default_suffixes(self.name, other.name)
         if len(suffixes) != 2:
             raise ValueError("`suffixes` must be a tuple with two strings")
         if suffix_method is None:
@@ -794,10 +804,7 @@ class Catalog(HealpixDataset):
             of the two catalogs.
         """
         if suffixes is None:
-            def _base_name(n: str) -> str:
-                return re.sub(r"_order\d+$", "", n)
-
-            suffixes = (f"_{_base_name(self.name)}", f"_{_base_name(other.name)}")
+            suffixes = _default_suffixes(self.name, other.name)
         if len(suffixes) != 2:
             raise ValueError("`suffixes` must be a tuple with two strings")
 
@@ -871,10 +878,7 @@ class Catalog(HealpixDataset):
             added, and the rows merged using merge_asof on the specified columns.
         """
         if suffixes is None:
-            def _base_name(n: str) -> str:
-                return re.sub(r"_order\d+$", "", n)
-
-            suffixes = (f"_{_base_name(self.name)}", f"_{_base_name(other.name)}")
+            suffixes = _default_suffixes(self.name, other.name)
 
         if len(suffixes) != 2:
             raise ValueError("`suffixes` must be a tuple with two strings")
@@ -967,10 +971,7 @@ class Catalog(HealpixDataset):
             added, and the rows merged on the specified columns.
         """
         if suffixes is None:
-            def _base_name(n: str) -> str:
-                return re.sub(r"_order\d+$", "", n)
-
-            suffixes = (f"_{_base_name(self.name)}", f"_{_base_name(other.name)}")
+            suffixes = _default_suffixes(self.name, other.name)
 
         if len(suffixes) != 2:
             raise ValueError("`suffixes` must be a tuple with two strings")
