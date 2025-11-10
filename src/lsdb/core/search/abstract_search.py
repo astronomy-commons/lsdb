@@ -7,14 +7,13 @@ import astropy
 import nested_pandas as npd
 from astropy.coordinates import SkyCoord
 from astropy.units import Quantity
-from astropy.visualization.wcsaxes import WCSAxes
-from astropy.visualization.wcsaxes.frame import BaseFrame
 from hats.catalog import TableProperties
-from hats.inspection.visualize_catalog import initialize_wcs_axes
-from matplotlib import pyplot as plt
-from matplotlib.figure import Figure
 
 if TYPE_CHECKING:
+    from astropy.visualization.wcsaxes import WCSAxes
+    from astropy.visualization.wcsaxes.frame import BaseFrame
+    from matplotlib.figure import Figure
+
     from lsdb.types import HCCatalogTypeVar
 
 
@@ -135,7 +134,16 @@ class AbstractSearch(ABC):
         tuple[Figure, WCSAxes]
             The figure and axes used for the plot
         """
-        fig, ax, wcs = initialize_wcs_axes(
+        try:
+            # pylint: disable=import-outside-toplevel
+            from hats.inspection._plotting import _initialize_wcs_axes
+            from matplotlib import pyplot as plt
+        except ImportError as exc:
+            raise ImportError(
+                "matplotlib is required to use this method. Install with pip or conda."
+            ) from exc
+
+        fig, ax, wcs = _initialize_wcs_axes(
             projection=projection,
             fov=fov,
             center=center,

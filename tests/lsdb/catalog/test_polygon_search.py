@@ -8,8 +8,8 @@ import lsdb.nested as nd
 from lsdb.core.search.region_search import get_cartesian_polygon
 
 
-@pytest.mark.sphgeom
 def test_polygon_search_filters_correct_points(small_sky_order1_catalog, helpers):
+    pytest.importorskip("lsst.sphgeom")
     vertices = [(300, -50), (300, -55), (272, -55), (272, -50)]
     polygon = get_cartesian_polygon(vertices)
     polygon_search_catalog = small_sky_order1_catalog.polygon_search(vertices)
@@ -26,8 +26,8 @@ def test_polygon_search_filters_correct_points(small_sky_order1_catalog, helpers
     helpers.assert_divisions_are_correct(polygon_search_catalog)
 
 
-@pytest.mark.sphgeom
 def test_polygon_search_filters_correct_points_margin(small_sky_order1_source_with_margin, helpers):
+    pytest.importorskip("lsst.sphgeom")
     vertices = [(300, -50), (300, -55), (272, -55), (272, -50)]
     polygon = get_cartesian_polygon(vertices)
     polygon_search_catalog = small_sky_order1_source_with_margin.polygon_search(vertices)
@@ -53,8 +53,8 @@ def test_polygon_search_filters_correct_points_margin(small_sky_order1_source_wi
     helpers.assert_divisions_are_correct(polygon_search_catalog.margin)
 
 
-@pytest.mark.sphgeom
 def test_polygon_search_filters_partitions(small_sky_order1_catalog):
+    pytest.importorskip("lsst.sphgeom")
     vertices = [(300, -50), (300, -55), (272, -55), (272, -50)]
     hc_polygon_search = small_sky_order1_catalog.hc_structure.filter_by_polygon(vertices)
     polygon_search_catalog = small_sky_order1_catalog.polygon_search(vertices, fine=False)
@@ -64,8 +64,8 @@ def test_polygon_search_filters_partitions(small_sky_order1_catalog):
         assert pixel in polygon_search_catalog._ddf_pixel_map
 
 
-@pytest.mark.sphgeom
 def test_polygon_search_coarse_versus_fine(small_sky_order1_catalog):
+    pytest.importorskip("lsst.sphgeom")
     vertices = [(300, -50), (300, -55), (272, -55), (272, -50)]
     coarse_polygon_search = small_sky_order1_catalog.polygon_search(vertices, fine=False)
     fine_polygon_search = small_sky_order1_catalog.polygon_search(vertices)
@@ -76,12 +76,14 @@ def test_polygon_search_coarse_versus_fine(small_sky_order1_catalog):
 
 def test_polygon_search_invalid_dec(small_sky_order1_catalog):
     # Some declination values are out of the [-90,90[ bounds
+    pytest.importorskip("lsst.sphgeom")
     with pytest.raises(ValueError, match=ValidatorsErrors.INVALID_DEC):
         vertices = [(-20, 100), (-20, -1), (20, -1), (20, 100)]
         small_sky_order1_catalog.polygon_search(vertices)
 
 
 def test_polygon_search_invalid_polygon(small_sky_order1_catalog):
+    pytest.importorskip("lsst.sphgeom")
     with pytest.raises(ValueError, match=ValidatorsErrors.INVALID_NUM_VERTICES):
         vertices = [(100.1, -20.3), (100.1, 40.3)]
         small_sky_order1_catalog.polygon_search(vertices[:2])
@@ -101,12 +103,12 @@ def test_polygon_search_invalid_polygon(small_sky_order1_catalog):
         small_sky_order1_catalog.polygon_search(vertices)
 
 
-@pytest.mark.sphgeom
 def test_polygon_search_wrapped_right_ascension():
     """Tests the scenario where the polygon edges intersect the
     discontinuity of the RA [0,360] degrees range. For the same
     polygon we have several possible combination of coordinates
     (here with some float-fudging)."""
+    pytest.importorskip("lsst.sphgeom")
     vertices = [(-20.1, 1), (-20.2, -1), (20.3, -1)]
     all_vertices_combinations = [
         [(-20.1, 1), (-20.2, -1), (20.3, -1)],
@@ -135,8 +137,8 @@ def test_polygon_search_wrapped_right_ascension():
         npt.assert_allclose(polygon.getVertices(), polygon_2.getVertices(), rtol=1e-7)
 
 
-@pytest.mark.sphgeom
 def test_empty_polygon_search_with_margin(small_sky_order1_source_with_margin):
+    pytest.importorskip("lsst.sphgeom")
     vertices = [(90, 0), (100, 30), (120, 0)]
     polygon = small_sky_order1_source_with_margin.polygon_search(vertices)
     assert len(polygon._ddf_pixel_map) == 0

@@ -1,12 +1,10 @@
 import hats
-import matplotlib.pyplot as plt
 import nested_pandas as npd
 import pandas as pd
 import pytest
 from astropy.coordinates import SkyCoord
 from astropy.visualization.wcsaxes import SphericalCircle
 from hats.pixel_math.validators import ValidatorsErrors
-from matplotlib import colors
 
 import lsdb.nested as nd
 from lsdb import ConeSearch
@@ -162,6 +160,9 @@ def test_empty_cone_search_with_margin(small_sky_order1_source_with_margin):
 
 
 def test_cone_search_plot():
+    plt = pytest.importorskip("matplotlib.pyplot")
+    colors = pytest.importorskip("matplotlib.colors")
+
     ra = 100
     dec = 80
     radius = 60
@@ -175,6 +176,7 @@ def test_cone_search_plot():
 
 
 def test_cone_search_plot_set_color():
+    plt = pytest.importorskip("matplotlib.pyplot")
     ra = 100
     dec = 80
     radius = 60

@@ -4,6 +4,7 @@ ipython
 ipywidgets
 jupytext
 lsst-sphgeom
+matplotlib
 nbconvert
 nbsphinx
 sphinx
