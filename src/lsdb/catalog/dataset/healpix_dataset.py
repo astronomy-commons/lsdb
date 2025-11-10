@@ -5,7 +5,7 @@ import random
 import warnings
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Callable, Iterable, Type
+from typing import TYPE_CHECKING, Callable, Iterable, Type
 
 import astropy
 import dask
@@ -15,15 +15,11 @@ import numpy as np
 import pandas as pd
 from astropy.coordinates import SkyCoord
 from astropy.units import Quantity
-from astropy.visualization.wcsaxes import WCSAxes
-from astropy.visualization.wcsaxes.frame import BaseFrame
 from dask.dataframe.core import _repr_data_series
 from deprecated import deprecated  # type: ignore
 from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
-from hats.inspection.visualize_catalog import get_fov_moc_from_wcs, initialize_wcs_axes
 from hats.pixel_math import HealpixPixel
 from hats.pixel_math.healpix_pixel_function import get_pixel_argsort
-from matplotlib.figure import Figure
 from mocpy import MOC
 from pandas._typing import Renamer
 from typing_extensions import Self
@@ -47,6 +43,11 @@ from lsdb.dask.partition_indexer import PartitionIndexer
 from lsdb.io.schema import get_arrow_schema
 from lsdb.loaders.hats.hats_loading_config import HatsLoadingConfig
 from lsdb.types import DaskDFPixelMap
+
+if TYPE_CHECKING:
+    from astropy.visualization.wcsaxes import WCSAxes
+    from astropy.visualization.wcsaxes.frame import BaseFrame
+    from matplotlib.figure import Figure
 
 
 # pylint: disable=protected-access,too-many-public-methods,too-many-lines,import-outside-toplevel,cyclic-import
@@ -1376,7 +1377,16 @@ class HealpixDataset(Dataset):
         tuple[Figure, WCSAxes]
             The figure and axes used for the plot
         """
-        fig, ax, wcs = initialize_wcs_axes(
+        try:
+            # pylint: disable=import-outside-toplevel
+            from hats.inspection._plotting import _get_fov_moc_from_wcs, _initialize_wcs_axes
+            from matplotlib import pyplot as plt  # pylint: disable=unused-import
+        except ImportError as exc:
+            raise ImportError(
+                "matplotlib is required to use this method. Install with pip or conda."
+            ) from exc
+
+        fig, ax, wcs = _initialize_wcs_axes(
             projection=projection,
             fov=fov,
             center=center,
@@ -1387,7 +1397,7 @@ class HealpixDataset(Dataset):
             figsize=(9, 5),
         )
 
-        fov_moc = get_fov_moc_from_wcs(wcs)
+        fov_moc = _get_fov_moc_from_wcs(wcs)
 
         computed_catalog = (
             self.search(MOCSearch(fov_moc)).compute() if fov_moc is not None else self.compute()

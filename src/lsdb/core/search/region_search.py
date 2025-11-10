@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import astropy.units as u
 import nested_pandas as npd
 import pandas as pd
-from astropy.visualization.wcsaxes import SphericalCircle, WCSAxes
 from hats.catalog import TableProperties
 from hats.pixel_math import HealpixPixel, get_healpix_pixel, spatial_index
 from hats.pixel_math.region_to_moc import wrap_ra_angles
@@ -23,6 +24,9 @@ from mocpy import MOC
 
 from lsdb.core.search.abstract_search import AbstractSearch
 from lsdb.types import HCCatalogTypeVar
+
+if TYPE_CHECKING:
+    from astropy.visualization.wcsaxes import WCSAxes
 
 
 class BoxSearch(AbstractSearch):
@@ -73,6 +77,14 @@ class ConeSearch(AbstractSearch):
         return cone_filter(frame, self.ra, self.dec, self.radius_arcsec, metadata)
 
     def _perform_plot(self, ax: WCSAxes, **kwargs):
+        try:
+            # pylint: disable=import-outside-toplevel
+            from astropy.visualization.wcsaxes import SphericalCircle
+        except ImportError as exc:
+            raise ImportError(
+                "matplotlib is required to use this method. Install with pip or conda."
+            ) from exc
+
         kwargs_to_use = {"ec": "tab:red", "fc": "none"}
         kwargs_to_use.update(kwargs)
 

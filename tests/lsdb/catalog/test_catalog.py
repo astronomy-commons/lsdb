@@ -5,8 +5,6 @@ import astropy.units as u
 import dask.dataframe as dd
 import hats as hc
 import hats.pixel_math.healpix_shim as hp
-import matplotlib as mpl
-import matplotlib.pyplot as plt
 import nested_pandas as npd
 import numpy as np
 import numpy.testing as npt
@@ -14,7 +12,7 @@ import pandas as pd
 import pytest
 from astropy.coordinates import SkyCoord
 from astropy.visualization.wcsaxes import WCSAxes
-from hats.inspection.visualize_catalog import get_fov_moc_from_wcs
+from hats.inspection._plotting import _get_fov_moc_from_wcs
 from hats.pixel_math import HealpixPixel
 from mocpy import WCS
 from nested_pandas.datasets import generate_data
@@ -24,12 +22,14 @@ import lsdb.nested as nd
 from lsdb import Catalog, MarginCatalog
 from lsdb.core.search.region_search import MOCSearch
 
-mpl.use("Agg")
-
 
 @pytest.fixture(autouse=True)
 def reset_matplotlib():
     yield
+    mpl = pytest.importorskip("matplotlib")
+    plt = pytest.importorskip("matplotlib.pyplot")
+
+    mpl.use("Agg")
     plt.close("all")
 
 
@@ -736,12 +736,13 @@ def test_plot_points(small_sky_order1_catalog, mocker):
 
 
 def test_plot_points_fov(small_sky_order1_catalog, mocker):
+    plt = pytest.importorskip("matplotlib.pyplot")
     mocker.patch("astropy.visualization.wcsaxes.WCSAxes.scatter")
     fig = plt.figure(figsize=(10, 6))
     center = SkyCoord(350, -80, unit="deg")
     fov = 10 * u.deg
     wcs = WCS(fig=fig, fov=fov, center=center, projection="MOL").w
-    wcs_moc = get_fov_moc_from_wcs(wcs)
+    wcs_moc = _get_fov_moc_from_wcs(wcs)
     _, ax = small_sky_order1_catalog.plot_points(fov=fov, center=center)
     comp_cat = small_sky_order1_catalog.search(MOCSearch(wcs_moc)).compute()
     WCSAxes.scatter.assert_called_once()
@@ -751,12 +752,13 @@ def test_plot_points_fov(small_sky_order1_catalog, mocker):
 
 
 def test_plot_points_wcs(small_sky_order1_catalog, mocker):
+    plt = pytest.importorskip("matplotlib.pyplot")
     mocker.patch("astropy.visualization.wcsaxes.WCSAxes.scatter")
     fig = plt.figure(figsize=(10, 6))
     center = SkyCoord(350, -80, unit="deg")
     fov = 10 * u.deg
     wcs = WCS(fig=fig, fov=fov, center=center).w
-    wcs_moc = get_fov_moc_from_wcs(wcs)
+    wcs_moc = _get_fov_moc_from_wcs(wcs)
     _, ax = small_sky_order1_catalog.plot_points(wcs=wcs)
     comp_cat = small_sky_order1_catalog.search(MOCSearch(wcs_moc)).compute()
     WCSAxes.scatter.assert_called_once()
@@ -766,6 +768,7 @@ def test_plot_points_wcs(small_sky_order1_catalog, mocker):
 
 
 def test_plot_points_colorcol(small_sky_order1_catalog, mocker):
+    plt = pytest.importorskip("matplotlib.pyplot")
     mocker.patch("astropy.visualization.wcsaxes.WCSAxes.scatter")
     mocker.patch("matplotlib.pyplot.colorbar")
     _, ax = small_sky_order1_catalog.plot_points(color_col="id")

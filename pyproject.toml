@@ -52,6 +52,7 @@ full = [
     "ipykernel", # Support for Jupyter notebooks
     "ipywidgets", # useful for tqdm in notebooks.
     "lsst-sphgeom ; sys_platform == 'darwin' or sys_platform == 'linux'", # To handle spherical sky polygons, not available on Windows
+    "matplotlib",
 ]
 
 [build-system]
