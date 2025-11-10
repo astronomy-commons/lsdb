@@ -1,17 +1,16 @@
 from __future__ import annotations
 
-from typing import Type
+from typing import TYPE_CHECKING, Type
 
 import astropy
-import matplotlib.pyplot as plt
 import pandas as pd
 from astropy.coordinates import SkyCoord
 from astropy.units import Quantity
-from astropy.visualization.wcsaxes import WCSAxes
-from astropy.visualization.wcsaxes.frame import BaseFrame
-from hats.inspection.visualize_catalog import initialize_wcs_axes
-from matplotlib.figure import Figure
-from mocpy.moc.plot.utils import _set_wcs
+
+if TYPE_CHECKING:
+    from astropy.visualization.wcsaxes import WCSAxes
+    from astropy.visualization.wcsaxes.frame import BaseFrame
+    from matplotlib.figure import Figure
 
 
 def plot_points(
@@ -81,7 +80,16 @@ def plot_points(
     tuple[Figure, WCSAxes]
         The figure and axes used for the plot
     """
-    fig, ax, wcs = initialize_wcs_axes(
+
+    try:
+        # pylint: disable=import-outside-toplevel
+        from hats.inspection.visualize_catalog import _initialize_wcs_axes
+        from matplotlib import pyplot as plt
+        from mocpy.moc.plot.utils import _set_wcs
+    except ImportError as exc:
+        raise ImportError("matplotlib is required to use this method. Install with pip or conda.") from exc
+
+    fig, ax, wcs = _initialize_wcs_axes(
         projection=projection,
         fov=fov,
         center=center,

@@ -30,12 +30,21 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        uv pip install --system -e .[dev,full]
+        uv pip install --system -e .[dev]
         if [ -f requirements.txt ]; then uv pip install --system -r requirements.txt; fi
     - name: List dependencies
       run: |
         pip list
     - name: Run unit tests with pytest
+      run: |
+        python -m pytest
+    - name: Install FULL dependencies
+      run: |
+        uv pip install --system -e .[full]
+    - name: List FULL dependencies
+      run: |
+        pip list
+    - name: Run FULL unit tests with pytest
       run: |
         python -m pytest
     - name: Send status to Slack app
