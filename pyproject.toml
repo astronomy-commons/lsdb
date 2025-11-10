@@ -47,6 +47,9 @@ dev = [
     "pytest-mock", # Used to mock objects in tests
     "types-tabulate", # Type information for tabulate
 ]
+s3fs = [
+    "s3fs>0.5",
+]
 full = [
     "fsspec[full]", # complete file system specs.
     "ipykernel", # Support for Jupyter notebooks
