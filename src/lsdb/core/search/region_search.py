@@ -206,6 +206,13 @@ class PolygonSearch(AbstractSearch):
     """
 
     def __init__(self, vertices: list[tuple[float, float]], fine: bool = True):
+        try:
+            # pylint: disable=unused-import,import-outside-toplevel
+            from lsst.sphgeom import ConvexPolygon
+        except ImportError as exc:
+            raise ImportError(
+                "lsst-sphgeom is required to use this method. Install with pip or conda."
+            ) from exc
         super().__init__(fine)
         validate_polygon(vertices)
         self.vertices = vertices

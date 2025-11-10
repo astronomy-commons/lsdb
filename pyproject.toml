@@ -66,9 +66,6 @@ build-backend = "setuptools.build_meta"
 write_to = "src/lsdb/_version.py"
 
 [tool.pytest.ini_options]
-markers = [
-    "sphgeom: mark tests as having a runtime dependency on lsst-sphgeom",
-]
 testpaths = [
     "tests",
     "src",

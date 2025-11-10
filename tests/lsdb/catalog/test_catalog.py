@@ -667,9 +667,9 @@ def test_filtered_catalog_has_undetermined_len(small_sky_order1_catalog, small_s
         len(small_sky_order1_catalog.pixel_search([(0, 11)]))
 
 
-@pytest.mark.sphgeom
 def test_filtered_catalog_has_undetermined_len_polygon(small_sky_order1_catalog):
     """Tests that filtered catalogs have an undetermined number of rows"""
+    pytest.importorskip("lsst.sphgeom")
     with pytest.raises(ValueError, match="undetermined"):
         vertices = [(300, -50), (300, -55), (272, -55), (272, -50)]
         len(small_sky_order1_catalog.polygon_search(vertices))
