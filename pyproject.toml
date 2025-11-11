@@ -24,6 +24,8 @@ dependencies = [
     "deprecated",
     "hats>=0.7,<0.8",
     "nested-pandas>=0.6.0,<0.7.0",
+    "numpy",
+    "pyarrow",
     "scipy>=1.7.2", # kdtree
     "tabulate>=0.7.0",
     "universal-pathlib",
