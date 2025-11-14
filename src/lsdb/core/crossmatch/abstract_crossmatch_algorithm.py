@@ -91,6 +91,7 @@ class AbstractCrossmatchAlgorithm(ABC):
         """
         self.left = left.copy(deep=False)
         self.right = right.copy(deep=False)
+
         self.left_order = left_order
         self.left_pixel = left_pixel
         self.right_order = right_order
@@ -99,7 +100,7 @@ class AbstractCrossmatchAlgorithm(ABC):
         self.right_catalog_info = right_catalog_info
         self.right_margin_catalog_info = right_margin_catalog_info
 
-    def crossmatch(self, suffixes, suffix_method="all_columns", **kwargs) -> npd.NestedFrame:
+    def crossmatch(self, how: str, suffixes, suffix_method="all_columns", **kwargs) -> npd.NestedFrame:
         """Perform a crossmatch.
 
         Parameters
@@ -122,7 +123,7 @@ class AbstractCrossmatchAlgorithm(ABC):
             raise ValueError(
                 "Crossmatch algorithm must return left and right indices and extra columns with same length"
             )
-        return self._create_crossmatch_df(l_inds, r_inds, extra_cols, suffixes, suffix_method)
+        return self._create_crossmatch_df(l_inds, r_inds, extra_cols, how, suffixes, suffix_method)
 
     def crossmatch_nested(self, nested_column_name, **kwargs) -> npd.NestedFrame:
         """Perform a crossmatch and store results in nested column.
@@ -225,11 +226,13 @@ class AbstractCrossmatchAlgorithm(ABC):
             new_col.index = dataframe.index
             dataframe[col] = new_col
 
+    # pylint: disable=too-many-locals
     def _create_crossmatch_df(
         self,
         left_idx: npt.NDArray[np.int64],
         right_idx: npt.NDArray[np.int64],
         extra_cols: pd.DataFrame,
+        how: str,
         suffixes: tuple[str, str],
         suffix_method="all_columns",
     ) -> npd.NestedFrame:
@@ -261,16 +264,98 @@ class AbstractCrossmatchAlgorithm(ABC):
         )
         # concat dataframes together
         index_name = self.left.index.name if self.left.index.name is not None else "index"
-        left_join_part = self.left.iloc[left_idx].reset_index()
-        right_join_part = self.right.iloc[right_idx].reset_index(drop=True)
-        out = pd.concat(
-            [
-                left_join_part,
-                right_join_part,
-            ],
-            axis=1,
-        )
-        out.set_index(index_name, inplace=True)
+        if how == "left":
+            # Matched rows: replicate left rows for each match (one row per left-right pair)
+            left_matched = self.left.iloc[left_idx].reset_index()
+            right_matched = self.right.iloc[right_idx].reset_index(drop=True)
+            matched_out = pd.concat([left_matched, right_matched], axis=1)
+
+            # Unmatched left rows: keep each left row once, with NA values for right columns
+            left_full = self.left.reset_index()
+            # left_full contains a column with the original index name (index_name)
+            matched_left_index_values = self.left.index[left_idx]
+            left_unmatched = left_full[~left_full[index_name].isin(matched_left_index_values)].reset_index(
+                drop=True
+            )
+
+            # Build empty right-side columns (same names and dtypes as right_matched) filled with NA
+            if len(right_matched.columns) > 0:
+                # Build NA-filled columns matching the dtypes of right_matched.
+                # Use numpy.nan for numpy numeric dtypes (float/int) since pd.NA
+                # may not cast to numpy dtypes; use pd.NA for other/extension dtypes.
+                def _na_series_for_dtype(dtype, length):
+                    try:
+                        kind = getattr(dtype, "kind", None)
+                    except AttributeError:
+                        kind = None
+                    if kind in ("f", "i", "u", "b"):
+                        return pd.Series([np.nan] * length, dtype=dtype)
+                    return pd.Series([pd.NA] * length, dtype=dtype)
+
+                unmatched_right = pd.DataFrame(
+                    {
+                        col: _na_series_for_dtype(right_matched[col].dtype, len(left_unmatched))
+                        for col in right_matched.columns
+                    }
+                )
+            else:
+                unmatched_right = pd.DataFrame(index=range(len(left_unmatched)))
+
+            unmatched_out = pd.concat([left_unmatched, unmatched_right], axis=1)
+
+            # Combine matched (one row per match) and unmatched (one row per non-match)
+            out = pd.concat([matched_out, unmatched_out], axis=0, ignore_index=True)
+            # Restore the original left index as the DataFrame index
+            out.set_index(index_name, inplace=True)
+
+            # Ensure extra_cols has the same number of rows as `out` for left-joins.
+            # For left-joins we may have unmatched left rows (one per left row) so
+            # extra_cols (which only contains rows for matched pairs) must be
+            # expanded with NaNs to cover unmatched rows before assigning the index.
+            n_out = len(out)
+            n_extra = len(extra_cols)
+            if n_extra > n_out:
+                raise ValueError(f"extra_cols has more rows ({n_extra}) than output rows ({n_out})")
+            if n_extra == n_out:
+                full_extra = extra_cols.reset_index(drop=True)
+            else:
+                # n_unmatched = number of rows in `out` that correspond to left rows without a match
+                n_unmatched = n_out - n_extra
+                if n_extra == 0:
+                    # No matches: build empty full_extra with same columns and NaNs for all rows
+                    if len(extra_cols.columns) > 0:
+                        full_extra = pd.DataFrame(
+                            {
+                                c: pd.Series([pd.NA] * n_out, dtype=extra_cols[c].dtype)
+                                for c in extra_cols.columns
+                            }
+                        )
+                    else:
+                        full_extra = pd.DataFrame(index=range(n_out))
+                else:
+                    # Append trailing NaN rows so matched extra rows line up with the matched-out block
+                    tail = pd.DataFrame(
+                        {
+                            c: pd.Series([pd.NA] * n_unmatched, dtype=extra_cols[c].dtype)
+                            for c in extra_cols.columns
+                        }
+                    )
+                    full_extra = pd.concat([extra_cols.reset_index(drop=True), tail], ignore_index=True)
+
+            # align index and replace extra_cols
+            full_extra.index = out.index
+            extra_cols = full_extra
+        elif how == "inner":
+            left_join_part = self.left.iloc[left_idx].reset_index()
+            right_join_part = self.right.iloc[right_idx].reset_index(drop=True)
+            out = pd.concat(
+                [
+                    left_join_part,
+                    right_join_part,
+                ],
+                axis=1,
+            )
+            out.set_index(index_name, inplace=True)
         extra_cols.index = out.index
         self._append_extra_columns(out, extra_cols)
         return npd.NestedFrame(out)
