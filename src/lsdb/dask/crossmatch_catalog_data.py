@@ -96,7 +96,6 @@ def perform_crossmatch(
     # If there's no left partition for this aligned pixel, return an empty/meta frame
     if left_df is None:
         return meta_df
-    # TODO: why didn't the earlier version test right_pix for None?  Because it was implied inner?
     if right_pix and right_pix.order > left_pix.order:
         left_df = filter_by_spatial_index_to_pixel(
             left_df, right_pix.order, right_pix.pixel, spatial_index_order=left_catalog_info.healpix_order
@@ -105,7 +104,6 @@ def perform_crossmatch(
     if len(left_df) == 0:
         return meta_df
 
-    # TODO: does this work if either or both are None?
     right_joined_df = concat_partition_and_margin(right_df, right_margin_df)
     # If there is no right data for this aligned pixel, provide an empty dataframe with the
     # expected RA/DEC columns so the algorithm can be instantiated safely.
@@ -138,10 +136,6 @@ def perform_crossmatch(
         # so that algorithms that expect concrete partition data (pandas NestedFrame) work.
         right_joined_df = npd.NestedFrame(pd.DataFrame(cols))
 
-    # TODO: Sean suggests this happen within perform_crossmatch(), above
-    # TODO: because Dask DDFs don't understand the alignment here
-    # TODO: but it seems to work
-
     return algorithm(
         left_df,
         right_joined_df,
@@ -149,7 +143,6 @@ def perform_crossmatch(
         left_pix.pixel if left_pix else None,
         right_pix.order if right_pix else None,
         right_pix.pixel if right_pix else None,
-        # TODO: end of None checks
         left_catalog_info,
         right_catalog_info,
         right_margin_catalog_info,
