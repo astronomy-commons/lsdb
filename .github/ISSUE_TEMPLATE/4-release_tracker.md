@@ -35,6 +35,8 @@ e.g. major/minor/patch, deadlines, blocking issues, breaking changes, folks to n
 - [ ] tag in github
 - [ ] confirm on [pypi](https://pypi.org/manage/project/hats/releases/)
 
+*At this point, you may want to skip down to do the hats conda release first, then return here and do the rest--the conda-forge release process can take a little while once triggered.*
+
 ### lsdb
 
 - [ ] update pinned versions (e.g. hats and nested) (or confirm no updates to pins)
@@ -49,10 +51,13 @@ e.g. major/minor/patch, deadlines, blocking issues, breaking changes, folks to n
 
 ## conda-forge steps
 
+*Note: if the CI of any of the below steps fails due to a hash mismatch, you need to regenerate the hash used in the `recipe/meta.yaml`. Get the new hash by running `curl -L https://github.com/<org>/<repo>/archive/refs/tags/<tag>.tar.gz | shasum -a 256`, where the url is your desired release's .tar.gz (found in the repo's releases page).*
+
 ### hats 
 
 - [ ] request new conda-forge version (open [bot command issue](https://github.com/conda-forge/hats-feedstock/issues/) 
   with title `@conda-forge-admin, please update version`)
+- [ ] edit the `recipe/meta.yaml` in the auto-generated PR to match any dependency changes that have been made to the `pyproject.toml` in this release
 - [ ] approve conda-forge PR
 - [ ] confirm on [conda-forge](https://anaconda.org/conda-forge/hats)
 
@@ -60,14 +65,14 @@ e.g. major/minor/patch, deadlines, blocking issues, breaking changes, folks to n
 
 - [ ] request new conda-forge version (open [bot command issue](https://github.com/conda-forge/lsdb-feedstock/issues/) 
   with title `@conda-forge-admin, please update version`)
-- [ ] confirm tagged `hats` and `nested-pandas` versions and approve
+- [ ] confirm tagged `hats` and `nested-pandas` versions (and any other dependencies that have changed in the pyproject) and approve
 - [ ] confirm on [conda-forge](https://anaconda.org/conda-forge/lsdb)
 
 ### hats-import
 
 - [ ] request new conda-forge version (open [bot command issue](https://github.com/conda-forge/hats-import-feedstock/issues/)  
   with title `@conda-forge-admin, please update version`)
-- [ ] confirm tagged hats version and approve
+- [ ] confirm tagged hats version (and any other dependencies that have changed in the pyproject) and approve
 - [ ] confirm on [conda-forge](https://anaconda.org/conda-forge/hats-import)
 
 ### tie it together
