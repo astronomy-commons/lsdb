@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 import warnings
 from pathlib import Path
 from typing import Any, Callable, Iterable
@@ -42,19 +41,9 @@ from lsdb.nested.core import NestedFrame
 from lsdb.types import DaskDFPixelMap
 
 
-def _base_name(n: str) -> str:
-    """Return the base catalog name with trailing "_order<digits>" removed.
-
-    This is used to generate stable, human-friendly suffixes for merged/joined
-    catalogs (e.g. 'small_sky_order1' -> 'small_sky'). Centralising the logic
-    prevents duplication across Catalog methods.
-    """
-    return re.sub(r"_order\d+$", "", n)
-
-
 def _default_suffixes(left_name: str, right_name: str) -> tuple[str, str]:
     """Return the default pair of suffixes for left/right catalog names."""
-    return (f"_{_base_name(left_name)}", f"_{_base_name(right_name)}")
+    return (f"_{left_name}", f"_{right_name}")
 
 
 # pylint: disable=protected-access,too-many-public-methods, too-many-lines
