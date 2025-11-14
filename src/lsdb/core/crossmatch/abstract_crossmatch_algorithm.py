@@ -118,9 +118,6 @@ class AbstractCrossmatchAlgorithm(ABC):
         npd.NestedFrame
             The dataframe containing the results of the crossmatch.
         """
-        print(
-            f"Crossmatching how={how} pixels L{self.left_order}_{self.left_pixel} R{self.right_order}_{self.right_pixel}"
-        )
         l_inds, r_inds, extra_cols = self.perform_crossmatch(**kwargs)
         if not len(l_inds) == len(r_inds) == len(extra_cols):
             raise ValueError(
@@ -229,6 +226,7 @@ class AbstractCrossmatchAlgorithm(ABC):
             new_col.index = dataframe.index
             dataframe[col] = new_col
 
+    # pylint: disable=too-many-locals
     def _create_crossmatch_df(
         self,
         left_idx: npt.NDArray[np.int64],
@@ -276,7 +274,9 @@ class AbstractCrossmatchAlgorithm(ABC):
             left_full = self.left.reset_index()
             # left_full contains a column with the original index name (index_name)
             matched_left_index_values = self.left.index[left_idx]
-            left_unmatched = left_full[~left_full[index_name].isin(matched_left_index_values)].reset_index(drop=True)
+            left_unmatched = left_full[~left_full[index_name].isin(matched_left_index_values)].reset_index(
+                drop=True
+            )
 
             # Build empty right-side columns (same names and dtypes as right_matched) filled with NA
             if len(right_matched.columns) > 0:
@@ -286,14 +286,17 @@ class AbstractCrossmatchAlgorithm(ABC):
                 def _na_series_for_dtype(dtype, length):
                     try:
                         kind = getattr(dtype, "kind", None)
-                    except Exception:
+                    except AttributeError:
                         kind = None
                     if kind in ("f", "i", "u", "b"):
                         return pd.Series([np.nan] * length, dtype=dtype)
                     return pd.Series([pd.NA] * length, dtype=dtype)
 
                 unmatched_right = pd.DataFrame(
-                    {col: _na_series_for_dtype(right_matched[col].dtype, len(left_unmatched)) for col in right_matched.columns}
+                    {
+                        col: _na_series_for_dtype(right_matched[col].dtype, len(left_unmatched))
+                        for col in right_matched.columns
+                    }
                 )
             else:
                 unmatched_right = pd.DataFrame(index=range(len(left_unmatched)))
@@ -322,14 +325,20 @@ class AbstractCrossmatchAlgorithm(ABC):
                     # No matches: build empty full_extra with same columns and NaNs for all rows
                     if len(extra_cols.columns) > 0:
                         full_extra = pd.DataFrame(
-                            {c: pd.Series([pd.NA] * n_out, dtype=extra_cols[c].dtype) for c in extra_cols.columns}
+                            {
+                                c: pd.Series([pd.NA] * n_out, dtype=extra_cols[c].dtype)
+                                for c in extra_cols.columns
+                            }
                         )
                     else:
                         full_extra = pd.DataFrame(index=range(n_out))
                 else:
                     # Append trailing NaN rows so matched extra rows line up with the matched-out block
                     tail = pd.DataFrame(
-                        {c: pd.Series([pd.NA] * n_unmatched, dtype=extra_cols[c].dtype) for c in extra_cols.columns}
+                        {
+                            c: pd.Series([pd.NA] * n_unmatched, dtype=extra_cols[c].dtype)
+                            for c in extra_cols.columns
+                        }
                     )
                     full_extra = pd.concat([extra_cols.reset_index(drop=True), tail], ignore_index=True)
 
