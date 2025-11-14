@@ -30,6 +30,7 @@ def crossmatch(
     right: Catalog | npd.NestedFrame | pd.DataFrame,
     ra_column: str | None = None,
     dec_column: str | None = None,
+    how: str = "inner",
     suffixes: tuple[str, str] | None = None,
     algorithm: (
         type[AbstractCrossmatchAlgorithm] | BuiltInCrossmatchAlgorithm
@@ -61,6 +62,9 @@ def crossmatch(
         if passing dataframes. Can be specified in the left_args or right_args dictionaries if
         left and right catalogs have different dec column names. Defaults to None, which will use
         the default column names "dec", "Dec", or "DEC" if they exist in the DataFrame.
+    how: str
+        How to handle the crossmatch of the two catalogs.
+        One of {'left', 'inner'}.  Defaults to 'inner'.
     suffixes : tuple[str,str] or None, default None
         Suffixes to append to overlapping column names.
     algorithm : type[AbstractCrossmatchAlgorithm] or BuiltInCrossmatchAlgorithm
@@ -110,5 +114,5 @@ def crossmatch(
 
     # Call the crossmatch method with the given or newly generated Catalogs.
     return Catalog.crossmatch(
-        left, right, suffixes, algorithm, output_catalog_name, require_right_margin, **kwargs
+        left, right, how, suffixes, algorithm, output_catalog_name, require_right_margin, **kwargs
     )

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import re
 import warnings
 from pathlib import Path
-import re
 from typing import Any, Callable, Iterable
 
 import dask.dataframe as dd
@@ -320,8 +320,8 @@ class Catalog(HealpixDataset):
         ddf, ddf_map, alignment = crossmatch_catalog_data(
             self,
             other,
+            how,
             suffixes,
-            how=how,
             algorithm=algorithm,
             suffix_method=suffix_method,
             log_changes=log_changes,

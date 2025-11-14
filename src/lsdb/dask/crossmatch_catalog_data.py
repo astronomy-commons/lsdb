@@ -3,11 +3,11 @@ from __future__ import annotations
 import warnings
 from typing import TYPE_CHECKING, Type
 
+import nested_pandas as npd
+import pandas as pd
 from hats.pixel_tree import PixelAlignment, PixelAlignmentType
 
-import nested_pandas as npd
 import lsdb.nested as nd
-import pandas as pd
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
 from lsdb.core.crossmatch.crossmatch_algorithms import (
     BuiltInCrossmatchAlgorithm,
@@ -29,7 +29,7 @@ if TYPE_CHECKING:
     from lsdb.catalog.catalog import Catalog
 
 
-# pylint: disable=too-many-arguments, unused-argument
+# pylint: disable=too-many-arguments, unused-argument, too-many-locals
 def perform_crossmatch(
     left_df,
     right_df,
@@ -239,8 +239,8 @@ def perform_crossmatch_nested(
 def crossmatch_catalog_data(
     left: Catalog,
     right: Catalog,
+    how: str,
     suffixes: tuple[str, str],
-    how: str = "inner",
     algorithm: (
         Type[AbstractCrossmatchAlgorithm] | BuiltInCrossmatchAlgorithm
     ) = BuiltInCrossmatchAlgorithm.KD_TREE,
@@ -258,7 +258,7 @@ def crossmatch_catalog_data(
         the right catalog to perform the cross-match on
     how: str
         How to handle the crossmatch of the two catalogs.
-        One of {'left', 'inner'}; defaults to 'inner'.
+        One of {'left', 'inner'}.
     suffixes : tuple[str,str]
         the suffixes to append to the column names from the left and
         right catalogs respectively
