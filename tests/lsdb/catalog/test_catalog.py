@@ -708,7 +708,7 @@ def test_modified_hc_structure_is_a_deep_copy(small_sky_order1_catalog):
     assert small_sky_order1_catalog.hc_structure.moc is not None
     assert small_sky_order1_catalog.hc_structure.catalog_info.total_rows == 131
 
-    modified_hc_structure = small_sky_order1_catalog._create_modified_hc_structure(total_rows=0)
+    modified_hc_structure = small_sky_order1_catalog._create_modified_hc_structure(total_rows=None)
     modified_hc_structure.pixel_tree = None
     modified_hc_structure.catalog_path = None
     modified_hc_structure.schema = None
@@ -722,7 +722,7 @@ def test_modified_hc_structure_is_a_deep_copy(small_sky_order1_catalog):
     assert small_sky_order1_catalog.hc_structure.catalog_info.total_rows == 131
 
     # The rows of the new structure are invalidated
-    assert modified_hc_structure.catalog_info.total_rows == 0
+    assert modified_hc_structure.catalog_info.total_rows is None
 
 
 def test_plot_points(small_sky_order1_catalog, mocker):

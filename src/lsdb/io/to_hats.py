@@ -172,8 +172,10 @@ def to_hats(
             base_catalog_path, create_thumbnail=create_thumbnail, thumbnail_threshold=hats_max_rows
         )
     else:
+        metadata_path = hc.io.paths.get_parquet_metadata_pointer(base_catalog_path)
         common_metadata_path = hc.io.paths.get_common_metadata_pointer(base_catalog_path)
-        file_io.make_directory(common_metadata_path.parent, exist_ok=True)
+        file_io.make_directory(metadata_path.parent, exist_ok=True)
+        pq.write_metadata(catalog.hc_structure.schema, metadata_path.path, filesystem=metadata_path.fs)
         pq.write_metadata(
             catalog.hc_structure.schema, common_metadata_path.path, filesystem=common_metadata_path.fs
         )
