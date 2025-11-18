@@ -445,8 +445,7 @@ def test_aggregate_column_statistics(small_sky_order1_catalog):
 
     filtered_catalog = small_sky_order1_catalog.cone_search(315, -66.443, 0.1, fine=False)
     result_frame = filtered_catalog.aggregate_column_statistics()
-    assert len(result_frame) == 5
-    assert_column_stat_as_floats(result_frame, "dec", min_value=-69.5, max_value=-47.5, row_count=42)
+    assert len(result_frame) == 0
 
 
 def test_per_pixel_statistics(small_sky_order1_catalog):
@@ -469,9 +468,7 @@ def test_per_pixel_statistics(small_sky_order1_catalog):
     result_frame = filtered_catalog.per_pixel_statistics(
         include_stats=["row_count"], include_columns=["ra", "dec"]
     )
-    # 1 = 1 pixel
-    # 2 = 2 columns * 1 stats per-column
-    assert result_frame.shape == (1, 2)
+    assert result_frame.shape == (0, 0)
 
 
 def test_square_bracket_columns(small_sky_order1_catalog, helpers):

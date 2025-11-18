@@ -328,7 +328,6 @@ def create_modified_catalog_structure(
     new_hc_structure.catalog_name = catalog_name
     new_hc_structure.catalog_path = catalog_base_dir
     new_hc_structure.catalog_base_dir = hc.io.file_io.get_upath(catalog_base_dir)
-    new_hc_structure.on_disk = True
 
     new_hc_structure.catalog_info = new_hc_structure.catalog_info.copy_and_update(**kwargs)
     new_hc_structure.catalog_info.catalog_name = catalog_name

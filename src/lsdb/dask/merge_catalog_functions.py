@@ -1034,8 +1034,7 @@ def create_merged_catalog_info(
         if left_info.dec_column is not None
         else None
     )
-    return left_info.copy_and_upd
-    ate(
+    return left_info.copy_and_update(
         catalog_name=updated_name,
         ra_column=ra_col,
         dec_column=dec_col,
