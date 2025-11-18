@@ -1059,7 +1059,7 @@ class Catalog(HealpixDataset):
             output_catalog_name = self.hc_structure.catalog_info.catalog_name
 
         new_catalog_info = self.hc_structure.catalog_info.copy_and_update(
-            catalog_name=output_catalog_name, total_rows=0
+            catalog_name=output_catalog_name, total_rows=None
         )
         hc_catalog = hc.catalog.Catalog(
             new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(ddf), moc=alignment.moc

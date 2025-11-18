@@ -1038,6 +1038,6 @@ def create_merged_catalog_info(
         catalog_name=updated_name,
         ra_column=ra_col,
         dec_column=dec_col,
-        total_rows=0,
+        total_rows=None,
         default_columns=None,
     )

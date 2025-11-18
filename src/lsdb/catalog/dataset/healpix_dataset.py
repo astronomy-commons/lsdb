@@ -197,7 +197,7 @@ class HealpixDataset(Dataset):
                 col for col in hc_structure.catalog_info.default_columns if col in ddf.columns
             ]
         if "total_rows" not in updated_catalog_info_params:
-            updated_catalog_info_params["total_rows"] = 0
+            updated_catalog_info_params["total_rows"] = None
         updated_schema = get_arrow_schema(ddf)
         hc_structure = self._create_modified_hc_structure(
             hc_structure=hc_structure, updated_schema=updated_schema, **updated_catalog_info_params
@@ -504,7 +504,7 @@ class HealpixDataset(Dataset):
         """
         random.seed(seed)
         dfs = []
-        if self.hc_structure.catalog_info.total_rows > 0:
+        if self.hc_structure.catalog_info.total_rows is not None:
             stats = self.hc_structure.per_pixel_statistics()
             # These stats are one *row* per pixel.  The number of
             # columns is permuted, with names like "colname:
@@ -748,7 +748,7 @@ class HealpixDataset(Dataset):
             A new Catalog containing the points filtered to those matching the search parameters.
         """
         if (
-            self.hc_structure.catalog_info.total_rows > 0
+            self.hc_structure.catalog_info.total_rows is not None
             and self.hc_structure.catalog_base_dir is not None
             and self.hc_structure.original_schema is not None
         ):

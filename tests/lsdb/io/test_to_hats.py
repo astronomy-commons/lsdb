@@ -248,6 +248,7 @@ def test_save_empty_catalog_no_error(small_sky_order1_catalog, tmp_path):
 
     catalog = lsdb.read_hats(base_catalog_path)
     assert len(catalog.get_healpix_pixels()) == 0
+    assert len(catalog.per_pixel_statistics()) == 0
     pd.testing.assert_frame_equal(cone_search_catalog._ddf._meta, catalog._ddf._meta)
     pd.testing.assert_frame_equal(cone_search_catalog.compute(), catalog.compute())
 
