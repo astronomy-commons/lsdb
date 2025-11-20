@@ -890,6 +890,8 @@ class HealpixDataset:
         *args,
         meta: pd.DataFrame | pd.Series | dict | Iterable | tuple | None = None,
         include_pixel: bool = False,
+        run_single_partition: bool = False,
+        partition_index: int | HealpixPixel | None = None,
         **kwargs,
     ) -> Self | dd.Series:
         """Applies a function to each partition in the catalog.
@@ -931,6 +933,17 @@ class HealpixDataset:
             A new catalog with each partition replaced with the output of the function applied to the original
             partition. If the function returns a non dataframe output, a dask Series will be returned.
         """
+        if run_single_partition:
+            if partition_index is None:
+                partition_index = 0
+            if isinstance(partition_index, HealpixPixel):
+                partition_index = self.get_partition_index(partition_index.order, partition_index.pixel)
+            partition = self.partitions[partition_index].compute()
+            if include_pixel:
+                pixel = [p for p, ind in self._ddf_pixel_map.items() if ind == partition_index][0]
+                return func(partition, pixel, *args, **kwargs)
+            return func(partition, *args, **kwargs)
+
         if meta is None:
             if include_pixel:
                 meta = func(self._ddf._meta.copy(), HealpixPixel(0, 0), *args, **kwargs)
