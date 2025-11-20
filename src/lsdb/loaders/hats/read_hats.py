@@ -368,13 +368,14 @@ def _load_dask_df_and_map(catalog: HCHealpixDataset, config) -> tuple[nd.NestedF
     query_url_params = None
     if isinstance(file_io.get_upath(catalog.catalog_base_dir).fs, HTTPFileSystem):
         query_url_params = config.make_query_url_params()
+    npix_suffix = catalog.catalog_info.npix_suffix
     if len(ordered_pixels) > 0:
         ddf = nd.NestedFrame.from_map(
             read_pixel,
             ordered_pixels,
             path_generator=config.path_generator,
             catalog_base_dir=catalog.catalog_base_dir,
-            npix_suffix=catalog.catalog_info.npix_suffix,
+            npix_suffix=npix_suffix,
             query_url_params=query_url_params,
             columns=config.columns,
             schema=catalog.schema,
@@ -382,6 +383,7 @@ def _load_dask_df_and_map(catalog: HCHealpixDataset, config) -> tuple[nd.NestedF
             index_column=index_column,
             divisions=divisions,
             meta=dask_meta_schema,
+            is_dir=(npix_suffix == "/"),
             **config.kwargs,
         )
     else:
@@ -400,6 +402,7 @@ def read_pixel(
     index_column: str = SPATIAL_INDEX_COLUMN,
     columns: list[str] | str | None = None,
     schema: pa.Schema | None = None,
+    is_dir: bool = False,
     **kwargs,
 ) -> npd.NestedFrame:
     """Utility method to read a single pixel's parquet file from disk.
@@ -419,6 +422,8 @@ def read_pixel(
         The columns to load.
     schema: pa.Schema or None, default None
         The pyarrow schema expected for the file.
+    is_dir : bool, optional
+        (Default value = False) If True, the pixel data is stored in a directory.
 
     Returns
     -------
@@ -435,6 +440,7 @@ def read_pixel(
         columns=columns,
         schema=schema,
         index_column=index_column,
+        is_dir=is_dir,
         **kwargs,
     )
 
@@ -445,6 +451,7 @@ def _read_parquet_file(
     columns=None,
     schema=None,
     index_column=None,
+    is_dir=False,
     **kwargs,
 ) -> npd.NestedFrame:
     if (
@@ -454,9 +461,9 @@ def _read_parquet_file(
         and index_column not in columns
     ):
         columns = columns + [index_column]
-    dataframe = file_io.read_parquet_file_to_pandas(path, columns=columns, schema=schema, **kwargs)
-
+    dataframe = file_io.read_parquet_file_to_pandas(
+        path, columns=columns, schema=schema, is_dir=is_dir, **kwargs
+    )
     if dataframe.index.name != index_column and index_column in dataframe.columns:
         dataframe = dataframe.set_index(index_column)
-
     return dataframe
