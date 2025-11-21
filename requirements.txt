@@ -1,2 +1,2 @@
-hats @ git+https://github.com/astronomy-commons/hats.git@main
+hats @ git+https://github.com/astronomy-commons/hats.git@issue/592/read-parquet-is_dir
 nested-pandas @ git+https://github.com/lincc-frameworks/nested-pandas.git@main
