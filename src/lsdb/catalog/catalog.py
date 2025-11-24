@@ -21,8 +21,8 @@ from lsdb.catalog.association_catalog import AssociationCatalog
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
 from lsdb.catalog.map_catalog import MapCatalog
 from lsdb.catalog.margin_catalog import MarginCatalog
-from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
-from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorithm
+from lsdb.core.crossmatch.crossmatch_algorithm import CrossmatchAlgorithm
+from lsdb.core.crossmatch.kdtree_match import KdTreeCrossmatch
 from lsdb.core.search.abstract_search import AbstractSearch
 from lsdb.core.search.index_search import IndexSearch
 from lsdb.dask.concat_catalog_data import _assert_same_ra_dec, concat_catalog_data, handle_margins_for_concat
@@ -167,18 +167,19 @@ class Catalog(HealpixDataset):
             catalog.margin = self.margin.rename(columns)
         return catalog
 
+    # pylint:disable=unused-argument
     def crossmatch(
         self,
         other: Catalog,
-        suffixes: tuple[str, str] | None = None,
-        algorithm: (
-            type[AbstractCrossmatchAlgorithm] | BuiltInCrossmatchAlgorithm
-        ) = BuiltInCrossmatchAlgorithm.KD_TREE,
+        n_neighbors: int | None = None,
+        radius_arcsec: float | None = None,
+        min_radius_arcsec: float | None = None,
+        algorithm: CrossmatchAlgorithm | None = None,
         output_catalog_name: str | None = None,
         require_right_margin: bool = False,
+        suffixes: tuple[str, str] | None = None,
         suffix_method: str | None = None,
         log_changes: bool = True,
-        **kwargs,
     ) -> Catalog:
         """Perform a cross-match between two catalogs
 
@@ -280,6 +281,16 @@ class Catalog(HealpixDataset):
                 "You may want `lsdb.crossmatch(frame_or_catalog, frame_or_catalog)` instead."
             )
 
+        default_kwargs = {
+            k: v
+            for k, v in locals().items()
+            if k in ("radius_arcsec", "n_neighbors", "min_radius_arcsec") and v is not None
+        }
+        if not algorithm:
+            algorithm = KdTreeCrossmatch(**default_kwargs)
+        elif any(default_kwargs.values()):
+            raise ValueError(f"If you specify `algorithm`, do not set {list(default_kwargs.keys())}")
+
         if suffixes is None:
             suffixes = (f"_{self.name}", f"_{other.name}")
         if len(suffixes) != 2:
@@ -297,14 +308,14 @@ class Catalog(HealpixDataset):
             raise ValueError("Right catalog margin cache is required for cross-match.")
         if output_catalog_name is None:
             output_catalog_name = f"{self.name}_x_{other.name}"
+
         ddf, ddf_map, alignment = crossmatch_catalog_data(
             self,
             other,
+            algorithm,
             suffixes,
-            algorithm=algorithm,
-            suffix_method=suffix_method,
-            log_changes=log_changes,
-            **kwargs,
+            suffix_method,
+            log_changes,
         )
         new_catalog_info = create_merged_catalog_info(
             self,
@@ -321,13 +332,13 @@ class Catalog(HealpixDataset):
     def crossmatch_nested(
         self,
         other: Catalog,
+        n_neighbors: int | None = None,
+        radius_arcsec: float | None = None,
+        min_radius_arcsec: float | None = None,
+        algorithm: CrossmatchAlgorithm | None = None,
         nested_column_name: str | None = None,
-        algorithm: (
-            type[AbstractCrossmatchAlgorithm] | BuiltInCrossmatchAlgorithm
-        ) = BuiltInCrossmatchAlgorithm.KD_TREE,
         output_catalog_name: str | None = None,
         require_right_margin: bool = False,
-        **kwargs,
     ) -> Catalog:
         """Perform a cross-match between two catalogs, adding the result as a nested column
 
@@ -412,15 +423,24 @@ class Catalog(HealpixDataset):
         ValueError
             If the right catalog has no margin and  `require_right_margin` is True.
         """
+        default_kwargs = {
+            k: v
+            for k, v in locals().items()
+            if k in ("radius_arcsec", "n_neighbors", "min_radius_arcsec") and v is not None
+        }
+        if not algorithm:
+            algorithm = KdTreeCrossmatch(**default_kwargs)
+        elif any(default_kwargs.values()):
+            raise ValueError(f"If you specify `algorithm`, do not set {list(default_kwargs.keys())}")
+
         if nested_column_name is None:
             nested_column_name = other.name
         if other.margin is None and require_right_margin:
             raise ValueError("Right catalog margin cache is required for cross-match.")
         if output_catalog_name is None:
             output_catalog_name = f"{self.name}_x_{other.name}"
-        ddf, ddf_map, alignment = crossmatch_catalog_data_nested(
-            self, other, nested_column_name, algorithm=algorithm, **kwargs
-        )
+
+        ddf, ddf_map, alignment = crossmatch_catalog_data_nested(self, other, algorithm, nested_column_name)
         hc_catalog = self.hc_structure.__class__(
             self.hc_structure.catalog_info,
             alignment.pixel_tree,
