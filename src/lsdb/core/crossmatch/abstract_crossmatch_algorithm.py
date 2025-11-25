@@ -1,13 +1,14 @@
 from __future__ import annotations
 
+from abc import ABC
 from typing import TYPE_CHECKING
 
 import nested_pandas as npd
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
-from hats.catalog import TableProperties
 
+from lsdb.core.crossmatch.crossmatch_args import CrossmatchArgs
 from lsdb.dask.merge_catalog_functions import apply_suffixes
 
 if TYPE_CHECKING:
@@ -15,7 +16,7 @@ if TYPE_CHECKING:
 
 
 # pylint: disable=too-many-instance-attributes, too-many-arguments
-class CrossmatchAlgorithm:
+class AbstractCrossmatchAlgorithm(ABC):
     """Abstract class used to write a crossmatch algorithm
 
     To specify a custom function, write a class that subclasses the
@@ -56,15 +57,7 @@ class CrossmatchAlgorithm:
 
     def crossmatch(
         self,
-        left_df: npd.NestedFrame,
-        right_df: npd.NestedFrame,
-        left_order: int,
-        left_pixel: int,
-        right_order: int,
-        right_pixel: int,
-        left_catalog_info: TableProperties,
-        right_catalog_info: TableProperties,
-        right_margin_catalog_info: TableProperties | None,
+        crossmatch_args: CrossmatchArgs,
         suffixes: tuple[str, str],
         suffix_method: str = "all_columns",
     ) -> npd.NestedFrame:
@@ -72,100 +65,75 @@ class CrossmatchAlgorithm:
 
         Parameters
         ----------
+        crossmatch_args: CrossmatchArgs
+            The object with the partitions and respective pixel information.
         suffixes : tuple[str,str]
             A pair of suffixes to be appended to the end of each column name, with the first
             appended to the left columns and the second to the right columns.
-        suffix_method, default 'all_columns'
+        suffix_method: str, default 'all_columns'
              The suffix method to use.
-        **kwargs
-            Additional keyword arguments to pass to the crossmatch method.
 
         Returns
         -------
         npd.NestedFrame
             The dataframe containing the results of the crossmatch.
         """
-        l_inds, r_inds, extra_cols = self.perform_crossmatch(
-            left_df,
-            right_df,
-            left_order,
-            left_pixel,
-            right_order,
-            right_pixel,
-            left_catalog_info,
-            right_catalog_info,
-            right_margin_catalog_info,
-        )
+        l_inds, r_inds, extra_cols = self.perform_crossmatch(crossmatch_args)
         if not len(l_inds) == len(r_inds) == len(extra_cols):
             raise ValueError(
                 "Crossmatch algorithm must return left and right indices and extra columns with same length"
             )
         return self._create_crossmatch_df(
-            left_df, right_df, l_inds, r_inds, extra_cols, suffixes, suffix_method
+            crossmatch_args.left_df,
+            crossmatch_args.right_df,
+            l_inds,
+            r_inds,
+            extra_cols,
+            suffixes,
+            suffix_method,
         )
 
-    def crossmatch_nested(
-        self,
-        left_df: npd.NestedFrame,
-        right_df: npd.NestedFrame,
-        left_order: int,
-        left_pixel: int,
-        right_order: int,
-        right_pixel: int,
-        left_catalog_info: TableProperties,
-        right_catalog_info: TableProperties,
-        right_margin_catalog_info: TableProperties | None,
-        nested_column_name: str,
-    ) -> npd.NestedFrame:
+    def crossmatch_nested(self, crossmatch_args: CrossmatchArgs, nested_column_name: str) -> npd.NestedFrame:
         """Perform a crossmatch and store results in nested column.
 
         Parameters
         ----------
+        crossmatch_args: CrossmatchArgs
+            The object with the partitions and respective pixel information.
         nested_column_name : str
             The name of the column where the matches should be stored.
-        **kwargs
-            Additional keyword arguments to pass to the crossmatch method.
 
         Returns
         -------
         npd.NestedFrame
             The dataframe containing the results of the crossmatch.
         """
-        l_inds, r_inds, extra_cols = self.perform_crossmatch(
-            left_df,
-            right_df,
-            left_order,
-            left_pixel,
-            right_order,
-            right_pixel,
-            left_catalog_info,
-            right_catalog_info,
-            right_margin_catalog_info,
-        )
+        l_inds, r_inds, extra_cols = self.perform_crossmatch(crossmatch_args)
         if not len(l_inds) == len(r_inds) == len(extra_cols):
             raise ValueError(
                 "Crossmatch algorithm must return left and right indices and extra columns with same length"
             )
         return self._create_nested_crossmatch_df(
-            left_df, right_df, l_inds, r_inds, extra_cols, nested_column_name
+            crossmatch_args.left_df,
+            crossmatch_args.right_df,
+            l_inds,
+            r_inds,
+            extra_cols,
+            nested_column_name,
         )
 
     def perform_crossmatch(
-        self,
-        left_df: npd.NestedFrame,
-        right_df: npd.NestedFrame,
-        left_order: int,
-        left_pixel: int,
-        right_order: int,
-        right_pixel: int,
-        left_catalog_info: TableProperties,
-        right_catalog_info: TableProperties,
-        right_margin_catalog_info: TableProperties | None,
+        self, crossmatch_args: CrossmatchArgs
     ) -> tuple[np.ndarray, np.ndarray, pd.DataFrame]:
         """Performs a crossmatch to get the indices of the matching rows and any extra columns
 
         Any additional keyword arguments needed can be added to this method in the subclass, and the user
         will be able to pass them through the `Catalog.crossmatch` method.
+
+        Parameters
+        ----------
+        crossmatch_args: CrossmatchArgs
+            The object with the partitions and respective pixel information.
 
         Returns
         -------
@@ -247,7 +215,7 @@ class CrossmatchAlgorithm:
         right_idx: npt.NDArray[np.int64],
         extra_cols: pd.DataFrame,
         suffixes: tuple[str, str],
-        suffix_method: str = "all_columns",
+        suffix_method: str,
     ) -> npd.NestedFrame:
         """Creates a df containing the crossmatch result from matching indices and additional columns
 

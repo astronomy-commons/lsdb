@@ -2,7 +2,7 @@ import nested_pandas as npd
 import pandas as pd
 
 from lsdb.catalog import Catalog
-from lsdb.core.crossmatch.crossmatch_algorithm import CrossmatchAlgorithm
+from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
 from lsdb.loaders.dataframe.from_dataframe import from_dataframe
 
 
@@ -33,7 +33,7 @@ def crossmatch(
     n_neighbors: int | None = None,
     radius_arcsec: float | None = None,
     min_radius_arcsec: float | None = None,
-    algorithm: CrossmatchAlgorithm | None = None,
+    algorithm: AbstractCrossmatchAlgorithm | None = None,
     output_catalog_name: str | None = None,
     require_right_margin: bool = False,
     suffixes: tuple[str, str] | None = None,

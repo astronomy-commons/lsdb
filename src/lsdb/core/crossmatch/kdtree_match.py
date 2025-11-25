@@ -2,22 +2,21 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import nested_pandas as npd
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import pyarrow as pa
-from hats.catalog.dataset.table_properties import TableProperties
 from hats.pixel_math.validators import validate_radius
 
-from lsdb.core.crossmatch.crossmatch_algorithm import CrossmatchAlgorithm
+from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
+from lsdb.core.crossmatch.crossmatch_args import CrossmatchArgs
 from lsdb.core.crossmatch.kdtree_utils import _find_crossmatch_indices, _get_chord_distance, _lon_lat_to_xyz
 
 if TYPE_CHECKING:
     from lsdb.catalog import Catalog
 
 
-class KdTreeCrossmatch(CrossmatchAlgorithm):
+class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
     """Nearest neighbor crossmatch using a 3D k-D tree"""
 
     extra_columns = pd.DataFrame({"_dist_arcsec": pd.Series(dtype=pd.ArrowDtype(pa.float64()))})
@@ -45,16 +44,7 @@ class KdTreeCrossmatch(CrossmatchAlgorithm):
             raise ValueError("Cross match maximum radius must be greater than cross match minimum radius")
 
     def perform_crossmatch(
-        self,
-        left_df: npd.NestedFrame,
-        right_df: npd.NestedFrame,
-        left_order: int,
-        left_pixel: int,
-        right_order: int,
-        right_pixel: int,
-        left_catalog_info: TableProperties,
-        right_catalog_info: TableProperties,
-        right_margin_catalog_info: TableProperties | None,
+        self, crossmatch_args: CrossmatchArgs
     ) -> tuple[np.ndarray, np.ndarray, pd.DataFrame]:
         """Perform a cross-match between the data from two HEALPix pixels
 
@@ -81,7 +71,10 @@ class KdTreeCrossmatch(CrossmatchAlgorithm):
         min_d_chord = _get_chord_distance(self.min_radius_arcsec)
         # calculate the cartesian coordinates of the points
         left_xyz, right_xyz = self._get_point_coordinates(
-            left_df, left_catalog_info, right_df, right_catalog_info
+            crossmatch_args.left_df,
+            crossmatch_args.left_catalog_info,
+            crossmatch_args.right_df,
+            crossmatch_args.right_catalog_info,
         )
         # get matching indices for cross-matched rows
         chord_distances, left_idx, right_idx = _find_crossmatch_indices(

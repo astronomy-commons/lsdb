@@ -6,7 +6,8 @@ from typing import TYPE_CHECKING
 from hats.pixel_tree import PixelAlignment
 
 import lsdb.nested as nd
-from lsdb.core.crossmatch.crossmatch_algorithm import CrossmatchAlgorithm
+from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
+from lsdb.core.crossmatch.crossmatch_args import CrossmatchArgs
 from lsdb.dask.merge_catalog_functions import (
     align_and_apply,
     align_catalogs,
@@ -94,15 +95,17 @@ def perform_crossmatch(
     right_joined_df = concat_partition_and_margin(right_df, right_margin_df)
 
     return algorithm.crossmatch(
-        left_df,
-        right_joined_df,
-        left_pix.order,
-        left_pix.pixel,
-        right_pix.order,
-        right_pix.pixel,
-        left_catalog_info,
-        right_catalog_info,
-        right_margin_catalog_info,
+        CrossmatchArgs(
+            left_df=left_df,
+            right_df=right_joined_df,
+            left_order=left_pix.order,
+            left_pixel=left_pix.pixel,
+            right_order=right_pix.order,
+            right_pixel=right_pix.pixel,
+            left_catalog_info=left_catalog_info,
+            right_catalog_info=right_catalog_info,
+            right_margin_catalog_info=right_margin_catalog_info,
+        ),
         suffixes,
         suffix_method,
     )
@@ -178,15 +181,17 @@ def perform_crossmatch_nested(
     right_joined_df = concat_partition_and_margin(right_df, right_margin_df)
 
     return algorithm.crossmatch_nested(
-        left_df,
-        right_joined_df,
-        left_pix.order,
-        left_pix.pixel,
-        right_pix.order,
-        right_pix.pixel,
-        left_catalog_info,
-        right_catalog_info,
-        right_margin_catalog_info,
+        CrossmatchArgs(
+            left_df=left_df,
+            right_df=right_joined_df,
+            left_order=left_pix.order,
+            left_pixel=left_pix.pixel,
+            right_order=right_pix.order,
+            right_pixel=right_pix.pixel,
+            left_catalog_info=left_catalog_info,
+            right_catalog_info=right_catalog_info,
+            right_margin_catalog_info=right_margin_catalog_info,
+        ),
         nested_column_name,
     )
 
@@ -195,7 +200,7 @@ def perform_crossmatch_nested(
 def crossmatch_catalog_data(
     left: Catalog,
     right: Catalog,
-    algorithm: CrossmatchAlgorithm,
+    algorithm: AbstractCrossmatchAlgorithm,
     suffixes: tuple[str, str],
     suffix_method: str | None = None,
     log_changes: bool = True,
@@ -273,7 +278,7 @@ def crossmatch_catalog_data(
 def crossmatch_catalog_data_nested(
     left: Catalog,
     right: Catalog,
-    algorithm: CrossmatchAlgorithm,
+    algorithm: AbstractCrossmatchAlgorithm,
     nested_column_name: str,
 ) -> tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]:
     """Cross-matches the data from two catalogs with the result from the right catalog in a nested column

@@ -5,13 +5,13 @@ import numpy as np
 import pandas as pd
 import pyarrow as pa
 import pytest
-from hats.catalog import TableProperties
 from hats.pixel_math import HealpixPixel
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 
 import lsdb
 import lsdb.nested as nd
-from lsdb.core.crossmatch.crossmatch_algorithm import CrossmatchAlgorithm
+from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
+from lsdb.core.crossmatch.crossmatch_args import CrossmatchArgs
 from lsdb.dask.merge_catalog_functions import align_catalogs, apply_suffixes
 
 
@@ -474,7 +474,7 @@ def test_crossmatch_with_non_catalog(small_sky_catalog, small_sky_xmatch_catalog
 
 
 # pylint: disable=too-few-public-methods, unused-argument
-class MockCrossmatchAlgorithm(CrossmatchAlgorithm):
+class MockCrossmatchAlgorithm(AbstractCrossmatchAlgorithm):
     """Mock class used to test a crossmatch algorithm"""
 
     extra_columns = pd.DataFrame({"_DIST": pd.Series(dtype=np.float64)})
@@ -482,20 +482,9 @@ class MockCrossmatchAlgorithm(CrossmatchAlgorithm):
     def __init__(self, mock_results: pd.DataFrame = None):
         self.mock_results = mock_results
 
-    def perform_crossmatch(
-        self,
-        left_df: npd.NestedFrame,
-        right_df: npd.NestedFrame,
-        left_order: int,
-        left_pixel: int,
-        right_order: int,
-        right_pixel: int,
-        left_catalog_info: TableProperties,
-        right_catalog_info: TableProperties,
-        right_margin_catalog_info: TableProperties | None,
-    ):
-        left_reset = left_df.reset_index(drop=True)
-        right_reset = right_df.reset_index(drop=True)
+    def perform_crossmatch(self, crossmatch_args: CrossmatchArgs):
+        left_reset = crossmatch_args.left_df.reset_index(drop=True)
+        right_reset = crossmatch_args.right_df.reset_index(drop=True)
         mock_results = self.mock_results[self.mock_results["ss_id"].isin(left_reset["id"].to_numpy())]
         left_indexes = mock_results.apply(
             lambda row: left_reset[left_reset["id"] == row["ss_id"]].index[0], axis=1
@@ -535,7 +524,7 @@ def test_custom_crossmatch_algorithm_nested(small_sky_catalog, small_sky_xmatch_
 
 
 # pylint: disable=too-many-arguments, abstract-method
-class MockCrossmatchAlgorithmOverwrite(CrossmatchAlgorithm):
+class MockCrossmatchAlgorithmOverwrite(AbstractCrossmatchAlgorithm):
     """Mock class used to test a crossmatch algorithm"""
 
     extra_columns = pd.DataFrame({"_DIST": pd.Series(dtype=np.float64)})
@@ -543,23 +532,15 @@ class MockCrossmatchAlgorithmOverwrite(CrossmatchAlgorithm):
     def __init__(self, mock_results: pd.DataFrame = None):
         self.mock_results = mock_results
 
-    def crossmatch(
-        self,
-        left_df: npd.NestedFrame,
-        right_df: npd.NestedFrame,
-        left_order: int,
-        left_pixel: int,
-        right_order: int,
-        right_pixel: int,
-        left_catalog_info: TableProperties,
-        right_catalog_info: TableProperties,
-        right_margin_catalog_info: TableProperties | None,
-        suffixes: tuple[str, str],
-        suffix_method: str = "all_columns",
-    ):
-        left_reset = left_df.reset_index(drop=True)
-        right_reset = right_df.reset_index(drop=True)
-        left, right = apply_suffixes(left_df, right_df, suffixes, suffix_method)
+    def crossmatch(self, crossmatch_args, suffixes, suffix_method="all_columns"):
+        left_reset = crossmatch_args.left_df.reset_index(drop=True)
+        right_reset = crossmatch_args.right_df.reset_index(drop=True)
+        left, right = apply_suffixes(
+            crossmatch_args.left_df,
+            crossmatch_args.right_df,
+            suffixes,
+            suffix_method,
+        )
         mock_results = self.mock_results[self.mock_results["ss_id"].isin(left_reset["id"].to_numpy())]
         left_indexes = mock_results.apply(
             lambda row: left_reset[left_reset["id"] == row["ss_id"]].index[0], axis=1

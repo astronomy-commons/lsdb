@@ -21,7 +21,7 @@ from lsdb.catalog.association_catalog import AssociationCatalog
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
 from lsdb.catalog.map_catalog import MapCatalog
 from lsdb.catalog.margin_catalog import MarginCatalog
-from lsdb.core.crossmatch.crossmatch_algorithm import CrossmatchAlgorithm
+from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
 from lsdb.core.crossmatch.kdtree_match import KdTreeCrossmatch
 from lsdb.core.search.abstract_search import AbstractSearch
 from lsdb.core.search.index_search import IndexSearch
@@ -174,7 +174,7 @@ class Catalog(HealpixDataset):
         n_neighbors: int | None = None,
         radius_arcsec: float | None = None,
         min_radius_arcsec: float | None = None,
-        algorithm: CrossmatchAlgorithm | None = None,
+        algorithm: AbstractCrossmatchAlgorithm | None = None,
         output_catalog_name: str | None = None,
         require_right_margin: bool = False,
         suffixes: tuple[str, str] | None = None,
@@ -335,7 +335,7 @@ class Catalog(HealpixDataset):
         n_neighbors: int | None = None,
         radius_arcsec: float | None = None,
         min_radius_arcsec: float | None = None,
-        algorithm: CrossmatchAlgorithm | None = None,
+        algorithm: AbstractCrossmatchAlgorithm | None = None,
         nested_column_name: str | None = None,
         output_catalog_name: str | None = None,
         require_right_margin: bool = False,
