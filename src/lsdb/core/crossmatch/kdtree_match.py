@@ -21,7 +21,18 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
 
     extra_columns = pd.DataFrame({"_dist_arcsec": pd.Series(dtype=pd.ArrowDtype(pa.float64()))})
 
-    def __init__(self, n_neighbors: int = 1, radius_arcsec: float = 1, min_radius_arcsec: float = 0.0):
+    def __init__(self, n_neighbors: int = 1, radius_arcsec: float = 1.0, min_radius_arcsec: float = 0.0):
+        """Initialize the KDTree crossmatch algorithm.
+
+        Parameters
+        ----------
+        n_neighbors : int
+            The number of neighbors to find within each point.
+        radius_arcsec : float, default 1.0
+            The threshold distance in arcseconds beyond which neighbors are not added.
+        min_radius_arcsec : float, default 0.0
+            The threshold distance in arcseconds beyond which neighbors are added.
+        """
         super().__init__()
         self.n_neighbors = n_neighbors
         self.radius_arcsec = radius_arcsec
@@ -53,10 +64,8 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
 
         Parameters
         ----------
-        n_neighbors : int
-            The number of neighbors to find within each point.
-        radius_arcsec : float, default 1
-            The threshold distance in arcseconds beyond which neighbors are not added
+        crossmatch_args : CrossmatchArgs
+            The partitions and respective pixel information.
 
         Returns
         -------

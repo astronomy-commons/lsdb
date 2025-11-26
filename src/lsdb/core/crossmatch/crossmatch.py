@@ -61,20 +61,24 @@ def crossmatch(
         if passing dataframes. Can be specified in the left_args or right_args dictionaries if
         left and right catalogs have different dec column names. Defaults to None, which will use
         the default column names "dec", "Dec", or "DEC" if they exist in the DataFrame.
-    suffixes : tuple[str,str] or None, default None
-        Suffixes to append to overlapping column names.
-    algorithm : type[AbstractCrossmatchAlgorithm] or BuiltInCrossmatchAlgorithm
-        The crossmatch algorithm to use. (Default value = BuiltInCrossmatchAlgorithm.KD_TREE)
+    n_neighbors : int, default 1
+        The number of neighbors to find within each point.
+    radius_arcsec : float, default 1.0
+        The threshold distance in arcseconds beyond which neighbors are not added.
+    min_radius_arcsec : float, default 0.0
+        The threshold distance in arcseconds beyond which neighbors are added.
+    algorithm : AbstractCrossmatchAlgorithm, default `KDTreeCrossmatch`
+        The crossmatch algorithm to use.
     output_catalog_name : str or None, default None
         The name of the output catalog.
     require_right_margin : bool, default False
         Whether to require a right margin.
+    suffixes : tuple[str,str] or None, default None
+        Suffixes to append to overlapping column names.
     left_args : dict or None, default None
         Keyword arguments to pass to from_dataframe for the left catalog.
     right_args : dict or None, default None
         Keyword arguments to pass to from_dataframe for the right catalog.
-    **kwargs
-        Additional keyword arguments to pass to Catalog.crossmatch.
 
     Returns
     -------

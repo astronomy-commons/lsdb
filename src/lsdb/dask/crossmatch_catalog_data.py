@@ -65,10 +65,10 @@ def perform_crossmatch(
         Catalog info for the right partition.
     right_margin_catalog_info : hats.catalog.TableProperties
         Catalog info for the right margin partition.
-    algorithm : BuiltInCrossmatchAlgorithm | Callable
-        The algorithm to use to perform the
-        crossmatch. Can be specified using a string for a built-in algorithm, or a custom
-        method. For more details, see `crossmatch` method in the `Catalog` class.
+    algorithm : AbstractCrossmatchAlgorithm
+        The algorithm to use to perform the crossmatch. Specified by subclassing
+        `AbstractCrossmatchAlgorithm`. For more details, see `crossmatch` method
+        in the `Catalog` class.
     suffixes : tuple[str,str] | None
         The suffixes to append to the column names from the left and right catalogs respectively
     suffix_method : str, default 'all_columns'
@@ -94,21 +94,18 @@ def perform_crossmatch(
 
     right_joined_df = concat_partition_and_margin(right_df, right_margin_df)
 
-    return algorithm.crossmatch(
-        CrossmatchArgs(
-            left_df=left_df,
-            right_df=right_joined_df,
-            left_order=left_pix.order,
-            left_pixel=left_pix.pixel,
-            right_order=right_pix.order,
-            right_pixel=right_pix.pixel,
-            left_catalog_info=left_catalog_info,
-            right_catalog_info=right_catalog_info,
-            right_margin_catalog_info=right_margin_catalog_info,
-        ),
-        suffixes,
-        suffix_method,
+    crossmatch_args = CrossmatchArgs(
+        left_df=left_df,
+        right_df=right_joined_df,
+        left_order=left_pix.order,
+        left_pixel=left_pix.pixel,
+        right_order=right_pix.order,
+        right_pixel=right_pix.pixel,
+        left_catalog_info=left_catalog_info,
+        right_catalog_info=right_catalog_info,
+        right_margin_catalog_info=right_margin_catalog_info,
     )
+    return algorithm.crossmatch(crossmatch_args, suffixes, suffix_method)
 
 
 # pylint: disable=too-many-arguments, unused-argument
@@ -125,7 +122,6 @@ def perform_crossmatch_nested(
     algorithm,
     nested_column_name,
     meta_df,
-    **kwargs,
 ):
     """Performs a crossmatch on data from a HEALPix pixel in each catalog with result in a nested column
 
@@ -152,23 +148,21 @@ def perform_crossmatch_nested(
         Catalog info for the right partition.
     right_margin_catalog_info : hats.catalog.TableProperties
         Catalog info for the right margin partition.
-    algorithm : BuiltInCrossmatchAlgorithm | Callable
-        The algorithm to use to perform the
-        crossmatch. Can be specified using a string for a built-in algorithm, or a custom
-        method. For more details, see `crossmatch` method in the `Catalog` class.
+    algorithm : AbstractCrossmatchAlgorithm
+        The algorithm to use to perform the crossmatch. Specified by subclassing
+        `AbstractCrossmatchAlgorithm`. For more details, see `crossmatch` method
+        in the `Catalog` class.
     nested_column_name : str
         The name of the nested column in the resulting dataframe storing the
         joined columns in the right catalog. (Default: name of right catalog)
     meta_df : npd.NestedFrame
         The final meta for the crossmatch.
-    **kwargs
-        Additional arguments to pass to the crossmatching algorithm.
 
     Returns
     -------
     npd.NestedFrame
-        DataFrame with the results of crossmatching for the pair of partitions. The results
-        are stored in a nested column.
+        DataFrame with the results of crossmatching for the pair of partitions.
+        The results are stored in a nested column.
     """
     if right_pix.order > left_pix.order:
         left_df = filter_by_spatial_index_to_pixel(
@@ -180,20 +174,18 @@ def perform_crossmatch_nested(
 
     right_joined_df = concat_partition_and_margin(right_df, right_margin_df)
 
-    return algorithm.crossmatch_nested(
-        CrossmatchArgs(
-            left_df=left_df,
-            right_df=right_joined_df,
-            left_order=left_pix.order,
-            left_pixel=left_pix.pixel,
-            right_order=right_pix.order,
-            right_pixel=right_pix.pixel,
-            left_catalog_info=left_catalog_info,
-            right_catalog_info=right_catalog_info,
-            right_margin_catalog_info=right_margin_catalog_info,
-        ),
-        nested_column_name,
+    crossmatch_args = CrossmatchArgs(
+        left_df=left_df,
+        right_df=right_joined_df,
+        left_order=left_pix.order,
+        left_pixel=left_pix.pixel,
+        right_order=right_pix.order,
+        right_pixel=right_pix.pixel,
+        left_catalog_info=left_catalog_info,
+        right_catalog_info=right_catalog_info,
+        right_margin_catalog_info=right_margin_catalog_info,
     )
+    return algorithm.crossmatch_nested(crossmatch_args, nested_column_name)
 
 
 # pylint: disable=too-many-locals
@@ -210,17 +202,16 @@ def crossmatch_catalog_data(
     Parameters
     ----------
     left : lsdb.Catalog
-        the left catalog to perform the cross-match on
+        The left catalog to perform the cross-match on
     right : lsdb.Catalog
-        the right catalog to perform the cross-match on
+        The right catalog to perform the cross-match on
+    algorithm : AbstractCrossmatchAlgorithm, default `KDTreeCrossmatch`
+        The algorithm to use to perform the crossmatch. Specified by subclassing
+        `AbstractCrossmatchAlgorithm`. For more details, see `crossmatch` method
+        in the `Catalog` class.
     suffixes : tuple[str,str]
-        the suffixes to append to the column names from the left and
-        right catalogs respectively
-    algorithm : BuiltInCrossmatchAlgorithm | Callable
-        The algorithm to use to perform the
-        crossmatch. Can be specified using a string for a built-in algorithm, or a custom
-        method. For more details, see `crossmatch` method in the `Catalog` class.
-        (Default value = BuiltInCrossmatchAlgorithm.KD_TREE)
+        The suffixes to append to the column names from the left and
+        right catalogs respectively.
     suffix_method : str | None, default 'all_columns'
         Method to use to add suffixes to columns. Options are:
 
@@ -236,8 +227,7 @@ def crossmatch_catalog_data(
         A tuple of the dask dataframe with the result of the cross-match, the pixel map from HEALPix
         pixel to partition index within the dataframe, and the PixelAlignment of the two input catalogs.
     """
-    # Create an instance of the crossmatch algorithm, using the metadata dataframes
-    # and the provided kwargs.
+    # Validate the algorithm parameters
     algorithm.validate(left, right)
 
     if right.margin is None:
@@ -281,34 +271,29 @@ def crossmatch_catalog_data_nested(
     algorithm: AbstractCrossmatchAlgorithm,
     nested_column_name: str,
 ) -> tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]:
-    """Cross-matches the data from two catalogs with the result from the right catalog in a nested column
+    """Crossmatches the data from two catalogs with the result from the right catalog in a nested column
 
     Parameters
     ----------
     left : lsdb.Catalog
-        the left catalog to perform the cross-match on
+        The left catalog to perform the cross-match on
     right : lsdb.Catalog
-        the right catalog to perform the cross-match on
+        The right catalog to perform the cross-match on
+    algorithm : AbstractCrossmatchAlgorithm, default `KDTreeCrossmatch`
+        The algorithm to use to perform the crossmatch. Specified by subclassing
+        `AbstractCrossmatchAlgorithm`. For more details, see `crossmatch` method
+        in the `Catalog` class.
     nested_column_name : str
         The name of the nested column that will contain the crossmatched rows
         from the right catalog
-    algorithm : BuiltInCrossmatchAlgorithm | Callable
-        The algorithm to use to perform the
-        crossmatch. Can be specified using a string for a built-in algorithm, or a custom
-        method. For more details, see `crossmatch` method in the `Catalog` class.
-        (Default value = BuiltInCrossmatchAlgorithm.KD_TREE)
-    **kwargs
-        Additional arguments to pass to the cross-match algorithm
 
     Returns
     -------
     tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]
         A tuple of the dask dataframe with the result of the cross-match, the pixel map from HEALPix
-        pixel to partition index within the dataframe, and the PixelAlignment of the two input
-        catalogs.
+        pixel to partition index within the dataframe, and the PixelAlignment of the two input catalogs.
     """
-    # Create an instance of the crossmatch algorithm, using the metadata dataframes
-    # and the provided kwargs.
+    # Validate the algorithm parameters
     algorithm.validate(left, right)
 
     if right.margin is None:
