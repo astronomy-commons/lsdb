@@ -766,7 +766,7 @@ class Catalog(HealpixDataset):
             The right catalog to merge with.
         how : str
             How to handle the merge of the two catalogs.
-            One of {'left', 'inner'}, default 'inner'
+            One of {'left', 'right', 'outer', 'inner', 'leftsemi'}, default 'inner'
         on : str | List
             Column or index names to join on. Defaults to the
             intersection of columns in both Dataframes if on is None and not
