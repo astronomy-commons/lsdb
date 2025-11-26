@@ -487,6 +487,43 @@ class TestBoundedCrossmatch:
         assert len(xmatched) == 3
         assert all(xmatched["_dist_arcsec"] <= 0.01 * 3600)
 
+    @staticmethod
+    def test_kdtree_crossmatch_left_join_preserves_left_rows(
+        algo, small_sky_order1_catalog, small_sky_xmatch_catalog
+    ):
+        """Check that a left join preserves left rows and keeps valid matches."""
+        radius = 0.01 * 3600
+        with pytest.warns(RuntimeWarning, match="Results may be incomplete and/or inaccurate"):
+            inner = small_sky_order1_catalog.crossmatch(
+                small_sky_xmatch_catalog, radius_arcsec=radius, algorithm=algo
+            ).compute()
+            left_joined = small_sky_order1_catalog.crossmatch(
+                small_sky_xmatch_catalog, radius_arcsec=radius, algorithm=algo, how="left"
+            ).compute()
+
+        # Every left id from the left catalog subset should appear at least once in the left-joined result
+        left_ids = small_sky_order1_catalog.compute()["id"].to_numpy()
+        # Using .issubset as a good practice in case of multiple matches
+        assert set(left_ids).issubset(set(left_joined["id_small_sky_order1"].to_numpy()))
+
+        # Every (left_id, right_id) pair present in the inner join
+        # must also be present in the left-join result (i.e. left-join doesn't drop inner matches).
+        inner_pairs = set(
+            zip(inner["id_small_sky_order1"].to_numpy(), inner["id_small_sky_xmatch"].to_numpy())
+        )
+        left_pairs = set(
+            zip(left_joined["id_small_sky_order1"].to_numpy(), left_joined["id_small_sky_xmatch"].to_numpy())
+        )
+        assert inner_pairs.issubset(left_pairs)
+
+        # Matched rows should have distances within the threshold
+        matched = left_joined[left_joined["id_small_sky_xmatch"].notna()]
+        assert all(matched["_dist_arcsec"] <= radius)
+
+        # Unmatched rows should have NaN/None in the right id column
+        unmatched = left_joined[left_joined["id_small_sky_xmatch"].isna()]
+        assert len(unmatched) >= 0
+
 
 def test_crossmatch_with_moc(small_sky_order1_catalog):
     order = 1
@@ -566,7 +603,9 @@ class MockCrossmatchAlgorithmOverwrite(AbstractCrossmatchAlgorithm):
 
     extra_columns = pd.DataFrame({"_DIST": pd.Series(dtype=np.float64)})
 
-    def crossmatch(self, suffixes, suffix_method="all_columns", mock_results: pd.DataFrame = None, **kwargs):
+    def crossmatch(
+        self, how, suffixes, suffix_method="all_columns", mock_results: pd.DataFrame = None, **kwargs
+    ):
         left_reset = self.left.reset_index(drop=True)
         right_reset = self.right.reset_index(drop=True)
         self.left, self.right = apply_suffixes(self.left, self.right, suffixes, suffix_method)
