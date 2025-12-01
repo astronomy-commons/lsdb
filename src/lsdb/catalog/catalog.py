@@ -167,10 +167,10 @@ class Catalog(HealpixDataset):
             catalog.margin = self.margin.rename(columns)
         return catalog
 
-    # pylint:disable=unused-argument
     def crossmatch(
         self,
         other: Catalog,
+        *,
         n_neighbors: int | None = None,
         radius_arcsec: float | None = None,
         min_radius_arcsec: float | None = None,
@@ -181,6 +181,7 @@ class Catalog(HealpixDataset):
         suffix_method: str | None = None,
         log_changes: bool = True,
     ) -> Catalog:
+        # pylint:disable=unused-argument
         """Perform a cross-match between two catalogs
 
         The pixels from each catalog are aligned via a `PixelAlignment`, and cross-matching is
@@ -338,6 +339,7 @@ class Catalog(HealpixDataset):
     def crossmatch_nested(
         self,
         other: Catalog,
+        *,
         n_neighbors: int | None = None,
         radius_arcsec: float | None = None,
         min_radius_arcsec: float | None = None,
@@ -346,6 +348,7 @@ class Catalog(HealpixDataset):
         require_right_margin: bool = False,
         nested_column_name: str | None = None,
     ) -> Catalog:
+        # pylint:disable=unused-argument
         """Perform a cross-match between two catalogs, adding the result as a nested column
 
         For each row in the left catalog, the cross-matched rows from the right catalog are added

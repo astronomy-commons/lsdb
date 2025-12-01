@@ -114,11 +114,11 @@ def crossmatch(
     return Catalog.crossmatch(
         left,
         right,
-        n_neighbors,
-        radius_arcsec,
-        min_radius_arcsec,
-        algorithm,
-        output_catalog_name,
-        require_right_margin,
-        suffixes,
+        n_neighbors=n_neighbors,
+        radius_arcsec=radius_arcsec,
+        min_radius_arcsec=min_radius_arcsec,
+        algorithm=algorithm,
+        output_catalog_name=output_catalog_name,
+        require_right_margin=require_right_margin,
+        suffixes=suffixes,
     )
