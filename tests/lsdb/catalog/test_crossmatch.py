@@ -479,8 +479,9 @@ class MockCrossmatchAlgorithm(AbstractCrossmatchAlgorithm):
 
     extra_columns = pd.DataFrame({"_DIST": pd.Series(dtype=np.float64)})
 
-    def __init__(self, mock_results: pd.DataFrame = None):
+    def __init__(self, mock_results: pd.DataFrame = None, n_neighbors: int = 1):
         self.mock_results = mock_results
+        self.n_neighbors = n_neighbors
 
     def perform_crossmatch(self, crossmatch_args: CrossmatchArgs):
         left_reset = crossmatch_args.left_df.reset_index(drop=True)
@@ -521,6 +522,21 @@ def test_custom_crossmatch_algorithm_nested(small_sky_catalog, small_sky_xmatch_
         xmatch_row = xmatched[xmatched["id"] == correct_row["ss_id"]]["small_sky_xmatch"].iloc[0]
         assert xmatch_row["id"].to_numpy() == correct_row["xmatch_id"]
         assert xmatch_row["_DIST"].to_numpy() == pytest.approx(correct_row["dist"])
+
+
+def test_custom_crossmatch_algorithm_with_default_kwargs(
+    small_sky_catalog, small_sky_xmatch_catalog, xmatch_mock
+):
+    # If the custom crossmatch algorithm has attributes whose names conflict
+    # with those of the default `KdTreeCrossmatch` kwargs, they need to be
+    # provided in the crossmatch algorithm constructor.
+    algorithm = MockCrossmatchAlgorithm(mock_results=xmatch_mock)
+    with pytest.raises(ValueError, match="do not set"):
+        small_sky_catalog.crossmatch(small_sky_xmatch_catalog, algorithm=algorithm, n_neighbors=2)
+    with pytest.raises(ValueError, match="do not set"):
+        small_sky_catalog.crossmatch_nested(small_sky_xmatch_catalog, algorithm=algorithm, n_neighbors=2)
+    algorithm = MockCrossmatchAlgorithm(mock_results=xmatch_mock, n_neighbors=2)
+    small_sky_catalog.crossmatch(small_sky_xmatch_catalog, algorithm=algorithm)
 
 
 # pylint: disable=too-many-arguments, abstract-method
