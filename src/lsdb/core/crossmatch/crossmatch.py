@@ -3,7 +3,6 @@ import pandas as pd
 
 from lsdb.catalog import Catalog
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
-from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorithm, is_builtin_algorithm
 from lsdb.loaders.dataframe.from_dataframe import from_dataframe
 
 
@@ -25,20 +24,21 @@ def _validate_and_convert_to_catalog(
     return data
 
 
+# pylint: disable=too-many-arguments
 def crossmatch(
     left: Catalog | npd.NestedFrame | pd.DataFrame,
     right: Catalog | npd.NestedFrame | pd.DataFrame,
     ra_column: str | None = None,
     dec_column: str | None = None,
-    suffixes: tuple[str, str] | None = None,
-    algorithm: (
-        type[AbstractCrossmatchAlgorithm] | BuiltInCrossmatchAlgorithm
-    ) = BuiltInCrossmatchAlgorithm.KD_TREE,
+    n_neighbors: int | None = None,
+    radius_arcsec: float | None = None,
+    min_radius_arcsec: float | None = None,
+    algorithm: AbstractCrossmatchAlgorithm | None = None,
     output_catalog_name: str | None = None,
     require_right_margin: bool = False,
+    suffixes: tuple[str, str] | None = None,
     left_args: dict | None = None,
     right_args: dict | None = None,
-    **kwargs,
 ) -> Catalog:
     """Perform a cross-match between two frames, two catalogs,
     a catalog and a frame, or a frame and a catalog.
@@ -61,20 +61,24 @@ def crossmatch(
         if passing dataframes. Can be specified in the left_args or right_args dictionaries if
         left and right catalogs have different dec column names. Defaults to None, which will use
         the default column names "dec", "Dec", or "DEC" if they exist in the DataFrame.
-    suffixes : tuple[str,str] or None, default None
-        Suffixes to append to overlapping column names.
-    algorithm : type[AbstractCrossmatchAlgorithm] or BuiltInCrossmatchAlgorithm
-        The crossmatch algorithm to use. (Default value = BuiltInCrossmatchAlgorithm.KD_TREE)
+    n_neighbors : int, default 1
+        The number of neighbors to find within each point.
+    radius_arcsec : float, default 1.0
+        The threshold distance in arcseconds beyond which neighbors are not added.
+    min_radius_arcsec : float, default 0.0
+        The threshold distance in arcseconds beyond which neighbors are added.
+    algorithm : AbstractCrossmatchAlgorithm, default `KDTreeCrossmatch`
+        The crossmatch algorithm to use.
     output_catalog_name : str or None, default None
         The name of the output catalog.
     require_right_margin : bool, default False
         Whether to require a right margin.
+    suffixes : tuple[str,str] or None, default None
+        Suffixes to append to overlapping column names.
     left_args : dict or None, default None
         Keyword arguments to pass to from_dataframe for the left catalog.
     right_args : dict or None, default None
         Keyword arguments to pass to from_dataframe for the right catalog.
-    **kwargs
-        Additional keyword arguments to pass to Catalog.crossmatch.
 
     Returns
     -------
@@ -89,12 +93,10 @@ def crossmatch(
     if require_right_margin and right_args.get("margin_threshold") is None:
         raise ValueError("If require_right_margin is True, margin_threshold must not be None.")
 
-    # Check if the margin should be generated according to the
-    # maximum radius specified for the crossmatch.
-    if is_builtin_algorithm(algorithm) and "radius_arcsec" in kwargs:
-        radius_arcsec = kwargs.get("radius_arcsec")
-        if "margin_threshold" not in right_args:
-            right_args["margin_threshold"] = radius_arcsec
+    if radius_arcsec is not None and "margin_threshold" not in right_args:
+        # Check if the margin should be generated according to the
+        # maximum radius specified for the crossmatch.
+        right_args["margin_threshold"] = radius_arcsec
 
     # Update left_args and right_args with ra_column and dec_column if given.
     if ra_column:
@@ -110,5 +112,13 @@ def crossmatch(
 
     # Call the crossmatch method with the given or newly generated Catalogs.
     return Catalog.crossmatch(
-        left, right, suffixes, algorithm, output_catalog_name, require_right_margin, **kwargs
+        left,
+        right,
+        n_neighbors=n_neighbors,
+        radius_arcsec=radius_arcsec,
+        min_radius_arcsec=min_radius_arcsec,
+        algorithm=algorithm,
+        output_catalog_name=output_catalog_name,
+        require_right_margin=require_right_margin,
+        suffixes=suffixes,
     )

@@ -9,6 +9,7 @@ import pyarrow as pa
 from hats.pixel_math.validators import validate_radius
 
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
+from lsdb.core.crossmatch.crossmatch_args import CrossmatchArgs
 from lsdb.core.crossmatch.kdtree_utils import _find_crossmatch_indices, _get_chord_distance, _lon_lat_to_xyz
 
 if TYPE_CHECKING:
@@ -20,43 +21,41 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
 
     extra_columns = pd.DataFrame({"_dist_arcsec": pd.Series(dtype=pd.ArrowDtype(pa.float64()))})
 
-    @classmethod
-    def validate(
-        cls,
-        left: Catalog,
-        right: Catalog,
-        n_neighbors: int = 1,
-        radius_arcsec: float = 1,
-    ):
-        """Validate the arguments for the crossmatch.
+    def __init__(self, n_neighbors: int = 1, radius_arcsec: float = 1.0, min_radius_arcsec: float = 0.0):
+        """Initialize the KDTree crossmatch algorithm.
 
         Parameters
         ----------
-        left : Catalog
-            The left catalog of the crossmatch
-        right : Catalog
-            The right catalog of the crossmatch
-        n_neighbors : int, default 1
-            The number of neighbors for KNN.
-        radius_arcsec : float, default 1
-            The threshold distance in arcseconds beyond which neighbors are not added
+        n_neighbors : int
+            The number of neighbors to find within each point.
+        radius_arcsec : float, default 1.0
+            The threshold distance in arcseconds beyond which neighbors are not added.
+        min_radius_arcsec : float, default 0.0
+            The threshold distance in arcseconds beyond which neighbors are added.
         """
+        super().__init__()
+        self.n_neighbors = n_neighbors
+        self.radius_arcsec = radius_arcsec
+        self.min_radius_arcsec = min_radius_arcsec
+
+    def validate(self, left: Catalog, right: Catalog):
+        """Validate the arguments for the crossmatch"""
         super().validate(left, right)
-        # Validate radius
-        validate_radius(radius_arcsec)
-        # Validate number of neighbors
-        if n_neighbors < 1:
+        validate_radius(self.radius_arcsec)
+        if self.n_neighbors < 1:
             raise ValueError("n_neighbors must be greater than 1")
         if (
             right.margin is not None
-            and right.margin.hc_structure.catalog_info.margin_threshold < radius_arcsec
+            and right.margin.hc_structure.catalog_info.margin_threshold < self.radius_arcsec
         ):
             raise ValueError("Cross match radius is greater than margin threshold")
+        if self.min_radius_arcsec < 0:
+            raise ValueError("The minimum radius must be non-negative")
+        if self.radius_arcsec <= self.min_radius_arcsec:
+            raise ValueError("Cross match maximum radius must be greater than cross match minimum radius")
 
     def perform_crossmatch(
-        self,
-        n_neighbors: int = 1,
-        radius_arcsec: float = 1,
+        self, crossmatch_args: CrossmatchArgs
     ) -> tuple[np.ndarray, np.ndarray, pd.DataFrame]:
         """Perform a cross-match between the data from two HEALPix pixels
 
@@ -65,10 +64,8 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
 
         Parameters
         ----------
-        n_neighbors : int
-            The number of neighbors to find within each point.
-        radius_arcsec : float, default 1
-            The threshold distance in arcseconds beyond which neighbors are not added
+        crossmatch_args : CrossmatchArgs
+            The partitions and respective pixel information.
 
         Returns
         -------
@@ -79,12 +76,22 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
         These all must have the same lengths.
         """
         # Distance in 3-D space for unit sphere
-        max_d_chord = _get_chord_distance(radius_arcsec)
+        max_d_chord = _get_chord_distance(self.radius_arcsec)
+        min_d_chord = _get_chord_distance(self.min_radius_arcsec)
         # calculate the cartesian coordinates of the points
-        left_xyz, right_xyz = self._get_point_coordinates()
+        left_xyz, right_xyz = self._get_point_coordinates(
+            crossmatch_args.left_df,
+            crossmatch_args.left_catalog_info,
+            crossmatch_args.right_df,
+            crossmatch_args.right_catalog_info,
+        )
         # get matching indices for cross-matched rows
         chord_distances, left_idx, right_idx = _find_crossmatch_indices(
-            left_xyz, right_xyz, n_neighbors=n_neighbors, max_distance=max_d_chord
+            left_xyz,
+            right_xyz,
+            n_neighbors=self.n_neighbors,
+            min_distance=min_d_chord,
+            max_distance=max_d_chord,
         )
         arc_distances = np.degrees(2.0 * np.arcsin(0.5 * chord_distances)) * 3600
         extra_columns = pd.DataFrame(
@@ -92,13 +99,15 @@ class KdTreeCrossmatch(AbstractCrossmatchAlgorithm):
         )
         return left_idx, right_idx, extra_columns
 
-    def _get_point_coordinates(self) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
+    def _get_point_coordinates(
+        self, left_df, left_catalog_info, right_df, right_catalog_info
+    ) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
         left_xyz = _lon_lat_to_xyz(
-            lon=self.left[self.left_catalog_info.ra_column].to_numpy(),
-            lat=self.left[self.left_catalog_info.dec_column].to_numpy(),
+            lon=left_df[left_catalog_info.ra_column].to_numpy(),
+            lat=left_df[left_catalog_info.dec_column].to_numpy(),
         )
         right_xyz = _lon_lat_to_xyz(
-            lon=self.right[self.right_catalog_info.ra_column].to_numpy(),
-            lat=self.right[self.right_catalog_info.dec_column].to_numpy(),
+            lon=right_df[right_catalog_info.ra_column].to_numpy(),
+            lat=right_df[right_catalog_info.dec_column].to_numpy(),
         )
         return left_xyz, right_xyz

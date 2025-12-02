@@ -22,7 +22,7 @@ from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
 from lsdb.catalog.map_catalog import MapCatalog
 from lsdb.catalog.margin_catalog import MarginCatalog
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
-from lsdb.core.crossmatch.crossmatch_algorithms import BuiltInCrossmatchAlgorithm
+from lsdb.core.crossmatch.kdtree_match import KdTreeCrossmatch
 from lsdb.core.search.abstract_search import AbstractSearch
 from lsdb.core.search.index_search import IndexSearch
 from lsdb.dask.concat_catalog_data import _assert_same_ra_dec, concat_catalog_data, handle_margins_for_concat
@@ -170,16 +170,18 @@ class Catalog(HealpixDataset):
     def crossmatch(
         self,
         other: Catalog,
-        suffixes: tuple[str, str] | None = None,
-        algorithm: (
-            type[AbstractCrossmatchAlgorithm] | BuiltInCrossmatchAlgorithm
-        ) = BuiltInCrossmatchAlgorithm.KD_TREE,
+        *,
+        n_neighbors: int | None = None,
+        radius_arcsec: float | None = None,
+        min_radius_arcsec: float | None = None,
+        algorithm: AbstractCrossmatchAlgorithm | None = None,
         output_catalog_name: str | None = None,
         require_right_margin: bool = False,
+        suffixes: tuple[str, str] | None = None,
         suffix_method: str | None = None,
         log_changes: bool = True,
-        **kwargs,
     ) -> Catalog:
+        # pylint:disable=unused-argument
         """Perform a cross-match between two catalogs
 
         The pixels from each catalog are aligned via a `PixelAlignment`, and cross-matching is
@@ -195,21 +197,24 @@ class Catalog(HealpixDataset):
         ----------
         other : Catalog
             The right catalog to cross-match against
-        suffixes : Tuple[str,str] or None
-            A pair of suffixes to be appended to the end of each column
-            name when they are joined. Default uses the name of the catalog for the suffix.
-        algorithm : BuiltInCrossmatchAlgorithm | type[AbstractCrossmatchAlgorithm]
-            The algorithm to use to perform the crossmatch. Can be either a string to specify one of
-            the built-in cross-matching methods, or a custom method defined by subclassing
-            AbstractCrossmatchAlgorithm.
-            (Default value = BuiltInCrossmatchAlgorithm.KD_TREE)
+        n_neighbors : int, default 1
+            The number of neighbors to find within each point.
+        radius_arcsec : float, default 1.0
+            The threshold distance in arcseconds beyond which neighbors are not added.
+        min_radius_arcsec : float, default 0.0
+            The threshold distance in arcseconds beyond which neighbors are added.
+        algorithm : AbstractCrossmatchAlgorithm | None, default `KDTreeCrossmatch`
+            The instance of an algorithm used to perform the crossmatch. If None,
+            the default KDTree crossmatch algorithm is used. If specified, the
+            algorithm is defined by subclassing `AbstractCrossmatchAlgorithm`.
 
-            Built-in methods:
-                - `kd_tree`: find the k-nearest neighbors using a kd_tree
+            Default algorithm:
+                - `KdTreeCrossmatch`: find the k-nearest neighbors using a kd_tree
 
-            Custom function:
-                To specify a custom function, write a class that subclasses the
-                `AbstractCrossmatchAlgorithm` class, and overwrite the `perform_crossmatch` function.
+            Custom algorithm:
+                To specify a custom algorithm, write a class that subclasses the
+                `AbstractCrossmatchAlgorithm` class, and either overwrite the `crossmatch`
+                or the `perform_crossmatch` function.
 
                 The function should be able to perform a crossmatch on two pandas DataFrames
                 from a partition from each catalog. It should return two 1d numpy arrays of equal lengths
@@ -222,29 +227,31 @@ class Catalog(HealpixDataset):
 
                     pd.DataFrame({"_dist_arcsec": pd.Series(dtype=np.dtype("float64"))})
 
-                The class will have been initialized with the following parameters, which the
-                crossmatch function should use::
+                The `crossmatch`/`perform_crossmatch` methods will receive an instance of `CrossmatchArgs`
+                which includes the partitions and respective pixel information::
 
-                    - left: npd.NestedFrame
-                    - right: npd.NestedFrame
+                    - left_df: npd.NestedFrame
+                    - right_df: npd.NestedFrame
                     - left_order: int
                     - left_pixel: int
                     - right_order: int
                     - right_pixel: int
-                    - left_metadata: hc.catalog.Catalog
-                    - right_metadata: hc.catalog.Catalog
-                    - right_margin_hc_structure: hc.margin.MarginCatalog
+                    - left_catalog_info: hc.catalog.TableProperties
+                    - right_catalog_info: hc.catalog.TableProperties
+                    - right_margin_catalog_info: hc.catalog.TableProperties
 
-                You may add any additional keyword argument parameters to the crossmatch
-                function definition, and the user will be able to pass them in as kwargs in the
-                `Catalog.crossmatch` method. Any additional keyword arguments must also be added to the
-                `CrossmatchAlgorithm.validate` classmethod by overwriting the method.
+                Include any algorithm-specific parameters in the initialization of your object.
+                These parameters should be validated in `AbstractCrossmatchAlgorithm.validate`,
+                by overwriting the method.
 
         output_catalog_name : str, default {left_name}_x_{right_name}
             The name of the resulting catalog.
         require_right_margin : bool, default False
             If true, raises an error if the right margin is missing which could
             lead to incomplete crossmatches.
+        suffixes : Tuple[str,str] or None
+            A pair of suffixes to be appended to the end of each column
+            name when they are joined. Default uses the name of the catalog for the suffix.
         suffix_method : str or None, default "all_columns"
             Method to use to add suffixes to columns. Options are:
 
@@ -271,6 +278,7 @@ class Catalog(HealpixDataset):
         TypeError
             If the `other` catalog is not of type `Catalog`
         ValueError
+            If both the kwargs for the default algorithm and an `algorithm` are specified.
             If the `suffixes` provided is not a tuple of two strings.
             If the right catalog has no margin and `require_right_margin` is True.
         """
@@ -279,6 +287,16 @@ class Catalog(HealpixDataset):
                 f"Expected `other` to be a Catalog instance, got {type(other)}. "
                 "You may want `lsdb.crossmatch(frame_or_catalog, frame_or_catalog)` instead."
             )
+
+        default_kwargs = {
+            k: v
+            for k, v in locals().items()
+            if k in ("radius_arcsec", "n_neighbors", "min_radius_arcsec") and v is not None
+        }
+        if not algorithm:
+            algorithm = KdTreeCrossmatch(**default_kwargs)
+        elif any(default_kwargs.values()):
+            raise ValueError(f"If you specify `algorithm`, do not set {list(default_kwargs.keys())}")
 
         if suffixes is None:
             suffixes = (f"_{self.name}", f"_{other.name}")
@@ -297,14 +315,14 @@ class Catalog(HealpixDataset):
             raise ValueError("Right catalog margin cache is required for cross-match.")
         if output_catalog_name is None:
             output_catalog_name = f"{self.name}_x_{other.name}"
+
         ddf, ddf_map, alignment = crossmatch_catalog_data(
             self,
             other,
+            algorithm,
             suffixes,
-            algorithm=algorithm,
-            suffix_method=suffix_method,
-            log_changes=log_changes,
-            **kwargs,
+            suffix_method,
+            log_changes,
         )
         new_catalog_info = create_merged_catalog_info(
             self,
@@ -321,14 +339,16 @@ class Catalog(HealpixDataset):
     def crossmatch_nested(
         self,
         other: Catalog,
-        nested_column_name: str | None = None,
-        algorithm: (
-            type[AbstractCrossmatchAlgorithm] | BuiltInCrossmatchAlgorithm
-        ) = BuiltInCrossmatchAlgorithm.KD_TREE,
+        *,
+        n_neighbors: int | None = None,
+        radius_arcsec: float | None = None,
+        min_radius_arcsec: float | None = None,
+        algorithm: AbstractCrossmatchAlgorithm | None = None,
         output_catalog_name: str | None = None,
         require_right_margin: bool = False,
-        **kwargs,
+        nested_column_name: str | None = None,
     ) -> Catalog:
+        # pylint:disable=unused-argument
         """Perform a cross-match between two catalogs, adding the result as a nested column
 
         For each row in the left catalog, the cross-matched rows from the right catalog are added
@@ -348,21 +368,24 @@ class Catalog(HealpixDataset):
         ----------
         other : Catalog
             The right catalog to cross-match against
-        nested_column_name : str, default uses the name of the right catalog
-            The name of the nested column that will contain the crossmatched rows
-            from the right catalog.
-        algorithm : BuiltInCrossmatchAlgorithm | type[AbstractCrossmatchAlgorithm]
-            The algorithm to use to perform the crossmatch. Can be either a string to specify one of
-            the built-in cross-matching methods, or a custom method defined by subclassing
-            AbstractCrossmatchAlgorithm.
-            (Default value = BuiltInCrossmatchAlgorithm.KD_TREE)
+        n_neighbors : int, default 1
+            The number of neighbors to find within each point.
+        radius_arcsec : float, default 1.0
+            The threshold distance in arcseconds beyond which neighbors are not added.
+        min_radius_arcsec : float, default 0.0
+            The threshold distance in arcseconds beyond which neighbors are added.
+        algorithm : AbstractCrossmatchAlgorithm | None, default `KDTreeCrossmatch`
+            The instance of an algorithm used to perform the crossmatch. If None,
+            the default KDTree crossmatch algorithm is used. If specified, the
+            algorithm is defined by subclassing `AbstractCrossmatchAlgorithm`.
 
-            Built-in methods:
-                - `kd_tree`: find the k-nearest neighbors using a kd_tree
+            Default algorithm:
+                - `KdTreeCrossmatch`: find the k-nearest neighbors using a kd_tree
 
-            Custom function:
-                To specify a custom function, write a class that subclasses the
-                `AbstractCrossmatchAlgorithm` class, and overwrite the `perform_crossmatch` function.
+            Custom algorithm:
+                To specify a custom algorithm, write a class that subclasses the
+                `AbstractCrossmatchAlgorithm` class, and either overwrite the `crossmatch`
+                or the `perform_crossmatch` function.
 
                 The function should be able to perform a crossmatch on two pandas DataFrames
                 from a partition from each catalog. It should return two 1d numpy arrays of equal lengths
@@ -375,29 +398,31 @@ class Catalog(HealpixDataset):
 
                     pd.DataFrame({"_dist_arcsec": pd.Series(dtype=np.dtype("float64"))})
 
-                The class will have been initialized with the following parameters, which the
-                crossmatch function should use::
+                The `crossmatch`/`perform_crossmatch` methods will receive an instance of `CrossmatchArgs`
+                which includes the partitions and respective pixel information::
 
-                    - left: npd.NestedFrame
-                    - right: npd.NestedFrame
+                    - left_df: npd.NestedFrame
+                    - right_df: npd.NestedFrame
                     - left_order: int
                     - left_pixel: int
                     - right_order: int
                     - right_pixel: int
-                    - left_metadata: hc.catalog.Catalog
-                    - right_metadata: hc.catalog.Catalog
-                    - right_margin_hc_structure: hc.margin.MarginCatalog
+                    - left_catalog_info: hc.catalog.TableProperties
+                    - right_catalog_info: hc.catalog.TableProperties
+                    - right_margin_catalog_info: hc.catalog.TableProperties
 
-                You may add any additional keyword argument parameters to the crossmatch
-                function definition, and the user will be able to pass them in as kwargs in the
-                `Catalog.crossmatch` method. Any additional keyword arguments must also be added to the
-                `CrossmatchAlgorithm.validate` classmethod by overwriting the method.
+                Include any algorithm-specific parameters in the initialization of your object.
+                These parameters should be validated in `AbstractCrossmatchAlgorithm.validate`,
+                by overwriting the method.
 
         output_catalog_name : str, default {left_name}_x_{right_name}
             The name of the resulting catalog.
         require_right_margin : bool, default False
             If true, raises an error if the right margin is missing which could
             lead to incomplete crossmatches.
+        nested_column_name : str, default uses the name of the right catalog
+            The name of the nested column that will contain the crossmatched rows
+            from the right catalog.
 
         Returns
         -------
@@ -410,17 +435,27 @@ class Catalog(HealpixDataset):
         Raises
         ------
         ValueError
+            If both the kwargs for the default algorithm and an `algorithm` are specified.
             If the right catalog has no margin and  `require_right_margin` is True.
         """
+        default_kwargs = {
+            k: v
+            for k, v in locals().items()
+            if k in ("radius_arcsec", "n_neighbors", "min_radius_arcsec") and v is not None
+        }
+        if not algorithm:
+            algorithm = KdTreeCrossmatch(**default_kwargs)
+        elif any(default_kwargs.values()):
+            raise ValueError(f"If you specify `algorithm`, do not set {list(default_kwargs.keys())}")
+
         if nested_column_name is None:
             nested_column_name = other.name
         if other.margin is None and require_right_margin:
             raise ValueError("Right catalog margin cache is required for cross-match.")
         if output_catalog_name is None:
             output_catalog_name = f"{self.name}_x_{other.name}"
-        ddf, ddf_map, alignment = crossmatch_catalog_data_nested(
-            self, other, nested_column_name, algorithm=algorithm, **kwargs
-        )
+
+        ddf, ddf_map, alignment = crossmatch_catalog_data_nested(self, other, algorithm, nested_column_name)
         hc_catalog = self.hc_structure.__class__(
             self.hc_structure.catalog_info,
             alignment.pixel_tree,
