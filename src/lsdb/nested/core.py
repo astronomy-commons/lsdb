@@ -12,7 +12,6 @@ import pandas as pd
 import pyarrow as pa
 from dask.dataframe.dask_expr._collection import new_collection
 from dask.dataframe.dask_expr._expr import no_default as dsk_no_default
-from deprecated import deprecated  # type: ignore
 from nested_pandas.series.dtype import NestedDtype
 from nested_pandas.series.packer import pack, pack_flat, pack_lists
 from typing_extensions import Self
@@ -663,96 +662,6 @@ Refer to the docstring for guidance on dtype requirements and assignment."""
                 **options,
             ),
             meta=self._meta,  # pylint: disable=protected-access
-        )
-
-    @deprecated(version="0.6.7", reason="`reduce` will be removed in the future, " "use `map_rows` instead.")
-    def reduce(self, func, *args, meta=dsk_no_default, infer_nesting=True, **kwargs) -> NestedFrame:
-        """
-        Takes a function and applies it to each top-level row of the NestedFrame.
-
-        docstring copied from nested-pandas
-
-        The user may specify which columns the function is applied to, with
-        columns from the 'base' layer being passsed to the function as
-        scalars and columns from the nested layers being passed as numpy arrays.
-
-        Parameters
-        ----------
-        func : callable
-            Function to apply to each nested dataframe. The first arguments to `func` should be which
-            columns to apply the function to. See the Notes for recommendations
-            on writing func outputs.
-        args : positional arguments
-            A list of string column names to pull from the NestedFrame to pass along to the function.
-            If the function has additional arguments, pass them as keyword arguments (e.g. arg_name=value)
-        meta : dataframe or series-like, optional
-            The dask meta of the output. If not provided, dask will try to
-            infer the metadata. This may lead to unexpected results, so
-            providing meta is recommended.
-        infer_nesting : bool, default True
-            If True, the function will pack output columns into nested
-            structures based on column names adhering to a nested naming
-            scheme. E.g. "nested.b" and "nested.c" will be packed into a column
-            called "nested" with columns "b" and "c". If False, all outputs
-            will be returned as base columns.
-        kwargs : keyword arguments, optional
-            Keyword arguments to pass to the function.
-
-        Returns
-        -------
-        `NestedFrame`
-            `NestedFrame` with the results of the function applied to the columns of the frame.
-
-        Notes
-        -----
-        By default, `reduce` will produce a `NestedFrame` with enumerated
-        column names for each returned value of the function. For more useful
-        naming, it's recommended to have `func` return a dictionary where each
-        key is an output column of the dataframe returned by `reduce`.
-
-        Example User Function:
-
-        >>> def my_sum(col1, col2): # doctest: +SKIP
-        >>>    '''reduce will return a NestedFrame with two columns''' # doctest: +SKIP
-        >>>    return {"sum_col1": sum(col1), "sum_col2": sum(col2)} # doctest: +SKIP
-
-        When using nesting inference (infer_nesting=True), the output may
-        contain nested columns. In such cases, the meta should be provided with
-        the appropriate dtype for these columns. For example, the following
-        function, which produces a nested column "lc":
-
-        >>> def complex_output(flux): # doctest: +SKIP
-        >>>   return {"max_flux": np.max(flux), # doctest: +SKIP
-        >>>           "lc.flux_quantiles": np.quantile(flux, [0.1, 0.2, 0.3, 0.4, 0.5]), # doctest: +SKIP
-        >>>           "lc.labels": [0.1, 0.2, 0.3, 0.4, 0.5]} # doctest: +SKIP
-
-        Would require the following meta:
-
-        >>> # create a NestedDtype for the nested column "lc"
-        >>> from nested_pandas.series.dtype import NestedDtype # doctest: +SKIP
-        >>> lc_dtype = NestedDtype(pa.struct([pa.field("flux_quantiles",  # doctest: +SKIP
-        >>>                                   pa.list_(pa.float64())), # doctest: +SKIP
-        >>>                                   pa.field("labels", pa.list_(pa.float64()))])) # doctest: +SKIP
-        >>> # use the lc_dtype in meta creation
-        >>> result_meta = npd.NestedFrame({'max_flux':pd.Series([], dtype='float'), # doctest: +SKIP
-        >>>                 'lc':pd.Series([], dtype=lc_dtype)}) # doctest: +SKIP
-
-        """
-
-        # Handle meta shorthands to produce nestedframe output
-        # route standard dict meta to nestedframe
-        if isinstance(meta, dict):
-            series_dict = {item[0]: pd.Series(dtype=item[1]) for item in meta.items()}
-            meta = npd.NestedFrame(series_dict)
-        # reroute series meta to nestedframe, per consistency with nested-pandas
-        elif isinstance(meta, tuple) and len(meta) == 2:  # len 2 to only try on proper series meta
-            meta = npd.NestedFrame(pd.Series(name=meta[0], dtype=meta[1]).to_frame())
-
-        # apply nested_pandas reduce via map_partitions
-        # wrap the partition in a npd.NestedFrame call for:
-        # https://github.com/lincc-frameworks/nested-dask/issues/21
-        return self.map_partitions(
-            lambda x: npd.NestedFrame(x).map_rows(func, *args, infer_nesting=infer_nesting, **kwargs), meta=meta
         )
 
     def map_rows(

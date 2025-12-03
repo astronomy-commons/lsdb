@@ -1158,51 +1158,6 @@ class Catalog(HealpixDataset):
             )
         return catalog
 
-    @deprecated(version="0.6.7", reason="`reduce` will be removed in the future, use `map_rows` instead.")
-    def reduce(self, func, *args, meta=None, append_columns=False, infer_nesting=True, **kwargs) -> Catalog:
-        """Takes a function and applies it to each top-level row of the Catalog.
-
-        docstring copied from nested-pandas
-
-        The user may specify which columns the function is applied to, with
-        columns from the 'base' layer being passsed to the function as
-        scalars and columns from the nested layers being passed as numpy arrays.
-
-        Parameters
-        ----------
-        func : callable
-            Function to apply to each row in the catalog. The first arguments to `func` should be which
-            columns to apply the function to. See the Notes for recommendations on writing func outputs.
-        args : positional arguments
-            A list of string column names to pull from the NestedFrame to pass along to the function.
-            If the function has additional arguments, pass them as keyword arguments (e.g. arg_name=value)
-        meta : dataframe or series-like, optional, default None
-            The dask meta of the output. If append_columns is True, the meta should specify just the
-            additional columns output by func.
-        append_columns : bool, default False
-            If True, the output columns should be appended to those in the original catalog.
-        infer_nesting : bool, default True
-            If True, the function will pack output columns into nested structures based on column names
-            adhering to a nested naming scheme. E.g. `nested.b` and `nested.c` will be packed into a
-            column called `nested` with columns `b` and `c`. If False, all outputs will be returned as base
-            columns.
-        kwargs : keyword arguments, optional
-            Keyword arguments to pass to the function.
-
-        Returns
-        -------
-        `Catalog`
-            `Catalog` with the results of the function applied to the columns of the frame.
-        """
-        catalog = super().map_rows(
-            func, *args, meta=meta, append_columns=append_columns, infer_nesting=infer_nesting, **kwargs
-        )
-        if self.margin is not None:
-            catalog.margin = self.margin.map_rows(
-                func, *args, meta=meta, append_columns=append_columns, infer_nesting=infer_nesting, **kwargs
-            )
-        return catalog
-
     def map_rows(
         self,
         func,
@@ -1341,7 +1296,9 @@ class Catalog(HealpixDataset):
             )
         return catalog
 
-    @deprecated(version="0.7.3", reason="`to_hats` will be removed in the future, " "use `write_catalog` instead.")
+    @deprecated(
+        version="0.7.3", reason="`to_hats` will be removed in the future, " "use `write_catalog` instead."
+    )
     def to_hats(
         self,
         base_catalog_path: str | Path | UPath,
@@ -1372,7 +1329,7 @@ class Catalog(HealpixDataset):
         default_columns: list[str] | None = None,
         as_collection: bool = True,
         overwrite: bool = False,
-        create_thumbnail:bool =True,
+        create_thumbnail: bool = True,
         error_if_empty: bool = True,
         **kwargs,
     ):

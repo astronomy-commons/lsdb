@@ -47,7 +47,7 @@ def to_collection(
 
     to_hats(
         catalog,
-        base_catalog_path = base_collection_path / catalog_name,
+        base_catalog_path=base_collection_path / catalog_name,
         catalog_name=catalog_name,
         default_columns=default_columns,
         overwrite=overwrite,
@@ -59,7 +59,7 @@ def to_collection(
         margin_name = f"{catalog_name}_{int(catalog.margin.hc_structure.catalog_info.margin_threshold)}arcs"
         to_hats(
             catalog.margin,
-            base_catalog_path = base_collection_path / margin_name,
+            base_catalog_path=base_collection_path / margin_name,
             catalog_name=margin_name,
             default_columns=default_columns,
             overwrite=overwrite,
