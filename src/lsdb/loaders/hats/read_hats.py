@@ -114,12 +114,12 @@ def open_catalog(
 
     Returns
     -------
-    Dataset
+    Catalog
         The catalog loaded according to the specified arguments.
     """
     hc_catalog = hc.read_hats(path)
     if not isinstance(hc_catalog, (CatalogCollection, hc.catalog.Catalog)):
-        raise ValueError("To load auxiliary catalog please use `lsdb.read_hats()`")
+        raise ValueError("To load auxiliary datasets please use `lsdb.read_hats()`")
 
     config = HatsLoadingConfig(
         search_filter=search_filter,
@@ -150,19 +150,44 @@ def read_hats(
     path_generator: Callable[[UPath, HealpixPixel, dict | None, str], UPath] = hc.io.pixel_catalog_file,
     **kwargs,
 ) -> HealpixDataset:
-    """Load an auxiliary catalog from a HATS path.
+    """Load dataset from a HATS path.
 
-    Auxiliary catalogs are of type margin OR association. For loading
-    details see open_catalog().
+    Use this method to load auxiliary (margin, association, map) datasets.
+
+    Parameters
+    ----------
+    path : path-like
+        The path that locates the root of the HATS collection or stand-alone catalog.
+    search_filter : type[AbstractSearch] or None, default None
+        The spatial filter method to be applied.
+    columns : list[str] or str or None, default None
+        The set of columns to filter the catalog on. If None, the catalog's default columns
+        will be loaded. To load all catalog columns, use `columns="all"`.
+    margin_cache : path-like or None, default None
+        The margin for the main catalog, provided as a path.
+    error_empty_filter : bool, default True
+        If loading the catalog with a filter results in an empty catalog, throw error.
+    filters : list[tuple[str]] or None, default None
+        Filters to apply when reading parquet files. These may be applied as pyarrow
+        filters or URL parameters.
+    path_generator : Callable[[UPath, HealpixPixel, dict | None, str], UPath], optional
+        The function `f(catalog_base_dir, pixel, query_params, npix_suffix)`
+        that translates HEALPix into partition data paths. Its arguments are the following:
+          - catalog_base_dir: UPath - path passed to `open_catalog`/`read_hats`
+          - pixel: HealpixPixel - pixel to generate path for
+          - query_params: dict | None - dictionary used to generate HTTP query string
+          - npix_suffix: str - "/" for leaf directory, filename suffix like ".parquet" for leaf file
+        The catalog metadata files need to live where the HATS standard expects them.
+        Defaults to `hats.io.pixel_catalog_file`.
+    **kwargs
+        Arguments to pass to the pandas parquet file reader
 
     Returns
     -------
     HealpixDataset
-        A `HealpixDataset` object.
+        A valid HATS dataset.
     """
     hc_catalog = hc.read_hats(path)
-    if isinstance(hc_catalog, (CatalogCollection, hc.catalog.Catalog)):
-        raise ValueError("To load `Catalog` please use `lsdb.open_catalog()`")
     config = HatsLoadingConfig(
         search_filter=search_filter,
         columns=columns,
