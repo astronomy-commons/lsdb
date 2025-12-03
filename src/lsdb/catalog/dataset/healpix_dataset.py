@@ -890,7 +890,7 @@ class HealpixDataset:
         *args,
         meta: pd.DataFrame | pd.Series | dict | Iterable | tuple | None = None,
         include_pixel: bool = False,
-        run_single_partition: bool = False,
+        compute_single_partition: bool = False,
         partition_index: int | HealpixPixel | None = None,
         **kwargs,
     ) -> Self | dd.Series:
@@ -933,16 +933,23 @@ class HealpixDataset:
             A new catalog with each partition replaced with the output of the function applied to the original
             partition. If the function returns a non dataframe output, a dask Series will be returned.
         """
-        if run_single_partition:
+        if compute_single_partition:
             if partition_index is None:
                 partition_index = 0
             if isinstance(partition_index, HealpixPixel):
                 partition_index = self.get_partition_index(partition_index.order, partition_index.pixel)
             partition = self.partitions[partition_index].compute()
-            if include_pixel:
-                pixel = [p for p, ind in self._ddf_pixel_map.items() if ind == partition_index][0]
-                return func(partition, pixel, *args, **kwargs)
-            return func(partition, *args, **kwargs)
+            pixel = [p for p, ind in self._ddf_pixel_map.items() if ind == partition_index][0]
+            result = (
+                func(partition, pixel, *args, **kwargs) if include_pixel else func(partition, *args, **kwargs)
+            )
+            output_ddf = nd.NestedFrame.from_pandas(result, npartitions=1)
+            partition_map = {pixel: 0}
+            hc_structure = self.hc_structure.__class__(
+                catalog_info=self.hc_structure.catalog_info,
+                pixels=[pixel],
+            )
+            return self.__class__(output_ddf, partition_map, hc_structure)
 
         if meta is None:
             if include_pixel:
