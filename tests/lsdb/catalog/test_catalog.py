@@ -448,6 +448,7 @@ def test_aggregate_column_statistics(small_sky_order1_catalog):
     with pytest.warns(UserWarning, match="modified catalog"):
         result_frame = filtered_catalog.aggregate_column_statistics()
     assert len(result_frame) == 5
+    assert_column_stat_as_floats(result_frame, "dec", min_value=-69.5, max_value=-47.5, row_count=42)
 
 
 def test_per_pixel_statistics(small_sky_order1_catalog):
