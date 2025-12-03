@@ -327,13 +327,11 @@ def test_rename_with_dict(small_sky_xmatch_with_margin):
         assert renamed_catalog.margin.columns[i] == f"{col}_{i}"
 
 
-def test_read_hats(small_sky_catalog, tmp_path):
+def test_open_catalog(small_sky_catalog, tmp_path):
     new_catalog_name = "small_sky"
     base_catalog_path = Path(tmp_path) / new_catalog_name
     small_sky_catalog.to_hats(base_catalog_path, catalog_name=new_catalog_name)
-
-    # Using .read_hats here vs .open_catalog in order to exercise code coverage for .read_hats
-    expected_catalog = lsdb.read_hats(base_catalog_path)
+    expected_catalog = lsdb.open_catalog(base_catalog_path)
     assert expected_catalog.hc_structure.schema.pandas_metadata is None
     assert expected_catalog.hc_structure.catalog_name == new_catalog_name
     assert expected_catalog.get_healpix_pixels() == small_sky_catalog.get_healpix_pixels()

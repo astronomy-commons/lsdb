@@ -19,7 +19,7 @@ def test_save_catalog(small_sky_catalog, tmp_path, helpers):
         base_catalog_path, catalog_name=new_catalog_name, addl_hats_properties={"obs_regime": "Optical"}
     )
 
-    expected_catalog = lsdb.read_hats(base_catalog_path)
+    expected_catalog = lsdb.open_catalog(base_catalog_path)
     assert expected_catalog.hc_structure.schema.pandas_metadata is None
     assert expected_catalog.hc_structure.catalog_name == new_catalog_name
     assert expected_catalog.get_healpix_pixels() == small_sky_catalog.get_healpix_pixels()
@@ -69,7 +69,7 @@ def test_save_catalog_default_columns(small_sky_with_nested_sources, tmp_path, h
     new_catalog_name = "small_sky_order1_nested_sources"
     base_catalog_path = Path(tmp_path) / new_catalog_name
     cat.to_hats(base_catalog_path, catalog_name=new_catalog_name, default_columns=default_columns)
-    expected_catalog = lsdb.read_hats(base_catalog_path)
+    expected_catalog = lsdb.open_catalog(base_catalog_path)
     assert expected_catalog.hc_structure.catalog_name == new_catalog_name
     assert expected_catalog.get_healpix_pixels() == cat.get_healpix_pixels()
     assert expected_catalog.hc_structure.catalog_info.default_columns == default_columns
@@ -86,7 +86,7 @@ def test_save_catalog_default_nested_columns(small_sky_with_nested_sources, tmp_
     new_catalog_name = "small_sky_order1_nested_sources"
     base_catalog_path = Path(tmp_path) / new_catalog_name
     cat.to_hats(base_catalog_path, catalog_name=new_catalog_name, default_columns=default_columns)
-    expected_catalog = lsdb.read_hats(base_catalog_path)
+    expected_catalog = lsdb.open_catalog(base_catalog_path)
     assert expected_catalog.hc_structure.catalog_name == new_catalog_name
     assert expected_catalog.get_healpix_pixels() == cat.get_healpix_pixels()
     assert expected_catalog.hc_structure.catalog_info.default_columns == default_columns
@@ -101,7 +101,7 @@ def test_save_catalog_empty_default_columns(small_sky_order1_default_cols_catalo
     new_catalog_name = "small_sky_order1"
     base_catalog_path = Path(tmp_path) / new_catalog_name
     cat.to_hats(base_catalog_path, catalog_name=new_catalog_name, default_columns=[])
-    expected_catalog = lsdb.read_hats(base_catalog_path)
+    expected_catalog = lsdb.open_catalog(base_catalog_path)
     assert expected_catalog.hc_structure.catalog_info.default_columns is None
     assert expected_catalog.hc_structure.catalog_name == new_catalog_name
     assert expected_catalog.get_healpix_pixels() == cat.get_healpix_pixels()
@@ -144,7 +144,7 @@ def test_save_crossmatch_catalog(
     with pytest.raises(ValueError, match="Original catalog schema is not available"):
         _ = cat.original_schema
     cat.to_hats(base_catalog_path, catalog_name=new_catalog_name)
-    expected_catalog = lsdb.read_hats(base_catalog_path)
+    expected_catalog = lsdb.open_catalog(base_catalog_path)
     assert expected_catalog.original_schema is not None
     assert expected_catalog.hc_structure.catalog_info.default_columns is None
     assert expected_catalog.hc_structure.catalog_name == new_catalog_name
@@ -246,7 +246,7 @@ def test_save_empty_catalog_no_error(small_sky_order1_catalog, tmp_path):
     # The catalog is not written to disk
     cone_search_catalog.to_hats(base_catalog_path, error_if_empty=False)
 
-    catalog = lsdb.read_hats(base_catalog_path)
+    catalog = lsdb.open_catalog(base_catalog_path)
     assert len(catalog.get_healpix_pixels()) == 0
     assert len(catalog.per_pixel_statistics()) == 0
     pd.testing.assert_frame_equal(cone_search_catalog._ddf._meta, catalog._ddf._meta)
@@ -270,7 +270,7 @@ def test_save_catalog_with_some_empty_partitions(small_sky_order1_catalog, tmp_p
 
     # Confirm that we can read the catalog from disk, and that it was
     # written with no empty partitions
-    catalog = lsdb.read_hats(base_catalog_path)
+    catalog = lsdb.open_catalog(base_catalog_path)
     assert catalog._ddf.npartitions == 1
     assert len(catalog._ddf.partitions[0]) > 0
     assert list(catalog._ddf_pixel_map.keys()) == non_empty_pixels

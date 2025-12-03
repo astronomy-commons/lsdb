@@ -21,7 +21,6 @@ from upath import UPath
 import lsdb.nested as nd
 from lsdb.catalog.association_catalog import AssociationCatalog
 from lsdb.catalog.catalog import Catalog, DaskDFPixelMap, MarginCatalog
-from lsdb.catalog.dataset.dataset import Dataset
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
 from lsdb.catalog.map_catalog import MapCatalog
 from lsdb.catalog.margin_catalog import _validate_margin_catalog
@@ -33,22 +32,6 @@ from lsdb.loaders.hats.hats_loading_config import HatsLoadingConfig
 MAX_PYARROW_FILTERS = 10
 
 
-def read_hats(
-    path: str | Path | UPath,
-    search_filter: AbstractSearch | None = None,
-    columns: list[str] | str | None = None,
-    margin_cache: str | Path | UPath | None = None,
-    error_empty_filter: bool = True,
-    filters: list[tuple[str]] | None = None,
-    path_generator: Callable[[UPath, HealpixPixel, dict | None, str], UPath] = hc.io.pixel_catalog_file,
-    **kwargs,
-) -> Dataset:
-    """Load catalog from a HATS path. See open_catalog()."""
-    return open_catalog(
-        path, search_filter, columns, margin_cache, error_empty_filter, filters, path_generator, **kwargs
-    )
-
-
 def open_catalog(
     path: str | Path | UPath,
     search_filter: AbstractSearch | None = None,
@@ -58,7 +41,7 @@ def open_catalog(
     filters: list[tuple[str]] | None = None,
     path_generator: Callable[[UPath, HealpixPixel, dict | None, str], UPath] = hc.io.pixel_catalog_file,
     **kwargs,
-) -> Dataset:
+) -> Catalog:
     """Open a catalog from a HATS path.
 
     Catalogs exist in collections or stand-alone.
@@ -135,6 +118,8 @@ def open_catalog(
         The catalog loaded according to the specified arguments.
     """
     hc_catalog = hc.read_hats(path)
+    if not isinstance(hc_catalog, (CatalogCollection, hc.catalog.Catalog)):
+        raise ValueError("To load auxiliary catalog please use `lsdb.read_hats()`")
 
     config = HatsLoadingConfig(
         search_filter=search_filter,
@@ -152,7 +137,42 @@ def open_catalog(
         catalog.hc_collection = hc_catalog  # type: ignore[attr-defined]
     else:
         catalog = _load_catalog(hc_catalog, config)
-    return catalog
+    return catalog  # type: ignore[return-value]
+
+
+def read_hats(
+    path: str | Path | UPath,
+    search_filter: AbstractSearch | None = None,
+    columns: list[str] | str | None = None,
+    margin_cache: str | Path | UPath | None = None,
+    error_empty_filter: bool = True,
+    filters: list[tuple[str]] | None = None,
+    path_generator: Callable[[UPath, HealpixPixel, dict | None, str], UPath] = hc.io.pixel_catalog_file,
+    **kwargs,
+) -> HealpixDataset:
+    """Load an auxiliary catalog from a HATS path.
+
+    Auxiliary catalogs are of type margin OR association. For loading
+    details see open_catalog().
+
+    Returns
+    -------
+    HealpixDataset
+        A `HealpixDataset` object.
+    """
+    hc_catalog = hc.read_hats(path)
+    if isinstance(hc_catalog, (CatalogCollection, hc.catalog.Catalog)):
+        raise ValueError("To load `Catalog` please use `lsdb.open_catalog()`")
+    config = HatsLoadingConfig(
+        search_filter=search_filter,
+        columns=columns,
+        error_empty_filter=error_empty_filter,
+        margin_cache=margin_cache,
+        filters=filters,
+        path_generator=path_generator,
+        kwargs=kwargs,
+    )
+    return _load_catalog(hc_catalog, config)
 
 
 def _get_collection_margin(
@@ -176,7 +196,7 @@ def _get_collection_margin(
     return margin_cache
 
 
-def _load_catalog(hc_catalog: hc.catalog.Dataset, config: HatsLoadingConfig) -> Dataset:
+def _load_catalog(hc_catalog: hc.catalog.Dataset, config: HatsLoadingConfig) -> HealpixDataset:
     config.set_columns_from_catalog_info(hc_catalog.catalog_info)
     if hc_catalog.schema is None:
         raise ValueError(

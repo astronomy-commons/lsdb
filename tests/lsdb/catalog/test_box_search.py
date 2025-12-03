@@ -55,7 +55,7 @@ def test_box_search_ra_complement(small_sky_order1_catalog):
 
 
 def test_box_search_with_filters(small_sky_order1_dir):
-    small_sky_order1_catalog = lsdb.read_hats(small_sky_order1_dir, filters=[("id", ">", 750)])
+    small_sky_order1_catalog = lsdb.open_catalog(small_sky_order1_dir, filters=[("id", ">", 750)])
     large_ids = small_sky_order1_catalog.compute()
     assert len(large_ids) == 80
     assert all(id > 750 for id in large_ids["id"])
@@ -66,7 +66,7 @@ def test_box_search_with_filters(small_sky_order1_dir):
     assert all(-80 <= ra <= -30 for ra in results["dec"])
 
     # Confirm that we see fewer results when we have both a `filters` and `search_filter` specified.
-    small_sky_order1_catalog = lsdb.read_hats(
+    small_sky_order1_catalog = lsdb.open_catalog(
         small_sky_order1_dir,
         filters=[("id", ">", 750)],
         search_filter=lsdb.BoxSearch(ra=(0, 360), dec=(-80, -30)),
@@ -87,7 +87,7 @@ def test_box_search_with_filters(small_sky_order1_dir):
 
 def test_box_search_intersection(small_sky_order1_dir):
     """Tests that repeated box search applies previous filters."""
-    small_sky_order1_catalog = lsdb.read_hats(small_sky_order1_dir).box_search(ra=(0, 360), dec=(-80, -30))
+    small_sky_order1_catalog = lsdb.open_catalog(small_sky_order1_dir).box_search(ra=(0, 360), dec=(-80, -30))
     results = small_sky_order1_catalog.compute()
     assert len(results) == 120
     assert all(-80 <= ra <= -30 for ra in results["dec"])
