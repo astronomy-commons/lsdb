@@ -19,7 +19,7 @@ from lsdb.core.search.index_search import IndexSearch
 from lsdb.core.search.region_search import BoxSearch, ConeSearch, OrderSearch, PolygonSearch
 
 
-def test_open_catalog(small_sky_order1_dir, small_sky_order1_hats_catalog, helpers):
+def test_read_hats(small_sky_order1_dir, small_sky_order1_hats_catalog, helpers):
     catalog = lsdb.open_catalog(small_sky_order1_dir)
     assert isinstance(catalog, lsdb.Catalog)
     assert isinstance(catalog._ddf, nd.NestedFrame)
@@ -38,7 +38,7 @@ def test_open_catalog_with_wrong_dataset_type(small_sky_order1_margin_1deg_dir):
         lsdb.open_catalog(small_sky_order1_margin_1deg_dir)
 
 
-def test_open_collection_with_default_margin(
+def test_read_hats_collection_with_default_margin(
     small_sky_order1_collection_dir, small_sky_order1_catalog, small_sky_order1_margin_1deg_catalog, helpers
 ):
     catalog = lsdb.open_catalog(small_sky_order1_collection_dir)
@@ -68,7 +68,7 @@ def test_open_collection_with_default_margin(
     helpers.assert_schema_correct(catalog.margin)
 
 
-def test_open_collection_with_margin_name(
+def test_read_hats_collection_with_margin_name(
     small_sky_order1_collection_dir, small_sky_order1_margin_2deg_catalog, helpers
 ):
     margin_name = small_sky_order1_margin_2deg_catalog.name
@@ -88,7 +88,7 @@ def test_open_collection_with_margin_name(
 
 
 @pytest.mark.parametrize("path_type", [str, Path, UPath])
-def test_open_collection_with_margin_absolute_path(
+def test_read_hats_collection_with_margin_absolute_path(
     small_sky_order1_collection_dir,
     small_sky_order1_margin_2deg_dir,
     small_sky_order1_margin_2deg_catalog,
@@ -110,7 +110,7 @@ def test_open_collection_with_margin_absolute_path(
     helpers.assert_schema_correct(catalog.margin)
 
 
-def test_open_collection_with_extra_kwargs(small_sky_order1_collection_dir):
+def test_read_hats_collection_with_extra_kwargs(small_sky_order1_collection_dir):
     catalog = lsdb.open_catalog(
         small_sky_order1_collection_dir, columns=["ra", "dec"], filters=[("ra", ">", 300)]
     )
@@ -126,7 +126,7 @@ def test_open_collection_with_extra_kwargs(small_sky_order1_collection_dir):
     assert np.all(catalog.margin.compute()["ra"] > 300)
 
 
-def test_open_collection_nested_filters(small_sky_order1_collection_dir):
+def test_read_hats_collection_nested_filters(small_sky_order1_collection_dir):
     """Tests that we appropriately handled nested pyarrow compute expressions,
     where all clauses are AND'd together"""
     catalog = lsdb.open_catalog(
@@ -150,7 +150,7 @@ def test_open_collection_nested_filters(small_sky_order1_collection_dir):
     assert np.all(catalog_contents["dec"] < -50)
 
 
-def test_open_collection_nested_filters_or(small_sky_order1_collection_dir):
+def test_read_hats_collection_nested_filters_or(small_sky_order1_collection_dir):
     """Tests that we appropriately handled nested pyarrow compute expressions,
     where clauses are OR'd together"""
     catalog = lsdb.open_catalog(
@@ -172,7 +172,7 @@ def test_open_collection_nested_filters_or(small_sky_order1_collection_dir):
     assert np.all(np.logical_or(catalog_contents["ra"] > 340, catalog_contents["ra"] < 290))
 
 
-def test_open_collection_empty_filters(small_sky_order1_collection_dir):
+def test_read_hats_collection_empty_filters(small_sky_order1_collection_dir):
     catalog = lsdb.open_catalog(small_sky_order1_collection_dir, filters=None)
 
     assert isinstance(catalog, lsdb.Catalog)
@@ -194,7 +194,7 @@ def test_open_collection_empty_filters(small_sky_order1_collection_dir):
     assert all(catalog.margin.columns == ["id", "ra", "dec", "ra_error", "dec_error"])
 
 
-def test_open_catalog_initializes_upath_once(
+def test_read_hats_initializes_upath_once(
     small_sky_order1_source_dir, small_sky_order1_source_margin_dir, mocker
 ):
     mock_method = "hats.io.file_io.file_pointer.get_upath_for_protocol"
@@ -209,7 +209,7 @@ def test_open_catalog_initializes_upath_once(
     mocked_upath_call.assert_has_calls(expected_calls)
 
 
-def test_open_catalog_default_cols(small_sky_order1_default_cols_dir, helpers):
+def test_read_hats_default_cols(small_sky_order1_default_cols_dir, helpers):
     catalog = lsdb.open_catalog(small_sky_order1_default_cols_dir)
     assert isinstance(catalog, lsdb.Catalog)
     assert isinstance(catalog._ddf, nd.NestedFrame)
@@ -223,7 +223,7 @@ def test_open_catalog_default_cols(small_sky_order1_default_cols_dir, helpers):
     helpers.assert_default_columns_in_columns(catalog)
 
 
-def test_open_catalog_default_cols_specify_cols(small_sky_order1_default_cols_dir, helpers):
+def test_read_hats_default_cols_specify_cols(small_sky_order1_default_cols_dir, helpers):
     filter_columns = ["ra", "dec"]
     catalog = lsdb.open_catalog(small_sky_order1_default_cols_dir, columns=filter_columns)
     assert isinstance(catalog, lsdb.Catalog)
@@ -238,7 +238,7 @@ def test_open_catalog_default_cols_specify_cols(small_sky_order1_default_cols_di
     helpers.assert_default_columns_in_columns(catalog)
 
 
-def test_open_catalog_default_cols_all_cols(small_sky_order1_default_cols_dir, helpers):
+def test_read_hats_default_cols_all_cols(small_sky_order1_default_cols_dir, helpers):
     expected_all_cols = ["id", "ra", "dec", "ra_error", "dec_error"]
     catalog = lsdb.open_catalog(small_sky_order1_default_cols_dir, columns="all")
     assert isinstance(catalog, lsdb.Catalog)
@@ -251,12 +251,12 @@ def test_open_catalog_default_cols_all_cols(small_sky_order1_default_cols_dir, h
     helpers.assert_index_correct(catalog)
 
 
-def test_open_catalog_default_cols_invalid_selector(small_sky_order1_default_cols_dir):
+def test_read_hats_default_cols_invalid_selector(small_sky_order1_default_cols_dir):
     with pytest.raises(TypeError):
         lsdb.open_catalog(small_sky_order1_default_cols_dir, columns="other")
 
 
-def test_open_catalog_default_cols_with_ellipsis(small_sky_order1_default_cols_dir):
+def test_read_hats_default_cols_with_ellipsis(small_sky_order1_default_cols_dir):
     """Test that ellipsis in columns list is replaced with default columns."""
 
     # Test ellipsis at the start of the columns list
@@ -290,7 +290,7 @@ def test_open_catalog_default_cols_with_ellipsis(small_sky_order1_default_cols_d
     assert list(catalog.compute().columns) == expected_columns
 
 
-def test_open_catalog_with_ellipsis_errors(small_sky_order1_default_cols_dir):
+def test_read_hats_with_ellipsis_errors(small_sky_order1_default_cols_dir):
     # Test that multiple ellipses raise an error
     with pytest.raises(ValueError, match="one ellipses"):
         lsdb.open_catalog(small_sky_order1_default_cols_dir, columns=[..., "ra_error", ...])
@@ -304,7 +304,7 @@ def test_open_catalog_with_ellipsis_errors(small_sky_order1_default_cols_dir):
         lsdb.open_catalog(small_sky_order1_default_cols_dir, columns=[..., "wrong"])
 
 
-def test_open_catalog_no_pandas(small_sky_order1_no_pandas_dir, helpers):
+def test_read_hats_no_pandas(small_sky_order1_no_pandas_dir, helpers):
     catalog = lsdb.open_catalog(small_sky_order1_no_pandas_dir)
     assert isinstance(catalog, lsdb.Catalog)
     assert isinstance(catalog._ddf, nd.NestedFrame)
@@ -315,7 +315,7 @@ def test_open_catalog_no_pandas(small_sky_order1_no_pandas_dir, helpers):
     helpers.assert_schema_correct(catalog)
 
 
-def test_open_catalog_with_margin_extra_kwargs(small_sky_xmatch_dir, small_sky_xmatch_margin_dir):
+def test_read_hats_with_margin_extra_kwargs(small_sky_xmatch_dir, small_sky_xmatch_margin_dir):
     filter_columns = ("ra", "dec")
     catalog = lsdb.open_catalog(
         small_sky_xmatch_dir,
@@ -334,7 +334,7 @@ def test_open_catalog_with_margin_extra_kwargs(small_sky_xmatch_dir, small_sky_x
     assert np.all(filtered_margin["ra"] > 300)
 
 
-def test_open_catalog_npix_alt_suffix(
+def test_read_hats_npix_alt_suffix(
     small_sky_npix_alt_suffix_dir, small_sky_npix_alt_suffix_hats_catalog, helpers
 ):
     catalog = lsdb.open_catalog(small_sky_npix_alt_suffix_dir)
@@ -353,7 +353,7 @@ def test_open_catalog_npix_alt_suffix(
     helpers.assert_index_correct(catalog)
 
 
-def test_open_catalog_npix_as_dir(small_sky_npix_as_dir_dir, small_sky_npix_as_dir_hats_catalog, helpers):
+def test_read_hats_npix_as_dir(small_sky_npix_as_dir_dir, small_sky_npix_as_dir_hats_catalog, helpers):
     catalog = lsdb.open_catalog(small_sky_npix_as_dir_dir)
     # Show that npix_suffix indicates that Npix are directories and also matches the hats property.
     catalog_npix_suffix = catalog.hc_structure.catalog_info.npix_suffix
@@ -369,7 +369,7 @@ def test_open_catalog_npix_as_dir(small_sky_npix_as_dir_dir, small_sky_npix_as_d
     helpers.assert_index_correct(catalog)
 
 
-def test_open_catalog_with_columns(small_sky_order1_dir, helpers):
+def test_read_hats_with_columns(small_sky_order1_dir, helpers):
     filter_columns = np.array(["ra", "dec"])
     catalog = lsdb.open_catalog(small_sky_order1_dir, columns=filter_columns)
     assert isinstance(catalog, lsdb.Catalog)
@@ -378,7 +378,7 @@ def test_open_catalog_with_columns(small_sky_order1_dir, helpers):
     helpers.assert_schema_correct(catalog)
 
 
-def test_open_catalog_no_pandas_with_columns(small_sky_order1_no_pandas_dir, helpers):
+def test_read_hats_no_pandas_with_columns(small_sky_order1_no_pandas_dir, helpers):
     filter_columns = pd.Series(["ra", "dec"])
     catalog = lsdb.open_catalog(small_sky_order1_no_pandas_dir, columns=filter_columns)
     assert isinstance(catalog, lsdb.Catalog)
@@ -387,7 +387,7 @@ def test_open_catalog_no_pandas_with_columns(small_sky_order1_no_pandas_dir, hel
     helpers.assert_schema_correct(catalog)
 
 
-def test_open_catalog_no_pandas_with_index_column(small_sky_order1_no_pandas_dir, helpers):
+def test_read_hats_no_pandas_with_index_column(small_sky_order1_no_pandas_dir, helpers):
     # _healpix_29 might be included in the columns, and it has no side effect.
     catalog = lsdb.open_catalog(small_sky_order1_no_pandas_dir, columns=["_healpix_29"])
     assert "ra" in catalog.columns
@@ -398,14 +398,15 @@ def test_open_catalog_no_pandas_with_index_column(small_sky_order1_no_pandas_dir
     helpers.assert_schema_correct(catalog)
 
 
-def test_open_catalog_with_extra_kwargs(small_sky_order1_dir):
+def test_read_hats_with_extra_kwargs(small_sky_order1_dir):
     catalog = lsdb.open_catalog(small_sky_order1_dir, filters=[("ra", ">", 300)])
     assert isinstance(catalog, lsdb.Catalog)
     assert np.greater(catalog.compute()["ra"].to_numpy(), 300).all()
+
     assert catalog.loading_config.make_query_url_params() == {"filters": "ra>300"}
 
 
-def test_open_catalog_with_mistaken_kwargs(small_sky_order1_dir, small_sky_xmatch_margin_dir):
+def test_read_hats_with_mistaken_kwargs(small_sky_order1_dir, small_sky_xmatch_margin_dir):
     with pytest.raises(ValueError, match="Invalid keyword argument"):
         lsdb.open_catalog(small_sky_order1_dir, margins=small_sky_xmatch_margin_dir)
 
@@ -454,18 +455,18 @@ def test_open_catalog_with_margin(
     helpers.assert_schema_correct(catalog.margin)
 
 
-def test_open_catalog_without_margin_is_none(small_sky_xmatch_dir):
+def test_catalog_without_margin_is_none(small_sky_xmatch_dir):
     catalog = lsdb.open_catalog(small_sky_xmatch_dir)
     assert isinstance(catalog, lsdb.Catalog)
     assert catalog.margin is None
 
 
-def test_open_catalog_with_wrong_margin(small_sky_order1_dir, small_sky_order1_source_margin_dir):
+def test_catalog_with_wrong_margin(small_sky_order1_dir, small_sky_order1_source_margin_dir):
     with pytest.raises(ValueError, match="must have the same schema"):
         lsdb.open_catalog(small_sky_order1_dir, margin_cache=small_sky_order1_source_margin_dir)
 
 
-def test_open_catalog_pixel_search_radec(small_sky_order1_collection_dir):
+def test_read_hats_pixel_search_radec(small_sky_order1_collection_dir):
     filtered_catalog = lsdb.open_catalog(
         small_sky_order1_collection_dir, search_filter=lsdb.PixelSearch.from_radec(ra=280.5, dec=-35.5)
     )
@@ -474,7 +475,7 @@ def test_open_catalog_pixel_search_radec(small_sky_order1_collection_dir):
     assert filtered_catalog.margin.get_healpix_pixels() == [HealpixPixel(1, 46)]
 
 
-def test_open_catalog_subset_with_cone_search(small_sky_order1_dir, small_sky_order1_catalog):
+def test_read_hats_subset_with_cone_search(small_sky_order1_dir, small_sky_order1_catalog):
     cone_search = ConeSearch(ra=0, dec=-80, radius_arcsec=20 * 3600)
     # Filtering using catalog's cone_search
     cone_search_catalog = small_sky_order1_catalog.cone_search(ra=0, dec=-80, radius_arcsec=20 * 3600)
@@ -486,7 +487,7 @@ def test_open_catalog_subset_with_cone_search(small_sky_order1_dir, small_sky_or
     pd.testing.assert_frame_equal(cone_search_catalog.compute(), cone_search_catalog_2.compute())
 
 
-def test_open_catalog_subset_with_box_search(small_sky_order1_dir, small_sky_order1_catalog):
+def test_read_hats_subset_with_box_search(small_sky_order1_dir, small_sky_order1_catalog):
     box_search = BoxSearch(ra=(300, 320), dec=(-40, -10))
     # Filtering using catalog's box_search
     box_search_catalog = small_sky_order1_catalog.box_search(ra=(300, 320), dec=(-40, -10))
@@ -498,7 +499,7 @@ def test_open_catalog_subset_with_box_search(small_sky_order1_dir, small_sky_ord
     pd.testing.assert_frame_equal(box_search_catalog.compute(), box_search_catalog_2.compute())
 
 
-def test_open_catalog_subset_with_polygon_search(small_sky_order1_dir, small_sky_order1_catalog):
+def test_read_hats_subset_with_polygon_search(small_sky_order1_dir, small_sky_order1_catalog):
     pytest.importorskip("lsst.sphgeom")
     vertices = [(300, -50), (300, -55), (272, -55), (272, -50)]
     polygon_search = PolygonSearch(vertices)
@@ -512,7 +513,7 @@ def test_open_catalog_subset_with_polygon_search(small_sky_order1_dir, small_sky
     pd.testing.assert_frame_equal(polygon_search_catalog.compute(), polygon_search_catalog_2.compute())
 
 
-def test_open_catalog_subset_with_index_search(
+def test_read_hats_subset_with_index_search(
     small_sky_order1_dir,
     small_sky_order1_catalog,
     small_sky_order1_id_index_dir,
@@ -530,7 +531,7 @@ def test_open_catalog_subset_with_index_search(
     assert index_search_catalog.get_healpix_pixels() == index_search_catalog_2.get_healpix_pixels()
 
 
-def test_open_catalog_subset_with_order_search(small_sky_source_catalog, small_sky_source_dir):
+def test_read_hats_subset_with_order_search(small_sky_source_catalog, small_sky_source_dir):
     order_search = OrderSearch(min_order=1, max_order=2)
     # Filtering using catalog's order_search
     order_search_catalog = small_sky_source_catalog.order_search(min_order=1, max_order=2)
@@ -546,14 +547,14 @@ def test_open_catalog_subset_with_order_search(small_sky_source_catalog, small_s
     assert order_search_catalog.get_healpix_pixels() == order_search_catalog_2.get_healpix_pixels()
 
 
-def test_open_catalog_subset_no_partitions(small_sky_order1_dir, small_sky_order1_id_index_dir):
+def test_read_hats_subset_no_partitions(small_sky_order1_dir, small_sky_order1_id_index_dir):
     with pytest.raises(ValueError, match="no coverage"):
         catalog_index = hc.read_hats(small_sky_order1_id_index_dir)
         index_search = IndexSearch(values={"id": 900}, index_catalogs={"id": catalog_index})
         lsdb.open_catalog(small_sky_order1_dir, search_filter=index_search)
 
 
-def test_open_catalog_with_margin_subset(
+def test_read_hats_with_margin_subset(
     small_sky_order1_source_dir, small_sky_order1_source_with_margin, small_sky_order1_source_margin_dir
 ):
     cone_search = ConeSearch(ra=315, dec=-66, radius_arcsec=20)
@@ -610,7 +611,7 @@ def test_read_hats_map_catalog(test_data_dir):
     assert len(margin_catalog.hc_structure.pixel_tree) == 12
 
 
-def test_open_catalog_schema_not_found(small_sky_no_metadata_dir):
+def test_read_hats_schema_not_found(small_sky_no_metadata_dir):
     with pytest.raises(ValueError, match="catalog schema could not be loaded"):
         lsdb.open_catalog(small_sky_no_metadata_dir)
 
@@ -629,7 +630,7 @@ def test_original_schema_read_columns(small_sky_order1_dir, small_sky_order1_cat
     assert cat.original_schema == small_sky_order1_catalog.original_schema
 
 
-def test_open_catalog_nested_column_selection(small_sky_with_nested_sources_dir):
+def test_read_nested_column_selection(small_sky_with_nested_sources_dir):
     cat = lsdb.open_catalog(
         small_sky_with_nested_sources_dir, columns=["ra", "dec", "sources.source_id", "sources.source_ra"]
     )
@@ -640,7 +641,7 @@ def test_open_catalog_nested_column_selection(small_sky_with_nested_sources_dir)
     assert np.all(computed["sources"].iloc[0].columns == ["source_id", "source_ra"])
 
 
-def test_open_catalog_nested_column_selection_errors(small_sky_with_nested_sources_dir):
+def test_read_nested_column_selection_errors(small_sky_with_nested_sources_dir):
     with pytest.raises(KeyError):
         lsdb.open_catalog(
             small_sky_with_nested_sources_dir, columns=["ra", "dec", "sources.source_id", "sources.wrong"]
@@ -668,7 +669,7 @@ def custom_path_generator(catalog_base_dir, pixel, _, npix_suffix) -> UPath:
     return catalog_base_dir / "parquet" / f"{pixel.order}_{pixel.pixel}{npix_suffix}"
 
 
-def test_open_catalog_with_custom_tree(
+def test_read_hats_catalog_with_custom_tree(
     small_sky_order1_custom_tree_dir, small_sky_order1_catalog, mocker, helpers
 ):
     path_generator_spy = mocker.spy(__import__(__name__), custom_path_generator.__name__)
@@ -685,7 +686,7 @@ def test_open_catalog_with_custom_tree(
     helpers.assert_schema_correct(cat)
 
 
-def test_open_catalog_with_custom_tree_and_search(
+def test_read_hats_catalog_with_custom_tree_and_search(
     small_sky_order1_custom_tree_dir, small_sky_order1_catalog, mocker
 ):
     """When we reload the catalog with a search filter the loading config
@@ -699,6 +700,6 @@ def test_open_catalog_with_custom_tree_and_search(
     pd.testing.assert_frame_equal(search_df, expected_df)
 
 
-def test_open_catalog_with_wrong_path_generator(small_sky_order1_custom_tree_dir):
+def test_read_hats_catalog_with_wrong_path_generator(small_sky_order1_custom_tree_dir):
     with pytest.raises(FileNotFoundError):
         lsdb.open_catalog(small_sky_order1_custom_tree_dir).compute()

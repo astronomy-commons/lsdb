@@ -16,7 +16,7 @@ def test_save_collection(small_sky_order1_collection_catalog, tmp_path, helpers)
         addl_hats_properties={"obs_regime": "Optical"},
     )
 
-    catalog = lsdb.open_catalog(base_collection_path)
+    catalog = lsdb.read_hats(base_collection_path)
     assert isinstance(catalog, lsdb.Catalog)
     assert catalog.hc_structure.catalog_base_dir == base_collection_path / "small_sky_order1"
     pd.testing.assert_frame_equal(
@@ -64,7 +64,7 @@ def test_save_collection_from_dataframe(small_sky_order1_df, tmp_path):
         addl_hats_properties={"obs_regime": "Optical"},
     )
 
-    catalog = lsdb.open_catalog(base_collection_path)
+    catalog = lsdb.read_hats(base_collection_path)
     assert isinstance(catalog, lsdb.Catalog)
     assert catalog.hc_structure.catalog_base_dir == base_collection_path / "small_sky_order1"
     assert catalog.hc_structure.catalog_info.default_columns == ["ra", "dec"]
@@ -90,7 +90,7 @@ def test_save_collection_with_empty_margin(small_sky_order1_df, tmp_path):
     base_collection_path = Path(tmp_path) / "small_sky_order1_collection"
     expected_catalog.write_catalog(base_collection_path, catalog_name="small_sky_order1")
 
-    catalog = lsdb.open_catalog(base_collection_path)
+    catalog = lsdb.read_hats(base_collection_path)
     assert isinstance(catalog, lsdb.Catalog)
     assert catalog.hc_structure.catalog_base_dir == base_collection_path / "small_sky_order1"
 

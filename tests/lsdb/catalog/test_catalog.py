@@ -331,6 +331,7 @@ def test_read_hats(small_sky_catalog, tmp_path):
     new_catalog_name = "small_sky"
     base_catalog_path = Path(tmp_path) / new_catalog_name
     small_sky_catalog.to_hats(base_catalog_path, catalog_name=new_catalog_name)
+
     # Using .read_hats here vs .open_catalog in order to exercise code coverage for .read_hats
     expected_catalog = lsdb.read_hats(base_catalog_path)
     assert expected_catalog.hc_structure.schema.pandas_metadata is None
