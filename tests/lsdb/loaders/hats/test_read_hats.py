@@ -33,6 +33,11 @@ def test_open_catalog(small_sky_order1_dir, small_sky_order1_hats_catalog, helpe
     helpers.assert_schema_correct(catalog)
 
 
+def test_open_catalog_with_wrong_dataset_type(small_sky_order1_margin_1deg_dir):
+    with pytest.raises(TypeError, match="read_hats"):
+        lsdb.open_catalog(small_sky_order1_margin_1deg_dir)
+
+
 def test_open_collection_with_default_margin(
     small_sky_order1_collection_dir, small_sky_order1_catalog, small_sky_order1_margin_1deg_catalog, helpers
 ):
@@ -429,16 +434,6 @@ def test_parquet_data_in_partitions_match_files(small_sky_order1_dir, small_sky_
         )
         loaded_df = pd.read_parquet(parquet_path, dtype_backend="pyarrow").set_index("_healpix_29")
         pd.testing.assert_frame_equal(partition_df, loaded_df)
-
-
-def test_open_catalog_specify_catalog_type(small_sky_catalog, small_sky_dir):
-    catalog = lsdb.open_catalog(small_sky_dir)
-    assert isinstance(catalog, lsdb.Catalog)
-    assert isinstance(catalog._ddf, nd.NestedFrame)
-    pd.testing.assert_frame_equal(catalog.compute(), small_sky_catalog.compute())
-    assert catalog.get_healpix_pixels() == small_sky_catalog.get_healpix_pixels()
-    assert catalog.hc_structure.catalog_info == small_sky_catalog.hc_structure.catalog_info
-    assert isinstance(catalog.compute(), npd.NestedFrame)
 
 
 def test_open_catalog_with_margin(
