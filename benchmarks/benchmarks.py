@@ -108,7 +108,7 @@ def time_open_many_columns_list():
 
 
 def time_save_big_catalog():
-    """Load a catalog with many partitions, and save with to_hats."""
+    """Load a catalog with many partitions, and save with write_catalog."""
     mock_partition_df = pd.DataFrame(
         {
             "ra": np.linspace(0, 360, 100_000),
@@ -128,7 +128,7 @@ def time_save_big_catalog():
 
         catalog = lsdb.from_dataframe(mock_partition_df, margin_threshold=None, **kwargs)
 
-        catalog.to_hats(tmp_path)
+        catalog.write_catalog(tmp_path)
 
         read_catalog = hats.read_hats(tmp_path)
         assert len(read_catalog.get_healpix_pixels()) == len(catalog.get_healpix_pixels())

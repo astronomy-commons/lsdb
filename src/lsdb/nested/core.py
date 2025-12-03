@@ -752,7 +752,7 @@ Refer to the docstring for guidance on dtype requirements and assignment."""
         # wrap the partition in a npd.NestedFrame call for:
         # https://github.com/lincc-frameworks/nested-dask/issues/21
         return self.map_partitions(
-            lambda x: npd.NestedFrame(x).reduce(func, *args, infer_nesting=infer_nesting, **kwargs), meta=meta
+            lambda x: npd.NestedFrame(x).map_rows(func, *args, infer_nesting=infer_nesting, **kwargs), meta=meta
         )
 
     def map_rows(

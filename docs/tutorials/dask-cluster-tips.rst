@@ -161,7 +161,7 @@ so we ask for 32GB of RAM and 16 cores per job.
 
     client = dask.distributed.Client(cluster)
 
-    # Your code, running catalog.compute() or catalog.to_hats()
+    # Your code, running catalog.compute() or catalog.write_catalog()
     # df = catalog.compute()
 
     # Stop the cluster, it would ask SLURM to shut all the jobs down

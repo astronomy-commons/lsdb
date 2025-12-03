@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import TYPE_CHECKING
+from deprecated import deprecated  # type: ignore
 
 import hats as hc
 import pandas as pd
@@ -31,6 +32,7 @@ class MarginCatalog(HealpixDataset):
     ):
         super().__init__(ddf, ddf_pixel_map, hc_structure, loading_config=loading_config)
 
+    @deprecated(version="0.7.3", reason="`to_hats` will be removed in the future, " "use `write_catalog` instead.")
     def to_hats(
         self,
         base_catalog_path: str | Path | UPath,

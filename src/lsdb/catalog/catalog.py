@@ -1158,7 +1158,7 @@ class Catalog(HealpixDataset):
             )
         return catalog
 
-    @deprecated(version="0.6.7", reason="`reduce` will be removed in the future, " "use `map_rows` instead.")
+    @deprecated(version="0.6.7", reason="`reduce` will be removed in the future, use `map_rows` instead.")
     def reduce(self, func, *args, meta=None, append_columns=False, infer_nesting=True, **kwargs) -> Catalog:
         """Takes a function and applies it to each top-level row of the Catalog.
 
@@ -1193,35 +1193,12 @@ class Catalog(HealpixDataset):
         -------
         `Catalog`
             `Catalog` with the results of the function applied to the columns of the frame.
-
-        Notes
-        -----
-        By default, computing a `reduce` will produce a `NestedFrame` with enumerated
-        column names for each returned value of the function. For more useful
-        naming, it's recommended to have `func` return a dictionary where each
-        key is an output column of the dataframe returned by computing `reduce`.
-
-        Example User Function:
-        >>> import numpy as np
-        >>> import lsdb
-        >>> import pandas as pd
-        >>> catalog = lsdb.from_dataframe(
-        ...     pd.DataFrame({"ra": [0, 10], "dec": [5, 15], "mag": [21, 22], "mag_err": [0.1, 0.2]})
-        ... )
-        >>> def my_sigma(col1, col2):
-        ...    '''reduce will return a NestedFrame with two columns'''
-        ...    return {"plus_one": col1+col2, "minus_one": col1-col2}
-        >>> meta = {"plus_one": np.float64, "minus_one": np.float64}
-        >>> catalog.reduce(my_sigma, 'mag', 'mag_err', meta=meta).compute().reset_index()
-                   _healpix_29  plus_one  minus_one
-        0  1372475556631677955      21.1       20.9
-        1  1389879706834706546      22.2       21.8
         """
-        catalog = super().reduce(
+        catalog = super().map_rows(
             func, *args, meta=meta, append_columns=append_columns, infer_nesting=infer_nesting, **kwargs
         )
         if self.margin is not None:
-            catalog.margin = self.margin.reduce(
+            catalog.margin = self.margin.map_rows(
                 func, *args, meta=meta, append_columns=append_columns, infer_nesting=infer_nesting, **kwargs
             )
         return catalog
@@ -1364,6 +1341,7 @@ class Catalog(HealpixDataset):
             )
         return catalog
 
+    @deprecated(version="0.7.3", reason="`to_hats` will be removed in the future, " "use `write_catalog` instead.")
     def to_hats(
         self,
         base_catalog_path: str | Path | UPath,
@@ -1394,6 +1372,7 @@ class Catalog(HealpixDataset):
         default_columns: list[str] | None = None,
         as_collection: bool = True,
         overwrite: bool = False,
+        create_thumbnail:bool =True,
         error_if_empty: bool = True,
         **kwargs,
     ):
@@ -1427,6 +1406,7 @@ class Catalog(HealpixDataset):
                 default_columns=default_columns,
                 overwrite=overwrite,
                 error_if_empty=error_if_empty,
+                create_thumbnail=create_thumbnail,
                 **kwargs,
             )
         else:
@@ -1435,7 +1415,7 @@ class Catalog(HealpixDataset):
                 catalog_name=catalog_name,
                 default_columns=default_columns,
                 overwrite=overwrite,
-                create_thumbnail=True,
+                create_thumbnail=create_thumbnail,
                 error_if_empty=error_if_empty,
                 **kwargs,
             )

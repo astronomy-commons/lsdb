@@ -969,6 +969,7 @@ class HealpixDataset(Dataset):
         """
         return self.hc_structure.plot_moc(**kwargs)
 
+    @deprecated(version="0.7.3", reason="`to_hats` will be removed in the future, " "use `write_catalog` instead.")
     def to_hats(
         self,
         base_catalog_path: str | Path | UPath,
@@ -1117,29 +1118,6 @@ class HealpixDataset(Dataset):
         -------
         `HealpixDataset`
             `HealpixDataset` with the results of the function applied to the columns of the frame.
-
-        Notes
-        -----
-        By default, `reduce` will produce a `NestedFrame` with enumerated
-        column names for each returned value of the function. For more useful
-        naming, it's recommended to have `func` return a dictionary where each
-        key is an output column of the dataframe returned by `reduce`.
-
-        Example User Function:
-        >>> import numpy as np
-        >>> import lsdb
-        >>> import pandas as pd
-        >>> catalog = lsdb.from_dataframe(
-        ...     pd.DataFrame({"ra": [0, 10], "dec": [5, 15], "mag": [21, 22], "mag_err": [0.1, 0.2]})
-        ... )
-        >>> def my_sigma(col1, col2):
-        ...    '''reduce will return a NestedFrame with two columns'''
-        ...    return {"plus_one": col1+col2, "minus_one": col1-col2}
-        >>> meta = {"plus_one": np.float64, "minus_one": np.float64}
-        >>> catalog.reduce(my_sigma, 'mag', 'mag_err', meta=meta).compute().reset_index()
-                   _healpix_29  plus_one  minus_one
-        0  1372475556631677955      21.1       20.9
-        1  1389879706834706546      22.2       21.8
         """
         self._check_unloaded_columns(args)
 
@@ -1149,7 +1127,7 @@ class HealpixDataset(Dataset):
         catalog_info = self.hc_structure.catalog_info
 
         def reduce_part(df):
-            reduced_result = npd.NestedFrame(df).reduce(func, *args, infer_nesting=infer_nesting, **kwargs)
+            reduced_result = npd.NestedFrame(df).map_rows(func, *args, infer_nesting=infer_nesting, **kwargs)
             if append_columns:
                 if catalog_info.ra_column in reduced_result or catalog_info.dec_column in reduced_result:
                     raise ValueError("ra and dec columns can not be modified using reduce")
