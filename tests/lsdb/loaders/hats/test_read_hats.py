@@ -33,6 +33,11 @@ def test_read_hats(small_sky_order1_dir, small_sky_order1_hats_catalog, helpers)
     helpers.assert_schema_correct(catalog)
 
 
+def test_open_catalog_with_wrong_dataset_type(small_sky_order1_margin_1deg_dir):
+    with pytest.raises(TypeError, match="read_hats"):
+        lsdb.open_catalog(small_sky_order1_margin_1deg_dir)
+
+
 def test_read_hats_collection_with_default_margin(
     small_sky_order1_collection_dir, small_sky_order1_catalog, small_sky_order1_margin_1deg_catalog, helpers
 ):
@@ -432,17 +437,7 @@ def test_parquet_data_in_partitions_match_files(small_sky_order1_dir, small_sky_
         pd.testing.assert_frame_equal(partition_df, loaded_df)
 
 
-def test_read_hats_specify_catalog_type(small_sky_catalog, small_sky_dir):
-    catalog = lsdb.open_catalog(small_sky_dir)
-    assert isinstance(catalog, lsdb.Catalog)
-    assert isinstance(catalog._ddf, nd.NestedFrame)
-    pd.testing.assert_frame_equal(catalog.compute(), small_sky_catalog.compute())
-    assert catalog.get_healpix_pixels() == small_sky_catalog.get_healpix_pixels()
-    assert catalog.hc_structure.catalog_info == small_sky_catalog.hc_structure.catalog_info
-    assert isinstance(catalog.compute(), npd.NestedFrame)
-
-
-def test_catalog_with_margin(
+def test_open_catalog_with_margin(
     small_sky_xmatch_dir, small_sky_xmatch_margin_dir, small_sky_xmatch_margin_catalog, helpers
 ):
     assert isinstance(small_sky_xmatch_margin_dir, Path)
@@ -583,7 +578,7 @@ def test_read_hats_margin_catalog_subset(
     small_sky_order1_source_margin_dir, small_sky_order1_source_margin_catalog, helpers
 ):
     search_filter = ConeSearch(ra=315, dec=-60, radius_arcsec=10)
-    margin = lsdb.open_catalog(small_sky_order1_source_margin_dir, search_filter=search_filter)
+    margin = lsdb.read_hats(small_sky_order1_source_margin_dir, search_filter=search_filter)
 
     margin_info = margin.hc_structure.catalog_info
     small_sky_order1_source_margin_info = small_sky_order1_source_margin_catalog.hc_structure.catalog_info
@@ -605,11 +600,11 @@ def test_read_hats_margin_catalog_subset(
 def test_read_hats_margin_catalog_subset_is_empty(small_sky_order1_source_margin_dir):
     search_filter = ConeSearch(ra=100, dec=80, radius_arcsec=1)
     with pytest.raises(ValueError, match="no coverage"):
-        lsdb.open_catalog(small_sky_order1_source_margin_dir, search_filter=search_filter)
+        lsdb.read_hats(small_sky_order1_source_margin_dir, search_filter=search_filter)
 
 
 def test_read_hats_map_catalog(test_data_dir):
-    margin_catalog = lsdb.open_catalog(test_data_dir / "square_map")
+    margin_catalog = lsdb.read_hats(test_data_dir / "square_map")
     assert len(margin_catalog.get_healpix_pixels()) == 12
     assert len(margin_catalog._ddf_pixel_map) == 12
     assert len(margin_catalog.compute()) == 12

@@ -7,8 +7,8 @@ from hats.io import paths
 from hats.pixel_math import HealpixPixel
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN, spatial_index_to_healpix
 
+import lsdb
 import lsdb.nested as nd
-from lsdb import open_catalog
 from lsdb.dask.merge_catalog_functions import align_catalogs
 
 
@@ -519,8 +519,7 @@ def merging_function(input_frame, map_input, *args, **kwargs):
 
 
 def test_merge_map(small_sky_catalog, test_data_dir):
-    map_catalog = open_catalog(test_data_dir / "square_map")
+    map_catalog = lsdb.read_hats(test_data_dir / "square_map")
     merge_lazy = small_sky_catalog.merge_map(map_catalog, merging_function, unused_kwarg="ignored")
-
     merge_result = merge_lazy.compute()
     assert len(merge_result) == small_sky_catalog.hc_structure.catalog_info.total_rows
