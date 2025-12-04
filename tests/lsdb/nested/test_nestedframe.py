@@ -337,8 +337,8 @@ def test_map_rows(test_dataset):
     )
 
     assert len(res) == 50
-    assert isinstance(res.compute().loc[0][0], float)
-    assert isinstance(res.compute().loc[0][1], np.ndarray)
+    assert isinstance(res.compute().loc[0].iloc[0], float)
+    assert isinstance(res.compute().loc[0].iloc[1], np.ndarray)
 
     res2 = test_dataset.map_rows(np.mean, columns="nested.flux", row_container="args", meta={0: float})
 

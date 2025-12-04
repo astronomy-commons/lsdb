@@ -12,5 +12,5 @@ An introduction to the most common Catalog operations
     Applying a function (e.g. map_partitions) </tutorials/pre_executed/map_partitions>
     Working with TimeSeries </tutorials/pre_executed/timeseries>
     Plotting results </tutorials/pre_executed/plotting>
-    Exporting results (e.g. to_hats) </tutorials/exporting_results>
+    Exporting results (e.g. write_catalog) </tutorials/exporting_results>
 

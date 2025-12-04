@@ -15,7 +15,7 @@ import lsdb
 def test_save_catalog(small_sky_catalog, tmp_path, helpers):
     new_catalog_name = "small_sky"
     base_catalog_path = Path(tmp_path) / new_catalog_name
-    small_sky_catalog.to_hats(
+    small_sky_catalog.write_catalog(
         base_catalog_path, catalog_name=new_catalog_name, addl_hats_properties={"obs_regime": "Optical"}
     )
 
@@ -25,7 +25,7 @@ def test_save_catalog(small_sky_catalog, tmp_path, helpers):
     assert expected_catalog.get_healpix_pixels() == small_sky_catalog.get_healpix_pixels()
     pd.testing.assert_frame_equal(expected_catalog.compute(), small_sky_catalog._ddf.compute())
 
-    # When saving a catalog with to_hats, we update the hats_max_rows
+    # When saving a catalog with write_catalog, we update the hats_max_rows
     # to the maximum count of points per partition. In this case there
     # is only one with 131 rows, so that is the value we expect.
     partition_sizes = small_sky_catalog._ddf.map_partitions(len).compute()
@@ -57,7 +57,7 @@ def test_save_catalog_initializes_upath_once(small_sky_catalog, tmp_path, mocker
 
     new_catalog_name = "small_sky"
     base_catalog_path = Path(tmp_path) / new_catalog_name
-    small_sky_catalog.to_hats(base_catalog_path, catalog_name=new_catalog_name)
+    small_sky_catalog.write_catalog(base_catalog_path, catalog_name=new_catalog_name)
 
     mocked_upath_call.assert_called_once_with(base_catalog_path)
 
@@ -68,7 +68,7 @@ def test_save_catalog_default_columns(small_sky_with_nested_sources, tmp_path, h
     cat = small_sky_with_nested_sources[default_columns]
     new_catalog_name = "small_sky_order1_nested_sources"
     base_catalog_path = Path(tmp_path) / new_catalog_name
-    cat.to_hats(base_catalog_path, catalog_name=new_catalog_name, default_columns=default_columns)
+    cat.write_catalog(base_catalog_path, catalog_name=new_catalog_name, default_columns=default_columns)
     expected_catalog = lsdb.read_hats(base_catalog_path)
     assert expected_catalog.hc_structure.catalog_name == new_catalog_name
     assert expected_catalog.get_healpix_pixels() == cat.get_healpix_pixels()
@@ -85,7 +85,7 @@ def test_save_catalog_default_nested_columns(small_sky_with_nested_sources, tmp_
     cat = small_sky_with_nested_sources[default_columns]
     new_catalog_name = "small_sky_order1_nested_sources"
     base_catalog_path = Path(tmp_path) / new_catalog_name
-    cat.to_hats(base_catalog_path, catalog_name=new_catalog_name, default_columns=default_columns)
+    cat.write_catalog(base_catalog_path, catalog_name=new_catalog_name, default_columns=default_columns)
     expected_catalog = lsdb.read_hats(base_catalog_path)
     assert expected_catalog.hc_structure.catalog_name == new_catalog_name
     assert expected_catalog.get_healpix_pixels() == cat.get_healpix_pixels()
@@ -100,7 +100,7 @@ def test_save_catalog_empty_default_columns(small_sky_order1_default_cols_catalo
     cat = small_sky_order1_default_cols_catalog[["ra", "dec"]]
     new_catalog_name = "small_sky_order1"
     base_catalog_path = Path(tmp_path) / new_catalog_name
-    cat.to_hats(base_catalog_path, catalog_name=new_catalog_name, default_columns=[])
+    cat.write_catalog(base_catalog_path, catalog_name=new_catalog_name, default_columns=[])
     expected_catalog = lsdb.read_hats(base_catalog_path)
     assert expected_catalog.hc_structure.catalog_info.default_columns is None
     assert expected_catalog.hc_structure.catalog_name == new_catalog_name
@@ -114,7 +114,7 @@ def test_save_catalog_invalid_default_columns(small_sky_order1_default_cols_cata
     new_catalog_name = "small_sky_order1"
     base_catalog_path = Path(tmp_path) / new_catalog_name
     with pytest.raises(ValueError, match="not found"):
-        small_sky_order1_default_cols_catalog.to_hats(
+        small_sky_order1_default_cols_catalog.write_catalog(
             base_catalog_path, catalog_name=new_catalog_name, default_columns=["id", "abc"]
         )
 
@@ -124,7 +124,7 @@ def test_save_catalog_invalid_default_nested_columns(small_sky_with_nested_sourc
     base_catalog_path = Path(tmp_path) / new_catalog_name
     # Cannot specify partial and full load of a column
     with pytest.raises(ValueError, match="'sources'"):
-        small_sky_with_nested_sources.to_hats(
+        small_sky_with_nested_sources.write_catalog(
             base_catalog_path,
             catalog_name=new_catalog_name,
             default_columns=["ra", "dec", "sources", "sources.mjd"],
@@ -143,7 +143,7 @@ def test_save_crossmatch_catalog(
     # This is something that will be available after serialization.
     with pytest.raises(ValueError, match="Original catalog schema is not available"):
         _ = cat.original_schema
-    cat.to_hats(base_catalog_path, catalog_name=new_catalog_name)
+    cat.write_catalog(base_catalog_path, catalog_name=new_catalog_name)
     expected_catalog = lsdb.read_hats(base_catalog_path)
     assert expected_catalog.original_schema is not None
     assert expected_catalog.hc_structure.catalog_info.default_columns is None
@@ -166,7 +166,7 @@ def test_save_catalog_point_map(small_sky_order1_df, tmp_path):
         threshold=500,
     )
 
-    small_sky_order1_catalog.to_hats(
+    small_sky_order1_catalog.write_catalog(
         base_catalog_path,
         catalog_name=new_catalog_name,
         skymap_alt_orders=[1, 2],
@@ -203,13 +203,13 @@ def test_save_catalog_point_map(small_sky_order1_df, tmp_path):
 def test_save_catalog_overwrite(small_sky_catalog, tmp_path):
     base_catalog_path = tmp_path / "small_sky"
     # Saving a catalog to disk when the directory does not yet exist
-    small_sky_catalog.to_hats(base_catalog_path)
+    small_sky_catalog.write_catalog(base_catalog_path)
     # The output directory exists and it has content. Overwrite is
     # set to False and, as such, the operation fails.
     with pytest.raises(ValueError, match="set overwrite to True"):
-        small_sky_catalog.to_hats(base_catalog_path)
+        small_sky_catalog.write_catalog(base_catalog_path)
     # With overwrite it succeeds because the directory is recreated
-    small_sky_catalog.to_hats(base_catalog_path, overwrite=True)
+    small_sky_catalog.write_catalog(base_catalog_path, overwrite=True)
 
 
 def test_save_catalog_when_catalog_is_empty(small_sky_order1_catalog, tmp_path):
@@ -227,7 +227,7 @@ def test_save_catalog_when_catalog_is_empty(small_sky_order1_catalog, tmp_path):
 
     # The catalog is not written to disk
     with pytest.raises(RuntimeError, match="The output catalog is empty"):
-        cone_search_catalog.to_hats(base_catalog_path)
+        cone_search_catalog.write_catalog(base_catalog_path)
 
 
 def test_save_empty_catalog_no_error(small_sky_order1_catalog, tmp_path):
@@ -244,7 +244,7 @@ def test_save_empty_catalog_no_error(small_sky_order1_catalog, tmp_path):
     assert len(non_empty_pixels) == 0
 
     # The catalog is not written to disk
-    cone_search_catalog.to_hats(base_catalog_path, error_if_empty=False)
+    cone_search_catalog.write_catalog(base_catalog_path, error_if_empty=False)
 
     catalog = lsdb.read_hats(base_catalog_path)
     assert len(catalog.get_healpix_pixels()) == 0
@@ -266,7 +266,7 @@ def test_save_catalog_with_some_empty_partitions(small_sky_order1_catalog, tmp_p
             non_empty_pixels.append(pixel)
     assert len(non_empty_pixels) == 1
 
-    cone_search_catalog.to_hats(base_catalog_path)
+    cone_search_catalog.write_catalog(base_catalog_path)
 
     # Confirm that we can read the catalog from disk, and that it was
     # written with no empty partitions

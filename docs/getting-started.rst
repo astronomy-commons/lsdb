@@ -245,7 +245,7 @@ format.
 
 .. code-block:: python
 
-    ztf_x_gaia.to_hats("./ztf_x_gaia")
+    ztf_x_gaia.write_catalog("./ztf_x_gaia")
 
 This creates the following HATS Catalog on disk:
 

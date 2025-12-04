@@ -5,6 +5,7 @@ from hats.catalog.catalog_collection import CollectionProperties
 from upath import UPath
 
 from lsdb.catalog.dataset.dataset import Dataset
+from lsdb.io.to_hats import to_hats
 
 
 def to_collection(
@@ -44,23 +45,25 @@ def to_collection(
     catalog_name = catalog_name if catalog_name else catalog.hc_structure.catalog_name
     properties = {"obs_collection": catalog_name, "hats_primary_table_url": catalog_name}
 
-    catalog.to_hats(
-        base_collection_path / catalog_name,
+    to_hats(
+        catalog,
+        base_catalog_path=base_collection_path / catalog_name,
         catalog_name=catalog_name,
         default_columns=default_columns,
         overwrite=overwrite,
-        as_collection=False,
         error_if_empty=error_if_empty,
         **kwargs,
     )
 
     if catalog.margin is not None:
         margin_name = f"{catalog_name}_{int(catalog.margin.hc_structure.catalog_info.margin_threshold)}arcs"
-        catalog.margin.to_hats(
-            base_collection_path / margin_name,
+        to_hats(
+            catalog.margin,
+            base_catalog_path=base_collection_path / margin_name,
             catalog_name=margin_name,
             default_columns=default_columns,
             overwrite=overwrite,
+            error_if_empty=False,
             **kwargs,
         )
         properties = properties | {"all_margins": margin_name, "default_margin": margin_name}

@@ -104,6 +104,9 @@ def to_hats(
     The output catalog comprises  partitioned parquet files and respective metadata,
     as well as text and CSV files detailing partition, catalog and provenance info.
 
+    This will only write a SINGLE catalog, so if this catalog contains margins,
+    you should use ``to_collection`` to write all parts of the catalog together.
+
     Parameters
     ----------
     catalog : HealpixDataset

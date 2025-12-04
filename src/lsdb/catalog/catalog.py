@@ -1158,74 +1158,6 @@ class Catalog(HealpixDataset):
             )
         return catalog
 
-    @deprecated(version="0.6.7", reason="`reduce` will be removed in the future, " "use `map_rows` instead.")
-    def reduce(self, func, *args, meta=None, append_columns=False, infer_nesting=True, **kwargs) -> Catalog:
-        """Takes a function and applies it to each top-level row of the Catalog.
-
-        docstring copied from nested-pandas
-
-        The user may specify which columns the function is applied to, with
-        columns from the 'base' layer being passsed to the function as
-        scalars and columns from the nested layers being passed as numpy arrays.
-
-        Parameters
-        ----------
-        func : callable
-            Function to apply to each row in the catalog. The first arguments to `func` should be which
-            columns to apply the function to. See the Notes for recommendations on writing func outputs.
-        args : positional arguments
-            A list of string column names to pull from the NestedFrame to pass along to the function.
-            If the function has additional arguments, pass them as keyword arguments (e.g. arg_name=value)
-        meta : dataframe or series-like, optional, default None
-            The dask meta of the output. If append_columns is True, the meta should specify just the
-            additional columns output by func.
-        append_columns : bool, default False
-            If True, the output columns should be appended to those in the original catalog.
-        infer_nesting : bool, default True
-            If True, the function will pack output columns into nested structures based on column names
-            adhering to a nested naming scheme. E.g. `nested.b` and `nested.c` will be packed into a
-            column called `nested` with columns `b` and `c`. If False, all outputs will be returned as base
-            columns.
-        kwargs : keyword arguments, optional
-            Keyword arguments to pass to the function.
-
-        Returns
-        -------
-        `Catalog`
-            `Catalog` with the results of the function applied to the columns of the frame.
-
-        Notes
-        -----
-        By default, computing a `reduce` will produce a `NestedFrame` with enumerated
-        column names for each returned value of the function. For more useful
-        naming, it's recommended to have `func` return a dictionary where each
-        key is an output column of the dataframe returned by computing `reduce`.
-
-        Example User Function:
-        >>> import numpy as np
-        >>> import lsdb
-        >>> import pandas as pd
-        >>> catalog = lsdb.from_dataframe(
-        ...     pd.DataFrame({"ra": [0, 10], "dec": [5, 15], "mag": [21, 22], "mag_err": [0.1, 0.2]})
-        ... )
-        >>> def my_sigma(col1, col2):
-        ...    '''reduce will return a NestedFrame with two columns'''
-        ...    return {"plus_one": col1+col2, "minus_one": col1-col2}
-        >>> meta = {"plus_one": np.float64, "minus_one": np.float64}
-        >>> catalog.reduce(my_sigma, 'mag', 'mag_err', meta=meta).compute().reset_index()
-                   _healpix_29  plus_one  minus_one
-        0  1372475556631677955      21.1       20.9
-        1  1389879706834706546      22.2       21.8
-        """
-        catalog = super().reduce(
-            func, *args, meta=meta, append_columns=append_columns, infer_nesting=infer_nesting, **kwargs
-        )
-        if self.margin is not None:
-            catalog.margin = self.margin.reduce(
-                func, *args, meta=meta, append_columns=append_columns, infer_nesting=infer_nesting, **kwargs
-            )
-        return catalog
-
     def map_rows(
         self,
         func,
@@ -1364,6 +1296,9 @@ class Catalog(HealpixDataset):
             )
         return catalog
 
+    @deprecated(
+        version="0.7.3", reason="`to_hats` will be removed in the future, " "use `write_catalog` instead."
+    )
     def to_hats(
         self,
         base_catalog_path: str | Path | UPath,
@@ -1394,6 +1329,7 @@ class Catalog(HealpixDataset):
         default_columns: list[str] | None = None,
         as_collection: bool = True,
         overwrite: bool = False,
+        create_thumbnail: bool = True,
         error_if_empty: bool = True,
         **kwargs,
     ):
@@ -1427,6 +1363,7 @@ class Catalog(HealpixDataset):
                 default_columns=default_columns,
                 overwrite=overwrite,
                 error_if_empty=error_if_empty,
+                create_thumbnail=create_thumbnail,
                 **kwargs,
             )
         else:
@@ -1435,7 +1372,7 @@ class Catalog(HealpixDataset):
                 catalog_name=catalog_name,
                 default_columns=default_columns,
                 overwrite=overwrite,
-                create_thumbnail=True,
+                create_thumbnail=create_thumbnail,
                 error_if_empty=error_if_empty,
                 **kwargs,
             )

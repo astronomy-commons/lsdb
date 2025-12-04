@@ -361,7 +361,7 @@ def test_join_nested(small_sky_catalog, small_sky_order1_source_with_margin, hel
         "object_dec",
     ]
     assert np.all(joined.columns == expected_columns)
-    assert np.all(joined["sources"].nest.fields == expected_nested_columns)
+    assert np.all(joined["sources"].nest.columns == expected_nested_columns)
     helpers.assert_divisions_are_correct(joined)
     alignment = align_catalogs(small_sky_catalog, small_sky_order1_source_with_margin)
     assert joined.hc_structure.moc == alignment.moc
