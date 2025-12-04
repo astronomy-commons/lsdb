@@ -615,6 +615,105 @@ def test_map_partitions_updates_margin(small_sky_order1_source_with_margin):
     assert mapped.margin.hc_structure.catalog_path is not None
 
 
+def test_map_partitions_single_partition(small_sky_order1_catalog):
+    def add_col(df, new_col_name, *, increment_value):
+        df[new_col_name] = df["ra"] + increment_value
+        return df
+
+    # Get a partition index to update
+    partition_index = 1
+
+    # Update a single partition
+    mapped = small_sky_order1_catalog.map_partitions(
+        add_col, 
+        "a", 
+        increment_value=1, 
+        compute_single_partition=True, 
+        partition_index=partition_index
+    )
+
+    assert isinstance(mapped, Catalog)
+    assert "a" in mapped.columns
+    assert mapped.dtypes["a"] == mapped.dtypes["ra"]
+
+    # Verify that only one partition was updated
+    assert len(mapped._ddf_pixel_map) == 1
+
+    # Get the pixel for the updated partition
+    pixel = list(mapped._ddf_pixel_map.keys())[0]
+    original_pixel = [p for p, idx in small_sky_order1_catalog._ddf_pixel_map.items() if idx == partition_index][0]
+
+    # Verify it's the same pixel as the original partition
+    assert pixel.order == original_pixel.order
+    assert pixel.pixel == original_pixel.pixel
+
+    # Compute and verify the result
+    mapcomp = mapped.compute()
+    assert isinstance(mapcomp, npd.NestedFrame)
+    assert np.all(mapcomp["a"] == mapcomp["ra"] + 1)
+
+    # Verify that the data matches the original partition
+    original_partition = small_sky_order1_catalog.partitions[partition_index].compute()
+    assert len(mapcomp) == len(original_partition)
+    pd.testing.assert_series_equal(mapcomp["ra"], original_partition["ra"])
+
+
+def test_map_partitions_single_partition_with_margin(small_sky_order1_source_with_margin):
+    def add_col(df, new_col_name, *, increment_value):
+        if "source_ra" in df.columns:
+            df[new_col_name] = df["source_ra"] + increment_value
+        else:
+            df[new_col_name] = df["ra"] + increment_value
+        return df
+
+    # Get a partition index to update
+    partition_index = 1
+
+    # Update a single partition
+    mapped = small_sky_order1_source_with_margin.map_partitions(
+        add_col, 
+        "a", 
+        increment_value=1, 
+        compute_single_partition=True, 
+        partition_index=partition_index
+    )
+
+    assert isinstance(mapped, Catalog)
+    assert "a" in mapped.columns
+    assert mapped.dtypes["a"] == mapped.dtypes["source_ra"]
+
+    # Verify that only one partition was updated in the main catalog
+    assert len(mapped._ddf_pixel_map) == 1
+
+    # Get the pixel for the updated partition
+    pixel = list(mapped._ddf_pixel_map.keys())[0]
+    original_pixel = [p for p, idx in small_sky_order1_source_with_margin._ddf_pixel_map.items() if idx == partition_index][0]
+
+    # Verify it's the same pixel as the original partition
+    assert pixel.order == original_pixel.order
+    assert pixel.pixel == original_pixel.pixel
+
+    # Verify that the margin was also updated for this pixel
+    assert isinstance(mapped.margin, MarginCatalog)
+    assert "a" in mapped.margin.columns
+    assert mapped.margin.dtypes["a"] == mapped.margin.dtypes["source_ra"]
+
+    # Compute and verify the main catalog result
+    mapcomp = mapped.compute()
+    assert isinstance(mapcomp, npd.NestedFrame)
+    assert np.all(mapcomp["a"] == mapcomp["source_ra"] + 1)
+
+    # Compute and verify the margin result
+    mapped_margin_comp = mapped.margin.compute()
+    assert isinstance(mapped_margin_comp, npd.NestedFrame)
+    assert np.all(mapped_margin_comp["a"] == mapped_margin_comp["source_ra"] + 1)
+
+    # Verify that the data matches the original partition
+    original_partition = small_sky_order1_source_with_margin.partitions[partition_index].compute()
+    assert len(mapcomp) == len(original_partition)
+    pd.testing.assert_series_equal(mapcomp["source_ra"], original_partition["source_ra"])
+
+
 def test_square_bracket_single_partition(small_sky_order1_catalog):
     index = 1
     subset = small_sky_order1_catalog.partitions[index]

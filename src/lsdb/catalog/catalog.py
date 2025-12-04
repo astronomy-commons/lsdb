@@ -12,6 +12,7 @@ from deprecated import deprecated  # type: ignore
 from hats.catalog.catalog_collection import CatalogCollection
 from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
 from hats.catalog.index.index_catalog import IndexCatalog as HCIndexCatalog
+from hats.pixel_math import HealpixPixel
 from pandas._typing import Renamer
 from typing_extensions import Self
 from upath import UPath
@@ -708,6 +709,8 @@ class Catalog(HealpixDataset):
         *args,
         meta: pd.DataFrame | pd.Series | dict | Iterable | tuple | None = None,
         include_pixel: bool = False,
+        compute_single_partition: bool = False,
+        partition_index: int | HealpixPixel | None = None,
         **kwargs,
     ) -> Catalog | dd.Series:
         """Applies a function to each partition in the catalog and respective margin.
@@ -740,6 +743,11 @@ class Catalog(HealpixDataset):
         include_pixel : bool, default False
             Whether to pass the Healpix Pixel of the partition as a `HealpixPixel`
             object to the second positional argument of the function
+        compute_single_partition : bool, default False
+            Whether to compute only a single partition
+        partition_index : int | HealpixPixel | None, default None
+            The index of the partition to compute when compute_single_partition is True.
+            If None, defaults to 0.
         **kwargs
             Additional keyword args to pass to the function. These are passed to the Dask DataFrame
             `dask.dataframe.map_partitions` function, so any of the dask function's keyword args such as
@@ -757,16 +765,37 @@ class Catalog(HealpixDataset):
             *args,
             meta=meta,
             include_pixel=include_pixel,
+            compute_single_partition=compute_single_partition,
+            partition_index=partition_index,
             **kwargs,
         )
         if isinstance(catalog, Catalog) and self.margin is not None:
-            catalog.margin = self.margin.map_partitions(
-                func,
-                *args,
-                meta=meta,
-                include_pixel=include_pixel,
-                **kwargs,
-            )  # type: ignore[assignment]
+            # For single partition updates, we need to update the margin for that partition only
+            if compute_single_partition:
+                # Get the corresponding pixel for this partition
+                pixel = catalog.get_healpix_pixels()[0]
+
+                # Update the margin for this pixel only
+                if pixel in self.margin._ddf_pixel_map:
+                    margin_partition_index = self.margin.get_partition_index(pixel.order, pixel.pixel)
+                    catalog.margin = self.margin.map_partitions(
+                        func,
+                        *args,
+                        meta=meta,
+                        include_pixel=include_pixel,
+                        compute_single_partition=True,
+                        partition_index=margin_partition_index,
+                        **kwargs,
+                    )  # type: ignore[assignment]
+            else:
+                # Update all margins as before
+                catalog.margin = self.margin.map_partitions(
+                    func,
+                    *args,
+                    meta=meta,
+                    include_pixel=include_pixel,
+                    **kwargs,
+                )  # type: ignore[assignment]
         return catalog
 
     def merge(
