@@ -304,7 +304,7 @@ def _load_association_catalog(hc_catalog, config):
         dask_df, dask_df_pixel_map = _load_dask_df_and_map(hc_catalog, config)
     else:
         dask_meta_schema = _load_dask_meta_schema(hc_catalog, config)
-        dask_df = nd.NestedFrame.from_pandas(dask_meta_schema, npartitions=1)
+        dask_df = nd.NestedFrame.from_single_partition(dask_meta_schema)
         dask_df_pixel_map = {}
     return AssociationCatalog(dask_df, dask_df_pixel_map, hc_catalog, loading_config=config)
 
@@ -453,7 +453,7 @@ def _load_dask_df_and_map(catalog: HCHealpixDataset, config) -> tuple[nd.NestedF
             **config.kwargs,
         )
     else:
-        ddf = nd.NestedFrame.from_pandas(dask_meta_schema, npartitions=1)
+        ddf = nd.NestedFrame.from_single_partition(dask_meta_schema)
     pixel_to_index_map = {pixel: index for index, pixel in enumerate(ordered_pixels)}
     return ddf, pixel_to_index_map
 

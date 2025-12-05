@@ -1,13 +1,8 @@
 from __future__ import annotations
 
-import os
-from collections.abc import Callable, Mapping
-from typing import Any, Literal
-
 import dask.dataframe as dd
 import dask.dataframe.dask_expr as dx
 import nested_pandas as npd
-import numpy as np
 import pandas as pd
 import pyarrow as pa
 from dask.dataframe.dask_expr._collection import new_collection
@@ -127,37 +122,24 @@ class NestedFrame(
 
     # NOTE: Used in LSDB internally, but not wrapped
     @classmethod
-    def from_pandas(
-        cls,
-        data,
-        npartitions=None,
-        chunksize=None,
-        sort=True,
-    ) -> NestedFrame:
+    def from_single_partition(cls, data) -> NestedFrame:
         """Returns an LSDB.nested NestedFrame constructed from a Nested-Pandas
         NestedFrame or Pandas DataFrame.
+
+        This will create a dask data frame with only ONE partition, and so should
+        only be used for meta dataframes, or in simple tests.
 
         Parameters
         ----------
         data: `NestedFrame` or `DataFrame`
             Nested-Pandas NestedFrame containing the underlying data
-        npartitions: `int`, optional
-            The number of partitions of the index to create. Note that depending on
-            the size and index of the dataframe, the output may have fewer
-            partitions than requested.
-        chunksize: `int`, optional
-            The desired number of rows per index partition to use. Note that
-            depending on the size and index of the dataframe, actual partition
-            sizes may vary.
-        sort: `bool`, optional
-            Whether to sort the frame by a default index.
 
         Returns
         ----------
         result: `NestedFrame`
             The constructed Dask-Nested NestedFrame object.
         """
-        result = dd.from_pandas(data, npartitions=npartitions, chunksize=chunksize, sort=sort)
+        result = dd.from_pandas(data, npartitions=1)
         return NestedFrame.from_dask_dataframe(result)
 
     # NOTE: Used in LSDB internally, but not wrapped
@@ -288,57 +270,6 @@ class NestedFrame(
             **kwargs,
         )
         return NestedFrame.from_dask_dataframe(nf)
-
-    # NOTE: Not wrapped in LSDB
-    @classmethod
-    def from_flat(cls, df, base_columns, nested_columns=None, on=None, name="nested"):
-        """Creates a NestedFrame with base and nested columns from a flat
-        dataframe.
-
-        Parameters
-        ----------
-        df: dd.DataFrame or nd.NestedFrame
-            A flat dataframe.
-        base_columns: list-like
-            The columns that should be used as base (flat) columns in the
-            output dataframe.
-        nested_columns: list-like, or None
-            The columns that should be packed into a nested column. All columns
-            in the list will attempt to be packed into a single nested column
-            with the name provided in `nested_name`. If None, is defined as all
-            columns not in `base_columns`.
-        on: str or None
-            The name of a column to use as the new index. Typically, the index
-            should have a unique value per row for base columns, and should
-            repeat for nested columns. For example, a dataframe with two
-            columns; a=[1,1,1,2,2,2] and b=[5,10,15,20,25,30] would want an
-            index like [0,0,0,1,1,1] if a is chosen as a base column. If not
-            provided the current index will be used.
-        name:
-            The name of the output column the `nested_columns` are packed into.
-
-        Returns
-        -------
-        NestedFrame
-            A NestedFrame with the specified nesting structure.
-        """
-
-        # Handle meta
-        meta = npd.NestedFrame(df[base_columns]._meta)  # pylint: disable=protected-access
-
-        if nested_columns is None:
-            nested_columns = [col for col in df.columns if (col not in base_columns) and col != on]
-
-        if len(nested_columns) > 0:
-            nested_meta = pack(df[nested_columns]._meta, name)  # pylint: disable=protected-access
-            meta = meta.join(nested_meta)
-
-        return df.map_partitions(
-            lambda x: npd.NestedFrame.from_flat(
-                df=x, base_columns=base_columns, nested_columns=nested_columns, on=on, name=name
-            ),
-            meta=meta,
-        )
 
     # NOTE: Not wrapped in LSDB
     @classmethod
@@ -552,118 +483,6 @@ Refer to the docstring for guidance on dtype requirements and assignment."""
             lambda x: npd.NestedFrame(x).query(expr), meta=self._meta
         )  # pylint: disable=protected-access
 
-    def sort_values(
-        self,
-        by: str | list[str],
-        npartitions: int | None = None,
-        ascending: bool | list[bool] = True,
-        na_position: Literal["first"] | Literal["last"] = "last",
-        partition_size: float = 128e6,
-        sort_function: Callable[[pd.DataFrame], pd.DataFrame] | None = None,
-        sort_function_kwargs: Mapping[str, Any] | None = None,
-        upsample: float = 1.0,
-        ignore_index: bool | None = False,
-        shuffle_method: str | None = None,
-        **options,
-    ) -> Self:  # type: ignore[name-defined] # noqa: F821: # pylint: disable=undefined-variable
-        """
-        Sort the dataset by a single column.
-
-        Sorting a parallel dataset requires expensive shuffles and is generally
-        not recommended. See ‘set_index‘ for implementation details.
-
-        Parameters:
-        -----------
-        by: str or list[str]
-            Column(s) to sort by.
-        npartitions: int, None, or ‘auto’
-            The ideal number of output partitions. If None, use the same as the
-            input. If ‘auto’ then decide by memory use. Not used when sorting
-            nested layers.
-        ascending: bool or list[bool], optional
-            Sort ascending vs. descending. Defaults to True. Specify list for
-            multiple sort orders. If this is a list of bools, must match the
-            length of the by.
-        na_position: {‘last’, ‘first’}, optional
-            Puts NaNs at the beginning if ‘first’, puts NaN at the end if
-            ‘last’. Defaults to ‘last’.
-        partition_size: float, optional
-            The desired size of each partition in bytes. Defaults to 128e6
-            (128 MB). Not used in nested sorting.
-        sort_function: function, optional
-            Sorting function to use when sorting underlying partitions. If
-            None, defaults to M.sort_values (the partition library’s
-            implementation of sort_values). Not used when sorting nested
-            layers.
-        sort_function_kwargs: dict, optional
-            Additional keyword arguments to pass to the partition sorting
-            function. By default, by, ascending, and na_position are provided.
-        upsample: float, optional
-            Used to increase the number of samples for quantiles. Not used
-            in nested sorting
-        ignore_index: bool, optional
-            If True, the resulting axis will be labeled 0, 1, …, n - 1.
-            Defaults to False.
-        shuffle_method: str, optional
-            The method to use for shuffling data. Defaults to None. Not used
-            in nested sorting
-        **options: keyword arguments, optional
-            Additional options to pass to the sorting function.
-        Returns:
-        --------
-        DataFrame
-            DataFrame with sorted values.
-
-        """
-
-        # Resolve target layer
-        targets = []
-        if isinstance(by, str):
-            by = [by]
-        # Check "by" columns for hierarchical references
-        for col in by:
-            if self._is_known_hierarchical_column(col):
-                targets.append(col.split(".")[0])
-            else:
-                targets.append("base")
-
-        # Ensure one target layer, preventing multi-layer operations
-        unq_targets = np.unique(targets).tolist()
-        if len(unq_targets) > 1:
-            raise ValueError("Queries cannot target multiple structs/layers, write a separate query for each")
-        target_layer = unq_targets[0]
-
-        # Just use dask's sort_values if the target is the base layer
-        # Drops divisions, but this is expected behavior of a sorting operation
-        if target_layer == "base":
-            return super().sort_values(
-                by=by,
-                npartitions=npartitions,
-                ascending=ascending,
-                na_position=na_position,
-                partition_size=partition_size,
-                sort_function=sort_function,
-                sort_function_kwargs=sort_function_kwargs,
-                upsample=upsample,
-                ignore_index=ignore_index,
-                shuffle_method=shuffle_method,
-                **options,
-            )
-
-        # If nested target layer, go through nested-pandas API
-        # apply via map_partitions, meta is propagated
-        # does preserve divisions
-        return self.map_partitions(
-            lambda x: npd.NestedFrame(x).sort_values(
-                by=by,
-                ascending=ascending,
-                na_position=na_position,
-                ignore_index=ignore_index,
-                **options,
-            ),
-            meta=self._meta,  # pylint: disable=protected-access
-        )
-
     def map_rows(
         self,
         func,
@@ -793,75 +612,3 @@ Refer to the docstring for guidance on dtype requirements and assignment."""
             ),
             meta=meta,
         )
-
-    # NOTE: Unused by LSDB, by_layer interface is only compatible with Nested-Pandas <0.4.0
-    def to_parquet(self, path, by_layer=False, **kwargs) -> None:
-        """Creates parquet file(s) with the data of a NestedFrame, either
-        as a single parquet file directory where each nested dataset is packed
-        into its own column or as an individual parquet file directory for each
-        layer.
-
-        Docstring copied from nested-pandas.
-
-        Note that here we always opt to use the pyarrow engine for writing
-        parquet files.
-
-        Parameters
-        ----------
-        path : str
-            The path to the parquet directory to be written.
-        by_layer : bool, default True
-            NOTE: by_layer=False will not reliably preserve divisions currently,
-            be warned when using it that loading from such a dataset will
-            likely require you to reset and set the index to generate divisions
-            information.
-
-            If False, writes the entire NestedFrame to a single parquet
-            directory.
-
-            If True, writes each layer to a separate parquet sub-directory
-            within the directory specified by path. The filename for each
-            outputted file will be named after its layer. For example for the
-            base layer this is always "base".
-        kwargs : keyword arguments, optional
-            Keyword arguments to pass to the function.
-
-        Returns
-        -------
-        None
-        """
-
-        # code copied from nested-pandas rather than wrapped
-        # reason being that a map_partitions call is probably not well-behaved here?
-
-        if "engine" in kwargs:
-            if not kwargs.pop("engine") == "pyarrow":
-                raise ValueError("Only 'pyarrow' engine is supported")
-
-        if not by_layer:
-            # Todo: Investigate this more
-            # Divisions cannot be generated from a parquet file that stores
-            # nested information without a reset_index().set_index() loop. It
-            # seems like this happens at the to_parquet level rather than
-            # in read_parquet as dropping the nested columns from the dataframe
-            # to save does enable divisions to be found, but removing the
-            # nested columns from the set of columns to load does not.
-            # Divisions are going to be crucial, and so I think it's best to
-            # not support this until this is resolved. However the non-by_layer
-            # mode is needed for by_layer so it may be best to just settle for
-            # changing the default and filing a higher-priority bug.
-            # raise NotImplementedError
-
-            # We just defer to the pandas to_parquet method if we're not writing by layer
-            # or there is only one layer in the NestedFrame.
-            super().to_parquet(path, engine="pyarrow", **kwargs)
-        else:
-            # Write the base layer to a parquet file
-            base_frame = self.drop(columns=self.nested_columns)
-            base_frame.to_parquet(os.path.join(path, "base"), by_layer=False, **kwargs)
-
-            # Write each nested layer to a parquet file
-            for layer in self.all_columns:
-                if layer != "base":
-                    path_layer = os.path.join(path, f"{layer}")
-                    self[layer].nest.to_flat().to_parquet(path_layer, engine="pyarrow", **kwargs)
