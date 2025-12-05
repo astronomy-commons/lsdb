@@ -718,7 +718,7 @@ class HealpixDataset(Dataset):
         """
         filtered_pixels = metadata.get_healpix_pixels()
         if len(filtered_pixels) == 0:
-            return {}, nd.NestedFrame.from_pandas(self._ddf._meta)
+            return {}, nd.NestedFrame.from_single_partition(self._ddf._meta)
         target_partitions_indices = [self._ddf_pixel_map[pixel] for pixel in filtered_pixels]
         filtered_partitions_ddf = self._ddf.partitions[target_partitions_indices]
         if search.fine:
@@ -907,7 +907,7 @@ class HealpixDataset(Dataset):
         search_ddf = (
             self._ddf.partitions[non_empty_partitions]
             if len(non_empty_partitions) > 0
-            else nd.NestedFrame.from_pandas(self._ddf._meta, npartitions=1)
+            else nd.NestedFrame.from_single_partition(self._ddf._meta)
         )
         ddf_partition_map = {pixel: i for i, pixel in enumerate(non_empty_pixels)}
         filtered_hc_structure = self.hc_structure.filter_from_pixel_list(non_empty_pixels)

@@ -113,7 +113,7 @@ def test_head_rows_less_than_requested(small_sky_order1_catalog):
     schema = small_sky_order1_catalog.dtypes
     two_rows = small_sky_order1_catalog._ddf.partitions[0].compute()[:2]
     tiny_df = pd.DataFrame(data=two_rows, columns=schema.index, dtype=schema.to_numpy())
-    altered_ndf = nd.NestedFrame.from_pandas(tiny_df, npartitions=1)
+    altered_ndf = nd.NestedFrame.from_single_partition(tiny_df)
     catalog = lsdb.Catalog(altered_ndf, {}, small_sky_order1_catalog.hc_structure)
     # The head only contains two values
     assert len(catalog.head()) == 2
@@ -160,7 +160,7 @@ def test_tail_rows_less_than_requested(small_sky_order1_catalog):
     schema = small_sky_order1_catalog.dtypes
     two_rows = small_sky_order1_catalog._ddf.partitions[0].compute()[-2:]
     tiny_df = pd.DataFrame(data=two_rows, columns=schema.index, dtype=schema.to_numpy())
-    altered_ndf = nd.NestedFrame.from_pandas(tiny_df, npartitions=1)
+    altered_ndf = nd.NestedFrame.from_single_partition(tiny_df)
     catalog = lsdb.Catalog(altered_ndf, {}, small_sky_order1_catalog.hc_structure)
     # The tail only contains two values
     assert len(catalog.tail()) == 2

@@ -1,3 +1,4 @@
+import dask.dataframe as dd
 import numpy as np
 from astropy.coordinates import Angle, SkyCoord
 from cdshealpix.nested import healpix_to_lonlat
@@ -93,7 +94,8 @@ def generate_data(
     base_nf = base_nf[["ra", "dec", "id", "a", "b"] + base_nf.nested_columns]
 
     # Convert to lsdb.nested NestedFrame
-    base_nf = NestedFrame.from_pandas(base_nf).repartition(npartitions=npartitions)
+    result = dd.from_pandas(base_nf, npartitions=npartitions)
+    base_nf = NestedFrame.from_dask_dataframe(result)
 
     return base_nf
 
