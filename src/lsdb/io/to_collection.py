@@ -4,7 +4,7 @@ import hats as hc
 from hats.catalog.catalog_collection import CollectionProperties
 from upath import UPath
 
-from lsdb.catalog.dataset.dataset import Dataset
+from lsdb.io.common import new_provenance_properties
 from lsdb.io.to_hats import to_hats
 
 
@@ -68,6 +68,6 @@ def to_collection(
         )
         properties = properties | {"all_margins": margin_name, "default_margin": margin_name}
 
-    properties = properties | Dataset.new_provenance_properties(base_collection_path)
+    properties = properties | new_provenance_properties(base_collection_path)
     collection_info = CollectionProperties(**properties)
     collection_info.to_properties_file(base_collection_path)
