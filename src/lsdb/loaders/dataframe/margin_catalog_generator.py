@@ -14,8 +14,8 @@ from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 
 import lsdb.nested as nd
 from lsdb import Catalog
-from lsdb.catalog.dataset.dataset import Dataset
 from lsdb.catalog.margin_catalog import MarginCatalog
+from lsdb.io.common import new_provenance_properties
 from lsdb.loaders.dataframe.from_dataframe_utils import (
     _convert_dtypes_to_pyarrow,
     _format_margin_partition_dataframe,
@@ -264,7 +264,7 @@ class MarginCatalogGenerator:
         if kwargs is None:
             kwargs = {}
         kwargs.pop("catalog_type", None)
-        kwargs = kwargs | Dataset.new_provenance_properties(hats_estsize=0)
+        kwargs = kwargs | new_provenance_properties(hats_estsize=0)
         if not catalog_name:
             catalog_name = self.hc_structure.catalog_info.catalog_name
         return TableProperties(

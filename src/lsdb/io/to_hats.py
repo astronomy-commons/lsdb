@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from copy import copy
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import dask
 import hats as hc
@@ -17,10 +16,8 @@ from hats.pixel_math import HealpixPixel, spatial_index_to_healpix
 from hats.pixel_math.sparse_histogram import HistogramAggregator, SparseHistogram
 from upath import UPath
 
-from lsdb.catalog.dataset.dataset import Dataset
-
-if TYPE_CHECKING:
-    from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
+from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
+from lsdb.io.common import new_provenance_properties
 
 
 @dask.delayed
@@ -210,7 +207,7 @@ def to_hats(
 
         write_skymap(histogram=full_histogram, catalog_dir=base_catalog_path, orders=skymap_alt_orders)
 
-    addl_hats_properties = addl_hats_properties | Dataset.new_provenance_properties(base_catalog_path)
+    addl_hats_properties = addl_hats_properties | new_provenance_properties(base_catalog_path)
 
     new_hc_structure = create_modified_catalog_structure(
         catalog.hc_structure,
