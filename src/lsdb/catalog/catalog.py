@@ -1338,6 +1338,8 @@ class Catalog(HealpixDataset):
         as_collection: bool = True,
         overwrite: bool = False,
         error_if_empty: bool = True,
+        compression: str = "ZSTD",
+        compression_level: int = 15,
         **kwargs,
     ):
         """Save the catalog to disk in the HATS format. See write_catalog()."""
@@ -1348,6 +1350,8 @@ class Catalog(HealpixDataset):
             as_collection=as_collection,
             overwrite=overwrite,
             error_if_empty=error_if_empty,
+            compression=compression,
+            compression_level=compression_level,
             **kwargs,
         )
 
@@ -1360,6 +1364,8 @@ class Catalog(HealpixDataset):
         as_collection: bool = True,
         overwrite: bool = False,
         error_if_empty: bool = True,
+        compression: str = "ZSTD",
+        compression_level: int = 15,
         **kwargs,
     ):
         """Save the catalog to disk in HATS format.
@@ -1380,6 +1386,11 @@ class Catalog(HealpixDataset):
             If True existing catalog is overwritten
         error_if_empty : bool, default True
             If True, raises an error if the catalog is empty.
+        compression : str, default "ZSTD"
+            The compression algorithm to use when writing parquet files. If unspecified, defaults to "ZSTD".
+        compression_level : int, default 15
+            The compression level to use for the specified compression algorithm when writing parquet files.
+            If unspecified, defaults to 15. If this argument and the compression argument are both unspecified, default to use ZSTD-15 compression.
         **kwargs
             Arguments to pass to the parquet write operations
         """
@@ -1392,6 +1403,8 @@ class Catalog(HealpixDataset):
                 default_columns=default_columns,
                 overwrite=overwrite,
                 error_if_empty=error_if_empty,
+                compression=compression,
+                compression_level=compression_level,
                 **kwargs,
             )
         else:
@@ -1402,5 +1415,7 @@ class Catalog(HealpixDataset):
                 overwrite=overwrite,
                 create_thumbnail=True,
                 error_if_empty=error_if_empty,
+                compression=compression,
+                compression_level=compression_level,
                 **kwargs,
             )

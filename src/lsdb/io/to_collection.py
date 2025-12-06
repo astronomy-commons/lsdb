@@ -15,6 +15,8 @@ def to_collection(
     default_columns: list[str] | None = None,
     overwrite: bool = False,
     error_if_empty: bool = True,
+    compression: str = "ZSTD",
+    compression_level=15,
     **kwargs,
 ):
     """Saves the catalog collection to disk in the HATS format.
