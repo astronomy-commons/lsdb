@@ -4,6 +4,7 @@ import nested_pandas as npd
 import pandas as pd
 from hats.catalog import TableProperties
 
+from lsdb.core.crossmatch.crossmatch_args import CrossmatchArgs
 from lsdb.core.crossmatch.kdtree_match import KdTreeCrossmatch
 
 
@@ -51,34 +52,6 @@ class TestLeftJoinSuffixMethods:
 
         return left, right, left_info, right_info
 
-    @staticmethod
-    def create_empty_right_frame_all_columns(suffixes):
-        """Create empty right frame matching 'all_columns' suffix method."""
-        # With all_columns, ALL right columns get suffixed
-        right_suffix = suffixes[1]
-        empty_data = {
-            f"ra{right_suffix}": pd.Series(dtype=float),
-            f"dec{right_suffix}": pd.Series(dtype=float),
-            f"id{right_suffix}": pd.Series(dtype="int64"),
-            f"common_col{right_suffix}": pd.Series(dtype=object),
-            f"right_only{right_suffix}": pd.Series(dtype="int64"),
-        }
-        return npd.NestedFrame(pd.DataFrame(empty_data))
-
-    @staticmethod
-    def create_empty_right_frame_overlapping_columns(suffixes):
-        """Create empty right frame matching 'overlapping_columns' suffix method."""
-        # With overlapping_columns, only common columns get suffixed; unique columns keep original names
-        right_suffix = suffixes[1]
-        empty_data = {
-            "ra": pd.Series(dtype=float),  # Not suffixed (unique to right in terms of being required)
-            "dec": pd.Series(dtype=float),  # Not suffixed
-            f"id{right_suffix}": pd.Series(dtype="int64"),  # Suffixed (overlaps with left)
-            f"common_col{right_suffix}": pd.Series(dtype=object),  # Suffixed (overlaps)
-            "right_only": pd.Series(dtype="int64"),  # Not suffixed (unique to right)
-        }
-        return npd.NestedFrame(pd.DataFrame(empty_data))
-
     def test_left_join_all_columns_suffix_no_right_matches(self):
         """Test left-join with all_columns suffix when right catalog is empty (no matches)."""
         left, _, left_info, right_info = self.create_test_frames()
@@ -97,10 +70,21 @@ class TestLeftJoinSuffixMethods:
         )
 
         suffixes = ("_left", "_right")
-        algo = KdTreeCrossmatch(left, empty_right, 0, 0, 0, 0, left_info, right_info, None)
+        crossmatch_args = CrossmatchArgs(
+            left_df=left,
+            right_df=empty_right,
+            left_order=0,
+            left_pixel=0,
+            right_order=0,
+            right_pixel=0,
+            left_catalog_info=left_info,
+            right_catalog_info=right_info,
+            right_margin_catalog_info=None,
+        )
+        algo = KdTreeCrossmatch(n_neighbors=1, radius_arcsec=10)
 
         # Perform crossmatch with all_columns suffix
-        result = algo.crossmatch(how="left", suffixes=suffixes, suffix_method="all_columns", radius_arcsec=10)
+        result = algo.crossmatch(crossmatch_args, how="left", suffixes=suffixes, suffix_method="all_columns")
 
         # Assertions
         assert len(result) == 5, "Should have all 5 left rows"
@@ -142,11 +126,22 @@ class TestLeftJoinSuffixMethods:
         )
 
         suffixes = ("_left", "_right")
-        algo = KdTreeCrossmatch(left, empty_right, 0, 0, 0, 0, left_info, right_info, None)
+        crossmatch_args = CrossmatchArgs(
+            left_df=left,
+            right_df=empty_right,
+            left_order=0,
+            left_pixel=0,
+            right_order=0,
+            right_pixel=0,
+            left_catalog_info=left_info,
+            right_catalog_info=right_info,
+            right_margin_catalog_info=None,
+        )
+        algo = KdTreeCrossmatch(n_neighbors=1, radius_arcsec=10)
 
         # Perform crossmatch with overlapping_columns suffix
         result = algo.crossmatch(
-            how="left", suffixes=suffixes, suffix_method="overlapping_columns", radius_arcsec=10
+            crossmatch_args, how="left", suffixes=suffixes, suffix_method="overlapping_columns"
         )
 
         # Assertions
@@ -182,10 +177,21 @@ class TestLeftJoinSuffixMethods:
         left, right, left_info, right_info = self.create_test_frames()
 
         suffixes = ("_left", "_right")
-        algo = KdTreeCrossmatch(left, right, 0, 0, 0, 0, left_info, right_info, None)
+        crossmatch_args = CrossmatchArgs(
+            left_df=left,
+            right_df=right,
+            left_order=0,
+            left_pixel=0,
+            right_order=0,
+            right_pixel=0,
+            left_catalog_info=left_info,
+            right_catalog_info=right_info,
+            right_margin_catalog_info=None,
+        )
+        algo = KdTreeCrossmatch(n_neighbors=1, radius_arcsec=10)
 
         # Large radius so first two points match
-        result = algo.crossmatch(how="left", suffixes=suffixes, suffix_method="all_columns", radius_arcsec=10)
+        result = algo.crossmatch(crossmatch_args, how="left", suffixes=suffixes, suffix_method="all_columns")
 
         # Should have 5 or more rows (2 matches + 3 unmatched, or more if multiple matches per left)
         assert len(result) >= 5, f"Should have at least 5 rows, got {len(result)}"
@@ -226,11 +232,22 @@ class TestLeftJoinSuffixMethods:
         left, right, left_info, right_info = self.create_test_frames()
 
         suffixes = ("_left", "_right")
-        algo = KdTreeCrossmatch(left, right, 0, 0, 0, 0, left_info, right_info, None)
+        crossmatch_args = CrossmatchArgs(
+            left_df=left,
+            right_df=right,
+            left_order=0,
+            left_pixel=0,
+            right_order=0,
+            right_pixel=0,
+            left_catalog_info=left_info,
+            right_catalog_info=right_info,
+            right_margin_catalog_info=None,
+        )
+        algo = KdTreeCrossmatch(n_neighbors=1, radius_arcsec=10)
 
         # Large radius so first two points match
         result = algo.crossmatch(
-            how="left", suffixes=suffixes, suffix_method="overlapping_columns", radius_arcsec=10
+            crossmatch_args, how="left", suffixes=suffixes, suffix_method="overlapping_columns"
         )
 
         # Should have 5 or more rows
@@ -274,9 +291,20 @@ class TestLeftJoinSuffixMethods:
         suffixes = ("_left", "_right")
 
         # Test with all_columns
-        algo_all = KdTreeCrossmatch(left, right, 0, 0, 0, 0, left_info, right_info, None)
+        crossmatch_args_all = CrossmatchArgs(
+            left_df=left,
+            right_df=right,
+            left_order=0,
+            left_pixel=0,
+            right_order=0,
+            right_pixel=0,
+            left_catalog_info=left_info,
+            right_catalog_info=right_info,
+            right_margin_catalog_info=None,
+        )
+        algo_all = KdTreeCrossmatch(n_neighbors=1, radius_arcsec=10)
         result_all = algo_all.crossmatch(
-            how="left", suffixes=suffixes, suffix_method="all_columns", radius_arcsec=10
+            crossmatch_args_all, how="left", suffixes=suffixes, suffix_method="all_columns"
         )
 
         # _dist_arcsec should exist
@@ -292,9 +320,20 @@ class TestLeftJoinSuffixMethods:
         assert unmatched_dist.isna().all(), "Unmatched rows should have NaN distance"
 
         # Test with overlapping_columns
-        algo_overlap = KdTreeCrossmatch(left, right, 0, 0, 0, 0, left_info, right_info, None)
+        crossmatch_args_overlap = CrossmatchArgs(
+            left_df=left,
+            right_df=right,
+            left_order=0,
+            left_pixel=0,
+            right_order=0,
+            right_pixel=0,
+            left_catalog_info=left_info,
+            right_catalog_info=right_info,
+            right_margin_catalog_info=None,
+        )
+        algo_overlap = KdTreeCrossmatch(n_neighbors=1, radius_arcsec=10)
         result_overlap = algo_overlap.crossmatch(
-            how="left", suffixes=suffixes, suffix_method="overlapping_columns", radius_arcsec=10
+            crossmatch_args_overlap, how="left", suffixes=suffixes, suffix_method="overlapping_columns"
         )
 
         # _dist_arcsec should exist
