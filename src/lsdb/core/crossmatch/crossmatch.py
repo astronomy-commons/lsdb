@@ -36,6 +36,7 @@ def crossmatch(
     algorithm: AbstractCrossmatchAlgorithm | None = None,
     output_catalog_name: str | None = None,
     require_right_margin: bool = False,
+    how: str = "inner",
     suffixes: tuple[str, str] | None = None,
     left_args: dict | None = None,
     right_args: dict | None = None,
@@ -73,6 +74,9 @@ def crossmatch(
         The name of the output catalog.
     require_right_margin : bool, default False
         Whether to require a right margin.
+    how: str
+        How to handle the crossmatch of the two catalogs.
+        One of {'left', 'inner'}.  Defaults to 'inner'.
     suffixes : tuple[str,str] or None, default None
         Suffixes to append to overlapping column names.
     left_args : dict or None, default None
@@ -120,5 +124,6 @@ def crossmatch(
         algorithm=algorithm,
         output_catalog_name=output_catalog_name,
         require_right_margin=require_right_margin,
+        how=how,
         suffixes=suffixes,
     )

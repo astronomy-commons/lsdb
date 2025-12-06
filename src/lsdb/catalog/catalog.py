@@ -41,6 +41,11 @@ from lsdb.nested.core import NestedFrame
 from lsdb.types import DaskDFPixelMap
 
 
+def _default_suffixes(left_name: str, right_name: str) -> tuple[str, str]:
+    """Return the default pair of suffixes for left/right catalog names."""
+    return (f"_{left_name}", f"_{right_name}")
+
+
 # pylint: disable=protected-access,too-many-public-methods, too-many-lines
 class Catalog(HealpixDataset):
     """LSDB Catalog to perform analysis of sky catalogs and efficient spatial operations."""
@@ -177,6 +182,7 @@ class Catalog(HealpixDataset):
         algorithm: AbstractCrossmatchAlgorithm | None = None,
         output_catalog_name: str | None = None,
         require_right_margin: bool = False,
+        how: str = "inner",
         suffixes: tuple[str, str] | None = None,
         suffix_method: str | None = None,
         log_changes: bool = True,
@@ -249,6 +255,9 @@ class Catalog(HealpixDataset):
         require_right_margin : bool, default False
             If true, raises an error if the right margin is missing which could
             lead to incomplete crossmatches.
+        how : str
+            How to handle the crossmatch of the two catalogs.
+            One of {'left', 'inner'}; defaults to 'inner'.
         suffixes : Tuple[str,str] or None
             A pair of suffixes to be appended to the end of each column
             name when they are joined. Default uses the name of the catalog for the suffix.
@@ -299,7 +308,7 @@ class Catalog(HealpixDataset):
             raise ValueError(f"If you specify `algorithm`, do not set {list(default_kwargs.keys())}")
 
         if suffixes is None:
-            suffixes = (f"_{self.name}", f"_{other.name}")
+            suffixes = _default_suffixes(self.name, other.name)
         if len(suffixes) != 2:
             raise ValueError("`suffixes` must be a tuple with two strings")
         if suffix_method is None:
@@ -320,6 +329,7 @@ class Catalog(HealpixDataset):
             self,
             other,
             algorithm,
+            how,
             suffixes,
             suffix_method,
             log_changes,
@@ -789,8 +799,9 @@ class Catalog(HealpixDataset):
         ----------
         other : Catalog
             The right catalog to merge with.
-        how : {'left', 'right', 'outer', 'inner'}, default 'inner'
+        how : str
             How to handle the merge of the two catalogs.
+            One of {'left', 'right', 'outer', 'inner', 'leftsemi'}, default 'inner'
         on : str | List
             Column or index names to join on. Defaults to the
             intersection of columns in both Dataframes if on is None and not
@@ -817,7 +828,7 @@ class Catalog(HealpixDataset):
             of the two catalogs.
         """
         if suffixes is None:
-            suffixes = (f"_{self.name}", f"_{other.name}")
+            suffixes = _default_suffixes(self.name, other.name)
         if len(suffixes) != 2:
             raise ValueError("`suffixes` must be a tuple with two strings")
 
@@ -891,7 +902,7 @@ class Catalog(HealpixDataset):
             added, and the rows merged using merge_asof on the specified columns.
         """
         if suffixes is None:
-            suffixes = (f"_{self.name}", f"_{other.name}")
+            suffixes = _default_suffixes(self.name, other.name)
 
         if len(suffixes) != 2:
             raise ValueError("`suffixes` must be a tuple with two strings")
@@ -984,7 +995,7 @@ class Catalog(HealpixDataset):
             added, and the rows merged on the specified columns.
         """
         if suffixes is None:
-            suffixes = (f"_{self.name}", f"_{other.name}")
+            suffixes = _default_suffixes(self.name, other.name)
 
         if len(suffixes) != 2:
             raise ValueError("`suffixes` must be a tuple with two strings")
