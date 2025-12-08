@@ -20,6 +20,13 @@ def _na_series_for_dtype(dtype, length):
     For integer dtypes, convert to nullable Int64/UInt64 to support NA values.
     Use pd.NA for extension dtypes and float columns.
     """
+    # Check if this is a PyArrow dtype
+    dtype_str = str(dtype)
+    if "[pyarrow]" in dtype_str:
+        # PyArrow dtypes: create empty array and let pandas handle NA values naturally
+        # This preserves the PyArrow dtype correctly
+        return pd.Series([None] * length, dtype=dtype)
+
     try:
         kind = getattr(dtype, "kind", None)
     except AttributeError:
@@ -109,10 +116,13 @@ class AbstractCrossmatchAlgorithm(ABC):
         npd.NestedFrame
             The dataframe containing the results of the crossmatch.
         """
-        print(
-            f"Crossmatching how={how} pixels L{crossmatch_args.left_order}_{crossmatch_args.left_pixel} R{crossmatch_args.right_order}_{crossmatch_args.right_pixel}"
-        )
-        l_inds, r_inds, extra_cols = self.perform_crossmatch(crossmatch_args)
+        # If there's no right data, return empty arrays (e.g., for left-join with no matching right partition)
+        if crossmatch_args.right_df is None or len(crossmatch_args.right_df) == 0:
+            l_inds = np.array([], dtype=np.int64)
+            r_inds = np.array([], dtype=np.int64)
+            extra_cols = self.extra_columns.copy() if self.extra_columns is not None else pd.DataFrame()
+        else:
+            l_inds, r_inds, extra_cols = self.perform_crossmatch(crossmatch_args)
         if not len(l_inds) == len(r_inds) == len(extra_cols):
             raise ValueError(
                 "Crossmatch algorithm must return left and right indices and extra columns with same length"
@@ -299,17 +309,17 @@ class AbstractCrossmatchAlgorithm(ABC):
 
             # Unmatched left rows: keep each left row once, with NA values for right columns
             # Create a set of matched position indices (not index values, to handle non-unique indices)
-            left_unmatched = left_df.iloc[
-                ~left_df.index.isin(left_df.iloc[left_idx].index)
-            ].reset_index(drop=True)
+            left_unmatched = left_df.iloc[~left_df.index.isin(left_df.iloc[left_idx].index)].reset_index(
+                drop=True
+            )
             # Build empty right-side columns (same names and dtypes as right_matched) filled with NA.
             # We know that both left_df and right_df have RA and DEC columns, and left_matched
             # and right_matched are derived from these.  Hence we do not need to check for empty
             # columns.
             unmatched_right = pd.DataFrame(
                 {
-                    col: _na_series_for_dtype(right_matched[col].dtype, len(left_unmatched))
-                    for col in right_matched.columns
+                    col: _na_series_for_dtype(right_df[col].dtype, len(left_unmatched))
+                    for col in right_df.columns
                 }
             )
 
