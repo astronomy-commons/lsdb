@@ -744,9 +744,13 @@ class Catalog(HealpixDataset):
             Whether to pass the Healpix Pixel of the partition as a `HealpixPixel`
             object to the second positional argument of the function
         compute_single_partition : bool, default False
-            Whether to compute only a single partition
+            If true, runs the function on a single partition only in the local thread, without going through
+            dask. This is useful for testing and debugging functions on a single partition, as all normal
+            debugging tools can be used. Note that when this is true, which partition is computed is
+            determined by the `partition_index` parameter.
         partition_index : int | HealpixPixel | None, default None
-            The index of the partition to compute when compute_single_partition is True.
+            The index of the partition to compute when compute_single_partition is True. Also accepts a
+            HealpixPixel object to specify the partition by its HEALPix order and pixel.
             If None, defaults to 0.
         **kwargs
             Additional keyword args to pass to the function. These are passed to the Dask DataFrame
