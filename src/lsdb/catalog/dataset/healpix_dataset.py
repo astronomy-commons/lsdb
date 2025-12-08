@@ -952,7 +952,7 @@ class HealpixDataset:
             result = (
                 func(partition, pixel, *args, **kwargs) if include_pixel else func(partition, *args, **kwargs)
             )
-            output_ddf = nd.NestedFrame.from_pandas(result, npartitions=1)
+            output_ddf = nd.NestedFrame.from_single_partition(result)
             partition_map = {pixel: 0}
             hc_structure = self.hc_structure.__class__(
                 catalog_info=self.hc_structure.catalog_info,
