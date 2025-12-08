@@ -621,15 +621,11 @@ def test_map_partitions_single_partition(small_sky_order1_catalog):
         return df
 
     # Get a partition index to update
-    partition_index = 1
+    default_partition_index = 0
 
     # Update a single partition
     mapped = small_sky_order1_catalog.map_partitions(
-        add_col, 
-        "a", 
-        increment_value=1, 
-        compute_single_partition=True, 
-        partition_index=partition_index
+        add_col, "a", increment_value=1, compute_single_partition=True
     )
 
     assert isinstance(mapped, Catalog)
@@ -641,7 +637,9 @@ def test_map_partitions_single_partition(small_sky_order1_catalog):
 
     # Get the pixel for the updated partition
     pixel = list(mapped._ddf_pixel_map.keys())[0]
-    original_pixel = [p for p, idx in small_sky_order1_catalog._ddf_pixel_map.items() if idx == partition_index][0]
+    original_pixel = [
+        p for p, idx in small_sky_order1_catalog._ddf_pixel_map.items() if idx == default_partition_index
+    ][0]
 
     # Verify it's the same pixel as the original partition
     assert pixel.order == original_pixel.order
@@ -653,7 +651,7 @@ def test_map_partitions_single_partition(small_sky_order1_catalog):
     assert np.all(mapcomp["a"] == mapcomp["ra"] + 1)
 
     # Verify that the data matches the original partition
-    original_partition = small_sky_order1_catalog.partitions[partition_index].compute()
+    original_partition = small_sky_order1_catalog.partitions[default_partition_index].compute()
     assert len(mapcomp) == len(original_partition)
     pd.testing.assert_series_equal(mapcomp["ra"], original_partition["ra"])
 
@@ -671,11 +669,7 @@ def test_map_partitions_single_partition_with_margin(small_sky_order1_source_wit
 
     # Update a single partition
     mapped = small_sky_order1_source_with_margin.map_partitions(
-        add_col, 
-        "a", 
-        increment_value=1, 
-        compute_single_partition=True, 
-        partition_index=partition_index
+        add_col, "a", increment_value=1, compute_single_partition=True, partition_index=partition_index
     )
 
     assert isinstance(mapped, Catalog)
@@ -687,7 +681,9 @@ def test_map_partitions_single_partition_with_margin(small_sky_order1_source_wit
 
     # Get the pixel for the updated partition
     pixel = list(mapped._ddf_pixel_map.keys())[0]
-    original_pixel = [p for p, idx in small_sky_order1_source_with_margin._ddf_pixel_map.items() if idx == partition_index][0]
+    original_pixel = [
+        p for p, idx in small_sky_order1_source_with_margin._ddf_pixel_map.items() if idx == partition_index
+    ][0]
 
     # Verify it's the same pixel as the original partition
     assert pixel.order == original_pixel.order
