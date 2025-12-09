@@ -4,7 +4,6 @@ import warnings
 from typing import TYPE_CHECKING
 
 import nested_pandas as npd
-import pandas as pd
 from hats.catalog import TableProperties
 from hats.pixel_math import HealpixPixel
 from hats.pixel_tree import PixelAlignment, PixelAlignmentType
@@ -116,36 +115,6 @@ def perform_crossmatch(
         )
 
     right_joined_df = concat_partition_and_margin(right_df, right_margin_df)
-    # If there is no right data for this aligned pixel, provide an empty dataframe with the
-    # expected RA/DEC columns so the algorithm can be instantiated safely.
-    if right_joined_df is None:
-        # Prefer constructing an empty pandas-backed NestedFrame whose columns and dtypes
-        # match the *original* right-catalog columns (pre-suffix). We derive the dtypes
-        # from the provided `meta_df`, which contains the suffixed column names and
-        # expected dtypes for the final joined table.
-        right_suffix = suffixes[1] if suffixes is not None else None
-        cols: dict = {}
-        if right_suffix is not None:
-            # meta_df is a nested-pandas NestedFrame with suffixed column names
-            # Find all columns that belong to the right side by suffix and map them
-            # back to their unsuffixed original names and dtypes.
-            suffixed_cols = [c for c in meta_df.columns if c.endswith(right_suffix)]
-            for sc in suffixed_cols:
-                orig = sc[: -len(right_suffix)]
-                # Use the dtype from meta_df so the partition meta will match
-                cols[orig] = pd.Series(dtype=meta_df[sc].dtype)
-        else:
-            # Fallback: use RA/DEC column names if suffixes are not available
-            ra_col = getattr(right_catalog_info, "ra_column", None)
-            dec_col = getattr(right_catalog_info, "dec_column", None)
-            if ra_col:
-                cols[ra_col] = pd.Series(dtype=float)
-            if dec_col:
-                cols[dec_col] = pd.Series(dtype=float)
-
-        # Create a plain nested-pandas NestedFrame (pandas-backed) for the empty partition
-        # so that algorithms that expect concrete partition data (pandas NestedFrame) work.
-        right_joined_df = npd.NestedFrame(pd.DataFrame(cols))
 
     crossmatch_args = CrossmatchArgs(
         left_df=left_df,
