@@ -736,3 +736,56 @@ def test_raise_for_non_overlapping_catalogs(small_sky_order1_catalog, small_sky_
     small_sky_xmatch_catalog = small_sky_xmatch_catalog.pixel_search([HealpixPixel(1, 45)])
     with pytest.raises(RuntimeError, match="overlap"):
         small_sky_order1_catalog.crossmatch(small_sky_xmatch_catalog)
+
+
+def test_crossmatch_alignment_pixel_left_join_filters_and_aligns():
+    left_df = pd.DataFrame({"id": [1, 2], "ra": [0.0, 0.01], "dec": [0.0, 0.01]})
+    left_df["id"] = left_df["id"].astype(pd.ArrowDtype(pa.int64()))
+    right_df = pd.DataFrame(
+        {"id": [101.0, 202.0], "ra": [0.0005, 0.2], "dec": [0.0, 0.2]}
+    )
+
+    left_catalog = lsdb.from_dataframe(
+        left_df,
+        ra_column="ra",
+        dec_column="dec",
+        lowest_order=1,
+        highest_order=1,
+        margin_order=2,
+        margin_threshold=30,
+    )
+    right_catalog = lsdb.from_dataframe(
+        right_df,
+        ra_column="ra",
+        dec_column="dec",
+        lowest_order=3,
+        highest_order=3,
+        margin_order=4,
+        margin_threshold=30,
+    )
+
+    xmatched = left_catalog.crossmatch(
+        right_catalog,
+        how="left",
+        radius_arcsec=10,
+        suffixes=("_l", "_r"),
+    )
+    result = xmatched.compute()
+
+    assert len(result) == len(left_df)
+    assert not result.index.duplicated().any()
+
+    matched = result[result["id_l"] == 1]
+    assert len(matched) == 1
+    assert matched["id_r"].iloc[0] == pytest.approx(101.0)
+    assert matched["_dist_arcsec"].iloc[0] <= 10
+
+    unmatched = result[result["id_l"] == 2]
+    assert unmatched["id_r"].isna().all()
+
+    left_orders = {p.order for p in left_catalog.get_healpix_pixels()}
+    right_orders = {p.order for p in right_catalog.get_healpix_pixels()}
+    aligned_orders = {p.order for p in xmatched.get_healpix_pixels()}
+    assert aligned_orders
+    assert max(aligned_orders) >= max(right_orders)
+    assert min(aligned_orders) > min(left_orders)
