@@ -84,6 +84,6 @@ def test_perform_crossmatch_filters_left_to_aligned_pixel(small_sky_order1_catal
         assert len(seen_left) == previous_seen + 1
         pd.testing.assert_frame_equal(seen_left[-1], expected_filtered)
 
-    combined = pd.concat([df for df in results if len(df) > 0]).sort_index()
+    combined = pd.concat([df for df in results if not df.empty]).sort_index()
     pd.testing.assert_index_equal(combined.index.sort_values(), left_df.index.sort_values())
     assert combined.index.duplicated().sum() == left_df.index.duplicated().sum()
