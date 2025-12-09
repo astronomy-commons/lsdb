@@ -15,7 +15,7 @@ classifiers = [
     "Programming Language :: Python",
 ]
 dynamic = ["version"]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
     # Includes dask[array,dataframe,distributed,diagnostics].
     # dask distributed eases the creation of parallel dask clients.
@@ -88,8 +88,7 @@ omit = [
 
 [tool.black]
 line-length = 110
-target-version = ["py38"]
-
+target-version = ["py311"]
 [tool.isort]
 profile = "black"
 line_length = 110
