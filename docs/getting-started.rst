@@ -37,7 +37,7 @@ Installation
                 pyenv virtualenv 3.12 lsdb_env
                 pyenv local lsdb_env
 
-    We recommend Python versions **>=3.10, <=3.12**.
+    We recommend Python versions **>=3.11, <=3.14**.
     If you don't have a compatible version of Python or Conda installed into your environment,
     and don't have admin rights to install one,
     we recommend installing `uv <https://docs.astral.sh/uv/getting-started/installation/>`_
