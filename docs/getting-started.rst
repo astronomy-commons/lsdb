@@ -37,7 +37,7 @@ Installation
                 pyenv virtualenv 3.12 lsdb_env
                 pyenv local lsdb_env
 
-    We recommend Python versions **>=3.10, <=3.12**.
+    We recommend Python versions **>=3.11, <=3.14**.
 
 The latest release version of LSDB is available to install with `pip <https://pypi.org/project/lsdb/>`_ or `conda <https://anaconda.org/conda-forge/lsdb/>`_.
 
