@@ -38,6 +38,11 @@ Installation
                 pyenv local lsdb_env
 
     We recommend Python versions **>=3.11, <=3.14**.
+    If you don't have a compatible version of Python or Conda installed into your environment,
+    and don't have admin rights to install one,
+    we recommend installing `uv <https://docs.astral.sh/uv/getting-started/installation/>`_
+    or `miniforge <https://conda-forge.org/download/>`_ into your user-space and creating
+    virtual environments using these tools.
 
 The latest release version of LSDB is available to install with `pip <https://pypi.org/project/lsdb/>`_ or `conda <https://anaconda.org/conda-forge/lsdb/>`_.
 
