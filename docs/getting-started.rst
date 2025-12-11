@@ -99,8 +99,7 @@ Catalog, and specify which columns we want to use from it.
 
 
 Here we can see the lazy representation of an LSDB catalog object, showing its metadata such as the column
-names and their types without loading any data. The ellipses in the table act as placeholders where you would
-usually see values.
+names and their types without loading any data. The rows are displayed using literal ... placeholders to indicate that values are not materialized until explicitly requested.
 
 .. important::
 
