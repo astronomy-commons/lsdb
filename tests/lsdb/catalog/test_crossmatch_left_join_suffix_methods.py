@@ -52,11 +52,9 @@ class TestLeftJoinSuffixMethods:
 
         return left_catalog, right_catalog
 
-    def test_left_join_all_columns_suffix_no_right_matches(self):
-        """Test left-join with all_columns suffix when right catalog is far away (no matches)."""
-        left_catalog, _ = self.create_test_catalogs()
-
-        # Create right catalog far away from left (simulates no matches)
+    @staticmethod
+    def create_distant_right_catalog():
+        """Create a right catalog that is far away from the left catalog (no matches)."""
         # Use coordinates far from left catalog (left is at ~0-4 degrees)
         far_right_df = pd.DataFrame(
             {
@@ -67,7 +65,7 @@ class TestLeftJoinSuffixMethods:
                 "right_only": [100, 200],
             }
         )
-        far_right_catalog = lsdb.from_dataframe(
+        return lsdb.from_dataframe(
             far_right_df,
             ra_column="ra",
             dec_column="dec",
@@ -75,6 +73,11 @@ class TestLeftJoinSuffixMethods:
             highest_order=0,
             margin_threshold=30,
         )
+
+    def test_left_join_all_columns_suffix_no_right_matches(self):
+        """Test left-join with all_columns suffix when right catalog is far away (no matches)."""
+        left_catalog, _ = self.create_test_catalogs()
+        far_right_catalog = self.create_distant_right_catalog()
 
         suffixes = ("_left", "_right")
 
@@ -116,25 +119,7 @@ class TestLeftJoinSuffixMethods:
     def test_left_join_overlapping_columns_suffix_no_right_matches(self):
         """Test left-join with overlapping_columns suffix when right catalog is far away (no matches)."""
         left_catalog, _ = self.create_test_catalogs()
-
-        # Create right catalog far away from left (simulates no matches)
-        far_right_df = pd.DataFrame(
-            {
-                "ra": [180.0, 181.0],  # Far away from left catalog
-                "dec": [80.0, 81.0],
-                "id": [200, 201],
-                "common_col": ["x", "y"],
-                "right_only": [100, 200],
-            }
-        )
-        far_right_catalog = lsdb.from_dataframe(
-            far_right_df,
-            ra_column="ra",
-            dec_column="dec",
-            lowest_order=0,
-            highest_order=0,
-            margin_threshold=30,
-        )
+        far_right_catalog = self.create_distant_right_catalog()
 
         suffixes = ("_left", "_right")
 
