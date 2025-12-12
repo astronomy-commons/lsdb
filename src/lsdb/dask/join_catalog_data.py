@@ -121,7 +121,7 @@ def perform_join_nested(
     left_catalog_info: TableProperties,
     right_catalog_info: TableProperties,
     right_margin_catalog_info: TableProperties,
-    aligned_catalog_info: TableProperties,
+    aligned_catalog_info: TableProperties | None,
     left_on: str,
     right_on: str,
     right_name: str,
@@ -155,6 +155,8 @@ def perform_join_nested(
         The catalog info of the right catalog
     right_margin_catalog_info : hc.TableProperties
         The catalog info of the right margin catalog
+    aligned_catalog_info : hc.TableProperties | None
+        The catalog info of the aligned catalog; usually None
     left_on : str
         The column to join on from the left partition
     right_on : str
