@@ -117,10 +117,15 @@ def perform_crossmatch(
 
     # For left-join, right_df can be None - replace with empty DataFrame with correct schema
     if right_df is None:
-        # Extract right-side columns from meta
-        # We need to handle two suffix methods differently:
-        # - all_columns: all right columns end with right_suffix
-        # - overlapping_columns: only overlapping columns end with right_suffix, unique ones don't
+        # When right_df is None (partitions don't spatially overlap), we need to create
+        # an empty DataFrame with the right catalog's columns and correct dtypes from meta_df.
+        # The challenge: meta_df has suffixed column names, and we need to identify which
+        # columns came from the right catalog and reverse the suffix transformation.
+        #
+        # Suffix method behavior:
+        # - all_columns: All right columns have right_suffix appended
+        # - overlapping_columns: Only columns present in both catalogs get suffixes;
+        #   unique columns keep their original names (e.g., 'right_only' stays 'right_only')
         
         right_suffix = suffixes[1]
         
@@ -128,61 +133,46 @@ def perform_crossmatch(
             # Simple case: all right columns end with right_suffix
             right_column_names_in_meta = [col for col in meta_df.columns if col.endswith(right_suffix)]
         else:  # overlapping_columns
-            # More complex: need to identify left columns to exclude them, plus extra columns
-            from lsdb.dask.merge_catalog_functions import apply_suffixes
+            # Complex case: need to identify which columns in meta came from right catalog
+            # Strategy: Identify all data columns (non-extra), determine which are from left,
+            # and the remainder must be from right.
             
-            # Recreate what the left columns would look like after suffix transformation
-            # To properly detect overlapping columns, we need both left and right columns
-            # But we don't have the original right columns here. 
-            # Workaround: Assume all columns in meta that aren't algorithm extra columns
-            # came from either left or right. We can identify left columns, so remainder are right.
+            # Get algorithm extra columns (e.g., _dist_arcsec)
+            extra_column_names = set(algorithm.extra_columns.columns) if algorithm.extra_columns is not None else set()
             
-            # Get algorithm extra columns
-            if algorithm.extra_columns is not None:
-                extra_column_names = set(algorithm.extra_columns.columns)
-            else:
-                extra_column_names = set()
-            
-            # Non-extra columns that should be from left or right
+            # Data columns are all columns except extra columns
             data_columns = [col for col in meta_df.columns if col not in extra_column_names]
             
-            # Apply suffix to left_df columns with a dummy right to see what left columns become
-            # For overlapping_columns, we need to know what overlaps. Since we don't have the original
-            # right columns, we can infer: if a column appears in data_columns with right_suffix,
-            # it must have overlapped. So we can reconstruct what left would look like.
-            
-            # Columns with right_suffix are definitely from right (overlapping)
+            # Identify overlapping columns: those with right_suffix came from right
+            # (their left counterparts would have left_suffix)
             right_overlapping_cols = [col for col in data_columns if col.endswith(right_suffix)]
             
-            # For overlapping columns, left would have corresponding columns with left_suffix
+            # Determine left overlapping columns by replacing right_suffix with left_suffix
             left_suffix = suffixes[0]
             left_overlapping_base_names = [col.removesuffix(right_suffix) for col in right_overlapping_cols]
             left_overlapping_cols = [name + left_suffix for name in left_overlapping_base_names]
             
-            # Non-overlapping left columns keep their original names
-            left_non_overlapping_cols = [
+            # Non-overlapping columns (no suffix) could be from either left or right
+            non_overlapping_cols = [
                 col for col in data_columns 
                 if col not in right_overlapping_cols and col not in left_overlapping_cols
             ]
             
-            # Now identify which non-overlapping columns are from right (not from left)
-            # These are columns that aren't in left_df
+            # Separate non-overlapping: if in left_df.columns, it's from left; otherwise from right
             left_df_col_set = set(left_df.columns)
-            right_non_overlapping_cols = [
-                col for col in left_non_overlapping_cols 
-                if col not in left_df_col_set
-            ]
+            right_non_overlapping_cols = [col for col in non_overlapping_cols if col not in left_df_col_set]
             
-            # All right columns in meta
+            # Combine to get all right columns in meta
             right_column_names_in_meta = right_overlapping_cols + right_non_overlapping_cols
         
-        # Build empty right_df with these columns, reversing any suffix that was applied
+        # Build empty right_df with right catalog's columns (removing suffixes where applied)
+        def get_original_column_name(col: str) -> str:
+            """Remove right_suffix if present, otherwise return as-is"""
+            return col.removesuffix(right_suffix) if col.endswith(right_suffix) else col
+        
         right_df = npd.NestedFrame(
-            {
-                col.removesuffix(right_suffix) if col.endswith(right_suffix) else col: 
-                pd.Series(dtype=meta_df[col].dtype)
-                for col in right_column_names_in_meta
-            }
+            {get_original_column_name(col): pd.Series(dtype=meta_df[col].dtype)
+             for col in right_column_names_in_meta}
         )
     right_joined_df = concat_partition_and_margin(right_df, right_margin_df)
 
