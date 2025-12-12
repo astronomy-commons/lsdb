@@ -27,21 +27,13 @@ def _na_series_for_dtype(dtype, length):
         # This preserves the PyArrow dtype correctly
         return pd.Series([None] * length, dtype=dtype)
 
-    try:
-        kind = getattr(dtype, "kind", None)
-    except AttributeError:
-        kind = None
-
     # For integer types, we need to convert to nullable integer dtype (Int64, etc.)
     # because standard numpy int dtypes don't support NA/NaN
+    kind = getattr(dtype, "kind", None)
     if kind in ("i", "u"):
         # Convert numpy int64/uint64 etc. to nullable pandas Int64/UInt64
-        if kind == "i":
-            nullable_dtype = "Int64"
-        else:  # kind == "u"
-            nullable_dtype = "UInt64"
+        nullable_dtype = "Int64" if kind == "i" else "UInt64"
         return pd.Series([pd.NA] * length, dtype=nullable_dtype)
-
     # For float types, use np.nan which is the standard NA for floats
     if kind == "f":
         return pd.Series([np.nan] * length, dtype=dtype)
