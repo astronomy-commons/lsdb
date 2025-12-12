@@ -113,9 +113,6 @@ class TestLeftJoinSuffixMethods:
         # Left data should be intact
         assert result["id_left"].tolist() == [100, 101, 102, 103, 104]
 
-    @pytest.mark.xfail(
-        reason="Bug: overlapping_columns suffix method doesn't add unique right columns when no matches exist"
-    )
     def test_left_join_overlapping_columns_suffix_no_right_matches(self):
         """Test left-join with overlapping_columns suffix when right catalog is far away (no matches)."""
         left_catalog, _ = self.create_test_catalogs()

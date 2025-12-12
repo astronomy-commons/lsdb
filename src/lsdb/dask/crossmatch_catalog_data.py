@@ -117,14 +117,71 @@ def perform_crossmatch(
 
     # For left-join, right_df can be None - replace with empty DataFrame with correct schema
     if right_df is None:
-        # Extract right-side columns from meta (those ending with right suffix)
-        # The meta already has the suffixed columns with correct dtypes
+        # Extract right-side columns from meta
+        # We need to handle two suffix methods differently:
+        # - all_columns: all right columns end with right_suffix
+        # - overlapping_columns: only overlapping columns end with right_suffix, unique ones don't
+        
         right_suffix = suffixes[1]
+        
+        if suffix_method == "all_columns":
+            # Simple case: all right columns end with right_suffix
+            right_column_names_in_meta = [col for col in meta_df.columns if col.endswith(right_suffix)]
+        else:  # overlapping_columns
+            # More complex: need to identify left columns to exclude them, plus extra columns
+            from lsdb.dask.merge_catalog_functions import apply_suffixes
+            
+            # Recreate what the left columns would look like after suffix transformation
+            # To properly detect overlapping columns, we need both left and right columns
+            # But we don't have the original right columns here. 
+            # Workaround: Assume all columns in meta that aren't algorithm extra columns
+            # came from either left or right. We can identify left columns, so remainder are right.
+            
+            # Get algorithm extra columns
+            if algorithm.extra_columns is not None:
+                extra_column_names = set(algorithm.extra_columns.columns)
+            else:
+                extra_column_names = set()
+            
+            # Non-extra columns that should be from left or right
+            data_columns = [col for col in meta_df.columns if col not in extra_column_names]
+            
+            # Apply suffix to left_df columns with a dummy right to see what left columns become
+            # For overlapping_columns, we need to know what overlaps. Since we don't have the original
+            # right columns, we can infer: if a column appears in data_columns with right_suffix,
+            # it must have overlapped. So we can reconstruct what left would look like.
+            
+            # Columns with right_suffix are definitely from right (overlapping)
+            right_overlapping_cols = [col for col in data_columns if col.endswith(right_suffix)]
+            
+            # For overlapping columns, left would have corresponding columns with left_suffix
+            left_suffix = suffixes[0]
+            left_overlapping_base_names = [col.removesuffix(right_suffix) for col in right_overlapping_cols]
+            left_overlapping_cols = [name + left_suffix for name in left_overlapping_base_names]
+            
+            # Non-overlapping left columns keep their original names
+            left_non_overlapping_cols = [
+                col for col in data_columns 
+                if col not in right_overlapping_cols and col not in left_overlapping_cols
+            ]
+            
+            # Now identify which non-overlapping columns are from right (not from left)
+            # These are columns that aren't in left_df
+            left_df_col_set = set(left_df.columns)
+            right_non_overlapping_cols = [
+                col for col in left_non_overlapping_cols 
+                if col not in left_df_col_set
+            ]
+            
+            # All right columns in meta
+            right_column_names_in_meta = right_overlapping_cols + right_non_overlapping_cols
+        
+        # Build empty right_df with these columns, reversing any suffix that was applied
         right_df = npd.NestedFrame(
             {
-                col.removesuffix(right_suffix): pd.Series(dtype=meta_df[col].dtype)
-                for col in meta_df.columns
-                if col.endswith(right_suffix)
+                col.removesuffix(right_suffix) if col.endswith(right_suffix) else col: 
+                pd.Series(dtype=meta_df[col].dtype)
+                for col in right_column_names_in_meta
             }
         )
     right_joined_df = concat_partition_and_margin(right_df, right_margin_df)
