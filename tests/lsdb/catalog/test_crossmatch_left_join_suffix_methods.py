@@ -1,19 +1,16 @@
 """Tests for left-join crossmatch with different suffix methods when right catalog is empty/partial."""
 
-import nested_pandas as npd
 import pandas as pd
-from hats.catalog import TableProperties
 
-from lsdb.core.crossmatch.crossmatch_args import CrossmatchArgs
-from lsdb.core.crossmatch.kdtree_match import KdTreeCrossmatch
+import lsdb
 
 
 class TestLeftJoinSuffixMethods:
     """Test left-join behavior with different suffix methods when right catalog doesn't match everything."""
 
     @staticmethod
-    def create_test_frames():
-        """Create simple test frames for crossmatch testing."""
+    def create_test_catalogs():
+        """Create simple test catalogs for crossmatch testing."""
         # Left catalog with 5 points
         left_data = {
             "ra": [0.0, 1.0, 2.0, 3.0, 4.0],
@@ -22,7 +19,7 @@ class TestLeftJoinSuffixMethods:
             "common_col": ["a", "b", "c", "d", "e"],
             "left_only": [10, 20, 30, 40, 50],
         }
-        left = npd.NestedFrame(pd.DataFrame(left_data))
+        left_df = pd.DataFrame(left_data)
 
         # Right catalog with 2 points that match first two left points
         right_data = {
@@ -32,59 +29,66 @@ class TestLeftJoinSuffixMethods:
             "common_col": ["x", "y"],
             "right_only": [100, 200],
         }
-        right = npd.NestedFrame(pd.DataFrame(right_data))
+        right_df = pd.DataFrame(right_data)
 
-        # Mock catalog info
-        left_info = TableProperties(
-            catalog_name="left_cat",
-            catalog_type="object",
-            total_rows=5,
+        # Create catalogs using from_dataframe with margin_threshold >= radius_arcsec
+        left_catalog = lsdb.from_dataframe(
+            left_df,
             ra_column="ra",
             dec_column="dec",
+            lowest_order=0,
+            highest_order=0,
+            margin_threshold=30,
         )
-        right_info = TableProperties(
-            catalog_name="right_cat",
-            catalog_type="object",
-            total_rows=2,
+        right_catalog = lsdb.from_dataframe(
+            right_df,
             ra_column="ra",
             dec_column="dec",
+            lowest_order=0,
+            highest_order=0,
+            margin_threshold=30,
         )
 
-        return left, right, left_info, right_info
+        return left_catalog, right_catalog
+
+    @staticmethod
+    def create_distant_right_catalog():
+        """Create a right catalog that is far away from the left catalog (no matches)."""
+        # Use coordinates far from left catalog (left is at ~0-4 degrees)
+        far_right_df = pd.DataFrame(
+            {
+                "ra": [180.0, 181.0],  # Far away from left catalog
+                "dec": [80.0, 81.0],
+                "id": [200, 201],
+                "common_col": ["x", "y"],
+                "right_only": [100, 200],
+            }
+        )
+        return lsdb.from_dataframe(
+            far_right_df,
+            ra_column="ra",
+            dec_column="dec",
+            lowest_order=0,
+            highest_order=0,
+            margin_threshold=30,
+        )
 
     def test_left_join_all_columns_suffix_no_right_matches(self):
-        """Test left-join with all_columns suffix when right catalog is empty (no matches)."""
-        left, _, left_info, right_info = self.create_test_frames()
-
-        # Create empty right (simulates partition with no right data)
-        empty_right = npd.NestedFrame(
-            pd.DataFrame(
-                {
-                    "ra": pd.Series(dtype=float),
-                    "dec": pd.Series(dtype=float),
-                    "id": pd.Series(dtype="int64"),
-                    "common_col": pd.Series(dtype=object),
-                    "right_only": pd.Series(dtype="int64"),
-                }
-            )
-        )
+        """Test left-join with all_columns suffix when right catalog is far away (no matches)."""
+        left_catalog, _ = self.create_test_catalogs()
+        far_right_catalog = self.create_distant_right_catalog()
 
         suffixes = ("_left", "_right")
-        crossmatch_args = CrossmatchArgs(
-            left_df=left,
-            right_df=empty_right,
-            left_order=0,
-            left_pixel=0,
-            right_order=0,
-            right_pixel=0,
-            left_catalog_info=left_info,
-            right_catalog_info=right_info,
-            right_margin_catalog_info=None,
-        )
-        algo = KdTreeCrossmatch(n_neighbors=1, radius_arcsec=10)
 
-        # Perform crossmatch with all_columns suffix
-        result = algo.crossmatch(crossmatch_args, how="left", suffixes=suffixes, suffix_method="all_columns")
+        # Perform crossmatch with all_columns suffix using catalog API
+        xmatched = left_catalog.crossmatch(
+            far_right_catalog,
+            how="left",
+            radius_arcsec=10,
+            suffixes=suffixes,
+            suffix_method="all_columns",
+        )
+        result = xmatched.compute()
 
         # Assertions
         assert len(result) == 5, "Should have all 5 left rows"
@@ -109,40 +113,21 @@ class TestLeftJoinSuffixMethods:
         assert result["id_left"].tolist() == [100, 101, 102, 103, 104]
 
     def test_left_join_overlapping_columns_suffix_no_right_matches(self):
-        """Test left-join with overlapping_columns suffix when right catalog is empty."""
-        left, _, left_info, right_info = self.create_test_frames()
-
-        # Create empty right
-        empty_right = npd.NestedFrame(
-            pd.DataFrame(
-                {
-                    "ra": pd.Series(dtype=float),
-                    "dec": pd.Series(dtype=float),
-                    "id": pd.Series(dtype="int64"),
-                    "common_col": pd.Series(dtype=object),
-                    "right_only": pd.Series(dtype="int64"),
-                }
-            )
-        )
+        """Test left-join with overlapping_columns suffix when right catalog is far away (no matches)."""
+        left_catalog, _ = self.create_test_catalogs()
+        far_right_catalog = self.create_distant_right_catalog()
 
         suffixes = ("_left", "_right")
-        crossmatch_args = CrossmatchArgs(
-            left_df=left,
-            right_df=empty_right,
-            left_order=0,
-            left_pixel=0,
-            right_order=0,
-            right_pixel=0,
-            left_catalog_info=left_info,
-            right_catalog_info=right_info,
-            right_margin_catalog_info=None,
-        )
-        algo = KdTreeCrossmatch(n_neighbors=1, radius_arcsec=10)
 
-        # Perform crossmatch with overlapping_columns suffix
-        result = algo.crossmatch(
-            crossmatch_args, how="left", suffixes=suffixes, suffix_method="overlapping_columns"
+        # Perform crossmatch with overlapping_columns suffix using catalog API
+        xmatched = left_catalog.crossmatch(
+            far_right_catalog,
+            how="left",
+            radius_arcsec=10,
+            suffixes=suffixes,
+            suffix_method="overlapping_columns",
         )
+        result = xmatched.compute()
 
         # Assertions
         assert len(result) == 5, "Should have all 5 left rows"
@@ -174,24 +159,19 @@ class TestLeftJoinSuffixMethods:
 
     def test_left_join_all_columns_suffix_partial_matches(self):
         """Test left-join with all_columns suffix when only some left rows match."""
-        left, right, left_info, right_info = self.create_test_frames()
+        left_catalog, right_catalog = self.create_test_catalogs()
 
         suffixes = ("_left", "_right")
-        crossmatch_args = CrossmatchArgs(
-            left_df=left,
-            right_df=right,
-            left_order=0,
-            left_pixel=0,
-            right_order=0,
-            right_pixel=0,
-            left_catalog_info=left_info,
-            right_catalog_info=right_info,
-            right_margin_catalog_info=None,
-        )
-        algo = KdTreeCrossmatch(n_neighbors=1, radius_arcsec=10)
 
         # Large radius so first two points match
-        result = algo.crossmatch(crossmatch_args, how="left", suffixes=suffixes, suffix_method="all_columns")
+        xmatched = left_catalog.crossmatch(
+            right_catalog,
+            how="left",
+            radius_arcsec=10,
+            suffixes=suffixes,
+            suffix_method="all_columns",
+        )
+        result = xmatched.compute()
 
         # Should have 5 or more rows (2 matches + 3 unmatched, or more if multiple matches per left)
         assert len(result) >= 5, f"Should have at least 5 rows, got {len(result)}"
@@ -229,26 +209,19 @@ class TestLeftJoinSuffixMethods:
 
     def test_left_join_overlapping_columns_suffix_partial_matches(self):
         """Test left-join with overlapping_columns suffix when only some left rows match."""
-        left, right, left_info, right_info = self.create_test_frames()
+        left_catalog, right_catalog = self.create_test_catalogs()
 
         suffixes = ("_left", "_right")
-        crossmatch_args = CrossmatchArgs(
-            left_df=left,
-            right_df=right,
-            left_order=0,
-            left_pixel=0,
-            right_order=0,
-            right_pixel=0,
-            left_catalog_info=left_info,
-            right_catalog_info=right_info,
-            right_margin_catalog_info=None,
-        )
-        algo = KdTreeCrossmatch(n_neighbors=1, radius_arcsec=10)
 
         # Large radius so first two points match
-        result = algo.crossmatch(
-            crossmatch_args, how="left", suffixes=suffixes, suffix_method="overlapping_columns"
+        xmatched = left_catalog.crossmatch(
+            right_catalog,
+            how="left",
+            radius_arcsec=10,
+            suffixes=suffixes,
+            suffix_method="overlapping_columns",
         )
+        result = xmatched.compute()
 
         # Should have 5 or more rows
         assert len(result) >= 5
@@ -286,26 +259,19 @@ class TestLeftJoinSuffixMethods:
 
     def test_extra_columns_alignment_with_suffix_methods(self):
         """Test that extra columns (e.g., _dist_arcsec) align correctly with different suffix methods."""
-        left, right, left_info, right_info = self.create_test_frames()
+        left_catalog, right_catalog = self.create_test_catalogs()
 
         suffixes = ("_left", "_right")
 
         # Test with all_columns
-        crossmatch_args_all = CrossmatchArgs(
-            left_df=left,
-            right_df=right,
-            left_order=0,
-            left_pixel=0,
-            right_order=0,
-            right_pixel=0,
-            left_catalog_info=left_info,
-            right_catalog_info=right_info,
-            right_margin_catalog_info=None,
+        xmatched_all = left_catalog.crossmatch(
+            right_catalog,
+            how="left",
+            radius_arcsec=10,
+            suffixes=suffixes,
+            suffix_method="all_columns",
         )
-        algo_all = KdTreeCrossmatch(n_neighbors=1, radius_arcsec=10)
-        result_all = algo_all.crossmatch(
-            crossmatch_args_all, how="left", suffixes=suffixes, suffix_method="all_columns"
-        )
+        result_all = xmatched_all.compute()
 
         # _dist_arcsec should exist
         assert "_dist_arcsec" in result_all.columns
@@ -320,21 +286,14 @@ class TestLeftJoinSuffixMethods:
         assert unmatched_dist.isna().all(), "Unmatched rows should have NaN distance"
 
         # Test with overlapping_columns
-        crossmatch_args_overlap = CrossmatchArgs(
-            left_df=left,
-            right_df=right,
-            left_order=0,
-            left_pixel=0,
-            right_order=0,
-            right_pixel=0,
-            left_catalog_info=left_info,
-            right_catalog_info=right_info,
-            right_margin_catalog_info=None,
+        xmatched_overlap = left_catalog.crossmatch(
+            right_catalog,
+            how="left",
+            radius_arcsec=10,
+            suffixes=suffixes,
+            suffix_method="overlapping_columns",
         )
-        algo_overlap = KdTreeCrossmatch(n_neighbors=1, radius_arcsec=10)
-        result_overlap = algo_overlap.crossmatch(
-            crossmatch_args_overlap, how="left", suffixes=suffixes, suffix_method="overlapping_columns"
-        )
+        result_overlap = xmatched_overlap.compute()
 
         # _dist_arcsec should exist
         assert "_dist_arcsec" in result_overlap.columns
