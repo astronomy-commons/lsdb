@@ -16,30 +16,13 @@ if TYPE_CHECKING:
 
 
 def _na_series_for_dtype(dtype, length):
-    """Build NA-filled columns matching the dtypes of right_matched.
-    For integer dtypes, convert to nullable Int64/UInt64 to support NA values.
-    Use pd.NA for extension dtypes and float columns.
+    """Return a Series with the right NA type for the given dtype and length.
+    Used for building NA rows for unmatched entries in left-joins.
+    All dtypes will be PyArrow based, even for catalogs imported using
+    `lsdb.from_dataframe`.
     """
-    # Check if this is a PyArrow dtype
-    dtype_str = str(dtype)
-    if "[pyarrow]" in dtype_str:
-        # PyArrow dtypes: create empty array and let pandas handle NA values naturally
-        # This preserves the PyArrow dtype correctly
-        return pd.Series([None] * length, dtype=dtype)
-
-    # For integer types, we need to convert to nullable integer dtype (Int64, etc.)
-    # because standard numpy int dtypes don't support NA/NaN
-    kind = getattr(dtype, "kind", None)
-    if kind in ("i", "u"):
-        # Convert numpy int64/uint64 etc. to nullable pandas Int64/UInt64
-        nullable_dtype = "Int64" if kind == "i" else "UInt64"
-        return pd.Series([pd.NA] * length, dtype=nullable_dtype)
-    # For float types, use np.nan which is the standard NA for floats
-    if kind == "f":
-        return pd.Series([np.nan] * length, dtype=dtype)
-
-    # For other types (object, extension types, etc.), use pd.NA
-    return pd.Series([pd.NA] * length, dtype=dtype)
+    # Can rely on Pandas to handle NA values correctly for all PyArrow dtypes
+    return pd.Series([None] * length, dtype=dtype)
 
 
 # pylint: disable=too-many-instance-attributes, too-many-arguments
