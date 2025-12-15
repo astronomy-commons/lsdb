@@ -103,7 +103,7 @@ def perform_crossmatch(
         DataFrame with the results of crossmatching for the pair of partitions.
     """
     # If there's no left partition for this aligned pixel, return an empty/meta frame
-    if left_df is None or left_df.size == 0:
+    if left_df is None or len(left_df) == 0:
         return meta_df
     # The aligned_pixel will be the right_pix if the pixels orders are already
     # compatible, that is, it's the smaller of the left and right pixels.
@@ -252,7 +252,7 @@ def perform_crossmatch_nested(
         The results are stored in a nested column.
     """
     # If there's no left partition for this aligned pixel, return an empty/meta frame
-    if left_df is None or left_df.size == 0:
+    if left_df is None or len(left_df) == 0:
         return meta_df
 
     if right_pix and right_pix.order > left_pix.order:
