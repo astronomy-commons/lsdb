@@ -179,6 +179,7 @@ def perform_crossmatch(
                 for col in right_column_names_in_meta
             }
         )
+        # right_margin_df = right_df.copy()
     right_joined_df = concat_partition_and_margin(right_df, right_margin_df)
 
     crossmatch_args = CrossmatchArgs(
@@ -267,6 +268,7 @@ def perform_crossmatch_nested(
         right_df = npd.NestedFrame(
             {col: pd.Series(dtype=meta_df[col].dtype) for col in meta_df.columns if col != meta_df.index.name}
         )
+        # right_margin_df = right_df.copy()
     right_joined_df = concat_partition_and_margin(right_df, right_margin_df)
 
     crossmatch_args = CrossmatchArgs(

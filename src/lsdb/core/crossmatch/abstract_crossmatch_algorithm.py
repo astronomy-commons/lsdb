@@ -284,9 +284,9 @@ class AbstractCrossmatchAlgorithm(ABC):
 
             # Unmatched left rows: keep each left row once, with NA values for right columns
             # Create a set of matched position indices (not index values, to handle non-unique indices)
-            left_unmatched = left_df.iloc[~left_df.index.isin(left_df.iloc[left_idx].index)].reset_index(
-                drop=True
-            )
+            matched_mask = np.zeros(len(left_df), dtype=bool)
+            matched_mask[left_idx] = True
+            left_unmatched = left_df.iloc[~matched_mask].reset_index(drop=True)
             # Build empty right-side columns (same names and dtypes as right_matched) filled with NA.
             # We know that both left_df and right_df have RA and DEC columns, and left_matched
             # and right_matched are derived from these.  Hence we do not need to check for empty
