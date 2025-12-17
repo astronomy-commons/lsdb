@@ -252,32 +252,23 @@ def perform_crossmatch_nested(
         DataFrame with the results of crossmatching for the pair of partitions.
         The results are stored in a nested column.
     """
-    # If there's no left partition for this aligned pixel, return an empty/meta frame
-    if left_df is None or len(left_df) == 0:
-        return meta_df
-
-    if right_pix and right_pix.order > left_pix.order:
+    if right_pix.order > left_pix.order:
         left_df = filter_by_spatial_index_to_pixel(
             left_df, right_pix.order, right_pix.pixel, spatial_index_order=left_catalog_info.healpix_order
         )
 
-    # For left-join, right_df can be None - create empty DataFrame with schema from meta
-    # Note: for crossmatch_nested, we need to match the original right catalog columns (no suffixing)
-    if right_df is None:
-        # Use the columns from meta_df which has the correct schema for the nested result
-        right_df = npd.NestedFrame(
-            {col: pd.Series(dtype=meta_df[col].dtype) for col in meta_df.columns if col != meta_df.index.name}
-        )
-        # right_margin_df = right_df.copy()
+    if len(left_df) == 0:
+        return meta_df
+
     right_joined_df = concat_partition_and_margin(right_df, right_margin_df)
 
     crossmatch_args = CrossmatchArgs(
         left_df=left_df,
         right_df=right_joined_df,
-        left_order=left_pix.order if left_pix else None,
-        left_pixel=left_pix.pixel if left_pix else None,
-        right_order=right_pix.order if right_pix else None,
-        right_pixel=right_pix.pixel if right_pix else None,
+        left_order=left_pix.order,
+        left_pixel=left_pix.pixel,
+        right_order=right_pix.order,
+        right_pixel=right_pix.pixel,
         left_catalog_info=left_catalog_info,
         right_catalog_info=right_catalog_info,
         right_margin_catalog_info=right_margin_catalog_info,
