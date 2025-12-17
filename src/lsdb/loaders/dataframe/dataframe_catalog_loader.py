@@ -45,6 +45,7 @@ class DataframeCatalogLoader:
         highest_order: int = 7,
         drop_empty_siblings: bool = False,
         partition_size: int | None = None,
+        partition_size_bytes: int | None = None,
         threshold: int | None = None,
         should_generate_moc: bool = True,
         moc_max_order: int = 10,
@@ -72,9 +73,14 @@ class DataframeCatalogLoader:
             When determining final partitionining, if 3 of 4 pixels are empty,
             keep only the non-empty pixel
         partition_size : int or None, default None
-            The desired partition size, in number of rows.
+            The desired partition size, in number of rows. If specified, 'threshold' and
+            'partition_size_bytes' must be None.
+        partition_size_bytes : int or None, default None
+            The desired partition size, in bytes. If specified, 'threshold' and
+            'partition_size' must be None.
         threshold : int or None, default None
-            The maximum number of data points per pixel.
+            The maximum number of data points per pixel. If specified, 'partition_size' and
+            'partition_size_bytes' must be None.
         should_generate_moc : bool, default True
             Should we generate a MOC (multi-order coverage map) of the data.
             It can improve performance when joining/crossmatching to other hats-sharded datasets.
@@ -92,7 +98,7 @@ class DataframeCatalogLoader:
         self.lowest_order = lowest_order
         self.highest_order = highest_order
         self.drop_empty_siblings = drop_empty_siblings
-        self.threshold = self._calculate_threshold(partition_size, threshold)
+        self.threshold = self._calculate_threshold(partition_size, partition_size_bytes, threshold)
 
         if ra_column is None:
             ra_column = self._find_column("ra")
@@ -130,8 +136,33 @@ class DataframeCatalogLoader:
             raise ValueError(f"Found {n_matches} possible columns for {search_term}")
         return matches[0]
 
-    def _calculate_threshold(self, partition_size: int | None = None, threshold: int | None = None) -> int:
-        """Calculates the number of points per HEALPix pixel (threshold) for the desired partition size."""
+    def _calculate_threshold(
+        self,
+        partition_size: int | None = None,
+        partition_size_bytes: int | None = None,
+        threshold: int | None = None,
+    ) -> int:
+        """Calculates the number of points per HEALPix pixel (threshold) for the desired partition size.
+
+        If multiple parameters are provided, an error is raised.
+
+        Parameters
+        ----------
+        partition_size : int or None, default None
+            The desired partition size, in number of rows.
+        partition_size_bytes : int or None, default None
+            The desired partition size, in bytes.
+        threshold : int or None, default None
+            The maximum number of data points per pixel.
+
+        Returns
+        -------
+        int
+            The calculated threshold (number of points per HEALPix pixel).
+        """
+        if sum([threshold is not None, partition_size is not None, partition_size_bytes is not None]) > 1:
+            raise ValueError("Specify only one: threshold, partition_size, or partition_size_bytes")
+
         self.df_total_memory = self.dataframe.memory_usage(deep=True).sum()
         if self.df_total_memory > (1 << 30) or len(self.dataframe) > 1_000_000:
             warnings.warn(
@@ -139,19 +170,21 @@ class DataframeCatalogLoader:
                 "Consider using hats-import: https://hats-import.readthedocs.io/",
                 RuntimeWarning,
             )
-        if threshold is not None and partition_size is not None:
-            raise ValueError("Specify only one: threshold or partition_size")
-        if threshold is None:
-            if partition_size is not None:
-                # Round the number of partitions to the next integer, otherwise the
-                # number of pixels per partition may exceed the threshold
-                num_partitions = math.ceil(len(self.dataframe) / partition_size)
-                threshold = len(self.dataframe) // num_partitions
-            else:
-                # Each partition in memory will be of roughly 1Gib
-                partition_memory = self.df_total_memory / len(self.dataframe)
-                threshold = math.ceil((1 << 30) / partition_memory)
-        return threshold
+
+        if threshold is not None:
+            return threshold
+        if partition_size is not None:
+            # Round the number of partitions to the next integer, otherwise the
+            # number of pixels per partition may exceed the threshold
+            num_partitions = math.ceil(len(self.dataframe) / partition_size)
+            return len(self.dataframe) // num_partitions
+        if partition_size_bytes is not None:
+            partition_memory = self.df_total_memory / len(self.dataframe)
+            return math.ceil(partition_size_bytes / partition_memory)
+
+        # If no partitioning parameter is specified, default to ~1 GiB partitions
+        partition_memory = self.df_total_memory / len(self.dataframe)
+        return math.ceil((1 << 30) / partition_memory)
 
     def _create_catalog_info(
         self,
