@@ -311,8 +311,10 @@ class AbstractCrossmatchAlgorithm(ABC):
             # expanded with NAs to cover unmatched rows before assigning the index.
             n_out = len(out)
             n_extra = len(extra_cols)
-            if n_extra > n_out:
-                raise ValueError(f"extra_cols has more rows ({n_extra}) than output rows ({n_out})")
+            assert n_extra <= n_out, (
+                f"Logic error: extra_cols ({n_extra} rows) cannot exceed output ({n_out} rows). "
+                f"This indicates a bug in the crossmatch algorithm or the join logic."
+            )
             if n_extra == n_out:
                 full_extra = extra_cols.reset_index(drop=True)
             else:

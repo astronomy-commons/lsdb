@@ -725,6 +725,48 @@ def test_algorithm_has_no_extra_columns_specified(small_sky_xmatch_catalog):
     assert "_DIST" not in xmatch_df.columns
 
 
+def test_crossmatch_mismatched_extra_columns_length():
+    """Trigger ValueError when extra_cols length doesn't match indices.
+
+    This happens when self.extra_columns is a non-empty DataFrame (with rows)
+    and right_df is empty/None, causing len(l_inds) == len(r_inds) == 0
+    but len(extra_cols) > 0.
+    """
+
+    class BrokenCrossmatch(AbstractCrossmatchAlgorithm):
+        """Algorithm with extra_columns that has rows (schema + data)."""
+
+        extra_columns = pd.DataFrame({"_dist": [1.0, 2.0]})  # 2 rows!  A mistake.
+
+        def perform_crossmatch(self, _):
+            # Never called in this test since right_df is empty
+            raise AssertionError("Should not reach here")
+
+    algo = BrokenCrossmatch()
+
+    # Create a left DataFrame with data
+    left_df = npd.NestedFrame(pd.DataFrame({"ra": [1.0, 2.0], "dec": [3.0, 4.0], "id": [1, 2]}))
+
+    # Empty right DataFrame
+    right_df = npd.NestedFrame(pd.DataFrame({"ra": [], "dec": []}))
+
+    crossmatch_args = CrossmatchArgs(
+        left_df=left_df,
+        right_df=right_df,  # Empty!
+        left_order=13,
+        left_pixel=1,
+        right_order=13,
+        right_pixel=1,
+        left_catalog_info=...,  # Mock/fixture
+        right_catalog_info=...,
+        right_margin_catalog_info=None,
+    )
+
+    # Should raise ValueError: len(l_inds)=0, len(r_inds)=0, len(extra_cols)=2
+    with pytest.raises(ValueError, match="same length"):
+        algo.crossmatch(crossmatch_args, how="left", suffixes=("_x", "_y"))
+
+
 def test_raise_for_unknown_kwargs(small_sky_catalog):
     with pytest.raises(TypeError, match="unexpected keyword argument"):
         small_sky_catalog.crossmatch(small_sky_catalog, unknown_kwarg="value")
