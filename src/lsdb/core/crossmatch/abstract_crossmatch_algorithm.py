@@ -286,7 +286,7 @@ class AbstractCrossmatchAlgorithm(ABC):
             # Create a set of matched position indices (not index values, to handle non-unique indices)
             matched_mask = np.zeros(len(left_df), dtype=bool)
             matched_mask[left_idx] = True
-            left_unmatched = left_df.iloc[~matched_mask].reset_index(drop=True)
+            left_unmatched = left_df.iloc[~matched_mask].reset_index()
             # Build empty right-side columns (same names and dtypes as right_matched) filled with NA.
             # We know that both left_df and right_df have RA and DEC columns, and left_matched
             # and right_matched are derived from these.  Hence we do not need to check for empty
@@ -308,7 +308,7 @@ class AbstractCrossmatchAlgorithm(ABC):
             # Ensure extra_cols has the same number of rows as `out` for left-joins.
             # For left-joins we may have unmatched left rows (one per left row) so
             # extra_cols (which only contains rows for matched pairs) must be
-            # expanded with NaNs to cover unmatched rows before assigning the index.
+            # expanded with NAs to cover unmatched rows before assigning the index.
             n_out = len(out)
             n_extra = len(extra_cols)
             if n_extra > n_out:
@@ -327,7 +327,7 @@ class AbstractCrossmatchAlgorithm(ABC):
                     else:
                         full_extra = pd.DataFrame(index=range(n_out))
                 else:
-                    # Append trailing NaN rows so matched extra rows line up with the matched-out block
+                    # Append trailing NA rows so matched extra rows line up with the matched-out block
                     tail = pd.DataFrame(
                         {
                             c: _na_series_for_dtype(extra_cols[c].dtype, n_unmatched)

@@ -478,9 +478,13 @@ def test_kdtree_crossmatch_left_join_preserves_left_rows(small_sky_order1_catalo
     matched = left_joined[left_joined["id_small_sky_xmatch"].notna()]
     assert all(matched["_dist_arcsec"] <= radius)
 
-    # Unmatched rows should have NaN/None in the right id column
+    # Unmatched rows should have NA in the right id column
     unmatched = left_joined[left_joined["id_small_sky_xmatch"].isna()]
     assert len(unmatched) >= 0
+
+    # No rows should have NA in the index, either in left_joined or inner
+    assert len(inner[inner.index.isna()]["id_small_sky_xmatch"]) == 0
+    assert len(left_joined[left_joined.index.isna()]["id_small_sky_xmatch"]) == 0
 
 
 def test_kdtree_crossmatch_left_join_non_unique_left_index(
