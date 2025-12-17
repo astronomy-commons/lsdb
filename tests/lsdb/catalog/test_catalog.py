@@ -928,3 +928,50 @@ def test_map_partitions_error_messages():
         RuntimeError, match=r"function divme to partition 3, pixel Order: 7, Pixel: 77836: Not so fast"
     ):
         nfc.map_partitions(divme, include_pixel=True).compute()
+
+
+def test_estimate_size(small_sky_source_catalog, capsys, tmp_path):
+    """Test that we can estimate the size of an in-memory catalog based
+    on column selection and spatial filters."""
+    columns = ["source_ra", "source_dec", "object_id"]
+    pixels = [HealpixPixel(2, 176), HealpixPixel(2, 182)]
+
+    cat = small_sky_source_catalog[columns].pixel_search(pixels)
+
+    cat.estimate_size()
+
+    captured = capsys.readouterr()
+    assert captured.out == (
+        "You selected 3/9 columns.\n"
+        "You selected 2/14 pixels.\n"
+        "Expect up to 1,631 results (9.50% of the full catalog).\n"
+        "Expect up to 30.4 KiB-77.5 KiB in MEMORY.\n"
+        "Expect up to 25.2 KiB-77.5 KiB on DISK.\n"
+    )
+
+    # Check number of columns/pixels
+    assert list(cat.columns) == columns
+    assert cat.all_columns == small_sky_source_catalog.all_columns
+    assert len(cat.all_columns) == 9
+    assert cat.get_healpix_pixels() == pixels
+    assert len(small_sky_source_catalog.get_healpix_pixels()) == 14
+
+    # Check max row count
+    row_count = 0
+    for pixel in pixels:
+        path = hc.io.pixel_catalog_file(small_sky_source_catalog.hc_structure.catalog_path, pixel)
+        row_count += len(npd.read_parquet(path))
+    assert row_count == 1631
+    row_ratio = row_count / len(small_sky_source_catalog) * 100
+    assert pytest.approx(row_ratio, 0.01) == 9.50
+
+    # Check memory size
+    mem_size_bytes_kb = cat.compute().memory_usage(deep=True).sum() / 1024
+    assert pytest.approx(mem_size_bytes_kb, 0.01) == 51.8
+
+    # Check disk size
+    cat.write_catalog(tmp_path, catalog_name="test")
+    pixel_176_path = hc.io.pixel_catalog_file(tmp_path / "test", HealpixPixel(2, 176))
+    pixel_182_path = hc.io.pixel_catalog_file(tmp_path / "test", HealpixPixel(2, 182))
+    disk_size_bytes_kb = (pixel_176_path.stat().st_size + pixel_182_path.stat().st_size) / 1024
+    assert pytest.approx(disk_size_bytes_kb, 0.01) == 47.6
