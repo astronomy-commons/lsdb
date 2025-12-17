@@ -320,24 +320,10 @@ class AbstractCrossmatchAlgorithm(ABC):
             else:
                 # n_unmatched = number of rows in `out` that correspond to left rows without a match
                 n_unmatched = n_out - n_extra
-                if n_extra == 0:
-                    # No matches: build empty full_extra with same columns and NaNs for all rows
-                    if len(extra_cols.columns) > 0:
-                        full_extra = pd.DataFrame(
-                            {c: _na_series_for_dtype(extra_cols[c].dtype, n_out) for c in extra_cols.columns}
-                        )
-                    else:
-                        full_extra = pd.DataFrame(index=range(n_out))
-                else:
-                    # Append trailing NA rows so matched extra rows line up with the matched-out block
-                    tail = pd.DataFrame(
-                        {
-                            c: _na_series_for_dtype(extra_cols[c].dtype, n_unmatched)
-                            for c in extra_cols.columns
-                        }
-                    )
-                    full_extra = pd.concat([extra_cols.reset_index(drop=True), tail], ignore_index=True)
-
+                tail = pd.DataFrame(
+                    {c: _na_series_for_dtype(extra_cols[c].dtype, n_unmatched) for c in extra_cols.columns}
+                )
+                full_extra = pd.concat([extra_cols.reset_index(drop=True), tail], ignore_index=True)
             extra_cols = full_extra
         elif how == "inner":
             left_join_part = left_df.iloc[left_idx].reset_index()
