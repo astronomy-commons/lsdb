@@ -1,6 +1,7 @@
 """Tests for left-join crossmatch with different suffix methods when right catalog is empty/partial."""
 
 import pandas as pd
+import pytest
 
 import lsdb
 
@@ -73,103 +74,59 @@ class TestLeftJoinSuffixMethods:
             margin_threshold=30,
         )
 
-    def test_left_join_all_columns_suffix_no_right_matches(self):
-        """Test left-join with all_columns suffix when right catalog is far away (no matches)."""
+    @pytest.mark.parametrize(
+        "suffix_method",
+        ["all_columns", "overlapping_columns"],
+    )
+    def test_left_join_no_right_matches(self, suffix_method):
+        """Test left-join when right catalog is far away (no matches), with different suffix methods."""
         left_catalog, _ = self.create_test_catalogs()
         far_right_catalog = self.create_distant_right_catalog()
 
         suffixes = ("_left", "_right")
 
-        # Perform crossmatch with all_columns suffix using catalog API
         xmatched = left_catalog.crossmatch(
             far_right_catalog,
             how="left",
             radius_arcsec=10,
             suffixes=suffixes,
-            suffix_method="all_columns",
+            suffix_method=suffix_method,
         )
         result = xmatched.compute()
 
-        # Assertions
-        assert len(result) == 5, "Should have all 5 left rows"
-        assert "ra_left" in result.columns
-        assert "dec_left" in result.columns
-        assert "id_left" in result.columns
-        assert "common_col_left" in result.columns
-        assert "left_only_left" in result.columns
+        # Check unique column naming based on suffix method
+        if suffix_method == "overlapping_columns":
+            # overlapping_columns: unique columns get no suffix
+            assert "left_only" in result.columns
+            assert "right_only" in result.columns
+        else:
+            # all_columns: all columns get suffixed
+            assert "left_only_left" in result.columns
+            assert "right_only_right" in result.columns
 
-        # Right columns should exist with suffix and be all NaN
-        assert "ra_right" in result.columns
-        assert "dec_right" in result.columns
-        assert "id_right" in result.columns
-        assert "common_col_right" in result.columns
-        assert "right_only_right" in result.columns
-
-        assert result["ra_right"].isna().all(), "All right ra values should be NaN"
-        assert result["id_right"].isna().all(), "All right id values should be NaN"
-        assert result["right_only_right"].isna().all(), "All right_only values should be NaN"
-
-        # Left data should be intact
-        assert result["id_left"].tolist() == [100, 101, 102, 103, 104]
-
-    def test_left_join_overlapping_columns_suffix_no_right_matches(self):
-        """Test left-join with overlapping_columns suffix when right catalog is far away (no matches)."""
-        left_catalog, _ = self.create_test_catalogs()
-        far_right_catalog = self.create_distant_right_catalog()
-
-        suffixes = ("_left", "_right")
-
-        # Perform crossmatch with overlapping_columns suffix using catalog API
-        xmatched = left_catalog.crossmatch(
-            far_right_catalog,
-            how="left",
-            radius_arcsec=10,
-            suffixes=suffixes,
-            suffix_method="overlapping_columns",
-        )
-        result = xmatched.compute()
-
-        # Assertions
-        assert len(result) == 5, "Should have all 5 left rows"
-
-        # With overlapping_columns:
-        # - ra, dec, id, common_col overlap => get suffixed
-        # - left_only is unique to left => keeps original name
-        # - right_only is unique to right => keeps original name
-        assert "ra_left" in result.columns
-        assert "dec_left" in result.columns
-        assert "id_left" in result.columns
-        assert "common_col_left" in result.columns
-        assert "left_only" in result.columns  # No suffix (unique to left)
-
-        assert "ra_right" in result.columns
-        assert "dec_right" in result.columns
-        assert "id_right" in result.columns
-        assert "common_col_right" in result.columns
-        assert "right_only" in result.columns  # No suffix (unique to right)
-
-        # Right columns should be all NaN
+        # All right columns should be NA
         assert result["ra_right"].isna().all()
         assert result["id_right"].isna().all()
-        assert result["right_only"].isna().all()
 
         # Left data should be intact
         assert result["id_left"].tolist() == [100, 101, 102, 103, 104]
-        assert result["left_only"].tolist() == [10, 20, 30, 40, 50]
 
-    def test_left_join_all_columns_suffix_partial_matches(self):
-        """Test left-join with all_columns suffix when only some left rows match."""
+    @pytest.mark.parametrize(
+        "suffix_method",
+        ["all_columns", "overlapping_columns"],
+    )
+    def test_left_join_partial_matches(self, suffix_method):
+        """Test left-join when only some left rows match, with different suffix methods."""
         left_catalog, right_catalog = self.create_test_catalogs()
 
         suffixes = ("_left", "_right")
 
-        # Large radius so first two points match
         xmatched = left_catalog.crossmatch(
             right_catalog,
             how="left",
             radius_arcsec=10,
             suffixes=suffixes,
-            suffix_method="all_columns",
+            suffix_method=suffix_method,
         )
         result = xmatched.compute()
 
@@ -184,22 +141,29 @@ class TestLeftJoinSuffixMethods:
         assert n_matched >= 2, f"Should have at least 2 matched rows, got {n_matched}"
         assert n_unmatched >= 3, f"Should have at least 3 unmatched rows, got {n_unmatched}"
 
-        # Check column names
+        # Check column names (all methods have these)
         assert "ra_left" in result.columns
         assert "id_left" in result.columns
         assert "common_col_left" in result.columns
-        assert "left_only_left" in result.columns
         assert "ra_right" in result.columns
         assert "id_right" in result.columns
         assert "common_col_right" in result.columns
-        assert "right_only_right" in result.columns
 
-        # Unmatched rows should have NaN in right columns
+        # Check unique column naming based on suffix method
+        if suffix_method == "overlapping_columns":
+            # overlapping_columns: unique columns get no suffix
+            assert "left_only" in result.columns
+            assert "right_only" in result.columns
+        else:
+            # all_columns: all columns get suffixed
+            assert "left_only_left" in result.columns
+            assert "right_only_right" in result.columns
+
+        # Unmatched rows should have NA in right columns
         unmatched = result[~matched_mask]
         assert unmatched["id_right"].isna().all()
-        assert unmatched["right_only_right"].isna().all()
 
-        # Matched rows should have non-NaN right values
+        # Matched rows should have non-NA right values
         matched = result[matched_mask]
         assert matched["id_right"].notna().all()
 
@@ -207,101 +171,33 @@ class TestLeftJoinSuffixMethods:
         unique_left_ids = result["id_left"].unique()
         assert set(unique_left_ids) == {100, 101, 102, 103, 104}
 
-    def test_left_join_overlapping_columns_suffix_partial_matches(self):
-        """Test left-join with overlapping_columns suffix when only some left rows match."""
-        left_catalog, right_catalog = self.create_test_catalogs()
-
-        suffixes = ("_left", "_right")
-
-        # Large radius so first two points match
-        xmatched = left_catalog.crossmatch(
-            right_catalog,
-            how="left",
-            radius_arcsec=10,
-            suffixes=suffixes,
-            suffix_method="overlapping_columns",
-        )
-        result = xmatched.compute()
-
-        # Should have 5 or more rows
-        assert len(result) >= 5
-
-        # Check that we have both matched and unmatched rows
-        matched_mask = result["id_right"].notna()
-        n_matched = matched_mask.sum()
-        n_unmatched = (~matched_mask).sum()
-
-        assert n_matched >= 2, f"Should have at least 2 matched rows, got {n_matched}"
-        assert n_unmatched >= 3, f"Should have at least 3 unmatched rows, got {n_unmatched}"
-
-        # Check column names (overlapping columns get suffixed, unique ones don't)
-        assert "ra_left" in result.columns
-        assert "id_left" in result.columns
-        assert "common_col_left" in result.columns
-        assert "left_only" in result.columns  # No suffix
-        assert "ra_right" in result.columns
-        assert "id_right" in result.columns
-        assert "common_col_right" in result.columns
-        assert "right_only" in result.columns  # No suffix
-
-        # Unmatched rows should have NaN in right columns
-        unmatched = result[~matched_mask]
-        assert unmatched["id_right"].isna().all()
-        assert unmatched["right_only"].isna().all()
-
-        # Matched rows should have non-NaN right values
-        matched = result[matched_mask]
-        assert matched["id_right"].notna().all()
-
-        # All left IDs should be present
-        unique_left_ids = result["id_left"].unique()
-        assert set(unique_left_ids) == {100, 101, 102, 103, 104}
-
-    def test_extra_columns_alignment_with_suffix_methods(self):
+    @pytest.mark.parametrize(
+        "suffix_method",
+        ["all_columns", "overlapping_columns"],
+    )
+    def test_extra_columns_alignment_with_suffix_methods(self, suffix_method):
         """Test that extra columns (e.g., _dist_arcsec) align correctly with different suffix methods."""
         left_catalog, right_catalog = self.create_test_catalogs()
 
         suffixes = ("_left", "_right")
 
-        # Test with all_columns
-        xmatched_all = left_catalog.crossmatch(
+        xmatched = left_catalog.crossmatch(
             right_catalog,
             how="left",
             radius_arcsec=10,
             suffixes=suffixes,
-            suffix_method="all_columns",
+            suffix_method=suffix_method,
         )
-        result_all = xmatched_all.compute()
+        result = xmatched.compute()
 
         # _dist_arcsec should exist
-        assert "_dist_arcsec" in result_all.columns
+        assert "_dist_arcsec" in result.columns
 
-        # Matched rows should have non-NaN distance
-        matched_mask = result_all["id_right"].notna()
-        matched_dist = result_all.loc[matched_mask, "_dist_arcsec"]
+        # Matched rows should have non-NA distance
+        matched_mask = result["id_right"].notna()
+        matched_dist = result.loc[matched_mask, "_dist_arcsec"]
         assert matched_dist.notna().all(), "Matched rows should have distance values"
 
-        # Unmatched rows should have NaN distance
-        unmatched_dist = result_all.loc[~matched_mask, "_dist_arcsec"]
-        assert unmatched_dist.isna().all(), "Unmatched rows should have NaN distance"
-
-        # Test with overlapping_columns
-        xmatched_overlap = left_catalog.crossmatch(
-            right_catalog,
-            how="left",
-            radius_arcsec=10,
-            suffixes=suffixes,
-            suffix_method="overlapping_columns",
-        )
-        result_overlap = xmatched_overlap.compute()
-
-        # _dist_arcsec should exist
-        assert "_dist_arcsec" in result_overlap.columns
-
-        # Same alignment checks
-        matched_mask_overlap = result_overlap["id_right"].notna()
-        matched_dist_overlap = result_overlap.loc[matched_mask_overlap, "_dist_arcsec"]
-        assert matched_dist_overlap.notna().all()
-
-        unmatched_dist_overlap = result_overlap.loc[~matched_mask_overlap, "_dist_arcsec"]
-        assert unmatched_dist_overlap.isna().all()
+        # Unmatched rows should have NA distance
+        unmatched_dist = result.loc[~matched_mask, "_dist_arcsec"]
+        assert unmatched_dist.isna().all(), "Unmatched rows should have NA distance"

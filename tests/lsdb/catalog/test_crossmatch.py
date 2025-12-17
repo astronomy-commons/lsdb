@@ -490,13 +490,7 @@ def test_kdtree_crossmatch_left_join_preserves_left_rows(small_sky_order1_catalo
 def test_kdtree_crossmatch_left_join_non_unique_left_index(
     small_sky_order1_catalog, small_sky_xmatch_catalog
 ):
-    """Check that left join handles non-unique values in the left index correctly.
-
-    This tests the workaround for handling non-unique index values, which can occur
-    when using `.iloc[indices]` on DataFrames where the original index has duplicates.
-    The code should correctly identify unmatched rows even when multiple rows share
-    the same index value.
-    """
+    """Check that left join handles non-unique values in the left index correctly."""
     # Create a left catalog with deliberately non-unique index values
     left_ddf = small_sky_order1_catalog._ddf
     # Duplicate the index to create non-unique values
@@ -520,16 +514,14 @@ def test_kdtree_crossmatch_left_join_non_unique_left_index(
     if len(matched) > 0:
         assert all(matched["_dist_arcsec"] <= radius)
 
-    # Verify that unmatched rows have NaN in right columns
+    # Verify that unmatched rows have NA in right columns
     unmatched = left_joined[left_joined["id_small_sky_xmatch"].isna()]
     for col in left_joined.columns:
         if col.endswith("_small_sky_xmatch"):
-            # Right-side columns should be NaN for unmatched rows
-            assert unmatched[col].isna().all() or (
-                pd.api.types.is_object_dtype(unmatched[col]) and unmatched[col].isna().all()
-            )
+            # Right-side columns should be NA for unmatched rows
+            assert unmatched[col].isna().all()
 
-    # Ensure extra columns (distance) are NaN for unmatched rows
+    # Ensure extra columns (distance) are NA for unmatched rows
     unmatched_extra = unmatched[unmatched.columns.intersection(["_dist_arcsec"])]
     if len(unmatched_extra.columns) > 0:
         assert unmatched_extra.isna().all().all()
