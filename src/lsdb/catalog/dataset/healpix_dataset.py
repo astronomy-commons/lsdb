@@ -1523,7 +1523,7 @@ class HealpixDataset:
         # Row count estimate
         orig_cat = hc.read_hats(self.hc_structure.catalog_path)
         expected_cat_rows = int(get_row_count(pixel_stats))
-        row_ratio = expected_cat_rows / int(orig_cat.catalog_info.total_rows) * 100
+        row_pct = expected_cat_rows / int(orig_cat.catalog_info.total_rows) * 100
         expected_cat_rows = int_comma(expected_cat_rows)
 
         # In-memory and on disk estimates
@@ -1533,7 +1533,7 @@ class HealpixDataset:
         print(
             f"You selected {len(self.columns)}/{len(self.all_columns)} columns.\n"
             f"You selected {len(self.get_healpix_pixels())}/{len(orig_cat.get_healpix_pixels())} pixels.\n"
-            f"Expect up to {expected_cat_rows} results ({row_ratio:.2f}% of the full catalog).\n"
+            f"Expect up to {expected_cat_rows} results ({row_pct:.2f}% of the full catalog).\n"
             f"Expect up to {mem_size} in MEMORY.\n"
             f"Expect up to {disk_size} on DISK."
         )
