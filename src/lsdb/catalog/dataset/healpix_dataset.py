@@ -477,11 +477,6 @@ class HealpixDataset:
         """Returns the number of partitions of the catalog"""
         return len(self.get_healpix_pixels())
 
-    @property
-    def unmodified(self):
-        """Returns whether the catalog has been modified after loading or not"""
-        return self.hc_structure.unmodified
-
     def head(self, n: int = 5) -> npd.NestedFrame:
         """Returns a few rows of initial data for previewing purposes.
 
@@ -1504,6 +1499,8 @@ class HealpixDataset:
         """
         from human_readable import file_size, int_comma
 
+        warnings.warn("The estimates provided are approximations.")
+
         def get_row_count(stats):
             return stats.groupby(level=0).first()["row_count"].sum()
 
@@ -1513,47 +1510,30 @@ class HealpixDataset:
         def get_disk_size(stats):
             return pd.to_numeric(stats["disk_bytes"], errors="coerce").sum()
 
-        if not self.unmodified:
-            warnings.warn("Calling estimate_size on a modified catalog. Results may be inaccurate.")
-
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             pixel_stats = self.per_pixel_statistics(
+                multi_index=True,
                 use_default_columns=False,
                 exclude_hats_columns=False,
                 include_columns=self.columns,
-                include_stats=("row_count", "memory_bytes", "disk_bytes"),
-                multi_index=True,
+                include_stats=("row_count", "disk_bytes", "memory_bytes"),
             )
 
-        # Get per-pixel stats for original catalog
+        # Row count estimate
         orig_cat = hc.read_hats(self.hc_structure.catalog_path)
         expected_cat_rows = int(get_row_count(pixel_stats))
-        orig_total_rows = int(orig_cat.catalog_info.total_rows)
-        row_ratio = expected_cat_rows / orig_total_rows * 100
-
-        mem_size = get_mem_size(pixel_stats)
-        disk_size = get_disk_size(pixel_stats)
-        disk_size, mem_size = sorted([mem_size, disk_size])
-
-        # We estimate the disk size based on the `hats_estsize`.
-        hats_estsize = int(orig_cat.catalog_info.hats_estsize) * 1024
-        est_disk_size = hats_estsize * expected_cat_rows / orig_total_rows
-        min_disk_size, max_disk_size = sorted([est_disk_size, disk_size])
-
-        # We estimate the memory size to be between max_disk_size and mem_size.
-        min_mem_size, max_mem_size = sorted([max_disk_size, mem_size])
-
+        row_ratio = expected_cat_rows / int(orig_cat.catalog_info.total_rows) * 100
         expected_cat_rows = int_comma(expected_cat_rows)
-        min_disk_size = file_size(min_disk_size, binary=True)
-        max_disk_size = file_size(max_disk_size, binary=True)
-        min_mem_size = file_size(min_mem_size, binary=True)
-        max_mem_size = file_size(max_mem_size, binary=True)
+
+        # In-memory and on disk estimates
+        mem_size = file_size(get_mem_size(pixel_stats), binary=True)
+        disk_size = file_size(get_disk_size(pixel_stats), binary=True)
 
         print(
             f"You selected {len(self.columns)}/{len(self.all_columns)} columns.\n"
             f"You selected {len(self.get_healpix_pixels())}/{len(orig_cat.get_healpix_pixels())} pixels.\n"
             f"Expect up to {expected_cat_rows} results ({row_ratio:.2f}% of the full catalog).\n"
-            f"Expect up to {min_mem_size}-{max_mem_size} in MEMORY.\n"
-            f"Expect up to {min_disk_size}-{max_disk_size} on DISK."
+            f"Expect up to {mem_size} in MEMORY.\n"
+            f"Expect up to {disk_size} on DISK."
         )

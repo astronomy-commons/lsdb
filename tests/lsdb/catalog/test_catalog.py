@@ -4,6 +4,7 @@ from pathlib import Path
 import astropy.units as u
 import dask.dataframe as dd
 import hats as hc
+import hats.io.file_io
 import hats.pixel_math.healpix_shim as hp
 import nested_pandas as npd
 import numpy as np
@@ -13,6 +14,7 @@ import pytest
 from astropy.coordinates import SkyCoord
 from astropy.visualization.wcsaxes import WCSAxes
 from hats.inspection._plotting import _get_fov_moc_from_wcs
+from hats.io.paths import get_healpix_from_path
 from hats.pixel_math import HealpixPixel
 from mocpy import WCS
 from nested_pandas.datasets import generate_data
@@ -930,7 +932,7 @@ def test_map_partitions_error_messages():
         nfc.map_partitions(divme, include_pixel=True).compute()
 
 
-def test_estimate_size(small_sky_source_catalog, capsys, tmp_path):
+def test_estimate_size(small_sky_source_catalog, capsys):
     """Test that we can estimate the size of an in-memory catalog based
     on column selection and spatial filters."""
     columns = ["source_ra", "source_dec", "object_id"]
@@ -945,8 +947,8 @@ def test_estimate_size(small_sky_source_catalog, capsys, tmp_path):
         "You selected 3/9 columns.\n"
         "You selected 2/14 pixels.\n"
         "Expect up to 1,631 results (9.50% of the full catalog).\n"
-        "Expect up to 30.4 KiB-77.5 KiB in MEMORY.\n"
-        "Expect up to 25.2 KiB-77.5 KiB on DISK.\n"
+        "Expect up to 30.4 KiB in MEMORY.\n"
+        "Expect up to 25.2 KiB on DISK.\n"
     )
 
     # Check number of columns/pixels
@@ -965,13 +967,25 @@ def test_estimate_size(small_sky_source_catalog, capsys, tmp_path):
     row_ratio = row_count / len(small_sky_source_catalog) * 100
     assert pytest.approx(row_ratio, 0.01) == 9.50
 
-    # Check memory size
-    mem_size_bytes_kb = cat.compute().memory_usage(deep=True).sum() / 1024
-    assert pytest.approx(mem_size_bytes_kb, 0.01) == 51.8
+    metadata = hats.io.file_io.read_parquet_metadata(
+        small_sky_source_catalog.hc_structure.catalog_path / "dataset" / "_metadata"
+    )
 
-    # Check disk size
-    cat.write_catalog(tmp_path, catalog_name="test")
-    pixel_176_path = hc.io.pixel_catalog_file(tmp_path / "test", HealpixPixel(2, 176))
-    pixel_182_path = hc.io.pixel_catalog_file(tmp_path / "test", HealpixPixel(2, 182))
-    disk_size_bytes_kb = (pixel_176_path.stat().st_size + pixel_182_path.stat().st_size) / 1024
-    assert pytest.approx(disk_size_bytes_kb, 0.01) == 47.6
+    # Check memory and disk size
+    column_chunks = []
+    for i in range(metadata.num_row_groups):
+        rg = metadata.row_group(i)
+        for j in range(rg.num_columns):
+            col = rg.column(j)
+            pix = get_healpix_from_path(col.file_path)
+            col_name = col.path_in_schema
+            if pix in pixels and col_name in columns:
+                column_chunks.append(col)
+
+    assert metadata.num_row_groups == 14  # a pixel per row group
+    assert len(column_chunks) == 6  # 3 columns * 2 pixels
+
+    total_compressed_size = sum(col.total_compressed_size for col in column_chunks)
+    total_uncompressed_size = sum(col.total_uncompressed_size for col in column_chunks)
+    assert pytest.approx(total_uncompressed_size / 1024, 0.01) == 30.4
+    assert pytest.approx(total_compressed_size / 1024, 0.01) == 25.2
