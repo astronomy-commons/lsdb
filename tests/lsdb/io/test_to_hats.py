@@ -163,7 +163,7 @@ def test_save_catalog_point_map(small_sky_order1_df, tmp_path):
         catalog_name="small_sky_order1",
         lowest_order=6,
         highest_order=8,
-        threshold=500,
+        partition_rows=500,
     )
 
     small_sky_order1_catalog.write_catalog(
