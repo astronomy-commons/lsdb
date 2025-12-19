@@ -28,7 +28,7 @@ def get_catalog_kwargs(catalog, **kwargs):
         "catalog_type": catalog_info.catalog_type,
         "lowest_order": 0,
         "highest_order": 5,
-        "threshold": 50,
+        "partition_size": 50,
         **kwargs,
     }
     return kwargs
@@ -51,8 +51,8 @@ def test_from_dataframe(small_sky_order1_df, small_sky_order1_catalog, helpers):
     assert (
         catalog.hc_structure.catalog_info.hats_builder == f"lsdb v{version('lsdb')}, hats v{version('hats')}"
     )
-    # The pixel threshold was specified properly
-    assert catalog.hc_structure.catalog_info.hats_max_rows == 50
+    # The partition_size threshold was specified properly
+    assert catalog.hc_structure.catalog_info.hats_max_rows <= 50
     # Index is set to spatial index
     assert catalog._ddf.index.name == SPATIAL_INDEX_COLUMN
     # Dataframes have the same data (column data types may differ)
@@ -82,16 +82,7 @@ def test_from_dataframe_catalog_of_invalid_type(small_sky_order1_df, small_sky_o
 
 
 def test_from_dataframe_when_too_many_parameters_specified(small_sky_order1_df, small_sky_order1_catalog):
-    """Tests that specifying more than one of threshold, partition_size, and
-    partition_size_bytes is invalid"""
-    kwargs = get_catalog_kwargs(small_sky_order1_catalog, partition_size=10, threshold=10_000)
-    with pytest.raises(ValueError, match="Specify only one:"):
-        lsdb.from_dataframe(small_sky_order1_df, margin_threshold=None, **kwargs)
-
-    kwargs = get_catalog_kwargs(small_sky_order1_catalog, partition_size_bytes=10, threshold=10_000)
-    with pytest.raises(ValueError, match="Specify only one:"):
-        lsdb.from_dataframe(small_sky_order1_df, margin_threshold=None, **kwargs)
-
+    """Tests that specifying more than one of partition_size and partition_size_bytes is invalid"""
     kwargs = get_catalog_kwargs(small_sky_order1_catalog, partition_size=10, partition_size_bytes=10_000)
     with pytest.raises(ValueError, match="Specify only one:"):
         lsdb.from_dataframe(small_sky_order1_df, margin_threshold=None, **kwargs)
@@ -145,7 +136,9 @@ def test_partitions_obey_partition_size(small_sky_order1_df, small_sky_order1_ca
     partition_size = 10
     # Read CSV file for the small sky order 1 catalog
     kwargs = get_catalog_kwargs(
-        small_sky_order1_catalog, partition_size=partition_size, partition_size_bytes=None, threshold=None
+        small_sky_order1_catalog,
+        partition_size=partition_size,
+        partition_size_bytes=None,
     )
     catalog = lsdb.from_dataframe(small_sky_order1_df, margin_threshold=None, **kwargs)
     # Calculate size of dataframe per partition
@@ -162,26 +155,12 @@ def test_partitions_obey_partition_size_bytes(small_sky_order1_df, small_sky_ord
         small_sky_order1_catalog,
         partition_size=None,
         partition_size_bytes=partition_size_bytes,
-        threshold=None,
     )
     catalog = lsdb.from_dataframe(small_sky_order1_df, margin_threshold=None, **kwargs)
     # Calculate size of dataframe per partition
     for partition_df in catalog._ddf.partitions:
         partition_memory = partition_df.memory_usage(deep=True).sum().compute()
-        assert partition_memory <= partition_size_bytes * 1.1  # Allow 10% margin
-
-
-def test_partitions_obey_threshold(small_sky_order1_df, small_sky_order1_catalog):
-    """Tests that partitions are limited by the specified threshold"""
-    threshold = 50
-    # Read CSV file for the small sky order 1 catalog
-    kwargs = get_catalog_kwargs(
-        small_sky_order1_catalog, partition_size=None, partition_size_bytes=None, threshold=threshold
-    )
-    catalog = lsdb.from_dataframe(small_sky_order1_df, margin_threshold=None, **kwargs)
-    # Calculate number of pixels per partition
-    num_partition_pixels = [len(partition_df.compute().index) for partition_df in catalog._ddf.partitions]
-    assert all(num_pixels <= threshold for num_pixels in num_partition_pixels)
+        assert partition_memory <= partition_size_bytes
 
 
 def test_from_dataframe_large_input(small_sky_order1_catalog, helpers):
@@ -215,16 +194,16 @@ def test_from_dataframe_large_input(small_sky_order1_catalog, helpers):
     helpers.assert_divisions_are_correct(catalog)
 
 
-def test_partitions_obey_default_threshold_when_no_arguments_specified(
+def test_partitions_obey_default_partition_size_threshold_when_no_arguments_specified(
     small_sky_order1_df, small_sky_order1_catalog
 ):
-    """Tests that partitions are limited by the default threshold
-    when no partition size or threshold is specified"""
+    """Tests that partitions are limited by the default partition size threshold
+    when no partition size or partition_size_bytes is specified"""
     df_total_memory = small_sky_order1_df.memory_usage(deep=True).sum()
     partition_memory = df_total_memory / len(small_sky_order1_df)
     default_threshold = math.ceil((1 << 30) / partition_memory)
     # Read CSV file for the small sky order 1 catalog
-    kwargs = get_catalog_kwargs(small_sky_order1_catalog, threshold=None, partition_size=None)
+    kwargs = get_catalog_kwargs(small_sky_order1_catalog, partition_size=None, partition_size_bytes=None)
     catalog = lsdb.from_dataframe(small_sky_order1_df, margin_threshold=None, **kwargs)
     # Calculate number of pixels per partition
     num_partition_pixels = [len(partition_df.compute().index) for partition_df in catalog._ddf.partitions]
@@ -240,7 +219,7 @@ def test_catalog_pixels_nested_ordering(small_sky_source_df):
         catalog_type="source",
         lowest_order=0,
         highest_order=2,
-        threshold=3_000,
+        partition_size=3_000,
         margin_threshold=None,
         ra_column="source_ra",
         dec_column="source_dec",
@@ -266,7 +245,7 @@ def test_from_dataframe_small_sky_source_with_margins(
         dec_column="source_dec",
         lowest_order=0,
         highest_order=2,
-        threshold=3000,
+        partition_size=3000,
         margin_threshold=180,
         margin_order=8,
         **kwargs,
@@ -304,7 +283,7 @@ def test_from_dataframe_small_sky_source_with_margins(
 
 
 def test_from_dataframe_margin_threshold_from_order(small_sky_source_df, helpers):
-    # By default, the threshold is set to 5 arcsec, triggering a warning
+    # By default, the margin threshold is set to 5 arcsec, triggering a warning
     with pytest.warns(RuntimeWarning, match="Ignoring margin_threshold"):
         catalog = lsdb.from_dataframe(
             small_sky_source_df,
@@ -312,7 +291,7 @@ def test_from_dataframe_margin_threshold_from_order(small_sky_source_df, helpers
             dec_column="source_dec",
             lowest_order=0,
             highest_order=2,
-            threshold=3000,
+            partition_size=3000,
             margin_order=3,
         )
     assert len(catalog.margin.get_healpix_pixels()) == 19
@@ -351,7 +330,7 @@ def test_from_dataframe_margin_is_empty(small_sky_order1_df, helpers):
         catalog_name="small_sky_order1",
         catalog_type="object",
         highest_order=5,
-        threshold=100,
+        partition_size=100,
     )
     assert len(catalog.margin.get_healpix_pixels()) == 0
     assert catalog.margin._ddf_pixel_map == {}
@@ -368,7 +347,7 @@ def test_from_dataframe_margin_threshold_zero(small_sky_order1_df, helpers):
         catalog_name="small_sky_order1",
         catalog_type="object",
         highest_order=5,
-        threshold=100,
+        partition_size=100,
         margin_threshold=0,
     )
     assert len(catalog.margin.get_healpix_pixels()) == 0

@@ -6,13 +6,16 @@ import warnings
 
 import astropy.units as u
 import hats as hc
+import hats.pixel_math.healpix_shim as hp
 import nested_pandas as npd
 import numpy as np
 import pandas as pd
 import pyarrow as pa
 from hats.catalog import CatalogType, TableProperties
+from hats.io.size_estimates import get_mem_size_per_row
 from hats.pixel_math import HealpixPixel, generate_histogram
 from hats.pixel_math.healpix_pixel_function import get_pixel_argsort
+from hats.pixel_math.sparse_histogram import supplemental_count_histogram
 from hats.pixel_math.spatial_index import (
     SPATIAL_INDEX_COLUMN,
     SPATIAL_INDEX_ORDER,
@@ -46,7 +49,6 @@ class DataframeCatalogLoader:
         drop_empty_siblings: bool = False,
         partition_size: int | None = None,
         partition_size_bytes: int | None = None,
-        threshold: int | None = None,
         should_generate_moc: bool = True,
         moc_max_order: int = 10,
         use_pyarrow_types: bool = True,
@@ -78,9 +80,6 @@ class DataframeCatalogLoader:
         partition_size_bytes : int or None, default None
             The desired partition size, in bytes. If specified, 'threshold' and
             'partition_size' must be None.
-        threshold : int or None, default None
-            The maximum number of data points per pixel. If specified, 'partition_size' and
-            'partition_size_bytes' must be None.
         should_generate_moc : bool, default True
             Should we generate a MOC (multi-order coverage map) of the data.
             It can improve performance when joining/crossmatching to other hats-sharded datasets.
@@ -98,7 +97,9 @@ class DataframeCatalogLoader:
         self.lowest_order = lowest_order
         self.highest_order = highest_order
         self.drop_empty_siblings = drop_empty_siblings
-        self.threshold = self._calculate_threshold(partition_size, partition_size_bytes, threshold)
+        self.threshold, self.threshold_in_bytes = self._calculate_threshold(
+            partition_size, partition_size_bytes
+        )
 
         if ra_column is None:
             ra_column = self._find_column("ra")
@@ -140,11 +141,19 @@ class DataframeCatalogLoader:
         self,
         partition_size: int | None = None,
         partition_size_bytes: int | None = None,
-        threshold: int | None = None,
-    ) -> int:
-        """Calculates the number of points per HEALPix pixel (threshold) for the desired partition size.
+    ) -> tuple[int, bool]:
+        """Calculates the HEALPix pixel threshold to use for the desired partition size.
 
-        If multiple parameters are provided, an error is raised.
+        If partition_size is provided, the threshold is calculated such that the
+        average number of rows per partition is approximately equal to partition_size.
+
+        If partition_size_bytes is provided, the threshold is calculated such that the
+        no partition exceeds the desired memory size.
+
+        If partition_size and partition_size_bytes are both None, a default partition size
+        of approximately 1 GiB is used.
+
+        If partition_size and partition_size_bytes are both provided, an error is raised.
 
         Parameters
         ----------
@@ -152,16 +161,14 @@ class DataframeCatalogLoader:
             The desired partition size, in number of rows.
         partition_size_bytes : int or None, default None
             The desired partition size, in bytes.
-        threshold : int or None, default None
-            The maximum number of data points per pixel.
 
         Returns
         -------
-        int
-            The calculated threshold (number of points per HEALPix pixel).
+        tuple[int, bool]
+            The calculated threshold and whether the threshold is in bytes.
         """
-        if sum([threshold is not None, partition_size is not None, partition_size_bytes is not None]) > 1:
-            raise ValueError("Specify only one: threshold, partition_size, or partition_size_bytes")
+        if partition_size is not None and partition_size_bytes is not None:
+            raise ValueError("Specify only one: partition_size or partition_size_bytes")
 
         self.df_total_memory = self.dataframe.memory_usage(deep=True).sum()
         if self.df_total_memory > (1 << 30) or len(self.dataframe) > 1_000_000:
@@ -171,20 +178,19 @@ class DataframeCatalogLoader:
                 RuntimeWarning,
             )
 
-        if threshold is not None:
-            return threshold
         if partition_size is not None:
             # Round the number of partitions to the next integer, otherwise the
             # number of pixels per partition may exceed the threshold
-            num_partitions = math.ceil(len(self.dataframe) / partition_size)
-            return len(self.dataframe) // num_partitions
+            # num_partitions = math.ceil(len(self.dataframe) / partition_size)
+            # return (len(self.dataframe) // num_partitions, False)
+            return (partition_size, False)
         if partition_size_bytes is not None:
-            partition_memory = self.df_total_memory / len(self.dataframe)
-            return math.ceil(partition_size_bytes / partition_memory)
+            return (partition_size_bytes, True)
 
         # If no partitioning parameter is specified, default to ~1 GiB partitions
         partition_memory = self.df_total_memory / len(self.dataframe)
-        return math.ceil((1 << 30) / partition_memory)
+        # Return False since threshold is in number of rows estimated to be ~1 GiB
+        return (math.ceil((1 << 30) / partition_memory), False)
 
     def _create_catalog_info(
         self,
@@ -271,18 +277,38 @@ class DataframeCatalogLoader:
         list[HealpixPixel]
             HEALPix pixels for the final partitioning.
         """
-        raw_histogram = generate_histogram(
-            self.dataframe,
-            highest_order=self.highest_order,
-            ra_column=self.catalog_info.ra_column,
-            dec_column=self.catalog_info.dec_column,
-        )
+        # Generate histograms.
+        if not self.threshold_in_bytes:
+            row_count_histogram = generate_histogram(
+                self.dataframe,
+                highest_order=self.highest_order,
+                ra_column=self.catalog_info.ra_column,
+                dec_column=self.catalog_info.dec_column,
+            )
+            mem_size_histogram = None
+        else:
+            row_mem_sizes = get_mem_size_per_row(self.dataframe)
+            mapped_pixels = hp.radec2pix(
+                self.highest_order,
+                self.dataframe[self.catalog_info.ra_column].values,
+                self.dataframe[self.catalog_info.dec_column].values,
+            )
+            (row_count_sparse_histo, mem_size_sparse_histo) = supplemental_count_histogram(
+                mapped_pixels,
+                row_mem_sizes,
+                highest_order=self.highest_order,
+            )
+            row_count_histogram = row_count_sparse_histo.to_array()
+            mem_size_histogram = mem_size_sparse_histo.to_array()
+
+        # Generate alignment.
         alignment = hc.pixel_math.generate_alignment(
-            raw_histogram,
+            row_count_histogram,
             highest_order=self.highest_order,
             lowest_order=self.lowest_order,
             threshold=self.threshold,
             drop_empty_siblings=self.drop_empty_siblings,
+            mem_size_histogram=mem_size_histogram,
         )
         pixel_list = list({HealpixPixel(tup[0], tup[1]) for tup in alignment if not tup is None})
         return list(np.array(pixel_list)[get_pixel_argsort(pixel_list)])
