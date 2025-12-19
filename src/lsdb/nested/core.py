@@ -487,6 +487,7 @@ Refer to the docstring for guidance on dtype requirements and assignment."""
         self,
         func,
         columns=None,
+        *,
         row_container="dict",
         output_names=None,
         infer_nesting=True,
