@@ -198,7 +198,7 @@ def test_partitions_obey_default_partition_rows_when_no_arguments_specified(
     small_sky_order1_df, small_sky_order1_catalog
 ):
     """Tests that partitions are limited by the default partition size
-    when no partition size or partition_bytes is specified"""
+    when no partition_rows or partition_bytes is specified"""
     df_total_memory = small_sky_order1_df.memory_usage(deep=True).sum()
     partition_memory = df_total_memory / len(small_sky_order1_df)
     default_threshold = math.ceil((1 << 30) / partition_memory)
