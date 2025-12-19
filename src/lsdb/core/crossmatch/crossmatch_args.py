@@ -13,13 +13,13 @@ class CrossmatchArgs:
     """Partition from the left catalog"""
     right_df: npd.NestedFrame
     """Partition from the right catalog"""
-    left_order: int
+    left_order: int | None
     """Left pixel order"""
-    left_pixel: int
+    left_pixel: int | None
     """Left pixel number"""
-    right_order: int
+    right_order: int | None
     """Right pixel order"""
-    right_pixel: int
+    right_pixel: int | None
     """Right pixel number"""
     left_catalog_info: TableProperties
     """Catalog info for the left partition"""

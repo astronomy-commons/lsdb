@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Callable, Iterable, Type
 import astropy
 import dask
 import dask.dataframe as dd
+import hats as hc
 import nested_pandas as npd
 import numpy as np
 import pandas as pd
@@ -1479,4 +1480,60 @@ class HealpixDataset:
             ax=ax,
             fig=fig,
             **kwargs,
+        )
+
+    def estimate_size(self):
+        """Estimate size of catalog.
+
+        The result includes an upper-bound on the number of rows, and
+        a range of expected sizes for the data in memory and on disk.
+
+        This method should be used to estimate the size of a single catalog
+        when using column selection and spatial filtering. If the catalog
+        is modified further (especially involving other catalogs, e.g. joining
+        or crossmatching), the results will be innacurate.
+
+        The results are for RAW data, and they do not represent a full size
+        footprint, as the estimates provided by the catalog's parquet metadata
+        only account for the size of parquet data pages.
+        """
+        from human_readable import file_size, int_comma
+
+        warnings.warn("The estimates provided are approximations.")
+
+        def get_row_count(stats):
+            return stats.groupby(level=0).first()["row_count"].sum()
+
+        def get_mem_size(stats):
+            return pd.to_numeric(stats["memory_bytes"], errors="coerce").sum()
+
+        def get_disk_size(stats):
+            return pd.to_numeric(stats["disk_bytes"], errors="coerce").sum()
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            pixel_stats = self.per_pixel_statistics(
+                multi_index=True,
+                use_default_columns=False,
+                exclude_hats_columns=False,
+                include_columns=self.columns,
+                include_stats=("row_count", "disk_bytes", "memory_bytes"),
+            )
+
+        # Row count estimate
+        orig_cat = hc.read_hats(self.hc_structure.catalog_path)
+        expected_cat_rows = int(get_row_count(pixel_stats))
+        row_pct = expected_cat_rows / int(orig_cat.catalog_info.total_rows) * 100
+        expected_cat_rows = int_comma(expected_cat_rows)
+
+        # In-memory and on disk estimates
+        mem_size = file_size(get_mem_size(pixel_stats), binary=True)
+        disk_size = file_size(get_disk_size(pixel_stats), binary=True)
+
+        print(
+            f"You selected {len(self.columns)}/{len(self.all_columns)} columns.\n"
+            f"You selected {len(self.get_healpix_pixels())}/{len(orig_cat.get_healpix_pixels())} pixels.\n"
+            f"Expect up to {expected_cat_rows} results ({row_pct:.2f}% of the full catalog).\n"
+            f"Expect up to {mem_size} in MEMORY.\n"
+            f"Expect up to {disk_size} on DISK."
         )

@@ -4,6 +4,7 @@ from pathlib import Path
 import astropy.units as u
 import dask.dataframe as dd
 import hats as hc
+import hats.io.file_io
 import hats.pixel_math.healpix_shim as hp
 import nested_pandas as npd
 import numpy as np
@@ -13,6 +14,7 @@ import pytest
 from astropy.coordinates import SkyCoord
 from astropy.visualization.wcsaxes import WCSAxes
 from hats.inspection._plotting import _get_fov_moc_from_wcs
+from hats.io.paths import get_healpix_from_path
 from hats.pixel_math import HealpixPixel
 from mocpy import WCS
 from nested_pandas.datasets import generate_data
@@ -928,3 +930,62 @@ def test_map_partitions_error_messages():
         RuntimeError, match=r"function divme to partition 3, pixel Order: 7, Pixel: 77836: Not so fast"
     ):
         nfc.map_partitions(divme, include_pixel=True).compute()
+
+
+def test_estimate_size(small_sky_source_catalog, capsys):
+    """Test that we can estimate the size of an in-memory catalog based
+    on column selection and spatial filters."""
+    columns = ["source_ra", "source_dec", "object_id"]
+    pixels = [HealpixPixel(2, 176), HealpixPixel(2, 182)]
+
+    cat = small_sky_source_catalog[columns].pixel_search(pixels)
+
+    cat.estimate_size()
+
+    captured = capsys.readouterr()
+    assert captured.out == (
+        "You selected 3/9 columns.\n"
+        "You selected 2/14 pixels.\n"
+        "Expect up to 1,631 results (9.50% of the full catalog).\n"
+        "Expect up to 30.4 KiB in MEMORY.\n"
+        "Expect up to 25.2 KiB on DISK.\n"
+    )
+
+    # Check number of columns/pixels
+    assert list(cat.columns) == columns
+    assert cat.all_columns == small_sky_source_catalog.all_columns
+    assert len(cat.all_columns) == 9
+    assert cat.get_healpix_pixels() == pixels
+    assert len(small_sky_source_catalog.get_healpix_pixels()) == 14
+
+    # Check max row count
+    row_count = 0
+    for pixel in pixels:
+        path = hc.io.pixel_catalog_file(small_sky_source_catalog.hc_structure.catalog_path, pixel)
+        row_count += len(npd.read_parquet(path))
+    assert row_count == 1631
+    row_ratio = row_count / len(small_sky_source_catalog) * 100
+    assert pytest.approx(row_ratio, 0.01) == 9.50
+
+    metadata = hats.io.file_io.read_parquet_metadata(
+        small_sky_source_catalog.hc_structure.catalog_path / "dataset" / "_metadata"
+    )
+
+    # Check memory and disk size
+    column_chunks = []
+    for i in range(metadata.num_row_groups):
+        rg = metadata.row_group(i)
+        for j in range(rg.num_columns):
+            col = rg.column(j)
+            pix = get_healpix_from_path(col.file_path)
+            col_name = col.path_in_schema
+            if pix in pixels and col_name in columns:
+                column_chunks.append(col)
+
+    assert metadata.num_row_groups == 14  # a pixel per row group
+    assert len(column_chunks) == 6  # 3 columns * 2 pixels
+
+    total_compressed_size = sum(col.total_compressed_size for col in column_chunks)
+    total_uncompressed_size = sum(col.total_uncompressed_size for col in column_chunks)
+    assert pytest.approx(total_uncompressed_size / 1024, 0.01) == 30.4
+    assert pytest.approx(total_compressed_size / 1024, 0.01) == 25.2

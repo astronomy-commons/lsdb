@@ -15,6 +15,16 @@ if TYPE_CHECKING:
     from lsdb.catalog import Catalog
 
 
+def _na_series_for_dtype(dtype, length):
+    """Return a Series with the right NA type for the given dtype and length.
+    Used for building NA rows for unmatched entries in left-joins.
+    All dtypes will be PyArrow based, even for catalogs imported using
+    `lsdb.from_dataframe`.
+    """
+    # Can rely on Pandas to handle NA values correctly for all PyArrow dtypes
+    return pd.Series([None] * length, dtype=dtype)
+
+
 # pylint: disable=too-many-instance-attributes, too-many-arguments
 class AbstractCrossmatchAlgorithm(ABC):
     """Abstract class used to write a crossmatch algorithm.
@@ -58,6 +68,7 @@ class AbstractCrossmatchAlgorithm(ABC):
     def crossmatch(
         self,
         crossmatch_args: CrossmatchArgs,
+        how: str,
         suffixes: tuple[str, str],
         suffix_method: str = "all_columns",
     ) -> npd.NestedFrame:
@@ -67,10 +78,12 @@ class AbstractCrossmatchAlgorithm(ABC):
         ----------
         crossmatch_args : CrossmatchArgs
             The partitions and respective pixel information.
+        how : str
+            One of {'inner', 'left'}
         suffixes : tuple[str,str]
             A pair of suffixes to be appended to the end of each column name, with the first
             appended to the left columns and the second to the right columns.
-        suffix_method: str, default 'all_columns'
+        suffix_method : str, default 'all_columns'
              The suffix method to use.
 
         Returns
@@ -78,7 +91,13 @@ class AbstractCrossmatchAlgorithm(ABC):
         npd.NestedFrame
             The dataframe containing the results of the crossmatch.
         """
-        l_inds, r_inds, extra_cols = self.perform_crossmatch(crossmatch_args)
+        # If there's no right data, return empty arrays (e.g., for left-join with no matching right partition)
+        if crossmatch_args.right_df is None or len(crossmatch_args.right_df) == 0:
+            l_inds = np.array([], dtype=np.int64)
+            r_inds = np.array([], dtype=np.int64)
+            extra_cols = self.extra_columns.copy() if self.extra_columns is not None else pd.DataFrame()
+        else:
+            l_inds, r_inds, extra_cols = self.perform_crossmatch(crossmatch_args)
         if not len(l_inds) == len(r_inds) == len(extra_cols):
             raise ValueError(
                 "Crossmatch algorithm must return left and right indices and extra columns with same length"
@@ -89,6 +108,7 @@ class AbstractCrossmatchAlgorithm(ABC):
             l_inds,
             r_inds,
             extra_cols,
+            how,
             suffixes,
             suffix_method,
         )
@@ -204,6 +224,7 @@ class AbstractCrossmatchAlgorithm(ABC):
             new_col.index = dataframe.index
             dataframe[col] = new_col
 
+    # pylint: disable=too-many-locals
     def _create_crossmatch_df(
         self,
         left_df: npd.NestedFrame,
@@ -211,6 +232,7 @@ class AbstractCrossmatchAlgorithm(ABC):
         left_idx: npt.NDArray[np.int64],
         right_idx: npt.NDArray[np.int64],
         extra_cols: pd.DataFrame,
+        how: str,
         suffixes: tuple[str, str],
         suffix_method: str = "all_columns",
     ) -> npd.NestedFrame:
@@ -254,6 +276,67 @@ class AbstractCrossmatchAlgorithm(ABC):
             axis=1,
         )
         out.set_index(index_name, inplace=True)
+        if how == "left":
+            # Matched rows: replicate left rows for each match (one row per left-right pair)
+            left_matched = left_df.iloc[left_idx].reset_index()
+            right_matched = right_df.iloc[right_idx].reset_index(drop=True)
+            matched_out = pd.concat([left_matched, right_matched], axis=1)
+
+            # Unmatched left rows: keep each left row once, with NA values for right columns
+            # Create a set of matched position indices (not index values, to handle non-unique indices)
+            matched_mask = np.zeros(len(left_df), dtype=bool)
+            matched_mask[left_idx] = True
+            left_unmatched = left_df.iloc[~matched_mask].reset_index()
+            # Build empty right-side columns (same names and dtypes as right_matched) filled with NA.
+            # We know that both left_df and right_df have RA and DEC columns, and left_matched
+            # and right_matched are derived from these.  Hence we do not need to check for empty
+            # columns.
+            unmatched_right = pd.DataFrame(
+                {
+                    col: _na_series_for_dtype(right_df[col].dtype, len(left_unmatched))
+                    for col in right_df.columns
+                }
+            )
+
+            unmatched_out = pd.concat([left_unmatched, unmatched_right], axis=1)
+
+            # Combine matched (one row per match) and unmatched (one row per non-match)
+            out = pd.concat([matched_out, unmatched_out], axis=0, ignore_index=True)
+            # Restore the original left index as the DataFrame index
+            out.set_index(index_name, inplace=True)
+
+            # Ensure extra_cols has the same number of rows as `out` for left-joins.
+            # For left-joins we may have unmatched left rows (one per left row) so
+            # extra_cols (which only contains rows for matched pairs) must be
+            # expanded with NAs to cover unmatched rows before assigning the index.
+            n_out = len(out)
+            n_extra = len(extra_cols)
+            assert n_extra <= n_out, (
+                f"Logic error: extra_cols ({n_extra} rows) cannot exceed output ({n_out} rows). "
+                f"This indicates a bug in the crossmatch algorithm or the join logic."
+            )
+            if n_extra == n_out:
+                full_extra = extra_cols.reset_index(drop=True)
+            else:
+                # n_unmatched = number of rows in `out` that correspond to left rows without a match
+                n_unmatched = n_out - n_extra
+                tail = pd.DataFrame(
+                    {c: _na_series_for_dtype(extra_cols[c].dtype, n_unmatched) for c in extra_cols.columns}
+                )
+                full_extra = pd.concat([extra_cols.reset_index(drop=True), tail], ignore_index=True)
+            extra_cols = full_extra
+        elif how == "inner":
+            left_join_part = left_df.iloc[left_idx].reset_index()
+            right_join_part = right_df.iloc[right_idx].reset_index(drop=True)
+            out = pd.concat(
+                [
+                    left_join_part,
+                    right_join_part,
+                ],
+                axis=1,
+            )
+            out.set_index(index_name, inplace=True)
+        # align index
         extra_cols.index = out.index
         self._append_extra_columns(out, extra_cols)
         return npd.NestedFrame(out)

@@ -452,6 +452,81 @@ def test_crossmatch_empty_right_partition(small_sky_order1_catalog, small_sky_xm
     assert all(xmatched["_dist_arcsec"] <= 0.01 * 3600)
 
 
+def test_kdtree_crossmatch_left_join_preserves_left_rows(small_sky_order1_catalog, small_sky_xmatch_catalog):
+    """Check that a left join preserves left rows and keeps valid matches."""
+    radius = 0.01 * 3600
+    with pytest.warns(RuntimeWarning, match="Results may be incomplete and/or inaccurate"):
+        inner = small_sky_order1_catalog.crossmatch(small_sky_xmatch_catalog, radius_arcsec=radius).compute()
+        left_joined = small_sky_order1_catalog.crossmatch(
+            small_sky_xmatch_catalog, radius_arcsec=radius, how="left"
+        ).compute()
+
+    # Every left id from the left catalog subset should appear at least once in the left-joined result
+    left_ids = small_sky_order1_catalog.compute()["id"].to_numpy()
+    # Using .issubset as a good practice in case of multiple matches
+    assert set(left_ids).issubset(set(left_joined["id_small_sky_order1"].to_numpy()))
+
+    # Every (left_id, right_id) pair present in the inner join
+    # must also be present in the left-join result (i.e. left-join doesn't drop inner matches).
+    inner_pairs = set(zip(inner["id_small_sky_order1"].to_numpy(), inner["id_small_sky_xmatch"].to_numpy()))
+    left_pairs = set(
+        zip(left_joined["id_small_sky_order1"].to_numpy(), left_joined["id_small_sky_xmatch"].to_numpy())
+    )
+    assert inner_pairs.issubset(left_pairs)
+
+    # Matched rows should have distances within the threshold
+    matched = left_joined[left_joined["id_small_sky_xmatch"].notna()]
+    assert all(matched["_dist_arcsec"] <= radius)
+
+    # Unmatched rows should have NA in the right id column
+    unmatched = left_joined[left_joined["id_small_sky_xmatch"].isna()]
+    assert len(unmatched) >= 0
+
+    # No rows should have NA in the index, either in left_joined or inner
+    assert len(inner[inner.index.isna()]["id_small_sky_xmatch"]) == 0
+    assert len(left_joined[left_joined.index.isna()]["id_small_sky_xmatch"]) == 0
+
+
+def test_kdtree_crossmatch_left_join_non_unique_left_index(
+    small_sky_order1_catalog, small_sky_xmatch_catalog
+):
+    """Check that left join handles non-unique values in the left index correctly."""
+    # Create a left catalog with deliberately non-unique index values
+    left_ddf = small_sky_order1_catalog._ddf
+    # Duplicate the index to create non-unique values
+    left_ddf_dup_index = left_ddf.copy()
+    left_ddf_dup_index.index = left_ddf_dup_index.index.map(lambda x: x if x % 2 == 0 else 0)
+    small_sky_order1_catalog_dup_idx = small_sky_order1_catalog._create_updated_dataset(
+        ddf=left_ddf_dup_index
+    )
+
+    radius = 0.01 * 3600
+    with pytest.warns(RuntimeWarning, match="Results may be incomplete and/or inaccurate"):
+        left_joined = small_sky_order1_catalog_dup_idx.crossmatch(
+            small_sky_xmatch_catalog, radius_arcsec=radius, how="left"
+        ).compute()
+
+    # Verify result has rows (both matched and unmatched)
+    assert len(left_joined) > 0
+
+    # Verify that matched rows have valid distance values
+    matched = left_joined[left_joined["id_small_sky_xmatch"].notna()]
+    if len(matched) > 0:
+        assert all(matched["_dist_arcsec"] <= radius)
+
+    # Verify that unmatched rows have NA in right columns
+    unmatched = left_joined[left_joined["id_small_sky_xmatch"].isna()]
+    for col in left_joined.columns:
+        if col.endswith("_small_sky_xmatch"):
+            # Right-side columns should be NA for unmatched rows
+            assert unmatched[col].isna().all()
+
+    # Ensure extra columns (distance) are NA for unmatched rows
+    unmatched_extra = unmatched[unmatched.columns.intersection(["_dist_arcsec"])]
+    if len(unmatched_extra.columns) > 0:
+        assert unmatched_extra.isna().all().all()
+
+
 def test_crossmatch_with_moc(small_sky_order1_catalog):
     order = 1
     pixels = [44, 45, 46]
@@ -548,7 +623,7 @@ class MockCrossmatchAlgorithmOverwrite(AbstractCrossmatchAlgorithm):
     def __init__(self, mock_results: pd.DataFrame = None):
         self.mock_results = mock_results
 
-    def crossmatch(self, crossmatch_args, suffixes, suffix_method="all_columns"):
+    def crossmatch(self, crossmatch_args, how, suffixes, suffix_method="all_columns"):
         left_reset = crossmatch_args.left_df.reset_index(drop=True)
         right_reset = crossmatch_args.right_df.reset_index(drop=True)
         left, right = apply_suffixes(
@@ -642,6 +717,48 @@ def test_algorithm_has_no_extra_columns_specified(small_sky_xmatch_catalog):
     assert "_DIST" not in xmatch_df.columns
 
 
+def test_crossmatch_mismatched_extra_columns_length():
+    """Trigger ValueError when extra_cols length doesn't match indices.
+
+    This happens when self.extra_columns is a non-empty DataFrame (with rows)
+    and right_df is empty/None, causing len(l_inds) == len(r_inds) == 0
+    but len(extra_cols) > 0.
+    """
+
+    class BrokenCrossmatch(AbstractCrossmatchAlgorithm):
+        """Algorithm with extra_columns that has rows (schema + data)."""
+
+        extra_columns = pd.DataFrame({"_dist": [1.0, 2.0]})  # 2 rows!  A mistake.
+
+        def perform_crossmatch(self, _):
+            # Never called in this test since right_df is empty
+            raise AssertionError("Should not reach here")
+
+    algo = BrokenCrossmatch()
+
+    # Create a left DataFrame with data
+    left_df = npd.NestedFrame(pd.DataFrame({"ra": [1.0, 2.0], "dec": [3.0, 4.0], "id": [1, 2]}))
+
+    # Empty right DataFrame
+    right_df = npd.NestedFrame(pd.DataFrame({"ra": [], "dec": []}))
+
+    crossmatch_args = CrossmatchArgs(
+        left_df=left_df,
+        right_df=right_df,  # Empty!
+        left_order=13,
+        left_pixel=1,
+        right_order=13,
+        right_pixel=1,
+        left_catalog_info=...,  # Mock/fixture
+        right_catalog_info=...,
+        right_margin_catalog_info=None,
+    )
+
+    # Should raise ValueError: len(l_inds)=0, len(r_inds)=0, len(extra_cols)=2
+    with pytest.raises(ValueError, match="same length"):
+        algo.crossmatch(crossmatch_args, how="left", suffixes=("_x", "_y"))
+
+
 def test_raise_for_unknown_kwargs(small_sky_catalog):
     with pytest.raises(TypeError, match="unexpected keyword argument"):
         small_sky_catalog.crossmatch(small_sky_catalog, unknown_kwarg="value")
@@ -652,3 +769,54 @@ def test_raise_for_non_overlapping_catalogs(small_sky_order1_catalog, small_sky_
     small_sky_xmatch_catalog = small_sky_xmatch_catalog.pixel_search([HealpixPixel(1, 45)])
     with pytest.raises(RuntimeError, match="overlap"):
         small_sky_order1_catalog.crossmatch(small_sky_xmatch_catalog)
+
+
+def test_crossmatch_alignment_pixel_left_join_filters_and_aligns():
+    left_df = pd.DataFrame({"id": [1, 2], "ra": [0.0, 0.01], "dec": [0.0, 0.01]})
+    left_df["id"] = left_df["id"].astype(pd.ArrowDtype(pa.int64()))
+    right_df = pd.DataFrame({"id": [101.0, 202.0], "ra": [0.0005, 0.2], "dec": [0.0, 0.2]})
+
+    left_catalog = lsdb.from_dataframe(
+        left_df,
+        ra_column="ra",
+        dec_column="dec",
+        lowest_order=1,
+        highest_order=1,
+        margin_order=2,
+        margin_threshold=30,
+    )
+    right_catalog = lsdb.from_dataframe(
+        right_df,
+        ra_column="ra",
+        dec_column="dec",
+        lowest_order=3,
+        highest_order=3,
+        margin_order=4,
+        margin_threshold=30,
+    )
+
+    xmatched = left_catalog.crossmatch(
+        right_catalog,
+        how="left",
+        radius_arcsec=10,
+        suffixes=("_l", "_r"),
+    )
+    result = xmatched.compute()
+
+    assert len(result) == len(left_df)
+    assert not result.index.duplicated().any()
+
+    matched = result[result["id_l"] == 1]
+    assert len(matched) == 1
+    assert matched["id_r"].iloc[0] == pytest.approx(101.0)
+    assert matched["_dist_arcsec"].iloc[0] <= 10
+
+    unmatched = result[result["id_l"] == 2]
+    assert unmatched["id_r"].isna().all()
+
+    left_orders = {p.order for p in left_catalog.get_healpix_pixels()}
+    right_orders = {p.order for p in right_catalog.get_healpix_pixels()}
+    aligned_orders = {p.order for p in xmatched.get_healpix_pixels()}
+    assert aligned_orders
+    assert max(aligned_orders) >= max(right_orders)
+    assert min(aligned_orders) > min(left_orders)

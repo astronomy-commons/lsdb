@@ -23,6 +23,7 @@ dependencies = [
     "dask[complete]>=2025.3.0",
     "deprecated",
     "hats>=0.7.3,<0.8",
+    "human_readable", # for human-readable file sizes
     "nested-pandas>=0.6.3,<0.7.0",
     "numpy",
     "pyarrow",
