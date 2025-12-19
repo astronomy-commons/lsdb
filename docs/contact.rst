@@ -17,7 +17,7 @@ making our products better, or pretty much anything else, reach out!
     * `#lincc-frameworks-qa <https://lsstc.slack.com/archives/C062LG1AK1S>`_
     * `#lincc-frameworks-lsdb <https://lsstc.slack.com/archives/C04610PQW9F>`_
 * Join the working group, where we discuss HATS standardization and early results
-    * Google group: `hipscat-wg@googlegroups.com <https://groups.google.com/g/hipscat-wg>`_
+    * Google group: `hats-wg@googlegroups.com <https://groups.google.com/g/hats-wg>`_
     * You can listen in to demo meetings, or ask questions during co-working sessions. 
       Events are published on a google calendar, embedded below.
     * Key:
