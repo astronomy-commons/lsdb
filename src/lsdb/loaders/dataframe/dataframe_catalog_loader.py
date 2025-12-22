@@ -117,11 +117,13 @@ class DataframeCatalogLoader:
         # Set partitioning kwarg to pass to catalog info creation.
         if self.partition_rows is not None:
             if "hats_max_rows" in kwargs:
-                raise ValueError("hats_max_rows provided in kwargs; cannot override with partition_rows")
+                raise ValueError("hats_max_rows should not be provided in kwargs; use partition_rows instead")
             kwargs = dict(kwargs, hats_max_rows=self.partition_rows)
         elif self.partition_bytes is not None:
             if "hats_max_bytes" in kwargs:
-                raise ValueError("hats_max_bytes provided in kwargs; cannot override with partition_bytes")
+                raise ValueError(
+                    "hats_max_bytes should not be provided in kwargs; use partition_bytes instead"
+                )
             kwargs = dict(kwargs, hats_max_bytes=self.partition_bytes)
 
         self.catalog_info = self._create_catalog_info(

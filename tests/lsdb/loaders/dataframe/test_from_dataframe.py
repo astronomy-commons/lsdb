@@ -81,10 +81,26 @@ def test_from_dataframe_catalog_of_invalid_type(small_sky_order1_df, small_sky_o
         small_sky_order1_df.reset_index(drop=True, inplace=True)
 
 
-def test_from_dataframe_when_too_many_parameters_specified(small_sky_order1_df, small_sky_order1_catalog):
+def test_from_dataframe_invalid_partitioning_parameters(small_sky_order1_df, small_sky_order1_catalog):
     """Tests that specifying more than one of partition_rows and partition_bytes is invalid"""
+    # Fail when specifying both partition_rows and partition_bytes
     kwargs = get_catalog_kwargs(small_sky_order1_catalog, partition_rows=10, partition_bytes=10_000)
     with pytest.raises(ValueError, match="Specify only one:"):
+        lsdb.from_dataframe(small_sky_order1_df, margin_threshold=None, **kwargs)
+
+    # Fail when using deprecated threshold parameter
+    kwargs = get_catalog_kwargs(small_sky_order1_catalog, threshold=10_000)
+    with pytest.raises(ValueError, match="is deprecated"):
+        lsdb.from_dataframe(small_sky_order1_df, margin_threshold=None, **kwargs)
+
+    # Fail when user specifies hats_max_rows or hats_max_bytes in kwargs
+    kwargs = get_catalog_kwargs(small_sky_order1_catalog, partition_rows=10, hats_max_rows=10)
+    with pytest.raises(ValueError, match="hats_max_rows should not be provided in kwargs"):
+        lsdb.from_dataframe(small_sky_order1_df, margin_threshold=None, **kwargs)
+    kwargs = get_catalog_kwargs(
+        small_sky_order1_catalog, partition_rows=None, partition_bytes=10_000, hats_max_bytes=10_000
+    )
+    with pytest.raises(ValueError, match="hats_max_bytes should not be provided in kwargs"):
         lsdb.from_dataframe(small_sky_order1_df, margin_threshold=None, **kwargs)
 
 
