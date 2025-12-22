@@ -1215,6 +1215,7 @@ class HealpixDataset:
         self,
         func,
         columns=None,
+        *,
         row_container="dict",
         output_names=None,
         infer_nesting=True,
