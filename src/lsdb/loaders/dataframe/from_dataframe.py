@@ -17,8 +17,8 @@ def from_dataframe(
     lowest_order: int = 0,
     highest_order: int = 7,
     drop_empty_siblings: bool = True,
-    partition_size: int | None = None,
-    threshold: int | None = None,
+    partition_rows: int | None = None,
+    partition_bytes: int | None = None,
     margin_order: int = -1,
     margin_threshold: float | None = 5.0,
     should_generate_moc: bool = True,
@@ -50,10 +50,12 @@ def from_dataframe(
     drop_empty_siblings : bool, default True
         When determining final partitionining, if 3 of 4 pixels are empty,
         keep only the non-empty pixel
-    partition_size : int or None, default None
-        The desired partition size, in number of rows.
-    threshold : int or None, default None
-        The maximum number of data points per pixel.
+    partition_rows : int or None, default None
+        The desired partition size, in number of rows. Only one of
+        `partition_rows` or `partition_bytes` should be specified.
+    partition_bytes : int or None, default None
+        The desired partition size, in bytes. Only one of
+        `partition_rows` or `partition_bytes` should be specified.
     margin_order : int, default -1
         The order at which to generate the margin cache.
     margin_threshold : float or None, default 5
@@ -91,8 +93,8 @@ def from_dataframe(
         lowest_order=lowest_order,
         highest_order=highest_order,
         drop_empty_siblings=drop_empty_siblings,
-        partition_size=partition_size,
-        threshold=threshold,
+        partition_rows=partition_rows,
+        partition_bytes=partition_bytes,
         should_generate_moc=should_generate_moc,
         moc_max_order=moc_max_order,
         use_pyarrow_types=use_pyarrow_types,

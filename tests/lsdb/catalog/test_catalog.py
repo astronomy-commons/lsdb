@@ -921,7 +921,7 @@ def test_map_partitions_error_messages():
         return 1 / df["a"]
 
     # Force every row into a separate partition
-    nfc = lsdb.from_dataframe(nf, ra_column="a", dec_column="b", partition_size=1)
+    nfc = lsdb.from_dataframe(nf, ra_column="a", dec_column="b", partition_rows=1)
 
     with pytest.raises(RuntimeError, match=r"function divme to partition 3: Not so fast"):
         nfc.map_partitions(divme, include_pixel=False).compute()
