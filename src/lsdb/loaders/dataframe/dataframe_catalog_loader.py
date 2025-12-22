@@ -107,23 +107,25 @@ class DataframeCatalogLoader:
         if dataframe[ra_column].isna().any() or dataframe[dec_column].isna().any():
             raise ValueError(f"NaN values found in {ra_column}/{dec_column} columns")
 
-        # Warn users on use of deprecated arguments.
+        # Don't allow deprecated arguments.
         for deprecated_arg in ["threshold", "partition_size"]:
             if deprecated_arg in kwargs:
                 raise ValueError(
                     f"'{deprecated_arg}' is deprecated; use 'partition_rows' or 'partition_bytes' instead."
                 )
 
+        # Don't allow users to specify hats_max_rows or hats_max_bytes directly.
+        for invalid_arg in ["hats_max_rows", "hats_max_bytes"]:
+            if invalid_arg in kwargs:
+                raise ValueError(
+                    f"{invalid_arg} should not be provided in kwargs; "
+                    "use 'partition_rows' or 'partition_bytes' instead"
+                )
+
         # Set partitioning kwarg to pass to catalog info creation.
         if self.partition_rows is not None:
-            if "hats_max_rows" in kwargs:
-                raise ValueError("hats_max_rows should not be provided in kwargs; use partition_rows instead")
             kwargs = dict(kwargs, hats_max_rows=self.partition_rows)
         elif self.partition_bytes is not None:
-            if "hats_max_bytes" in kwargs:
-                raise ValueError(
-                    "hats_max_bytes should not be provided in kwargs; use partition_bytes instead"
-                )
             kwargs = dict(kwargs, hats_max_bytes=self.partition_bytes)
 
         self.catalog_info = self._create_catalog_info(
