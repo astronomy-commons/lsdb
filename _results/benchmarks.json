@@ -150,7 +150,7 @@
         "warmup_time": -1
     },
     "benchmarks.time_save_big_catalog": {
-        "code": "def time_save_big_catalog():\n    \"\"\"Load a catalog with many partitions, and save with write_catalog.\"\"\"\n    mock_partition_df = pd.DataFrame(\n        {\n            \"ra\": np.linspace(0, 360, 100_000),\n            \"dec\": np.linspace(-90, 90, 100_000),\n            \"id\": np.arange(100_000, 200_000),\n        }\n    )\n\n    with tempfile.TemporaryDirectory() as tmp_path:\n        kwargs = {\n            \"catalog_name\": \"big_sky\",\n            \"catalog_type\": \"object\",\n            \"lowest_order\": 6,\n            \"highest_order\": 10,\n            \"threshold\": 500,\n        }\n\n        catalog = lsdb.from_dataframe(mock_partition_df, margin_threshold=None, **kwargs)\n\n        catalog.write_catalog(tmp_path)\n\n        read_catalog = hats.read_hats(tmp_path)\n        assert len(read_catalog.get_healpix_pixels()) == len(catalog.get_healpix_pixels())",
+        "code": "def time_save_big_catalog():\n    \"\"\"Load a catalog with many partitions, and save with write_catalog.\"\"\"\n    mock_partition_df = pd.DataFrame(\n        {\n            \"ra\": np.linspace(0, 360, 100_000),\n            \"dec\": np.linspace(-90, 90, 100_000),\n            \"id\": np.arange(100_000, 200_000),\n        }\n    )\n\n    with tempfile.TemporaryDirectory() as tmp_path:\n        kwargs = {\n            \"catalog_name\": \"big_sky\",\n            \"catalog_type\": \"object\",\n            \"lowest_order\": 6,\n            \"highest_order\": 10,\n            \"partition_rows\": 500,\n        }\n\n        catalog = lsdb.from_dataframe(mock_partition_df, margin_threshold=None, **kwargs)\n\n        catalog.write_catalog(tmp_path)\n\n        read_catalog = hats.read_hats(tmp_path)\n        assert len(read_catalog.get_healpix_pixels()) == len(catalog.get_healpix_pixels())",
         "min_run_count": 2,
         "name": "benchmarks.time_save_big_catalog",
         "number": 0,
@@ -161,7 +161,7 @@
         "sample_time": 0.01,
         "type": "time",
         "unit": "seconds",
-        "version": "c56386a8003caa81411a217b1ff6f1dd8245bcba1308c9c8ef7e407815ae6840",
+        "version": "a251d2de7954f81376d7b90086afbff81549bf27aeff785365925ca141eac701",
         "warmup_time": -1
     },
     "version": 2
