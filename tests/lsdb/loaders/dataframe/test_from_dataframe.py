@@ -82,7 +82,7 @@ def test_from_dataframe_catalog_of_invalid_type(small_sky_order1_df, small_sky_o
 
 
 def test_from_dataframe_invalid_partitioning_parameters(small_sky_order1_df, small_sky_order1_catalog):
-    """Tests that specifying more than one of partition_rows and partition_bytes is invalid"""
+    """Tests that deprecated and conflicting partitioning parameters raise exceptions"""
     # Fail when specifying both partition_rows and partition_bytes
     kwargs = get_catalog_kwargs(small_sky_order1_catalog, partition_rows=10, partition_bytes=10_000)
     with pytest.raises(ValueError, match="Specify only one:"):
