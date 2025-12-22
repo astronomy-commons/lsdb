@@ -123,7 +123,7 @@ def time_save_big_catalog():
             "catalog_type": "object",
             "lowest_order": 6,
             "highest_order": 10,
-            "threshold": 500,
+            "partition_rows": 500,
         }
 
         catalog = lsdb.from_dataframe(mock_partition_df, margin_threshold=None, **kwargs)
