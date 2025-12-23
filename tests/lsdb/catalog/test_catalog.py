@@ -303,6 +303,12 @@ def test_rename_with_callable(small_sky_xmatch_with_margin):
         assert uppercase_catalog.columns[i] == colname
         assert uppercase_catalog.margin.columns[i] == colname
 
+    assert uppercase_catalog.hc_structure.catalog_info.ra_column == "RA"
+    assert uppercase_catalog.hc_structure.catalog_info.dec_column == "DEC"
+
+    assert uppercase_catalog.margin.hc_structure.catalog_info.ra_column == "RA"
+    assert uppercase_catalog.margin.hc_structure.catalog_info.dec_column == "DEC"
+
     lowercase_catalog = uppercase_catalog.rename(columns=str.lower)
     assert len(small_sky_xmatch_with_margin.columns) == len(
         lowercase_catalog.columns == len(lowercase_catalog.margin.columns)
@@ -311,6 +317,11 @@ def test_rename_with_callable(small_sky_xmatch_with_margin):
         colname = col.lower()
         assert lowercase_catalog.columns[i] == colname
         assert lowercase_catalog.margin.columns[i] == colname
+
+    assert lowercase_catalog.hc_structure.catalog_info.ra_column == "ra"
+    assert lowercase_catalog.hc_structure.catalog_info.dec_column == "dec"
+    assert lowercase_catalog.margin.hc_structure.catalog_info.ra_column == "ra"
+    assert lowercase_catalog.margin.hc_structure.catalog_info.dec_column == "dec"
 
 
 def test_rename_with_dict(small_sky_xmatch_with_margin):
@@ -327,6 +338,34 @@ def test_rename_with_dict(small_sky_xmatch_with_margin):
     for i, col in enumerate(small_sky_xmatch_with_margin.columns):
         assert renamed_catalog.columns[i] == f"{col}_{i}"
         assert renamed_catalog.margin.columns[i] == f"{col}_{i}"
+
+    assert renamed_catalog.hc_structure.catalog_info.ra_column == "ra_1"
+
+    assert renamed_catalog.hc_structure.catalog_info.dec_column == "dec_2"
+
+    assert renamed_catalog.margin.hc_structure.catalog_info.ra_column == "ra_1"
+
+    assert renamed_catalog.margin.hc_structure.catalog_info.dec_column == "dec_2"
+
+
+def test_rename_not_ra_dec(small_sky_order1_catalog):
+    rename_map = {"mag": "magnitude", "band": "filter"}
+    renamed_catalog = small_sky_order1_catalog.rename(columns=rename_map)
+    assert len(small_sky_order1_catalog.columns) == len(renamed_catalog.columns)
+    for i, col in enumerate(small_sky_order1_catalog.columns):
+        if col in rename_map:
+            assert renamed_catalog.columns[i] == rename_map[col]
+        else:
+            assert renamed_catalog.columns[i] == col
+
+    assert (
+        renamed_catalog.hc_structure.catalog_info.ra_column
+        == small_sky_order1_catalog.hc_structure.catalog_info.ra_column
+    )
+    assert (
+        renamed_catalog.hc_structure.catalog_info.dec_column
+        == small_sky_order1_catalog.hc_structure.catalog_info.dec_column
+    )
 
 
 def test_read_hats(small_sky_catalog, tmp_path):
