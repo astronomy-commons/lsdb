@@ -5,7 +5,6 @@ import random
 import warnings
 from collections.abc import Sequence
 from pathlib import Path
-from pickletools import decimalnl_long
 from typing import TYPE_CHECKING, Callable, Iterable, Type
 
 import astropy
