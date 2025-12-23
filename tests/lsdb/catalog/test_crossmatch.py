@@ -252,12 +252,6 @@ def test_overlapping_suffix_method(small_sky_catalog, small_sky_xmatch_catalog, 
 def test_overlapping_suffix_method_no_overlaps(small_sky_catalog, small_sky_xmatch_catalog, caplog):
     suffixes = ("_left", "_right")
     small_sky_catalog = small_sky_catalog.rename({col: f"{col}_unique" for col in small_sky_catalog.columns})
-    small_sky_catalog.hc_structure.catalog_info.ra_column = (
-        f"{small_sky_catalog.hc_structure.catalog_info.ra_column}_unique"
-    )
-    small_sky_catalog.hc_structure.catalog_info.dec_column = (
-        f"{small_sky_catalog.hc_structure.catalog_info.dec_column}_unique"
-    )
     # Test that renamed columns are logged correctly
     with caplog.at_level(logging.INFO):
         xmatched = small_sky_catalog.crossmatch(
