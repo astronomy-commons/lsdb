@@ -665,7 +665,20 @@ class HealpixDataset:
             A catalog that contains the data from the original catalog with renamed columns.
         """
         ndf = self._ddf.rename(columns=columns)
-        return self._create_updated_dataset(ddf=ndf)
+        ra_col = self.hc_structure.catalog_info.ra_column
+        dec_col = self.hc_structure.catalog_info.dec_column
+        updated_params = {}
+        if ra_col in self.columns:
+            ra_col_df = self._ddf._meta[[ra_col]]
+            new_ra_col = ra_col_df.rename(columns=columns).columns[0]
+            if new_ra_col != ra_col:
+                updated_params["ra_column"] = new_ra_col
+        if dec_col in self.columns:
+            dec_col_df = self._ddf._meta[[dec_col]]
+            new_dec_col = dec_col_df.rename(columns=columns).columns[0]
+            if new_dec_col != dec_col:
+                updated_params["dec_column"] = new_dec_col
+        return self._create_updated_dataset(ddf=ndf, updated_catalog_info_params=updated_params)
 
     def cone_search(self, ra: float, dec: float, radius_arcsec: float, fine: bool = True) -> Self:
         """Perform a cone search to filter the catalog.
