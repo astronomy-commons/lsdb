@@ -194,7 +194,12 @@ def test_from_dataframe_large_input(small_sky_order1_catalog, helpers):
 
     # Read CSV file for the small sky order 1 catalog
     with pytest.warns(RuntimeWarning, match="from_dataframe is not intended for large datasets"):
-        catalog = lsdb.from_dataframe(random_df, margin_threshold=None, **kwargs)
+        catalog = lsdb.from_dataframe(
+            random_df,
+            margin_threshold=None,
+            partition_rows=int(original_catalog_info.hats_max_rows),
+            **kwargs,
+        )
     assert isinstance(catalog, lsdb.Catalog)
     # Catalogs have the same information
     original_catalog_info.total_rows = 1_500_000
