@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.abspath("../src/"))
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = "lsdb"
-copyright = "2025, LINCC Frameworks"
+copyright = "2026, LINCC Frameworks"
 author = "LINCC Frameworks"
 release = version("lsdb")
 # for example take major/minor
