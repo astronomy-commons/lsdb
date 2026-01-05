@@ -75,7 +75,7 @@ jobs:
         STEP_URL: ${{steps.jobs.outputs.html_url}}#step:10:1
     - name: Upload artifacts (PR number and benchmarks output)
       if: always()
-      uses: actions/upload-artifact@v5
+      uses: actions/upload-artifact@v6
       with:
         name: benchmark-artifacts
         path: ${{env.ARTIFACTS_DIR}}
