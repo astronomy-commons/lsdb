@@ -40,6 +40,7 @@ documentation = "https://lsdb.readthedocs.io/"
 [project.optional-dependencies]
 dev = [
     "asv[virtualenv]==0.6.5", # Used to compute performance benchmarks
+    "astropy", # Needed for testing astropy table loading
     "black", # Used for static linting of files
     "jupyter", # Clears output from Jupyter notebooks
     "mypy", # Used for static type checking of files
