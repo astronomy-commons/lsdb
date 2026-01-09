@@ -81,10 +81,11 @@ def from_astropy(
     >>> table = Table(data)
     >>> catalog = lsdb.from_astropy(table, ra_column="ra", dec_column="dec")
     >>> catalog.head()
-       ra   dec  magnitude
-    0 10.0 -10.0      15.0
-    1 20.0 -20.0      16.5
-    2 30.0 -30.0      14.2
+                           ra   dec  magnitude
+    _healpix_29
+    1212933045629049957  10.0 -10.0       15.0
+    1176808107119886823  20.0 -20.0       16.5
+    2510306432296314470  30.0 -30.0       14.2
     """
 
     dataframe = table.to_pandas()
