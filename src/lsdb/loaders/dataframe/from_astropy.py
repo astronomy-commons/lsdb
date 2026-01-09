@@ -68,6 +68,23 @@ def from_astropy(
     -------
     Catalog
         The loaded catalog.
+
+    Examples
+    --------
+    >>> from astropy.table import Table
+    >>> import lsdb
+    >>> data = {
+    ...     "ra": [10.0, 20.0, 30.0],
+    ...     "dec": [-10.0, -20.0, -30.0],
+    ...     "magnitude": [15.0, 16.5, 14.2],
+    ... }
+    >>> table = Table(data)
+    >>> catalog = lsdb.from_astropy(table, ra_column="ra", dec_column="dec")
+    >>> catalog.head()
+       ra   dec  magnitude
+    0 10.0 -10.0      15.0
+    1 20.0 -20.0      16.5
+    2 30.0 -30.0      14.2
     """
 
     dataframe = table.to_pandas()
