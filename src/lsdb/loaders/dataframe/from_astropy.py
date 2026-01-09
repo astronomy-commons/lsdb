@@ -1,5 +1,3 @@
-import pandas as pd
-
 from lsdb.loaders.dataframe.from_dataframe import from_dataframe
 
 
@@ -60,8 +58,7 @@ def from_astropy(
     moc_max_order : int, default 10
         The maximum order to use when generating the MOC.
     use_pyarrow_types : bool, default True
-        If True, attempts to use PyArrow types when converting the Astropy Table
-        to a Pandas Dataframe.
+        If True, uses PyArrow backed types in the resulting catalog.
     schema : pa.Schema or None, default None
         An optional PyArrow schema to use when converting the Astropy Table
         to a Pandas Dataframe.
