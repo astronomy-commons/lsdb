@@ -28,7 +28,7 @@ def from_astropy(
     Parameters
     ----------
     table : astropy.table.Table
-        The catalog Astropy Table.
+        The Astropy Table (or QTable).
     ra_column : str, optional
         The name of the right ascension column. By default,
         case-insensitive versions of 'ra' are detected.
@@ -65,6 +65,7 @@ def from_astropy(
         using `pa.Schema.from_pandas`.
     **kwargs
         Additional arguments to pass to the Dataframe loader.
+
     Returns
     -------
     Catalog
