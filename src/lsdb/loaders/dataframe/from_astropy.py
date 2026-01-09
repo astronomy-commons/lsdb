@@ -60,8 +60,9 @@ def from_astropy(
     use_pyarrow_types : bool, default True
         If True, uses PyArrow backed types in the resulting catalog.
     schema : pa.Schema or None, default None
-        An optional PyArrow schema to use when converting the Astropy Table
-        to a Pandas Dataframe.
+        The arrow schema to create the catalog with. If None, the schema is
+        automatically inferred from the DataFrame conversion of the table
+        using `pa.Schema.from_pandas`.
     **kwargs
         Additional arguments to pass to the Dataframe loader.
     Returns
@@ -82,7 +83,7 @@ def from_astropy(
     >>> catalog = lsdb.from_astropy(table, ra_column="ra", dec_column="dec")
     >>> catalog.head()
                            ra   dec  magnitude
-    _healpix_29
+    _healpix_29                               
     1212933045629049957  10.0 -10.0       15.0
     1176808107119886823  20.0 -20.0       16.5
     2510306432296314470  30.0 -30.0       14.2
