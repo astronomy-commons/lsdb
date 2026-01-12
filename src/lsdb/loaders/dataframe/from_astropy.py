@@ -1,4 +1,7 @@
 from lsdb.loaders.dataframe.from_dataframe import from_dataframe
+from nested_pandas.nestedframe.io import from_pyarrow
+import numpy as np
+import pyarrow as pa
 
 
 def from_astropy(
@@ -89,8 +92,9 @@ def from_astropy(
     1176808107119886823  20.0 -20.0       16.5
     2510306432296314470  30.0 -30.0       14.2
     """
-
-    dataframe = table.to_pandas()
+    # Go through pyarrow to convert the table to a dataframe.
+    arrow_table = _astropy_to_pyarrow_table(table, flatten_tensors=False)
+    dataframe = from_pyarrow(arrow_table)
 
     return from_dataframe(
         dataframe,
@@ -109,3 +113,33 @@ def from_astropy(
         schema=schema,
         **kwargs,
     )
+
+# Placeholder grabbed from hats-import, consider moving to hats
+def _np_to_pyarrow_array(array: np.ndarray, *, flatten_tensors: bool) -> pa.Array:
+    """Convert a numpy array to a pyarrow"""
+    # We usually have the "wrong" byte order from FITS
+    array = np.asanyarray(array, dtype=array.dtype.newbyteorder("="))
+    values = pa.array(array.reshape(-1))
+    # "Base" type
+    if array.ndim == 1:
+        return values
+    # Flat multidimensional nested values if asked
+    if flatten_tensors and array.ndim > 2:
+        array = array.reshape(array.shape[0], -1)
+    pa_list_array = pa.FixedSizeListArray.from_arrays(values, np.prod(array.shape[1:]))
+    # An extra dimension is represented as a list array
+    if array.ndim == 2:
+        return pa_list_array
+    # array.ndim > 2
+    # Multiple extra dimensions are represented as a tensor array
+    tensor_type = pa.fixed_shape_tensor(values.type, shape=array.shape[1:])
+    return pa.FixedShapeTensorArray.from_storage(tensor_type, pa_list_array)
+
+
+def _astropy_to_pyarrow_table(astropy_table, *, flatten_tensors: bool) -> pa.Table:
+    """Convert astropy.table.Table to pyarrow.Table"""
+    pa_arrays = {}
+    for column in astropy_table.columns:
+        np_array = np.asarray(astropy_table[column])
+        pa_arrays[column] = _np_to_pyarrow_array(np_array, flatten_tensors=flatten_tensors)
+    return pa.table(pa_arrays)
