@@ -65,6 +65,8 @@ class Catalog(HealpixDataset):
         *,
         loading_config: HatsLoadingConfig | None = None,
         margin: MarginCatalog | None = None,
+        compression: str = "ZSTD",
+        compression_level: int = 15,
     ):
         """Initialise a Catalog object.
 
@@ -83,8 +85,13 @@ class Catalog(HealpixDataset):
             The configuration used to read the catalog from disk
         margin: MarginCatalog or None, default None
             The margin catalog.
+        compression : str, default "ZSTD"
+            The compression algorithm to use when writing parquet files. If unspecified, defaults to "ZSTD".
+        compression_level : int, default 15
+            The compression level to use for the specified compression algorithm when writing parquet files.
+            If unspecified, defaults to 15. If this argument and the compression argument are both unspecified, default to use ZSTD-15 compression.
         """
-        super().__init__(ddf, ddf_pixel_map, hc_structure, loading_config)
+        super().__init__(ddf, ddf_pixel_map, hc_structure, loading_config, compression=compression, compression_level=compression_level)
         self.margin = margin
 
     def _create_updated_dataset(
@@ -94,12 +101,16 @@ class Catalog(HealpixDataset):
         hc_structure: HCHealpixDataset | None = None,
         updated_catalog_info_params: dict | None = None,
         margin: MarginCatalog | None = None,
+        compression: str = "ZSTD",
+        compression_level: int = 15,
     ) -> Self:
         cat = super()._create_updated_dataset(
             ddf,
             ddf_pixel_map,
             hc_structure,
             updated_catalog_info_params,
+            compression=compression,
+            compression_level=compression_level,
         )
         cat.margin = margin
         return cat

@@ -62,6 +62,8 @@ class HealpixDataset(Dataset):
         ddf_pixel_map: DaskDFPixelMap,
         hc_structure: HCHealpixDataset,
         loading_config: HatsLoadingConfig | None = None,
+        compression: str = "ZSTD",
+        compression_level: int = 15,
     ):
         """Initialise a Catalog object.
 
@@ -78,9 +80,16 @@ class HealpixDataset(Dataset):
             Object with hats metadata of the catalog
         loading_config: HatsLoadingConfig or None, default None
             The configuration used to read the catalog from disk
+        compression : str, default "ZSTD"
+            The compression algorithm to use when writing parquet files. If unspecified, defaults to "ZSTD".
+        compression_level : int, default 15
+            The compression level to use for the specified compression algorithm when writing parquet files.
+            If unspecified, defaults to 15. If this argument and the compression argument are both unspecified, default to use ZSTD-15 compression.
         """
         super().__init__(ddf, hc_structure, loading_config=loading_config)
         self._ddf_pixel_map = ddf_pixel_map
+        self._compression = compression
+        self._compression_level = compression_level
 
     def __getitem__(self, item):
         """Select a column or columns from the catalog."""
@@ -161,6 +170,8 @@ class HealpixDataset(Dataset):
         ddf_pixel_map: DaskDFPixelMap | None = None,
         hc_structure: HCHealpixDataset | None = None,
         updated_catalog_info_params: dict | None = None,
+        compression: str = "ZSTD",
+        compression_level: int = 15,
     ) -> Self:
         """Creates a new copy of the catalog, updating any provided arguments
 
@@ -178,6 +189,11 @@ class HealpixDataset(Dataset):
             The hats HealpixDataset object to update in the new catalog
         updated_catalog_info_params : dict or None, default None
             The dictionary of updates to the parameters of the hats dataset object's catalog_info
+        compression : str, default "ZSTD"
+            The compression algorithm to use when writing parquet files. If unspecified, defaults to "ZSTD".
+        compression_level : int, default 15
+            The compression level to use for the specified compression algorithm when writing parquet files.
+            If unspecified, defaults to 15. If this argument and the compression argument are both unspecified, default to use ZSTD-15 compression.
 
         Returns
         -------
@@ -202,7 +218,7 @@ class HealpixDataset(Dataset):
         hc_structure = self._create_modified_hc_structure(
             hc_structure=hc_structure, updated_schema=updated_schema, **updated_catalog_info_params
         )
-        return self.__class__(ddf, ddf_pixel_map, hc_structure, loading_config=self.loading_config)
+        return self.__class__(ddf, ddf_pixel_map, hc_structure, loading_config=self.loading_config, compression=compression, compression_level=compression_level)
 
     def get_healpix_pixels(self) -> list[HealpixPixel]:
         """Get all HEALPix pixels that are contained in the catalog
@@ -977,6 +993,8 @@ class HealpixDataset(Dataset):
         default_columns: list[str] | None = None,
         overwrite: bool = False,
         error_if_empty: bool = True,
+        compression: str = "ZSTD",
+        compression_level: int = 15,
         **kwargs,
     ):
         """Save the catalog to disk in the HATS format. See write_catalog()."""
@@ -986,6 +1004,8 @@ class HealpixDataset(Dataset):
             default_columns=default_columns,
             overwrite=overwrite,
             error_if_empty=error_if_empty,
+            compression=compression,
+            compression_level=compression_level,
             **kwargs,
         )
 
@@ -997,6 +1017,8 @@ class HealpixDataset(Dataset):
         default_columns: list[str] | None = None,
         overwrite: bool = False,
         error_if_empty: bool = True,
+        compression: str = "ZSTD",
+        compression_level: int = 15,
         **kwargs,
     ):
         """Save the catalog to disk in HATS format.
@@ -1015,6 +1037,11 @@ class HealpixDataset(Dataset):
             If True existing catalog is overwritten
         error_if_empty : bool, default True
             If True, raises an error if the catalog is empty.
+        compression : str, default "ZSTD"
+            The compression algorithm to use when writing parquet files. If unspecified, defaults to "ZSTD".
+        compression_level : int, default 15
+            The compression level to use for the specified compression algorithm when writing parquet files.
+            If unspecified, defaults to 15. If this argument and the compression argument are both unspecified, default to use ZSTD-15 compression.
         **kwargs
             Arguments to pass to the parquet write operations
         """
@@ -1026,6 +1053,8 @@ class HealpixDataset(Dataset):
             default_columns=default_columns,
             overwrite=overwrite,
             error_if_empty=error_if_empty,
+            compression=compression,
+            compression_level=compression_level,
             **kwargs,
         )
 

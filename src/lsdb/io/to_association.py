@@ -23,6 +23,8 @@ def perform_write(
     hp_pixel: HealpixPixel,
     base_catalog_dir: str | Path | UPath,
     separation_column: str | None = None,
+    compression: str = "ZSTD",
+    compression_level: int = 15,
     **kwargs,
 ) -> tuple[int, float]:
     """Writes a pandas dataframe to a single parquet file and returns the total count
@@ -38,6 +40,11 @@ def perform_write(
         Location of the base catalog directory to write to
     separation_column : str or None, default None
         The name of the crossmatch separation column
+    compression : str, default "ZSTD"
+            The compression algorithm to use when writing parquet files. If unspecified, defaults to "ZSTD".
+    compression_level : int, default 15
+        The compression level to use for the specified compression algorithm when writing parquet files.
+        If unspecified, defaults to 15. If this argument and the compression argument are both unspecified, default to use ZSTD-15 compression.
     **kwargs
         Other kwargs to pass to pq.write_table method
 
@@ -73,6 +80,8 @@ def to_association(
     join_id_column: str | None = None,
     separation_column: str | None = None,
     overwrite: bool = False,
+    compression: str = "ZSTD",
+    compression_level: int = 15,
     **kwargs,
 ):
     """Writes a crossmatching product to disk, in HATS association table format.
@@ -108,6 +117,11 @@ def to_association(
         The name of the crossmatch separation column
     overwrite : bool, default False
         If True existing catalog is overwritten
+    compression : str, default "ZSTD"
+            The compression algorithm to use when writing parquet files. If unspecified, defaults to "ZSTD".
+    compression_level : int, default 15
+        The compression level to use for the specified compression algorithm when writing parquet files.
+        If unspecified, defaults to 15. If this argument and the compression argument are both unspecified, default to use ZSTD-15 compression.
     **kwargs
         Arguments to pass to the parquet write operations
 

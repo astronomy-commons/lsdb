@@ -159,6 +159,8 @@ class DataframeCatalogLoader:
         ra_column: str = "ra",
         dec_column: str = "dec",
         catalog_type: CatalogType = CatalogType.OBJECT,
+        compression: str = "ZSTD",
+        compression_level: int = 15,
         **kwargs,
     ) -> TableProperties:
         """Creates the catalog info object
@@ -173,6 +175,11 @@ class DataframeCatalogLoader:
             Column to find declination coordinate
         catalog_type : str, default 'object'
             Type of table being created (e.g. OBJECT, SOURCE, MAP)
+        compression : str, default "ZSTD"
+            The compression algorithm to use when writing parquet files. If unspecified, defaults to "ZSTD".
+        compression_level : int, default 15
+            The compression level to use for the specified compression algorithm when writing parquet files.
+            If unspecified, defaults to 15. If this argument and the compression argument are both unspecified, default to use ZSTD-15 compression.
         **kwargs
             Arguments to pass to the creation of the catalog info
 
@@ -216,7 +223,7 @@ class DataframeCatalogLoader:
         if len(self.dataframe.nested_columns) > 0:
             ddf = ddf.astype({col: self.dataframe[col].dtype for col in self.dataframe.nested_columns})
 
-        return Catalog(ddf, ddf_pixel_map, hc_structure)
+        return Catalog(ddf, ddf_pixel_map, hc_structure, compression=self.compression, compression_level=self.compression_level)
 
     def _set_spatial_index(self):
         """Generates the spatial indices for each data point and assigns

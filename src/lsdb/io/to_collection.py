@@ -39,6 +39,11 @@ def to_collection(
         If True existing collection is overwritten
     error_if_empty : bool, default True
         If True, raises an error if the catalog is empty
+    compression : str, default "ZSTD"
+            The compression algorithm to use when writing parquet files. If unspecified, defaults to "ZSTD".
+    compression_level : int, default 15
+        The compression level to use for the specified compression algorithm when writing parquet files.
+        If unspecified, defaults to 15. If this argument and the compression argument are both unspecified, default to use ZSTD-15 compression.
     **kwargs
         Arguments to pass to the parquet write operations
     """
@@ -53,6 +58,8 @@ def to_collection(
         overwrite=overwrite,
         as_collection=False,
         error_if_empty=error_if_empty,
+        compression=compression,
+        compression_level=compression_level,
         **kwargs,
     )
 
@@ -63,6 +70,8 @@ def to_collection(
             catalog_name=margin_name,
             default_columns=default_columns,
             overwrite=overwrite,
+            compression=compression,
+            compression_level=compression_level,
             **kwargs,
         )
         properties = properties | {"all_margins": margin_name, "default_margin": margin_name}

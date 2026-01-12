@@ -28,6 +28,8 @@ class MarginCatalog(HealpixDataset):
         ddf_pixel_map: DaskDFPixelMap,
         hc_structure: hc.catalog.MarginCatalog,
         loading_config: HatsLoadingConfig | None = None,
+        compression: str = "ZSTD",
+        compression_level: int = 15,
     ):
         super().__init__(ddf, ddf_pixel_map, hc_structure, loading_config=loading_config)
 
@@ -39,6 +41,8 @@ class MarginCatalog(HealpixDataset):
         default_columns: list[str] | None = None,
         overwrite: bool = False,
         error_if_empty: bool = False,
+        compression: str = "ZSTD",
+        compression_level: int = 15,
         **kwargs,
     ):
         super().to_hats(
@@ -47,6 +51,8 @@ class MarginCatalog(HealpixDataset):
             default_columns=default_columns,
             overwrite=overwrite,
             error_if_empty=error_if_empty,
+            compression=compression,
+            compression_level=compression_level,
             **kwargs,
         )
 
@@ -58,6 +64,8 @@ class MarginCatalog(HealpixDataset):
         default_columns: list[str] | None = None,
         overwrite: bool = False,
         error_if_empty: bool = False,
+        compression: str = "ZSTD",
+        compression_level: int = 15,
         **kwargs,
     ):
         super().write_catalog(
@@ -66,6 +74,8 @@ class MarginCatalog(HealpixDataset):
             default_columns=default_columns,
             overwrite=overwrite,
             error_if_empty=error_if_empty,
+            compression=compression,
+            compression_level=compression_level,
             **kwargs,
         )
 

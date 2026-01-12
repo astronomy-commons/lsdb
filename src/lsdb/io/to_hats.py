@@ -29,6 +29,8 @@ def perform_write(
     hp_pixel: HealpixPixel,
     base_catalog_dir: str | Path | UPath,
     histogram_order: int,
+    compression: str = "ZSTD",
+    compression_level: int = 15,
     **kwargs,
 ) -> tuple[int, SparseHistogram]:
     """Writes a pandas dataframe to a single parquet file and returns the total count
@@ -44,6 +46,11 @@ def perform_write(
         Location of the base catalog directory to write to
     histogram_order : int
         Order of the count histogram
+    compression : str, default "ZSTD"
+            The compression algorithm to use when writing parquet files. If unspecified, defaults to "ZSTD".
+    compression_level : int, default 15
+        The compression level to use for the specified compression algorithm when writing parquet files.
+        If unspecified, defaults to 15. If this argument and the compression argument are both unspecified, default to use ZSTD-15 compression.
     **kwargs
         Other kwargs to pass to pq.write_table method
 
@@ -58,7 +65,21 @@ def perform_write(
     pixel_dir = hc.io.pixel_directory(base_catalog_dir, hp_pixel.order, hp_pixel.pixel)
     hc.io.file_io.make_directory(pixel_dir, exist_ok=True)
     pixel_path = hc.io.paths.pixel_catalog_file(base_catalog_dir, hp_pixel)
-    df.to_parquet(pixel_path.path, filesystem=pixel_path.fs, **kwargs)
+    
+    # Write the parquet file with specified compression
+    # Some compression codecs don't support compression levels (e.g., SNAPPY)
+    compression_kwargs = {"compression": compression}
+    
+    # Only add compression_level for codecs that support it
+    if compression.upper() not in ["SNAPPY"]:
+        compression_kwargs["compression_level"] = compression_level
+    
+    df.to_parquet(
+        pixel_path.path, 
+        filesystem=pixel_path.fs,
+        **compression_kwargs,
+        **kwargs
+    )
     return len(df), calculate_histogram(df, histogram_order)
 
 
@@ -97,6 +118,8 @@ def to_hats(
     skymap_alt_orders: list[int] | None = None,
     addl_hats_properties: dict | None = None,
     error_if_empty: bool = True,
+    compression: str = "ZSTD",
+    compression_level: int = 15,
     **kwargs,
 ):
     """Writes a catalog to disk, in HATS format.
@@ -133,6 +156,11 @@ def to_hats(
         ``hats.properties`` file.
     error_if_empty : bool, default True
         If True, raises an error if the output catalog is empty
+    compression : str, default "ZSTD"
+            The compression algorithm to use when writing parquet files. If unspecified, defaults to "ZSTD".
+    compression_level : int, default 15
+        The compression level to use for the specified compression algorithm when writing parquet files.
+        If unspecified, defaults to 15. If this argument and the compression argument are both unspecified, default to use ZSTD-15 compression.
     **kwargs :
         Arguments to pass to the parquet write operations
     """
@@ -162,6 +190,8 @@ def to_hats(
         base_catalog_dir_fp=base_catalog_path,
         histogram_order=histogram_order,
         error_if_empty=error_if_empty,
+        compression=compression,
+        compression_level=compression_level,
         **kwargs,
     )
     # Save parquet metadata and create a data thumbnail if needed
@@ -216,6 +246,8 @@ def to_hats(
         total_rows=int(np.sum(counts)),
         default_columns=default_columns,
         hats_max_rows=hats_max_rows,
+        compression=compression,
+        compression_level=compression_level,
         **addl_hats_properties,
     )
     new_hc_structure.catalog_info.to_properties_file(base_catalog_path)
@@ -245,6 +277,8 @@ def write_partitions(
     base_catalog_dir_fp: str | Path | UPath,
     histogram_order: int,
     error_if_empty: bool = True,
+    compression: str = "ZSTD",
+    compression_level: int = 15,
     **kwargs,
 ) -> tuple[list[HealpixPixel], list[int], list[SparseHistogram]]:
     """Saves catalog partitions as parquet to disk and computes the sparse
@@ -261,6 +295,11 @@ def write_partitions(
         The order of the count histogram to generate
     error_if_empty : bool, default True
         If True, raises an error if the output catalog is empty
+    compression : str, default "ZSTD"
+            The compression algorithm to use when writing parquet files. If unspecified, defaults to "ZSTD".
+    compression_level : int, default 15
+        The compression level to use for the specified compression algorithm when writing parquet files.
+        If unspecified, defaults to 15. If this argument and the compression argument are both unspecified, default to use ZSTD-15 compression.
     **kwargs
         Arguments to pass to the parquet write operations
 
@@ -280,6 +319,8 @@ def write_partitions(
                 pixel,
                 base_catalog_dir_fp,
                 histogram_order,
+                compression=compression,
+                compression_level=compression_level,
                 **kwargs,
             )
         )
@@ -304,7 +345,10 @@ def write_partitions(
 
 
 def create_modified_catalog_structure(
-    catalog_structure: HCHealpixDataset, catalog_base_dir: str | Path | UPath, catalog_name: str, **kwargs
+    catalog_structure: HCHealpixDataset, catalog_base_dir: str | Path | UPath, catalog_name: str,
+    compression: str = "ZSTD",
+    compression_level: int = 15,
+    **kwargs
 ) -> HCHealpixDataset:
     """Creates a modified version of the HATS catalog structure
 
@@ -316,6 +360,11 @@ def create_modified_catalog_structure(
         Base location for the catalog
     catalog_name : str
         The name of the catalog to be saved
+    compression : str, default "ZSTD"
+            The compression algorithm to use when writing parquet files. If unspecified, defaults to "ZSTD".
+    compression_level : int, default 15
+        The compression level to use for the specified compression algorithm when writing parquet files.
+        If unspecified, defaults to 15. If this argument and the compression argument are both unspecified, default to use ZSTD-15 compression.
     **kwargs
         The remaining parameters to be updated in the catalog info object
 
@@ -331,4 +380,7 @@ def create_modified_catalog_structure(
 
     new_hc_structure.catalog_info = new_hc_structure.catalog_info.copy_and_update(**kwargs)
     new_hc_structure.catalog_info.catalog_name = catalog_name
+
+    new_hc_structure.compression = compression
+    new_hc_structure.compression_level = compression_level
     return new_hc_structure
