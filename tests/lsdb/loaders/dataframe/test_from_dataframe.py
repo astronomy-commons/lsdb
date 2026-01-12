@@ -44,9 +44,12 @@ def test_from_dataframe(small_sky_order1_df, small_sky_order1_catalog, helpers):
     assert isinstance(catalog._ddf, nd.NestedFrame)
     # Catalogs have the same information
     # New catalog doesn't have a skymap order yet.
-    assert (
-        catalog.hc_structure.catalog_info.explicit_dict() | {"skymap_order": 1}
-    ) == small_sky_order1_catalog.hc_structure.catalog_info.explicit_dict()
+    expected_dict = {
+        k: v
+        for k, v in small_sky_order1_catalog.hc_structure.catalog_info.explicit_dict().items()
+        if k not in ["skymap_order", "moc_sky_fraction"]
+    }
+    assert catalog.hc_structure.catalog_info.explicit_dict() == expected_dict
     # The hats builder property is set correctly
     assert (
         catalog.hc_structure.catalog_info.hats_builder == f"lsdb v{version('lsdb')}, hats v{version('hats')}"
@@ -203,10 +206,13 @@ def test_from_dataframe_large_input(small_sky_order1_catalog, helpers):
     assert isinstance(catalog, lsdb.Catalog)
     # Catalogs have the same information
     original_catalog_info.total_rows = 1_500_000
-    # New catalog doesn't have a skymap order yet.
-    assert (
-        catalog.hc_structure.catalog_info.explicit_dict() | {"skymap_order": 1}
-    ) == original_catalog_info.explicit_dict()
+    # New catalog doesn't have a skymap order or moc_sky_fraction yet.
+    expected_dict = {
+        k: v
+        for k, v in original_catalog_info.explicit_dict().items()
+        if k not in ["skymap_order", "moc_sky_fraction"]
+    }
+    assert catalog.hc_structure.catalog_info.explicit_dict() == expected_dict
     assert catalog.hc_structure.catalog_info.__pydantic_extra__["obs_regime"] == "Optical"
     assert catalog.hc_structure.catalog_info.__pydantic_extra__["hats_builder"].startswith("lsdb")
     # Index is set to spatial index
