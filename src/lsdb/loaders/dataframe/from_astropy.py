@@ -21,6 +21,7 @@ def from_astropy(
     moc_max_order: int = 10,
     use_pyarrow_types: bool = True,
     schema=None,
+    flatten_tensors: bool = False,
     **kwargs,
 ):
     """Load a catalog from an Astropy Table.
@@ -67,6 +68,9 @@ def from_astropy(
         The arrow schema to create the catalog with. If None, the schema is
         automatically inferred from the DataFrame conversion of the table
         using `pa.Schema.from_pandas`.
+    flatten_tensors : bool, default False
+        If True, flattens multidimensional columns to 2D arrays in the
+        resulting catalog.
     **kwargs
         Additional arguments to pass to the Dataframe loader.
 
@@ -95,7 +99,7 @@ def from_astropy(
     """
     # Go through pyarrow to convert the table to a dataframe.
     # Don't use table.to_pandas() as that would lose multidimensional column support
-    arrow_table = _astropy_to_pyarrow_table(table, flatten_tensors=False)
+    arrow_table = _astropy_to_pyarrow_table(table, flatten_tensors=flatten_tensors)
     dataframe = from_pyarrow(arrow_table)
 
     return from_dataframe(

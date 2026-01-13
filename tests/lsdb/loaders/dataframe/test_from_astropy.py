@@ -66,3 +66,20 @@ def test_from_astropy_multidimensional_ragged_column():
     assert catalog is not None
     assert len(catalog) == 3
     assert "lc" in catalog.columns
+
+
+def test_from_astropy_flatten_tensors():
+    data = {
+        "ra": [10.0, 20.0, 30.0],
+        "dec": [-10.0, -20.0, -30.0],
+        "images": [
+            [[1.0, 2.0], [3.0, 4.0]],
+            [[5.0, 6.0], [7.0, 8.0]],
+            [[9.0, 10.0], [11.0, 12.0]],
+        ],
+    }
+    table = Table(data)
+    catalog = lsdb.from_astropy(table, ra_column="ra", dec_column="dec", flatten_tensors=True)
+    assert catalog is not None
+    assert len(catalog) == 3
+    assert "images" in catalog.columns
