@@ -1,7 +1,8 @@
-from lsdb.loaders.dataframe.from_dataframe import from_dataframe
-from nested_pandas.nestedframe.io import from_pyarrow
 import numpy as np
 import pyarrow as pa
+from nested_pandas.nestedframe.io import from_pyarrow
+
+from lsdb.loaders.dataframe.from_dataframe import from_dataframe
 
 
 def from_astropy(
@@ -87,12 +88,13 @@ def from_astropy(
     >>> catalog = lsdb.from_astropy(table, ra_column="ra", dec_column="dec")
     >>> catalog.head()
                            ra   dec  magnitude
-    _healpix_29                               
+    _healpix_29
     1212933045629049957  10.0 -10.0       15.0
     1176808107119886823  20.0 -20.0       16.5
     2510306432296314470  30.0 -30.0       14.2
     """
     # Go through pyarrow to convert the table to a dataframe.
+    # Don't use table.to_pandas() as that would lose multidimensional column support
     arrow_table = _astropy_to_pyarrow_table(table, flatten_tensors=False)
     dataframe = from_pyarrow(arrow_table)
 
@@ -114,7 +116,10 @@ def from_astropy(
         **kwargs,
     )
 
-# Placeholder grabbed from hats-import, consider moving to hats
+
+# TODO: Code pulled from hats-import, potentially should move to hats
+# In which case, remove this and use the hats version directly
+# https://github.com/astronomy-commons/hats-import/issues/623
 def _np_to_pyarrow_array(array: np.ndarray, *, flatten_tensors: bool) -> pa.Array:
     """Convert a numpy array to a pyarrow"""
     # We usually have the "wrong" byte order from FITS
