@@ -89,7 +89,7 @@ def from_astropy(
     ...     "magnitude": [15.0, 16.5, 14.2],
     ... }
     >>> table = Table(data)
-    >>> catalog = lsdb.from_astropy(table, ra_column="ra", dec_column="dec")
+    >>> catalog = lsdb.from_astropy(table)
     >>> catalog.head()
                            ra   dec  magnitude
     _healpix_29                               
