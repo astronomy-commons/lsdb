@@ -72,7 +72,7 @@ def from_astropy(
         If True, flattens multidimensional columns to 2D arrays in the
         resulting catalog.
     **kwargs
-        Additional arguments to pass to the Dataframe loader.
+        Additional arguments to pass along to LSDB.from_dataframe.
 
     Returns
     -------
