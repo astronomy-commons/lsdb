@@ -1,4 +1,4 @@
-[Under Construction] tap.lsdb.io Experimental Service
+[Under Construction] tap.data.lsdb.io Experimental Service
 ========================================================================================
 
 The LSDB TAP service provides a TAP-compatible endpoint for catalog discovery and querying.
@@ -6,7 +6,7 @@ The LSDB TAP service provides a TAP-compatible endpoint for catalog discovery an
 Link
 ----------------------------------------------------------------------------------------
 
-- TAP endpoint: https://tap.lsdb.io
+- TAP endpoint: https://tap.data.lsdb.io
 
 
 

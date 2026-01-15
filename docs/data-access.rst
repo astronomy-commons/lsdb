@@ -9,5 +9,5 @@ This section provides a high-level overview of how LSDB catalogs are hosted, ser
    1. data.lsdb.io <data-access/datalsdb>
    2. External Data Centers <data-access/external>
    3. HATS Catalog Structure <data-access/hats>
-   4. TAP (lsdb) <data-access/tap-lsdb>
-   5. Server (lsdb) <data-access/server-lsdb>
+   4. Access with TAP <data-access/tap-lsdb>
+   5. Server-side filtering <data-access/server-lsdb>
