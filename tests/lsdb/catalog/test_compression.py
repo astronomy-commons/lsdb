@@ -29,11 +29,10 @@ def find_compression_values(obj):
     return results
 
 
-def test_to_hats_default_compression(small_sky_order1_catalog):
+def test_to_hats_default_compression(small_sky_order1_catalog, tmp_path):
     """Test to_hats compression and compression_level defaults are used (ZSTD and 15 respectively)."""
 
-    with tempfile.TemporaryDirectory() as tmpdir:
-        catalog_name = "test_catalog"
+    catalog_name = "test_catalog"
         output_path = Path(tmpdir) / catalog_name
         
         # Call to_hats with default compression (should use ZSTD and level 15)
