@@ -29,8 +29,7 @@ def perform_write(
     hp_pixel: HealpixPixel,
     base_catalog_dir: str | Path | UPath,
     histogram_order: int,
-    compression: str = "ZSTD",
-    compression_level: int = 15,
+    write_table_kwargs: dict | None = None,
     **kwargs,
 ) -> tuple[int, SparseHistogram]:
     """Writes a pandas dataframe to a single parquet file and returns the total count
@@ -46,13 +45,10 @@ def perform_write(
         Location of the base catalog directory to write to
     histogram_order : int
         Order of the count histogram
-    compression : str, default "ZSTD"
-            The compression algorithm to use when writing parquet files. If unspecified, defaults to "ZSTD".
-    compression_level : int, default 15
-        The compression level to use for the specified compression algorithm when writing parquet files.
-        If unspecified, defaults to 15. If this argument and the compression argument are both unspecified, default to use ZSTD-15 compression.
+    write_table_kwargs : dict | None
+        Other write_table kwargs to pass to pq.write_table method
     **kwargs
-        Other kwargs to pass to pq.write_table method
+        Other kwargs to pass
 
     Returns
     -------
@@ -66,19 +62,14 @@ def perform_write(
     hc.io.file_io.make_directory(pixel_dir, exist_ok=True)
     pixel_path = hc.io.paths.pixel_catalog_file(base_catalog_dir, hp_pixel)
     
-    # Write the parquet file with specified compression
-    # Some compression codecs don't support compression levels (e.g., SNAPPY)
-    compression_kwargs = {"compression": compression}
-    
-    # Only add compression_level for codecs that support it
-    if compression.upper() not in ["SNAPPY"]:
-        compression_kwargs["compression_level"] = compression_level
+    # Write the parquet file with the provided write_table_kwargs
+    if write_table_kwargs is None:
+        write_table_kwargs = {}
     
     df.to_parquet(
         pixel_path.path, 
         filesystem=pixel_path.fs,
-        **compression_kwargs,
-        **kwargs
+        **write_table_kwargs,
     )
     return len(df), calculate_histogram(df, histogram_order)
 
@@ -184,14 +175,24 @@ def to_hats(
                 else 0
             )
             histogram_order = max(max_catalog_depth, 8)
+    
+    # Prepare write_table_kwargs with compression settings
+    write_table_kwargs = {}
+    
+    # Handle compression settings, excluding compression_level for codecs that don't support it
+    if compression.upper() in ["SNAPPY"]:
+        write_table_kwargs["compression"] = compression
+    else:
+        write_table_kwargs["compression"] = compression
+        write_table_kwargs["compression_level"] = compression_level
+    
     # Save partition parquet files
     pixels, counts, histograms = write_partitions(
         catalog,
         base_catalog_dir_fp=base_catalog_path,
         histogram_order=histogram_order,
         error_if_empty=error_if_empty,
-        compression=compression,
-        compression_level=compression_level,
+        write_table_kwargs=write_table_kwargs,
         **kwargs,
     )
     # Save parquet metadata and create a data thumbnail if needed
@@ -277,8 +278,7 @@ def write_partitions(
     base_catalog_dir_fp: str | Path | UPath,
     histogram_order: int,
     error_if_empty: bool = True,
-    compression: str = "ZSTD",
-    compression_level: int = 15,
+    write_table_kwargs: dict | None = None,
     **kwargs,
 ) -> tuple[list[HealpixPixel], list[int], list[SparseHistogram]]:
     """Saves catalog partitions as parquet to disk and computes the sparse
@@ -295,11 +295,8 @@ def write_partitions(
         The order of the count histogram to generate
     error_if_empty : bool, default True
         If True, raises an error if the output catalog is empty
-    compression : str, default "ZSTD"
-            The compression algorithm to use when writing parquet files. If unspecified, defaults to "ZSTD".
-    compression_level : int, default 15
-        The compression level to use for the specified compression algorithm when writing parquet files.
-        If unspecified, defaults to 15. If this argument and the compression argument are both unspecified, default to use ZSTD-15 compression.
+    write_table_kwargs : dict | None
+        Dictionary containing write_table arguments including compression settings to pass to parquet write operations
     **kwargs
         Arguments to pass to the parquet write operations
 
@@ -312,6 +309,10 @@ def write_partitions(
     results, pixels = [], []
     partitions = catalog._ddf.to_delayed()
 
+    # Ensure write_table_kwargs is not None
+    if write_table_kwargs is None:
+        write_table_kwargs = {}
+
     for pixel, partition_index in catalog._ddf_pixel_map.items():
         results.append(
             perform_write(
@@ -319,8 +320,7 @@ def write_partitions(
                 pixel,
                 base_catalog_dir_fp,
                 histogram_order,
-                compression=compression,
-                compression_level=compression_level,
+                write_table_kwargs=write_table_kwargs,
                 **kwargs,
             )
         )
