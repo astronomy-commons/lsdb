@@ -6,8 +6,8 @@ This section provides a high-level overview of how LSDB catalogs are hosted, ser
 .. toctree::
    :maxdepth: 2
 
-   data-access/overview
-   data-access/external
-   data-access/hats
-   data-access/tap-lsdb
-   data-access/server-lsdb
+   1. data.lsdb.io <data-access/datalsdb>
+   2. External Data Centers <data-access/external>
+   3. HATS Catalog Structure <data-access/hats>
+   4. TAP (lsdb) <data-access/tap-lsdb>
+   5. Server (lsdb) <data-access/server-lsdb>

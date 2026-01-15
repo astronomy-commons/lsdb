@@ -13,4 +13,4 @@ Links
 Notes
 ----------------------------------------------------------------------------------------
 
-- CDS uses an experimental HATS-on-the-fly serving infrastructure. It may not support all LSDB features and may be somewhat slower than other providers; however, all catalogs served via CDS should be fully functional. More information can be found in `this presentation <http://wiki.ivoa.net/internal/IVOA/InterOpJune2025Apps/OnTheFlyHATS-FXPIneau-v1.pdf>`_.
+- CDS uses an experimental HATS-on-the-fly serving infrastructure. It may not support all LSDB features and may be somewhat slower than other providers; however, eventually all catalogs served via Vizier should be avaliable! More technical information can be found in `this presentation <http://wiki.ivoa.net/internal/IVOA/InterOpJune2025Apps/OnTheFlyHATS-FXPIneau-v1.pdf>`_.
