@@ -2,9 +2,9 @@ Data Access via data.lsdb.io
 ========================================================================================
 
 
-This page walks through the ``data.lsdb.io`` and explains how the information on that page maps to where catalogs live and how you can access them.
+This page walks through the `data.lsdb.io <https://data.lsdb.io/>`__ site and explains how the information on that page maps to where catalogs live and how you can access them.
 
- At ``data.lsdb.io`` we provide information about all catalogs that are served by LINCC Frameworks, Space Telescope Science Institute (STScI), IPAC/IRSA, and the select catalogs from Centre de Données astronomiques de Strasbourg (CDS). Further public catalogs are avaliable - see the :doc:`external data access centers <external>` page for more information. Additionally, HATS catalogs for data products from Rubin Observatory are available via mutliple access points described in the :doc:`Rubin LSDB Access </tutorials/pre_executed/rubin_dp1>` page.
+At `data.lsdb.io <https://data.lsdb.io/>`__ we provide information about all catalogs that are served by LINCC Frameworks, Space Telescope Science Institute (STScI), IPAC/IRSA, and the select catalogs from Centre de Données astronomiques de Strasbourg (CDS). Further public catalogs are avaliable - see the :doc:`external data access centers <external>` page for more information. Additionally, HATS catalogs for data products from Rubin Observatory are available via mutliple access points described in the :doc:`Rubin LSDB Access </tutorials/pre_executed/rubin_dp1>` page.
 
 data.lsdb.io Layout
 ----------------------------------------------------------------------------------------
@@ -20,11 +20,11 @@ Let's consider the example Figure above and explain briefly the numbered callout
 1. **Catalog list:** the left sidebar that lets you browse catalogs and releases. If there are multiple providers of a given catalog, they will be grouped under the same catalog name, with different hosting regions and access methods indicated.
 2. **Catalog overview:** the title and description for the selected catalog, including the simplest way on how to access the data through LSDB and how to  download directly.
 3. **Region description:** describes the hosting region (for example, ``US-EAST``). See discussion below for details of various options.
-4. **Access type:** describes the access path, which are either ``S3`` or ``HTTP`` endpoints. See discussion below for details on how to use these.
+4. **Access type:** describes the access path, which are either ``S3`` or ``HTTP`` endpoints. See discussion below for details and more information is available in the :doc:`remote data access page <remote_data>`.
 5. **Catalog metadata:** summary table showing the number of rows, columns, partitions, size on disk and which version of HATS builder or pipeline was used to create the catalog. See discussion about versioning below for details.
 
 
-**Region description and access type**
+Region description and access type
 ----------------------------------------------------------------------------------------
 
 The region tabs (for example, ``US-EAST`` or ``Europe``) indicate the hosting region for that catalog copy. Which provider is the fastest for you will depend on number of factors, including your geographic location, network conditions, and whether you are accessing via ``HTTP`` or ``S3`` protocols.
