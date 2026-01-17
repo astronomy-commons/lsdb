@@ -1,4 +1,4 @@
-Data Access Overview via External Data Access Centers
+Data Access via External Data Centers
 ========================================================================================
 
 Find below the access pages for external data centers who provide a large number of LSDB public catalogs. These links have more information about how to access the data, possible constraints and contact information. 

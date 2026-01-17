@@ -47,7 +47,7 @@ Leaf partitions contain Parquet files with catalog rows. Main advantages of Parq
 Catalog Collections
 ----------------------------------------------------------------------------------------
 
-A catalog collection is a grouping of related catalogs, typically a set of the main dataset and auxiliary datasets. Collections provide a consistent
+A catalog collection is a grouping of related datasets, typically a set of the main catalog and supplemental tables. Collections provide a consistent
 entry point for discovery and help a user to access these supplemental tables, some of which are described below. Collection metadata describes the members and any
 shared properties.
 
@@ -73,12 +73,12 @@ Metadata and Auxiliary Files
 
 Metadata files describe the catalog and its partitions. Common files include:
 
-- ``properties``: key/value fields describing the catalog and its version
+- ``hats.properties``: key/value fields describing the catalog and its version
 - ``partition_info.csv``: partition list with sizes and spatial info
-- ``_metadata`` and ``_common_metadata``: Parquet dataset-level metadata files 
+- ``dataset/_metadata`` and ``dataset/_common_metadata``: Parquet dataset-level metadata files. 
   ``_common_metadata`` typically contains only the shared schema (column names, dtypes, and logical types) for the dataset,
   while ``_metadata`` usually aggregates per-file / per-row-group metadata (e.g., statistics, row group locations, and encodings).
-- ``data_thumbnail.parquet``: small sample of data for quick inspection
+- ``dataset/data_thumbnail.parquet``: small sample of data for quick inspection
 - ``collection.properties``: metadata for catalog collections
 
 LSDB uses these files to plan queries, estimate cost, and decide which partitions need to be loaded.
