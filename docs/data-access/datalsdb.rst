@@ -4,7 +4,7 @@ Data Access via data.lsdb.io
 
 This page walks through the `data.lsdb.io <https://data.lsdb.io/>`__ site and explains how the information on that page maps to where catalogs live and how you can access them.
 
-At `data.lsdb.io <https://data.lsdb.io/>`__ we provide information about all catalogs that are served by LINCC Frameworks, Space Telescope Science Institute (STScI), IPAC/IRSA, and the select catalogs from Centre de Données astronomiques de Strasbourg (CDS). Further public catalogs are avaliable - see the :doc:`external data access centers <external>` page for more information. Additionally, HATS catalogs for data products from Rubin Observatory are available via mutliple access points described in the :doc:`Rubin LSDB Access </tutorials/pre_executed/rubin_dp1>` page.
+At `data.lsdb.io <https://data.lsdb.io/>`__ we provide information about all catalogs that are served by LINCC Frameworks, Space Telescope Science Institute (STScI), IPAC/IRSA, and the select catalogs from Centre de Données astronomiques de Strasbourg (CDS). Further public catalogs are avaliable - see the :doc:`external data centers <external>` page for more information. Additionally, HATS catalogs for data products from Rubin Observatory are available via mutliple access points described in the :doc:`Rubin LSDB Access </tutorials/pre_executed/rubin_dp1>` page.
 
 data.lsdb.io Layout
 ----------------------------------------------------------------------------------------
