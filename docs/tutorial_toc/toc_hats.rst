@@ -6,4 +6,4 @@ HATS creation and reading
 
     Import catalogs </tutorials/import_catalogs>
     Manual catalog verification </tutorials/pre_executed/manual_verification>
-    Accessing remote data </tutorials/remote_data>
+
