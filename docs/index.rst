@@ -47,7 +47,7 @@ Using this Guide
 
        The detailed API documentation
 
-   .. grid-item-card:: Contact us
+      .. grid-item-card:: Contact Us / Getting Help
        :link: contact
        :link-type: doc
 
@@ -67,5 +67,5 @@ Using this Guide
    :caption: Project
 
    About & Citation <citation>
-   Getting Help <contact>
+   Contact Us / Getting Help <contact>
    Contribution Guide <developer/contributing>
