@@ -97,6 +97,22 @@ memory allocation may need to be increased accordingly.
 
     new_catalog = catalog.map_partitions(my_func)
 
+How you configure Dask memory limits also depends on where you are running.
+On managed platforms where the scheduler enforces a strict memory cap for the
+entire allocation (for example, a SLURM job with a fixed memory request),
+setting ``memory_limit=None`` on the client can be a practical strategy. This
+removes per-worker caps so a single worker can temporarily use more memory to
+gather results near the end of a workflow, while the overall job is still
+bounded by the scheduler. On unmanaged shared nodes, avoid this setting because
+it can allow a single job to overrun the machine and disrupt other users.
+
+.. code-block:: python
+
+    from dask.distributed import Client
+
+    # Use only on managed allocations with a strict total memory limit.
+    client = Client(n_workers=8, threads_per_worker=1, memory_limit=None)
+
 
 
 Multiple Node Cluster
@@ -225,4 +241,3 @@ Understanding common Dask errors and warnings
 .............................................
 
 :doc:`Dask Messages Guide </tutorials/dask-messages-guide>`
-
