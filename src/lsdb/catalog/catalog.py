@@ -990,9 +990,13 @@ class Catalog(HealpixDataset):
     ) -> Catalog:
         """Perform a spatial join to another catalog
 
-        Joins two catalogs together on a shared column value, merging rows where they match. The operation
-        only joins data from matching partitions, and does not join rows that have a matching column value but
-        are in separate partitions in the sky. For a more general join, see the `merge` function.
+        Joins two catalogs together on a shared column value, merging rows where they match.
+
+        This is an inner join: only rows with matching join keys are returned (unmatched rows are dropped).
+
+        The operation only joins data from matching partitions, and does not join rows that have a matching
+        column value but are in separate partitions in the sky. For a more general join, see the `merge`
+        function.
 
         Parameters
         ----------
