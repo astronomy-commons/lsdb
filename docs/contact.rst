@@ -8,7 +8,7 @@ making our products better, or pretty much anything else, reach out!
 
 * Open an issue in our GitHub repo for LSDB
     * https://github.com/astronomy-commons/lsdb/issues/new
-* A lot of our communication and discussion is on LSST Discovery Alliance Slack This is also a great location to ask questions. If you don't have an account for this Slack space, please get in touch to get an invite using information at this `link <https://astro.washington.edu/people/neven-caplar>`_.
+* A lot of our communication and discussion is on LSST Discovery Alliance Slack. This is also a great location to ask questions. If you don't have an account for this Slack space, please get in touch to get an invite using information at this `link <https://astro.washington.edu/people/neven-caplar>`_.
     * `#lincc-frameworks-lsdb <https://lsstc.slack.com/archives/C04610PQW9F>`_
     * `#lincc-frameworks-qa <https://lsstc.slack.com/archives/C062LG1AK1S>`_
 * If you have questions about HATS data from the Rubin Observatory, the best place to ask at LSST community forum:
