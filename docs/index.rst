@@ -47,11 +47,11 @@ Using this Guide
 
        The detailed API documentation
 
-      .. grid-item-card:: Contact Us / Getting Help
-       :link: contact
-       :link-type: doc
+   .. grid-item-card:: Contact Us / Getting Help
+      :link: contact
+      :link-type: doc
 
-       Reach out for more help
+      Reach out for more help
 
 .. toctree::
    :hidden:
