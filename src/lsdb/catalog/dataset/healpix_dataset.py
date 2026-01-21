@@ -1224,6 +1224,69 @@ class HealpixDataset:
         )
         return self._create_updated_dataset(ddf=new_ddf)
 
+    @classmethod
+    def from_flat(
+        cls, dataset, base_columns, nested_columns=None, on: str | None = None, name="nested"
+    ) -> Self:
+        """Creates a new catalog from a flat catalog by nesting specified columns.
+
+        Parameters
+        ----------
+        dataset : Catalog
+            The input flat catalog to nest columns from.
+        base_columns : list-like
+            Any columns that have non-nested values in the input catalog.
+            These will simply be kept as identical columns in the result.
+        nested_columns : list-like or None, default None
+            The columns that should be packed into a nested
+            column. All columns in the list will attempt to be packed into a single nested column
+            with the name provided in `nested_name`. If None, all columns not in `base_columns` are used.
+        on : str or None, default None
+            If specified, the column to group by when nesting. If None, all rows are nested together.
+        name : str, default "nested"
+            The name of the output column the `nested_columns` are packed into.
+
+        Returns
+        -------
+        Self
+            A new catalog with specified columns nested into a new nested column.
+        """
+        dataset._check_unloaded_columns(base_columns)
+        dataset._check_unloaded_columns(nested_columns)
+
+        def from_flat_partition(df, base_columns, nested_columns, on, name):
+            # If we treat it as nested column, we have control over what _healpix_29 value is assigned
+            packed_nf = npd.NestedFrame.from_flat(
+                df.reset_index(),
+                base_columns=base_columns,
+                nested_columns=nested_columns + ["_healpix_29"],
+                on=on,
+                name=name,
+            )
+            # Select minimum healpix_29 and use as new index
+            packed_nf["_healpix_29"] = packed_nf.map_rows(
+                np.min, columns=f"{name}._healpix_29", row_container="args"
+            )[0]
+            packed_nf = packed_nf.drop([f"{name}._healpix_29"], axis=1).set_index("_healpix_29")
+            return packed_nf
+
+        packed_dataset = dataset.map_partitions(
+            from_flat_partition,
+            base_columns=base_columns,
+            nested_columns=nested_columns,
+            on=on,
+            name=name,
+            meta=npd.NestedFrame.from_flat(
+                dataset._ddf._meta,
+                base_columns=base_columns,
+                nested_columns=nested_columns,
+                on=on,
+                name=name,
+            ),
+        )
+
+        return dataset._create_updated_dataset(ddf=packed_dataset._ddf)
+
     def map_rows(
         self,
         func,
