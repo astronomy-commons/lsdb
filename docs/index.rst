@@ -47,11 +47,11 @@ Using this Guide
 
        The detailed API documentation
 
-   .. grid-item-card:: Contact us
-       :link: contact
-       :link-type: doc
+   .. grid-item-card:: Contact Us / Getting Help
+      :link: contact
+      :link-type: doc
 
-       Reach out for more help
+      Reach out for more help
 
 .. toctree::
    :hidden:
@@ -67,5 +67,5 @@ Using this Guide
    :caption: Project
 
    About & Citation <citation>
-   Getting Help <contact>
+   Contact Us / Getting Help <contact>
    Contribution Guide <developer/contributing>
