@@ -1,4 +1,4 @@
-Getting Help
+Contact Us / Getting Help
 ===============================================================================
 
 We at LINCC Frameworks pride ourselves on being a friendly bunch!
@@ -6,30 +6,21 @@ We at LINCC Frameworks pride ourselves on being a friendly bunch!
 If you're encountering issues, have some gnarly dataset, have ideas for
 making our products better, or pretty much anything else, reach out!
 
-* Open an issue in our github repo for lsdb
+* Open an issue in our GitHub repo for LSDB
     * https://github.com/astronomy-commons/lsdb/issues/new
-* Start a new github discussion
-    * https://github.com/astronomy-commons/lsdb/discussions/new/choose
-* If you have questions about data from the Rubin Observatory, the best place to ask is:
-    * https://community.lsst.org
-    * `LSST Data Products category <https://community.lsst.org/c/support/data/34>`_
-* If you're on LSST Discovery Alliance slack, so are we!
-    * `#lincc-frameworks-qa <https://lsstc.slack.com/archives/C062LG1AK1S>`_
+* A lot of our communication and discussion is on LSST Discovery Alliance Slack. This is also a great location to ask questions. If you don't have an account for this Slack space, please get in touch to get an invite using information at this `link <https://astro.washington.edu/people/neven-caplar>`_.
     * `#lincc-frameworks-lsdb <https://lsstc.slack.com/archives/C04610PQW9F>`_
-* Join the working group, where we discuss HATS standardization and early results
-    * Google group: `hats-wg@googlegroups.com <https://groups.google.com/g/hats-wg>`_
-    * You can listen in to demo meetings, or ask questions during co-working sessions. 
-      Events are published on a google calendar, embedded below.
-    * Key:
-        * "HATS/LSDB Working Meeting" - Drop-in co-working/office hours. 
-        * "HATS/LSDB Europe Working group" - Intended as European time zone friendly
-          discussion of HATS and LSDB. Generally open.
-        * "HATS/LSDB Monthly Demos" - A more structured telecon, with updates from
-          developers and collaborators, and HATS standardization planning.
-        * "LINCC Tech Talk" - Tech Talk series for software spanning LSST.
-        * "LINCC Frameworks Office Hours" - General office hours for anything 
-          related to software maintained by LINCC Frameworks, during LINCC 
-          incubators, or general software advice.
+    * `#lincc-frameworks-qa <https://lsstc.slack.com/archives/C062LG1AK1S>`_
+* If you have questions about HATS data from the Rubin Observatory, the best place to ask at LSST community forum:
+    * `LSST Community Forum - Data Products <https://community.lsst.org/c/support/data/34>`_
+* Attend one of our events. All of our events are open to everyone; and they are also published on the Google Calendar embedded below.
+    *  Drop-in / co-working events
+        * "HATS/LSDB Drop-in" - Drop-in co-working/office hours. Great for getting help or just working alongside our software engineers using HATS/LSDB. Fridays 10:00-11:00 AM US Pacific Time.
+        * "LINCC Frameworks Office Hours" - General office hours for LINCC-maintained software and general software advice. Thursdays 10:00-11:00 AM US Pacific Time.
+    * HATS/LSDB Working Groups and Tech Talks
+        * "HATS/LSDB Working Group Demos" - Structured telecon with updates from developers and collaborators, and HATS standardization planning. Every 3rd Friday of the month, 10:00-11:00 AM US Pacific Time. Join the HATS/LSDB working group at `hats-wg@googlegroups.com <https://groups.google.com/g/hats-wg>`_ if you want email announcements and to participate in HATS standardization and LSDB development discussions.
+        * "HATS/LSDB Europe Working group" - European time zone friendly discussion of HATS and LSDB. Every 4th Thursday of the month, 6:00-7:00 AM US Pacific Time.
+        * `LINCC Tech Talk <https://lsstdiscoveryalliance.org/lsst-discovery-alliance-programs/tech-talks/>`_ - Tech Talk series to connect the Rubin software community.
 
 .. raw:: html
 
