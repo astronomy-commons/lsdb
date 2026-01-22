@@ -1240,9 +1240,10 @@ class HealpixDataset:
         nested_columns : list-like or None, default None
             The columns that should be packed into a nested
             column. All columns in the list will attempt to be packed into a single nested column
-            with the name provided in `nested_name`. If None, all columns not in `base_columns` are used.
+            with the name provided in `name`. If None, all columns not in `base_columns` are used.
         on : str or None, default None
-            If specified, the column to group by when nesting. If None, all rows are nested together.
+            If specified, the column to group by when nesting. If None, the specified rows are
+            nested but not grouped by any column.
         name : str, default "nested"
             The name of the output column the `nested_columns` are packed into.
 
@@ -1267,8 +1268,26 @@ class HealpixDataset:
             packed_nf["_healpix_29"] = packed_nf.map_rows(
                 np.min, columns=f"{name}._healpix_29", row_container="args"
             )[0]
-            packed_nf = packed_nf.drop([f"{name}._healpix_29"], axis=1).set_index("_healpix_29")
+            if on is not None:
+                packed_nf = (
+                    packed_nf.drop([f"{name}._healpix_29"], axis=1).reset_index().set_index("_healpix_29")
+                )
+            else:
+                packed_nf = packed_nf.drop([f"{name}._healpix_29"], axis=1).set_index("_healpix_29")
             return packed_nf
+
+        # Build meta
+        meta = npd.NestedFrame.from_flat(
+            dataset._ddf._meta,
+            base_columns=base_columns,
+            nested_columns=nested_columns,
+            on=on,
+            name=name,
+        )
+        # catalog meta will include the `on` column and use _healpix_29 as index
+        if on is not None:
+            meta = meta.reset_index()
+            meta.index = pd.Index([], name="_healpix_29", dtype=np.int64)
 
         packed_dataset = dataset.map_partitions(
             from_flat_partition,
@@ -1276,13 +1295,7 @@ class HealpixDataset:
             nested_columns=nested_columns,
             on=on,
             name=name,
-            meta=npd.NestedFrame.from_flat(
-                dataset._ddf._meta,
-                base_columns=base_columns,
-                nested_columns=nested_columns,
-                on=on,
-                name=name,
-            ),
+            meta=meta,
         )
 
         return dataset._create_updated_dataset(ddf=packed_dataset._ddf)
