@@ -1,2 +1,2 @@
 hats @ git+https://github.com/astronomy-commons/hats.git@main
-nested-pandas @ git+https://github.com/lincc-frameworks/nested-pandas.git@sandro/fix-nestedframe-index
+nested-pandas @ git+https://github.com/lincc-frameworks/nested-pandas.git@main
