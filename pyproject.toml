@@ -22,9 +22,9 @@ dependencies = [
     # dask diagnostics is required to spin up the dashboard for profiling.
     "dask[complete]>=2025.3.0",
     "deprecated",
-    "hats>=0.7.3,<0.8",
+    "hats>=0.8,<0.9",
     "human_readable", # for human-readable file sizes
-    "nested-pandas>=0.6.3,<0.7.0",
+    "nested-pandas>=0.6.7,<0.7.0",
     "numpy",
     "pyarrow",
     "scipy>=1.7.2", # kdtree
