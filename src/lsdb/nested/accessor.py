@@ -38,7 +38,7 @@ class DaskNestSeriesAccessor(npd.NestSeriesAccessor):
 
         return list(self._series.dtype.column_dtypes)
 
-    def to_lists(self, columns: list[str] | None = None) -> dd.DataFrame:
+    def to_lists(self, columns: list[str] | str | None = None) -> dd.DataFrame:
         """Convert nested series into dataframe of list-array columns
 
         Parameters
@@ -53,7 +53,7 @@ class DaskNestSeriesAccessor(npd.NestSeriesAccessor):
         """
         return self._series.map_partitions(lambda x: x.nest.to_lists(columns=columns))
 
-    def to_flat(self, columns: list[str] | None = None) -> dd.DataFrame:
+    def to_flat(self, columns: list[str] | str | None = None) -> dd.DataFrame:
         """Convert nested series into dataframe of flat arrays
 
         Parameters
