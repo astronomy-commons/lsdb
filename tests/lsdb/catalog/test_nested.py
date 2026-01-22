@@ -121,6 +121,47 @@ def test_map_rows_append_columns(small_sky_with_nested_sources):
         reduced_cat_compute[small_sky_with_nested_sources.columns], small_sky_with_nested_sources.compute()
     )
 
+    def create_subcolumn(ra, source_ra):
+        """UDF that returns a dictionary"""
+        return {"sources.t_ra": source_ra - ra}
+
+    reduced_cat = small_sky_with_nested_sources.map_rows(
+        create_subcolumn,
+        columns=["ra", "sources.source_ra"],
+        row_container="args",
+        meta={"sources.t_ra": float},
+        append_columns=True,
+    )
+
+    reduced_cat_compute = reduced_cat.compute()
+    assert isinstance(reduced_cat_compute, npd.NestedFrame)
+
+    reduced_ddf = small_sky_with_nested_sources._ddf.map_rows(
+        create_subcolumn,
+        columns=["ra", "sources.source_ra"],
+        row_container="args",
+    )
+
+    expected_t_ra = reduced_ddf.compute()["sources.t_ra"]
+    pd.testing.assert_series_equal(expected_t_ra, reduced_cat_compute["sources.t_ra"])
+
+    def create_subcolumn_2(ra, source_ra):
+        """Same UDF, but now returning an array"""
+        return source_ra - ra
+
+    reduced_cat = small_sky_with_nested_sources.map_rows(
+        create_subcolumn_2,
+        columns=["ra", "sources.source_ra"],
+        output_names=["sources.t_ra"],
+        row_container="args",
+        meta={"sources.t_ra": float},
+        append_columns=True,
+    )
+
+    reduced_cat_compute = reduced_cat.compute()
+    assert isinstance(reduced_cat_compute, npd.NestedFrame)
+    pd.testing.assert_series_equal(expected_t_ra, reduced_cat_compute["sources.t_ra"])
+
 
 def test_map_rows_no_return_column(small_sky_with_nested_sources):
     def mean_mag(mag):
