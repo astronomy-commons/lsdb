@@ -1343,22 +1343,26 @@ class HealpixDataset:
         self._check_unloaded_columns(columns)
 
         if append_columns:
-            meta = concat_metas([self._ddf._meta.copy(), meta])
-            added_nested_subcols = [col for col in list(meta.columns) if "." in str(col)]
-            for col in added_nested_subcols:
-                subcol = meta[col].copy()
-                meta = meta.drop(columns=col)
-                meta[col] = subcol
-            meta = make_meta(meta)
+            # Calculate the final meta
+            self_meta = self._ddf._meta.copy()
+            meta = npd.NestedFrame(make_meta(meta))
+            added_nested_subcols = [str(col) for col in meta.columns if "." in str(col)]
+            self_meta = self_meta.assign(**{col: meta[col] for col in added_nested_subcols})
+            meta = meta.drop(columns=added_nested_subcols)
+            meta = concat_metas([self_meta, meta])
 
         catalog_info = self.hc_structure.catalog_info
 
         def _append_columns(df, reduced_result):
+            """Join the result frame with the original frame"""
             df_nested_cols = [col for col in reduced_result.nested_columns if col in df.nested_columns]
-            for col in df_nested_cols:
-                sub_columns = reduced_result.get_subcolumns(col)
-                for sub_col in sub_columns:
-                    df = df.assign(**{f"{sub_col}": reduced_result[sub_col]})
+            df = df.assign(
+                **{
+                    sub_col: reduced_result[sub_col]
+                    for col in df_nested_cols
+                    for sub_col in reduced_result.get_subcolumns(col)
+                }
+            )
             base_results_nf = reduced_result.drop(columns=df_nested_cols)
             return npd.NestedFrame(pd.concat([df, base_results_nf], axis=1))
 
