@@ -48,7 +48,7 @@ def test_from_dataframe(small_sky_order1_df, small_sky_order1_catalog, helpers):
         small_sky_order1_catalog.hc_structure.catalog_info,
         catalog.hc_structure.catalog_info,
         do_not_compare=["skymap_order", "moc_sky_fraction", "hats_max_rows"],
-        check_extra_properties=False
+        check_extra_properties=False,
     )
     # The hats builder property is set correctly
     assert (
