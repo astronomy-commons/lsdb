@@ -1539,8 +1539,8 @@ class HealpixDataset:
         expected_cat_rows = f"{expected_cat_rows:,}"
 
         # In-memory and on disk estimates
-        mem_size = _human_file_size(get_mem_size(pixel_stats), binary=True)
-        disk_size = _human_file_size(get_disk_size(pixel_stats), binary=True)
+        mem_size = _human_file_size(get_mem_size(pixel_stats))
+        disk_size = _human_file_size(get_disk_size(pixel_stats))
 
         print(
             f"You selected {len(self.columns)}/{len(self.all_columns)} columns.\n"
@@ -1551,16 +1551,10 @@ class HealpixDataset:
         )
 
 
-def _human_file_size(size_bytes, binary: bool = True):
-    """Convert bytes to human readable format."""
-    if binary:
-        for unit in ["B", "KiB", "MiB", "GiB", "TiB"]:
-            if size_bytes < 1024:
-                return f"{size_bytes:.1f} {unit}"
-            size_bytes /= 1024
-        return f"{size_bytes:.2f} PiB"
-    for unit in ["B", "KB", "MB", "GB", "TB"]:
-        if size_bytes < 1000:
+def _human_file_size(size_bytes):
+    """Convert bytes to human readable format (binary units only)."""
+    for unit in ["B", "KiB", "MiB", "GiB", "TiB"]:
+        if size_bytes < 1024:
             return f"{size_bytes:.1f} {unit}"
-        size_bytes /= 1000
+        size_bytes /= 1024
     return f"{size_bytes:.2f} PiB"
