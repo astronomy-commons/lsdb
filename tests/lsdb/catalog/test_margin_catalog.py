@@ -55,7 +55,7 @@ def test_save_margin_catalog(small_sky_xmatch_margin_catalog, tmp_path, helpers)
     helpers.assert_catalog_info_is_correct(
         expected_catalog.hc_structure.catalog_info,
         small_sky_xmatch_margin_catalog.hc_structure.catalog_info,
-        hats_max_rows="10",
+        hats_max_rows=10,
         # Also check that the builder was properly set
         hats_builder=f"lsdb v{version('lsdb')}, hats v{version('hats')}",
     )
