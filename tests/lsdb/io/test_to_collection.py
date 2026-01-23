@@ -26,7 +26,7 @@ def test_save_collection(small_sky_order1_collection_catalog, tmp_path, helpers)
     helpers.assert_catalog_info_is_correct(
         catalog.hc_structure.catalog_info,
         small_sky_order1_collection_catalog.hc_structure.catalog_info,
-        hats_max_rows="42",
+        hats_max_rows=42,
         obs_regime="Optical",
         default_columns=["ra", "dec"],
         hats_builder=f"lsdb v{version('lsdb')}, hats v{version('hats')}",
@@ -41,7 +41,7 @@ def test_save_collection(small_sky_order1_collection_catalog, tmp_path, helpers)
         catalog.margin.hc_structure.catalog_info,
         small_sky_order1_collection_catalog.margin.hc_structure.catalog_info,
         catalog_name="small_sky_order1_3600arcs",
-        hats_max_rows="7",
+        hats_max_rows=7,
         obs_regime="Optical",
         default_columns=["ra", "dec"],
         hats_builder=f"lsdb v{version('lsdb')}, hats v{version('hats')}",

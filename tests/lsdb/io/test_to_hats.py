@@ -34,7 +34,7 @@ def test_save_catalog(small_sky_catalog, tmp_path, helpers):
     helpers.assert_catalog_info_is_correct(
         expected_catalog.hc_structure.catalog_info,
         small_sky_catalog.hc_structure.catalog_info,
-        hats_max_rows="131",
+        hats_max_rows=131,
         skymap_order=5,
         obs_regime="Optical",
         hats_builder=f"lsdb v{version('lsdb')}, hats v{version('hats')}",
