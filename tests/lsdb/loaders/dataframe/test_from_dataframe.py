@@ -44,12 +44,12 @@ def test_from_dataframe(small_sky_order1_df, small_sky_order1_catalog, helpers):
     assert isinstance(catalog._ddf, nd.NestedFrame)
     # Catalogs have the same information
     # New catalog doesn't have a skymap order yet.
-    expected_dict = {
-        k: v
-        for k, v in small_sky_order1_catalog.hc_structure.catalog_info.explicit_dict().items()
-        if k not in ["skymap_order", "moc_sky_fraction"]
-    }
-    assert catalog.hc_structure.catalog_info.explicit_dict() == expected_dict
+    helpers.assert_catalog_info_is_correct(
+        small_sky_order1_catalog.hc_structure.catalog_info,
+        catalog.hc_structure.catalog_info,
+        do_not_compare=["skymap_order", "moc_sky_fraction", "hats_max_rows"],
+        check_extra_properties=False
+    )
     # The hats builder property is set correctly
     assert (
         catalog.hc_structure.catalog_info.hats_builder == f"lsdb v{version('lsdb')}, hats v{version('hats')}"
