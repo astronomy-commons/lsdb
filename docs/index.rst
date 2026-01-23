@@ -39,6 +39,14 @@ Using this Guide
 
        Learn the LSDB features by working through our guides
 
+.. grid:: 1 1 1 1
+
+   .. grid-item-card:: Data Access
+       :link: data-access
+       :link-type: doc
+
+       How LSDB catalogs are served and accessed across providers
+
 .. grid:: 1 1 2 2
 
    .. grid-item-card:: API Reference
@@ -60,6 +68,7 @@ Using this Guide
    Home page <self>
    Getting Started <getting-started>
    Tutorials <tutorials>
+   Data Access <data-access>
    API Reference <reference>
 
 .. toctree::
