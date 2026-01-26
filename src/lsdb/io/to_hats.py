@@ -165,7 +165,7 @@ def to_hats(
         **kwargs,
     )
     # Save parquet metadata and create a data thumbnail if needed
-    hats_max_rows = max(counts) if counts else 0
+    hats_max_rows = int(max(counts)) if counts else 0
 
     if len(pixels) > 0:
         hc.io.write_parquet_metadata(

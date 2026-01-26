@@ -300,7 +300,7 @@ class DataframeCatalogLoader:
                 self.dataframe[self.catalog_info.ra_column].values,
                 self.dataframe[self.catalog_info.dec_column].values,
             )
-            (row_count_sparse_histo, mem_size_sparse_histo) = supplemental_count_histogram(
+            row_count_sparse_histo, mem_size_sparse_histo = supplemental_count_histogram(
                 mapped_pixels,
                 row_mem_sizes,
                 highest_order=self.highest_order,
