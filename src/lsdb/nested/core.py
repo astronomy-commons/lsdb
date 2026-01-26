@@ -338,15 +338,11 @@ class NestedFrame(
         # reject any list columns that are not pyarrow dtyped
         for col in list_columns:
             if not hasattr(df[col].dtype, "pyarrow_dtype"):
-                raise TypeError(
-                    f"""List column '{col}' dtype ({df[col].dtype}) is not a pyarrow list dtype.
-Refer to the docstring for guidance on dtype requirements and assignment."""
-                )
+                raise TypeError(f"""List column '{col}' dtype ({df[col].dtype}) is not a pyarrow list dtype.
+Refer to the docstring for guidance on dtype requirements and assignment.""")
             if not pa.types.is_list(df[col].dtype.pyarrow_dtype):
-                raise TypeError(
-                    f"""List column '{col}' dtype ({df[col].dtype}) is not a pyarrow list dtype.
-Refer to the docstring for guidance on dtype requirements and assignment."""
-                )
+                raise TypeError(f"""List column '{col}' dtype ({df[col].dtype}) is not a pyarrow list dtype.
+Refer to the docstring for guidance on dtype requirements and assignment.""")
 
         meta = npd.NestedFrame(df[base_columns]._meta)  # pylint: disable=protected-access
 
