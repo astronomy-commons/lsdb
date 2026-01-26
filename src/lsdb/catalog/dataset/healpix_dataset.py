@@ -39,7 +39,7 @@ from lsdb.core.search.region_search import (
     PixelSearch,
     PolygonSearch,
 )
-from lsdb.dask.merge_catalog_functions import concat_metas
+from lsdb.dask.merge_catalog_functions import concat_metas, make_meta
 from lsdb.dask.partition_indexer import PartitionIndexer
 from lsdb.io.schema import get_arrow_schema
 from lsdb.loaders.hats.hats_loading_config import HatsLoadingConfig
@@ -1342,27 +1342,32 @@ class HealpixDataset:
         """
         self._check_unloaded_columns(columns)
 
+        ra_column = self.hc_structure.catalog_info.ra_column
+        dec_column = self.hc_structure.catalog_info.dec_column
+
+        def _make_result_meta(self_meta, meta):
+            added_nested_subcols = [str(col) for col in meta.columns if "." in str(col)]
+            self_meta = self_meta.assign(**{col: meta[col] for col in added_nested_subcols})
+            meta = meta.drop(columns=added_nested_subcols)
+            return concat_metas([self_meta, meta])
+
         if append_columns:
-            meta = concat_metas([self._ddf._meta.copy(), meta])
+            self_meta = self._ddf._meta.copy()
+            meta = npd.NestedFrame(make_meta(meta))
+            if ra_column in meta.columns or dec_column in meta.columns:
+                raise ValueError("ra and dec columns can not be modified using `map_rows`")
+            meta = _make_result_meta(self_meta, meta)
 
-        catalog_info = self.hc_structure.catalog_info
-
-        def reduce_part(df):
-            reduced_result = npd.NestedFrame(df).map_rows(
-                func,
-                columns=columns,
-                row_container=row_container,
-                output_names=output_names,
-                infer_nesting=infer_nesting,
-                **kwargs,
-            )
-            if append_columns:
-                if catalog_info.ra_column in reduced_result or catalog_info.dec_column in reduced_result:
-                    raise ValueError("ra and dec columns can not be modified using reduce")
-                return npd.NestedFrame(pd.concat([df, reduced_result], axis=1))
-            return reduced_result
-
-        ndf = nd.NestedFrame.from_dask_dataframe(self._ddf.map_partitions(reduce_part, meta=meta))
+        ndf = self._ddf.map_rows(
+            func,
+            columns=columns,
+            row_container=row_container,
+            output_names=output_names,
+            infer_nesting=infer_nesting,
+            append_columns=append_columns,
+            meta=meta,
+            **kwargs,
+        )
 
         hc_updates = {}
         if not append_columns:
