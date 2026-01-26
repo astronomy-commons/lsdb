@@ -4,7 +4,7 @@ repos:
     # This hook should always pass. It will print a message if the local version 
     # is out of date.
   - repo: https://github.com/lincc-frameworks/pre-commit-hooks
-    rev: v0.1.2
+    rev: v0.2
     hooks:
       - id: check-lincc-frameworks-template-version
         name: Check template version
@@ -41,13 +41,13 @@ repos:
         description: Verify that pyproject.toml adheres to the established schema.
     # Verify that GitHub workflows are well formed
   - repo: https://github.com/python-jsonschema/check-jsonschema
-    rev: 0.34.0
+    rev: 0.36.1
     hooks:
       - id: check-github-workflows
         args: ["--verbose"]
     # Automatically sort the imports used in .py files
   - repo: https://github.com/pycqa/isort
-    rev: 6.1.0
+    rev: 7.0.0
     hooks:
       - id: isort
         name: Run isort
@@ -85,7 +85,7 @@ repos:
           ]
     # Analyze the code style and report code that doesn't adhere.
   - repo: https://github.com/psf/black
-    rev: 25.9.0
+    rev: 26.1.0
     hooks:
       - id: black-jupyter
         name: Format code using black
@@ -108,32 +108,15 @@ repos:
           [
             "--ignore-missing-imports", # Ignore imports without type hints
           ]
-    # Make sure Sphinx can build the documentation while explicitly omitting 
-    # notebooks from the docs, so users don't have to wait through the execution 
-    # of each notebook or each commit. By default, these will be checked in the 
-    # GitHub workflows.
-  - repo: local
+  - repo: https://github.com/lincc-frameworks/pre-commit-hooks
+    rev: v0.2.1
     hooks:
-      - id: sphinx-build
-        name: Build documentation with Sphinx
-        entry: sphinx-build
-        language: system
-        always_run: true
-        exclude_types: [file, symlink]
+      - id: pre-executed-nb-never-execute
+        name: Check pre-executed notebooks
+        files: ^docs/tutorials/pre_executed/.*\.ipynb$
+        verbose: true
         args:
-          [
-            "-M", # Run sphinx in make mode, so we can use -D flag later
-                  # Note: -M requires next 3 args to be builder, source, output
-            "html", # Specify builder
-            "./docs", # Source directory of documents
-            "./_readthedocs", # Output directory for rendered documents
-            "-T", # Show full trace back on exception
-            "-E", # Don't use saved env; always read all files
-            "-d", # Flag for cached environment and doctrees
-            "./docs/_build/doctrees", # Directory
-            "-D", # Flag to override settings in conf.py
-            "exclude_patterns=tutorials/*,_build", # Exclude notebooks and build dir from pre-commit
-          ]
+          ["docs/tutorials/pre_executed/",]
     # Run unit tests, verify that they pass. Note that coverage is run against
     # the ./src directory here because that is what will be committed. In the
     # github workflow script, the coverage is run against the installed package
