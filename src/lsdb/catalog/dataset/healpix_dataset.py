@@ -1516,8 +1516,6 @@ class HealpixDataset:
         footprint, as the estimates provided by the catalog's parquet metadata
         only account for the size of parquet data pages.
         """
-        from human_readable import file_size, int_comma
-
         warnings.warn("The estimates provided are approximations.")
 
         def get_row_count(stats):
@@ -1543,11 +1541,11 @@ class HealpixDataset:
         orig_cat = hc.read_hats(self.hc_structure.catalog_path)
         expected_cat_rows = int(get_row_count(pixel_stats))
         row_pct = expected_cat_rows / int(orig_cat.catalog_info.total_rows) * 100
-        expected_cat_rows = int_comma(expected_cat_rows)
+        expected_cat_rows = f"{expected_cat_rows:,}"
 
         # In-memory and on disk estimates
-        mem_size = file_size(get_mem_size(pixel_stats), binary=True)
-        disk_size = file_size(get_disk_size(pixel_stats), binary=True)
+        mem_size = _human_file_size(get_mem_size(pixel_stats))
+        disk_size = _human_file_size(get_disk_size(pixel_stats))
 
         print(
             f"You selected {len(self.columns)}/{len(self.all_columns)} columns.\n"
@@ -1556,3 +1554,12 @@ class HealpixDataset:
             f"Expect up to {mem_size} in MEMORY.\n"
             f"Expect up to {disk_size} on DISK."
         )
+
+
+def _human_file_size(size_bytes):
+    """Convert bytes to human readable format (binary units only)."""
+    for unit in ["B", "KiB", "MiB", "GiB", "TiB"]:
+        if size_bytes < 1024:
+            return f"{size_bytes:.1f} {unit}"
+        size_bytes /= 1024
+    return f"{size_bytes:.2f} PiB"
