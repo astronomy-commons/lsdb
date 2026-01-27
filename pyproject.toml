@@ -89,7 +89,6 @@ omit = [
 
 [tool.black]
 line-length = 110
-target-version = ["py311"]
 [tool.isort]
 profile = "black"
 line_length = 110
