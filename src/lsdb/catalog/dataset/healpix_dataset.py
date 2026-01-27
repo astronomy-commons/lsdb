@@ -1256,11 +1256,20 @@ class HealpixDataset:
         dataset._check_unloaded_columns(nested_columns)
 
         def from_flat_partition(df, base_columns, nested_columns, on, name):
-            # If we treat it as nested column, we have control over what _healpix_29 value is assigned
+
+            if on is None:
+                packed_nf = npd.NestedFrame.from_flat(
+                    df,
+                    base_columns=base_columns,
+                    nested_columns=nested_columns,
+                    on=on,
+                    name=name,
+                )
+                return packed_nf
             packed_nf = npd.NestedFrame.from_flat(
                 df.reset_index(),
                 base_columns=base_columns,
-                nested_columns=nested_columns + ["_healpix_29"],
+                nested_columns=nested_columns + ["_healpix_29"], # always nest _healpix_29
                 on=on,
                 name=name,
             )
