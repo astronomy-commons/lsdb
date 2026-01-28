@@ -31,6 +31,7 @@ jobs:
         sudo apt-get update
         uv pip install --system -e .[dev,full]
         if [ -f requirements.txt ]; then uv pip install --system -r requirements.txt; fi
+        uv pip install --system git+https://github.com/martindurant/filesystem_spec@parquet2
     - name: Run unit tests with pytest
       run: |
         python -m pytest --cov=lsdb --cov-report=xml
@@ -58,6 +59,7 @@ jobs:
           uv pip compile --resolution=lowest-direct pyproject.toml -o requirements_lowest.txt
         fi
         uv pip install --constraint=requirements_lowest.txt -e .[dev]
+        uv pip install --system git+https://github.com/martindurant/filesystem_spec@parquet2
     - name: List dependencies
       run: |
         pip list
