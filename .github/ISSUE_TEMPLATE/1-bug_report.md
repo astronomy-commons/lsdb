@@ -11,6 +11,12 @@ assignees: ''
 
 **Environment Information**
 
+<details>
+<summary>INSTALLED VERSIONS</summary>
+
+Paste the output from `lsdb.show_versions()`
+
+</details>
 
 <details>
 <summary>Traceback</summary>
@@ -23,6 +29,6 @@ FILL IN YOUR STACK TRACE HERE
 Please check the following:
 
 - [ ] I have described the situation in which the bug arose, including what code was executed, and any applicable data others will need to reproduce the problem.
-- [ ] I have included information about my environment, including the version of this package (e.g. `lsdb.__version__`)
+- [ ] I have included information about my environment, including the version of this package (e.g. `lsdb.show_versions()`)
 - [ ] I have included available evidence of the unexpected behavior (including error messages, screenshots, and/or plots) as well as a description of what I expected instead.
 - [ ] If I have a solution in mind, I have provided an explanation and/or pseudocode and/or task list.
