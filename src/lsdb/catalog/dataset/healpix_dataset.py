@@ -169,6 +169,44 @@ class HealpixDataset:
         """
         return self._ddf.to_delayed(optimize_graph=optimize_graph)
 
+    def to_dask_dataframe(self) -> dd.DataFrame:
+        """Convert the dataset to a Dask DataFrame.
+
+        Returns
+        -------
+        dd.DataFrame
+            The Dask DataFrame representation of the dataset.
+
+        Examples
+        --------
+        >>> import lsdb
+        >>> catalog = lsdb.from_dataframe(pd.DataFrame({"ra":[0, 10], "dec":[5, 15],
+        ...                                             "mag":[21, 22], "mag_err":[.1, .2]}))
+        >>> ddf = catalog.to_dask_dataframe()
+        >>> ddf  # doctest: +NORMALIZE_WHITESPACE
+        Dask DataFrame Structure:
+                                         ra             dec             mag          mag_err
+        npartitions=1
+        1369094286720630784  int64[pyarrow]  int64[pyarrow]  int64[pyarrow]  double[pyarrow]
+        1441151880758558720             ...             ...             ...              ...
+        Dask Name: nestedframe, 3 expressions
+        Expr=Dask NestedFrame Structure:
+                                         ra             dec             mag          mag_err
+        npartitions=1
+        1369094286720630784  int64[pyarrow]  int64[pyarrow]  int64[pyarrow]  double[pyarrow]
+        1441151880758558720             ...             ...             ...              ...
+        Dask Name: nestedframe, 3 expressions
+        Expr=MapPartitions(NestedFrame)
+
+        Notes
+        -----
+        This method returns a Dask DataFrame. However, be aware that
+        the underlying in-memory DataFrame for each partition is still a
+        nested-pandas NestedFrame, rather than a pandas DataFrame.
+        """
+        # self._ddf is a NestedFrame, which is a subclass of dd.DataFrame
+        return dd.DataFrame(self._ddf)
+
     @property
     def name(self):
         """The name of the catalog"""

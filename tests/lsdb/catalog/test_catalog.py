@@ -1028,3 +1028,10 @@ def test_estimate_size(small_sky_source_catalog, capsys):
     total_uncompressed_size = sum(col.total_uncompressed_size for col in column_chunks)
     assert pytest.approx(total_uncompressed_size / 1024, 0.01) == 30.4
     assert pytest.approx(total_compressed_size / 1024, 0.01) == 25.2
+
+
+def test_to_dask_dataframe(small_sky_order1_catalog):
+    ddf = small_sky_order1_catalog.to_dask_dataframe()
+    assert isinstance(ddf, dd.DataFrame)
+    pd.testing.assert_frame_equal(ddf.compute(), small_sky_order1_catalog.compute())
+    assert isinstance(ddf.compute(), npd.NestedFrame)
