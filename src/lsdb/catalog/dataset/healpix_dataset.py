@@ -169,6 +169,23 @@ class HealpixDataset:
         """
         return self._ddf.to_delayed(optimize_graph=optimize_graph)
 
+    def to_dask_dataframe(self) -> dd.DataFrame:
+        """Convert the dataset to a Dask DataFrame.
+
+        Returns
+        -------
+        dd.DataFrame
+            The Dask DataFrame representation of the dataset.
+
+        Notes
+        -----
+        This method returns a Dask DataFrame. However, be aware that
+        the underlying in-memory DataFrame for each partition is still a
+        nested-pandas NestedFrame, rather than a pandas DataFrame.
+        """
+        # self._ddf is a NestedFrame, which is a subclass of dd.DataFrame
+        return dd.DataFrame(self._ddf)
+
     @property
     def name(self):
         """The name of the catalog"""
