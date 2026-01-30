@@ -124,7 +124,7 @@ class Catalog(HealpixDataset):
         >>> catalog = lsdb.from_dataframe(pd.DataFrame({"ra":[0, 10], "dec":[5, 15],
         ...                                             "mag":[21, 22], "mag_err":[.1, .2]}))
         >>> ddf = catalog.to_dask_dataframe()
-        >>> ddf
+        >>> ddf  # doctest: +NORMALIZE_WHITESPACE
         Dask DataFrame Structure:
                                          ra             dec             mag          mag_err
         npartitions=1                                                                       
