@@ -147,6 +147,17 @@ class Catalog(HealpixDataset):
         Catalog
             A catalog that contains the data from the original catalog that complies with the query
             expression. If a margin exists, it is filtered according to the same query expression.
+
+        Examples
+        --------
+        Filter a small synthetic catalog using a pandas-style query string:
+
+        >>> import lsdb
+        >>> from lsdb.nested.datasets import generate_data
+        >>> nf = generate_data(1000, 5, seed=0, ra_range=(0.0, 300.0), dec_range=(-50.0, 50.0))
+        >>> catalog = lsdb.from_dataframe(nf.compute()[["ra", "dec", "id"]])
+        >>> filtered = catalog.query("ra < 100 and dec > 0")
+        >>> filtered.compute().head()
         """
         catalog = super().query(expr)
         if self.margin is not None:
