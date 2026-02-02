@@ -48,11 +48,11 @@ The latest release version of LSDB is available to install with `pip <https://py
 
 .. code-block:: bash
 
-    pip install "lsdb>=0.7.3"
+    pip install "lsdb>=0.8.1"
 
 .. code-block:: bash
 
-    conda install -c conda-forge "lsdb>=0.7.3"
+    conda install -c conda-forge "lsdb>=0.8.1"
 
 LSDB can also be installed from source on `GitHub <https://github.com/astronomy-commons/lsdb>`_. See our
 advanced installation instructions in the :doc:`contribution guide </developer/contributing>`.
@@ -64,7 +64,7 @@ advanced installation instructions in the :doc:`contribution guide </developer/c
 
     .. code-block:: console
 
-        python -m pip install "lsdb[full]>=0.7.3"
+        python -m pip install "lsdb[full]>=0.8.1"
 
 Quickstart
 --------------------------
