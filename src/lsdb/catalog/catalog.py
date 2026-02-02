@@ -1454,6 +1454,16 @@ class Catalog(HealpixDataset):
             If True, raises an error if the catalog is empty.
         **kwargs
             Arguments to pass to the parquet write operations
+
+        Examples
+        --------
+        Write a small synthetic catalog to disk:
+
+        >>> import lsdb
+        >>> from lsdb.nested.datasets import generate_data
+        >>> nf = generate_data(1000, 5, seed=0, ra_range=(0.0, 300.0), dec_range=(-50.0, 50.0))
+        >>> catalog = lsdb.from_dataframe(nf.compute()[["ra", "dec", "id"]], catalog_name="demo")
+        >>> catalog.write_catalog(<your path here> / "demo_catalog", overwrite=True)
         """
         if as_collection:
             self._check_unloaded_columns(default_columns)
