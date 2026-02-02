@@ -740,6 +740,17 @@ class HealpixDataset:
         Self
             A new Catalog containing the points filtered to those within the cone, and the partitions that
             overlap the cone.
+
+        Examples
+        --------
+        Filter a small synthetic catalog to a cone on the sky:
+
+        >>> import lsdb
+        >>> from lsdb.nested.datasets import generate_data
+        >>> nf = generate_data(1000, 5, seed=0, ra_range=(0.0, 300.0), dec_range=(-50.0, 50.0))
+        >>> catalog = lsdb.from_dataframe(nf.compute()[["ra", "dec", "id"]])
+        >>> cone = catalog.cone_search(ra=150.0, dec=0.0, radius_arcsec=3600)
+        >>> cone.compute().head()
         """
         return self.search(ConeSearch(ra, dec, radius_arcsec, fine))
 
