@@ -784,6 +784,19 @@ class Catalog(HealpixDataset):
         Catalog | dd.Series
             A new catalog with each partition replaced with the output of the function applied to the original
             partition. If the function returns a non dataframe output, a dask Series will be returned.
+
+        Examples
+        --------
+        Apply a function to each partition (e.g., add a derived column):
+
+        >>> import lsdb
+        >>> from lsdb.nested.datasets import generate_data
+        >>> nf = generate_data(1000, 5, seed=0, ra_range=(0.0, 300.0), dec_range=(-50.0, 50.0))
+        >>> catalog = lsdb.from_dataframe(nf.compute()[["ra", "dec", "id"]])
+        >>> def add_flag(df):
+        ...     return df.assign(in_north=df["dec"] > 0)
+        >>> catalog2 = catalog.map_partitions(add_flag)
+        >>> catalog2.compute().head()
         """
         catalog = super().map_partitions(
             func,
