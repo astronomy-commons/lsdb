@@ -53,9 +53,17 @@ def from_dataframe(
     partition_rows : int or None, default None
         The desired partition size, in number of rows. Only one of
         `partition_rows` or `partition_bytes` should be specified.
+
+        Note: partitioning is spatial (HEALPix-based). `partition_rows` is a best-effort target,
+        and the resulting number of partitions is limited by `highest_order` and the sky footprint
+        of your data (e.g., if all rows fall into a single HEALPix pixel at `highest_order`, you will
+        still get a single partition).
     partition_bytes : int or None, default None
         The desired partition size, in bytes. Only one of
         `partition_rows` or `partition_bytes` should be specified.
+
+        Note: as with `partition_rows`, this is a best-effort target for spatial (HEALPix-based)
+        partitioning and is limited by `highest_order`.
     margin_order : int, default -1
         The order at which to generate the margin cache.
     margin_threshold : float or None, default 5
@@ -91,9 +99,9 @@ def from_dataframe(
 
     >>> import lsdb
     >>> from lsdb.nested.datasets import generate_data
-    >>> nf = generate_data(100, 5, seed=0, ra_range=(0.0, 10.0), dec_range=(-5.0, 5.0))
+    >>> nf = generate_data(1000, 5, seed=0, ra_range=(0.0, 300.0), dec_range=(-50.0, 50.0))
     >>> df = nf.compute()[["ra", "dec", "id"]]
-    >>> catalog = lsdb.from_dataframe(df, catalog_name="toy_catalog", partition_rows=50)
+    >>> catalog = lsdb.from_dataframe(df, catalog_name="toy_catalog")
     >>> catalog.compute().head()
     """
     # Load the catalog.
