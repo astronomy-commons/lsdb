@@ -475,6 +475,18 @@ class HealpixDataset:
         ------
         ValueError
             If no data exists for the specified pixel
+
+        Examples
+        --------
+        Get a single HEALPix partition from a small synthetic catalog:
+
+        >>> import lsdb
+        >>> from lsdb.nested.datasets import generate_data
+        >>> nf = generate_data(1000, 5, seed=0, ra_range=(0.0, 300.0), dec_range=(-50.0, 50.0))
+        >>> catalog = lsdb.from_dataframe(nf.compute()[["ra", "dec", "id"]])
+        >>> hp = catalog.get_healpix_pixels()[0]
+        >>> partition = catalog.get_partition(hp.order, hp.pixel)
+        >>> partition.compute().head()
         """
         partition_index = self.get_partition_index(order, pixel)
         return self._ddf.partitions[partition_index]
