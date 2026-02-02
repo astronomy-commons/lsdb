@@ -1054,6 +1054,21 @@ class Catalog(HealpixDataset):
         Catalog
             A new catalog with the columns from each of the input catalogs with their respective suffixes
             added, and the rows merged on the specified columns.
+
+        Examples
+        --------
+        Join two catalogs on a shared key within the same sky partitions:
+
+        >>> import lsdb
+        >>> from lsdb.nested.datasets import generate_data
+        >>> nf = generate_data(1000, 5, seed=0, ra_range=(0.0, 300.0), dec_range=(-50.0, 50.0))
+        >>> base = lsdb.from_dataframe(nf.compute()[["ra", "dec", "id"]])
+        >>> left = base.rename({"ra": "ra_left", "dec": "dec_left"})
+        >>> right = base.rename({"ra": "ra_right", "dec": "dec_right", "id": "id_right"}).map_partitions(
+        ...     lambda df: df.assign(right_flag=True)
+        ... )
+        >>> joined = left.join(right, left_on="id", right_on="id_right", suffix_method="overlapping_columns")
+        >>> joined.compute().head()
         """
         if suffixes is None:
             suffixes = _default_suffixes(self.name, other.name)
