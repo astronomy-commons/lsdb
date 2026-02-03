@@ -313,6 +313,21 @@ class Catalog(HealpixDataset):
         >>> right = lsdb.from_dataframe(df, catalog_name="right")
         >>> xmatch = left.crossmatch(right, n_neighbors=1, radius_arcsec=1.0, suffix_method="overlapping_columns")
         >>> xmatch.head()
+        WARNING:root:Renaming overlapping columns:
+        +--------+---------------------+-----------------------+
+        | Column | Left (suffix=_left) | Right (suffix=_right) |
+        +--------+---------------------+-----------------------+
+        |   ra   |       ra_left       |       ra_right        |
+        |  dec   |      dec_left       |       dec_right       |
+        |   id   |       id_left       |       id_right        |
+        +--------+---------------------+-----------------------+
+                            ra_left   dec_left  id_left   ra_right  dec_right  id_right  _dist_arcsec
+        _healpix_29                                                                                    
+        118362963675428450  52.696686  39.675892     8154  52.696686  39.675892      8154           0.0
+        98504457942331510   89.913567  46.147079     3437  89.913567  46.147079      3437           0.0
+        70433374600953220   40.528952  35.350965     8214  40.528952  35.350965      8214           0.0
+        154968715224527848   17.57041    29.8936     9853   17.57041    29.8936      9853           0.0
+        67780378363846894    45.08384   31.95611     8297   45.08384   31.95611      8297           0.0
 
         Raises
         ------
