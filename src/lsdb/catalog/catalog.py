@@ -1096,6 +1096,13 @@ class Catalog(HealpixDataset):
         ... )
         >>> joined = left.join(right, left_on="id", right_on="id_right", suffix_method="overlapping_columns")
         >>> joined.compute().head()
+                            ra_left   dec_left    id   ra_right  dec_right  id_right  right_flag
+        _healpix_29                                                                               
+        118362963675428450  52.696686  39.675892  8154  52.696686  39.675892      8154        True
+        98504457942331510   89.913567  46.147079  3437  89.913567  46.147079      3437        True
+        70433374600953220   40.528952  35.350965  8214  40.528952  35.350965      8214        True
+        154968715224527848   17.57041    29.8936  9853   17.57041    29.8936      9853        True
+        67780378363846894    45.08384   31.95611  8297   45.08384   31.95611      8297        True
         """
         if suffixes is None:
             suffixes = _default_suffixes(self.name, other.name)
