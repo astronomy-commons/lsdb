@@ -488,7 +488,7 @@ class HealpixDataset:
         >>> partition = catalog.get_partition(hp.order, hp.pixel)
         >>> partition.compute().head()
                                 ra        dec    id
-        _healpix_29                                   
+        _healpix_29
         118362963675428450  52.696686  39.675892  8154
         98504457942331510   89.913567  46.147079  3437
         70433374600953220   40.528952  35.350965  8214
@@ -771,7 +771,7 @@ class HealpixDataset:
         >>> cone = catalog.cone_search(ra=150.0, dec=0.0, radius_arcsec=7200)
         >>> cone.head()
                                     ra       dec    id
-        _healpix_29                                    
+        _healpix_29
         1917605570237722650  151.359297  1.383203  4296
         """
         return self.search(ConeSearch(ra, dec, radius_arcsec, fine))

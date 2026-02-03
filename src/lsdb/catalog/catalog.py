@@ -159,7 +159,7 @@ class Catalog(HealpixDataset):
         >>> filtered = catalog.query("ra < 100 and dec > 0")
         >>> filtered.head()
                                 ra        dec    id
-        _healpix_29                                   
+        _healpix_29
         118362963675428450  52.696686  39.675892  8154
         98504457942331510   89.913567  46.147079  3437
         70433374600953220   40.528952  35.350965  8214
@@ -322,7 +322,7 @@ class Catalog(HealpixDataset):
         |   id   |       id_left       |       id_right        |
         +--------+---------------------+-----------------------+
                             ra_left   dec_left  id_left   ra_right  dec_right  id_right  _dist_arcsec
-        _healpix_29                                                                                    
+        _healpix_29
         118362963675428450  52.696686  39.675892     8154  52.696686  39.675892      8154           0.0
         98504457942331510   89.913567  46.147079     3437  89.913567  46.147079      3437           0.0
         70433374600953220   40.528952  35.350965     8214  40.528952  35.350965      8214           0.0
@@ -833,7 +833,7 @@ class Catalog(HealpixDataset):
         >>> catalog2 = catalog.map_partitions(add_flag)
         >>> catalog2.head()
                                 ra        dec    id in_north
-        _healpix_29                                            
+        _healpix_29
         118362963675428450  52.696686  39.675892  8154     True
         98504457942331510   89.913567  46.147079  3437     True
         70433374600953220   40.528952  35.350965  8214     True
@@ -1112,7 +1112,7 @@ class Catalog(HealpixDataset):
         >>> joined = left.join(right, left_on="id", right_on="id_right", suffix_method="overlapping_columns")
         >>> joined.compute().head()
                             ra_left   dec_left    id   ra_right  dec_right  id_right  right_flag
-        _healpix_29                                                                               
+        _healpix_29
         118362963675428450  52.696686  39.675892  8154  52.696686  39.675892      8154        True
         98504457942331510   89.913567  46.147079  3437  89.913567  46.147079      3437        True
         70433374600953220   40.528952  35.350965  8214  40.528952  35.350965      8214        True
