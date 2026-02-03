@@ -487,6 +487,13 @@ class HealpixDataset:
         >>> hp = catalog.get_healpix_pixels()[0]
         >>> partition = catalog.get_partition(hp.order, hp.pixel)
         >>> partition.compute().head()
+                                ra        dec    id
+        _healpix_29                                   
+        118362963675428450  52.696686  39.675892  8154
+        98504457942331510   89.913567  46.147079  3437
+        70433374600953220   40.528952  35.350965  8214
+        154968715224527848   17.57041    29.8936  9853
+        67780378363846894    45.08384   31.95611  8297
         """
         partition_index = self.get_partition_index(order, pixel)
         return self._ddf.partitions[partition_index]
