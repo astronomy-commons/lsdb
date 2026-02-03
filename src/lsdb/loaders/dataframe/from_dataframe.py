@@ -104,7 +104,7 @@ def from_dataframe(
     >>> catalog = lsdb.from_dataframe(df, catalog_name="toy_catalog")
     >>> catalog.head()
                             ra        dec    id
-    _healpix_29                                   
+    _healpix_29
     118362963675428450  52.696686  39.675892  8154
     98504457942331510   89.913567  46.147079  3437
     70433374600953220   40.528952  35.350965  8214
