@@ -1103,7 +1103,7 @@ class Catalog(HealpixDataset):
         ...     lambda df: df.assign(right_flag=True)
         ... )
         >>> joined = left.join(right, left_on="id", right_on="id_right", suffix_method="overlapping_columns")
-        >>> joined.compute().head()  # doctest: +NORMALIZE_WHITESPACE
+        >>> joined.head()  # doctest: +NORMALIZE_WHITESPACE
                             ra_left   dec_left    id   ra_right  dec_right  id_right  right_flag
         _healpix_29
         118362963675428450  52.696686  39.675892  8154  52.696686  39.675892      8154        True

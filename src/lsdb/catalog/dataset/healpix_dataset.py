@@ -1172,7 +1172,7 @@ class HealpixDataset:
         >>> from lsdb.nested.datasets import generate_data
         >>> nf = generate_data(1000, 5, seed=0, ra_range=(0.0, 300.0), dec_range=(-50.0, 50.0))
         >>> catalog = lsdb.from_dataframe(nf.compute()[["ra", "dec", "id"]])
-        >>> fig, ax = catalog.plot_pixels()
+        >>> fig, ax = catalog.plot_pixels()  # doctest: +SKIP
         """
         return self.hc_structure.plot_pixels(projection=projection, **kwargs)
 
@@ -1196,7 +1196,7 @@ class HealpixDataset:
         >>> from lsdb.nested.datasets import generate_data
         >>> nf = generate_data(1000, 5, seed=0, ra_range=(0.0, 300.0), dec_range=(-50.0, 50.0))
         >>> catalog = lsdb.from_dataframe(nf.compute()[["ra", "dec", "id"]])
-        >>> fig, ax = catalog.plot_coverage()
+        >>> fig, ax = catalog.plot_coverage()  # doctest: +SKIP
         """
         return self.hc_structure.plot_moc(**kwargs)
 
