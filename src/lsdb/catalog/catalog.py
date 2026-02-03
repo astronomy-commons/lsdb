@@ -157,7 +157,7 @@ class Catalog(HealpixDataset):
         >>> nf = generate_data(1000, 5, seed=0, ra_range=(0.0, 300.0), dec_range=(-50.0, 50.0))
         >>> catalog = lsdb.from_dataframe(nf.compute()[["ra", "dec", "id"]])
         >>> filtered = catalog.query("ra < 100 and dec > 0")
-        >>> filtered.head()
+        >>> filtered.head()  # doctest: +NORMALIZE_WHITESPACE
                                 ra        dec    id
         _healpix_29
         118362963675428450  52.696686  39.675892  8154
@@ -312,16 +312,8 @@ class Catalog(HealpixDataset):
         >>> left = lsdb.from_dataframe(df, catalog_name="left")
         >>> right = lsdb.from_dataframe(df, catalog_name="right")
         >>> xmatch = left.crossmatch(right, n_neighbors=1, radius_arcsec=1.0,
-        ... suffix_method="overlapping_columns")
-        >>> xmatch.head()
-        WARNING:root:Renaming overlapping columns:
-        +--------+---------------------+-----------------------+
-        | Column | Left (suffix=_left) | Right (suffix=_right) |
-        +--------+---------------------+-----------------------+
-        |   ra   |       ra_left       |       ra_right        |
-        |  dec   |      dec_left       |       dec_right       |
-        |   id   |       id_left       |       id_right        |
-        +--------+---------------------+-----------------------+
+        ... suffix_method="overlapping_columns", log_changes=False)
+        >>> xmatch.head()  # doctest: +NORMALIZE_WHITESPACE
                             ra_left   dec_left  id_left   ra_right  dec_right  id_right  _dist_arcsec
         _healpix_29
         118362963675428450  52.696686  39.675892     8154  52.696686  39.675892      8154           0.0
@@ -832,7 +824,7 @@ class Catalog(HealpixDataset):
         >>> def add_flag(df):
         ...     return df.assign(in_north=df["dec"] > 0)
         >>> catalog2 = catalog.map_partitions(add_flag)
-        >>> catalog2.head()
+        >>> catalog2.head()  # doctest: +NORMALIZE_WHITESPACE
                                 ra        dec    id in_north
         _healpix_29
         118362963675428450  52.696686  39.675892  8154     True
@@ -1111,7 +1103,7 @@ class Catalog(HealpixDataset):
         ...     lambda df: df.assign(right_flag=True)
         ... )
         >>> joined = left.join(right, left_on="id", right_on="id_right", suffix_method="overlapping_columns")
-        >>> joined.compute().head()
+        >>> joined.compute().head()  # doctest: +NORMALIZE_WHITESPACE
                             ra_left   dec_left    id   ra_right  dec_right  id_right  right_flag
         _healpix_29
         118362963675428450  52.696686  39.675892  8154  52.696686  39.675892      8154        True
@@ -1500,7 +1492,7 @@ class Catalog(HealpixDataset):
         >>> from lsdb.nested.datasets import generate_data
         >>> nf = generate_data(1000, 5, seed=0, ra_range=(0.0, 300.0), dec_range=(-50.0, 50.0))
         >>> catalog = lsdb.from_dataframe(nf.compute()[["ra", "dec", "id"]], catalog_name="demo")
-        >>> catalog.write_catalog(<your path here> / "demo_catalog", overwrite=True)
+        >>> catalog.write_catalog(<your path here> / "demo_catalog", overwrite=True)  # doctest: +SKIP
         """
         if as_collection:
             self._check_unloaded_columns(default_columns)

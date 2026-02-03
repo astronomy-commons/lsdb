@@ -486,7 +486,7 @@ class HealpixDataset:
         >>> catalog = lsdb.from_dataframe(nf.compute()[["ra", "dec", "id"]])
         >>> hp = catalog.get_healpix_pixels()[0]
         >>> partition = catalog.get_partition(hp.order, hp.pixel)
-        >>> partition.compute().head()
+        >>> partition.compute().head()  # doctest: +NORMALIZE_WHITESPACE
                                 ra        dec    id
         _healpix_29
         118362963675428450  52.696686  39.675892  8154
@@ -769,7 +769,7 @@ class HealpixDataset:
         >>> nf = generate_data(1000, 5, seed=42, ra_range=(0.0, 300.0), dec_range=(-50.0, 50.0))
         >>> catalog = lsdb.from_dataframe(nf.compute()[["ra", "dec", "id"]])
         >>> cone = catalog.cone_search(ra=150.0, dec=0.0, radius_arcsec=7200)
-        >>> cone.head()
+        >>> cone.head()  # doctest: +NORMALIZE_WHITESPACE
                                     ra       dec    id
         _healpix_29
         1917605570237722650  151.359297  1.383203  4296

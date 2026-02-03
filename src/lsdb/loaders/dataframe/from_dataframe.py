@@ -102,7 +102,7 @@ def from_dataframe(
     >>> nf = generate_data(1000, 5, seed=0, ra_range=(0.0, 300.0), dec_range=(-50.0, 50.0))
     >>> df = nf.compute()[["ra", "dec", "id"]]
     >>> catalog = lsdb.from_dataframe(df, catalog_name="toy_catalog")
-    >>> catalog.head()
+    >>> catalog.head()  # doctest: +NORMALIZE_WHITESPACE
                             ra        dec    id
     _healpix_29
     118362963675428450  52.696686  39.675892  8154
