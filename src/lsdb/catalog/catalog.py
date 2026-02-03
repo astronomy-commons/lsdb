@@ -158,6 +158,13 @@ class Catalog(HealpixDataset):
         >>> catalog = lsdb.from_dataframe(nf.compute()[["ra", "dec", "id"]])
         >>> filtered = catalog.query("ra < 100 and dec > 0")
         >>> filtered.head()
+                                ra        dec    id
+        _healpix_29                                   
+        118362963675428450  52.696686  39.675892  8154
+        98504457942331510   89.913567  46.147079  3437
+        70433374600953220   40.528952  35.350965  8214
+        154968715224527848   17.57041    29.8936  9853
+        67780378363846894    45.08384   31.95611  8297
         """
         catalog = super().query(expr)
         if self.margin is not None:
