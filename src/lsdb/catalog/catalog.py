@@ -810,6 +810,13 @@ class Catalog(HealpixDataset):
         ...     return df.assign(in_north=df["dec"] > 0)
         >>> catalog2 = catalog.map_partitions(add_flag)
         >>> catalog2.head()
+                                ra        dec    id in_north
+        _healpix_29                                            
+        118362963675428450  52.696686  39.675892  8154     True
+        98504457942331510   89.913567  46.147079  3437     True
+        70433374600953220   40.528952  35.350965  8214     True
+        154968715224527848   17.57041    29.8936  9853     True
+        67780378363846894    45.08384   31.95611  8297     True
         """
         catalog = super().map_partitions(
             func,
