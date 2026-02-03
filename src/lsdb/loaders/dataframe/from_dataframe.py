@@ -84,17 +84,6 @@ def from_dataframe(
     ------
     ValueError
         If RA/Dec columns are not found or contain NaN values.
-
-    Examples
-    --------
-    Create a small, synthetic sky catalog and load it into LSDB:
-
-    >>> import lsdb
-    >>> from lsdb.nested.datasets import generate_data
-    >>> nf = generate_data(1000, 5, seed=0, ra_range=(0.0, 300.0), dec_range=(-50.0, 50.0))
-    >>> df = nf.compute()[["ra", "dec", "id"]]
-    >>> catalog = lsdb.from_dataframe(df, catalog_name="toy_catalog")
-    >>> catalog.compute().head()
     """
     # Load the catalog.
     catalog = DataframeCatalogLoader(
