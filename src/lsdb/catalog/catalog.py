@@ -157,7 +157,7 @@ class Catalog(HealpixDataset):
         >>> nf = generate_data(1000, 5, seed=0, ra_range=(0.0, 300.0), dec_range=(-50.0, 50.0))
         >>> catalog = lsdb.from_dataframe(nf.compute()[["ra", "dec", "id"]])
         >>> filtered = catalog.query("ra < 100 and dec > 0")
-        >>> filtered.compute().head()
+        >>> filtered.head()
         """
         catalog = super().query(expr)
         if self.margin is not None:
@@ -305,7 +305,7 @@ class Catalog(HealpixDataset):
         >>> left = lsdb.from_dataframe(df, catalog_name="left")
         >>> right = lsdb.from_dataframe(df, catalog_name="right")
         >>> xmatch = left.crossmatch(right, n_neighbors=1, radius_arcsec=1.0, suffix_method="overlapping_columns")
-        >>> xmatch.compute().head()
+        >>> xmatch.head()
 
         Raises
         ------
@@ -809,7 +809,7 @@ class Catalog(HealpixDataset):
         >>> def add_flag(df):
         ...     return df.assign(in_north=df["dec"] > 0)
         >>> catalog2 = catalog.map_partitions(add_flag)
-        >>> catalog2.compute().head()
+        >>> catalog2.head()
         """
         catalog = super().map_partitions(
             func,
