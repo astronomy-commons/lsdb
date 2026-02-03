@@ -42,9 +42,9 @@ class CatalogIterator(Iterator[pd.Series | pd.DataFrame]):
         Number of partitions to yield. It will be clipped to the total number
         of partitions. Be mindful when setting this value larger than 1, as
         holding multiple partitions in memory at once will increase memory usage.
-    loop : bool
+    loop : bool or int
         If `True` it runs infinitely selecting random partitions every time.
-        If `False` it runs once.
+        If `False` it runs once. If an integer is provided, it loops that many times.
     seed : int
         Random seed to use for observation sampling.
 
@@ -60,7 +60,7 @@ class CatalogIterator(Iterator[pd.Series | pd.DataFrame]):
         catalog: Catalog,
         client: Client | None = None,
         partitions_per_chunk: int = 1,
-        loop: bool = False,
+        loop: bool | int = False,
         seed: int | None = None,
     ) -> None:
         self.catalog = catalog
@@ -83,6 +83,10 @@ class CatalogIterator(Iterator[pd.Series | pd.DataFrame]):
         # Get a random subset of partitions when looping infinitely
         if self.loop:
             return self.rng.choice(self.partitions_left, self.partitions_per_chunk, replace=False)
+
+        # TODO: Implement integer looping
+        if isinstance(self.loop, int):
+            raise NotImplementedError("Integer looping is not yet implemented.")
 
         # Chomp a subset of partitions when running once through the data
         self.partitions_left, partitions = (
