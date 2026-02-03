@@ -313,7 +313,9 @@ class Catalog(HealpixDataset):
         >>> right = lsdb.from_dataframe(df, catalog_name="right")
         >>> xmatch = left.crossmatch(right, n_neighbors=1, radius_arcsec=1.0,
         ... suffix_method="overlapping_columns", log_changes=False)
-        >>> xmatch.head()[["ra_left", "dec_left", "id_left", "_dist_arcsec"]]  # doctest: +NORMALIZE_WHITESPACE
+        >>> xmatch.head()[  # doctest: +NORMALIZE_WHITESPACE
+        ...     ["ra_left", "dec_left", "id_left", "_dist_arcsec"]
+        ... ]
                     ra_left   dec_left  id_left  _dist_arcsec
         _healpix_29
         118362963675428450  52.696686  39.675892    8154           0.0
@@ -1103,7 +1105,9 @@ class Catalog(HealpixDataset):
         ...     lambda df: df.assign(right_flag=True)
         ... )
         >>> joined = left.join(right, left_on="id", right_on="id_right", suffix_method="overlapping_columns")
-        >>> joined.head()[["ra_left", "dec_left", "id", "right_flag"]]  # doctest: +NORMALIZE_WHITESPACE
+        >>> joined.head()[  # doctest: +NORMALIZE_WHITESPACE
+        ...     ["ra_left", "dec_left", "id", "right_flag"]
+        ... ]
                             ra_left   dec_left    id  right_flag
         _healpix_29
         118362963675428450  52.696686  39.675892  8154        True
