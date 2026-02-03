@@ -311,7 +311,8 @@ class Catalog(HealpixDataset):
         >>> df = nf.compute()[["ra", "dec", "id"]]
         >>> left = lsdb.from_dataframe(df, catalog_name="left")
         >>> right = lsdb.from_dataframe(df, catalog_name="right")
-        >>> xmatch = left.crossmatch(right, n_neighbors=1, radius_arcsec=1.0, suffix_method="overlapping_columns")
+        >>> xmatch = left.crossmatch(right, n_neighbors=1, radius_arcsec=1.0,
+        ... suffix_method="overlapping_columns")
         >>> xmatch.head()
         WARNING:root:Renaming overlapping columns:
         +--------+---------------------+-----------------------+
