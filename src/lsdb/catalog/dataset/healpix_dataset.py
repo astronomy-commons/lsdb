@@ -759,10 +759,13 @@ class HealpixDataset:
 
         >>> import lsdb
         >>> from lsdb.nested.datasets import generate_data
-        >>> nf = generate_data(1000, 5, seed=0, ra_range=(0.0, 300.0), dec_range=(-50.0, 50.0))
+        >>> nf = generate_data(1000, 5, seed=42, ra_range=(0.0, 300.0), dec_range=(-50.0, 50.0))
         >>> catalog = lsdb.from_dataframe(nf.compute()[["ra", "dec", "id"]])
-        >>> cone = catalog.cone_search(ra=150.0, dec=0.0, radius_arcsec=3600)
-        >>> cone.compute().head()
+        >>> cone = catalog.cone_search(ra=150.0, dec=0.0, radius_arcsec=7200)
+        >>> cone.head()
+                                    ra       dec    id
+        _healpix_29                                    
+        1917605570237722650  151.359297  1.383203  4296
         """
         return self.search(ConeSearch(ra, dec, radius_arcsec, fine))
 
