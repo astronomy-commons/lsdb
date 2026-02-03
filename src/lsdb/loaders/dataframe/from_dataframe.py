@@ -102,7 +102,14 @@ def from_dataframe(
     >>> nf = generate_data(1000, 5, seed=0, ra_range=(0.0, 300.0), dec_range=(-50.0, 50.0))
     >>> df = nf.compute()[["ra", "dec", "id"]]
     >>> catalog = lsdb.from_dataframe(df, catalog_name="toy_catalog")
-    >>> catalog.compute().head()
+    >>> catalog.head()
+                            ra        dec    id
+    _healpix_29                                   
+    118362963675428450  52.696686  39.675892  8154
+    98504457942331510   89.913567  46.147079  3437
+    70433374600953220   40.528952  35.350965  8214
+    154968715224527848   17.57041    29.8936  9853
+    67780378363846894    45.08384   31.95611  8297
     """
     # Load the catalog.
     catalog = DataframeCatalogLoader(
