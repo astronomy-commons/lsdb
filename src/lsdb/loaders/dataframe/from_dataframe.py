@@ -53,9 +53,17 @@ def from_dataframe(
     partition_rows : int or None, default None
         The desired partition size, in number of rows. Only one of
         `partition_rows` or `partition_bytes` should be specified.
+
+        Note: partitioning is spatial (HEALPix-based). `partition_rows` is a best-effort target,
+        and the resulting number of partitions is limited by `highest_order` and the sky footprint
+        of your data (e.g., if all rows fall into a single HEALPix pixel at `highest_order`, you will
+        still get a single partition).
     partition_bytes : int or None, default None
         The desired partition size, in bytes. Only one of
         `partition_rows` or `partition_bytes` should be specified.
+
+        Note: as with `partition_rows`, this is a best-effort target for spatial (HEALPix-based)
+        partitioning and is limited by `highest_order`.
     margin_order : int, default -1
         The order at which to generate the margin cache.
     margin_threshold : float or None, default 5
@@ -84,6 +92,24 @@ def from_dataframe(
     ------
     ValueError
         If RA/Dec columns are not found or contain NaN values.
+
+    Examples
+    --------
+    Create a small, synthetic sky catalog and load it into LSDB:
+
+    >>> import lsdb
+    >>> from lsdb.nested.datasets import generate_data
+    >>> nf = generate_data(1000, 5, seed=0, ra_range=(0.0, 300.0), dec_range=(-50.0, 50.0))
+    >>> df = nf.compute()[["ra", "dec", "id"]]
+    >>> catalog = lsdb.from_dataframe(df, catalog_name="toy_catalog")
+    >>> catalog.head()  # doctest: +NORMALIZE_WHITESPACE
+                            ra        dec    id
+    _healpix_29
+    118362963675428450  52.696686  39.675892  8154
+    98504457942331510   89.913567  46.147079  3437
+    70433374600953220   40.528952  35.350965  8214
+    154968715224527848   17.57041    29.8936  9853
+    67780378363846894    45.08384   31.95611  8297
     """
     # Load the catalog.
     catalog = DataframeCatalogLoader(

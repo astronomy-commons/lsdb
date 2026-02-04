@@ -475,6 +475,25 @@ class HealpixDataset:
         ------
         ValueError
             If no data exists for the specified pixel
+
+        Examples
+        --------
+        Get a single HEALPix partition from a small synthetic catalog:
+
+        >>> import lsdb
+        >>> from lsdb.nested.datasets import generate_data
+        >>> nf = generate_data(1000, 5, seed=0, ra_range=(0.0, 300.0), dec_range=(-50.0, 50.0))
+        >>> catalog = lsdb.from_dataframe(nf.compute()[["ra", "dec", "id"]])
+        >>> hp = catalog.get_healpix_pixels()[0]
+        >>> partition = catalog.get_partition(hp.order, hp.pixel)
+        >>> partition.compute().head()  # doctest: +NORMALIZE_WHITESPACE
+                                ra        dec    id
+        _healpix_29
+        118362963675428450  52.696686  39.675892  8154
+        98504457942331510   89.913567  46.147079  3437
+        70433374600953220   40.528952  35.350965  8214
+        154968715224527848   17.57041    29.8936  9853
+        67780378363846894    45.08384   31.95611  8297
         """
         partition_index = self.get_partition_index(order, pixel)
         return self._ddf.partitions[partition_index]
@@ -740,6 +759,20 @@ class HealpixDataset:
         Self
             A new Catalog containing the points filtered to those within the cone, and the partitions that
             overlap the cone.
+
+        Examples
+        --------
+        Filter a small synthetic catalog to a cone on the sky:
+
+        >>> import lsdb
+        >>> from lsdb.nested.datasets import generate_data
+        >>> nf = generate_data(1000, 5, seed=42, ra_range=(0.0, 300.0), dec_range=(-50.0, 50.0))
+        >>> catalog = lsdb.from_dataframe(nf.compute()[["ra", "dec", "id"]])
+        >>> cone = catalog.cone_search(ra=150.0, dec=0.0, radius_arcsec=7200)
+        >>> cone.head()  # doctest: +NORMALIZE_WHITESPACE
+                                    ra       dec    id
+        _healpix_29
+        1917605570237722650  151.359297  1.383203  4296
         """
         return self.search(ConeSearch(ra, dec, radius_arcsec, fine))
 
@@ -1130,6 +1163,16 @@ class HealpixDataset:
         Returns
         -------
         tuple[Figure, WCSAxes]
+
+        Examples
+        --------
+        Plot pixel density for a small synthetic catalog:
+
+        >>> import lsdb
+        >>> from lsdb.nested.datasets import generate_data
+        >>> nf = generate_data(1000, 5, seed=0, ra_range=(0.0, 300.0), dec_range=(-50.0, 50.0))
+        >>> catalog = lsdb.from_dataframe(nf.compute()[["ra", "dec", "id"]])
+        >>> fig, ax = catalog.plot_pixels()  # doctest: +SKIP
         """
         return self.hc_structure.plot_pixels(projection=projection, **kwargs)
 
@@ -1144,6 +1187,16 @@ class HealpixDataset:
         Returns
         -------
         tuple[Figure, WCSAxes]
+
+        Examples
+        --------
+        Plot coverage for a small synthetic catalog:
+
+        >>> import lsdb
+        >>> from lsdb.nested.datasets import generate_data
+        >>> nf = generate_data(1000, 5, seed=0, ra_range=(0.0, 300.0), dec_range=(-50.0, 50.0))
+        >>> catalog = lsdb.from_dataframe(nf.compute()[["ra", "dec", "id"]])
+        >>> fig, ax = catalog.plot_coverage()  # doctest: +SKIP
         """
         return self.hc_structure.plot_moc(**kwargs)
 
