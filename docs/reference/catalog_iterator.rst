@@ -1,7 +1,7 @@
 CatalogIterator
 ===============
 
-.. currentmodule:: lsdb.catalog_iterator
+.. currentmodule:: lsdb
 
 .. autosummary::
     :toctree: api/
