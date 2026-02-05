@@ -27,7 +27,7 @@ class _FakeFuture:
 
 
 class CatalogIterator(Iterator[pd.DataFrame]):
-    """Generator yielding training data from an LSDB
+    """Generator yielding training data from an LSDB Catalog
 
     The data is pre-fetched on the background, 'n_workers' number
     of partitions per time (derived from `client` object).
@@ -58,17 +58,47 @@ class CatalogIterator(Iterator[pd.DataFrame]):
 
     Examples
     --------
+    Consider a toy catalog, which contains 12 data partitions:
     >>> import lsdb
     >>> cat = lsdb.generate_catalog(500, 10, seed=1)
-    >>> cat_iter = lsdb.CatalogIterator(catalog=cat, partitions_per_chunk=2, seed=1)
+    >>> cat.npartitions
+    12
+
+    A simple example of iterating through a catalog in chunks of 4 (random) partitions at a time:
+
+    >>> cat_iter = lsdb.CatalogIterator(catalog=cat, partitions_per_chunk=4, seed=1)
     >>> for chunk in cat_iter:
     ...     print(len(chunk))
-    74
-    82
-    108
-    78
-    80
-    78
+    156
+    186
+    158
+
+    Alternatively, you can loop through the data multiple times by setting `iter_limit`:
+
+    >>> cat_iter = lsdb.CatalogIterator(catalog=cat, partitions_per_chunk=4, iter_limit=3, seed=1)
+    >>> for chunk in cat_iter:
+    ...     print(len(chunk))
+    173
+    159
+    183
+    168
+    158
+    154
+    173
+    154
+    178
+
+    Finally, you can loop through the data infinitely by setting `iter_limit=None`:
+
+    >>> cat_iter = lsdb.CatalogIterator(catalog=cat, partitions_per_chunk=4, iter_limit=None, seed=1)
+    >>> for _ in range(5):
+    ...     chunk = next(cat_iter)
+    ...     print(len(chunk))
+    152
+    179
+    160
+    192
+    182
     """
 
     def __init__(

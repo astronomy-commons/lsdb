@@ -1,5 +1,5 @@
-CatalogIterator
-===============
+Catalog Iteration
+=================
 
 .. currentmodule:: lsdb
 
