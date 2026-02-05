@@ -5,8 +5,9 @@ def test_catalog_iterator():
     cat = lsdb.generate_catalog(100, 2, lowest_order=4, ra_range=(15.0, 25.0), dec_range=(34.0, 44.0), seed=1)
 
     # Test default iteration
-    cat_iter = lsdb.CatalogIterator(catalog=cat, seed=1)
+    cat_iter = lsdb.CatalogIterator(catalog=cat)
     assert len(cat_iter.partitions_left) == cat.npartitions - cat_iter.partitions_per_chunk
+    assert len(cat_iter) == 11
 
     total_len = 0
     for chunk in cat_iter:

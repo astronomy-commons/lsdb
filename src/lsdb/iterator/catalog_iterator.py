@@ -27,7 +27,7 @@ class _FakeFuture:
 
 
 class CatalogIterator(Iterator[pd.DataFrame]):
-    """Generator yielding training data from an LSDB Catalog
+    """Iterator yielding random subsets of partitions from a catalog.
 
     The data is pre-fetched on the background, 'n_workers' number
     of partitions per time (derived from `client` object).
@@ -146,11 +146,7 @@ class CatalogIterator(Iterator[pd.DataFrame]):
     def _submit_next_partitions(self) -> Future | _FakeFuture:
         partitions = self._get_next_partitions()
         sliced_catalog = self.catalog.partitions[partitions]
-
-        if hasattr(sliced_catalog, "_ddf"):
-            futurable = sliced_catalog._ddf  # pylint: disable=protected-access
-        else:
-            futurable = sliced_catalog
+        futurable = sliced_catalog._ddf  # pylint: disable=protected-access
 
         if self.client is None:
             future = _FakeFuture(dask.compute(futurable)[0])
