@@ -5,6 +5,7 @@ import dask
 import numpy as np
 import pandas as pd
 from dask.distributed import Client, Future
+
 from lsdb import Catalog
 
 
@@ -83,8 +84,7 @@ class CatalogIterator(Iterator[pd.Series | pd.DataFrame]):
         if self.iter_limit is not None and self.iter_limit > 1:
             repeated_partitions = np.repeat(np.arange(self.catalog.npartitions), iter_limit)
             self.partitions_left = self.rng.permutation(repeated_partitions)
-            
-            #self.partitions_left = np.tile(self.rng.permutation(self.catalog.npartitions), self.iter_limit)
+
         else:
             self.partitions_left = self.rng.permutation(self.catalog.npartitions)
         self._empty = False
