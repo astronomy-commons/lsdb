@@ -6,9 +6,12 @@
 LSDB
 ========================================================================================
 
-LSDB is a python tool for scalable analysis of large catalogs (e.g. querying 
-and crossmatching ~10⁹ sources). It aims to address large-scale data processing 
-challenges, in particular those brought up by `LSST <https://www.lsst.org/about>`_.
+LSDB is a python tool for scalable analysis of large catalogs (e.g. analyzing, querying 
+and/or crossmatching ~10⁹ sources). It aims to address large-scale data processing 
+challenges expected from upcoming surveys, such as `LSST <https://www.lsst.org/about>`_,
+`Euclid <https://www.euclid-ec.org>`_, `Roman <https://roman.gsfc.nasa.gov>`_, and the
+`Schmidt Observatory System <https://www.schmidtsciences.org/schmidt-observatory-system/>`_.
+
 
 Built on top of `Dask <https://docs.dask.org/>`_ to efficiently scale and parallelize operations across multiple distributed workers, it
 uses the `HATS <https://hats.readthedocs.io/en/stable/>`_ data format to efficiently perform spatial
