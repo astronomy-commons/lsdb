@@ -56,10 +56,19 @@ class CatalogIterator(Iterator[pd.DataFrame]):
     seed : int
         Random seed to use for observation sampling.
 
-    Methods
-    -------
-    __next__() -> pd.Series
-        Provides light curves as a nested series.
+    Examples
+    --------
+    >>> import lsdb
+    >>> cat = lsdb.generate_catalog(500, 10, seed=1)
+    >>> cat_iter = lsdb.CatalogIterator(catalog=cat, partitions_per_chunk=2, seed=1)
+    >>> for chunk in cat_iter:
+    ...     print(len(chunk))
+    74
+    82
+    108
+    78
+    80
+    78
     """
 
     def __init__(
