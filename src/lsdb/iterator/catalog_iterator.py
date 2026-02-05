@@ -94,11 +94,11 @@ class CatalogIterator(Iterator[pd.DataFrame]):
     >>> for _ in range(5):
     ...     chunk = next(cat_iter)
     ...     print(len(chunk))
-    152
-    179
-    160
-    192
-    182
+    161
+    185
+    189
+    159
+    158
     """
 
     def __init__(
