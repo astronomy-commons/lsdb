@@ -42,9 +42,15 @@ class CatalogIterator(Iterator[pd.Series | pd.DataFrame]):
         Number of partitions to yield. It will be clipped to the total number
         of partitions. Be mindful when setting this value larger than 1, as
         holding multiple partitions in memory at once will increase memory usage.
-    loop : bool or int
-        If `True` it runs infinitely selecting random partitions every time.
-        If `False` it runs once. If an integer is provided, it loops that many times.
+    iter_limit : int or None, default 1
+        The number of times to loop through the data. By default, the iterator
+        will loop through the data once. If set to a value greater than 1, the
+        iterator will loop through the data that many times. The repeated
+        partitions are shuffled together, so the same partition may be seen
+        multiple times in a row, or not at all until the end of the first pass.
+        If None, loops infinitely over the data, yielding a different random
+        subset of partitions each time. Changing this value affects the
+        randomness for a given seed.
     seed : int
         Random seed to use for observation sampling.
 
@@ -60,13 +66,13 @@ class CatalogIterator(Iterator[pd.Series | pd.DataFrame]):
         catalog: Catalog,
         client: Client | None = None,
         partitions_per_chunk: int = 1,
-        loop: bool | int = False,
+        iter_limit: bool | int = 1,
         seed: int | None = None,
     ) -> None:
         self.catalog = catalog
         self.client = client
         self.partitions_per_chunk = min(partitions_per_chunk, self.catalog.npartitions)
-        self.loop = loop
+        self.iter_limit = iter_limit
         self.seed = seed
 
         if self.seed is None:
@@ -74,19 +80,21 @@ class CatalogIterator(Iterator[pd.Series | pd.DataFrame]):
         else:
             self.rng = np.random.default_rng((1 << 32, self.seed))
 
-        self.partitions_left = self.rng.permutation(self.catalog.npartitions)
+        if self.iter_limit is not None and self.iter_limit > 1:
+            repeated_partitions = np.repeat(np.arange(self.catalog.npartitions), iter_limit)
+            self.partitions_left = self.rng.permutation(repeated_partitions)
+            
+            #self.partitions_left = np.tile(self.rng.permutation(self.catalog.npartitions), self.iter_limit)
+        else:
+            self.partitions_left = self.rng.permutation(self.catalog.npartitions)
         self._empty = False
 
         self.future = self._submit_next_partitions()
 
     def _get_next_partitions(self) -> np.ndarray:
         # Get a random subset of partitions when looping infinitely
-        if self.loop:
+        if self.iter_limit is None:
             return self.rng.choice(self.partitions_left, self.partitions_per_chunk, replace=False)
-
-        # TODO: Implement integer looping
-        if isinstance(self.loop, int):
-            raise NotImplementedError("Integer looping is not yet implemented.")
 
         # Chomp a subset of partitions when running once through the data
         self.partitions_left, partitions = (
