@@ -59,6 +59,7 @@ class CatalogIterator(Iterator[pd.DataFrame]):
     Examples
     --------
     Consider a toy catalog, which contains 12 data partitions:
+
     >>> import lsdb
     >>> cat = lsdb.generate_catalog(500, 10, seed=1)
     >>> cat.npartitions
