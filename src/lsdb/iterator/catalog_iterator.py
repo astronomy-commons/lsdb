@@ -1,5 +1,5 @@
 from collections.abc import Iterator
-from typing import Self
+from typing import Optional, Self
 
 import dask
 import numpy as np
@@ -21,11 +21,12 @@ class _FakeFuture:
     def __init__(self, obj):
         self.obj = obj
 
-    def result(self):
+    def result(self) -> pd.DataFrame:
+        """Return the held value."""
         return self.obj
 
 
-class CatalogIterator(Iterator[pd.Series | pd.DataFrame]):
+class CatalogIterator(Iterator[pd.DataFrame]):
     """Generator yielding training data from an LSDB
 
     The data is pre-fetched on the background, 'n_workers' number
@@ -89,7 +90,7 @@ class CatalogIterator(Iterator[pd.Series | pd.DataFrame]):
             self.partitions_left = self.rng.permutation(self.catalog.npartitions)
         self._empty = False
 
-        self.future = self._submit_next_partitions()
+        self.future: Optional[Future | _FakeFuture] = self._submit_next_partitions()
 
     def _get_next_partitions(self) -> np.ndarray:
         # Get a random subset of partitions when looping infinitely
@@ -107,7 +108,10 @@ class CatalogIterator(Iterator[pd.Series | pd.DataFrame]):
         partitions = self._get_next_partitions()
         sliced_catalog = self.catalog.partitions[partitions]
 
-        futurable = sliced_catalog._ddf if hasattr(sliced_catalog, "_ddf") else sliced_catalog
+        if hasattr(sliced_catalog, "_ddf"):
+            futurable = sliced_catalog._ddf  # pylint: disable=protected-access
+        else:
+            futurable = sliced_catalog
 
         if self.client is None:
             future = _FakeFuture(dask.compute(futurable)[0])
@@ -118,11 +122,13 @@ class CatalogIterator(Iterator[pd.Series | pd.DataFrame]):
     def __iter__(self) -> Self:
         return self
 
-    def __next__(self) -> pd.Series:
-        if self._empty:
+    def __next__(self) -> pd.DataFrame:
+        # check the future as well, for typing reasons
+        # but it shouldn't be None if the iterator is not empty.
+        if self._empty or self.future is None:
             raise StopIteration("All partitions have been processed")
 
-        result: pd.Series | pd.DataFrame = self.future.result()
+        result: pd.DataFrame = self.future.result()
         result = result.sample(frac=1, random_state=self.rng)
 
         if len(self.partitions_left) > 0:

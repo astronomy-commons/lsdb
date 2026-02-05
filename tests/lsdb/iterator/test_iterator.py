@@ -1,5 +1,3 @@
-import numpy as np
-
 import lsdb
 
 
@@ -37,5 +35,5 @@ def test_catalog_iterator():
     cat_iter = lsdb.CatalogIterator(catalog=cat, seed=1, iter_limit=None)
 
     # Check that we can sample beyond the number of partitions without error
-    for i in range(cat.npartitions * 2):
+    for _ in range(cat.npartitions * 2):
         chunk = next(cat_iter)
