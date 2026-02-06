@@ -51,9 +51,16 @@ def from_astropy(
     partition_rows : int or None, default None
         The desired partition size, in number of rows. Only one of
         `partition_rows` or `partition_bytes` should be specified.
+
+        Note: partitioning is spatial (HEALPix-based). `partition_rows` is a best-effort target,
+        and the resulting number of partitions is limited by `highest_order` and the sky footprint
+        of your data.
     partition_bytes : int or None, default None
         The desired partition size, in bytes. Only one of
         `partition_rows` or `partition_bytes` should be specified.
+
+        Note: as with `partition_rows`, this is a best-effort target for spatial (HEALPix-based)
+        partitioning and is limited by `highest_order`.
     margin_order : int, default -1
         The order at which to generate the margin cache.
     margin_threshold : float or None, default 5
