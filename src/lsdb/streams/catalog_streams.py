@@ -55,7 +55,7 @@ class CatalogStream:
     Consider a toy catalog, which contains 12 data partitions:
 
     >>> import lsdb
-    >>> from lsdb.iterators import CatalogStream
+    >>> from lsdb.streams import CatalogStream
     >>> cat = lsdb.generate_catalog(500, 10, seed=1)
     >>> cat.npartitions
     12
@@ -147,7 +147,7 @@ class InfiniteStream(CatalogStream):
     Consider a toy catalog, which contains 12 data partitions:
 
     >>> import lsdb
-    >>> from lsdb.iterators import InfiniteStream
+    >>> from lsdb.streams import InfiniteStream
     >>> cat = lsdb.generate_catalog(500, 10, seed=1)
     >>> cat.npartitions
     12
