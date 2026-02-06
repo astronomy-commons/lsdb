@@ -46,7 +46,7 @@ class CatalogStream:
         holding multiple partitions in memory at once will increase memory usage.
     shuffle_partitions : bool
         Whether to shuffle the partition order before streaming. If False, the
-        partitions will be streamed in their original order.
+        partitions will be streamed in their original order. True by default.
     seed : int
         Random seed to use for observation sampling, when shuffling partitions.
 
