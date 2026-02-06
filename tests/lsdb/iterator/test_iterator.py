@@ -1,3 +1,5 @@
+import pytest
+
 import lsdb
 
 
@@ -38,3 +40,10 @@ def test_catalog_iterator():
     # Check that we can sample beyond the number of partitions without error
     for _ in range(cat.npartitions * 2):
         chunk = next(cat_iter)
+
+
+def test_invalid_catalog_input():
+    with pytest.raises(
+        ValueError, match="The provided catalog input type <class 'str'> is not a lsdb.Catalog object."
+    ):
+        lsdb.CatalogIterator(catalog="not a catalog")

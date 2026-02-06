@@ -112,6 +112,10 @@ class CatalogIterator(Iterator[pd.DataFrame]):
         seed: int | None = None,
     ) -> None:
         self.catalog = catalog
+
+        if not isinstance(catalog, Catalog):
+            raise ValueError(f"The provided catalog input type {type(catalog)} is not a lsdb.Catalog object.")
+
         self.client = client
         self.partitions_per_chunk = min(partitions_per_chunk, self.catalog.npartitions)
         self.iter_limit = iter_limit
