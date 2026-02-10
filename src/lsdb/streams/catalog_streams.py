@@ -44,9 +44,11 @@ class CatalogStream:
         Number of partitions to yield. It will be clipped to the total number
         of partitions. Be mindful when setting this value larger than 1, as
         holding multiple partitions in memory at once will increase memory usage.
-    shuffle_partitions : bool
+    shuffle : bool
         Whether to shuffle the partition order before streaming. If False, the
         partitions will be streamed in their original order. True by default.
+        Additionally, if `shuffle` is True, the rows within each partition will
+        also be shuffled.
     seed : int
         Random seed to use for observation sampling, when shuffling partitions.
 
@@ -75,7 +77,7 @@ class CatalogStream:
         catalog: Catalog,
         client: Client | None = None,
         partitions_per_chunk: int = 1,
-        shuffle_partitions: bool = True,
+        shuffle: bool = True,
         seed: int | None = None,
     ) -> None:
         self.catalog = catalog
@@ -85,7 +87,7 @@ class CatalogStream:
 
         self.client = client
         self.partitions_per_chunk = min(partitions_per_chunk, self.catalog.npartitions)
-        self.shuffle_partitions = shuffle_partitions
+        self.shuffle = shuffle
         self.seed = seed
 
         if self.seed is None:
@@ -93,13 +95,17 @@ class CatalogStream:
         else:
             self.rng = np.random.default_rng((1 << 32, self.seed))
 
-    def get_partitions_left(self) -> np.ndarray:
+    def get_partitions_left(
+        self,
+    ) -> np.ndarray:
         """Initialize the partitions left to iterate over."""
-        if self.shuffle_partitions:
+        if self.shuffle:
             return self.rng.permutation(self.catalog.npartitions)
         return np.arange(self.catalog.npartitions)
 
-    def get_next_partitions(self, partitions_left: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    def get_next_partitions(
+        self, partitions_left: np.ndarray, rng: np.random.Generator  # pylint: disable=unused-argument
+    ) -> tuple[np.ndarray, np.ndarray]:
         """Get the next set of partitions to iterate over."""
         # Chomp a subset of partitions when running once through the data
         return (
@@ -118,7 +124,9 @@ class CatalogStream:
 
     def __iter__(self) -> "CatalogIterator":
         """Return an iterator for this iterable."""
-        return CatalogIterator(self)
+        # Split the RNG: create a new one for the iterator
+        iterator_rng = np.random.default_rng(self.rng.integers(0, 2**32))
+        return CatalogIterator(self, rng=iterator_rng)
 
 
 class InfiniteStream(CatalogStream):
@@ -180,25 +188,34 @@ class InfiniteStream(CatalogStream):
             seed=seed,
         )
 
-    def get_next_partitions(self, partitions_left: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    def get_next_partitions(
+        self, partitions_left: np.ndarray, rng: np.random.Generator
+    ) -> tuple[np.ndarray, np.ndarray]:
         """Get the next set of partitions to iterate over."""
-        return partitions_left, self.rng.choice(partitions_left, self.partitions_per_chunk, replace=False)
+        return partitions_left, rng.choice(partitions_left, self.partitions_per_chunk, replace=False)
 
 
 class CatalogIterator(Iterator[pd.DataFrame]):
     """Iterator yielding random subsets of partitions from a catalog."""
 
-    def __init__(self, iterable: CatalogStream) -> None:
+    def __init__(self, iterable: CatalogStream, rng: np.random.Generator) -> None:
+        self.rng = rng  # Use the iterator's own RNG
         self.iterable = iterable
-        self.partitions_left = self.iterable.get_partitions_left()
+        self.partitions_left = self._get_initial_partitions()
         self._empty = False
         self.future: Optional[Future | _FakeFuture] = self.iterable.submit_next_partitions(
             self._get_next_partitions()
         )
 
+    def _get_initial_partitions(self) -> np.ndarray:
+        """Initialize the partitions left to iterate over."""
+        if self.iterable.shuffle:
+            return self.rng.permutation(self.iterable.catalog.npartitions)
+        return np.arange(self.iterable.catalog.npartitions)
+
     def _get_next_partitions(self) -> np.ndarray:
         """Get the next set of partitions to process."""
-        self.partitions_left, partitions = self.iterable.get_next_partitions(self.partitions_left)
+        self.partitions_left, partitions = self.iterable.get_next_partitions(self.partitions_left, self.rng)
         return partitions
 
     def __iter__(self) -> "CatalogIterator":
@@ -209,7 +226,9 @@ class CatalogIterator(Iterator[pd.DataFrame]):
             raise StopIteration("All partitions have been processed")
 
         result: pd.DataFrame = self.future.result()
-        result = result.sample(frac=1, random_state=self.iterable.rng)
+
+        if self.iterable.shuffle:
+            result = result.sample(frac=1, random_state=self.rng)
 
         if len(self.partitions_left) > 0:
             self.future = self.iterable.submit_next_partitions(self._get_next_partitions())
