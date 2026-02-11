@@ -67,10 +67,18 @@ def test_catalog_compute_equals_ddf_compute(small_sky_order1_catalog):
 
 
 def test_catalog_is_dask_collection(small_sky_order1_catalog):
+    from dask.distributed import Client, Future
+
     assert dask.base.is_dask_collection(small_sky_order1_catalog)
-    (result,) = dask.compute(small_sky_order1_catalog)
-    assert isinstance(result, npd.NestedFrame)
-    pd.testing.assert_frame_equal(result, small_sky_order1_catalog._ddf.compute())
+    client = Client(n_workers=1, threads_per_worker=1)
+    try:
+        future = client.compute(small_sky_order1_catalog)
+        assert isinstance(future, Future)
+        result = future.result()
+        assert isinstance(result, npd.NestedFrame)
+        pd.testing.assert_frame_equal(result, small_sky_order1_catalog._ddf.compute())
+    finally:
+        client.close()
 
 
 def test_catalog_uses_dask_expressions(small_sky_order1_catalog):
