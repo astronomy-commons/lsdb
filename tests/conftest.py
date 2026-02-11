@@ -8,6 +8,7 @@ import numpy.testing as npt
 import pandas as pd
 import pyarrow as pa
 import pytest
+from dask.distributed import Client
 from hats.io import paths
 from hats.pixel_math import spatial_index_to_healpix
 from hats.pixel_math.spatial_index import (
@@ -55,6 +56,13 @@ XMATCH_CORRECT_3N_2T_NO_MARGIN_FILE = "xmatch_correct_3n_2t_no_margin.csv"
 XMATCH_CORRECT_3N_2T_NEGATIVE_FILE = "xmatch_correct_3n_2t_negative.csv"
 XMATCH_MOCK_FILE = "xmatch_mock.csv"
 TEST_DIR = Path(__file__).parent
+
+
+@pytest.fixture
+def dask_client():
+    client = Client(n_workers=1, threads_per_worker=1)
+    yield client
+    client.close()
 
 
 @pytest.fixture

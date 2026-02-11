@@ -14,6 +14,7 @@ import pandas as pd
 import pytest
 from astropy.coordinates import SkyCoord
 from astropy.visualization.wcsaxes import WCSAxes
+from dask.distributed import Future
 from hats.inspection._plotting import _get_fov_moc_from_wcs
 from hats.io.paths import get_healpix_from_path
 from hats.pixel_math import HealpixPixel
@@ -66,19 +67,13 @@ def test_catalog_compute_equals_ddf_compute(small_sky_order1_catalog):
     pd.testing.assert_frame_equal(small_sky_order1_catalog.compute(), small_sky_order1_catalog._ddf.compute())
 
 
-def test_catalog_is_dask_collection(small_sky_order1_catalog):
-    from dask.distributed import Client, Future
-
+def test_catalog_is_dask_collection(small_sky_order1_catalog, dask_client):
     assert dask.base.is_dask_collection(small_sky_order1_catalog)
-    client = Client(n_workers=1, threads_per_worker=1)
-    try:
-        future = client.compute(small_sky_order1_catalog)
-        assert isinstance(future, Future)
-        result = future.result()
-        assert isinstance(result, npd.NestedFrame)
-        pd.testing.assert_frame_equal(result, small_sky_order1_catalog._ddf.compute())
-    finally:
-        client.close()
+    future = dask_client.compute(small_sky_order1_catalog)
+    assert isinstance(future, Future)
+    result = future.result()
+    assert isinstance(result, npd.NestedFrame)
+    pd.testing.assert_frame_equal(result, small_sky_order1_catalog._ddf.compute())
 
 
 def test_catalog_uses_dask_expressions(small_sky_order1_catalog):
