@@ -2,6 +2,7 @@
 from pathlib import Path
 
 import astropy.units as u
+import dask
 import dask.dataframe as dd
 import hats as hc
 import hats.io.file_io
@@ -63,6 +64,13 @@ def test_catalog_html_repr_empty(small_sky_order1_catalog):
 
 def test_catalog_compute_equals_ddf_compute(small_sky_order1_catalog):
     pd.testing.assert_frame_equal(small_sky_order1_catalog.compute(), small_sky_order1_catalog._ddf.compute())
+
+
+def test_catalog_is_dask_collection(small_sky_order1_catalog):
+    assert dask.base.is_dask_collection(small_sky_order1_catalog)
+    (result,) = dask.compute(small_sky_order1_catalog)
+    assert isinstance(result, npd.NestedFrame)
+    pd.testing.assert_frame_equal(result, small_sky_order1_catalog._ddf.compute())
 
 
 def test_catalog_uses_dask_expressions(small_sky_order1_catalog):
