@@ -67,9 +67,9 @@ class CatalogStream:
     >>> cat_stream = CatalogStream(catalog=cat, partitions_per_chunk=4, seed=1)
     >>> for chunk in cat_stream:
     ...     print(len(chunk))
-    187
-    165
-    148
+    171
+    154
+    175
     """
 
     def __init__(
@@ -159,11 +159,11 @@ class InfiniteStream(CatalogStream):
     >>> for _ in range(5):
     ...     chunk = next(cat_iter)
     ...     print(len(chunk))
+    157
+    185
+    165
     169
-    158
-    161
-    164
-    170
+    185
     """
 
     def __init__(
