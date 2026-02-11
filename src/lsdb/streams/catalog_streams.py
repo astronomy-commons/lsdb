@@ -95,14 +95,6 @@ class CatalogStream:
         else:
             self.rng = np.random.default_rng((1 << 32, self.seed))
 
-    def get_partitions_left(
-        self,
-    ) -> np.ndarray:
-        """Initialize the partitions left to iterate over."""
-        if self.shuffle:
-            return self.rng.permutation(self.catalog.npartitions)
-        return np.arange(self.catalog.npartitions)
-
     def get_next_partitions(
         self, partitions_left: np.ndarray, rng: np.random.Generator  # pylint: disable=unused-argument
     ) -> tuple[np.ndarray, np.ndarray]:
@@ -125,7 +117,7 @@ class CatalogStream:
     def __iter__(self) -> "CatalogIterator":
         """Return an iterator for this iterable."""
         # Split the RNG: create a new one for the iterator
-        iterator_rng = np.random.default_rng(self.rng.integers(0, 2**32))
+        iterator_rng = self.rng.spawn(1)[0]
         return CatalogIterator(self, rng=iterator_rng)
 
 
@@ -239,4 +231,8 @@ class CatalogIterator(Iterator[pd.DataFrame]):
         return result
 
     def __len__(self) -> int:
+        # Fail gracefully if the iterable is an InfiniteStream
+        if isinstance(self.iterable, InfiniteStream):
+            raise TypeError("Length is not defined for an InfiniteStream.")
+
         return int(np.ceil(len(self.partitions_left) / self.iterable.partitions_per_chunk))

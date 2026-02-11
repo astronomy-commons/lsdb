@@ -52,6 +52,10 @@ def test_infinite_stream():
     for _ in range(cat.npartitions * 2):
         next(cat_iter)
 
+    # Check that length raises an error for InfiniteStream
+    with pytest.raises(TypeError, match="Length is not defined for an InfiniteStream."):
+        len(cat_iter)
+
 
 def test_invalid_catalog_input():
     with pytest.raises(
