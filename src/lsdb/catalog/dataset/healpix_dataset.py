@@ -146,6 +146,27 @@ class HealpixDataset:
             series_df = pd.concat([_repr_data_series(s, index=index) for _, s in meta.items()], axis=1)
         return series_df
 
+    def __dask_graph__(self):
+        return self._ddf.__dask_graph__()
+
+    def __dask_keys__(self):
+        return self._ddf.__dask_keys__()
+
+    def __dask_tokenize__(self):
+        return self._ddf.__dask_tokenize__()
+
+    def __dask_postcompute__(self):
+        return self._ddf.__dask_postcompute__()
+
+    def __dask_postpersist__(self):
+        return self._ddf.__dask_postpersist__()
+
+    @staticmethod
+    def __dask_optimize__(dsk, keys, **kwargs):
+        return dd.DataFrame.__dask_optimize__(dsk, keys, **kwargs)
+
+    __dask_scheduler__ = staticmethod(dd.DataFrame.__dask_scheduler__)
+
     def compute(self) -> npd.NestedFrame:
         """Compute dask distributed dataframe to pandas dataframe"""
         return self._ddf.compute()
