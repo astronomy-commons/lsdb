@@ -13,4 +13,5 @@ Catalog
    catalog_filtering
    catalog_dataframe
    catalog_intercatalog
+   catalog_streaming
 
