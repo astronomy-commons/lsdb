@@ -110,6 +110,33 @@ def test_save_catalog_empty_default_columns(small_sky_order1_default_cols_catalo
     helpers.assert_default_columns_in_columns(expected_catalog)
 
 
+def test_save_catalog_with_npix_suffix(small_sky_order1_collection_catalog, tmp_path):
+    small_sky_order1_collection_catalog.write_catalog(
+        tmp_path / "small_sky_collection",
+        npix_suffix="/",
+        npix_parquet_name="data.pq",
+    )
+
+    collection_path = tmp_path / "small_sky_collection"
+    catalog = lsdb.read_hats(collection_path)
+
+    def _get_sample_pixel_path(catalog_dir):
+        return catalog_dir / "dataset" / "Norder=1" / "Dir=0" / "Npix=44" / "data.pq"
+
+    assert catalog.hc_structure.catalog_info.npix_suffix == "/"
+    file = _get_sample_pixel_path(collection_path / "small_sky_order1")
+    assert file.exists()
+
+    assert catalog.margin.hc_structure.catalog_info.npix_suffix == "/"
+    margin_file = _get_sample_pixel_path(collection_path / "small_sky_order1_3600arcs")
+    assert margin_file.exists()
+
+    expected_cat = small_sky_order1_collection_catalog.compute()
+    pd.testing.assert_frame_equal(expected_cat, catalog.compute())
+    expected_margin = small_sky_order1_collection_catalog.margin.compute()
+    pd.testing.assert_frame_equal(expected_margin, catalog.margin.compute())
+
+
 def test_save_catalog_invalid_default_columns(small_sky_order1_default_cols_catalog, tmp_path):
     new_catalog_name = "small_sky_order1"
     base_catalog_path = Path(tmp_path) / new_catalog_name
