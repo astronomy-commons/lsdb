@@ -175,7 +175,7 @@ The row-based filters on column values can be done in the same way that you woul
 
 .. code-block:: python
 
-    ztf_cols = ztf[["objra", "objdec", "mean_mag_r", "nobs_r"]]
+    ztf_cols = ztf[["ra", "dec", "mean_mag_r", "nobs_r"]]
     ztf_cone = ztf_cols.cone_search(ra=40, dec=30, radius_arcsec=1000)
     ztf_filtered = ztf_cone[ztf_cone["mean_mag_r"] < 18]
     ztf_filtered = ztf_filtered.query("nobs_r > 50")
