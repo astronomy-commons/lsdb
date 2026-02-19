@@ -1291,6 +1291,51 @@ class Catalog(HealpixDataset):
             )
         return catalog
 
+    @classmethod
+    def from_flat(
+        cls, catalog, base_columns, nested_columns=None, on: str | None = None, name="nested"
+    ) -> Self:
+        """Creates a new catalog from a flat catalog by nesting specified columns.
+
+        Parameters
+        ----------
+        catalog : Catalog
+            The input flat catalog to nest columns from.
+        base_columns : list-like
+            Any columns that have non-nested values in the input catalog.
+            These will simply be kept as identical columns in the result.
+        nested_columns : list-like or None, default None
+            The columns that should be packed into a nested
+            column. All columns in the list will attempt to be packed into a single nested column
+            with the name provided in `nested_name`. If None, all columns not in `base_columns` are used.
+        on : str or None, default None
+            If specified, the column to group by when nesting. If None, all rows are nested together.
+        name : str, default "nested"
+            The name of the output column the `nested_columns` are packed into.
+
+        Returns
+        -------
+        Self
+            A new catalog with specified columns nested into a new nested column.
+        """
+
+        new_catalog = super().from_flat(
+            catalog,
+            base_columns=base_columns,
+            nested_columns=nested_columns,
+            on=on,
+            name=name,
+        )
+        if hasattr(catalog, "margin") and catalog.margin is not None:
+            new_catalog.margin = cls.from_flat(
+                catalog.margin,
+                base_columns=base_columns,
+                nested_columns=nested_columns,
+                on=on,
+                name=name,
+            )
+        return new_catalog
+
     def map_rows(
         self,
         func,
