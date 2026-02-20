@@ -60,7 +60,7 @@ def perform_write(
     return len(df), max_sep
 
 
-# pylint: disable=protected-access,too-many-locals
+# pylint: disable=protected-access,too-many-locals,too-many-arguments
 def to_association(
     catalog: HealpixDataset,
     *,

@@ -65,7 +65,7 @@ def test_crossmatch_to_association(xmatch_result, association_kwargs, tmp_path):
 
 
 def test_to_association_join_through_roundtrip(
-    xmatch_result, association_kwargs, small_sky_catalog, small_sky_xmatch_with_margin, tmp_path, helpers
+    xmatch_result, association_kwargs, small_sky_catalog, small_sky_xmatch_with_margin, tmp_path
 ):
     to_association(
         xmatch_result,
