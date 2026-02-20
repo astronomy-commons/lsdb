@@ -17,7 +17,7 @@ from hats.pixel_math.sparse_histogram import HistogramAggregator, SparseHistogra
 from upath import UPath
 
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
-from lsdb.io.common import new_provenance_properties
+from lsdb.io.common import new_provenance_properties, set_default_write_table_kwargs
 
 
 @dask.delayed
@@ -157,6 +157,7 @@ def to_hats(
             )
             histogram_order = max(max_catalog_depth, 8)
     # Save partition parquet files
+    kwargs = set_default_write_table_kwargs(kwargs)
     pixels, counts, histograms = write_partitions(
         catalog,
         base_catalog_dir_fp=base_catalog_path,
