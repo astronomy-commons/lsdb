@@ -13,6 +13,8 @@ from hats.catalog.catalog_collection import CatalogCollection
 from hats.pixel_math import HealpixPixel
 from upath import UPath
 
+from lsdb.io.common import set_default_write_table_kwargs
+
 if TYPE_CHECKING:
     from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
 
@@ -73,6 +75,7 @@ def to_association(
     join_id_column: str | None = None,
     separation_column: str | None = None,
     overwrite: bool = False,
+    addl_hats_properties: dict | None = None,
     **kwargs,
 ):
     """Writes a crossmatching product to disk, in HATS association table format.
@@ -184,6 +187,7 @@ def to_association(
     file_io.file_io.make_directory(base_catalog_path, exist_ok=True)
 
     # Save partition parquet files
+    kwargs = set_default_write_table_kwargs(kwargs)
     pixels, counts, max_separations = write_partitions(
         catalog, base_catalog_dir_fp=base_catalog_path, separation_column=separation_column, **kwargs
     )
@@ -208,7 +212,9 @@ def to_association(
     max_separation = np.max(max_separations)
     if max_separation != -1:
         info = info | {"assn_max_separation": f"{max_separation:0.5f}"}
-    info = info | column_args | kwargs
+    if not addl_hats_properties:
+        addl_hats_properties = {}
+    info = info | column_args | addl_hats_properties
 
     new_hc_structure = TableProperties(**info)
     new_hc_structure.to_properties_file(base_catalog_path)

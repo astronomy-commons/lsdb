@@ -1,6 +1,8 @@
 import hats.io as file_io
 import pandas as pd
+import pyarrow.parquet as pq
 import pytest
+from hats.io import paths
 from hats.pixel_math import HealpixPixel
 
 import lsdb
@@ -54,9 +56,16 @@ def test_crossmatch_to_association(xmatch_result, association_kwargs, tmp_path):
     max_separation = association_table.compute()["_dist_arcsec"].max()
     assert pytest.approx(max_separation, abs=1e-5) == association_table.max_separation
 
+    for pixel in association_table.get_healpix_pixels():
+        test_path = paths.pixel_catalog_file(association_table.hc_structure.catalog_base_dir, pixel)
+
+        metadata = pq.read_metadata(test_path)
+        assert metadata.num_row_groups == 1
+        assert metadata.row_group(0).column(0).compression == "ZSTD"
+
 
 def test_to_association_join_through_roundtrip(
-    xmatch_result, association_kwargs, small_sky_catalog, small_sky_xmatch_with_margin, tmp_path
+    xmatch_result, association_kwargs, small_sky_catalog, small_sky_xmatch_with_margin, tmp_path, helpers
 ):
     to_association(
         xmatch_result,
@@ -64,6 +73,8 @@ def test_to_association_join_through_roundtrip(
         base_catalog_path=tmp_path,
         overwrite=False,
         **association_kwargs,
+        addl_hats_properties={"obs_regime": "Optical"},
+        compression="SNAPPY",
     )
     association_table = lsdb.read_hats(tmp_path)
     assert isinstance(association_table, AssociationCatalog)
@@ -78,6 +89,30 @@ def test_to_association_join_through_roundtrip(
     pd.testing.assert_series_equal(
         xmatch_df["id_small_sky_xmatch"], expected_xmatch_df["id_right"], check_names=False
     )
+
+    # Make sure that the new properties contain the `addl_hats_property` from above.
+    expected_extra_properties = set(
+        [
+            "primary_catalog",
+            "primary_column",
+            "primary_column_association",
+            "join_catalog",
+            "join_column_association",
+            "join_column",
+            "obs_regime",
+        ]
+    )
+    extra_properties = set(association_table.hc_structure.catalog_info.extra_dict().keys()) | set(
+        association_table.hc_structure.catalog_info.explicit_dict().keys()
+    )
+    assert len(expected_extra_properties - extra_properties) == 0
+
+    for pixel in association_table.get_healpix_pixels():
+        test_path = paths.pixel_catalog_file(association_table.hc_structure.catalog_base_dir, pixel)
+
+        metadata = pq.read_metadata(test_path)
+        assert metadata.num_row_groups == 1
+        assert metadata.row_group(0).column(0).compression == "SNAPPY"
 
 
 def test_to_association_has_invalid_separation_column(xmatch_result, association_kwargs, tmp_path):

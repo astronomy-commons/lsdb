@@ -2,6 +2,8 @@ from importlib.metadata import version
 from pathlib import Path
 
 import pandas as pd
+import pyarrow.parquet as pq
+from hats.io import paths
 
 import lsdb
 
@@ -14,6 +16,7 @@ def test_save_collection(small_sky_order1_collection_catalog, tmp_path, helpers)
         catalog_name="small_sky_order1",
         default_columns=["ra", "dec"],
         addl_hats_properties={"obs_regime": "Optical"},
+        compression="SNAPPY",
     )
 
     catalog = lsdb.read_hats(base_collection_path)
@@ -31,6 +34,13 @@ def test_save_collection(small_sky_order1_collection_catalog, tmp_path, helpers)
         default_columns=["ra", "dec"],
         hats_builder=f"lsdb v{version('lsdb')}, hats v{version('hats')}",
     )
+
+    for pixel in catalog.get_healpix_pixels():
+        test_path = paths.pixel_catalog_file(catalog.hc_structure.catalog_base_dir, pixel)
+
+        metadata = pq.read_metadata(test_path)
+        assert metadata.num_row_groups == 1
+        assert metadata.row_group(0).column(0).compression == "SNAPPY"
 
     assert catalog.margin is not None
     assert catalog.margin.hc_structure.catalog_base_dir == base_collection_path / "small_sky_order1_3600arcs"
@@ -71,12 +81,26 @@ def test_save_collection_from_dataframe(small_sky_order1_df, tmp_path):
     assert catalog.hc_structure.catalog_info.obs_regime == "Optical"
     pd.testing.assert_frame_equal(catalog.compute(), expected_catalog.compute()[["ra", "dec"]])
 
+    for pixel in catalog.get_healpix_pixels():
+        test_path = paths.pixel_catalog_file(catalog.hc_structure.catalog_base_dir, pixel)
+
+        metadata = pq.read_metadata(test_path)
+        assert metadata.num_row_groups == 1
+        assert metadata.row_group(0).column(0).compression == "ZSTD"
+
     assert catalog.margin is not None
     assert catalog.margin.hc_structure.catalog_base_dir == base_collection_path / "small_sky_order1_3000arcs"
     assert catalog.margin.hc_structure.catalog_info.margin_threshold == 3000
     assert catalog.margin.hc_structure.catalog_info.default_columns == ["ra", "dec"]
     assert catalog.margin.hc_structure.catalog_info.obs_regime == "Optical"
     pd.testing.assert_frame_equal(catalog.margin.compute(), expected_catalog.margin.compute()[["ra", "dec"]])
+
+    for pixel in catalog.margin.get_healpix_pixels():
+        test_path = paths.pixel_catalog_file(catalog.margin.hc_structure.catalog_base_dir, pixel)
+
+        metadata = pq.read_metadata(test_path)
+        assert metadata.num_row_groups == 1
+        assert metadata.row_group(0).column(0).compression == "ZSTD"
 
 
 def test_save_collection_with_empty_margin(small_sky_order1_df, tmp_path):

@@ -21,3 +21,16 @@ def new_provenance_properties(path: str | Path | UPath | None = None, **kwargs) 
         A new provenance dictionary.
     """
     return TableProperties.new_provenance_dict(path, builder=f"lsdb v{version('lsdb')}", **kwargs)
+
+
+def set_default_write_table_kwargs(write_table_kwargs):
+    if write_table_kwargs is None:
+        write_table_kwargs = {}
+
+    if "compression" not in write_table_kwargs:
+        write_table_kwargs = write_table_kwargs | {
+            "compression": "ZSTD",
+            "compression_level": 15,
+        }
+
+    return write_table_kwargs
