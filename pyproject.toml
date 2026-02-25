@@ -29,6 +29,7 @@ dependencies = [
     "scipy>=1.7.2", # kdtree
     "tabulate>=0.7.0",
     "universal-pathlib",
+    "tqdm",
 ]
 
 [project.urls]
