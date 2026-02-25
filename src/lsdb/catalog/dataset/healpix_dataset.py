@@ -24,6 +24,7 @@ from hats.pixel_math import HealpixPixel
 from hats.pixel_math.healpix_pixel_function import get_pixel_argsort
 from mocpy import MOC
 from pandas._typing import Renamer
+from tqdm.dask import TqdmCallback
 from typing_extensions import Self
 from upath import UPath
 
@@ -146,9 +147,14 @@ class HealpixDataset:
             series_df = pd.concat([_repr_data_series(s, index=index) for _, s in meta.items()], axis=1)
         return series_df
 
-    def compute(self) -> npd.NestedFrame:
+    def compute(self, progress_bar=True) -> npd.NestedFrame:
         """Compute dask distributed dataframe to pandas dataframe"""
-        return self._ddf.compute()
+        if progress_bar:
+            with TqdmCallback(desc="Computing Catalog"):
+                res = self._ddf.compute()
+        else:
+            res = self._ddf.compute()
+        return res
 
     def to_delayed(self, optimize_graph: bool = True) -> list[Delayed]:
         """Get a list of Dask Delayed objects for each partition in the dataset

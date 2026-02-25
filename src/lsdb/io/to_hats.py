@@ -14,6 +14,7 @@ from hats.io import file_io
 from hats.io.skymap import write_skymap
 from hats.pixel_math import HealpixPixel, spatial_index_to_healpix
 from hats.pixel_math.sparse_histogram import HistogramAggregator, SparseHistogram
+from tqdm.dask import TqdmCallback
 from upath import UPath
 
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
@@ -90,6 +91,7 @@ def to_hats(
     default_columns: list[str] | None = None,
     histogram_order: int | None = None,
     overwrite: bool = False,
+    progress_bar: bool = True,
     create_thumbnail: bool = False,
     skymap_alt_orders: list[int] | None = None,
     addl_hats_properties: dict | None = None,
@@ -158,13 +160,23 @@ def to_hats(
             histogram_order = max(max_catalog_depth, 8)
     # Save partition parquet files
     kwargs = set_default_write_table_kwargs(kwargs)
-    pixels, counts, histograms = write_partitions(
-        catalog,
-        base_catalog_dir_fp=base_catalog_path,
-        histogram_order=histogram_order,
-        error_if_empty=error_if_empty,
-        **kwargs,
-    )
+    if progress_bar:
+        with TqdmCallback(desc="Writing Catalog"):
+            pixels, counts, histograms = write_partitions(
+                catalog,
+                base_catalog_dir_fp=base_catalog_path,
+                histogram_order=histogram_order,
+                error_if_empty=error_if_empty,
+                **kwargs,
+            )
+    else:
+        pixels, counts, histograms = write_partitions(
+            catalog,
+            base_catalog_dir_fp=base_catalog_path,
+            histogram_order=histogram_order,
+            error_if_empty=error_if_empty,
+            **kwargs,
+        )
     # Save parquet metadata and create a data thumbnail if needed
     hats_max_rows = int(max(counts)) if counts else 0
 
