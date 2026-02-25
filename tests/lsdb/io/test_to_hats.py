@@ -10,6 +10,7 @@ from hats.io.file_io import get_upath_for_protocol, read_fits_image
 from hats.io.paths import get_data_thumbnail_pointer
 
 import lsdb
+from lsdb.io.to_hats import write_partitions
 
 
 def test_save_catalog(small_sky_catalog, tmp_path, helpers):
@@ -94,6 +95,42 @@ def test_save_catalog_default_nested_columns(small_sky_with_nested_sources, tmp_
     pd.testing.assert_frame_equal(expected_catalog.compute(), cat.compute())
     helpers.assert_schema_correct(expected_catalog)
     helpers.assert_default_columns_in_columns(expected_catalog)
+
+
+def test_save_catalog_shows_progress_bar(small_sky_catalog, tmp_path, mocker):
+    in_progress = {"active": False}
+
+    class _ProgressContext:
+        def __enter__(self):
+            in_progress["active"] = True
+
+        def __exit__(self, exc_type, exc, tb):
+            in_progress["active"] = False
+
+    tqdm_callback = mocker.patch(
+        "lsdb.io.to_hats.TqdmCallback",
+        return_value=_ProgressContext(),
+    )
+
+    def _checked_write_partitions(*args, **kwargs):
+        assert in_progress["active"]
+        return write_partitions(*args, **kwargs)
+
+    mocker.patch("lsdb.io.to_hats.write_partitions", side_effect=_checked_write_partitions)
+    base_catalog_path = Path(tmp_path) / "small_sky"
+
+    small_sky_catalog.write_catalog(base_catalog_path, progress_bar=True)
+
+    tqdm_callback.assert_called_once_with(desc="Writing Catalog")
+
+
+def test_save_catalog_without_progress_bar(small_sky_catalog, tmp_path, mocker):
+    tqdm_callback = mocker.patch("lsdb.io.to_hats.TqdmCallback")
+    base_catalog_path = Path(tmp_path) / "small_sky"
+
+    small_sky_catalog.write_catalog(base_catalog_path, progress_bar=False)
+
+    tqdm_callback.assert_not_called()
 
 
 def test_save_catalog_empty_default_columns(small_sky_order1_default_cols_catalog, tmp_path, helpers):
