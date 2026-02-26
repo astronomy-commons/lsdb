@@ -91,6 +91,7 @@ def to_hats(
     default_columns: list[str] | None = None,
     histogram_order: int | None = None,
     overwrite: bool = False,
+    resume: bool = False,
     progress_bar: bool = True,
     tqdm_kwargs=None,
     create_thumbnail: bool = False,
@@ -143,15 +144,40 @@ def to_hats(
     **kwargs :
         Arguments to pass to the parquet write operations
     """
+    if overwrite and resume:
+        raise ValueError("overwrite and resume cannot both be True")
     # Create the output directory for the catalog
     base_catalog_path = hc.io.file_io.get_upath(base_catalog_path)
+    existing_pixels = []
     if hc.io.file_io.directory_has_contents(base_catalog_path):
-        if not overwrite:
+        if not overwrite and not resume:
             raise ValueError(
                 f"base_catalog_path ({str(base_catalog_path)}) contains files."
                 " choose a different directory or set overwrite to True."
             )
-        hc.io.file_io.remove_directory(base_catalog_path)
+        if overwrite:
+            hc.io.file_io.remove_directory(base_catalog_path)
+        if resume:
+            dataset_dir = hc.io.paths.dataset_directory(base_catalog_path)
+            if hc.io.file_io.does_file_or_directory_exist(dataset_dir):
+                all_paths = dataset_dir.rglob("*")
+                for path in all_paths:
+                    if path.is_file():
+                        pixel = hc.io.paths.get_healpix_from_path(path.path)
+                        if pixel is None:
+                            raise ValueError(
+                                f"Found file {str(path)} in base_catalog_path that does not match expected HATS catalog file structure. Cannot resume write. Please check that the directory contains files from this catalog, or set resume to False and overwrite to True to overwrite to this directory instead of resuming."
+                            )
+                        existing_pixels.append(pixel)
+    if existing_pixels is not None:
+        for pixel in existing_pixels:
+            if pixel not in catalog.hc_structure.pixel_tree:
+                raise ValueError(
+                    f"Pixel {pixel} from existing catalog files is not present in the provided catalog."
+                    " Cannot resume write. Please check that the directory contains files from this catalog,"
+                    " or set resume to False and overwrite to True to overwrite to this directory instead of"
+                    " resuming."
+                )
     hc.io.file_io.make_directory(base_catalog_path, exist_ok=True)
     if histogram_order is None:
         if catalog.hc_structure.catalog_info.skymap_order is not None:
@@ -174,6 +200,7 @@ def to_hats(
             base_catalog_dir_fp=base_catalog_path,
             histogram_order=histogram_order,
             error_if_empty=error_if_empty,
+            existing_pixels=existing_pixels,
             **kwargs,
         )
     # Save parquet metadata and create a data thumbnail if needed
@@ -257,6 +284,7 @@ def write_partitions(
     base_catalog_dir_fp: str | Path | UPath,
     histogram_order: int,
     error_if_empty: bool = True,
+    existing_pixels: list[HealpixPixel] | None = None,
     **kwargs,
 ) -> tuple[list[HealpixPixel], list[int], list[SparseHistogram]]:
     """Saves catalog partitions as parquet to disk and computes the sparse
@@ -284,8 +312,12 @@ def write_partitions(
     """
     results, pixels = [], []
     partitions = catalog._ddf.to_delayed()
+    if existing_pixels is not None:
+        existing_pixels = set(existing_pixels)
 
     for pixel, partition_index in catalog._ddf_pixel_map.items():
+        if existing_pixels is not None and pixel in existing_pixels:
+            continue
         results.append(
             perform_write(
                 partitions[partition_index],
