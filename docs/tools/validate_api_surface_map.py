@@ -11,8 +11,8 @@ AREA_PATTERN = re.compile(
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Validate API surface image-map areas in docs/index.rst")
     parser.add_argument("--index", default="docs/index.rst", help="Path to index.rst containing the map")
-    parser.add_argument("--base-width", type=int, default=1441, help="Coordinate-space width")
-    parser.add_argument("--base-height", type=int, default=822, help="Coordinate-space height")
+    parser.add_argument("--base-width", type=int, default=3719, help="Coordinate-space width (default: 3719 = PNG native)")
+    parser.add_argument("--base-height", type=int, default=2164, help="Coordinate-space height (default: 2164 = PNG native)")
     return parser.parse_args()
 
 
