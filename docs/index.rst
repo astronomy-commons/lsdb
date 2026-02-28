@@ -23,6 +23,8 @@ operations.
        <img src="_static/API_Surface_Feb_12.png"
                alt="LSDB API surface map with clickable function and class labels"
                usemap="#lsdb-api-surface-map"
+         data-map-width="1441"
+         data-map-height="822"
                class="api-surface-image" />
        <map name="lsdb-api-surface-map">
           <area shape="rect" coords="29,91,233,186" href="reference/api/lsdb.open_catalog.html" alt="open_catalog" />
