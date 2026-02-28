@@ -9,6 +9,7 @@ Filtering Methods
     Catalog.iloc
     Catalog.loc
     Catalog.query
+    Catalog.rename
     Catalog.head
     Catalog.tail
     Catalog.sample
