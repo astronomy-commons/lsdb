@@ -6,15 +6,15 @@
       .filter((part) => Number.isFinite(part));
   }
 
-  function scaleCoords(coords, scaleX, scaleY) {
+  function scaleCoords(coords, scale) {
     if (coords.length !== 4) {
       return null;
     }
     return [
-      Math.round(coords[0] * scaleX),
-      Math.round(coords[1] * scaleY),
-      Math.round(coords[2] * scaleX),
-      Math.round(coords[3] * scaleY),
+      Math.round(coords[0] * scale),
+      Math.round(coords[1] * scale),
+      Math.round(coords[2] * scale),
+      Math.round(coords[3] * scale),
     ];
   }
 
@@ -40,20 +40,18 @@
     }
 
     const renderedWidth = image.clientWidth;
-    const renderedHeight = image.clientHeight;
-    if (!renderedWidth || !renderedHeight) {
+    if (!renderedWidth) {
       return;
     }
 
-    const scaleX = renderedWidth / baseWidth;
-    const scaleY = renderedHeight / baseHeight;
+    const scale = renderedWidth / baseWidth;
 
     map.querySelectorAll("area[coords]").forEach((area) => {
       if (!area.dataset.originalCoords) {
         area.dataset.originalCoords = area.getAttribute("coords") || "";
       }
       const original = parseCoords(area.dataset.originalCoords);
-      const scaled = scaleCoords(original, scaleX, scaleY);
+      const scaled = scaleCoords(original, scale);
       if (scaled) {
         area.coords = scaled.join(",");
       }
