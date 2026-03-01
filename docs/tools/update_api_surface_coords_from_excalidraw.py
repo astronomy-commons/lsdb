@@ -2,6 +2,7 @@
 
 This script is the canonical maintenance entrypoint for hotspot regeneration.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -18,6 +19,22 @@ DEFAULT_INDEX_PATH = ROOT / "docs/index.rst"
 
 @dataclass(frozen=True)
 class UpdateConfig:
+    """Configuration for a single hotspot-regeneration run.
+
+    Parameters
+    ----------
+    excalidraw_path : pathlib.Path
+        Path to the source ``.excalidraw`` file used as the geometric truth.
+    index_path : pathlib.Path
+        Path to ``docs/index.rst`` containing the image-map ``<area>`` entries.
+    png_width : int, default 3719
+        Native width of the API-surface PNG in pixels.
+    png_height : int, default 2164
+        Native height of the API-surface PNG in pixels.
+    export_pad : int, default 9
+        Excalidraw export padding (in canvas units) used in the transform model.
+    """
+
     excalidraw_path: pathlib.Path
     index_path: pathlib.Path
     png_width: int = 3719
@@ -27,6 +44,18 @@ class UpdateConfig:
 
 @dataclass(frozen=True)
 class UpdateResult:
+    """Summary produced after hotspot regeneration.
+
+    Parameters
+    ----------
+    updated_areas : int
+        Number of ``<area>`` rectangles whose coordinates changed.
+    unmatched_alts : tuple[str, ...]
+        Alt texts that could not be matched and therefore kept old coordinates.
+    transform_scale : float
+        Excalidraw-to-PNG scale factor used for this run.
+    """
+
     updated_areas: int
     unmatched_alts: tuple[str, ...]
     transform_scale: float
@@ -36,9 +65,29 @@ class UpdateResult:
 # Coordinate transform: Excalidraw canvas units  ->  PNG pixels
 # ---------------------------------------------------------------------------
 
+
 def compute_transform(elements: list, *, png_width: int, png_height: int, export_pad: int) -> dict:
-    """Return affine params {scale, offset_x, offset_y} mapping Excalidraw
-    canvas coordinates to PNG-pixel coordinates."""
+    """Compute affine transform from Excalidraw canvas coordinates to PNG pixels.
+
+    Excalidraw exports by taking the global element bounds, adding a fixed
+    padding, then scaling uniformly into the target raster dimensions.
+
+    Parameters
+    ----------
+    elements : list
+        Excalidraw ``elements`` array.
+    png_width : int
+        Target PNG width in pixels.
+    png_height : int
+        Target PNG height in pixels.
+    export_pad : int
+        Excalidraw export padding in canvas units.
+
+    Returns
+    -------
+    dict
+        Mapping containing ``scale``, ``offset_x``, and ``offset_y``.
+    """
     min_x = min_y = float("inf")
     max_x = max_y = float("-inf")
     for e in elements:
@@ -73,26 +122,50 @@ def compute_transform(elements: list, *, png_width: int, png_height: int, export
 
 
 def to_png_xy(ex: float, ey: float, t: dict) -> tuple[float, float]:
-    return ex * t["scale"] + t["offset_x"], ey * t["scale"] + t["offset_y"]
+    """Convert one Excalidraw point to PNG-pixel coordinates.
 
+    Parameters
+    ----------
+    ex : float
+        X coordinate in Excalidraw canvas units.
+    ey : float
+        Y coordinate in Excalidraw canvas units.
+    t : dict
+        Transform mapping returned by :func:`compute_transform`.
+
+    Returns
+    -------
+    tuple[float, float]
+        ``(x, y)`` in PNG pixel space.
+    """
+
+    return ex * t["scale"] + t["offset_x"], ey * t["scale"] + t["offset_y"]
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def norm(value: str) -> str:
+    """Normalize label text for stable matching.
+
+    Converts to lowercase and removes non-alphanumeric characters.
+    """
+
     return re.sub(r"[^a-z0-9]+", "", value.lower())
 
 
 def center(box: tuple[float, float, float, float]) -> tuple[float, float]:
+    """Return center point of a rectangular box ``(x1, y1, x2, y2)``."""
+
     x1, y1, x2, y2 = box
     return ((x1 + x2) / 2, (y1 + y2) / 2)
 
 
-def distance(
-    box_a: tuple[float, float, float, float], box_b: tuple[float, float, float, float]
-) -> float:
+def distance(box_a: tuple[float, float, float, float], box_b: tuple[float, float, float, float]) -> float:
+    """Compute Euclidean distance between two box centers."""
+
     ax, ay = center(box_a)
     bx, by = center(box_b)
     return math.hypot(ax - bx, ay - by)
@@ -105,15 +178,36 @@ def padded(
     min_width: float = 30,
     min_height: float = 14,
 ) -> tuple[int, int, int, int]:
+    """Expand/shrink a box around its center with minimum size guards.
+
+    Parameters
+    ----------
+    box : tuple[float, float, float, float]
+        Input rectangle in ``(x1, y1, x2, y2)`` form.
+    pad_x : float
+        Horizontal padding applied on each side.
+    pad_y : float
+        Vertical padding applied on each side.
+    min_width : float, default 30
+        Minimum width after padding.
+    min_height : float, default 14
+        Minimum height after padding.
+
+    Returns
+    -------
+    tuple[int, int, int, int]
+        Integer pixel coordinates ``(x1, y1, x2, y2)``.
+    """
+
     x1, y1, x2, y2 = box
     cx = (x1 + x2) / 2
     cy = (y1 + y2) / 2
-    width  = max(min_width,  (x2 - x1) + 2 * pad_x)
+    width = max(min_width, (x2 - x1) + 2 * pad_x)
     height = max(min_height, (y2 - y1) + 2 * pad_y)
     return (
-        round(cx - width  / 2),
+        round(cx - width / 2),
         round(cy - height / 2),
-        round(cx + width  / 2),
+        round(cx + width / 2),
         round(cy + height / 2),
     )
 
@@ -122,8 +216,28 @@ def padded(
 # Build candidate list in PNG-pixel space
 # ---------------------------------------------------------------------------
 
+
 def collect_candidates(excal_data: dict, transform: dict) -> tuple[list[dict], list[dict]]:
-    """Return (line_candidates, token_candidates) with bboxes in PNG pixels."""
+    """Build line/token candidate rectangles from Excalidraw text elements.
+
+    Line candidates are used for broad matching; token candidates are used for
+    fine-grained matching of API symbols. Candidate boxes are emitted in PNG
+    pixel coordinates and include line-height compensation so oversized text
+    containers do not produce inflated hotspots.
+
+    Parameters
+    ----------
+    excal_data : dict
+        Parsed JSON content of the Excalidraw file.
+    transform : dict
+        Transform mapping returned by :func:`compute_transform`.
+
+    Returns
+    -------
+    tuple[list[dict], list[dict]]
+        ``(line_candidates, token_candidates)`` where each candidate has
+        ``{"norm": str, "bbox": (x1, y1, x2, y2)}``.
+    """
     line_candidates: list[dict] = []
     token_candidates: list[dict] = []
 
@@ -140,7 +254,7 @@ def collect_candidates(excal_data: dict, transform: dict) -> tuple[list[dict], l
         ew = float(element.get("width", 0))
         eh = float(element.get("height", 0))
         stroke_color = element.get("strokeColor", "")
-        is_black = (stroke_color == "#1e1e1e")
+        is_black = stroke_color == "#1e1e1e"
 
         # Large lineHeight means a tiny glyph inside a tall slot.
         # We use only the visual text height (≈ fontSize × 1.2) for the bbox
@@ -162,7 +276,7 @@ def collect_candidates(excal_data: dict, transform: dict) -> tuple[list[dict], l
             # per-line bbox using the VISUAL height, anchored at slot top
             ly1_excal = ey + line_index * line_h_excal
 
-            lx1, ly1 = to_png_xy(ex,      ly1_excal, transform)
+            lx1, ly1 = to_png_xy(ex, ly1_excal, transform)
             lx2, ly2 = to_png_xy(ex + ew, ly1_excal + visual_h_excal, transform)
 
             line_candidates.append({"norm": norm(stripped), "bbox": (lx1, ly1, lx2, ly2)})
@@ -174,7 +288,7 @@ def collect_candidates(excal_data: dict, transform: dict) -> tuple[list[dict], l
                 continue
 
             line_text = line.rstrip()
-            line_len  = max(1, len(line_text))
+            line_len = max(1, len(line_text))
 
             for match in re.finditer(r"[A-Za-z_][A-Za-z0-9_]*", line_text):
                 token_norm = norm(match.group(0))
@@ -183,7 +297,7 @@ def collect_candidates(excal_data: dict, transform: dict) -> tuple[list[dict], l
 
                 # proportional x within the element
                 tx1_excal = ex + ew * (match.start() / line_len)
-                tx2_excal = ex + ew * (match.end()   / line_len)
+                tx2_excal = ex + ew * (match.end() / line_len)
 
                 tx1, ty1 = to_png_xy(tx1_excal, ly1_excal, transform)
                 tx2, ty2 = to_png_xy(tx2_excal, ly1_excal + visual_h_excal, transform)
@@ -208,6 +322,29 @@ def choose_bbox(
     line_candidates: list[dict],
     token_candidates: list[dict],
 ) -> tuple[int, int, int, int]:
+    """Select the best hotspot rectangle for one ``alt`` label.
+
+    Matching strategy is tried in this order: exact token, exact line, partial
+    token, then partial line. For each tier, the candidate nearest to the old
+    hotspot center is chosen.
+
+    Parameters
+    ----------
+    alt_text : str
+        ``alt`` value from the map area.
+    old_box : tuple[int, int, int, int]
+        Existing rectangle from ``docs/index.rst``.
+    line_candidates : list[dict]
+        Normalized line-level candidates.
+    token_candidates : list[dict]
+        Normalized token-level candidates.
+
+    Returns
+    -------
+    tuple[int, int, int, int]
+        Updated rectangle, or ``old_box`` when no suitable match is found.
+    """
+
     alt_norm = ALIASES.get(norm(alt_text), norm(alt_text))
 
     # 1. Exact token match (single identifier)
@@ -227,7 +364,8 @@ def choose_bbox(
     #    the longer side so that "catalog" doesn't match "margincatalog".
     min_overlap = 0.60
     partial = [
-        c for c in token_candidates
+        c
+        for c in token_candidates
         if (alt_norm in c["norm"] or c["norm"] in alt_norm)
         and len(c["norm"]) >= len(alt_norm) * min_overlap
         and len(alt_norm) >= len(c["norm"]) * min_overlap
@@ -238,7 +376,8 @@ def choose_bbox(
 
     # 3. Line-level match (multi-word labels like "head, tail"), same overlap rule
     line_m = [
-        c for c in line_candidates
+        c
+        for c in line_candidates
         if (alt_norm in c["norm"] or c["norm"] in alt_norm)
         and len(c["norm"]) >= len(alt_norm) * min_overlap
         and len(alt_norm) >= len(c["norm"]) * min_overlap
@@ -255,8 +394,20 @@ def choose_bbox(
 # Main
 # ---------------------------------------------------------------------------
 
+
 def run_update(config: UpdateConfig) -> UpdateResult:
-    """Canonical function for regenerating API-surface hotspot coords."""
+    """Regenerate API-surface hotspots from Excalidraw and rewrite index file.
+
+    Parameters
+    ----------
+    config : UpdateConfig
+        Runtime configuration for paths and geometry parameters.
+
+    Returns
+    -------
+    UpdateResult
+        Counts and diagnostics describing what changed.
+    """
     excal_data = json.loads(config.excalidraw_path.read_text())
     index_text = config.index_path.read_text()
 
@@ -287,10 +438,7 @@ def run_update(config: UpdateConfig) -> UpdateResult:
             updated += 1
         else:
             unmatched.append(alt_text)
-        return (
-            f"{match.group(1)}{new_box[0]},{new_box[1]},{new_box[2]},{new_box[3]}"
-            f"{match.group(3)}"
-        )
+        return f"{match.group(1)}{new_box[0]},{new_box[1]},{new_box[2]},{new_box[3]}" f"{match.group(3)}"
 
     new_text = area_pattern.sub(replace_area, index_text)
 
@@ -325,6 +473,8 @@ def run_update(config: UpdateConfig) -> UpdateResult:
 
 
 def parse_args() -> argparse.Namespace:
+    """Parse CLI arguments for one updater invocation."""
+
     parser = argparse.ArgumentParser(description="Regenerate API surface map coords from Excalidraw")
     parser.add_argument("--excalidraw", type=pathlib.Path, default=DEFAULT_EXCALIDRAW_PATH)
     parser.add_argument("--index", type=pathlib.Path, default=DEFAULT_INDEX_PATH)
@@ -335,6 +485,12 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    """CLI entrypoint used by maintainers.
+
+    Reads command-line options, runs hotspot regeneration, and prints a brief
+    summary for terminal usage.
+    """
+
     args = parse_args()
     config = UpdateConfig(
         excalidraw_path=args.excalidraw,

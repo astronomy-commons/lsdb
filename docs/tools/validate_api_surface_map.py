@@ -9,6 +9,14 @@ AREA_PATTERN = re.compile(
 
 
 def parse_args() -> argparse.Namespace:
+    """Parse CLI arguments for map validation.
+
+    Returns
+    -------
+    argparse.Namespace
+        Parsed CLI options including index path and coordinate bounds.
+    """
+
     parser = argparse.ArgumentParser(description="Validate API surface image-map areas in docs/index.rst")
     parser.add_argument("--index", default="docs/index.rst", help="Path to index.rst containing the map")
     parser.add_argument(
@@ -21,6 +29,23 @@ def parse_args() -> argparse.Namespace:
 
 
 def validate(index_path: Path, base_width: int, base_height: int) -> list[str]:
+    """Validate rectangular area entries in the API surface map.
+
+    Parameters
+    ----------
+    index_path : Path
+        Path to ``docs/index.rst`` (or another file containing map entries).
+    base_width : int
+        Maximum allowed X coordinate.
+    base_height : int
+        Maximum allowed Y coordinate.
+
+    Returns
+    -------
+    list[str]
+        Human-readable validation errors. Empty when valid.
+    """
+
     text = index_path.read_text(encoding="utf-8")
     errors: list[str] = []
 
@@ -50,6 +75,14 @@ def validate(index_path: Path, base_width: int, base_height: int) -> list[str]:
 
 
 def main() -> int:
+    """Run validation CLI and return process exit code.
+
+    Returns
+    -------
+    int
+        ``0`` when validation passes, non-zero otherwise.
+    """
+
     args = parse_args()
     index_path = Path(args.index)
 
