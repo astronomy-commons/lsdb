@@ -43,38 +43,38 @@ operations.
           <area shape="rect" coords="359,1217,555,1274" href="reference/api/lsdb.catalog.Catalog.html" alt="Catalog" />
           <area shape="rect" coords="1010,306,1576,372" href="reference/catalog_properties.html" alt="name" />
           <area shape="rect" coords="1010,366,1218,432" href="reference/api/lsdb.catalog.Catalog.columns.html" alt="columns" />
-          <area shape="rect" coords="1257,366,1576,432" href="reference/api/lsdb.catalog.Catalog.all_columns.html" alt="all_columns" />
+          <area shape="rect" coords="1220,366,1539,432" href="reference/api/lsdb.catalog.Catalog.all_columns.html" alt="all_columns" />
           <area shape="rect" coords="1010,426,1539,492" href="reference/api/lsdb.catalog.Catalog.nested_columns.html" alt="nested_columns" />
           <area shape="rect" coords="1010,486,1384,552" href="reference/api/lsdb.catalog.Catalog.original_schema.html" alt="original_schema" />
-          <area shape="rect" coords="1416,486,1576,552" href="reference/api/lsdb.catalog.Catalog.dtypes.html" alt="dtypes" />
-          <area shape="rect" coords="1010,590,1223,654" href="reference/api/lsdb.catalog.Catalog.head.html" alt="head" />
-          <area shape="rect" coords="1306,590,1520,654" href="reference/api/lsdb.catalog.Catalog.tail.html" alt="tail" />
+          <area shape="rect" coords="1386,486,1546,552" href="reference/api/lsdb.catalog.Catalog.dtypes.html" alt="dtypes" />
+          <area shape="rect" coords="1010,590,1160,654" href="reference/api/lsdb.catalog.Catalog.head.html" alt="head" />
+          <area shape="rect" coords="1162,590,1376,654" href="reference/api/lsdb.catalog.Catalog.tail.html" alt="tail" />
           <area shape="rect" coords="1010,646,1181,709" href="reference/api/lsdb.catalog.Catalog.sample.html" alt="sample" />
-          <area shape="rect" coords="1217,646,1569,709" href="reference/api/lsdb.catalog.Catalog.random_sample.html" alt="random_sample" />
+          <area shape="rect" coords="1183,646,1535,709" href="reference/api/lsdb.catalog.Catalog.random_sample.html" alt="random_sample" />
           <area shape="rect" coords="1016,740,1188,806" href="reference/api/lsdb.catalog.Catalog.rename.html" alt="rename" />
           <area shape="rect" coords="1826,269,2147,335" href="reference/api/lsdb.catalog.Catalog.hc_structure.html" alt="hc_structure" />
           <area shape="rect" coords="1817,399,2135,465" href="reference/catalog_properties.html" alt="hc_collection" />
-          <area shape="rect" coords="1764,424,2207,506" href="reference/api/lsdb.catalog.MarginCatalog.html" alt="MarginCatalog" />
-          <area shape="rect" coords="357,1217,557,1274" href="reference/api/lsdb.catalog.MapCatalog.html" alt="MapCatalog" />
+          <area shape="rect" coords="1764,551,2207,655" href="reference/api/lsdb.catalog.MarginCatalog.html" alt="MarginCatalog" />
+          <area shape="rect" coords="1813,653,2161,744" href="reference/api/lsdb.catalog.MapCatalog.html" alt="MapCatalog" />
          <area shape="rect" coords="1757,792,2218,858" href="reference/api/lsdb.io.to_association.html" alt="AssociationCatalog" />
 
           <area shape="rect" coords="1233,948,1308,1014" href="reference/api/lsdb.catalog.Catalog.__len__.html" alt="len" />
           <area shape="rect" coords="974,1044,1664,1110" href="reference/api/lsdb.catalog.Catalog.aggregate_column_statistics.html" alt="aggregate_column_statistics" />
-          <area shape="rect" coords="1697,1044,2212,1110" href="reference/api/lsdb.catalog.Catalog.per_pixel_statistics.html" alt="per_pixel_statistics" />
+          <area shape="rect" coords="1666,1044,2181,1110" href="reference/api/lsdb.catalog.Catalog.per_pixel_statistics.html" alt="per_pixel_statistics" />
           <area shape="rect" coords="974,1148,1451,1213" href="reference/api/lsdb.catalog.Catalog.get_healpix_pixels.html" alt="get_healpix_pixels" />
-          <area shape="rect" coords="1486,1148,2169,1213" href="reference/api/lsdb.catalog.Catalog.get_ordered_healpix_pixels.html" alt="get_ordered_healpix_pixels" />
-          <area shape="rect" coords="974,1210,1258,1275" href="reference/api/lsdb.catalog.Catalog.partitions.html" alt="partitions" />
-          <area shape="rect" coords="1295,1210,1606,1275" href="reference/api/lsdb.catalog.Catalog.npartitions.html" alt="npartitions" />
-          <area shape="rect" coords="1644,1210,2169,1275" href="reference/api/lsdb.catalog.Catalog.get_partition_index.html" alt="get_partition_index" />
+          <area shape="rect" coords="1453,1148,2136,1213" href="reference/api/lsdb.catalog.Catalog.get_ordered_healpix_pixels.html" alt="get_ordered_healpix_pixels" />
+          <area shape="rect" coords="974,1210,1228,1275" href="reference/api/lsdb.catalog.Catalog.partitions.html" alt="partitions" />
+          <area shape="rect" coords="1230,1210,1541,1275" href="reference/api/lsdb.catalog.Catalog.npartitions.html" alt="npartitions" />
+          <area shape="rect" coords="1543,1210,2068,1275" href="reference/api/lsdb.catalog.Catalog.get_partition_index.html" alt="get_partition_index" />
           <area shape="rect" coords="981,1319,1333,1384" href="reference/api/lsdb.catalog.Catalog.estimate_size.html" alt="estimate_size" />
-          <area shape="rect" coords="1397,1324,1730,1390" href="reference/api/lsdb.catalog.Catalog.get_partition.html" alt="get_partition" />
+          <area shape="rect" coords="1046,1836,1398,1902" href="reference/api/lsdb.catalog.Catalog.get_partition.html" alt="get_partition" />
 
           <area shape="rect" coords="1022,1593,1593,1658" href="reference/api/lsdb.catalog.Catalog.prune_empty_partitions.html" alt="prune_empty_partitions" />
           <area shape="rect" coords="1651,1486,2108,1567" href="reference/api/lsdb.catalog.Catalog.map_partitions.html" alt="map_partitions" />
           <area shape="rect" coords="1651,1572,2108,1653" href="reference/api/lsdb.catalog.Catalog.map_rows.html" alt="map_rows" />
           <area shape="rect" coords="1046,1697,1556,1763" href="reference/api/lsdb.catalog.Catalog.to_dask_dataframe.html" alt="to_dask_dataframe" />
           <area shape="rect" coords="1046,1766,1556,1832" href="reference/api/lsdb.catalog.Catalog.to_delayed.html" alt="to_delayed" />
-          <area shape="rect" coords="1397,1324,1730,1390" href="reference/api/lsdb.catalog.Catalog.get_partition.html" alt="get_partition execution" />
+          <area shape="rect" coords="1046,1836,1398,1902" href="reference/api/lsdb.catalog.Catalog.get_partition.html" alt="get_partition execution" />
 
           <area shape="rect" coords="2510,342,2650,408" href="reference/api/lsdb.catalog.Catalog.query.html" alt="query" />
           <area shape="rect" coords="2497,454,2834,514" href="reference/api/lsdb.catalog.Catalog.box_search.html" alt="box_search" />
@@ -100,24 +100,11 @@ operations.
           <area shape="rect" coords="2513,1399,2832,1459" href="reference/api/lsdb.streams.InfiniteStream.html" alt="InfiniteStream" />
 
           <area shape="rect" coords="1761,1906,2109,2015" href="reference/api/lsdb.catalog.Catalog.compute.html" alt="compute" />
-          <area shape="rect" coords="2244,1791,2808,1895" href="reference/api/lsdb.catalog.Catalog.write_catalog.html" alt="write_catalog" />
+          <area shape="rect" coords="2244,1906,2808,2010" href="reference/api/lsdb.catalog.Catalog.write_catalog.html" alt="write_catalog" />
           <area shape="rect" coords="2902,1822,3113,1888" href="reference/api/lsdb.io.to_hats.html" alt="to_hats" />
           <area shape="rect" coords="3177,1824,3546,1890" href="reference/api/lsdb.io.to_association.html" alt="to_association" />
        </map>
     </div>
-
-.. rubric:: API surface quick links (accessible fallback)
-
-- Data Ingress: `open_catalog <reference/api/lsdb.open_catalog.html>`_, `from_dataframe <reference/api/lsdb.from_dataframe.html>`_, `from_astropy <reference/api/lsdb.from_astropy.html>`_, `generate_catalog <reference/api/lsdb.nested.datasets.generation.generate_catalog.html>`_
-- Utilities / Visualization: `show_versions <reference/api/lsdb.show_versions.html>`_, `plot_pixels <reference/api/lsdb.catalog.Catalog.plot_pixels.html>`_, `plot_coverage <reference/api/lsdb.catalog.Catalog.plot_coverage.html>`_, `plot_points <reference/api/lsdb.catalog.Catalog.plot_points.html>`_
-- Catalog Types: `Catalog <reference/api/lsdb.catalog.Catalog.html>`_, `MarginCatalog <reference/api/lsdb.catalog.MarginCatalog.html>`_, `MapCatalog <reference/api/lsdb.catalog.MapCatalog.html>`_, `AssociationCatalog <reference/api/lsdb.io.to_association.html>`_
-- Catalog Properties: `hc_structure <reference/api/lsdb.catalog.Catalog.hc_structure.html>`_, `hc_collection <reference/catalog_properties.html>`_, `columns <reference/api/lsdb.catalog.Catalog.columns.html>`_, `all_columns <reference/api/lsdb.catalog.Catalog.all_columns.html>`_, `nested_columns <reference/api/lsdb.catalog.Catalog.nested_columns.html>`_, `original_schema <reference/api/lsdb.catalog.Catalog.original_schema.html>`_, `dtypes <reference/api/lsdb.catalog.Catalog.dtypes.html>`_
-- Filtering / Selection: `query <reference/api/lsdb.catalog.Catalog.query.html>`_, `head <reference/api/lsdb.catalog.Catalog.head.html>`_, `tail <reference/api/lsdb.catalog.Catalog.tail.html>`_, `sample <reference/api/lsdb.catalog.Catalog.sample.html>`_, `random_sample <reference/api/lsdb.catalog.Catalog.random_sample.html>`_, `rename <reference/api/lsdb.catalog.Catalog.rename.html>`_
-- Search: `box_search <reference/api/lsdb.catalog.Catalog.box_search.html>`_, `cone_search <reference/api/lsdb.catalog.Catalog.cone_search.html>`_, `polygon_search <reference/api/lsdb.catalog.Catalog.polygon_search.html>`_, `order_search <reference/api/lsdb.catalog.Catalog.order_search.html>`_, `pixel_search <reference/api/lsdb.catalog.Catalog.pixel_search.html>`_, `id_search <reference/api/lsdb.catalog.Catalog.id_search.html>`_, `search <reference/api/lsdb.catalog.Catalog.search.html>`_, `moc_search <reference/api/lsdb.catalog.Catalog.moc_search.html>`_
-- Inspection: `len <reference/api/lsdb.catalog.Catalog.__len__.html>`_, `aggregate_column_statistics <reference/api/lsdb.catalog.Catalog.aggregate_column_statistics.html>`_, `per_pixel_statistics <reference/api/lsdb.catalog.Catalog.per_pixel_statistics.html>`_, `get_healpix_pixels <reference/api/lsdb.catalog.Catalog.get_healpix_pixels.html>`_, `get_ordered_healpix_pixels <reference/api/lsdb.catalog.Catalog.get_ordered_healpix_pixels.html>`_, `partitions <reference/api/lsdb.catalog.Catalog.partitions.html>`_, `npartitions <reference/api/lsdb.catalog.Catalog.npartitions.html>`_, `get_partition_index <reference/api/lsdb.catalog.Catalog.get_partition_index.html>`_, `estimate_size <reference/api/lsdb.catalog.Catalog.estimate_size.html>`_, `get_partition <reference/api/lsdb.catalog.Catalog.get_partition.html>`_
-- Execution: `prune_empty_partitions <reference/api/lsdb.catalog.Catalog.prune_empty_partitions.html>`_, `map_partitions <reference/api/lsdb.catalog.Catalog.map_partitions.html>`_, `map_rows <reference/api/lsdb.catalog.Catalog.map_rows.html>`_, `to_dask_dataframe <reference/api/lsdb.catalog.Catalog.to_dask_dataframe.html>`_, `to_delayed <reference/api/lsdb.catalog.Catalog.to_delayed.html>`_, `compute <reference/api/lsdb.catalog.Catalog.compute.html>`_, `write_catalog <reference/api/lsdb.catalog.Catalog.write_catalog.html>`_
-- Inter-catalog / Streaming / I/O: `crossmatch <reference/api/lsdb.catalog.Catalog.crossmatch.html>`_, `crossmatch_nested <reference/api/lsdb.catalog.Catalog.crossmatch_nested.html>`_, `merge <reference/api/lsdb.catalog.Catalog.merge.html>`_, `concat <reference/api/lsdb.catalog.Catalog.concat.html>`_, `join <reference/api/lsdb.catalog.Catalog.join.html>`_, `join_nested <reference/api/lsdb.catalog.Catalog.join_nested.html>`_, `nest_lists <reference/api/lsdb.catalog.Catalog.nest_lists.html>`_, `merge_asof <reference/api/lsdb.catalog.Catalog.merge_asof.html>`_, `merge_map <reference/api/lsdb.catalog.Catalog.merge_map.html>`_, `CatalogStream <reference/api/lsdb.streams.CatalogStream.html>`_, `InfiniteStream <reference/api/lsdb.streams.InfiniteStream.html>`_, `to_hats <reference/api/lsdb.io.to_hats.html>`_, `to_association <reference/api/lsdb.io.to_association.html>`_
-
 
 Using this Guide
 -------------------------------------------------------------------------------
