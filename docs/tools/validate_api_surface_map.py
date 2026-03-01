@@ -11,8 +11,12 @@ AREA_PATTERN = re.compile(
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Validate API surface image-map areas in docs/index.rst")
     parser.add_argument("--index", default="docs/index.rst", help="Path to index.rst containing the map")
-    parser.add_argument("--base-width", type=int, default=3719, help="Coordinate-space width (default: 3719 = PNG native)")
-    parser.add_argument("--base-height", type=int, default=2164, help="Coordinate-space height (default: 2164 = PNG native)")
+    parser.add_argument(
+        "--base-width", type=int, default=3719, help="Coordinate-space width (default: 3719 = PNG native)"
+    )
+    parser.add_argument(
+        "--base-height", type=int, default=2164, help="Coordinate-space height (default: 2164 = PNG native)"
+    )
     return parser.parse_args()
 
 
@@ -38,9 +42,7 @@ def validate(index_path: Path, base_width: int, base_height: int) -> list[str]:
         if x1 < 0 or y1 < 0:
             errors.append(f"Area #{i} has negative coordinates: {coords_text}")
         if x2 > base_width or y2 > base_height:
-            errors.append(
-                f"Area #{i} exceeds base bounds ({base_width}x{base_height}): {coords_text}"
-            )
+            errors.append(f"Area #{i} exceeds base bounds ({base_width}x{base_height}): {coords_text}")
         if not href.endswith(".html"):
             errors.append(f"Area #{i} href is not an html target: {href}")
 
