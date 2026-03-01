@@ -131,24 +131,39 @@ def collect_candidates(excal_data: dict, transform: dict):
         ey = float(element.get("y", 0))
         ew = float(element.get("width", 0))
         eh = float(element.get("height", 0))
+        stroke_color = element.get("strokeColor", "")
+        is_black = (stroke_color == "#1e1e1e")
+
+        # Large lineHeight means a tiny glyph inside a tall slot.
+        # We use only the visual text height (≈ fontSize × 1.2) for the bbox
+        # so that hotspots are not artificially bloated.
+        element_line_height = float(element.get("lineHeight", 1.25))
 
         lines = raw.split("\n")
         total_lines = max(1, len(lines))
-        line_h_excal = eh / total_lines  # height of one line in canvas units
+        line_h_excal = eh / total_lines  # height of one line slot in canvas units
+
+        # Clip to visual text height (text renders at top of each slot)
+        visual_h_excal = line_h_excal * min(1.0, 1.2 / element_line_height)
 
         for line_index, line in enumerate(lines):
             stripped = line.strip()
             if not stripped:
                 continue
 
-            # --- per-line bounding box (Excalidraw) -> PNG pixels ---
+            # per-line bbox using the VISUAL height, anchored at slot top
             ly1_excal = ey + line_index * line_h_excal
-            ly2_excal = ly1_excal + line_h_excal
 
             lx1, ly1 = to_png_xy(ex,      ly1_excal, transform)
-            lx2, ly2 = to_png_xy(ex + ew, ly2_excal, transform)
+            lx2, ly2 = to_png_xy(ex + ew, ly1_excal + visual_h_excal, transform)
 
             line_candidates.append({"norm": norm(stripped), "bbox": (lx1, ly1, lx2, ly2)})
+
+            # Skip black elements for TOKEN candidates — they are section headers
+            # whose words (e.g. "Crossmatch", "Join") would shadow the real
+            # function-list entries in coloured text.
+            if is_black:
+                continue
 
             line_text = line.rstrip()
             line_len  = max(1, len(line_text))
@@ -163,7 +178,7 @@ def collect_candidates(excal_data: dict, transform: dict):
                 tx2_excal = ex + ew * (match.end()   / line_len)
 
                 tx1, ty1 = to_png_xy(tx1_excal, ly1_excal, transform)
-                tx2, ty2 = to_png_xy(tx2_excal, ly2_excal, transform)
+                tx2, ty2 = to_png_xy(tx2_excal, ly1_excal + visual_h_excal, transform)
 
                 token_candidates.append({"norm": token_norm, "bbox": (tx1, ty1, tx2, ty2)})
 
@@ -188,16 +203,26 @@ def choose_bbox(alt_text: str, old_box, line_candidates: list, token_candidates:
         best = min(exact, key=lambda c: distance(c["bbox"], old_box))
         return padded(best["bbox"], 8, 4)
 
-    # 2. Partial token match
-    partial = [c for c in token_candidates
-               if alt_norm in c["norm"] or c["norm"] in alt_norm]
+    # 2. Partial token match — require the shorter side to cover ≥60 % of
+    #    the longer side so that "catalog" doesn't match "margincatalog".
+    min_overlap = 0.60
+    partial = [
+        c for c in token_candidates
+        if (alt_norm in c["norm"] or c["norm"] in alt_norm)
+        and len(c["norm"]) >= len(alt_norm) * min_overlap
+        and len(alt_norm) >= len(c["norm"]) * min_overlap
+    ]
     if partial:
         best = min(partial, key=lambda c: distance(c["bbox"], old_box))
         return padded(best["bbox"], 10, 4)
 
-    # 3. Line-level match (multi-word labels like "head, tail")
-    line_m = [c for c in line_candidates
-              if alt_norm in c["norm"] or c["norm"] in alt_norm]
+    # 3. Line-level match (multi-word labels like "head, tail"), same overlap rule
+    line_m = [
+        c for c in line_candidates
+        if (alt_norm in c["norm"] or c["norm"] in alt_norm)
+        and len(c["norm"]) >= len(alt_norm) * min_overlap
+        and len(alt_norm) >= len(c["norm"]) * min_overlap
+    ]
     if line_m:
         best = min(line_m, key=lambda c: distance(c["bbox"], old_box))
         return padded(best["bbox"], 14, 5, min_width=40, min_height=18)

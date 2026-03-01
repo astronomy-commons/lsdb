@@ -178,11 +178,6 @@
       box.style.width = width + "px";
       box.style.height = height + "px";
 
-      const label = document.createElement("div");
-      label.className = "api-surface-debug-label";
-      label.textContent = area.alt || area.getAttribute("href") || "area";
-      box.appendChild(label);
-
       layer.appendChild(box);
     });
   }
