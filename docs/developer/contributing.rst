@@ -103,6 +103,17 @@ you can build the documentation locally with a command like:
     cd docs
     make html
 
+For API-surface hotspot updates specifically, use:
+
+.. code-block:: bash
+
+    python docs/tools/update_api_surface_coords_from_excalidraw.py
+    python docs/tools/validate_api_surface_map.py
+
+The updater reads the canonical Excalidraw source from
+``docs/tools/data/API_Surface_Feb_12.excalidraw`` and rewrites
+``docs/index.rst`` hotspot coordinates.
+
 We also have a handful of automated linters and checks using ``pre-commit``. You
 can run against all staged changes with the command:
 
