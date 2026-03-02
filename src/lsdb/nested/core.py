@@ -479,6 +479,27 @@ Refer to the docstring for guidance on dtype requirements and assignment.""")
             lambda x: npd.NestedFrame(x).query(expr), meta=self._meta
         )  # pylint: disable=protected-access
 
+    def drop(self, columns: str | list[str], errors: str = "raise") -> Self:
+        """Drop specified columns from the NestedFrame.
+
+        Parameters
+        ----------
+        columns: single label or list-like
+            Column labels to drop. Nested sub-columns are accessed
+            using dot notation (e.g. "nested.col1").
+        errors: {‘ignore’, ‘raise’}, default ‘raise’
+            If ‘ignore’, suppress error and only existing labels are dropped.
+
+        Returns
+        -------
+        `NestedFrame`
+           A nested frame containing all columns except for those specified.
+        """
+        return self.map_partitions(
+            lambda x: npd.NestedFrame(x).drop(columns=columns, errors=errors),
+            meta=self._meta.drop(columns=columns, errors=errors),
+        )  # pylint: disable=protected-access
+
     def map_rows(
         self,
         func,
