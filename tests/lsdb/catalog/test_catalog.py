@@ -1056,3 +1056,9 @@ def test_to_dask_dataframe(small_sky_order1_catalog):
     assert isinstance(ddf, dd.DataFrame)
     pd.testing.assert_frame_equal(ddf.compute(), small_sky_order1_catalog.compute())
     assert isinstance(ddf.compute(), npd.NestedFrame)
+
+
+def test_catalog_stream(small_sky_order1_catalog):
+    for chunk in small_sky_order1_catalog.stream(partitions_per_chunk=1):
+        assert isinstance(chunk, npd.NestedFrame)
+        assert len(chunk) > 0

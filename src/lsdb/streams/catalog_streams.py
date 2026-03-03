@@ -1,12 +1,15 @@
 from collections.abc import Iterator
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 import dask
 import numpy as np
 import pandas as pd
 from dask.distributed import Client, Future
 
-from lsdb import Catalog
+if TYPE_CHECKING:
+    from lsdb import Catalog
+else:
+    Catalog = object  # Placeholder for type checking when Catalog is not yet defined
 
 
 class _FakeFuture:
@@ -62,7 +65,7 @@ class CatalogStream:
     >>> cat.npartitions
     12
 
-    The following grabs 4 random partitions 5 times in a row, looping over the data as needed:
+    The following grabs 4 random partitions until the data is exhausted:
 
     >>> cat_stream = CatalogStream(catalog=cat, partitions_per_chunk=4, seed=1)
     >>> for chunk in cat_stream:
