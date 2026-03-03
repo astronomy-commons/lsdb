@@ -729,14 +729,8 @@ class HealpixDataset:
         >>> import lsdb
         >>> catalog = lsdb.generate_catalog(5, 1, seed=1)
         >>> catalog = catalog.drop(["a","b","nested.flux_err"])
-        >>> catalog.head()  # doctest: +NORMALIZE_WHITESPACE
-                                     ra        dec  id                                        nested
-        _healpix_29
-        966327841233757087   342.166931  40.950381   2    [{t: 13.70439, flux: 41.73048, band: 'g'}]
-        1352762640571230615  341.513801   5.692378  46  [{t: 17.562349, flux: 14.038694, band: 'g'}]
-        1790728104519989534  184.255785  -8.820946  24    [{t: 8.38389, flux: 67.046751, band: 'g'}]
-        2582263806534995531   51.897461  -10.46307  36   [{t: 4.089045, flux: 55.868983, band: 'g'}]
-        2632254611495258711  112.259323 -70.888248  22   [{t: 0.547752, flux: 19.810149, band: 'g'}]
+        >>> catalog._ddf.exploded_columns
+        ['ra', 'dec', 'id', 'nested', 'nested.t', 'nested.flux', 'nested.band']
         """
         ndf = self._ddf.drop(columns=columns, errors=errors)
         return self._create_updated_dataset(ddf=ndf)
