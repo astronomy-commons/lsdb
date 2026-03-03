@@ -147,12 +147,9 @@ class HealpixDataset:
             series_df = pd.concat([_repr_data_series(s, index=index) for _, s in meta.items()], axis=1)
         return series_df
 
-    def compute(self, progress_bar=True) -> npd.NestedFrame:
+    def compute(self, progress_bar=True, tqdm_kwargs=None) -> npd.NestedFrame:
         """Compute dask distributed dataframe to pandas dataframe"""
-        if progress_bar:
-            with TqdmCallback(desc="Computing Catalog"):
-                res = self._ddf.compute()
-        else:
+        with TqdmCallback(desc="Computing Catalog", disable=not progress_bar, **(tqdm_kwargs or {})):
             res = self._ddf.compute()
         return res
 

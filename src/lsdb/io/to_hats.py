@@ -92,6 +92,7 @@ def to_hats(
     histogram_order: int | None = None,
     overwrite: bool = False,
     progress_bar: bool = True,
+    tqdm_kwargs=None,
     create_thumbnail: bool = False,
     skymap_alt_orders: list[int] | None = None,
     addl_hats_properties: dict | None = None,
@@ -160,16 +161,7 @@ def to_hats(
             histogram_order = max(max_catalog_depth, 8)
     # Save partition parquet files
     kwargs = set_default_write_table_kwargs(kwargs)
-    if progress_bar:
-        with TqdmCallback(desc="Writing Catalog"):
-            pixels, counts, histograms = write_partitions(
-                catalog,
-                base_catalog_dir_fp=base_catalog_path,
-                histogram_order=histogram_order,
-                error_if_empty=error_if_empty,
-                **kwargs,
-            )
-    else:
+    with TqdmCallback(desc="Writing Catalog", disable=not progress_bar, **(tqdm_kwargs or {})):
         pixels, counts, histograms = write_partitions(
             catalog,
             base_catalog_dir_fp=base_catalog_path,
