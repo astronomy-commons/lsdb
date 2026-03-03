@@ -1,11 +1,13 @@
 from importlib.metadata import version
 from pathlib import Path
+from unittest.mock import call
 
 import pandas as pd
 import pyarrow.parquet as pq
 from hats.io import paths
 
 import lsdb
+from lsdb.io.to_hats import write_partitions
 
 
 def test_save_collection(small_sky_order1_collection_catalog, tmp_path, helpers):
@@ -56,6 +58,65 @@ def test_save_collection(small_sky_order1_collection_catalog, tmp_path, helpers)
         default_columns=["ra", "dec"],
         hats_builder=f"lsdb v{version('lsdb')}, hats v{version('hats')}",
     )
+
+
+def test_save_collection_progress_bar(small_sky_order1_collection_catalog, tmp_path, mocker):
+    in_progress = {"active": False}
+
+    class _ProgressContext:
+        def __enter__(self):
+            in_progress["active"] = True
+
+        def __exit__(self, exc_type, exc, tb):
+            in_progress["active"] = False
+
+    tqdm_callback = mocker.patch(
+        "lsdb.io.to_hats.TqdmCallback",
+        return_value=_ProgressContext(),
+    )
+
+    def _checked_write_partitions(*args, **kwargs):
+        assert in_progress["active"]
+        return write_partitions(*args, **kwargs)
+
+    mocker.patch("lsdb.io.to_hats.write_partitions", side_effect=_checked_write_partitions)
+
+    base_collection_path = Path(tmp_path) / "small_sky_order1_collection"
+
+    small_sky_order1_collection_catalog.write_catalog(
+        base_collection_path,
+        catalog_name="small_sky_order1",
+        default_columns=["ra", "dec"],
+        addl_hats_properties={"obs_regime": "Optical"},
+        compression="SNAPPY",
+    )
+
+    assert tqdm_callback.call_args_list == [
+        call(desc="Writing Catalog", disable=False),
+        call(desc="Writing Margin Cache", disable=False),
+    ]
+    assert tqdm_callback.call_count == 2
+
+
+def test_save_collection_no_progress_bar(small_sky_order1_collection_catalog, tmp_path, mocker):
+    tqdm_callback = mocker.patch("lsdb.io.to_hats.TqdmCallback")
+
+    base_collection_path = Path(tmp_path) / "small_sky_order1_collection"
+
+    small_sky_order1_collection_catalog.write_catalog(
+        base_collection_path,
+        catalog_name="small_sky_order1",
+        default_columns=["ra", "dec"],
+        addl_hats_properties={"obs_regime": "Optical"},
+        compression="SNAPPY",
+        progress_bar=False,
+    )
+
+    assert tqdm_callback.call_args_list == [
+        call(desc="Writing Catalog", disable=True),
+        call(desc="Writing Margin Cache", disable=True),
+    ]
+    assert tqdm_callback.call_count == 2
 
 
 def test_save_collection_from_dataframe(small_sky_order1_df, tmp_path):

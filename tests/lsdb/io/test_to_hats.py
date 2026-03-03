@@ -121,7 +121,7 @@ def test_save_catalog_shows_progress_bar(small_sky_catalog, tmp_path, mocker):
 
     small_sky_catalog.write_catalog(base_catalog_path, progress_bar=True)
 
-    tqdm_callback.assert_called_once_with(desc="Writing Catalog")
+    tqdm_callback.assert_called_once_with(desc="Writing Catalog", disable=False)
 
 
 def test_save_catalog_without_progress_bar(small_sky_catalog, tmp_path, mocker):
@@ -130,7 +130,18 @@ def test_save_catalog_without_progress_bar(small_sky_catalog, tmp_path, mocker):
 
     small_sky_catalog.write_catalog(base_catalog_path, progress_bar=False)
 
-    tqdm_callback.assert_not_called()
+    tqdm_callback.assert_called_once_with(desc="Writing Catalog", disable=True)
+
+
+def test_save_catalog_progress_bar_kwargs(small_sky_catalog, tmp_path, mocker):
+    tqdm_callback = mocker.patch("lsdb.io.to_hats.TqdmCallback")
+    base_catalog_path = Path(tmp_path) / "small_sky"
+
+    small_sky_catalog.write_catalog(
+        base_catalog_path, tqdm_kwargs={"desc": "Custom Description", "ascii": True}
+    )
+
+    tqdm_callback.assert_called_once_with(desc="Custom Description", ascii=True, disable=False)
 
 
 def test_save_catalog_empty_default_columns(small_sky_order1_default_cols_catalog, tmp_path, helpers):

@@ -149,7 +149,8 @@ class HealpixDataset:
 
     def compute(self, progress_bar=True, tqdm_kwargs=None) -> npd.NestedFrame:
         """Compute dask distributed dataframe to pandas dataframe"""
-        with TqdmCallback(desc="Computing Catalog", disable=not progress_bar, **(tqdm_kwargs or {})):
+        desc = tqdm_kwargs.pop("desc", "Computing Catalog") if tqdm_kwargs else "Computing Catalog"
+        with TqdmCallback(desc=desc, disable=not progress_bar, **(tqdm_kwargs or {})):
             res = self._ddf.compute()
         return res
 
@@ -1213,6 +1214,8 @@ class HealpixDataset:
         catalog_name: str | None = None,
         default_columns: list[str] | None = None,
         overwrite: bool = False,
+        progress_bar: bool = True,
+        tqdm_kwargs: dict | None = None,
         error_if_empty: bool = True,
         **kwargs,
     ):
@@ -1222,6 +1225,8 @@ class HealpixDataset:
             catalog_name=catalog_name,
             default_columns=default_columns,
             overwrite=overwrite,
+            progress_bar=progress_bar,
+            tqdm_kwargs=tqdm_kwargs,
             error_if_empty=error_if_empty,
             **kwargs,
         )
@@ -1233,6 +1238,8 @@ class HealpixDataset:
         catalog_name: str | None = None,
         default_columns: list[str] | None = None,
         overwrite: bool = False,
+        progress_bar: bool = True,
+        tqdm_kwargs: dict | None = None,
         error_if_empty: bool = True,
         **kwargs,
     ):
@@ -1250,6 +1257,10 @@ class HealpixDataset:
             original hats catalogs if they exist.
         overwrite : bool, default False
             If True existing catalog is overwritten
+        progress_bar : bool, default True
+            If True, displays a progress bar during the save operation
+        tqdm_kwargs : dict or None, default None
+            Keyword arguments to pass to tqdm for customizing the progress bar
         error_if_empty : bool, default True
             If True, raises an error if the catalog is empty.
         **kwargs
@@ -1262,6 +1273,8 @@ class HealpixDataset:
             catalog_name=catalog_name,
             default_columns=default_columns,
             overwrite=overwrite,
+            progress_bar=progress_bar,
+            tqdm_kwargs=tqdm_kwargs,
             error_if_empty=error_if_empty,
             **kwargs,
         )

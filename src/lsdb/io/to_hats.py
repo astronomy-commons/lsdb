@@ -125,6 +125,10 @@ def to_hats(
         catalog data partitions.
     overwrite : bool, default False
         If True existing catalog is overwritten
+    progress_bar : bool, default True
+        If True, shows a progress bar for the export process. Defaults to True.
+    tqdm_kwargs : dict, default None
+        Additional kwargs to pass to the tqdm progress bar.
     create_thumbnail : bool, default False
         If True, create a data thumbnail of the catalog for
         previewing purposes. Defaults to False.
@@ -161,7 +165,10 @@ def to_hats(
             histogram_order = max(max_catalog_depth, 8)
     # Save partition parquet files
     kwargs = set_default_write_table_kwargs(kwargs)
-    with TqdmCallback(desc="Writing Catalog", disable=not progress_bar, **(tqdm_kwargs or {})):
+
+    desc = tqdm_kwargs.pop("desc", "Writing Catalog") if tqdm_kwargs else "Writing Catalog"
+
+    with TqdmCallback(desc=desc, disable=not progress_bar, **(tqdm_kwargs or {})):
         pixels, counts, histograms = write_partitions(
             catalog,
             base_catalog_dir_fp=base_catalog_path,

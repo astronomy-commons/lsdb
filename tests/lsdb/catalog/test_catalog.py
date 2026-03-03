@@ -89,7 +89,7 @@ def test_catalog_compute_shows_progress_bar(small_sky_order1_catalog, mocker):
 
     small_sky_order1_catalog.compute(progress_bar=True)
 
-    tqdm_callback.assert_called_once_with(desc="Computing Catalog")
+    tqdm_callback.assert_called_once_with(desc="Computing Catalog", disable=False)
 
 
 def test_catalog_compute_without_progress_bar(small_sky_order1_catalog, mocker):
@@ -97,7 +97,15 @@ def test_catalog_compute_without_progress_bar(small_sky_order1_catalog, mocker):
 
     small_sky_order1_catalog.compute(progress_bar=False)
 
-    tqdm_callback.assert_not_called()
+    tqdm_callback.assert_called_once_with(desc="Computing Catalog", disable=True)
+
+
+def test_catalog_compute_progress_bar_kwargs(small_sky_order1_catalog, mocker):
+    tqdm_callback = mocker.patch("lsdb.catalog.dataset.healpix_dataset.TqdmCallback")
+
+    small_sky_order1_catalog.compute(tqdm_kwargs={"ascii": True, "desc": "Custom Desc"})
+
+    tqdm_callback.assert_called_once_with(desc="Custom Desc", disable=False, ascii=True)
 
 
 def test_catalog_uses_dask_expressions(small_sky_order1_catalog):

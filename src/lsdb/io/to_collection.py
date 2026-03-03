@@ -15,6 +15,8 @@ def to_collection(
     catalog_name: str | None = None,
     default_columns: list[str] | None = None,
     overwrite: bool = False,
+    progress_bar: bool = True,
+    tqdm_kwargs: dict | None = None,
     error_if_empty: bool = True,
     **kwargs,
 ):
@@ -36,6 +38,10 @@ def to_collection(
         original hats catalog if they exist.
     overwrite : bool, default False
         If True existing collection is overwritten
+    progress_bar : bool, default True
+        If True, shows a progress bar during the export process
+    tqdm_kwargs : dict or None, default None
+        If progress_bar is True, these kwargs are passed to tqdm when creating the progress bar
     error_if_empty : bool, default True
         If True, raises an error if the catalog is empty
     **kwargs
@@ -45,23 +51,32 @@ def to_collection(
     catalog_name = catalog_name if catalog_name else catalog.hc_structure.catalog_name
     properties = {"obs_collection": catalog_name, "hats_primary_table_url": catalog_name}
 
+    if tqdm_kwargs is None:
+        tqdm_kwargs = {}
+    if "desc" not in tqdm_kwargs:
+        tqdm_kwargs["desc"] = "Writing Catalog"
     to_hats(
         catalog,
         base_catalog_path=base_collection_path / catalog_name,
         catalog_name=catalog_name,
         default_columns=default_columns,
         overwrite=overwrite,
+        progress_bar=progress_bar,
+        tqdm_kwargs=tqdm_kwargs,
         error_if_empty=error_if_empty,
         **kwargs,
     )
 
     if catalog.margin is not None:
         margin_name = f"{catalog_name}_{int(catalog.margin.hc_structure.catalog_info.margin_threshold)}arcs"
+        tqdm_kwargs["desc"] = "Writing Margin Cache"
         to_hats(
             catalog.margin,
             base_catalog_path=base_collection_path / margin_name,
             catalog_name=margin_name,
             default_columns=default_columns,
+            progress_bar=progress_bar,
+            tqdm_kwargs=tqdm_kwargs,
             overwrite=overwrite,
             error_if_empty=False,
             **kwargs,
