@@ -708,6 +708,33 @@ class HealpixDataset:
         ndf = self._ddf.query(expr)
         return self._create_updated_dataset(ddf=ndf)
 
+    def drop(self, columns: str | list[str], errors: str = "raise") -> Self:
+        """Drop specified columns from the catalog.
+
+        Parameters
+        ----------
+        columns: single label or list-like
+            Column labels to drop. Nested sub-columns are accessed
+            using dot notation (e.g. "nested.col1").
+        errors: {‘ignore’, ‘raise’}, default ‘raise’
+            If ‘ignore’, suppress error and only existing labels are dropped.
+
+        Returns
+        -------
+        Self
+           A catalog containing all columns except for those specified.
+
+        Examples
+        --------
+        >>> import lsdb
+        >>> catalog = lsdb.generate_catalog(5, 1, seed=1)
+        >>> catalog = catalog.drop(["a","b","nested.flux_err"])
+        >>> catalog._ddf.exploded_columns
+        ['ra', 'dec', 'id', 'nested', 'nested.t', 'nested.flux', 'nested.band']
+        """
+        ndf = self._ddf.drop(columns=columns, errors=errors)
+        return self._create_updated_dataset(ddf=ndf)
+
     def rename(self, columns: Renamer) -> Self:
         """Renames catalog columns (not indices) using a dictionary or function mapping.
 

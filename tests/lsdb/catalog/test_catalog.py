@@ -293,6 +293,27 @@ def test_query_margin(small_sky_xmatch_with_margin):
     assert isinstance(result_catalog.margin._ddf, nd.NestedFrame)
 
 
+def test_drop(small_sky_with_nested_sources):
+    cols_to_delete = ["id", "sources.source_id"]
+
+    expected_cat = small_sky_with_nested_sources.drop(cols_to_delete)
+    assert expected_cat._ddf.exploded_columns == [
+        c for c in small_sky_with_nested_sources._ddf.exploded_columns if c not in cols_to_delete
+    ]
+
+    # The columns do not exist, and errors="raise"
+    with pytest.raises(KeyError):
+        small_sky_with_nested_sources.drop("a")
+    with pytest.raises(KeyError):
+        small_sky_with_nested_sources.drop("sources.a")
+
+    # Some columns do not exist but errors="ignore"
+    assert "b" not in small_sky_with_nested_sources.columns
+    assert "b" not in small_sky_with_nested_sources["sources"].columns
+    cat = small_sky_with_nested_sources.drop(cols_to_delete + ["b", "sources.b"], errors="ignore")
+    pd.testing.assert_frame_equal(expected_cat.compute(), cat.compute())
+
+
 def test_rename_with_callable(small_sky_xmatch_with_margin):
     uppercase_catalog = small_sky_xmatch_with_margin.rename(columns=str.upper)
     assert len(small_sky_xmatch_with_margin.columns) == len(
