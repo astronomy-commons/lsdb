@@ -1441,6 +1441,8 @@ class Catalog(HealpixDataset):
         default_columns: list[str] | None = None,
         as_collection: bool = True,
         overwrite: bool = False,
+        progress_bar: bool = True,
+        tqdm_kwargs: dict | None = None,
         error_if_empty: bool = True,
         **kwargs,
     ):
@@ -1451,6 +1453,8 @@ class Catalog(HealpixDataset):
             default_columns=default_columns,
             as_collection=as_collection,
             overwrite=overwrite,
+            progress_bar=progress_bar,
+            tqdm_kwargs=tqdm_kwargs,
             error_if_empty=error_if_empty,
             **kwargs,
         )
@@ -1463,6 +1467,8 @@ class Catalog(HealpixDataset):
         default_columns: list[str] | None = None,
         as_collection: bool = True,
         overwrite: bool = False,
+        progress_bar: bool = True,
+        tqdm_kwargs: dict | None = None,
         create_thumbnail: bool = True,
         error_if_empty: bool = True,
         **kwargs,
@@ -1483,6 +1489,10 @@ class Catalog(HealpixDataset):
             If True, saves the catalog and its margin as a collection
         overwrite : bool, default False
             If True existing catalog is overwritten
+        progress_bar : bool, default True
+            If True, shows a progress bar for the export process. Defaults to True.
+        tqdm_kwargs : dict, default None
+            Additional kwargs to pass to the tqdm progress bar.
         error_if_empty : bool, default True
             If True, raises an error if the catalog is empty.
         **kwargs
@@ -1506,6 +1516,8 @@ class Catalog(HealpixDataset):
                 catalog_name=catalog_name,
                 default_columns=default_columns,
                 overwrite=overwrite,
+                progress_bar=progress_bar,
+                tqdm_kwargs=tqdm_kwargs,
                 error_if_empty=error_if_empty,
                 create_thumbnail=create_thumbnail,
                 **kwargs,
@@ -1516,6 +1528,8 @@ class Catalog(HealpixDataset):
                 catalog_name=catalog_name,
                 default_columns=default_columns,
                 overwrite=overwrite,
+                progress_bar=progress_bar,
+                tqdm_kwargs=tqdm_kwargs,
                 create_thumbnail=create_thumbnail,
                 error_if_empty=error_if_empty,
                 **kwargs,

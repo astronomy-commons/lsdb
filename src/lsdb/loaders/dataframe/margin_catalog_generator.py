@@ -49,7 +49,7 @@ class MarginCatalogGenerator:
         **kwargs
             Arguments to pass to the creation of the catalog info.
         """
-        self.dataframe: npd.NestedFrame = catalog.compute().copy()
+        self.dataframe: npd.NestedFrame = catalog.compute(progress_bar=False).copy()
         self.hc_structure = catalog.hc_structure
         self.margin_threshold = margin_threshold
         self.margin_order = margin_order

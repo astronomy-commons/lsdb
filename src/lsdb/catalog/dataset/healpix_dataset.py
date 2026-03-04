@@ -24,6 +24,7 @@ from hats.pixel_math import HealpixPixel
 from hats.pixel_math.healpix_pixel_function import get_pixel_argsort
 from mocpy import MOC
 from pandas._typing import Renamer
+from tqdm.dask import TqdmCallback
 from typing_extensions import Self
 from upath import UPath
 
@@ -146,9 +147,12 @@ class HealpixDataset:
             series_df = pd.concat([_repr_data_series(s, index=index) for _, s in meta.items()], axis=1)
         return series_df
 
-    def compute(self) -> npd.NestedFrame:
+    def compute(self, progress_bar=True, tqdm_kwargs=None) -> npd.NestedFrame:
         """Compute dask distributed dataframe to pandas dataframe"""
-        return self._ddf.compute()
+        desc = tqdm_kwargs.pop("desc", "Computing Catalog") if tqdm_kwargs else "Computing Catalog"
+        with TqdmCallback(desc=desc, disable=not progress_bar, **(tqdm_kwargs or {})):
+            res = self._ddf.compute()
+        return res
 
     def to_delayed(self, optimize_graph: bool = True) -> list[Delayed]:
         """Get a list of Dask Delayed objects for each partition in the dataset
@@ -1237,6 +1241,8 @@ class HealpixDataset:
         catalog_name: str | None = None,
         default_columns: list[str] | None = None,
         overwrite: bool = False,
+        progress_bar: bool = True,
+        tqdm_kwargs: dict | None = None,
         error_if_empty: bool = True,
         **kwargs,
     ):
@@ -1246,6 +1252,8 @@ class HealpixDataset:
             catalog_name=catalog_name,
             default_columns=default_columns,
             overwrite=overwrite,
+            progress_bar=progress_bar,
+            tqdm_kwargs=tqdm_kwargs,
             error_if_empty=error_if_empty,
             **kwargs,
         )
@@ -1257,6 +1265,8 @@ class HealpixDataset:
         catalog_name: str | None = None,
         default_columns: list[str] | None = None,
         overwrite: bool = False,
+        progress_bar: bool = True,
+        tqdm_kwargs: dict | None = None,
         error_if_empty: bool = True,
         **kwargs,
     ):
@@ -1274,6 +1284,10 @@ class HealpixDataset:
             original hats catalogs if they exist.
         overwrite : bool, default False
             If True existing catalog is overwritten
+        progress_bar : bool, default True
+            If True, displays a progress bar during the save operation
+        tqdm_kwargs : dict or None, default None
+            Keyword arguments to pass to tqdm for customizing the progress bar
         error_if_empty : bool, default True
             If True, raises an error if the catalog is empty.
         **kwargs
@@ -1286,6 +1300,8 @@ class HealpixDataset:
             catalog_name=catalog_name,
             default_columns=default_columns,
             overwrite=overwrite,
+            progress_bar=progress_bar,
+            tqdm_kwargs=tqdm_kwargs,
             error_if_empty=error_if_empty,
             **kwargs,
         )

@@ -65,6 +65,49 @@ def test_catalog_compute_equals_ddf_compute(small_sky_order1_catalog):
     pd.testing.assert_frame_equal(small_sky_order1_catalog.compute(), small_sky_order1_catalog._ddf.compute())
 
 
+def test_catalog_compute_shows_progress_bar(small_sky_order1_catalog, mocker):
+    in_progress = {"active": False}
+
+    class _ProgressContext:
+        def __enter__(self):
+            in_progress["active"] = True
+
+        def __exit__(self, exc_type, exc, tb):
+            in_progress["active"] = False
+
+    tqdm_callback = mocker.patch(
+        "lsdb.catalog.dataset.healpix_dataset.TqdmCallback",
+        return_value=_ProgressContext(),
+    )
+    original_compute = small_sky_order1_catalog._ddf.compute
+
+    def _checked_compute(*args, **kwargs):
+        assert in_progress["active"]
+        return original_compute(*args, **kwargs)
+
+    mocker.patch.object(small_sky_order1_catalog._ddf, "compute", side_effect=_checked_compute)
+
+    small_sky_order1_catalog.compute(progress_bar=True)
+
+    tqdm_callback.assert_called_once_with(desc="Computing Catalog", disable=False)
+
+
+def test_catalog_compute_without_progress_bar(small_sky_order1_catalog, mocker):
+    tqdm_callback = mocker.patch("lsdb.catalog.dataset.healpix_dataset.TqdmCallback")
+
+    small_sky_order1_catalog.compute(progress_bar=False)
+
+    tqdm_callback.assert_called_once_with(desc="Computing Catalog", disable=True)
+
+
+def test_catalog_compute_progress_bar_kwargs(small_sky_order1_catalog, mocker):
+    tqdm_callback = mocker.patch("lsdb.catalog.dataset.healpix_dataset.TqdmCallback")
+
+    small_sky_order1_catalog.compute(tqdm_kwargs={"ascii": True, "desc": "Custom Desc"})
+
+    tqdm_callback.assert_called_once_with(desc="Custom Desc", disable=False, ascii=True)
+
+
 def test_catalog_uses_dask_expressions(small_sky_order1_catalog):
     assert hasattr(small_sky_order1_catalog._ddf, "expr")
 
