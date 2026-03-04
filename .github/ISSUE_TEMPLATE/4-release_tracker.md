@@ -39,7 +39,7 @@ e.g. major/minor/patch, deadlines, blocking issues, breaking changes, folks to n
 
 ### lsdb
 
-- [ ] update pinned versions (e.g. hats and nested) (or confirm no updates to pins)
+- [ ] update pinned versions (e.g. hats patch release and nested minor release) (or confirm no updates to pins)
 - [ ] tag in github
 - [ ] confirm on [pypi](https://pypi.org/manage/project/lsdb/releases/)
 
