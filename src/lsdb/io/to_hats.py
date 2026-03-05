@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from copy import copy
 from pathlib import Path
+from typing import Any
 
 import dask
 import hats as hc
@@ -29,7 +30,7 @@ HISTOGRAM_DIR_NAME = "hists"
 def perform_write(
     df: npd.NestedFrame,
     hp_pixel: HealpixPixel,
-    base_catalog_dir: str | Path | UPath,
+    base_catalog_dir: UPath,
     histogram_order: int,
     **kwargs,
 ) -> tuple[int, SparseHistogram]:
@@ -89,6 +90,36 @@ def calculate_histogram(df: npd.NestedFrame, histogram_order: int) -> SparseHist
     return SparseHistogram(indexes, counts_at_indexes, histogram_order)
 
 
+def _read_pixels_from_files(path: UPath, glob_pattern: str, regex_pattern: str) -> list[HealpixPixel]:
+    """Helper function to read HEALPix pixels from files in a directory from a glob pattern and regex pattern.
+
+    Parameters
+    ----------
+    path : path-like
+        Location of the directory to read from
+    glob_pattern : str
+        Glob pattern to find relevant files in the directory
+    regex_pattern : str
+        Regex pattern with two capture groups for order and pixel, to extract the HEALPix pixels from the
+        file names
+
+    Returns
+    -------
+    list[HealpixPixel]
+        List of HEALPix pixels extracted from the file names in the directory that match the glob pattern.
+    """
+    file_pattern = re.compile(regex_pattern)
+
+    def get_matches(path: UPath):
+        match = file_pattern.match(path.name)
+        if match is None:
+            raise ValueError(f"File {path} does not match the expected pattern {regex_pattern}")
+        return match.group(1, 2)
+
+    pixel_tuples = [get_matches(path) for path in (path.glob(glob_pattern))]
+    return [HealpixPixel(int(match[0]), int(match[1])) for match in pixel_tuples]
+
+
 def write_histogram(histogram: SparseHistogram, base_catalog_path: UPath, pixel: HealpixPixel):
     """Writes the sparse histogram for a partition to a file in the respective pixel directory.
 
@@ -96,7 +127,7 @@ def write_histogram(histogram: SparseHistogram, base_catalog_path: UPath, pixel:
     ----------
     histogram : SparseHistogram
         The sparse count histogram for the partition, at the specified order.
-    base_catalog_dir : path-like
+    base_catalog_path : path-like
         Location of the base catalog directory to write to
     pixel : HealpixPixel
         HEALPix pixel of file to be written
@@ -108,12 +139,22 @@ def write_histogram(histogram: SparseHistogram, base_catalog_path: UPath, pixel:
 
 
 def read_histograms(base_catalog_path: UPath):
+    """Reads the sparse histograms for all partitions from the respective files in the histogram directory.
+
+    Parameters
+    ----------
+    base_catalog_path : path-like
+        Location of the base catalog directory to read from
+
+    Returns
+    -------
+    tuple[list[HealpixPixel], list[SparseHistogram], list[int]]
+        A tuple with the list of pixels for which histograms were read, the list of respective
+        sparse histograms, and the list of total counts for each partition
+        (i.e. the sum of the histogram counts).
+    """
     histogram_path = base_catalog_path / HISTOGRAM_DIR_NAME
-    hist_file_pattern = re.compile(r"(\d+)_(\d+)_histogram.npz")
-    hist_tuples = [
-        hist_file_pattern.match(path.name).group(1, 2) for path in histogram_path.glob("*_histogram.npz")
-    ]
-    pixels = [HealpixPixel(int(match[0]), int(match[1])) for match in hist_tuples]
+    pixels = _read_pixels_from_files(histogram_path, "*_histogram.npz", r"(\d+)_(\d+)_histogram.npz")
     histograms = [
         SparseHistogram.from_file(histogram_path / f"{pixel.order}_{pixel.pixel}_histogram.npz")
         for pixel in pixels
@@ -123,11 +164,27 @@ def read_histograms(base_catalog_path: UPath):
 
 
 def remove_histogram_files(base_catalog_path: UPath):
+    """Removes the histogram files from the histogram directory.
+
+    Parameters
+    ----------
+    base_catalog_path : path-like
+        Location of the base catalog directory to remove histogram files from
+    """
     histogram_path = base_catalog_path / HISTOGRAM_DIR_NAME
     file_io.remove_directory(histogram_path, ignore_errors=True)
 
 
 def write_done_pixel(base_catalog_path: UPath, pixel: HealpixPixel):
+    """Writes an empty file in the respective pixel directory to indicate that the partition has been written.
+
+    Parameters
+    ----------
+    base_catalog_path : path-like
+        Location of the base catalog directory to write to
+    pixel : HealpixPixel
+        HEALPix pixel of file to be written
+    """
     done_path = base_catalog_path / DONE_DIR_NAME
     done_path.mkdir(exist_ok=True)
     done_file = done_path / f"{pixel.order}_{pixel.pixel}_done"
@@ -135,13 +192,31 @@ def write_done_pixel(base_catalog_path: UPath, pixel: HealpixPixel):
 
 
 def read_done_pixels(base_catalog_path: UPath):
+    """Reads the done files in the done directory to get the list of pixels that partitions have been written.
+
+    Parameters
+    ----------
+    base_catalog_path : path-like
+        Location of the base catalog directory to read from
+
+    Returns
+    -------
+    list[HealpixPixel]
+        List of HEALPix pixels for which done files were found in the done directory, indicating
+        that the respective partitions have been written.
+    """
     done_path = base_catalog_path / DONE_DIR_NAME
-    done_file_pattern = re.compile(r"(\d+)_(\d+)_done")
-    pixel_tuples = [done_file_pattern.match(path.name).group(1, 2) for path in done_path.glob("*_done")]
-    return [HealpixPixel(int(match[0]), int(match[1])) for match in pixel_tuples]
+    return _read_pixels_from_files(done_path, "*_done", r"(\d+)_(\d+)_done")
 
 
 def remove_done_files(base_catalog_path: UPath):
+    """Removes the done files from the done directory.
+
+    Parameters
+    ----------
+    base_catalog_path : path-like
+        Location of the base catalog directory to remove done files from
+    """
     done_path = base_catalog_path / DONE_DIR_NAME
     file_io.remove_directory(done_path, ignore_errors=True)
 
@@ -190,6 +265,8 @@ def to_hats(
         catalog data partitions.
     overwrite : bool, default False
         If True existing catalog is overwritten
+    resume : bool, default False
+        If True, will attempt to resume a previously interrupted write to the same directory.
     progress_bar : bool, default True
         If True, shows a progress bar for the export process. Defaults to True.
     tqdm_kwargs : dict, default None
@@ -212,9 +289,9 @@ def to_hats(
         raise ValueError("overwrite and resume cannot both be True")
     # Create the output directory for the catalog
     base_catalog_path = hc.io.file_io.get_upath(base_catalog_path)
-    existing_pixels = []
-    histograms = []
-    counts = []
+    existing_pixels: list[HealpixPixel] = []
+    histograms: list[SparseHistogram] = []
+    counts: list[int] = []
     if hc.io.file_io.directory_has_contents(base_catalog_path):
         if not overwrite and not resume:
             raise ValueError(
@@ -224,23 +301,7 @@ def to_hats(
         if overwrite:
             hc.io.file_io.remove_directory(base_catalog_path)
         if resume:
-            existing_pixels = read_done_pixels(base_catalog_path)
-            hist_pixels, histograms, counts = read_histograms(base_catalog_path)
-            for pixel in existing_pixels:
-                if pixel not in catalog.hc_structure.pixel_tree:
-                    raise ValueError(
-                        f"Pixel {pixel} from existing catalog files is not present in the provided catalog."
-                        " Cannot resume write. Please check that the directory contains files from this catalog,"
-                        " or set resume to False and overwrite to True to overwrite to this directory instead of"
-                        " resuming."
-                    )
-            if len(hist_pixels) != len(existing_pixels) or set(hist_pixels) != set(existing_pixels):
-                raise ValueError(
-                    "The existing histogram files in the directory do not match the done pixels."
-                    " Cannot resume write. Please check that the directory contains files from this catalog,"
-                    " or set resume to False and overwrite to True to overwrite to this directory instead of"
-                    " resuming."
-                )
+            existing_pixels, histograms, counts = _read_existing_progress(base_catalog_path, catalog)
     hc.io.file_io.make_directory(base_catalog_path, exist_ok=True)
     if histogram_order is None:
         if catalog.hc_structure.catalog_info.skymap_order is not None:
@@ -262,7 +323,6 @@ def to_hats(
             catalog,
             base_catalog_dir_fp=base_catalog_path,
             histogram_order=histogram_order,
-            error_if_empty=error_if_empty,
             existing_pixels=existing_pixels,
             **kwargs,
         )
@@ -277,18 +337,7 @@ def to_hats(
     # Save parquet metadata and create a data thumbnail if needed
     hats_max_rows = int(max(counts)) if counts else 0
 
-    if len(pixels) > 0:
-        hc.io.write_parquet_metadata(
-            base_catalog_path, create_thumbnail=create_thumbnail, thumbnail_threshold=hats_max_rows
-        )
-    else:
-        metadata_path = hc.io.paths.get_parquet_metadata_pointer(base_catalog_path)
-        common_metadata_path = hc.io.paths.get_common_metadata_pointer(base_catalog_path)
-        file_io.make_directory(metadata_path.parent, exist_ok=True)
-        pq.write_metadata(catalog.hc_structure.schema, metadata_path.path, filesystem=metadata_path.fs)
-        pq.write_metadata(
-            catalog.hc_structure.schema, common_metadata_path.path, filesystem=common_metadata_path.fs
-        )
+    _write_parquet_metadata(base_catalog_path, catalog, create_thumbnail, hats_max_rows, pixels)
     # Save partition info
     PartitionInfo(pixels).write_to_file(base_catalog_path / "partition_info.csv")
 
@@ -307,15 +356,7 @@ def to_hats(
             "skymap_alt_orders": skymap_alt_orders,
         }
 
-        # Save the point distribution map
-        total_histogram = HistogramAggregator(histogram_order)
-        for partition_hist in histograms:
-            total_histogram.add(partition_hist)
-        point_map_path = hc.io.paths.get_point_map_file_pointer(base_catalog_path)
-        full_histogram = total_histogram.full_histogram
-        hc.io.file_io.write_fits_image(full_histogram, point_map_path)
-
-        write_skymap(histogram=full_histogram, catalog_dir=base_catalog_path, orders=skymap_alt_orders)
+        _write_skymaps(base_catalog_path, histogram_order, histograms, skymap_alt_orders)
 
     addl_hats_properties = addl_hats_properties | new_provenance_properties(base_catalog_path)
 
@@ -332,6 +373,71 @@ def to_hats(
 
     remove_histogram_files(base_catalog_path)
     remove_done_files(base_catalog_path)
+
+
+def _read_existing_progress(
+    base_catalog_path: UPath, catalog: HealpixDataset
+) -> tuple[list[HealpixPixel], Any, Any]:
+    """Read the done and histogram files from a previous write attempt to the same directory"""
+    existing_pixels = read_done_pixels(base_catalog_path)
+    hist_pixels, histograms, counts = read_histograms(base_catalog_path)
+    for pixel in existing_pixels:
+        if pixel not in catalog.hc_structure.pixel_tree:
+            raise ValueError(
+                f"Pixel {pixel} from existing catalog files is not present in the provided catalog."
+                " Cannot resume write. Please check that the directory contains files from this "
+                " catalog, or set resume to False and overwrite to True to overwrite to this"
+                " directory instead of resuming."
+            )
+    if len(hist_pixels) != len(existing_pixels) or set(hist_pixels) != set(existing_pixels):
+        raise ValueError(
+            "The existing histogram files in the directory do not match the done pixels."
+            " Cannot resume write. Please check that the directory contains files from this catalog,"
+            " or set resume to False and overwrite to True to overwrite to this directory instead of"
+            " resuming."
+        )
+    return existing_pixels, histograms, counts
+
+
+def _write_parquet_metadata(
+    base_catalog_path: UPath,
+    catalog: HealpixDataset,
+    create_thumbnail: bool,
+    hats_max_rows: int,
+    pixels: list[Any],
+):
+    """Writes the parquet metadata for the catalog. If there are no pixels,
+    writes empty metadata files with the correct schema."""
+    if len(pixels) > 0:
+        hc.io.write_parquet_metadata(
+            base_catalog_path, create_thumbnail=create_thumbnail, thumbnail_threshold=hats_max_rows
+        )
+    else:
+        metadata_path = hc.io.paths.get_parquet_metadata_pointer(base_catalog_path)
+        common_metadata_path = hc.io.paths.get_common_metadata_pointer(base_catalog_path)
+        file_io.make_directory(metadata_path.parent, exist_ok=True)
+        pq.write_metadata(catalog.hc_structure.schema, metadata_path.path, filesystem=metadata_path.fs)
+        pq.write_metadata(
+            catalog.hc_structure.schema, common_metadata_path.path, filesystem=common_metadata_path.fs
+        )
+
+
+def _write_skymaps(
+    base_catalog_path: UPath,
+    histogram_order: int,
+    histograms: list[Any] | Any,
+    skymap_alt_orders: list[int] | None,
+):
+    """Writes the skymap files for the catalog, based on the histograms for each partition."""
+    # Save the point distribution map
+    total_histogram = HistogramAggregator(histogram_order)
+    for partition_hist in histograms:
+        total_histogram.add(partition_hist)
+    point_map_path = hc.io.paths.get_point_map_file_pointer(base_catalog_path)
+    full_histogram = total_histogram.full_histogram
+    hc.io.file_io.write_fits_image(full_histogram, point_map_path)
+
+    write_skymap(histogram=full_histogram, catalog_dir=base_catalog_path, orders=skymap_alt_orders)
 
 
 def _validate_default_columns(catalog: HealpixDataset, default_columns: list[str]):
@@ -357,7 +463,6 @@ def write_partitions(
     catalog: HealpixDataset,
     base_catalog_dir_fp: str | Path | UPath,
     histogram_order: int,
-    error_if_empty: bool = True,
     existing_pixels: list[HealpixPixel] | None = None,
     **kwargs,
 ) -> tuple[list[HealpixPixel], list[int], list[SparseHistogram]]:
@@ -373,8 +478,6 @@ def write_partitions(
         Path to the base directory of the catalog
     histogram_order : int
         The order of the count histogram to generate
-    error_if_empty : bool, default True
-        If True, raises an error if the output catalog is empty
     **kwargs
         Arguments to pass to the parquet write operations
 
@@ -384,13 +487,13 @@ def write_partitions(
         A tuple with the array of non-empty pixels, the array with the total counts
         as well as the array with the sparse count histograms.
     """
+    base_catalog_dir_fp = hc.io.file_io.get_upath(base_catalog_dir_fp)
     results, pixels = [], []
     partitions = catalog._ddf.to_delayed()
-    if existing_pixels is not None:
-        existing_pixels = set(existing_pixels)
+    existing_pixels_set = set(existing_pixels) if existing_pixels is not None else set()
 
     for pixel, partition_index in catalog._ddf_pixel_map.items():
-        if existing_pixels is not None and pixel in existing_pixels:
+        if pixel in existing_pixels_set:
             continue
         results.append(
             perform_write(

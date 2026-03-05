@@ -388,10 +388,10 @@ def test_resume_catalog_write(small_sky_order1_catalog, tmp_path):
     # Resume the write and confirm that all partitions are written to disk
     with Profiler() as prof:
         small_sky_order1_catalog.write_catalog(base_catalog_path, resume=True, as_collection=False)
-    total_resume_tasks_num = len(prof.results)
+    total_resume_tasks_num = len(prof.results)  # pylint: disable=no-member
     with Profiler() as prof:
         small_sky_order1_catalog.write_catalog(reference_catalog_path, as_collection=False)
-    total_ref_tasks_num = len(prof.results)
+    total_ref_tasks_num = len(prof.results)  # pylint: disable=no-member
 
     assert total_resume_tasks_num < total_ref_tasks_num
 
@@ -422,10 +422,10 @@ def test_resume_catalog_collection_write(small_sky_order1_catalog, tmp_path):
     # Resume the write and confirm that all partitions are written to disk
     with Profiler() as prof:
         small_sky_order1_catalog.write_catalog(base_catalog_path, resume=True)
-    total_resume_tasks_num = len(prof.results)
+    total_resume_tasks_num = len(prof.results)  # pylint: disable=no-member
     with Profiler() as prof:
         small_sky_order1_catalog.write_catalog(reference_catalog_path)
-    total_ref_tasks_num = len(prof.results)
+    total_ref_tasks_num = len(prof.results)  # pylint: disable=no-member
 
     assert total_resume_tasks_num < total_ref_tasks_num
 
@@ -554,3 +554,10 @@ def test_resume_catalog_write_with_corrupted_metadata_files_written(small_sky_or
     catalog = lsdb.read_hats(base_catalog_path)
     ref_cat = lsdb.read_hats(reference_catalog_path)
     _assert_catalog_matches_reference(catalog, ref_cat)
+
+
+def test_resume_and_overwrite_catalog_write(small_sky_order1_catalog, tmp_path):
+    base_catalog_path = tmp_path / "small_sky"
+
+    with pytest.raises(ValueError, match="overwrite and resume cannot both be True"):
+        small_sky_order1_catalog.write_catalog(base_catalog_path, resume=True, overwrite=True)
