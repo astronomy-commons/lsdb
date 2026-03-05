@@ -1,7 +1,9 @@
 from importlib.metadata import version
 from pathlib import Path
+import shutil
 
 import dask
+import hats as hc
 import numpy as np
 import numpy.testing as npt
 import pandas as pd
@@ -9,12 +11,19 @@ import pyarrow.parquet as pq
 import pytest
 from dask.diagnostics import Profiler
 from distributed import get_task_stream
+from hats.catalog import PartitionInfo
 from hats.io.file_io import get_upath_for_protocol, read_fits_image
-from hats.io.paths import get_data_thumbnail_pointer
+from hats.io.paths import (
+    get_common_metadata_pointer,
+    get_data_thumbnail_pointer,
+    get_parquet_metadata_pointer,
+)
+from hats.pixel_math import HealpixPixel
+from hats.pixel_math.sparse_histogram import SparseHistogram
 
 import lsdb
 from lsdb.io.common import set_default_write_table_kwargs
-from lsdb.io.to_hats import write_partitions, perform_write
+from lsdb.io.to_hats import perform_write, write_done_pixel, write_histogram, write_partitions
 
 
 def test_save_catalog(small_sky_catalog, tmp_path, helpers):
@@ -346,6 +355,18 @@ def write_partial_catalog(catalog, path, pixels_to_write):
     dask.compute(*results)
 
 
+def _copy_metadata_files(reference_catalog_path, base_catalog_path):
+    for entry in reference_catalog_path.iterdir():
+        if entry.name == "dataset":
+            continue
+        target = base_catalog_path / entry.name
+        if entry.is_dir():
+            shutil.copytree(entry, target, dirs_exist_ok=True)
+        else:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy(entry, target)
+
+
 def test_resume_catalog_write(small_sky_order1_catalog, tmp_path):
     base_catalog_path = tmp_path / "small_sky"
     reference_catalog_path = tmp_path / "reference_small_sky"
@@ -391,6 +412,114 @@ def test_resume_catalog_collection_write(small_sky_order1_catalog, tmp_path):
     total_ref_tasks_num = len(prof.results)
 
     assert total_resume_tasks_num < total_ref_tasks_num
+
+    catalog = lsdb.read_hats(base_catalog_path)
+    ref_cat = lsdb.read_hats(reference_catalog_path)
+    assert catalog.get_healpix_pixels() == ref_cat.get_healpix_pixels()
+    assert catalog.hc_structure.catalog_info == ref_cat.hc_structure.catalog_info
+    assert catalog.hc_structure.moc == ref_cat.hc_structure.moc
+    pd.testing.assert_frame_equal(catalog.compute(), ref_cat.compute())
+    pd.testing.assert_frame_equal(catalog.per_pixel_statistics(), ref_cat.per_pixel_statistics())
+
+
+def test_resume_errors_with_different_catalog(small_sky_order1_catalog, small_sky_catalog, tmp_path):
+    base_catalog_path = tmp_path / "small_sky"
+    write_partial_catalog(small_sky_catalog, base_catalog_path, small_sky_catalog.get_healpix_pixels())
+
+    with pytest.raises(ValueError, match="not present in the provided catalog"):
+        small_sky_order1_catalog.write_catalog(base_catalog_path, resume=True, as_collection=False)
+
+
+def test_resume_errors_with_different_hists_and_done(small_sky_order1_catalog, tmp_path):
+    base_catalog_path = tmp_path / "small_sky"
+    write_partial_catalog(
+        small_sky_order1_catalog, base_catalog_path, small_sky_order1_catalog.get_healpix_pixels()[:2]
+    )
+    hist_pixel = small_sky_order1_catalog.get_healpix_pixels()[2]
+    write_histogram(SparseHistogram([], [], 8), base_catalog_path, hist_pixel)
+
+    with pytest.raises(ValueError, match="histogram files .* do not match the done pixels"):
+        small_sky_order1_catalog.write_catalog(base_catalog_path, resume=True, as_collection=False)
+
+
+def test_resume_errors_with_invalid_parquet(small_sky_order1_catalog, tmp_path):
+    base_catalog_path = tmp_path / "small_sky"
+    reference_catalog_path = tmp_path / "reference_small_sky"
+
+    write_partial_catalog(
+        small_sky_order1_catalog, base_catalog_path, small_sky_order1_catalog.get_healpix_pixels()[:2]
+    )
+    next_pixel = small_sky_order1_catalog.get_healpix_pixels()[2]
+    parquet_path = hc.io.paths.pixel_catalog_file(base_catalog_path, next_pixel)
+    hc.io.file_io.make_directory(parquet_path.parent, exist_ok=True)
+    with parquet_path.open("w") as f:
+        f.write("This is not a valid parquet file")
+
+    small_sky_order1_catalog.write_catalog(base_catalog_path, resume=True, as_collection=False)
+    small_sky_order1_catalog.write_catalog(reference_catalog_path, as_collection=False)
+
+    catalog = lsdb.read_hats(base_catalog_path)
+    ref_cat = lsdb.read_hats(reference_catalog_path)
+    assert catalog.get_healpix_pixels() == ref_cat.get_healpix_pixels()
+    assert catalog.hc_structure.catalog_info == ref_cat.hc_structure.catalog_info
+    assert catalog.hc_structure.moc == ref_cat.hc_structure.moc
+    pd.testing.assert_frame_equal(catalog.compute(), ref_cat.compute())
+    pd.testing.assert_frame_equal(catalog.per_pixel_statistics(), ref_cat.per_pixel_statistics())
+
+
+def test_resume_catalog_write_all_files_written(small_sky_order1_catalog, tmp_path):
+    base_catalog_path = tmp_path / "small_sky"
+    reference_catalog_path = tmp_path / "reference_small_sky"
+
+    write_partial_catalog(
+        small_sky_order1_catalog, base_catalog_path, small_sky_order1_catalog.get_healpix_pixels()
+    )
+
+    small_sky_order1_catalog.write_catalog(base_catalog_path, resume=True, as_collection=False)
+    small_sky_order1_catalog.write_catalog(reference_catalog_path, as_collection=False)
+
+    catalog = lsdb.read_hats(base_catalog_path)
+    ref_cat = lsdb.read_hats(reference_catalog_path)
+    assert catalog.get_healpix_pixels() == ref_cat.get_healpix_pixels()
+    assert catalog.hc_structure.catalog_info == ref_cat.hc_structure.catalog_info
+    assert catalog.hc_structure.moc == ref_cat.hc_structure.moc
+    pd.testing.assert_frame_equal(catalog.compute(), ref_cat.compute())
+    pd.testing.assert_frame_equal(catalog.per_pixel_statistics(), ref_cat.per_pixel_statistics())
+
+
+def test_resume_catalog_write_with_parquet_metadata_files_written(small_sky_order1_catalog, tmp_path):
+    base_catalog_path = tmp_path / "small_sky"
+    reference_catalog_path = tmp_path / "reference_small_sky"
+
+    pixels_to_write = small_sky_order1_catalog.get_healpix_pixels()
+    write_partial_catalog(small_sky_order1_catalog, base_catalog_path, pixels_to_write)
+    hc.io.write_parquet_metadata(
+        base_catalog_path,
+    )
+
+    small_sky_order1_catalog.write_catalog(base_catalog_path, resume=True, as_collection=False)
+    small_sky_order1_catalog.write_catalog(reference_catalog_path, as_collection=False)
+
+    catalog = lsdb.read_hats(base_catalog_path)
+    ref_cat = lsdb.read_hats(reference_catalog_path)
+    assert catalog.get_healpix_pixels() == ref_cat.get_healpix_pixels()
+    assert catalog.hc_structure.catalog_info == ref_cat.hc_structure.catalog_info
+    assert catalog.hc_structure.moc == ref_cat.hc_structure.moc
+    pd.testing.assert_frame_equal(catalog.compute(), ref_cat.compute())
+    pd.testing.assert_frame_equal(catalog.per_pixel_statistics(), ref_cat.per_pixel_statistics())
+
+
+def test_resume_catalog_write_with_all_metadata_files_written(small_sky_order1_catalog, tmp_path):
+    base_catalog_path = tmp_path / "small_sky"
+    reference_catalog_path = tmp_path / "reference_small_sky"
+
+    small_sky_order1_catalog.write_catalog(reference_catalog_path, as_collection=False)
+
+    pixels_to_write = small_sky_order1_catalog.get_healpix_pixels()
+    write_partial_catalog(small_sky_order1_catalog, base_catalog_path, pixels_to_write)
+    _copy_metadata_files(reference_catalog_path, base_catalog_path)
+
+    small_sky_order1_catalog.write_catalog(base_catalog_path, resume=True, as_collection=False)
 
     catalog = lsdb.read_hats(base_catalog_path)
     ref_cat = lsdb.read_hats(reference_catalog_path)

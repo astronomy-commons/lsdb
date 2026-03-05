@@ -269,6 +269,11 @@ def to_hats(
         pixels = existing_pixels + new_pixels
         histograms = histograms + new_histograms
         counts = counts + new_counts
+
+    # Check that the catalog is not empty
+    if error_if_empty and len(pixels) == 0:
+        raise RuntimeError("The output catalog is empty")
+
     # Save parquet metadata and create a data thumbnail if needed
     hats_max_rows = int(max(counts)) if counts else 0
 
@@ -408,10 +413,6 @@ def write_partitions(
     non_empty_pixels = np.array(pixels)[non_empty_indices]
     non_empty_counts = np.array(counts)[non_empty_indices]
     non_empty_hists = np.array(histograms)[non_empty_indices]
-
-    # Check that the catalog is not empty
-    if error_if_empty and len(non_empty_pixels) == 0:
-        raise RuntimeError("The output catalog is empty")
 
     return list(non_empty_pixels), list(non_empty_counts), list(non_empty_hists)
 
