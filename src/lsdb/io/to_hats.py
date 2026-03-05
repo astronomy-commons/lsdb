@@ -124,7 +124,7 @@ def read_histograms(base_catalog_path: UPath):
 
 def remove_histogram_files(base_catalog_path: UPath):
     histogram_path = base_catalog_path / HISTOGRAM_DIR_NAME
-    file_io.remove_directory(histogram_path)
+    file_io.remove_directory(histogram_path, ignore_errors=True)
 
 
 def write_done_pixel(base_catalog_path: UPath, pixel: HealpixPixel):
@@ -143,7 +143,7 @@ def read_done_pixels(base_catalog_path: UPath):
 
 def remove_done_files(base_catalog_path: UPath):
     done_path = base_catalog_path / DONE_DIR_NAME
-    file_io.remove_directory(done_path)
+    file_io.remove_directory(done_path, ignore_errors=True)
 
 
 # pylint: disable=protected-access,too-many-locals
