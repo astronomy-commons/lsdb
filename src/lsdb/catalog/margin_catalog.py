@@ -61,6 +61,7 @@ class MarginCatalog(HealpixDataset):
         catalog_name: str | None = None,
         default_columns: list[str] | None = None,
         overwrite: bool = False,
+        resume: bool = False,
         error_if_empty: bool = False,
         **kwargs,
     ):
@@ -69,6 +70,7 @@ class MarginCatalog(HealpixDataset):
             catalog_name=catalog_name,
             default_columns=default_columns,
             overwrite=overwrite,
+            resume=resume,
             error_if_empty=error_if_empty,
             **kwargs,
         )

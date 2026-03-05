@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from copy import copy
 from pathlib import Path
 
@@ -19,6 +20,9 @@ from upath import UPath
 
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
 from lsdb.io.common import new_provenance_properties, set_default_write_table_kwargs
+
+DONE_DIR_NAME = "done"
+HISTOGRAM_DIR_NAME = "hists"
 
 
 @dask.delayed
@@ -57,7 +61,10 @@ def perform_write(
     hc.io.file_io.make_directory(pixel_dir, exist_ok=True)
     pixel_path = hc.io.paths.pixel_catalog_file(base_catalog_dir, hp_pixel)
     df.to_parquet(pixel_path.path, filesystem=pixel_path.fs, **kwargs)
-    return len(df), calculate_histogram(df, histogram_order)
+    histogram = calculate_histogram(df, histogram_order)
+    write_histogram(histogram, base_catalog_dir, hp_pixel)
+    write_done_pixel(base_catalog_dir, hp_pixel)
+    return len(df), histogram
 
 
 def calculate_histogram(df: npd.NestedFrame, histogram_order: int) -> SparseHistogram:
@@ -80,6 +87,63 @@ def calculate_histogram(df: npd.NestedFrame, histogram_order: int) -> SparseHist
     gb = df.groupby(order_pixels, sort=False).apply(len)
     indexes, counts_at_indexes = gb.index.to_numpy(), gb.to_numpy(na_value=0)
     return SparseHistogram(indexes, counts_at_indexes, histogram_order)
+
+
+def write_histogram(histogram: SparseHistogram, base_catalog_path: UPath, pixel: HealpixPixel):
+    """Writes the sparse histogram for a partition to a file in the respective pixel directory.
+
+    Parameters
+    ----------
+    histogram : SparseHistogram
+        The sparse count histogram for the partition, at the specified order.
+    base_catalog_dir : path-like
+        Location of the base catalog directory to write to
+    pixel : HealpixPixel
+        HEALPix pixel of file to be written
+    """
+    histogram_path = base_catalog_path / HISTOGRAM_DIR_NAME
+    histogram_path.mkdir(exist_ok=True)
+    hist_file = histogram_path / f"{pixel.order}_{pixel.pixel}_histogram.npz"
+    histogram.to_file(hist_file)
+
+
+def read_histograms(base_catalog_path: UPath):
+    histogram_path = base_catalog_path / HISTOGRAM_DIR_NAME
+    hist_file_pattern = re.compile(r"(\d+)_(\d+)_histogram.npz")
+    hist_tuples = [
+        hist_file_pattern.match(path.name).group(1, 2) for path in histogram_path.glob("*_histogram.npz")
+    ]
+    pixels = [HealpixPixel(int(match[0]), int(match[1])) for match in hist_tuples]
+    histograms = [
+        SparseHistogram.from_file(histogram_path / f"{pixel.order}_{pixel.pixel}_histogram.npz")
+        for pixel in pixels
+    ]
+    lens = [sum(hist.counts) for hist in histograms]
+    return pixels, histograms, lens
+
+
+def remove_histogram_files(base_catalog_path: UPath):
+    histogram_path = base_catalog_path / HISTOGRAM_DIR_NAME
+    file_io.remove_directory(histogram_path)
+
+
+def write_done_pixel(base_catalog_path: UPath, pixel: HealpixPixel):
+    done_path = base_catalog_path / DONE_DIR_NAME
+    done_path.mkdir(exist_ok=True)
+    done_file = done_path / f"{pixel.order}_{pixel.pixel}_done"
+    done_file.touch()
+
+
+def read_done_pixels(base_catalog_path: UPath):
+    done_path = base_catalog_path / DONE_DIR_NAME
+    done_file_pattern = re.compile(r"(\d+)_(\d+)_done")
+    pixel_tuples = [done_file_pattern.match(path.name).group(1, 2) for path in done_path.glob("*_done")]
+    return [HealpixPixel(int(match[0]), int(match[1])) for match in pixel_tuples]
+
+
+def remove_done_files(base_catalog_path: UPath):
+    done_path = base_catalog_path / DONE_DIR_NAME
+    file_io.remove_directory(done_path)
 
 
 # pylint: disable=protected-access,too-many-locals
@@ -149,31 +213,30 @@ def to_hats(
     # Create the output directory for the catalog
     base_catalog_path = hc.io.file_io.get_upath(base_catalog_path)
     existing_pixels = []
+    histograms = []
+    counts = []
     if hc.io.file_io.directory_has_contents(base_catalog_path):
         if not overwrite and not resume:
             raise ValueError(
                 f"base_catalog_path ({str(base_catalog_path)}) contains files."
-                " choose a different directory or set overwrite to True."
+                " choose a different directory or set overwrite or resume to True."
             )
         if overwrite:
             hc.io.file_io.remove_directory(base_catalog_path)
         if resume:
-            dataset_dir = hc.io.paths.dataset_directory(base_catalog_path)
-            if hc.io.file_io.does_file_or_directory_exist(dataset_dir):
-                all_paths = dataset_dir.rglob("*")
-                for path in all_paths:
-                    if path.is_file():
-                        pixel = hc.io.paths.get_healpix_from_path(path.path)
-                        if pixel is None:
-                            raise ValueError(
-                                f"Found file {str(path)} in base_catalog_path that does not match expected HATS catalog file structure. Cannot resume write. Please check that the directory contains files from this catalog, or set resume to False and overwrite to True to overwrite to this directory instead of resuming."
-                            )
-                        existing_pixels.append(pixel)
-    if existing_pixels is not None:
-        for pixel in existing_pixels:
-            if pixel not in catalog.hc_structure.pixel_tree:
+            existing_pixels = read_done_pixels(base_catalog_path)
+            hist_pixels, histograms, counts = read_histograms(base_catalog_path)
+            for pixel in existing_pixels:
+                if pixel not in catalog.hc_structure.pixel_tree:
+                    raise ValueError(
+                        f"Pixel {pixel} from existing catalog files is not present in the provided catalog."
+                        " Cannot resume write. Please check that the directory contains files from this catalog,"
+                        " or set resume to False and overwrite to True to overwrite to this directory instead of"
+                        " resuming."
+                    )
+            if len(hist_pixels) != len(existing_pixels) or set(hist_pixels) != set(existing_pixels):
                 raise ValueError(
-                    f"Pixel {pixel} from existing catalog files is not present in the provided catalog."
+                    "The existing histogram files in the directory do not match the done pixels."
                     " Cannot resume write. Please check that the directory contains files from this catalog,"
                     " or set resume to False and overwrite to True to overwrite to this directory instead of"
                     " resuming."
@@ -195,7 +258,7 @@ def to_hats(
     desc = tqdm_kwargs.pop("desc", "Writing Catalog") if tqdm_kwargs else "Writing Catalog"
 
     with TqdmCallback(desc=desc, disable=not progress_bar, **(tqdm_kwargs or {})):
-        pixels, counts, histograms = write_partitions(
+        new_pixels, new_counts, new_histograms = write_partitions(
             catalog,
             base_catalog_dir_fp=base_catalog_path,
             histogram_order=histogram_order,
@@ -203,6 +266,9 @@ def to_hats(
             existing_pixels=existing_pixels,
             **kwargs,
         )
+        pixels = existing_pixels + new_pixels
+        histograms = histograms + new_histograms
+        counts = counts + new_counts
     # Save parquet metadata and create a data thumbnail if needed
     hats_max_rows = int(max(counts)) if counts else 0
 
@@ -258,6 +324,9 @@ def to_hats(
         **addl_hats_properties,
     )
     new_hc_structure.catalog_info.to_properties_file(base_catalog_path)
+
+    remove_histogram_files(base_catalog_path)
+    remove_done_files(base_catalog_path)
 
 
 def _validate_default_columns(catalog: HealpixDataset, default_columns: list[str]):
