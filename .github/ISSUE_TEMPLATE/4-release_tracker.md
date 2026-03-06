@@ -60,6 +60,7 @@ e.g. major/minor/patch, deadlines, blocking issues, breaking changes, folks to n
 - [ ] edit the `recipe/meta.yaml` in the auto-generated PR to match any dependency changes that have been made to the `pyproject.toml` in this release
 - [ ] approve conda-forge PR
 - [ ] confirm on [conda-forge](https://anaconda.org/conda-forge/hats)
+- [ ] confirm new version exists in `mamba search hats -c conda-forge` (or conda search, which is slower)
 
 ### lsdb
 
@@ -67,6 +68,7 @@ e.g. major/minor/patch, deadlines, blocking issues, breaking changes, folks to n
   with title `@conda-forge-admin, please update version`)
 - [ ] confirm tagged `hats` and `nested-pandas` versions (and any other dependencies that have changed in the pyproject) and approve
 - [ ] confirm on [conda-forge](https://anaconda.org/conda-forge/lsdb)
+- [ ] confirm new version exists in `mamba search lsdb -c conda-forge` (or conda search, which is slower)
 
 ### hats-import
 
@@ -74,6 +76,7 @@ e.g. major/minor/patch, deadlines, blocking issues, breaking changes, folks to n
   with title `@conda-forge-admin, please update version`)
 - [ ] confirm tagged hats version (and any other dependencies that have changed in the pyproject) and approve
 - [ ] confirm on [conda-forge](https://anaconda.org/conda-forge/hats-import)
+- [ ] confirm new version exists in `mamba search hats-import -c conda-forge` (or conda search, which is slower)
 
 ### tie it together
 
