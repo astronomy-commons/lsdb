@@ -44,6 +44,7 @@ from lsdb.dask.merge_catalog_functions import concat_metas, make_meta
 from lsdb.dask.partition_indexer import PartitionIndexer
 from lsdb.io.schema import get_arrow_schema
 from lsdb.loaders.hats.hats_loading_config import HatsLoadingConfig
+from lsdb.streams import CatalogStream
 from lsdb.types import DaskDFPixelMap
 
 if TYPE_CHECKING:
@@ -153,6 +154,48 @@ class HealpixDataset:
         with TqdmCallback(desc=desc, disable=not progress_bar, **(tqdm_kwargs or {})):
             res = self._ddf.compute()
         return res
+
+    def stream(
+        self, partitions_per_chunk: int = 1, shuffle: bool = False, seed: int | None = None
+    ) -> Iterable[npd.NestedFrame]:
+        """Stream the catalog in chunks of partitions.
+
+        See the `lsdb.streams.CatalogStream` class for more details on the
+        streaming implementation and behavior.
+
+        Parameters
+        ----------
+        partitions_per_chunk : int, default 1
+            The number of partitions to include in each chunk.
+        shuffle : bool, default False
+            Whether to shuffle the order of the partitions before streaming.
+        seed : int or None, default None
+            Random seed for shuffling the partitions. Defaults to None.
+
+        Returns
+        -------
+        Iterable[npd.NestedFrame]
+            An iterable that yields NestedFrames containing the data from each chunk of partitions.
+
+        Examples
+        --------
+        Consider a toy catalog, which contains 12 data partitions:
+
+        >>> import lsdb
+        >>> cat = lsdb.generate_catalog(500, 10, seed=1)
+        >>> cat.npartitions
+        12
+
+        The following grabs 4 partitions at a time until the data is exhausted:
+
+        >>> for chunk in cat.stream(partitions_per_chunk=4, seed=1):
+        ...     print(len(chunk))
+        171
+        154
+        175
+
+        """
+        return CatalogStream(self, partitions_per_chunk=partitions_per_chunk, shuffle=shuffle, seed=seed)
 
     def to_delayed(self, optimize_graph: bool = True) -> list[Delayed]:
         """Get a list of Dask Delayed objects for each partition in the dataset
