@@ -417,17 +417,18 @@ def join_catalog_data_on(
 
     left_pixels, right_pixels = get_healpix_pixels_from_alignment(alignment)
 
+    meta_df = generate_meta_df_for_joined_tables(
+        (left, right), suffixes, suffix_method=suffix_method, log_changes=log_changes
+    )
+
     joined_partitions = align_and_apply(
         [(left, left_pixels), (right, right_pixels), (right.margin, right_pixels)],
         perform_join_on,
+        meta_df,
         left_on,
         right_on,
         suffixes,
         suffix_method,
-    )
-
-    meta_df = generate_meta_df_for_joined_tables(
-        (left, right), suffixes, suffix_method=suffix_method, log_changes=log_changes
     )
 
     return construct_catalog_args(joined_partitions, meta_df, alignment)
@@ -485,17 +486,18 @@ def join_catalog_data_nested(
     left_pixels, right_pixels = get_healpix_pixels_from_alignment(alignment)
     aligned_pixels = get_aligned_pixels_from_alignment(alignment)
 
+    meta_df = generate_meta_df_for_nested_tables([left], right, nested_column_name, join_column_name=right_on)
+
     joined_partitions = align_and_apply(
         [(left, left_pixels), (right, right_pixels), (right.margin, right_pixels), (None, aligned_pixels)],
         perform_join_nested,
+        meta_df,
         left_on,
         right_on,
         nested_column_name,
         right._ddf._meta,  # pylint: disable=protected-access
         how,
     )
-
-    meta_df = generate_meta_df_for_nested_tables([left], right, nested_column_name, join_column_name=right_on)
 
     return construct_catalog_args(joined_partitions, meta_df, alignment)
 
@@ -577,18 +579,6 @@ def join_catalog_data_through(
     alignment = align_catalogs_with_association(left, association, right)
     left_pixels, assoc_pixels, right_pixels = get_healpix_pixels_from_association(alignment)
 
-    joined_partitions = align_and_apply(
-        [
-            (left, left_pixels),
-            (right, right_pixels),
-            (right.margin, right_pixels),
-            (association, assoc_pixels),
-        ],
-        perform_join_through,
-        suffixes,
-        suffix_method,
-    )
-
     association_join_columns = [
         association.hc_structure.catalog_info.primary_column_association,
         association.hc_structure.catalog_info.join_column_association,
@@ -599,6 +589,19 @@ def join_catalog_data_through(
     extra_df = association._ddf._meta.drop(non_joining_columns + association_join_columns, axis=1)
     meta_df = generate_meta_df_for_joined_tables(
         (left, right), suffixes, extra_columns=extra_df, suffix_method=suffix_method, log_changes=log_changes
+    )
+
+    joined_partitions = align_and_apply(
+        [
+            (left, left_pixels),
+            (right, right_pixels),
+            (right.margin, right_pixels),
+            (association, assoc_pixels),
+        ],
+        perform_join_through,
+        meta_df,
+        suffixes,
+        suffix_method,
     )
 
     return construct_catalog_args(joined_partitions, meta_df, alignment)
@@ -652,12 +655,17 @@ def merge_asof_catalog_data(
 
     left_pixels, right_pixels = get_healpix_pixels_from_alignment(alignment)
 
-    joined_partitions = align_and_apply(
-        [(left, left_pixels), (right, right_pixels)], perform_merge_asof, suffixes, direction, suffix_method
-    )
-
     meta_df = generate_meta_df_for_joined_tables(
         (left, right), suffixes, suffix_method=suffix_method, log_changes=log_changes
+    )
+
+    joined_partitions = align_and_apply(
+        [(left, left_pixels), (right, right_pixels)],
+        perform_merge_asof,
+        meta_df,
+        suffixes,
+        direction,
+        suffix_method,
     )
 
     return construct_catalog_args(joined_partitions, meta_df, alignment)

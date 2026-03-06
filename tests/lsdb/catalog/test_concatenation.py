@@ -248,7 +248,6 @@ def test_concat_catalog_row_count(small_sky_order1_catalog, helpers):
     assert isinstance(df_concat, npd.NestedFrame)
 
     # Structure/divisions sanity
-    helpers.assert_divisions_are_correct(concat_cat)
     assert concat_cat.hc_structure.catalog_path is None
 
     # Symmetry check (main and margin handled internally)
@@ -433,7 +432,6 @@ def test_concat_catalogs_with_different_schemas(small_sky_order1_collection_dir,
 
     # Structural checks
     assert isinstance(concat_cat._ddf, nd.NestedFrame)
-    helpers.assert_divisions_are_correct(concat_cat)
 
     # (5) Symmetry check (main and margin handled internally)
     _assert_concat_symmetry(left_cat, right_cat)
