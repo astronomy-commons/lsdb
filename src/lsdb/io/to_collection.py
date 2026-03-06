@@ -15,6 +15,7 @@ def to_collection(
     catalog_name: str | None = None,
     default_columns: list[str] | None = None,
     overwrite: bool = False,
+    resume: bool = False,
     progress_bar: bool = True,
     tqdm_kwargs: dict | None = None,
     error_if_empty: bool = True,
@@ -61,6 +62,7 @@ def to_collection(
         catalog_name=catalog_name,
         default_columns=default_columns,
         overwrite=overwrite,
+        resume=resume,
         progress_bar=progress_bar,
         tqdm_kwargs=tqdm_kwargs,
         error_if_empty=error_if_empty,
@@ -78,6 +80,7 @@ def to_collection(
             progress_bar=progress_bar,
             tqdm_kwargs=tqdm_kwargs,
             overwrite=overwrite,
+            resume=resume,
             error_if_empty=False,
             **kwargs,
         )
