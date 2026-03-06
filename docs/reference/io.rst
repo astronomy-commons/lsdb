@@ -9,6 +9,7 @@ Construction
     :toctree: api/
 
     open_catalog
+    show_versions
     from_dataframe
     from_astropy
     nested.datasets.generation.generate_catalog
