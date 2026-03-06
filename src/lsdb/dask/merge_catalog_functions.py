@@ -25,7 +25,6 @@ from hats.pixel_tree.pixel_alignment import align_with_mocs
 from tabulate import tabulate
 
 import lsdb.nested as nd
-from lsdb.dask.divisions import get_pixels_divisions
 from lsdb.types import DaskDFPixelMap
 
 if TYPE_CHECKING:

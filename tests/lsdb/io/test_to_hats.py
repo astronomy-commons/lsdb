@@ -2,7 +2,6 @@ import shutil
 from importlib.metadata import version
 from pathlib import Path
 
-import dask
 import hats as hc
 import numpy as np
 import numpy.testing as npt
@@ -16,6 +15,9 @@ from hats.io.paths import get_data_thumbnail_pointer
 from hats.pixel_math.sparse_histogram import SparseHistogram
 from hats.testing import assert_catalog_info_is_correct
 from pydantic import ValidationError
+
+from lsdb.dask.merge_catalog_functions import create_pixel_ndfs
+from lsdb.io.to_hats import setup_write, WRITE_RESULT_META
 
 import lsdb
 from lsdb.io.common import set_default_write_table_kwargs
@@ -340,21 +342,20 @@ def test_save_catalog_with_some_empty_partitions(small_sky_order1_catalog, tmp_p
 
 
 def _write_partial_catalog(catalog, path, pixels_to_write):
-    partitions = catalog._ddf.to_delayed()
-    results, pixels = [], []
-    for pixel in pixels_to_write:
-        partition_index = catalog._ddf_pixel_map[pixel]
-        results.append(
-            perform_write(
-                partitions[partition_index],
-                pixel,
-                path,
-                catalog.hc_structure.catalog_info.skymap_order,
-                **set_default_write_table_kwargs(None),
-            )
-        )
-        pixels.append(pixel)
-    dask.compute(*results)
+
+    indices = [catalog._ddf_pixel_map[pixel] for pixel in pixels_to_write]
+    write_ddf = catalog._ddf.partitions[indices]
+    pixel_ddf = create_pixel_ndfs(pixels_to_write)
+
+    res_ddf = write_ddf.map_partitions(
+        setup_write,
+        pixel_ddf,
+        path,
+        catalog.hc_structure.catalog_info.skymap_order,
+        meta=WRITE_RESULT_META,
+        **set_default_write_table_kwargs(None),
+    )
+    res_ddf.compute()
 
 
 def _copy_metadata_files(reference_catalog_path, base_catalog_path):
