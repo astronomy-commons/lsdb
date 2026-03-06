@@ -713,7 +713,13 @@ def construct_catalog_args(
     # generate dask df partition map from alignment
     partition_map = get_partition_map_from_alignment_pixels(alignment.pixel_mapping)
     # create dask df from delayed partitions
-    return partitions, partition_map, alignment
+    divisions = get_pixels_divisions(list(partition_map.keys()))
+    partitions = partitions if len(partitions) > 0 else [delayed(meta_df.copy())]
+    ddf = nd.NestedFrame.from_delayed(partitions.to_delayed(optimize_graph=False),
+                                      meta=meta_df,
+                                      divisions=divisions,
+                                      verify_meta=False)
+    return ddf, partition_map, alignment
 
 
 def get_healpix_pixels_from_alignment(
