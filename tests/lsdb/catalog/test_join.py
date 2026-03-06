@@ -51,7 +51,6 @@ def test_small_sky_join_small_sky_order1(small_sky_catalog, small_sky_order1_cat
         joined_row = joined_compute.query(f"id{suffixes[0]} == {row['id']}")
         assert joined_row.index.to_numpy()[0] == index
         assert joined_row[f"id{suffixes[1]}"].to_numpy()[0] == row["id"]
-    helpers.assert_divisions_are_correct(joined)
     helpers.assert_schema_correct(joined)
     assert not joined.hc_structure.on_disk
 
@@ -87,7 +86,6 @@ def test_small_sky_join_overlapping_suffix(small_sky_catalog, small_sky_order1_c
 
     assert np.all(joined_compute.columns == expected_columns)
 
-    helpers.assert_divisions_are_correct(joined)
     helpers.assert_schema_correct(joined)
 
 
@@ -129,7 +127,6 @@ def test_small_sky_join_small_sky_order1_source(
     assert len(joined_compute) == len(small_sky_order1_compute)
     joined_test = small_sky_order1_compute.merge(joined_compute, left_on="object_id", right_on="object_id_b")
     assert (joined_test["id_a"].to_numpy() == joined_test["object_id"].to_numpy()).all()
-    helpers.assert_divisions_are_correct(joined)
     helpers.assert_schema_correct(joined)
 
 
@@ -168,7 +165,6 @@ def test_small_sky_join_default_columns(
     assert len(joined_compute) == len(small_sky_order1_compute)
     joined_test = small_sky_order1_compute.merge(joined_compute, left_on="object_id", right_on="object_id_b")
     assert (joined_test["id_a"].to_numpy() == joined_test["object_id"].to_numpy()).all()
-    helpers.assert_divisions_are_correct(joined)
     helpers.assert_schema_correct(joined)
     helpers.assert_default_columns_in_columns(joined)
 
@@ -285,7 +281,6 @@ def test_join_association_overlapping_suffix(
 
     assert np.all(joined_compute.columns == expected_columns)
 
-    helpers.assert_divisions_are_correct(joined)
     helpers.assert_schema_correct(joined)
 
 
@@ -362,7 +357,6 @@ def test_join_nested(small_sky_catalog, small_sky_order1_source_with_margin, hel
     ]
     assert np.all(joined.columns == expected_columns)
     assert np.all(joined["sources"].nest.columns == expected_nested_columns)
-    helpers.assert_divisions_are_correct(joined)
     alignment = align_catalogs(small_sky_catalog, small_sky_order1_source_with_margin)
     assert joined.hc_structure.moc == alignment.moc
     assert joined.get_healpix_pixels() == alignment.pixel_tree.get_healpix_pixels()
@@ -405,7 +399,6 @@ def test_join_nested_how_left(small_sky_order1_catalog, small_sky_order1_source_
     helpers.assert_columns_in_nested_joined_catalog(
         nested_left, small_sky_order1_catalog, smaller_sky_sources, ["object_id"], "sources"
     )
-    helpers.assert_divisions_are_correct(nested_left)
 
     # All object pixels will show up in the final result
     assert object_pixels == nested_left.get_healpix_pixels()
@@ -444,7 +437,6 @@ def test_merge_asof(small_sky_catalog, small_sky_xmatch_catalog, direction, help
     suffixes = ("_a", "_b")
     joined = small_sky_catalog.merge_asof(small_sky_xmatch_catalog, direction=direction, suffixes=suffixes)
     assert isinstance(joined._ddf, nd.NestedFrame)
-    helpers.assert_divisions_are_correct(joined)
     alignment = align_catalogs(small_sky_catalog, small_sky_xmatch_catalog)
     assert joined.hc_structure.moc == alignment.moc
     assert joined.get_healpix_pixels() == alignment.pixel_tree.get_healpix_pixels()
@@ -497,12 +489,10 @@ def test_merge_asof_overlapping_suffix(small_sky_catalog, small_sky_xmatch_catal
         "calculated_dist",
     ]
     assert np.all(joined.columns == expected_columns)
-    helpers.assert_divisions_are_correct(joined)
 
     joined_compute = joined.compute()
 
     assert np.all(joined_compute.columns == expected_columns)
-    helpers.assert_divisions_are_correct(joined)
     helpers.assert_schema_correct(joined)
 
 

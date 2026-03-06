@@ -435,6 +435,7 @@ def concat_catalog_data(
     joined_partitions = align_and_apply(
         [(left, left_pixels), (right, right_pixels), (None, aligned_pixels)],
         perform_concat,
+        meta_df,
         aligned_meta=meta_df,
         **kwargs,
     )
@@ -499,6 +500,7 @@ def concat_margin_data(
             (None, aligned_pixels),
         ],
         perform_margin_concat,
+        meta_df,
         margin_radius=margin_radius,
         aligned_meta=meta_df,
         **kwargs,

@@ -155,6 +155,7 @@ def merge_map_catalog_data(
     partitions_with_func = align_and_apply(
         [(point_catalog, left_pixels), (map_catalog, right_pixels)],
         perform_merge_map,
+        meta,
         func,
         *args,
         **kwargs,

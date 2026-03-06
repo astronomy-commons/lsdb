@@ -376,6 +376,7 @@ def crossmatch_catalog_data(
     joined_partitions = align_and_apply(
         [(left, left_pixels), (right, right_pixels), (right.margin, right_pixels), (None, aligned_pixels)],
         perform_crossmatch,
+        meta_df,
         algorithm,
         how,
         suffixes,
@@ -448,6 +449,7 @@ def crossmatch_catalog_data_nested(
     joined_partitions = align_and_apply(
         [(left, left_pixels), (right, right_pixels), (right.margin, right_pixels), (None, aligned_pixels)],
         perform_crossmatch_nested,
+        meta_df,
         algorithm,
         how,
         nested_column_name,
