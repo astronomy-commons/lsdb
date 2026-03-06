@@ -531,32 +531,67 @@ def align_and_apply(
     ]
 
     # aligns the catalog's partitions to the given pixels for each catalog
-    aligned_partitions = [align_catalog_to_partitions(cat, pixels) for (cat, pixels) in catalog_mappings]
+    aligned_partitions = [align_catalog_to_partitions(cat, pix) for (cat, pix) in catalog_mappings]
 
-    # defines an inner function that can be vectorized to apply the given function to each of the partitions
-    # with the additional arguments including as the hc_structures and any specified additional arguments
-    def apply_func(*partitions_and_pixels):
-        return perform_align_and_apply_func(
-            len(aligned_partitions), func, *partitions_and_pixels, *catalog_infos, *args, **kwargs
+    n_tasks = len(pixels[0])
+
+    # Package shared/constant arguments into a single Delayed graph node.
+    # In the previous implementation, every output task independently serialized
+    # its own copy of func, catalog_infos, and all extra args/kwargs into the
+    # task graph. For N output partitions, this meant N redundant copies of
+    # objects like the crossmatch algorithm, meta_df, suffixes, etc.
+    # By wrapping them in a single Delayed value, they are stored once and
+    # referenced by graph key from every output task.
+    shared_config = delayed(_pack_shared_config)(func, tuple(catalog_infos), args, kwargs)
+
+    # Build one Delayed task per aligned pixel set. Each task depends on:
+    #   - shared_config (single graph key — resolved once, shared by all tasks)
+    #   - the partition Delayed refs in `parts` (graph keys into input catalog layers)
+    #   - the pixel objects in `pix` (small HealpixPixel values, inlined per task)
+    # dask.delayed recursively inspects tuple arguments for Delayed objects,
+    # so the partition refs inside `parts` are correctly tracked as dependencies.
+    results = [
+        _apply_aligned(
+            shared_config,
+            tuple(ap[i] for ap in aligned_partitions),
+            tuple(p[i] for p in pixels),
         )
+        for i in range(n_tasks)
+    ]
+    return results
 
-    resulting_partitions = np.vectorize(apply_func)(*aligned_partitions, *pixels)
-    return resulting_partitions
+
+def _pack_shared_config(func, catalog_infos, extra_args, extra_kwargs):
+    """Identity packing function. Exists so that shared constant arguments
+    (func, catalog_infos, and all forwarded args/kwargs) are stored as a
+    single node in the Dask task graph rather than duplicated into every
+    output task."""
+    return (func, catalog_infos, extra_args, extra_kwargs)
 
 
 @delayed
-def perform_align_and_apply_func(num_partitions, func, *args, **kwargs):
-    """Performs the function inside `align_and_apply` and updates hive columns"""
-    filtered_parts = []
-    partitions = args[:num_partitions]
-    pixels = args[num_partitions : 2 * num_partitions]
-    for df in partitions:
-        filtered_parts.append(remove_hips_columns(df))
+def _apply_aligned(shared_config, partitions, pixel_args):
+    """Applies the user function to one set of aligned partitions.
+
+    Parameters
+    ----------
+    shared_config : tuple
+        The resolved value of the shared Delayed node, containing
+        (func, catalog_infos, extra_args, extra_kwargs).
+    partitions : tuple[npd.NestedFrame | None, ...]
+        The materialized partition DataFrames for this aligned pixel,
+        one per catalog in the original catalog_mappings list.
+    pixel_args : tuple[HealpixPixel | None, ...]
+        The HealpixPixel for each catalog's partition.
+    """
+    func, catalog_infos, extra_args, extra_kwargs = shared_config
+    filtered_parts = [remove_hips_columns(df) for df in partitions]
     return func(
         *filtered_parts,
-        *pixels,
-        *args[2 * num_partitions :],
-        **kwargs,
+        *pixel_args,
+        *catalog_infos,
+        *extra_args,
+        **extra_kwargs,
     )
 
 
