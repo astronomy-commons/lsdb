@@ -113,7 +113,9 @@ class AbstractCrossmatchAlgorithm(ABC):
             suffix_method,
         )
 
-    def crossmatch_nested(self, crossmatch_args: CrossmatchArgs, nested_column_name: str) -> npd.NestedFrame:
+    def crossmatch_nested(
+        self, crossmatch_args: CrossmatchArgs, nested_column_name: str, how: str
+    ) -> npd.NestedFrame:
         """Perform a crossmatch and store results in nested column.
 
         Parameters
@@ -140,6 +142,7 @@ class AbstractCrossmatchAlgorithm(ABC):
             r_inds,
             extra_cols,
             nested_column_name,
+            how,
         )
 
     def perform_crossmatch(
@@ -349,6 +352,7 @@ class AbstractCrossmatchAlgorithm(ABC):
         right_idx: npt.NDArray[np.int64],
         extra_cols: pd.DataFrame,
         nested_column_name: str,
+        how: str,
     ) -> npd.NestedFrame:
         """Creates a df containing the crossmatch result from matching indices and additional columns
 
@@ -382,4 +386,8 @@ class AbstractCrossmatchAlgorithm(ABC):
         self._append_extra_columns(right_join_part, extra_cols)
         out = left_join_part.join_nested(right_join_part, nested_column_name)
         out.set_index(index_name, inplace=True)
-        return npd.NestedFrame(out)
+        out = npd.NestedFrame(out)
+        # Remove non-matches
+        if how == "inner":
+            out = out.dropna(subset=[nested_column_name])
+        return out

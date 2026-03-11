@@ -208,6 +208,7 @@ def perform_crossmatch_nested(
     right_catalog_info,
     right_margin_catalog_info,
     algorithm,
+    how,
     nested_column_name,
     meta_df,
 ):
@@ -273,7 +274,7 @@ def perform_crossmatch_nested(
         right_catalog_info=right_catalog_info,
         right_margin_catalog_info=right_margin_catalog_info,
     )
-    return algorithm.crossmatch_nested(crossmatch_args, nested_column_name)
+    return algorithm.crossmatch_nested(crossmatch_args, nested_column_name, how)
 
 
 # pylint: disable=too-many-locals
@@ -367,6 +368,8 @@ def crossmatch_catalog_data_nested(
     right: Catalog,
     algorithm: AbstractCrossmatchAlgorithm,
     nested_column_name: str,
+    *,
+    how: str,
 ) -> tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]:
     """Crossmatches the data from two catalogs with the result from the right catalog in a nested column
 
@@ -400,7 +403,9 @@ def crossmatch_catalog_data_nested(
         )
 
     # perform alignment on the two catalogs
-    alignment = align_catalogs(left, right, add_right_margin=True)
+    alignment = align_catalogs(
+        left, right, add_right_margin=True, alignment_type=PixelAlignmentType[how.upper()]
+    )
 
     # get lists of HEALPix pixels from alignment to pass to cross-match
     left_pixels, right_pixels = get_healpix_pixels_from_alignment(alignment)
@@ -415,6 +420,7 @@ def crossmatch_catalog_data_nested(
         [(left, left_pixels), (right, right_pixels), (right.margin, right_pixels)],
         perform_crossmatch_nested,
         algorithm,
+        how,
         nested_column_name,
         meta_df,
     )
