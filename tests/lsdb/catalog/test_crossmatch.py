@@ -814,3 +814,68 @@ def test_crossmatch_alignment_pixel_left_join_filters_and_aligns():
     assert aligned_orders
     assert max(aligned_orders) >= max(right_orders)
     assert min(aligned_orders) > min(left_orders)
+
+
+def test_crossmatch_nested_left_join_misaligned_trees():
+    """Left join with crossmatch_nested on misaligned partition trees and n_neighbors>1.
+
+    The left catalog is at order 1 and right at order 3, so their HEALPix trees don't
+    align: some left partitions have no corresponding right partition (right_pix=None)
+    and vice-versa. All left rows must appear in the result exactly once, unmatched rows
+    must have a null nested column, and matches must satisfy the radius constraint.
+    Using n_neighbors=2 exercises the multiple-neighbors path simultaneously.
+    """
+    left_df = pd.DataFrame({"id": [1, 2, 3], "ra": [0.0, 0.01, 180.0], "dec": [0.0, 0.01, 0.0]})
+    left_df["id"] = left_df["id"].astype(pd.ArrowDtype(pa.int64()))
+    # Two right points close to left point 1 (within radius), one far from any left point
+    right_df = pd.DataFrame({"id": [101, 102, 201], "ra": [0.0002, 0.0004, 90.0], "dec": [0.0, 0.0, 45.0]})
+    right_df["id"] = right_df["id"].astype(pd.ArrowDtype(pa.int64()))
+
+    left_catalog = lsdb.from_dataframe(
+        left_df,
+        ra_column="ra",
+        dec_column="dec",
+        lowest_order=1,
+        highest_order=1,
+        margin_order=2,
+        margin_threshold=30,
+    )
+    right_catalog = lsdb.from_dataframe(
+        right_df,
+        ra_column="ra",
+        dec_column="dec",
+        lowest_order=3,
+        highest_order=3,
+        margin_order=4,
+        margin_threshold=30,
+    )
+
+    result = left_catalog.crossmatch_nested(
+        right_catalog,
+        n_neighbors=2,
+        radius_arcsec=10,
+        how="left",
+        nested_column_name="matches",
+    ).compute()
+
+    # Output length must equal input length
+    assert len(result) == len(left_df)
+
+    # All left rows must be present
+    assert set(result["id"].to_numpy()) == {1, 2, 3}
+
+    # No duplicate left rows
+    assert not result.index.duplicated().any()
+
+    # Left point 1 (id=1) is close to right points 101 and 102 — both should be matched
+    row1 = result[result["id"] == 1]
+    assert len(row1) == 1
+    matches1 = row1["matches"].iloc[0]
+    assert matches1 is not None
+    assert set(matches1["id"].to_numpy()) == {101, 102}
+
+    # Left points 2 and 3 (id=2,3) are far from all right points — should have null nested column
+    for left_id in [2, 3]:
+        row = result[result["id"] == left_id]
+        assert len(row) == 1
+        assert row["matches"].isna().iloc[0], f"Expected null matches for left id={left_id}"

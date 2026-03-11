@@ -272,11 +272,11 @@ def perform_crossmatch_nested(
         extra_column_names = (
             set(algorithm.extra_columns.columns) if algorithm.extra_columns is not None else set()
         )
-        nested_flat = meta_df[nested_column_name].nest.to_flat().iloc[:0]
+        nested_series = meta_df[nested_column_name]
         right_df = npd.NestedFrame(
             {
-                col: pd.Series(dtype=nested_flat[col].dtype)
-                for col in nested_flat.columns
+                col: pd.Series(dtype=nested_series.nest[col].dtype)
+                for col in nested_series.nest.columns
                 if col not in extra_column_names
             }
         )

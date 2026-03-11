@@ -375,7 +375,7 @@ class AbstractCrossmatchAlgorithm(ABC):
             The name of the column where the matches should be stored.
         how : str
             How to handle the crossmatch of the two catalogs.
-            One of {'left', 'inner'}; defaults to 'inner'.
+            One of {'left', 'inner'}.
 
         Returns
         -------
