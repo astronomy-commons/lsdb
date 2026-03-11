@@ -241,6 +241,9 @@ def perform_crossmatch_nested(
         The algorithm to use to perform the crossmatch. Specified by subclassing
         `AbstractCrossmatchAlgorithm`. For more details, see `crossmatch` method
         in the `Catalog` class.
+    how : str
+        How to handle the crossmatch of the two catalogs.
+        One of {'left', 'inner'}; defaults to 'inner'.
     nested_column_name : str
         The name of the nested column in the resulting dataframe storing the
         joined columns in the right catalog. (Default: name of right catalog)
@@ -253,13 +256,30 @@ def perform_crossmatch_nested(
         DataFrame with the results of crossmatching for the pair of partitions.
         The results are stored in a nested column.
     """
-    if right_pix.order > left_pix.order:
+    if left_df is None or len(left_df) == 0:
+        return meta_df
+
+    if right_pix is not None and right_pix.order > left_pix.order:
         left_df = filter_by_spatial_index_to_pixel(
             left_df, right_pix.order, right_pix.pixel, spatial_index_order=left_catalog_info.healpix_order
         )
 
-    if len(left_df) == 0:
-        return meta_df
+    if right_df is None:
+        # When right_df is None (partitions don't spatially overlap), we need to create
+        # an empty DataFrame with the right catalog's columns and correct dtypes.
+        # The right catalog columns are the sub-columns of the nested column in meta_df,
+        # excluding any extra columns added by the algorithm (e.g., _dist_arcsec).
+        extra_column_names = (
+            set(algorithm.extra_columns.columns) if algorithm.extra_columns is not None else set()
+        )
+        nested_flat = meta_df[nested_column_name].nest.to_flat().iloc[:0]
+        right_df = npd.NestedFrame(
+            {
+                col: pd.Series(dtype=nested_flat[col].dtype)
+                for col in nested_flat.columns
+                if col not in extra_column_names
+            }
+        )
 
     right_joined_df = concat_partition_and_margin(right_df, right_margin_df)
 
@@ -268,8 +288,8 @@ def perform_crossmatch_nested(
         right_df=right_joined_df,
         left_order=left_pix.order,
         left_pixel=left_pix.pixel,
-        right_order=right_pix.order,
-        right_pixel=right_pix.pixel,
+        right_order=right_pix.order if right_pix is not None else None,
+        right_pixel=right_pix.pixel if right_pix is not None else None,
         left_catalog_info=left_catalog_info,
         right_catalog_info=right_catalog_info,
         right_margin_catalog_info=right_margin_catalog_info,
@@ -386,6 +406,9 @@ def crossmatch_catalog_data_nested(
     nested_column_name : str
         The name of the nested column that will contain the crossmatched rows
         from the right catalog
+    how : str
+        How to handle the crossmatch of the two catalogs.
+        One of {'left', 'inner'}; defaults to 'inner'.
 
     Returns
     -------

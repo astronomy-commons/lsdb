@@ -476,6 +476,9 @@ class Catalog(HealpixDataset):
         nested_column_name : str, default uses the name of the right catalog
             The name of the nested column that will contain the crossmatched rows
             from the right catalog.
+        how : str
+            How to handle the crossmatch of the two catalogs.
+            One of {'left', 'inner'}; defaults to 'inner'.
 
         Returns
         -------

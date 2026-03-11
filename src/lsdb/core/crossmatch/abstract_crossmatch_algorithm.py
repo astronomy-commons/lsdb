@@ -124,6 +124,9 @@ class AbstractCrossmatchAlgorithm(ABC):
             The partitions and respective pixel information.
         nested_column_name : str
             The name of the column where the matches should be stored.
+        how : str
+            How to handle the crossmatch of the two catalogs.
+            One of {'left', 'inner'}; defaults to 'inner'.
 
         Returns
         -------
@@ -370,6 +373,9 @@ class AbstractCrossmatchAlgorithm(ABC):
             Dataframe containing additional columns from crossmatching
         nested_column_name : str
             The name of the column where the matches should be stored.
+        how : str
+            How to handle the crossmatch of the two catalogs.
+            One of {'left', 'inner'}; defaults to 'inner'.
 
         Returns
         -------
@@ -384,10 +390,6 @@ class AbstractCrossmatchAlgorithm(ABC):
         right_join_part["new_index_col"] = left_idx
         right_join_part = right_join_part.set_index("new_index_col")
         self._append_extra_columns(right_join_part, extra_cols)
-        out = left_join_part.join_nested(right_join_part, nested_column_name)
+        out = left_join_part.join_nested(right_join_part, nested_column_name, how=how)
         out.set_index(index_name, inplace=True)
-        out = npd.NestedFrame(out)
-        # Remove non-matches
-        if how == "inner":
-            out = out.dropna(subset=[nested_column_name])
         return out
