@@ -928,3 +928,45 @@ def test_crossmatch_nested_left_join_same_pixel_partial_right_coverage():
     assert len(result) == len(left_df)
     assert not result.index.duplicated().any()
     assert set(result["id"].to_numpy()) == {1, 2, 3, 4}
+
+
+def test_crossmatch_nested_inner_join_no_nulls_in_nested_column():
+    """Inner join with crossmatch_nested must not have null values in the nested column."""
+    left_df = pd.DataFrame({"id": [1, 2, 3], "ra": [0.0, 0.01, 180.0], "dec": [0.0, 0.01, 0.0]})
+    left_df["id"] = left_df["id"].astype(pd.ArrowDtype(pa.int64()))
+    right_df = pd.DataFrame({"id": [101, 102], "ra": [0.0002, 0.0004], "dec": [0.0, 0.0]})
+    right_df["id"] = right_df["id"].astype(pd.ArrowDtype(pa.int64()))
+
+    left_catalog = lsdb.from_dataframe(
+        left_df,
+        ra_column="ra",
+        dec_column="dec",
+        lowest_order=1,
+        highest_order=1,
+        margin_order=2,
+        margin_threshold=30,
+    )
+    right_catalog = lsdb.from_dataframe(
+        right_df,
+        ra_column="ra",
+        dec_column="dec",
+        lowest_order=3,
+        highest_order=3,
+        margin_order=4,
+        margin_threshold=30,
+    )
+
+    result = left_catalog.crossmatch_nested(
+        right_catalog,
+        n_neighbors=2,
+        radius_arcsec=10,
+        how="inner",
+        nested_column_name="matches",
+    ).compute()
+
+    # Only matched left rows should appear — left id=3 (ra=180) has no match
+    assert len(result) < len(left_df)
+    assert 3 not in result["id"].to_numpy()
+
+    # No null values in the nested column — every row must have at least one match
+    assert not result["matches"].isna().any()
