@@ -393,9 +393,8 @@ def crossmatch_catalog_data_nested(
     left: Catalog,
     right: Catalog,
     algorithm: AbstractCrossmatchAlgorithm,
-    nested_column_name: str,
-    *,
     how: str,
+    nested_column_name: str,
 ) -> tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]:
     """Crossmatches the data from two catalogs with the result from the right catalog in a nested column
 
@@ -409,12 +408,12 @@ def crossmatch_catalog_data_nested(
         The algorithm to use to perform the crossmatch. Specified by subclassing
         `AbstractCrossmatchAlgorithm`. For more details, see `crossmatch` method
         in the `Catalog` class.
-    nested_column_name : str
-        The name of the nested column that will contain the crossmatched rows
-        from the right catalog
     how : str
         How to handle the crossmatch of the two catalogs.
         One of {'left', 'inner'}; defaults to 'inner'.
+    nested_column_name : str
+        The name of the nested column that will contain the crossmatched rows
+        from the right catalog
 
     Returns
     -------

@@ -512,7 +512,7 @@ class Catalog(HealpixDataset):
             output_catalog_name = f"{self.name}_x_{other.name}"
 
         ddf, ddf_map, alignment = crossmatch_catalog_data_nested(
-            self, other, algorithm, nested_column_name, how=how
+            self, other, algorithm, how, nested_column_name
         )
         hc_catalog = self.hc_structure.__class__(
             self.hc_structure.catalog_info,
