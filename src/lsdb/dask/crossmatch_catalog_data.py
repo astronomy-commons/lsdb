@@ -201,12 +201,15 @@ def perform_crossmatch_nested(
     left_df,
     right_df,
     right_margin_df,
+    aligned_df,
     left_pix,
     right_pix,
     right_margin_pix,
+    aligned_pixel,
     left_catalog_info,
     right_catalog_info,
     right_margin_catalog_info,
+    aligned_catalog_info,
     algorithm,
     how,
     nested_column_name,
@@ -259,9 +262,12 @@ def perform_crossmatch_nested(
     if left_df is None or len(left_df) == 0:
         return meta_df
 
-    if right_pix is not None and right_pix.order > left_pix.order:
+    if aligned_pixel.order > left_pix.order:
         left_df = filter_by_spatial_index_to_pixel(
-            left_df, right_pix.order, right_pix.pixel, spatial_index_order=left_catalog_info.healpix_order
+            left_df,
+            aligned_pixel.order,
+            aligned_pixel.pixel,
+            spatial_index_order=left_catalog_info.healpix_order,
         )
 
     if right_df is None:
@@ -432,6 +438,7 @@ def crossmatch_catalog_data_nested(
 
     # get lists of HEALPix pixels from alignment to pass to cross-match
     left_pixels, right_pixels = get_healpix_pixels_from_alignment(alignment)
+    aligned_pixels = get_aligned_pixels_from_alignment(alignment)
 
     # generate meta table structure for dask df
     meta_df = generate_meta_df_for_nested_tables(
@@ -440,7 +447,7 @@ def crossmatch_catalog_data_nested(
 
     # perform the crossmatch on each partition pairing using dask delayed for lazy computation
     joined_partitions = align_and_apply(
-        [(left, left_pixels), (right, right_pixels), (right.margin, right_pixels)],
+        [(left, left_pixels), (right, right_pixels), (right.margin, right_pixels), (None, aligned_pixels)],
         perform_crossmatch_nested,
         algorithm,
         how,

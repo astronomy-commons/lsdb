@@ -879,3 +879,52 @@ def test_crossmatch_nested_left_join_misaligned_trees():
         row = result[result["id"] == left_id]
         assert len(row) == 1
         assert row["matches"].isna().iloc[0], f"Expected null matches for left id={left_id}"
+
+
+def test_crossmatch_nested_left_join_same_pixel_partial_right_coverage():
+    """Left join where a single left partition has BOTH None and non-None right sub-pixel pairs.
+
+    This tests the alignment scenario where one left pixel contains points in different
+    order-3 sub-regions, but the right catalog only has data in ONE of those sub-regions.
+    The alignment produces two pairs for the same left pixel: (left, right_sub_pix) and
+    (left, None). Without proper aligned_pixel filtering, the None pair would return all
+    left rows unfiltered, causing duplicates with the non-None pair's output.
+    """
+    # All 4 left points fall in the same order-1 left pixel, but in different order-3 sub-pixels
+    left_df = pd.DataFrame({"id": [1, 2, 3, 4], "ra": [0.0, 5.0, 10.0, 15.0], "dec": [0.0, 0.0, 0.0, 0.0]})
+    left_df["id"] = left_df["id"].astype(pd.ArrowDtype(pa.int64()))
+    # Right has only one point in one order-3 sub-pixel of that left pixel
+    right_df = pd.DataFrame({"id": [101], "ra": [0.05], "dec": [0.0]})
+    right_df["id"] = right_df["id"].astype(pd.ArrowDtype(pa.int64()))
+
+    left_catalog = lsdb.from_dataframe(
+        left_df,
+        ra_column="ra",
+        dec_column="dec",
+        lowest_order=1,
+        highest_order=1,
+        margin_order=2,
+        margin_threshold=30,
+    )
+    right_catalog = lsdb.from_dataframe(
+        right_df,
+        ra_column="ra",
+        dec_column="dec",
+        lowest_order=3,
+        highest_order=3,
+        margin_order=4,
+        margin_threshold=30,
+    )
+
+    result = left_catalog.crossmatch_nested(
+        right_catalog,
+        n_neighbors=2,
+        radius_arcsec=100,
+        how="left",
+        nested_column_name="matches",
+    ).compute()
+
+    # Must have exactly as many rows as the left catalog — no duplicates from the None pair
+    assert len(result) == len(left_df)
+    assert not result.index.duplicated().any()
+    assert set(result["id"].to_numpy()) == {1, 2, 3, 4}
