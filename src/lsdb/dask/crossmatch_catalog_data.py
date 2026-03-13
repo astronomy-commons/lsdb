@@ -410,7 +410,7 @@ def crossmatch_catalog_data_nested(
         in the `Catalog` class.
     how : str
         How to handle the crossmatch of the two catalogs.
-        One of {'left', 'inner'}; defaults to 'inner'.
+        One of {'left', 'inner'}.
     nested_column_name : str
         The name of the nested column that will contain the crossmatched rows
         from the right catalog
