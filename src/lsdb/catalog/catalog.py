@@ -399,6 +399,7 @@ class Catalog(HealpixDataset):
         output_catalog_name: str | None = None,
         require_right_margin: bool = False,
         nested_column_name: str | None = None,
+        how: str = "inner",
     ) -> Catalog:
         # pylint:disable=unused-argument
         """Perform a cross-match between two catalogs, adding the result as a nested column
@@ -475,6 +476,9 @@ class Catalog(HealpixDataset):
         nested_column_name : str, default uses the name of the right catalog
             The name of the nested column that will contain the crossmatched rows
             from the right catalog.
+        how : str
+            How to handle the crossmatch of the two catalogs.
+            One of {'left', 'inner'}; defaults to 'inner'.
 
         Returns
         -------
@@ -507,7 +511,9 @@ class Catalog(HealpixDataset):
         if output_catalog_name is None:
             output_catalog_name = f"{self.name}_x_{other.name}"
 
-        ddf, ddf_map, alignment = crossmatch_catalog_data_nested(self, other, algorithm, nested_column_name)
+        ddf, ddf_map, alignment = crossmatch_catalog_data_nested(
+            self, other, algorithm, how, nested_column_name
+        )
         hc_catalog = self.hc_structure.__class__(
             self.hc_structure.catalog_info,
             alignment.pixel_tree,
