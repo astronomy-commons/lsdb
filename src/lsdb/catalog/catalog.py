@@ -1496,10 +1496,15 @@ class Catalog(HealpixDataset):
             If True, saves the catalog and its margin as a collection
         overwrite : bool, default False
             If True existing catalog is overwritten
+        resume : bool, default False
+            If True, resumes a previously interrupted write, skipping partitions
+            already written to disk.
         progress_bar : bool, default True
             If True, shows a progress bar for the export process. Defaults to True.
         tqdm_kwargs : dict, default None
             Additional kwargs to pass to the tqdm progress bar.
+        create_thumbnail : bool, default True
+            If True, generates a sky map thumbnail image for the catalog.
         error_if_empty : bool, default True
             If True, raises an error if the catalog is empty.
         **kwargs
