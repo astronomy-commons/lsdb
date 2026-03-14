@@ -4,6 +4,8 @@ import warnings
 from pathlib import Path
 from typing import Any, Callable, Iterable
 
+from lsdb.catalog.dataset.repr_builder import build_catalog_html
+
 import dask.dataframe as dd
 import hats as hc
 import nested_pandas as npd
@@ -1543,3 +1545,7 @@ class Catalog(HealpixDataset):
                 error_if_empty=error_if_empty,
                 **kwargs,
             )
+
+    def __repr_html__(self):
+        return build_catalog_html(self)
+
