@@ -24,8 +24,6 @@ def build_catalog_html(catalog: "Catalog") -> str:
     Lazy function, no data loading is triggered
     All information is derived from metadata/schema only
 
-    Formats HTML sections for Jupyter notebook display, not intended for browsers
-
     Parameters
     ----------
     catalog : Catalog

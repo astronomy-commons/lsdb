@@ -4,7 +4,7 @@ import warnings
 from pathlib import Path
 from typing import Any, Callable, Iterable
 
-from lsdb.catalog.dataset.templates.repr_builder import build_catalog_html
+from lsdb.catalog.dataset.repr_builder import build_catalog_html
 
 import dask.dataframe as dd
 import hats as hc
@@ -1546,7 +1546,6 @@ class Catalog(HealpixDataset):
                 **kwargs,
             )
 
-    # New __repr_html__ method, see issue 1274, https://github.com/astronomy-commons/lsdb/issues/1274
     def __repr_html__(self):
         return build_catalog_html(self)
 
