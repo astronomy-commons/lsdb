@@ -1,5 +1,6 @@
 from string import Template
 
+
 STYLES = """
 <style>
     .lsdb-catalog { 
@@ -138,6 +139,7 @@ STYLES = """
     </style>
 """
 
+
 CATALOG_WRAPPER = Template(
 """
     <div class="lsdb-catalog">
@@ -153,6 +155,7 @@ CATALOG_WRAPPER = Template(
     </div>
 """
 )
+
 
 METADATA_SECTION = Template(
 """
@@ -201,6 +204,7 @@ METADATA_SECTION = Template(
 """
 )
 
+
 METHODS_SECTION = Template(
 """
     <div class="lsdb-section">
@@ -214,6 +218,7 @@ METHODS_SECTION = Template(
     </div>
 """
 )
+
 
 PREVIEW_SECTION = Template(
     """
@@ -229,6 +234,7 @@ PREVIEW_SECTION = Template(
     """
 )
 
+
 SCHEMA_SECTION = Template(
     """
         <div class="lsdb-section">
@@ -241,7 +247,8 @@ SCHEMA_SECTION = Template(
             </div>
         </div>
     """
-                          )
+)
+
 
 DOCS_SECTION = Template(
     """
