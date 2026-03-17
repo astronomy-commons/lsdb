@@ -1504,7 +1504,7 @@ class Catalog(HealpixDataset):
         tqdm_kwargs : dict, default None
             Additional kwargs to pass to the tqdm progress bar.
         create_thumbnail : bool, default True
-            If True, creates a thumbnail image of the catalog's sky coverage.
+            If True, creates a data thumbnail of the catalog for previewing purposes.
         error_if_empty : bool, default True
             If True, raises an error if the catalog is empty.
         **kwargs
