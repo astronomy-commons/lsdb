@@ -49,7 +49,7 @@ Even if there are no notable changes, please release all three together.
   with title `@conda-forge-admin, please update version`)
 - [ ] confirm tagged `hats` and `nested-pandas` versions (and any other dependencies that have changed in the pyproject)
 - [ ] approve and merge PR
-- [ ] confirm on [conda-forge](https://anaconda.org/conda-forge/lsdb)
+- [ ] confirm on conda-forge: [hats](https://anaconda.org/conda-forge/hats), [lsdb](https://anaconda.org/conda-forge/lsdb), [hats-import](https://anaconda.org/conda-forge/hats-import)
 - [ ] confirm new version exists in `mamba search lsdb -c conda-forge --override-channels` (or conda search, which is slower)
 
 ### tie it together
