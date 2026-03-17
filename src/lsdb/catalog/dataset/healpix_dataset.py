@@ -1285,6 +1285,9 @@ class HealpixDataset:
             original hats catalogs if they exist.
         overwrite : bool, default False
             If True existing catalog is overwritten
+        resume : bool, default False
+            If True, resumes a previous write operation, skipping partitions that were
+            already written to disk.
         progress_bar : bool, default True
             If True, displays a progress bar during the save operation
         tqdm_kwargs : dict or None, default None
