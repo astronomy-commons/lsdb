@@ -214,18 +214,18 @@ class LSDBDaskGraph:
 
     # ----- map_rows -----
     def track_maprows_num_tasks(self):
-        graph = self.query_graph
+        graph = self.map_graph
         return len(graph)
 
     def track_maprows_graph_size(self):
-        graph = self.query_graph
+        graph = self.map_graph
         graph_size = 0
         for key in graph.keys():
             graph_size += sys.getsizeof(graph[key])
         return graph_size
 
     def time_maprows(self):
-        return self.query_cat.compute()
+        return self.map_cat.compute()
 
     def peakmem_maprows(self):
-        return self.query_cat.compute()
+        return self.map_cat.compute()
