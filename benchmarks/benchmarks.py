@@ -5,6 +5,8 @@ https://asv.readthedocs.io/en/stable/writing_benchmarks.html."""
 
 import tempfile
 from pathlib import Path
+import os
+import sys
 
 import hats
 import numpy as np
@@ -138,13 +140,19 @@ class OpenCatalogDaskGraph:
     """Benchmark dask task graph metrics when opening a catalog"""
     def setup(self):
         cat = lsdb.generate_catalog(5000,100, lowest_order=4, ra_range=(15.0,25.0), dec_range=(34.0,44.0), seed=1)
-        with tempfile.TemporaryDirectory() as tmp_path:
-            cat.write_catalog(os.path.join(tmp_path, "catalog2"))
-            self.catalog_path = os.path.join(tmp_path, "catalog2")
+        self.tmp_dir = tempfile.TemporaryDirectory()
+        self.tmp_path = self.tmp_dir.name
+        #with tempfile.TemporaryDirectory() as tmp_path:
+        cat.write_catalog(os.path.join(self.tmp_path, "catalog2"))
+        self.catalog_path = os.path.join(self.tmp_path, "catalog2")
 
         # Open the catalog to initialize the dask graph
         self.catalog = lsdb.open_catalog(self.catalog_path)
-        self.graph = self.catalog.dask
+        #self.catalog = lsdb.open_catalog(os.path.join(self.catalog_path, "generated_catalog"))
+        self.graph = self.catalog._ddf.dask
+
+    def teardown(self):
+        self.tmp_dir.cleanup()
 
     def track_num_tasks(self):
         return len(self.graph)
