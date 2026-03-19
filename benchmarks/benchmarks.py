@@ -144,21 +144,25 @@ class LSDBDaskGraph:
         self.tmp_dir = tempfile.TemporaryDirectory()
         self.tmp_path = self.tmp_dir.name
 
-        # Setup Catalog 2 (Original list is from dask_graph_challenge notebook)
-        cat = lsdb.generate_catalog(5000,100, lowest_order=4, ra_range=(15.0,25.0), dec_range=(34.0,44.0), seed=1)
-        cat.write_catalog(os.path.join(self.tmp_path, "catalog2"))
-        self.cat2_path = os.path.join(self.tmp_path, "catalog2")
+        # Setup Catalog 1 (Original list is from dask_graph_challenge notebook)
+        cat1 = lsdb.generate_catalog(5000,100, lowest_order=1, ra_range=(15.0,25.0), dec_range=(34.0,44.0), seed=1)
+        cat1.write_catalog(os.path.join(self.tmp_path, "catalog1"))
+        self.cat1 = lsdb.open_catalog(os.path.join(self.tmp_path, "catalog1"))
+        # Setup Catalog 2
+        cat2 = lsdb.generate_catalog(5000,100, lowest_order=4, ra_range=(15.0,25.0), dec_range=(34.0,44.0), seed=1)
+        cat2.write_catalog(os.path.join(self.tmp_path, "catalog2"))
+        self.cat2 = lsdb.open_catalog(os.path.join(self.tmp_path, "catalog2"))
 
         # Open Catalog Graph
-        self.open_catalog_cat = lsdb.open_catalog(self.cat2_path)
-        self.open_catalog_graph = self.catalog._ddf.dask.optimize()
+        self.open_catalog_cat = self.cat2
+        self.open_catalog_graph = self.open_catalog_cat._ddf.optimize().dask
 
         # Query Catalog Graph
-        self.query_cat = lsdb.open_catalog(self.cat2_path).query("nested.t>0.3")
-        self.query_graph = self.query_cat._ddf.dask.optimize()
+        self.query_cat = self.cat2.query("nested.t>0.3")
+        self.query_graph = self.query_cat._ddf.optimize().dask
 
         # Map_rows Graph
-        cat = lsdb.open_catalog(self.cat2_path)
+        cat = self.cat2
 
         def my_sigma(row):
             '''map_rows will return a NestedFrame with two columns'''
@@ -169,9 +173,15 @@ class LSDBDaskGraph:
                                     columns=["nested.flux"],
                                     output_names=["plus_one", "minus_one"],
                                     meta=meta)
-        self.map_graph = self.map_cat._ddf.dask.optimize()
+        self.map_graph = self.map_cat._ddf.optimize().dask
 
+        # Partition Selection Graph
+        self.select_cat = self.cat2.partitions[2]
+        self.select_graph = self.select_cat._ddf.optimize().dask
 
+        # Crossmatch 1 Graph
+        self.xmatch1_cat = self.cat1.crossmatch(self.cat2, suffixes=("_l","_r"), suffix_method='all_columns')
+        self.xmatch1_graph = self.xmatch1_cat._ddf.optimize().dask
 
     def teardown(self):
         self.tmp_dir.cleanup()
@@ -186,7 +196,8 @@ class LSDBDaskGraph:
         graph_size = 0
         for key in graph.keys():
             graph_size += sys.getsizeof(graph[key])
-        return graph_size
+        return graph_size/10**6
+    track_open_catalog_graph_size.unit = "MB"
 
     def time_open_catalog(self):
         return self.open_catalog_cat.compute()
@@ -204,7 +215,8 @@ class LSDBDaskGraph:
         graph_size = 0
         for key in graph.keys():
             graph_size += sys.getsizeof(graph[key])
-        return graph_size
+        return graph_size/10**6
+    track_query_graph_size.unit = "MB"
 
     def time_query(self):
         return self.query_cat.compute()
@@ -222,10 +234,49 @@ class LSDBDaskGraph:
         graph_size = 0
         for key in graph.keys():
             graph_size += sys.getsizeof(graph[key])
-        return graph_size
+        return graph_size/10**6
+    track_maprows_graph_size.unit = "MB"
 
     def time_maprows(self):
         return self.map_cat.compute()
 
     def peakmem_maprows(self):
         return self.map_cat.compute()
+
+    # ----- Partition Selection -----
+    def track_select_part_num_tasks(self):
+        graph = self.map_graph
+        return len(graph)
+
+    def track_select_part_graph_size(self):
+        graph = self.map_graph
+        graph_size = 0
+        for key in graph.keys():
+            graph_size += sys.getsizeof(graph[key])
+        return graph_size/10**6
+    track_select_part_graph_size.unit = "MB"
+
+    def time_select_part(self):
+        return self.map_cat.compute()
+
+    def peakmem_select_part(self):
+        return self.map_cat.compute()
+
+    # ----- Crossmatch 1 -----
+    def track_xmatch1_num_tasks(self):
+        graph = self.xmatch1_graph
+        return len(graph)
+
+    def track_xmatch1_graph_size(self):
+        graph = self.xmatch1_graph
+        graph_size = 0
+        for key in graph.keys():
+            graph_size += sys.getsizeof(graph[key])
+        return graph_size/10**6
+    track_xmatch1_graph_size.unit = "MB"
+
+    def time_xmatch1(self):
+        return self.xmatch1_cat.compute()
+
+    def peakmem_xmatch1(self):
+        return self.xmatch1_cat.compute()
