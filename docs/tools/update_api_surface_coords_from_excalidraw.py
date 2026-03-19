@@ -321,7 +321,7 @@ def choose_bbox(
     old_box: tuple[int, int, int, int],
     line_candidates: list[dict],
     token_candidates: list[dict],
-) -> tuple[int, int, int, int]:
+) -> tuple[tuple[int, int, int, int], bool]:
     """Select the best hotspot rectangle for one ``alt`` label.
 
     Matching strategy is tried in this order: exact token, exact line, partial
@@ -341,8 +341,9 @@ def choose_bbox(
 
     Returns
     -------
-    tuple[int, int, int, int]
-        Updated rectangle, or ``old_box`` when no suitable match is found.
+    tuple[tuple[int, int, int, int], bool]
+        Updated rectangle and a flag indicating whether a suitable match was
+        found. Returns ``(old_box, False)`` when no suitable match is found.
     """
 
     alt_norm = ALIASES.get(norm(alt_text), norm(alt_text))
@@ -351,14 +352,14 @@ def choose_bbox(
     exact = [c for c in token_candidates if c["norm"] == alt_norm]
     if exact:
         best = min(exact, key=lambda c: distance(c["bbox"], old_box))
-        return padded(best["bbox"], 8, 4)
+        return padded(best["bbox"], 8, 4), True
 
     # 1b. Exact line match (needed for class-name labels like MapCatalog that
     # may only exist in black text lines and thus are absent from token matches)
     exact_line = [c for c in line_candidates if c["norm"] == alt_norm]
     if exact_line:
         best = min(exact_line, key=lambda c: distance(c["bbox"], old_box))
-        return padded(best["bbox"], 8, 4)
+        return padded(best["bbox"], 8, 4), True
 
     # 2. Partial token match — require the shorter side to cover ≥60 % of
     #    the longer side so that "catalog" doesn't match "margincatalog".
@@ -372,7 +373,7 @@ def choose_bbox(
     ]
     if partial:
         best = min(partial, key=lambda c: distance(c["bbox"], old_box))
-        return padded(best["bbox"], 10, 4)
+        return padded(best["bbox"], 10, 4), True
 
     # 3. Line-level match (multi-word labels like "head, tail"), same overlap rule
     line_m = [
@@ -384,10 +385,10 @@ def choose_bbox(
     ]
     if line_m:
         best = min(line_m, key=lambda c: distance(c["bbox"], old_box))
-        return padded(best["bbox"], 14, 5, min_width=40, min_height=18)
+        return padded(best["bbox"], 14, 5, min_width=40, min_height=18), True
 
     print(f"  WARNING: no match for '{alt_text}'")
-    return old_box
+    return old_box, False
 
 
 # ---------------------------------------------------------------------------
@@ -433,10 +434,10 @@ def run_update(config: UpdateConfig) -> UpdateResult:
         nonlocal updated
         old_box = tuple(map(int, match.group(2).split(",")))
         alt_text = match.group(4)
-        new_box = choose_bbox(alt_text, old_box, line_cands, token_cands)
+        new_box, matched = choose_bbox(alt_text, old_box, line_cands, token_cands)
         if new_box != old_box:
             updated += 1
-        else:
+        if not matched:
             unmatched.append(alt_text)
         return f"{match.group(1)}{new_box[0]},{new_box[1]},{new_box[2]},{new_box[3]}" f"{match.group(3)}"
 

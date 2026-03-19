@@ -3,9 +3,8 @@ import re
 import sys
 from pathlib import Path
 
-AREA_PATTERN = re.compile(
-    r'<area\s+[^>]*coords="(?P<coords>\d+,\d+,\d+,\d+)"[^>]*href="(?P<href>[^"]+)"[^>]*alt="(?P<alt>[^"]+)"[^>]*/?>'
-)
+AREA_TAG_PATTERN = re.compile(r"<area\b[^>]*>", re.IGNORECASE | re.DOTALL)
+ATTR_PATTERN = re.compile(r'(?P<name>[A-Za-z_:][-A-Za-z0-9_:.]*)\s*=\s*"(?P<value>[^"]*)"')
 
 
 def parse_args() -> argparse.Namespace:
@@ -26,6 +25,23 @@ def parse_args() -> argparse.Namespace:
         "--base-height", type=int, default=2164, help="Coordinate-space height (default: 2164 = PNG native)"
     )
     return parser.parse_args()
+
+
+def parse_area_attributes(tag_text: str) -> dict[str, str]:
+    """Extract HTML-like attributes from a single ``<area>`` tag.
+
+    Parameters
+    ----------
+    tag_text : str
+        Raw ``<area ...>`` tag text.
+
+    Returns
+    -------
+    dict[str, str]
+        Mapping of attribute names to values.
+    """
+
+    return {match.group("name").lower(): match.group("value") for match in ATTR_PATTERN.finditer(tag_text)}
 
 
 def validate(index_path: Path, base_width: int, base_height: int) -> list[str]:
@@ -49,15 +65,31 @@ def validate(index_path: Path, base_width: int, base_height: int) -> list[str]:
     text = index_path.read_text(encoding="utf-8")
     errors: list[str] = []
 
-    areas = list(AREA_PATTERN.finditer(text))
-    if not areas:
+    area_tags = list(AREA_TAG_PATTERN.finditer(text))
+    if not area_tags:
         errors.append("No <area> entries found in API surface map.")
         return errors
 
-    for i, match in enumerate(areas, start=1):
-        coords_text = match.group("coords")
-        href = match.group("href")
-        alt = match.group("alt")
+    for i, match in enumerate(area_tags, start=1):
+        attrs = parse_area_attributes(match.group(0))
+        coords_text = attrs.get("coords")
+        href = attrs.get("href")
+        alt = attrs.get("alt")
+
+        if coords_text is None:
+            errors.append(f"Area #{i} is missing coords attribute.")
+            continue
+        if href is None:
+            errors.append(f"Area #{i} is missing href attribute.")
+            continue
+        if alt is None:
+            errors.append(f"Area #{i} is missing alt attribute.")
+            continue
+
+        if not re.fullmatch(r"\d+,\d+,\d+,\d+", coords_text):
+            errors.append(f"Area #{i} has malformed coords: {coords_text}")
+            continue
+
         x1, y1, x2, y2 = map(int, coords_text.split(","))
 
         if not alt.strip():
