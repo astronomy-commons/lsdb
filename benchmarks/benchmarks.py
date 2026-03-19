@@ -136,35 +136,96 @@ def time_save_big_catalog():
         assert len(read_catalog.get_healpix_pixels()) == len(catalog.get_healpix_pixels())
 
 
-class OpenCatalogDaskGraph:
+class LSDBDaskGraph:
     """Benchmark dask task graph metrics when opening a catalog"""
     def setup(self):
-        cat = lsdb.generate_catalog(5000,100, lowest_order=4, ra_range=(15.0,25.0), dec_range=(34.0,44.0), seed=1)
+
+        # Setup Temp Directory
         self.tmp_dir = tempfile.TemporaryDirectory()
         self.tmp_path = self.tmp_dir.name
-        #with tempfile.TemporaryDirectory() as tmp_path:
-        cat.write_catalog(os.path.join(self.tmp_path, "catalog2"))
-        self.catalog_path = os.path.join(self.tmp_path, "catalog2")
 
-        # Open the catalog to initialize the dask graph
-        self.catalog = lsdb.open_catalog(self.catalog_path)
-        #self.catalog = lsdb.open_catalog(os.path.join(self.catalog_path, "generated_catalog"))
-        self.graph = self.catalog._ddf.dask
+        # Setup Catalog 2 (Original list is from dask_graph_challenge notebook)
+        cat = lsdb.generate_catalog(5000,100, lowest_order=4, ra_range=(15.0,25.0), dec_range=(34.0,44.0), seed=1)
+        cat.write_catalog(os.path.join(self.tmp_path, "catalog2"))
+        self.cat2_path = os.path.join(self.tmp_path, "catalog2")
+
+        # Open Catalog Graph
+        self.open_catalog_cat = lsdb.open_catalog(self.cat2_path)
+        self.open_catalog_graph = self.catalog._ddf.dask.optimize()
+
+        # Query Catalog Graph
+        self.query_cat = lsdb.open_catalog(self.cat2_path).query("nested.t>0.3")
+        self.query_graph = self.query_cat._ddf.dask.optimize()
+
+        # Map_rows Graph
+        cat = lsdb.open_catalog(self.cat2_path)
+
+        def my_sigma(row):
+            '''map_rows will return a NestedFrame with two columns'''
+            return row["nested.flux"] + 1, row["nested.flux"] - 1
+
+        meta = {"plus_one": np.float64, "minus_one": np.float64}
+        self.map_cat = cat.map_rows(my_sigma,
+                                    columns=["nested.flux"],
+                                    output_names=["plus_one", "minus_one"],
+                                    meta=meta)
+        self.map_graph = self.map_cat._ddf.dask.optimize()
+
+
 
     def teardown(self):
         self.tmp_dir.cleanup()
 
-    def track_num_tasks(self):
-        return len(self.graph)
+    # ----- Open Catalog -----
+    def track_open_catalog_num_tasks(self):
+        graph = self.open_catalog_graph
+        return len(graph)
 
-    def track_graph_size(self):
+    def track_open_catalog_graph_size(self):
+        graph = self.open_catalog_graph
         graph_size = 0
-        for key in self.graph.keys():
-            graph_size += sys.getsizeof(self.graph[key])
+        for key in graph.keys():
+            graph_size += sys.getsizeof(graph[key])
         return graph_size
 
     def time_open_catalog(self):
-        return self.catalog.compute()
+        return self.open_catalog_cat.compute()
 
     def peakmem_open_catalog(self):
-        return self.catalog.compute()
+        return self.open_catalog_cat.compute()
+
+    # ----- Query -----
+    def track_query_num_tasks(self):
+        graph = self.query_graph
+        return len(graph)
+
+    def track_query_graph_size(self):
+        graph = self.query_graph
+        graph_size = 0
+        for key in graph.keys():
+            graph_size += sys.getsizeof(graph[key])
+        return graph_size
+
+    def time_query(self):
+        return self.query_cat.compute()
+
+    def peakmem_query(self):
+        return self.query_cat.compute()
+
+    # ----- map_rows -----
+    def track_maprows_num_tasks(self):
+        graph = self.query_graph
+        return len(graph)
+
+    def track_maprows_graph_size(self):
+        graph = self.query_graph
+        graph_size = 0
+        for key in graph.keys():
+            graph_size += sys.getsizeof(graph[key])
+        return graph_size
+
+    def time_maprows(self):
+        return self.query_cat.compute()
+
+    def peakmem_maprows(self):
+        return self.query_cat.compute()
