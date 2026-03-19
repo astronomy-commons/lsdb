@@ -74,7 +74,6 @@ operations.
           <area shape="rect" coords="1651,1572,2108,1653" href="reference/api/lsdb.catalog.Catalog.map_rows.html" alt="map_rows" />
           <area shape="rect" coords="1046,1697,1556,1763" href="reference/api/lsdb.catalog.Catalog.to_dask_dataframe.html" alt="to_dask_dataframe" />
           <area shape="rect" coords="1046,1766,1556,1832" href="reference/api/lsdb.catalog.Catalog.to_delayed.html" alt="to_delayed" />
-          <area shape="rect" coords="1046,1836,1398,1902" href="reference/api/lsdb.catalog.Catalog.get_partition.html" alt="get_partition execution" />
 
           <area shape="rect" coords="2510,342,2650,408" href="reference/api/lsdb.catalog.Catalog.query.html" alt="query" />
           <area shape="rect" coords="2497,454,2834,514" href="reference/api/lsdb.catalog.Catalog.box_search.html" alt="box_search" />
