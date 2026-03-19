@@ -132,3 +132,31 @@ def time_save_big_catalog():
 
         read_catalog = hats.read_hats(tmp_path)
         assert len(read_catalog.get_healpix_pixels()) == len(catalog.get_healpix_pixels())
+
+
+class OpenCatalogDaskGraph:
+    """Benchmark dask task graph metrics when opening a catalog"""
+    def setup(self):
+        cat = lsdb.generate_catalog(5000,100, lowest_order=4, ra_range=(15.0,25.0), dec_range=(34.0,44.0), seed=1)
+        with tempfile.TemporaryDirectory() as tmp_path:
+            cat.write_catalog(os.path.join(tmp_path, "catalog2"))
+            self.catalog_path = os.path.join(tmp_path, "catalog2")
+
+        # Open the catalog to initialize the dask graph
+        self.catalog = lsdb.open_catalog(self.catalog_path)
+        self.graph = self.catalog.dask
+
+    def track_num_tasks(self):
+        return len(self.graph)
+
+    def track_graph_size(self):
+        graph_size = 0
+        for key in self.graph.keys():
+            graph_size += sys.getsizeof(self.graph[key])
+        return graph_size
+
+    def time_open_catalog(self):
+        return self.catalog.compute()
+
+    def peakmem_open_catalog(self):
+        return self.catalog.compute()
