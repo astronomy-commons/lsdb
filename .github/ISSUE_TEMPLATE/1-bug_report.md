@@ -14,14 +14,18 @@ assignees: ''
 <details>
 <summary>INSTALLED VERSIONS</summary>
 
+```
 Paste the output from `lsdb.show_versions()`
+```
 
 </details>
 
 <details>
 <summary>Traceback</summary>
 
+```
 FILL IN YOUR STACK TRACE HERE
+```
 
 </details>
 
