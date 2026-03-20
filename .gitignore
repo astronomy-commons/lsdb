@@ -153,6 +153,7 @@ _html/
 # Airspeed Velocity performance results
 _results/
 _html/
+benchmarks/.bench_cache/
 
 # Project initialization script
 .initialize_new_project.sh

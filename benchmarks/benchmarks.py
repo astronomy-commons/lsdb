@@ -7,6 +7,7 @@ import tempfile
 from pathlib import Path
 import os
 import sys
+import shutil
 
 import hats
 import numpy as np
@@ -135,23 +136,30 @@ def time_save_big_catalog():
         read_catalog = hats.read_hats(tmp_path)
         assert len(read_catalog.get_healpix_pixels()) == len(catalog.get_healpix_pixels())
 
-'''
-class LSDBDaskGraph:
-    """Benchmark dask task graph metrics when opening a catalog"""
-    def setup(self):
 
+class LSDBDask:
+    """Benchmark dask task graph metrics when opening a catalog"""
+    def setup_cache(self):
         # Setup Temp Directory
-        self.tmp_dir = tempfile.TemporaryDirectory()
-        self.tmp_path = self.tmp_dir.name
+        # Use a fixed path so it persists across all benchmarks
+        # don't specify a teardown function, as it cleans up before all benchmarks complete
+        tmp_path = os.path.join(os.path.dirname(__file__), ".bench_cache")
+        os.makedirs(tmp_path, exist_ok=True)
 
         # Setup Catalog 1 (Original list is from dask_graph_challenge notebook)
         cat1 = lsdb.generate_catalog(5000,100, lowest_order=1, ra_range=(15.0,25.0), dec_range=(34.0,44.0), seed=1)
-        cat1.write_catalog(os.path.join(self.tmp_path, "catalog1"))
-        self.cat1 = lsdb.open_catalog(os.path.join(self.tmp_path, "catalog1"))
+        cat1.write_catalog(os.path.join(tmp_path, "catalog1"), overwrite=True)
+
         # Setup Catalog 2
         cat2 = lsdb.generate_catalog(5000,100, lowest_order=4, ra_range=(15.0,25.0), dec_range=(34.0,44.0), seed=1)
-        cat2.write_catalog(os.path.join(self.tmp_path, "catalog2"))
-        self.cat2 = lsdb.open_catalog(os.path.join(self.tmp_path, "catalog2"))
+        cat2.write_catalog(os.path.join(tmp_path, "catalog2"), overwrite=True)
+
+        return tmp_path
+
+    def setup(self, tmp_path):
+        # Open Catalogs
+        self.cat1 = lsdb.open_catalog(os.path.join(tmp_path, "catalog1"))
+        self.cat2 = lsdb.open_catalog(os.path.join(tmp_path, "catalog2"))
 
         # Open Catalog Graph
         self.open_catalog_cat = self.cat2
@@ -183,15 +191,15 @@ class LSDBDaskGraph:
         self.xmatch1_cat = self.cat1.crossmatch(self.cat2, suffixes=("_l","_r"), suffix_method='all_columns')
         self.xmatch1_graph = self.xmatch1_cat._ddf.optimize().dask
 
-    def teardown(self):
-        self.tmp_dir.cleanup()
+    #def teardown(self):
+    #    self.tmp_dir.cleanup()
 
     # ----- Open Catalog -----
-    def track_open_catalog_num_tasks(self):
+    def track_open_catalog_num_tasks(self, tmp_path):
         graph = self.open_catalog_graph
         return len(graph)
 
-    def track_open_catalog_graph_size(self):
+    def track_open_catalog_graph_size(self, tmp_path):
         graph = self.open_catalog_graph
         graph_size = 0
         for key in graph.keys():
@@ -199,18 +207,18 @@ class LSDBDaskGraph:
         return graph_size/10**6
     track_open_catalog_graph_size.unit = "MB"
 
-    #def time_open_catalog(self):
-    #    return self.open_catalog_cat.compute()
+    def time_open_catalog(self, tmp_path):
+        return self.open_catalog_cat.compute()
 
-    #def peakmem_open_catalog(self):
-    #    return self.open_catalog_cat.compute()
+    def peakmem_open_catalog(self, tmp_path):
+        return self.open_catalog_cat.compute()
 
     # ----- Query -----
-    def track_query_num_tasks(self):
+    def track_query_num_tasks(self, tmp_path):
         graph = self.query_graph
         return len(graph)
 
-    def track_query_graph_size(self):
+    def track_query_graph_size(self, tmp_path):
         graph = self.query_graph
         graph_size = 0
         for key in graph.keys():
@@ -218,18 +226,18 @@ class LSDBDaskGraph:
         return graph_size/10**6
     track_query_graph_size.unit = "MB"
 
-    #def time_query(self):
-    #    return self.query_cat.compute()
+    def time_query(self, tmp_path):
+        return self.query_cat.compute()
 
-    #def peakmem_query(self):
-    #    return self.query_cat.compute()
+    def peakmem_query(self, tmp_path):
+        return self.query_cat.compute()
 
     # ----- map_rows -----
-    def track_maprows_num_tasks(self):
+    def track_maprows_num_tasks(self, tmp_path):
         graph = self.map_graph
         return len(graph)
 
-    def track_maprows_graph_size(self):
+    def track_maprows_graph_size(self, tmp_path):
         graph = self.map_graph
         graph_size = 0
         for key in graph.keys():
@@ -237,18 +245,18 @@ class LSDBDaskGraph:
         return graph_size/10**6
     track_maprows_graph_size.unit = "MB"
 
-    #def time_maprows(self):
-    #    return self.map_cat.compute()
+    def time_maprows(self, tmp_path):
+        return self.map_cat.compute()
 
-    #def peakmem_maprows(self):
-    #    return self.map_cat.compute()
+    def peakmem_maprows(self, tmp_path):
+        return self.map_cat.compute()
 
     # ----- Partition Selection -----
-    def track_select_part_num_tasks(self):
+    def track_select_part_num_tasks(self, tmp_path):
         graph = self.map_graph
         return len(graph)
 
-    def track_select_part_graph_size(self):
+    def track_select_part_graph_size(self, tmp_path):
         graph = self.map_graph
         graph_size = 0
         for key in graph.keys():
@@ -256,18 +264,18 @@ class LSDBDaskGraph:
         return graph_size/10**6
     track_select_part_graph_size.unit = "MB"
 
-    #def time_select_part(self):
-    #    return self.map_cat.compute()
+    def time_select_part(self, tmp_path):
+        return self.map_cat.compute()
 
-    #def peakmem_select_part(self):
-    #    return self.map_cat.compute()
+    def peakmem_select_part(self, tmp_path):
+        return self.map_cat.compute()
 
     # ----- Crossmatch 1 -----
-    def track_xmatch1_num_tasks(self):
+    def track_xmatch1_num_tasks(self, tmp_path):
         graph = self.xmatch1_graph
         return len(graph)
 
-    def track_xmatch1_graph_size(self):
+    def track_xmatch1_graph_size(self, tmp_path):
         graph = self.xmatch1_graph
         graph_size = 0
         for key in graph.keys():
@@ -275,40 +283,42 @@ class LSDBDaskGraph:
         return graph_size/10**6
     track_xmatch1_graph_size.unit = "MB"
 
-    #def time_xmatch1(self):
-    #    return self.xmatch1_cat.compute()
+    def time_xmatch1(self, tmp_path):
+        return self.xmatch1_cat.compute()
 
-    #def peakmem_xmatch1(self):
-    #    return self.xmatch1_cat.compute()
+    def peakmem_xmatch1(self, tmp_path):
+        return self.xmatch1_cat.compute()
+
+
 '''
-
-
 class OpenCatalogDaskGraph:
     """Benchmark dask task graph metrics when opening a catalog"""
-    def setup(self):
-
+    def setup_cache(self):
         # Setup Temp Directory
-        self.tmp_dir = tempfile.TemporaryDirectory()
-        self.tmp_path = self.tmp_dir.name
+        # Use a fixed path so it persists across all benchmarks
+        # don't specify a teardown function, as it cleans up before all benchmarks complete
+        tmp_path = os.path.join(os.path.dirname(__file__), ".bench_cache")
+        os.makedirs(tmp_path, exist_ok=True)
 
         # Setup Catalog 2
         cat2 = lsdb.generate_catalog(5000,100, lowest_order=4, ra_range=(15.0,25.0), dec_range=(34.0,44.0), seed=1)
-        cat2.write_catalog(os.path.join(self.tmp_path, "catalog2"))
-        self.cat2 = lsdb.open_catalog(os.path.join(self.tmp_path, "catalog2"))
+        cat2.write_catalog(os.path.join(tmp_path, "catalog2"))
+
+        return tmp_path
+
+    def setup(self, tmp_path):
+        self.cat2 = lsdb.open_catalog(os.path.join(tmp_path, "catalog2"))
 
         # Open Catalog Graph
         self.cat = self.cat2
         self.graph = self.cat._ddf.optimize().dask
 
-    def teardown(self):
-        self.tmp_dir.cleanup()
-
     # ----- Open Catalog -----
-    def track_num_tasks(self):
+    def track_num_tasks(self, tmp_path):
         graph = self.graph
         return len(graph)
 
-    def track_graph_size(self):
+    def track_graph_size(self, tmp_path):
         graph = self.graph
         graph_size = 0
         for key in graph.keys():
@@ -316,8 +326,9 @@ class OpenCatalogDaskGraph:
         return graph_size/10**6
     track_graph_size.unit = "MB"
 
-    def time_compute(self):
+    def time_compute(self, tmp_path):
         return self.cat.compute()
 
-    def peakmem_compute(self):
+    def peakmem_compute(self, tmp_path):
         return self.cat.compute()
+'''
