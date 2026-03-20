@@ -282,6 +282,7 @@ class LSDBDaskGraph:
     #    return self.xmatch1_cat.compute()
 '''
 
+
 class OpenCatalogDaskGraph:
     """Benchmark dask task graph metrics when opening a catalog"""
     def setup(self):
@@ -297,7 +298,7 @@ class OpenCatalogDaskGraph:
 
         # Open Catalog Graph
         self.cat = self.cat2
-        self.graph = self.graph._ddf.optimize().dask
+        self.graph = self.cat._ddf.optimize().dask
 
     def teardown(self):
         self.tmp_dir.cleanup()
