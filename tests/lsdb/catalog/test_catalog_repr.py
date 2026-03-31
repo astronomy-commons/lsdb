@@ -1,13 +1,16 @@
+import os
 import time
 import tracemalloc
-
 import dask.dataframe as dd
 import pandas as pd
-
 import lsdb
 from lsdb import generate_data
 from lsdb.catalog.dataset.templates.repr_builder import build_catalog_html
 from lsdb.nested.core import NestedFrame
+from tests.data.small_sky_order1_collection import small_sky_order1
+from tests.data import small_sky_order3_source, small_sky_source
+
+CATALOG_DIR = os.path.join("tests", "data", "small_sky_order1_collection", "small_sky_order1")
 
 
 def get_network_bytes():
@@ -25,36 +28,20 @@ def get_network_bytes():
     return total
 
 
-# Test suite for the new feature that solves lsdb issue #1274, https://github.com/astronomy-commons/lsdb/issues/1274
-
+# Test suite for the new feature that solves lsdb issue #1274,
+# https://github.com/astronomy-commons/lsdb/issues/1274
 def test_lsdb_html_repr_catalogs():
-    """Testing for a list of astronomical catalogs
-
-    LHS: Catalog link: ex. https://data.lsdb.io/hats/sdss_dr7_spectra
-
-    RHS: Catalog group: ex. SDSS"""
+    """
+    Tests the HTML representation for a collection of local catalogs.
+    Ensureing that `__repr_html__` works correctly for catalogs stored
+    locally in `tests.data`. monitoring network usage and peak memory to
+    verify that the representation is generated lazily.
+    """
 
     catalogs = [
-        'https://data.lsdb.io/hats/two_mass',  # 2MASS
-        'https://data.lsdb.io/hats/delve/delve_dr2',  # Delve
-        # 'https://data.lsdb.io/hats/delve/delve_dr3_gold',
-        # 'https://data.lsdb.io/hats/des/des_dr2',                            # DES
-        # 'https://data.lsdb.io/hats/des/des_y6_gold',
-        # 'https://data.lsdb.io/hats/desi/desi_dr1_zcat',                     # DESI
-        # 'https://data.lsdb.io/hats/legacysurvey_dr10.1',
-        # 'https://data.lsdb.io/hats/erosita',                                #eRASS1
-        # 's3://nasa-irsa-euclid-q1/contributed/q1/merged_objects/hats',      #Eculid Q1
-        # 'https://data.lsdb.io/hats/euclid_q1',
-        # 's3://stpubdata/gaia/gaia_dr3/public/hats',                         # Gaia
-        # 'https://data.lsdb.io/hats/gaia_dr3',
-        # 'https://vizcat.cds.unistra.fr/hats:n=1000000/gaia_dr3/',
-        # 'https://data.lsdb.io/hats/gaia_dr3_epoch_phot',
-        # 'https://data.lsdb.io/hats/gaia_edr3_distances',
-        # 'https://data.lsdb.io/hats/skymapper_dr4/catalog',                  # Skymapper
-        # 'https://data.lsdb.io/hats/skymapper_dr4/photometry',
-        # 'https://data.lsdb.io/hats/tess/tic',                               # TESS
-        # 'https://data.lsdb.io/hats/tess/tess_lightcurve',
-        'https://data.lsdb.io/hats/sdss_dr7_spectra',  # SDSS
+        small_sky_order1.__path__[0],
+        small_sky_order3_source.__path__[0],
+        small_sky_source.__path__[0]
     ]
 
     print(f"\n{'Catalog Source':<60} | {'Net (MB)':<10} | {'Mem (MB)':<10}")
