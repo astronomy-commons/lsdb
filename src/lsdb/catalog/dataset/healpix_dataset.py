@@ -54,6 +54,9 @@ if TYPE_CHECKING:
     from matplotlib.figure import Figure
 
 
+COMPUTE_SIZE_WARNING_THRESHOLD_KB = 1_000  # 1 GB
+
+
 # pylint: disable=protected-access,too-many-public-methods,too-many-lines,import-outside-toplevel,cyclic-import
 class HealpixDataset:
     """LSDB Catalog to perform analysis of sky catalogs and efficient spatial operations."""
@@ -123,6 +126,20 @@ class HealpixDataset:
             except (AttributeError, TypeError, ValueError):
                 return None
 
+        original_field_sizes = [estimate_type_size(field.type) for field in original_schema]
+        if any(size is None for size in original_field_sizes):
+            snapshot_info = self.hc_structure.snapshot.catalog_info if self.hc_structure.snapshot else None
+            original_size_per_row = (
+                snapshot_info.hats_estsize * 1000 / snapshot_info.total_rows
+                if snapshot_info and snapshot_info.hats_estsize and snapshot_info.total_rows
+                else None
+            )
+        else:
+            original_size_per_row = sum(original_field_sizes)
+
+        if original_size_per_row is None:
+            return None
+
         # Compute total size of loaded columns (including index)
         loaded_size = 0
         non_fixed_column = False
@@ -133,12 +150,6 @@ class HealpixDataset:
                 loaded_size += field_size
             else:
                 non_fixed_column = True
-
-        original_size_per_row = (
-            self.hc_structure.catalog_info.hats_estsize / self.hc_structure.catalog_info.total_rows
-            if self.hc_structure.catalog_info.hats_estsize and self.hc_structure.catalog_info.total_rows
-            else None
-        )
 
         if non_fixed_column:
             total_fixed_size_per_row = sum([estimate_type_size(field.type) or 0 for field in original_schema])
@@ -153,10 +164,9 @@ class HealpixDataset:
         original columns and partitions.
         """
         if self.hc_structure.catalog_info.hats_estsize is not None:
-            if self.hc_structure.original_partition_info is not None:
-                partition_ratio = len(self.get_healpix_pixels()) / len(
-                    self.hc_structure.original_partition_info
-                )
+            snapshot = self.hc_structure.snapshot
+            if snapshot is not None and snapshot.partition_info is not None:
+                partition_ratio = len(self.get_healpix_pixels()) / len(snapshot.partition_info)
                 column_ratio = self._compute_column_size_ratio()
                 if column_ratio is not None:
                     return float(self.hc_structure.catalog_info.hats_estsize) * partition_ratio * column_ratio
@@ -229,7 +239,7 @@ class HealpixDataset:
     def compute(self, progress_bar=True, tqdm_kwargs=None) -> npd.NestedFrame:
         """Compute dask distributed dataframe to pandas dataframe"""
         est_size = self.est_size()
-        if est_size is not None and est_size > COMPUTE_SIZE_WARNING_THRESHOLD:
+        if est_size is not None and est_size > COMPUTE_SIZE_WARNING_THRESHOLD_KB:
             est_size_text = file_size(est_size * 1000)
             logging.warning(
                 f"The estimated size of the catalog is {est_size_text}. Computing the catalog "
@@ -1162,7 +1172,7 @@ class HealpixDataset:
             hc_structure = self.hc_structure.__class__(
                 catalog_info=self.hc_structure.catalog_info,
                 pixels=[pixel],
-                original_partition_info=self.hc_structure.original_partition_info,
+                snapshot=self.hc_structure.snapshot,
             )
             return self.__class__(output_ddf, partition_map, hc_structure)
 
