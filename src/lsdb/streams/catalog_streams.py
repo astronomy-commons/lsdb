@@ -99,6 +99,10 @@ class CatalogStream:
         # This avoids repeated graph construction, optimization, and catalog
         # search/reload overhead on every iteration.
         self._delayed_partitions = catalog.to_delayed(optimize_graph=True)
+        #import sys
+        #print(sys.getsizeof(self._delayed_partitions))
+        #print(len(self._delayed_partitions))
+        #print(self._delayed_partitions[0])
 
     def get_next_partitions(
         self, partitions_left: np.ndarray, rng: np.random.Generator  # pylint: disable=unused-argument
