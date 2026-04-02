@@ -9,13 +9,6 @@ from dask.distributed import Client, Future
 from lsdb import Catalog
 
 
-def _concat_results(results):
-    """Concatenate a list of DataFrames into a single DataFrame."""
-    if len(results) == 1:
-        return results[0]
-    return pd.concat(results)
-
-
 class _FakeFuture:
     """Duck-typed `Future` interface for a pre-computed value.
 
@@ -121,10 +114,15 @@ class CatalogStream:
         """Submit the next set of partitions for computation."""
         selected = [self._delayed_partitions[i] for i in partitions]
 
+        if len(selected) == 1:
+            if self.client is None:
+                return _FakeFuture(selected[0].compute())
+            return self.client.compute(selected[0])
+
+        combined = dask.delayed(pd.concat)(selected)
         if self.client is None:
-            return _FakeFuture(_concat_results(list(dask.compute(*selected))))
-        futures = self.client.compute(selected)
-        return self.client.submit(_concat_results, futures)
+            return _FakeFuture(combined.compute())
+        return self.client.compute(combined)
 
     def __iter__(self) -> "CatalogIterator":
         """Return an iterator for this iterable."""
