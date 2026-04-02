@@ -9,6 +9,13 @@ from dask.distributed import Client, Future
 from lsdb import Catalog
 
 
+def _concat_results(results):
+    """Concatenate a list of DataFrames into a single DataFrame."""
+    if len(results) == 1:
+        return results[0]
+    return pd.concat(results)
+
+
 class _FakeFuture:
     """Duck-typed `Future` interface for a pre-computed value.
 
@@ -95,6 +102,11 @@ class CatalogStream:
         else:
             self.rng = np.random.default_rng((1 << 32, self.seed))
 
+        # Pre-extract delayed partitions with one-time graph optimization.
+        # This avoids repeated graph construction, optimization, and catalog
+        # search/reload overhead on every iteration.
+        self._delayed_partitions = catalog.to_delayed(optimize_graph=True)
+
     def get_next_partitions(
         self, partitions_left: np.ndarray, rng: np.random.Generator  # pylint: disable=unused-argument
     ) -> tuple[np.ndarray, np.ndarray]:
@@ -107,12 +119,12 @@ class CatalogStream:
 
     def submit_next_partitions(self, partitions: np.ndarray) -> Future | _FakeFuture:
         """Submit the next set of partitions for computation."""
-        sliced_catalog = self.catalog.partitions[partitions]
-        futurable = sliced_catalog._ddf  # pylint: disable=protected-access
+        selected = [self._delayed_partitions[i] for i in partitions]
 
         if self.client is None:
-            return _FakeFuture(dask.compute(futurable)[0])
-        return self.client.compute(futurable)
+            return _FakeFuture(_concat_results(list(dask.compute(*selected))))
+        futures = self.client.compute(selected)
+        return self.client.submit(_concat_results, futures)
 
     def __iter__(self) -> "CatalogIterator":
         """Return an iterator for this iterable."""
