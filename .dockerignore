@@ -1,0 +1,16 @@
+.git
+.github
+.venv
+.tox
+.mypy_cache
+__pycache__
+*.pyc
+*.pyo
+*.egg-info
+dist
+build
+tests/data
+docs
+benchmarks
+*.md
+!README.md
