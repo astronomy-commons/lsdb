@@ -256,7 +256,9 @@ class DataframeCatalogLoader:
         self.catalog_info.total_rows = total_rows
         moc = self._generate_moc() if self.should_generate_moc else None
         schema = self.schema if self.schema is not None else get_arrow_schema(ddf)
-        hc_structure = hc.catalog.Catalog(self.catalog_info, pixel_list, moc=moc, schema=schema)
+        hc_structure = hc.catalog.Catalog(
+            self.catalog_info, pixel_list, moc=moc, schema=schema, generate_snapshot=True
+        )
 
         # Recover NestedDtype (https://github.com/astronomy-commons/lsdb/issues/730)
         if len(self.dataframe.nested_columns) > 0:

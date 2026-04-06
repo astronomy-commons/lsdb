@@ -115,7 +115,7 @@ class MarginCatalogGenerator:
         catalog_info = self._create_catalog_info(**self.catalog_info_kwargs, total_rows=total_rows)
         margin_pixels = list(ddf_pixel_map.keys())
         margin_structure = hc.catalog.MarginCatalog(
-            catalog_info, margin_pixels, schema=self.hc_structure.schema
+            catalog_info, margin_pixels, schema=self.hc_structure.schema, generate_snapshot=True
         )
         return MarginCatalog(ddf, ddf_pixel_map, margin_structure)
 
