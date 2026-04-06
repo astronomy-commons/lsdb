@@ -54,7 +54,7 @@ if TYPE_CHECKING:
     from matplotlib.figure import Figure
 
 
-COMPUTE_SIZE_WARNING_THRESHOLD_KB = 1_000  # 1 GB
+COMPUTE_SIZE_WARNING_THRESHOLD_KB = 1_000_000  # 1 GB
 
 
 # pylint: disable=protected-access,too-many-public-methods,too-many-lines,import-outside-toplevel,cyclic-import
