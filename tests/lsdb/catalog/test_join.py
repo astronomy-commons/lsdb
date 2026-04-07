@@ -330,7 +330,7 @@ def test_join_association_warnings(
         )
 
 
-def test_join_nested(small_sky_catalog, small_sky_order1_source_with_margin, helpers):
+def test_join_nested(small_sky_catalog, small_sky_order1_source_with_margin):
     joined = small_sky_catalog.join_nested(
         small_sky_order1_source_with_margin,
         left_on="id",
@@ -435,7 +435,7 @@ def test_join_nested_invalid_how(small_sky_order1_catalog, small_sky_order1_sour
 
 
 @pytest.mark.parametrize("direction", ["backward", "forward", "nearest"])
-def test_merge_asof(small_sky_catalog, small_sky_xmatch_catalog, direction, helpers):
+def test_merge_asof(small_sky_catalog, small_sky_xmatch_catalog, direction):
     suffixes = ("_a", "_b")
     joined = small_sky_catalog.merge_asof(small_sky_xmatch_catalog, direction=direction, suffixes=suffixes)
     assert isinstance(joined._ddf, nd.NestedFrame)

@@ -2,7 +2,6 @@ import logging
 
 import nested_pandas as npd
 import pandas as pd
-import pytest
 from hats.pixel_math import HealpixPixel
 
 from lsdb.dask.merge_catalog_functions import (

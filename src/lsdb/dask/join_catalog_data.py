@@ -431,7 +431,7 @@ def join_catalog_data_on(
         suffix_method,
     )
 
-    return construct_catalog_args(joined_partitions, meta_df, alignment)
+    return construct_catalog_args(joined_partitions, alignment)
 
 
 def join_catalog_data_nested(
@@ -499,7 +499,7 @@ def join_catalog_data_nested(
         how,
     )
 
-    return construct_catalog_args(joined_partitions, meta_df, alignment)
+    return construct_catalog_args(joined_partitions, alignment)
 
 
 def join_catalog_data_through(
@@ -604,7 +604,7 @@ def join_catalog_data_through(
         suffix_method,
     )
 
-    return construct_catalog_args(joined_partitions, meta_df, alignment)
+    return construct_catalog_args(joined_partitions, alignment)
 
 
 def merge_asof_catalog_data(
@@ -668,4 +668,4 @@ def merge_asof_catalog_data(
         suffix_method,
     )
 
-    return construct_catalog_args(joined_partitions, meta_df, alignment)
+    return construct_catalog_args(joined_partitions, alignment)

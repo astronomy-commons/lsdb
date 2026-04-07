@@ -440,7 +440,7 @@ def concat_catalog_data(
         **kwargs,
     )
 
-    return construct_catalog_args(joined_partitions, meta_df, alignment)
+    return construct_catalog_args(joined_partitions, alignment)
 
 
 # pylint: disable=too-many-locals
@@ -506,7 +506,7 @@ def concat_margin_data(
         **kwargs,
     )
 
-    return construct_catalog_args(joined_partitions, meta_df, alignment)
+    return construct_catalog_args(joined_partitions, alignment)
 
 
 # pylint: disable=too-many-locals

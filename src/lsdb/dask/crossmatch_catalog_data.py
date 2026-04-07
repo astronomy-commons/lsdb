@@ -384,7 +384,7 @@ def crossmatch_catalog_data(
         meta_df,
     )
 
-    nf, pixel_map, alignment = construct_catalog_args(joined_partitions, meta_df, alignment)
+    nf, pixel_map, alignment = construct_catalog_args(joined_partitions, alignment)
 
     return nf, pixel_map, alignment
 
@@ -456,4 +456,4 @@ def crossmatch_catalog_data_nested(
         meta_df,
     )
 
-    return construct_catalog_args(joined_partitions, meta_df, alignment)
+    return construct_catalog_args(joined_partitions, alignment)

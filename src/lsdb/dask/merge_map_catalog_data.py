@@ -161,4 +161,4 @@ def merge_map_catalog_data(
         **kwargs,
     )
 
-    return construct_catalog_args(partitions_with_func, meta, alignment)
+    return construct_catalog_args(partitions_with_func, alignment)
