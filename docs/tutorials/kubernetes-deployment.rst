@@ -81,6 +81,12 @@ Install the operator with Helm:
         --namespace dask-operator \
         --create-namespace
 
+.. note::
+
+    The operator is cluster-scoped. You only need one installation per cluster.
+    If another team has already installed it, check with
+    ``kubectl get crd | grep dask`` and skip this step if the CRDs exist.
+
 Verify that the operator pod is running:
 
 .. code-block:: bash
@@ -166,7 +172,7 @@ Adjust resource requests, replica counts, and the image reference to match your 
       name: lsdb-cluster
     spec:
       cluster: lsdb-cluster
-      minimum: 1
+      minimum: 2
       maximum: 6
 
 Apply the manifest:
@@ -174,6 +180,12 @@ Apply the manifest:
 .. code-block:: bash
 
     kubectl apply -f dask-cluster.yaml
+
+.. tip::
+
+    If your container image is in a private registry, add ``imagePullSecrets``
+    to both the scheduler and worker pod specs. Public images (e.g. on Docker Hub
+    or GitHub Container Registry with public visibility) do not need this.
 
 The PersistentVolumeClaim ``hats-catalog-pvc`` should point to storage containing your
 HATS catalogs. If your catalogs are accessed over the network (e.g. via
@@ -194,8 +206,14 @@ From inside the cluster:
 
     client = Client("tcp://lsdb-cluster-scheduler:8786")
 
-    catalog = lsdb.open_catalog("/data/catalogs/my_catalog")
-    result = catalog.cone_search(ra=180, dec=0, radius_arcsec=600).compute()
+    # Use search_filter at open time to avoid loading the full catalog into memory.
+    # Adding columns= further reduces the memory footprint per partition.
+    catalog = lsdb.open_catalog(
+        "/data/catalogs/my_catalog",
+        search_filter=lsdb.ConeSearch(ra=180, dec=0, radius_arcsec=600),
+        columns=["ra", "dec", "phot_g_mean_mag"],
+    )
+    result = catalog.compute()
     client.close()
 
 From outside the cluster, forward the scheduler port first:
