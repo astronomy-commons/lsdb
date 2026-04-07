@@ -231,6 +231,8 @@ def concat_partition_and_margin(
     """
     if margin is None:
         return partition
+    if partition is None:
+        return margin
     joined_df = pd.concat([partition, margin])
     return npd.NestedFrame(joined_df)
 

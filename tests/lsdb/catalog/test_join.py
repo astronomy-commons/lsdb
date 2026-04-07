@@ -386,7 +386,7 @@ def test_join_nested_how_left(small_sky_order1_catalog, small_sky_order1_source_
 
     # Now we will select only two pixels from the source catalog
     selected_pixels = [HealpixPixel(1, 46), HealpixPixel(1, 47)]
-    smaller_sky_sources = small_sky_order1_source_with_margin.pixel_search(selected_pixels)
+    smaller_sky_sources = small_sky_order1_source_with_margin.pixel_search(selected_pixels, fine=True)
 
     # If we `join_nested` with `how="left"`, we keep all objects on the left
     nested_left = small_sky_order1_catalog.join_nested(

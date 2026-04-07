@@ -181,7 +181,7 @@ def perform_join_nested(
             spatial_index_order=left_catalog_info.healpix_order,
         )
 
-    right_joined_df = right_meta if right is None else concat_partition_and_margin(right, right_margin)
+    right_joined_df = right_meta if right_pixel is None else concat_partition_and_margin(right, right_margin)
 
     right_joined_df = pack_flat(npd.NestedFrame(right_joined_df.set_index(right_on))).rename(right_name)
 
