@@ -2,6 +2,7 @@ import logging
 
 import pyarrow as pa
 import pytest
+from hats.catalog.catalog_snapshot import CatalogSnapshot
 
 import lsdb
 from lsdb.catalog.dataset.healpix_dataset import COMPUTE_SIZE_WARNING_THRESHOLD_KB
@@ -120,9 +121,6 @@ def test_est_size_none_when_column_not_in_original_schema(small_sky_order1_defau
 def test_est_size_none_for_variable_width_original_schema_without_total_rows(
     small_sky_order1_default_cols_catalog,
 ):
-    # Replace snapshot with one whose schema has a variable-width field (triggering the
-    # hats_estsize/total_rows path) and whose catalog_info has total_rows=None.
-    from hats.catalog.catalog_snapshot import CatalogSnapshot
 
     string_schema = pa.schema([pa.field("name", pa.string()), pa.field("ra", pa.float64())])
     original_snapshot = small_sky_order1_default_cols_catalog.hc_structure.snapshot

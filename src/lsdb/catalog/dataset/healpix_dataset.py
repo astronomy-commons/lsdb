@@ -135,13 +135,13 @@ class HealpixDataset:
                 else None
             )
         else:
-            original_size_per_row = sum(original_field_sizes)
+            original_size_per_row = sum(original_field_sizes)  # type: ignore[arg-type]
 
         if original_size_per_row is None:
             return None
 
         # Compute total size of loaded columns (including index)
-        loaded_size = 0
+        loaded_size = 0.0
         non_fixed_column = False
 
         for field in current_schema:
@@ -152,7 +152,7 @@ class HealpixDataset:
                 non_fixed_column = True
 
         if non_fixed_column:
-            total_fixed_size_per_row = sum([estimate_type_size(field.type) or 0 for field in original_schema])
+            total_fixed_size_per_row = sum(estimate_type_size(field.type) or 0 for field in original_schema)
             loaded_size += original_size_per_row - total_fixed_size_per_row
 
         return loaded_size / original_size_per_row
@@ -244,10 +244,11 @@ class HealpixDataset:
         if est_size is not None and est_size > COMPUTE_SIZE_WARNING_THRESHOLD_KB:
             est_size_text = file_size(est_size * 1000)
             logging.warning(
-                f"The estimated size of the catalog is {est_size_text}. Computing the catalog "
-                f"will load all data into memory and may cause your system to run out of memory."
-                f"Consider using `write_catalog` to write the catalog to disk, or selecting a subset of the "
-                f"catalog to compute."
+                "The estimated size of the catalog is %s. Computing the catalog "
+                "will load all data into memory and may cause your system to run out of memory."
+                "Consider using `write_catalog` to write the catalog to disk, or selecting a subset of the "
+                "catalog to compute.",
+                est_size_text,
             )
 
         desc = tqdm_kwargs.pop("desc", "Computing Catalog") if tqdm_kwargs else "Computing Catalog"
