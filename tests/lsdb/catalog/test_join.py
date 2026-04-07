@@ -406,12 +406,14 @@ def test_join_nested_how_left(small_sky_order1_catalog, small_sky_order1_source_
     assert len(small_sky_order1_catalog) == len(nested_left_compute)
 
     source_compute = smaller_sky_sources.compute()
+    source_margin = smaller_sky_sources.margin.compute()
+    total_sources = pd.concat([source_compute, source_margin]).drop_duplicates(subset="source_id")
     for _, row in nested_left_compute.iterrows():
         row_id = row["id"]
         if row["sources"] is not None:
             pd.testing.assert_frame_equal(
                 row["sources"].sort_values("source_ra").reset_index(drop=True),
-                pd.DataFrame(source_compute[source_compute["object_id"] == row_id].set_index("object_id"))
+                pd.DataFrame(total_sources[total_sources["object_id"] == row_id].set_index("object_id"))
                 .sort_values("source_ra")
                 .reset_index(drop=True)
                 .drop(columns=[c for c in paths.HIVE_COLUMNS if c in source_compute.columns]),
