@@ -166,6 +166,8 @@ class HealpixDataset:
         if self.hc_structure.catalog_info.hats_estsize is not None:
             snapshot = self.hc_structure.snapshot
             if snapshot is not None and snapshot.partition_info is not None:
+                if len(snapshot.partition_info) == 0:
+                    return 0.0
                 partition_ratio = len(self.get_healpix_pixels()) / len(snapshot.partition_info)
                 column_ratio = self._compute_column_size_ratio()
                 if column_ratio is not None:

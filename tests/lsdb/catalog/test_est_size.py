@@ -120,9 +120,16 @@ def test_est_size_none_when_column_not_in_original_schema(small_sky_order1_defau
 def test_est_size_none_for_variable_width_original_schema_without_total_rows(
     small_sky_order1_default_cols_catalog,
 ):
-    # Set original_schema to a variable-width type so the hats_estsize/total_rows path
-    # is taken, then remove total_rows to force None.
+    # Replace snapshot with one whose schema has a variable-width field (triggering the
+    # hats_estsize/total_rows path) and whose catalog_info has total_rows=None.
+    from hats.catalog.catalog_snapshot import CatalogSnapshot
+
     string_schema = pa.schema([pa.field("name", pa.string()), pa.field("ra", pa.float64())])
-    small_sky_order1_default_cols_catalog.hc_structure.snapshot.schema = string_schema
-    small_sky_order1_default_cols_catalog.hc_structure.snapshot.catalog_info.total_rows = None
+    original_snapshot = small_sky_order1_default_cols_catalog.hc_structure.snapshot
+    new_catalog_info = original_snapshot.catalog_info.copy_and_update(total_rows=None)
+    small_sky_order1_default_cols_catalog.hc_structure.snapshot = CatalogSnapshot(
+        schema=string_schema,
+        catalog_info=new_catalog_info,
+        partition_info=original_snapshot.partition_info,
+    )
     assert small_sky_order1_default_cols_catalog.est_size() is None
