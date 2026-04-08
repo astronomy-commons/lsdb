@@ -875,7 +875,7 @@ class HealpixDataset:
         return self.search(OrderSearch(min_order, max_order))
 
     def pixel_search(
-        self, pixels: tuple[int, int] | HealpixPixel | list[tuple[int, int] | HealpixPixel]
+        self, pixels: tuple[int, int] | HealpixPixel | list[tuple[int, int] | HealpixPixel], fine=False
     ) -> Self:
         """Finds all catalog pixels that overlap with the requested pixel set.
 
@@ -889,7 +889,7 @@ class HealpixDataset:
         Self
             A new Catalog containing only the pixels that overlap with the requested pixel set.
         """
-        return self.search(PixelSearch(pixels))
+        return self.search(PixelSearch(pixels, fine=fine))
 
     def moc_search(self, moc: MOC, fine: bool = True) -> Self:
         """Finds all catalog points that are contained within a moc.

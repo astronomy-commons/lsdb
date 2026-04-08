@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 import astropy.units as u
 import nested_pandas as npd
+import numpy as np
 import pandas as pd
 from hats.catalog import TableProperties
 from hats.pixel_math import HealpixPixel, get_healpix_pixel, spatial_index
@@ -147,15 +148,16 @@ class OrderSearch(AbstractSearch):
         return frame
 
 
-class PixelSearch(AbstractSearch):
+class PixelSearch(MOCSearch):
     """Filter the catalog by HEALPix pixels.
 
     Filters partitions in the catalog to those that are in a specified pixel set.
     Does not filter points inside those partitions.
     """
 
-    def __init__(self, pixels: tuple[int, int] | HealpixPixel | list[tuple[int, int] | HealpixPixel]):
-        super().__init__(fine=False)
+    def __init__(
+        self, pixels: tuple[int, int] | HealpixPixel | list[tuple[int, int] | HealpixPixel], fine=False
+    ):
         if isinstance(pixels, tuple):
             self.pixels = [get_healpix_pixel(pixels)]
         elif isinstance(pixels, HealpixPixel):
@@ -166,6 +168,11 @@ class PixelSearch(AbstractSearch):
             self.pixels = [get_healpix_pixel(pix) for pix in pixels]
         else:
             raise ValueError("Unsupported input for PixelSearch")
+        ipix = np.array([pix.pixel for pix in self.pixels])
+        order = np.array([pix.order for pix in self.pixels])
+        max_order = np.max(order)
+        moc = MOC.from_healpix_cells(ipix, order, max_order)
+        super().__init__(moc, fine)
 
     @classmethod
     def from_radec(cls, ra: float | list[float], dec: float | list[float]) -> PixelSearch:
@@ -186,14 +193,6 @@ class PixelSearch(AbstractSearch):
         pixels = list(spatial_index.compute_spatial_index(ra, dec))
         pixels = [(spatial_index.SPATIAL_INDEX_ORDER, pix) for pix in pixels]
         return cls(pixels)
-
-    def perform_hc_catalog_filter(self, hc_structure: HCCatalogTypeVar) -> HCCatalogTypeVar:
-        """Filters catalog pixels according to the provided pixel set"""
-        return hc_structure.filter_from_pixel_list(self.pixels)
-
-    def search_points(self, frame: npd.NestedFrame, _) -> npd.NestedFrame:
-        """Determine the search results within a data frame"""
-        return frame
 
 
 class PolygonSearch(AbstractSearch):

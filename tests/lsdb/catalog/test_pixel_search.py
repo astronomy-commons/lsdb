@@ -94,7 +94,7 @@ def test_pixel_search_is_empty(small_sky_catalog, small_sky_order1_catalog):
 
 
 def test_pixel_search_keeps_all_points(small_sky_order1_catalog):
-    metadata = small_sky_order1_catalog.hc_structure
+    metadata = small_sky_order1_catalog.hc_structure.catalog_info
     partition_df = small_sky_order1_catalog.get_partition(1, 44).compute()
     filtered_df = PixelSearch([(1, 44)]).search_points(partition_df, metadata)
     pd.testing.assert_frame_equal(partition_df, filtered_df)
