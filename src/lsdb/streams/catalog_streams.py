@@ -4,7 +4,9 @@ from typing import Optional
 import dask
 import numpy as np
 import pandas as pd
+from dask.delayed import Delayed
 from dask.distributed import Client, Future
+from dask.optimization import cull
 
 from lsdb import Catalog
 
@@ -98,11 +100,17 @@ class CatalogStream:
         # Pre-extract delayed partitions with one-time graph optimization.
         # This avoids repeated graph construction, optimization, and catalog
         # search/reload overhead on every iteration.
-        self._delayed_partitions = catalog.to_delayed(optimize_graph=True)
-        #import sys
-        #print(sys.getsizeof(self._delayed_partitions))
-        #print(len(self._delayed_partitions))
-        #print(self._delayed_partitions[0])
+        #
+        # Crucially, to_delayed() returns Delayed objects that all share the
+        # same full graph. We cull each to its own subgraph so that
+        # client.compute() only sends the minimal per-partition graph to the
+        # scheduler, avoiding O(N^2) graph transmission overhead.
+        raw_delayed = catalog.to_delayed(optimize_graph=True)
+        shared_graph = dict(raw_delayed[0].__dask_graph__())
+        self._delayed_partitions = []
+        for d in raw_delayed:
+            culled_graph, _ = cull(shared_graph, list(d.__dask_keys__()))
+            self._delayed_partitions.append(Delayed(d.key, culled_graph))
 
     def get_next_partitions(
         self, partitions_left: np.ndarray, rng: np.random.Generator  # pylint: disable=unused-argument
