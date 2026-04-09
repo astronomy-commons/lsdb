@@ -54,7 +54,7 @@ if TYPE_CHECKING:
     from matplotlib.figure import Figure
 
 
-COMPUTE_SIZE_WARNING_THRESHOLD_KiB = 1 << 20  # 1 GiB
+COMPUTE_SIZE_WARNING_THRESHOLD_KiB = 1 << 20  # pylint: disable=invalid-name
 
 
 # pylint: disable=protected-access,too-many-public-methods,too-many-lines,import-outside-toplevel,cyclic-import
@@ -157,7 +157,7 @@ class HealpixDataset:
 
         return loaded_size / original_size_per_row
 
-    def est_size(self) -> float:
+    def est_size(self) -> float | None:
         """Estimate the size of the catalog in KiB
 
         Size estimate is based on the estimated size in the metadata, scaled by the ratio of loaded to
@@ -242,7 +242,7 @@ class HealpixDataset:
         """Compute dask distributed dataframe to pandas dataframe"""
         est_size = self.est_size()
         if est_size is not None and est_size > COMPUTE_SIZE_WARNING_THRESHOLD_KiB:
-            est_size_text = file_size(est_size * 1024)
+            est_size_text = file_size(int(est_size * 1024))
             logging.warning(
                 "The estimated size of the catalog is %s. Computing the catalog "
                 "will load all data into memory and may cause your system to run out of memory."
