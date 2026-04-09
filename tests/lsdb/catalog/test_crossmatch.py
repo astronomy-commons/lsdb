@@ -37,6 +37,7 @@ def test_kdtree_crossmatch(small_sky_catalog, small_sky_xmatch_catalog, xmatch_c
     assert xmatched_cat.hc_structure.catalog_info.dec_column in xmatched_cat.columns
     assert xmatched_cat.hc_structure.catalog_info.ra_column == "ra_small_sky"
     assert xmatched_cat.hc_structure.catalog_info.dec_column == "dec_small_sky"
+    assert xmatched_cat.est_size() is None
 
 
 def test_kdtree_crossmatch_nested(small_sky_catalog, small_sky_xmatch_catalog, xmatch_correct):
