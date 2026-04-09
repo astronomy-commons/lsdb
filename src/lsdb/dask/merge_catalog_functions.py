@@ -23,6 +23,7 @@ from hats.pixel_tree.pixel_alignment import align_with_mocs
 from tabulate import tabulate
 
 import lsdb.nested as nd
+from lsdb.dask.align_and_apply import make_align_and_apply_expr
 from lsdb.types import DaskDFPixelMap
 
 if TYPE_CHECKING:
@@ -528,31 +529,13 @@ def align_and_apply(
         A nested dataframe with the results of applying the function to each set of aligned partitions
     """
     # gets the pixels and hc_structures to pass to the function
-    pixels = [pixels for (_, pixels) in catalog_mappings]
-    for p in pixels:
-        if len(p) == 0:
-            raise RuntimeError("Catalogs do not overlap")
-
-    catalog_infos = [
-        cat.hc_structure.catalog_info if cat is not None else None for (cat, _) in catalog_mappings
-    ]
-
-    # aligns the catalog's partitions to the given pixels for each catalog
-    aligned_ndfs = [align_catalog_to_partitions(cat, pixels) for (cat, pixels) in catalog_mappings]
-    pixel_ndfs = [create_pixel_ndfs(ps) for ps in pixels]
-
-    result = dd.map_partitions(
-        perform_align_and_apply_func,
-        len(aligned_ndfs),
+    return make_align_and_apply_expr(
+        catalog_mappings,
         func,
-        *aligned_ndfs,
-        *pixel_ndfs,
-        *catalog_infos,
+        meta,
         *args,
         **kwargs,
-        meta=meta,
     )
-    return result
 
 
 def create_pixel_ndfs(pixels: Sequence[HealpixPixel | None]) -> npd.NestedFrame:
