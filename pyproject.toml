@@ -23,6 +23,7 @@ dependencies = [
     "dask[complete]>=2025.3.0",
     "deprecated",
     "hats>=0.9.0,<0.10",
+    "human_readable",
     "nested-pandas>=0.6.7,<0.7.0",
     "numpy",
     "pyarrow",
