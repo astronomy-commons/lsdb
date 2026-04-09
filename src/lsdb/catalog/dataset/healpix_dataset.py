@@ -54,7 +54,7 @@ if TYPE_CHECKING:
     from matplotlib.figure import Figure
 
 
-COMPUTE_SIZE_WARNING_THRESHOLD_KB = 1_000_000  # 1 GB
+COMPUTE_SIZE_WARNING_THRESHOLD_KiB = 1 << 20  # 1 GiB
 
 
 # pylint: disable=protected-access,too-many-public-methods,too-many-lines,import-outside-toplevel,cyclic-import
@@ -130,7 +130,7 @@ class HealpixDataset:
         if any(size is None for size in original_field_sizes):
             snapshot_info = self.hc_structure.snapshot.catalog_info if self.hc_structure.snapshot else None
             original_size_per_row = (
-                snapshot_info.hats_estsize * 1000 / snapshot_info.total_rows
+                snapshot_info.hats_estsize * 1024 / snapshot_info.total_rows
                 if snapshot_info and snapshot_info.hats_estsize and snapshot_info.total_rows
                 else None
             )
@@ -152,13 +152,13 @@ class HealpixDataset:
                 non_fixed_column = True
 
         if non_fixed_column:
-            total_fixed_size_per_row = sum(estimate_type_size(field.type) or 0 for field in original_schema)
+            total_fixed_size_per_row = sum(size for size in original_field_sizes if size is not None)
             loaded_size += original_size_per_row - total_fixed_size_per_row
 
         return loaded_size / original_size_per_row
 
-    def est_size(self):
-        """Estimate the size of the catalog in KB
+    def est_size(self) -> float:
+        """Estimate the size of the catalog in KiB
 
         Size estimate is based on the estimated size in the metadata, scaled by the ratio of loaded to
         original columns and partitions.
@@ -180,7 +180,7 @@ class HealpixDataset:
         available_cols = len(self.all_columns)
         est_size = self.est_size()
         est_size_text = (
-            f"<div>This catalog has an estimated size of {file_size(est_size * 1000)}</div>"
+            f"<div>This catalog has an estimated size of {file_size(est_size * 1024)}</div>"
             if est_size is not None
             else ""
         )
@@ -242,7 +242,7 @@ class HealpixDataset:
         """Compute dask distributed dataframe to pandas dataframe"""
         est_size = self.est_size()
         if est_size is not None and est_size > COMPUTE_SIZE_WARNING_THRESHOLD_KB:
-            est_size_text = file_size(est_size * 1000)
+            est_size_text = file_size(est_size * 1024)
             logging.warning(
                 "The estimated size of the catalog is %s. Computing the catalog "
                 "will load all data into memory and may cause your system to run out of memory."
