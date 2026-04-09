@@ -241,7 +241,7 @@ class HealpixDataset:
     def compute(self, progress_bar=True, tqdm_kwargs=None) -> npd.NestedFrame:
         """Compute dask distributed dataframe to pandas dataframe"""
         est_size = self.est_size()
-        if est_size is not None and est_size > COMPUTE_SIZE_WARNING_THRESHOLD_KB:
+        if est_size is not None and est_size > COMPUTE_SIZE_WARNING_THRESHOLD_KiB:
             est_size_text = file_size(est_size * 1024)
             logging.warning(
                 "The estimated size of the catalog is %s. Computing the catalog "

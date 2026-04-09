@@ -5,7 +5,7 @@ import pytest
 from hats.catalog.catalog_snapshot import CatalogSnapshot
 
 import lsdb
-from lsdb.catalog.dataset.healpix_dataset import COMPUTE_SIZE_WARNING_THRESHOLD_KB
+from lsdb.catalog.dataset.healpix_dataset import COMPUTE_SIZE_WARNING_THRESHOLD_KiB
 from lsdb.io.schema import get_arrow_schema
 
 
