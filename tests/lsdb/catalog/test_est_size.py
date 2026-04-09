@@ -73,7 +73,7 @@ def test_est_size_nested(small_sky_with_nested_sources):
 
 def test_compute_warns_when_estimated_size_exceeds_threshold(small_sky_order1_catalog, mocker, caplog):
     mocker.patch.object(
-        small_sky_order1_catalog, "est_size", return_value=COMPUTE_SIZE_WARNING_THRESHOLD_KB + 1
+        small_sky_order1_catalog, "est_size", return_value=COMPUTE_SIZE_WARNING_THRESHOLD_KiB + 1
     )
     with caplog.at_level(logging.WARNING):
         small_sky_order1_catalog.compute(progress_bar=False)
@@ -82,7 +82,7 @@ def test_compute_warns_when_estimated_size_exceeds_threshold(small_sky_order1_ca
 
 def test_compute_does_not_warn_below_threshold(small_sky_order1_catalog, mocker, caplog):
     mocker.patch.object(
-        small_sky_order1_catalog, "est_size", return_value=COMPUTE_SIZE_WARNING_THRESHOLD_KB - 1
+        small_sky_order1_catalog, "est_size", return_value=COMPUTE_SIZE_WARNING_THRESHOLD_KiB - 1
     )
     with caplog.at_level(logging.WARNING):
         small_sky_order1_catalog.compute(progress_bar=False)
@@ -91,9 +91,9 @@ def test_compute_does_not_warn_below_threshold(small_sky_order1_catalog, mocker,
 
 def test_repr_html_includes_estimated_size(small_sky_order1_catalog):
     html = small_sky_order1_catalog._repr_html_()
-    est_size = small_sky_order1_catalog.est_size()
+    est_size_kb = small_sky_order1_catalog.est_size() * 1024 / 1000
     assert "estimated size" in html.lower()
-    assert f"{est_size:.1f} KB" in html
+    assert f"{est_size_kb:.1f} KB" in html
 
 
 def test_repr_html_omits_size_without_snapshot(small_sky_order1_catalog):
