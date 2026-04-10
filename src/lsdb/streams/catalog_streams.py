@@ -89,6 +89,8 @@ class CatalogStream:
             raise ValueError(f"The provided catalog input type {type(catalog)} is not a lsdb.Catalog object.")
 
         self.client = client
+        self.partitions_per_chunk = min(partitions_per_chunk, self.catalog.npartitions)
+        self.shuffle = shuffle
         self.seed = seed
 
         if self.seed is None:
