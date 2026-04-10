@@ -44,8 +44,9 @@ class CatalogStream:
         `client.compute()`.
     partitions_per_chunk : int
         Number of partitions to yield. It will be clipped to the total number
-        of partitions. Be mindful when setting this value larger than 1, as
-        holding multiple partitions in memory at once will increase memory usage.
+        of partitions. By default, one partition will be yielded at a time,
+        however, if using a distributed client, it's recommended to set this to
+        at least 2x the number of workers to allow proper parallelism.
     shuffle : bool
         Whether to shuffle the partition order before streaming. If False, the
         partitions will be streamed in their original order. True by default.
@@ -88,8 +89,6 @@ class CatalogStream:
             raise ValueError(f"The provided catalog input type {type(catalog)} is not a lsdb.Catalog object.")
 
         self.client = client
-        self.partitions_per_chunk = min(partitions_per_chunk, self.catalog.npartitions)
-        self.shuffle = shuffle
         self.seed = seed
 
         if self.seed is None:
