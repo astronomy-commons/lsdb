@@ -53,6 +53,7 @@ def test_small_sky_join_small_sky_order1(small_sky_catalog, small_sky_order1_cat
         assert joined_row[f"id{suffixes[1]}"].to_numpy()[0] == row["id"]
     helpers.assert_schema_correct(joined)
     assert not joined.hc_structure.on_disk
+    assert joined.est_size() is None
 
 
 def test_small_sky_join_overlapping_suffix(small_sky_catalog, small_sky_order1_catalog, helpers):

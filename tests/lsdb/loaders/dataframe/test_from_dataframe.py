@@ -68,6 +68,8 @@ def test_from_dataframe(small_sky_order1_df, small_sky_order1_catalog, helpers):
     # The arrow schema was automatically inferred
     helpers.assert_schema_correct(catalog)
     assert isinstance(catalog.compute(), npd.NestedFrame)
+    assert catalog.hc_structure.snapshot is not None
+    assert catalog.hc_structure.original_schema == catalog.hc_structure.schema
 
 
 def test_from_dataframe_catalog_of_invalid_type(small_sky_order1_df, small_sky_order1_catalog):
