@@ -79,7 +79,7 @@ def _get_catalog_arg(catalog: HealpixDataset | None, pixel: HealpixPixel | None)
     return TaskRef((catalog._ddf.expr._name, catalog.get_partition_index(pixel.order, pixel.pixel)))
 
 
-class AlignAndApply(Blockwise):
+class AlignAndApply(Expr):
     _parameters = [
         "catalogs",
         "pixel_lists",
@@ -166,6 +166,18 @@ class AlignAndApply(Blockwise):
             raise ValueError(f"Length of divisions must be {self._num_partitions + 1}, got {len(divisions)}")
 
         return divisions
+
+    def _blockwise_arg(self, arg, i):
+        """Return a Blockwise-task argument"""
+        if isinstance(arg, Expr):
+            # Make key for Expr-based argument
+            if self._broadcast_dep(arg):
+                return TaskRef((arg._name, 0))
+            else:
+                return TaskRef((arg._name, i))
+
+        else:
+            return arg
 
     def _task(self, name: Key, index: int) -> Task:
         normal_args = [self._blockwise_arg(op, index) for op in self.args]

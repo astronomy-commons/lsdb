@@ -127,6 +127,10 @@ class HealpixDataset:
         return len(self.hc_structure)
 
     @property
+    def expr(self):
+        return self._ddf.expr
+
+    @property
     def nested_columns(self) -> list[str]:
         """The names of the columns of the catalog that are nested.
 
