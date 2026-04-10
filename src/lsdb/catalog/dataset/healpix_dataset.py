@@ -14,6 +14,7 @@ import hats as hc
 import nested_pandas as npd
 import numpy as np
 import pandas as pd
+import pyarrow as pa
 from astropy.coordinates import SkyCoord
 from astropy.units import Quantity
 from dask.dataframe.core import _repr_data_series
@@ -22,6 +23,7 @@ from deprecated import deprecated  # type: ignore
 from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
 from hats.pixel_math import HealpixPixel
 from hats.pixel_math.healpix_pixel_function import get_pixel_argsort
+from human_readable import file_size, int_comma
 from mocpy import MOC
 from pandas._typing import Renamer
 from tqdm.dask import TqdmCallback
@@ -50,6 +52,9 @@ if TYPE_CHECKING:
     from astropy.visualization.wcsaxes import WCSAxes
     from astropy.visualization.wcsaxes.frame import BaseFrame
     from matplotlib.figure import Figure
+
+
+COMPUTE_SIZE_WARNING_THRESHOLD_KiB = 1 << 20  # pylint: disable=invalid-name
 
 
 # pylint: disable=protected-access,too-many-public-methods,too-many-lines,import-outside-toplevel,cyclic-import
@@ -89,16 +94,102 @@ class HealpixDataset:
     def __repr__(self):
         return self._ddf.__repr__()
 
+    def _compute_column_size_ratio(self) -> float | None:
+        """Compute the ratio of loaded column sizes to original column sizes based on Arrow schema.
+
+        Uses the Arrow schema data types to estimate the actual memory footprint of columns,
+        always including the index column in the calculation.
+
+        Returns
+        -------
+        float
+            Ratio of loaded columns size to original columns size
+        """
+
+        # Get the original schema if available, otherwise use current schema
+        original_schema = self.hc_structure.original_schema
+        if original_schema is None:
+            return None
+
+        current_schema = get_arrow_schema(self._ddf)
+
+        for field in current_schema:
+            if field.name not in original_schema.names:
+                return None
+
+        # Helper function to estimate size of an Arrow type
+        def estimate_type_size(arrow_type: pa.DataType) -> int | None:
+            """Estimate the size in bytes of an Arrow data type using PyArrow's bit_width when available."""
+            # For fixed-width types, use bit_width
+            try:
+                return arrow_type.bit_width // 8  # Convert bits to bytes
+            except (AttributeError, TypeError, ValueError):
+                return None
+
+        original_field_sizes = [estimate_type_size(field.type) for field in original_schema]
+        if any(size is None for size in original_field_sizes):
+            snapshot_info = self.hc_structure.snapshot.catalog_info if self.hc_structure.snapshot else None
+            original_size_per_row = (
+                snapshot_info.hats_estsize * 1024 / snapshot_info.total_rows
+                if snapshot_info and snapshot_info.hats_estsize and snapshot_info.total_rows
+                else None
+            )
+        else:
+            original_size_per_row = sum(original_field_sizes)  # type: ignore[arg-type]
+
+        if original_size_per_row is None:
+            return None
+
+        # Compute total size of loaded columns (including index)
+        loaded_size = 0.0
+        non_fixed_column = False
+
+        for field in current_schema:
+            field_size = estimate_type_size(field.type)
+            if field_size is not None:
+                loaded_size += field_size
+            else:
+                non_fixed_column = True
+
+        if non_fixed_column:
+            total_fixed_size_per_row = sum(size for size in original_field_sizes if size is not None)
+            loaded_size += original_size_per_row - total_fixed_size_per_row
+
+        return loaded_size / original_size_per_row
+
+    def est_size(self) -> float | None:
+        """Estimate the size of the catalog in KiB
+
+        Size estimate is based on the estimated size in the metadata, scaled by the ratio of loaded to
+        original columns and partitions.
+        """
+        if self.hc_structure.catalog_info.hats_estsize is not None:
+            snapshot = self.hc_structure.snapshot
+            if snapshot is not None and snapshot.partition_info is not None:
+                if len(snapshot.partition_info) == 0:
+                    return 0.0
+                partition_ratio = len(self.get_healpix_pixels()) / len(snapshot.partition_info)
+                column_ratio = self._compute_column_size_ratio()
+                if column_ratio is not None:
+                    return float(self.hc_structure.catalog_info.hats_estsize) * partition_ratio * column_ratio
+        return None
+
     def _repr_html_(self):
         data = self._repr_data().to_html(max_rows=5, show_dimensions=False, notebook=True)
         loaded_cols = len(self.columns)
         available_cols = len(self.all_columns)
+        est_size = self.est_size()
+        est_size_text = (
+            f"<div>This catalog has an estimated size of {file_size(est_size * 1024)}</div>"
+            if est_size is not None
+            else ""
+        )
         return (
             f"<div><strong>lsdb Catalog {self.name}:</strong></div>"
             f"{data}"
             f"<div>{loaded_cols} out of {available_cols} available columns in the catalog have been loaded "
             f"<strong>lazily</strong>, meaning no data has been read, only the catalog schema</div>"
-        )
+        ) + est_size_text
 
     def __getitem__(self, item):
         """Select a column or columns from the catalog."""
@@ -149,6 +240,17 @@ class HealpixDataset:
 
     def compute(self, progress_bar=True, tqdm_kwargs=None) -> npd.NestedFrame:
         """Compute dask distributed dataframe to pandas dataframe"""
+        est_size = self.est_size()
+        if est_size is not None and est_size > COMPUTE_SIZE_WARNING_THRESHOLD_KiB:
+            est_size_text = file_size(int(est_size * 1024))
+            logging.warning(
+                "The estimated size of the catalog is %s. Computing the catalog "
+                "will load all data into memory and may cause your system to run out of memory."
+                "Consider using `write_catalog` to write the catalog to disk, or selecting a subset of the "
+                "catalog to compute.",
+                est_size_text,
+            )
+
         desc = tqdm_kwargs.pop("desc", "Computing Catalog") if tqdm_kwargs else "Computing Catalog"
         with TqdmCallback(desc=desc, disable=not progress_bar, **(tqdm_kwargs or {})):
             res = self._ddf.compute()
@@ -1073,6 +1175,7 @@ class HealpixDataset:
             hc_structure = self.hc_structure.__class__(
                 catalog_info=self.hc_structure.catalog_info,
                 pixels=[pixel],
+                snapshot=self.hc_structure.snapshot,
             )
             return self.__class__(output_ddf, partition_map, hc_structure)
 
@@ -1680,11 +1783,11 @@ class HealpixDataset:
         orig_cat = hc.read_hats(self.hc_structure.catalog_path)
         expected_cat_rows = int(get_row_count(pixel_stats))
         row_pct = expected_cat_rows / int(orig_cat.catalog_info.total_rows) * 100
-        expected_cat_rows = f"{expected_cat_rows:,}"
+        expected_cat_rows = int_comma(expected_cat_rows)
 
         # In-memory and on disk estimates
-        mem_size = _human_file_size(get_mem_size(pixel_stats))
-        disk_size = _human_file_size(get_disk_size(pixel_stats))
+        mem_size = file_size(get_mem_size(pixel_stats), binary=True)
+        disk_size = file_size(get_disk_size(pixel_stats), binary=True)
 
         print(
             f"You selected {len(self.columns)}/{len(self.all_columns)} columns.\n"
@@ -1693,12 +1796,3 @@ class HealpixDataset:
             f"Expect up to {mem_size} in MEMORY.\n"
             f"Expect up to {disk_size} on DISK."
         )
-
-
-def _human_file_size(size_bytes):
-    """Convert bytes to human readable format (binary units only)."""
-    for unit in ["B", "KiB", "MiB", "GiB", "TiB"]:
-        if size_bytes < 1024:
-            return f"{size_bytes:.1f} {unit}"
-        size_bytes /= 1024
-    return f"{size_bytes:.2f} PiB"
