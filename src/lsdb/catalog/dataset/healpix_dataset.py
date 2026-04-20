@@ -32,6 +32,7 @@ from upath import UPath
 
 import lsdb.nested as nd
 from lsdb import io
+from lsdb.catalog.dataset.repr import _repr_data_min_max
 from lsdb.core.plotting.plot_points import plot_points
 from lsdb.core.search.abstract_search import AbstractSearch
 from lsdb.core.search.region_search import (
@@ -233,10 +234,29 @@ class HealpixDataset:
         index = self._repr_divisions
         cols = meta.columns
         if len(cols) == 0:
-            series_df = pd.DataFrame([[]] * len(index), columns=cols, index=index)
-        else:
-            series_df = pd.concat([_repr_data_series(s, index=index) for _, s in meta.items()], axis=1)
-        return series_df
+            return pd.DataFrame([[]] * len(index), columns=cols, index=index)
+        pixel_stats = self._get_repr_pixel_stats(cols)
+        if pixel_stats is None:
+            return pd.concat([_repr_data_series(s, index=index) for _, s in meta.items()], axis=1)
+        return _repr_data_min_max(meta, index, pixel_stats)
+
+    def _get_repr_pixel_stats(self, cols) -> pd.DataFrame | None:
+        """Fetch per-pixel min/max stats for display"""
+        try:
+            if not self.hc_structure.unmodified:
+                return None
+            non_nested_cols = [c for c in cols if c not in self.nested_columns]
+            if len(non_nested_cols) == 0:
+                return None
+            # TODO: Read from less expensive metadata summary.
+            return self.per_pixel_statistics(
+                use_default_columns=False,
+                exclude_hats_columns=True,
+                include_columns=non_nested_cols,
+                include_stats=["min_value", "max_value"],
+            )
+        except Exception:  # pylint: disable=broad-exception-caught
+            return None
 
     def compute(self, progress_bar=True, tqdm_kwargs=None) -> npd.NestedFrame:
         """Compute dask distributed dataframe to pandas dataframe"""
@@ -520,7 +540,7 @@ class HealpixDataset:
         include_pixels: list[HealpixPixel] | None = None,
     ) -> pd.DataFrame:
         """Read footer statistics in parquet metadata, and report on
-        min/max values for for each data partition.
+        min/max values for each data partition.
 
         Parameters
         ----------
