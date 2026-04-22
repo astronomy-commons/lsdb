@@ -12,4 +12,5 @@ sphinx-copybutton
 sphinx-book-theme
 sphinx-design
 numpydoc
+s3fs
 git+https://github.com/astronomy-commons/hats-import.git@main

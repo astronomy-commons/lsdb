@@ -189,7 +189,7 @@ Now we've filtered our catalog, let's try crossmatching! We'll need to open anot
 .. code-block:: python
 
     gaia = lsdb.open_catalog(
-        "https://data.lsdb.io/hats/gaia_dr3",
+        "s3://stpubdata/gaia/gaia_dr3/public/hats",
         columns=["ra", "dec", "phot_g_n_obs", "phot_g_mean_flux", "pm"],
     )
 
