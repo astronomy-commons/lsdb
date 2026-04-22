@@ -160,3 +160,4 @@ def _astropy_to_pyarrow_table(astropy_table, *, flatten_tensors: bool) -> pa.Tab
         np_array = np.asarray(astropy_table[column])
         pa_arrays[column] = _np_to_pyarrow_array(np_array, flatten_tensors=flatten_tensors)
     return pa.table(pa_arrays)
+

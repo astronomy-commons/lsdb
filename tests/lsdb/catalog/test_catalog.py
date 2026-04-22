@@ -1099,3 +1099,4 @@ def test_to_dask_dataframe(small_sky_order1_catalog):
     assert isinstance(ddf, dd.DataFrame)
     pd.testing.assert_frame_equal(ddf.compute(), small_sky_order1_catalog.compute())
     assert isinstance(ddf.compute(), npd.NestedFrame)
+
