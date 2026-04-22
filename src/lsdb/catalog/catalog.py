@@ -43,8 +43,20 @@ from lsdb.types import DaskDFPixelMap
 
 
 def _default_suffixes(left_name: str, right_name: str) -> tuple[str, str]:
-    """Return the default pair of suffixes for left/right catalog names."""
-    return (f"_{left_name}", f"_{right_name}")
+    """Return the default pair of suffixes for left/right catalog names.
+
+    When both names are identical (e.g. a self-crossmatch), ``_l`` and
+    ``_r`` are appended to avoid suffix collisions that would cause
+    ``ValueError: cannot reindex on an axis with duplicate labels``.
+
+    See https://github.com/astronomy-commons/lsdb/issues/1275
+    """
+    left_suffix = f"_{left_name}"
+    right_suffix = f"_{right_name}"
+    if left_suffix == right_suffix:
+        left_suffix = f"_{left_name}_l"
+        right_suffix = f"_{right_name}_r"
+    return (left_suffix, right_suffix)
 
 
 # pylint: disable=protected-access,too-many-public-methods, too-many-lines
