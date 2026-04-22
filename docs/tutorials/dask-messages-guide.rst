@@ -25,10 +25,10 @@ the sky processed by
 .. code-block:: python
 
     gaia_sm = lsdb.open_catalog(
-        gaia_root,
+        "s3://stpubdata/gaia/gaia_dr3/public/hats",
         columns=['ra', 'dec', 'source_id'],
         search_filter=lsdb.ConeSearch(280, -60, radius_arcsec=1800)
-        )
+    )
 
 You can see the number of partitions remaining with the property
 ``.npartitions``, which is also displayed every time a catalog is

@@ -23,7 +23,7 @@ This simple example runs a local cluster and starts a client connected to it.
     from lsdb import open_catalog, ConeSearch
 
     catalog = lsdb.open_catalog(
-        'https://data.lsdb.io/hats/gaia_dr3/gaia',
+        's3://stpubdata/gaia/gaia_dr3/public/hats',
         search_filter=ConeSearch(ra=0, dec=0, radius=1),
     )
     client = Client()
