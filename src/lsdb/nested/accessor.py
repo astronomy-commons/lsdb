@@ -38,7 +38,7 @@ class DaskNestSeriesAccessor(npd.NestSeriesAccessor):
 
         return list(self._series.dtype.column_dtypes)
 
-    def to_lists(self, columns: list[str] | str | None = None) -> dd.DataFrame:
+    def to_lists(self, columns: list[str] | str | None = None, large_list: bool = False) -> dd.DataFrame:
         """Convert nested series into dataframe of list-array columns
 
         Parameters
