@@ -154,17 +154,42 @@ class Catalog(HealpixDataset):
 
         >>> import lsdb
         >>> from lsdb.nested.datasets import generate_data
-        >>> nf = generate_data(1000, 5, seed=0, ra_range=(0.0, 300.0), dec_range=(-50.0, 50.0))
-        >>> catalog = lsdb.from_dataframe(nf.compute()[["ra", "dec", "id"]])
+        >>> nf = generate_data(1000, 10, seed=0, ra_range=(0.0, 300.0), dec_range=(-50.0, 50.0))
+        >>> catalog = lsdb.from_dataframe(nf.compute())
         >>> filtered = catalog.query("ra < 100 and dec > 0")
-        >>> filtered.head()  # doctest: +NORMALIZE_WHITESPACE
-                                ra        dec    id
+        >>> filtered.head()[["ra", "dec", "id"]]  # doctest: +NORMALIZE_WHITESPACE
+                                   ra        dec    id
         _healpix_29
         118362963675428450  52.696686  39.675892  8154
         98504457942331510   89.913567  46.147079  3437
         70433374600953220   40.528952  35.350965  8214
         154968715224527848   17.57041    29.8936  9853
         67780378363846894    45.08384   31.95611  8297
+
+        Filter nested values:
+
+        >>> filtered = filtered.query("nested.flux > 50.0")
+        >>> filtered.head()[["nested", "id"]]  # doctest: +NORMALIZE_WHITESPACE
+                                                                       nested    id
+        _healpix_29
+        118362963675428450  [{t: 5.431006, flux: 88.466194, band: 'r', flu...  8154
+        98504457942331510   [{t: 12.235667, flux: 67.145637, band: 'r', fl...  3437
+        70433374600953220   [{t: 1.395766, flux: 61.888264, band: 'r', flu...  8214
+        154968715224527848  [{t: 5.057078, flux: 60.744756, band: 'r', flu...  9853
+        67780378363846894   [{t: 0.001474, flux: 76.631059, band: 'g', flu...  8297
+
+        Most of the Series and NestedSeries attributes and methods are available.
+        This will filter by the light curve length:
+
+        >>> filtered = filtered.query("nested.list_lengths >= 5")
+        >>> filtered.head()[["nested", "id"]]  # doctest: +NORMALIZE_WHITESPACE
+                                                                       nested    id
+        _healpix_29
+        98504457942331510   [{t: 12.235667, flux: 67.145637, band: 'r', fl...  3437
+        70433374600953220   [{t: 1.395766, flux: 61.888264, band: 'r', flu...  8214
+        67780378363846894   [{t: 0.001474, flux: 76.631059, band: 'g', flu...  8297
+        153045793800159522  [{t: 11.363245, flux: 72.987868, band: 'r', fl...  5758
+        81822373343408413   [{t: 15.681661, flux: 77.580224, band: 'g', fl...  9413
         """
         catalog = super().query(expr)
         if self.margin is not None:
