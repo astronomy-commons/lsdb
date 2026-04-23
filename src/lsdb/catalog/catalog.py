@@ -179,7 +179,7 @@ class Catalog(HealpixDataset):
         67780378363846894   [{t: 0.001474, flux: 76.631059, band: 'g', flu...  8297
 
         Most of the Series and NestedSeries attributes and methods are available.
-        This filter by the light curve length:
+        This will filter by the light curve length:
 
         >>> filtered = filtered.query("nested.list_lengths >= 5")
         >>> filtered.head()[["nested", "id"]]  # doctest: +NORMALIZE_WHITESPACE
