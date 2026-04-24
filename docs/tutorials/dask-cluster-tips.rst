@@ -260,6 +260,26 @@ following code:
     import dask
     dask.config.set({"dataframe.convert-string": False})
 
+
+.. tip::
+    We do recommend using pyarrow types where possible, as they are more efficient for string data and nested
+    data structures, and they make serialization for storage in parquet and distributed computing more
+    efficient. If you do create your own columns in your analysis code, such as with ``map_partitions`` or
+    ``map_rows``, you can construct a series of pyarrow string dtype with:
+
+    .. code-block:: python
+
+        import pyarrow as pa
+        import pandas as pd
+
+        def my_func(df):
+            # Create a new column with pyarrow string dtype
+            df["new_col"] = pd.Series(["a", "b", "c"], dtype=pd.ArrowDtype(pa.string()))
+            return df
+
+        catalog.map_partitions(my_func)
+
+
 Understanding common Dask errors and warnings
 ---------------------------------------------
 
