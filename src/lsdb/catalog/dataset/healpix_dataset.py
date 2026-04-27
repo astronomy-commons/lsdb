@@ -239,7 +239,15 @@ class HealpixDataset:
         return series_df
 
     def compute(self, progress_bar=True, tqdm_kwargs=None) -> npd.NestedFrame:
-        """Compute dask distributed dataframe to pandas dataframe"""
+        """Compute dask distributed dataframe to pandas dataframe.
+
+        Note:
+            This method materializes the computation result in memory. If the
+            computation is expected to be time- or memory-intensive, we recommend
+            using ``Catalog.write_catalog`` instead. It supports automatic resumption
+            via ``resume=True``, which allows recovery from both interruptions and
+            late-breaking errors in long-running computations.
+        """
         est_size = self.est_size()
         if est_size is not None and est_size > COMPUTE_SIZE_WARNING_THRESHOLD_KiB:
             est_size_text = file_size(int(est_size * 1024))
