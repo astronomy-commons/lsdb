@@ -1602,6 +1602,8 @@ class HealpixDataset:
             meta = meta.drop(columns=added_nested_subcols)
             return concat_metas([self_meta, meta])
 
+        hc_updates = {}
+
         if append_columns:
             overlapping_columns = set(self_meta.columns) & set(meta.columns)
             if overlapping_columns:
@@ -1619,6 +1621,7 @@ class HealpixDataset:
                     f"`meta` specifies positional columns {list(radec_columns)} that should NOT be modified.",
                     RuntimeWarning,
                 )
+                hc_updates = {"ra_column": "", "dec_column": ""}
 
         ndf = self._ddf.map_rows(
             func,
@@ -1630,7 +1633,7 @@ class HealpixDataset:
             meta=meta,
             **kwargs,
         )
-        return self._create_updated_dataset(ddf=ndf)
+        return self._create_updated_dataset(ddf=ndf, updated_catalog_info_params=hc_updates)
 
     # pylint: disable=duplicate-code
     def plot_points(
