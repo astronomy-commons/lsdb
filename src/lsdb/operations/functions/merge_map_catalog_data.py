@@ -10,7 +10,7 @@ from hats.pixel_tree import PixelAlignment, PixelAlignmentType
 from hats.pixel_tree.pixel_alignment import align_with_mocs
 
 import lsdb.nested as nd
-from lsdb.dask.merge_catalog_functions import (
+from lsdb.operations.functions.merge_catalog_functions import (
     align_and_apply,
     construct_catalog_args,
     filter_by_spatial_index_to_pixel,

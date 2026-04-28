@@ -12,6 +12,7 @@ from upath import UPath
 import lsdb.nested as nd
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
 from lsdb.loaders.hats.hats_loading_config import HatsLoadingConfig
+from lsdb.operations.operation import Operation
 from lsdb.types import DaskDFPixelMap
 
 if TYPE_CHECKING:
@@ -25,12 +26,11 @@ class MarginCatalog(HealpixDataset):
 
     def __init__(
         self,
-        ddf: nd.NestedFrame,
-        ddf_pixel_map: DaskDFPixelMap,
+        operation: Operation,
         hc_structure: hc.catalog.MarginCatalog,
         loading_config: HatsLoadingConfig | None = None,
     ):
-        super().__init__(ddf, ddf_pixel_map, hc_structure, loading_config=loading_config)
+        super().__init__(operation, hc_structure, loading_config=loading_config)
 
     @deprecated(
         version="0.7.3", reason="`to_hats` will be removed in the future, " "use `write_catalog` instead."
@@ -78,8 +78,8 @@ class MarginCatalog(HealpixDataset):
 
 def _validate_margin_catalog(margin_catalog: MarginCatalog, catalog: Catalog):
     """Validate that the margin and main catalogs have compatible columns and types."""
-    margin_meta = margin_catalog._ddf._meta  # pylint: disable=protected-access
-    catalog_meta = catalog._ddf._meta  # pylint: disable=protected-access
+    margin_meta = margin_catalog._operation.meta  # pylint: disable=protected-access
+    catalog_meta = catalog._operation.meta  # pylint: disable=protected-access
     margin_meta_hips_cols = [col for col in paths.HIVE_COLUMNS if col in margin_meta.columns]
     catalog_meta_hips_cols = [col for col in paths.HIVE_COLUMNS if col in catalog_meta.columns]
     margin_meta = margin_meta.drop(columns=margin_meta_hips_cols)

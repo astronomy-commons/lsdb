@@ -12,7 +12,7 @@ import lsdb
 import lsdb.nested as nd
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
 from lsdb.core.crossmatch.crossmatch_args import CrossmatchArgs
-from lsdb.dask.merge_catalog_functions import align_catalogs, apply_suffixes
+from lsdb.operations.functions.merge_catalog_functions import align_catalogs, apply_suffixes
 
 
 def test_kdtree_crossmatch(small_sky_catalog, small_sky_xmatch_catalog, xmatch_correct, helpers):
