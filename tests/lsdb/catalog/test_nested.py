@@ -66,33 +66,42 @@ def test_nest_lists_only_list_columns(small_sky_with_nested_sources):
 
 
 def test_map_rows(small_sky_with_nested_sources):
-    def mean_mag(ra, dec, mag):
-        return {"ra": ra, "dec": dec, "mean_mag": np.mean(mag)}
+    def mean_mag(mag):
+        return {"mean_mag": np.mean(mag)}
 
     reduced_cat = small_sky_with_nested_sources.map_rows(
         mean_mag,
-        columns=["ra", "dec", "sources.mag"],
+        columns=["sources.mag"],
         row_container="args",
-        meta={"ra": float, "dec": float, "mean_mag": float},
+        meta={"mean_mag": float},
     )
-
     assert isinstance(reduced_cat, Catalog)
     assert isinstance(reduced_cat._ddf, nd.NestedFrame)
-
-    assert reduced_cat.hc_structure.catalog_info.ra_column == ""
-    assert reduced_cat.hc_structure.catalog_info.dec_column == ""
 
     reduced_cat_compute = reduced_cat.compute()
     assert isinstance(reduced_cat_compute, npd.NestedFrame)
 
     reduced_ddf = small_sky_with_nested_sources._ddf.map_rows(
         mean_mag,
-        columns=["ra", "dec", "sources.mag"],
+        columns=["sources.mag"],
         row_container="args",
-        meta={"ra": float, "dec": float, "mean_mag": float},
+        meta={"mean_mag": float},
     )
 
     pd.testing.assert_frame_equal(reduced_cat_compute, reduced_ddf.compute())
+
+
+def test_map_rows_warns_on_radec_overwrite(small_sky_with_nested_sources):
+    def mean_mag(ra, dec, mag):
+        return {"ra": ra, "dec": dec, "mean_mag": np.mean(mag)}
+
+    with pytest.warns(RuntimeWarning, match="specifies positional columns"):
+        small_sky_with_nested_sources.map_rows(
+            mean_mag,
+            columns=["ra", "dec", "sources.mag"],
+            row_container="args",
+            meta={"ra": float, "dec": float, "mean_mag": float},
+        )
 
 
 def test_map_rows_append_columns(small_sky_with_nested_sources):
@@ -158,6 +167,20 @@ def test_map_rows_append_columns(small_sky_with_nested_sources):
     pd.testing.assert_series_equal(expected_t_ra, reduced_cat_compute["sources.t_ra"])
 
 
+def test_map_rows_append_columns_raises_error_on_overlap(small_sky_with_nested_sources):
+    def passthrough_mag(obj_id, ra_err, dec_err):
+        return {"id": obj_id % 10, "mean_err": abs(ra_err - dec_err) / 2}
+
+    with pytest.raises(ValueError, match="already exist"):
+        small_sky_with_nested_sources.map_rows(
+            passthrough_mag,
+            columns=["id", "ra_error", "dec_error"],
+            row_container="args",
+            meta={"id": float, "mean_err": float},
+            append_columns=True,
+        )
+
+
 def test_map_rows_no_return_column(small_sky_with_nested_sources):
     def mean_mag(mag):
         return np.mean(mag)
@@ -206,20 +229,6 @@ def test_map_rows_invalid_return_column(small_sky_with_nested_sources):
 
     with pytest.raises(ValueError):
         reduced_cat.compute()
-
-
-def test_map_rows_append_columns_raises_error(small_sky_with_nested_sources):
-    def mean_mag(ra, dec, mag):
-        return {"ra": ra, "dec": dec, "mean_mag": np.mean(mag)}
-
-    with pytest.raises(ValueError):
-        small_sky_with_nested_sources.map_rows(
-            mean_mag,
-            columns=["ra", "dec", "sources.mag"],
-            row_container="args",
-            meta={"ra": float, "dec": float, "mean_mag": float},
-            append_columns=True,
-        ).compute()
 
 
 def test_map_rows_infer_nesting(small_sky_with_nested_sources):

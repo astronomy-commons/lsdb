@@ -1471,16 +1471,14 @@ class HealpixDataset:
         func,
         columns=None,
         *,
+        meta,
         row_container="dict",
         output_names=None,
         infer_nesting=True,
         append_columns=False,
-        meta=None,
         **kwargs,
     ) -> Self:
         """Takes a function and applies it to each top-level row of the Catalog.
-
-        docstring copied from nested-pandas
 
         Nested columns are packaged alongside base columns and available for function use, where base columns
         are passed as scalars and nested columns are passed as numpy arrays. The way in which the row data is
@@ -1490,14 +1488,17 @@ class HealpixDataset:
         ----------
         func : callable
             Function to apply to each nested dataframe. The first arguments to `func` should be which
-            columns to apply the function to. See the Notes for recommendations
-            on writing func outputs.
+            columns to apply the function to. Make sure `meta` is consistent with the return value of
+            `func`. See the Notes for recommendations on writing func outputs.
         columns : None | str | list of str, default None
             Specifies which columns to pass to the function in the row_container format.
             If None, all columns are passed. If list of str, those columns are passed.
             If str, a single column is passed or if the string is a nested column, then all nested sub-columns
             are passed (e.g. columns="nested" passes all columns of the nested dataframe "nested"). To pass
             individual nested sub-columns, use the hierarchical column name (e.g. columns=["nested.t",...]).
+        meta : dataframe or series-like
+            The dask meta of the output. If `append_columns` is True, the meta should only specify the
+            additional columns output by func. Make sure `meta` is consistent with the return value of `func`.
         row_container : 'dict' or 'args', default 'dict'
             Specifies how the row data will be packaged when passed as an input to the function.
             If 'dict', the function will be called as `func({"col1": value, ...}, **kwargs)`, so func should
@@ -1519,9 +1520,6 @@ class HealpixDataset:
             `output_names` in addition to names returned by the user function.
         append_columns : bool, default False
             if True, the output columns should be appended to those in the original NestedFrame.
-        meta : dataframe or series-like, default None
-            The dask meta of the output. If append_columns is True, the meta should specify just the
-            additional columns output by func.
         kwargs : keyword arguments, optional
             Keyword arguments to pass to the function.
 
@@ -1532,15 +1530,23 @@ class HealpixDataset:
 
         Notes
         -----
-        If concerned about performance, specify `columns` to only include the columns
-        needed for the function, as this will avoid the overhead of packaging
-        all columns for each row.
+        `func` should NOT update positional columns (ra/dec). A warning is issued to alert the user
+        that this will lead to the creation of an LSDB Catalog with an invalid HATS structure.
+        If you wish to update positional coordinates, consider adding them as separate columns.
+        Make sure `meta` is consistent with the return value of `func`.
 
-        By default, `map_rows` will produce a `NestedFrame` with enumerated
-        column names for each returned value of the function. It's recommended
-        to either specify `output_names` or have `func` return a dictionary
-        where each key is an output column of the dataframe returned by
+        If `append_columns` is True, `func` should only return the columns to be appended. Make
+        sure neither `func` nor the provided `meta` contain columns to append to the Catalog that
+        overlap in name with pre-existing columns.
+
+        If concerned about performance, specify `columns` to only include the columns needed for
+        the function, as this will avoid the overhead of packaging all columns for each row.
+
+        By default, `map_rows` will produce a `NestedFrame` with enumerated column names for each
+        returned value of the function. It's recommended to either specify `output_names` or have
+        `func` return a dictionary where each key is an output column of the dataframe returned by
         `map_rows` (as shown above).
+
         Examples
         --------
 
@@ -1584,21 +1590,35 @@ class HealpixDataset:
         """
         self._check_unloaded_columns(columns)
 
-        ra_column = self.hc_structure.catalog_info.ra_column
-        dec_column = self.hc_structure.catalog_info.dec_column
+        if meta is None:
+            raise ValueError("Please specify `meta`.")
+        self_meta = self._ddf._meta.copy()
+        meta = npd.NestedFrame(make_meta(meta))
 
-        def _make_result_meta(self_meta, meta):
+        def _make_result_meta():
+            nonlocal self_meta, meta
             added_nested_subcols = [str(col) for col in meta.columns if "." in str(col)]
             self_meta = self_meta.assign(**{col: meta[col] for col in added_nested_subcols})
             meta = meta.drop(columns=added_nested_subcols)
             return concat_metas([self_meta, meta])
 
         if append_columns:
-            self_meta = self._ddf._meta.copy()
-            meta = npd.NestedFrame(make_meta(meta))
-            if ra_column in meta.columns or dec_column in meta.columns:
-                raise ValueError("ra and dec columns can not be modified using `map_rows`")
-            meta = _make_result_meta(self_meta, meta)
+            overlapping_columns = set(self_meta.columns) & set(meta.columns)
+            if overlapping_columns:
+                raise ValueError(
+                    f"`meta` specifies columns to append that already exist: {list(overlapping_columns)}."
+                )
+            meta = _make_result_meta()
+        else:
+            radec_columns = {
+                self.hc_structure.catalog_info.ra_column,
+                self.hc_structure.catalog_info.dec_column,
+            }
+            if radec_columns & set(meta.columns):
+                warnings.warn(
+                    f"`meta` specifies positional columns {list(radec_columns)} that should NOT be modified.",
+                    RuntimeWarning,
+                )
 
         ndf = self._ddf.map_rows(
             func,
@@ -1610,11 +1630,7 @@ class HealpixDataset:
             meta=meta,
             **kwargs,
         )
-
-        hc_updates = {}
-        if not append_columns:
-            hc_updates = {"ra_column": "", "dec_column": ""}
-        return self._create_updated_dataset(ddf=ndf, updated_catalog_info_params=hc_updates)
+        return self._create_updated_dataset(ddf=ndf)
 
     # pylint: disable=duplicate-code
     def plot_points(
