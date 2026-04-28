@@ -6,7 +6,7 @@ from hats.pixel_math import HealpixPixel
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 
 import lsdb.nested as nd
-from lsdb.dask.divisions import get_pixels_divisions
+from lsdb.operations.functions.divisions import get_pixels_divisions
 
 
 def _generate_dask_dataframe(

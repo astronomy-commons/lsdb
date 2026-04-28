@@ -3,8 +3,10 @@ from __future__ import annotations
 import dask.dataframe as dd
 import pyarrow as pa
 
+from lsdb.operations.operation import Operation
 
-def get_arrow_schema(ddf: dd.DataFrame) -> pa.Schema:
+
+def get_arrow_schema(operation: Operation) -> pa.Schema:
     """Constructs the pyarrow schema from the meta of a Dask DataFrame.
 
     Parameters
@@ -18,4 +20,4 @@ def get_arrow_schema(ddf: dd.DataFrame) -> pa.Schema:
         The arrow schema for the provided Dask DataFrame.
     """
     # pylint: disable=protected-access
-    return pa.Schema.from_pandas(ddf._meta).remove_metadata()
+    return pa.Schema.from_pandas(operation.meta).remove_metadata()

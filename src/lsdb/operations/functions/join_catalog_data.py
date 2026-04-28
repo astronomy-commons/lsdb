@@ -13,7 +13,7 @@ from nested_pandas.series.packer import pack_flat
 
 import lsdb.nested as nd
 from lsdb.catalog.association_catalog import AssociationCatalog
-from lsdb.dask.merge_catalog_functions import (
+from lsdb.operations.functions.merge_catalog_functions import (
     align_and_apply,
     align_catalogs,
     align_catalogs_with_association,

@@ -9,7 +9,7 @@ import numpy.typing as npt
 import pandas as pd
 
 from lsdb.core.crossmatch.crossmatch_args import CrossmatchArgs
-from lsdb.dask.merge_catalog_functions import apply_suffixes
+from lsdb.operations.functions.merge_catalog_functions import apply_suffixes
 
 if TYPE_CHECKING:
     from lsdb.catalog import Catalog

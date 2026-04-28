@@ -19,6 +19,7 @@ from astropy.coordinates import SkyCoord
 from astropy.units import Quantity
 from dask.dataframe.core import _repr_data_series
 from dask.delayed import Delayed
+from dask.optimization import cull
 from deprecated import deprecated  # type: ignore
 from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
 from hats.pixel_math import HealpixPixel
@@ -42,11 +43,15 @@ from lsdb.core.search.region_search import (
     PixelSearch,
     PolygonSearch,
 )
-from lsdb.dask.merge_catalog_functions import concat_metas, make_meta
-from lsdb.dask.partition_indexer import PartitionIndexer
+from lsdb.operations.functions.divisions import get_pixels_divisions
+from lsdb.operations.functions.merge_catalog_functions import concat_metas, make_meta
+from lsdb.operations.functions.partition_indexer import PartitionIndexer
 from lsdb.io.schema import get_arrow_schema
 from lsdb.loaders.hats.hats_loading_config import HatsLoadingConfig
+from lsdb.operations.lsdb_ops import MapPartitions, SelectColumns, FromHealpixMap
+from lsdb.operations.operation import Operation
 from lsdb.types import DaskDFPixelMap
+from testing.testing_delayed import optimized_graph
 
 if TYPE_CHECKING:
     from astropy.visualization.wcsaxes import WCSAxes
@@ -65,8 +70,7 @@ class HealpixDataset:
 
     def __init__(
         self,
-        ddf: nd.NestedFrame,
-        ddf_pixel_map: DaskDFPixelMap,
+        operation: Operation,
         hc_structure: HCHealpixDataset,
         loading_config: HatsLoadingConfig | None = None,
     ):
@@ -86,13 +90,56 @@ class HealpixDataset:
         loading_config: HatsLoadingConfig or None, default None
             The configuration used to read the catalog from disk
         """
-        self._ddf = ddf
+        self._operation = operation
         self.hc_structure = hc_structure
         self.loading_config = loading_config
-        self._ddf_pixel_map = ddf_pixel_map
 
     def __repr__(self):
-        return self._ddf.__repr__()
+        return self._operation.__repr__()
+
+    @property
+    def name(self):
+        """The name of the catalog"""
+        return self.hc_structure.catalog_name
+
+    @property
+    def meta(self):
+        return self._operation.meta
+
+    @property
+    def dtypes(self):
+        """Returns the pandas datatypes of the columns in the Dataset"""
+        return self.meta.dtypes
+
+    @property
+    def columns(self):
+        """Returns the names of columns available in the Dataset"""
+        return self.meta.columns
+
+    @property
+    def all_columns(self):
+        """Returns the names of all columns in the original Dataset.
+
+        This is different from the `columns` property, as you can open a catalog with
+        only a subset of the columns, either explicitly with the ``columns=`` argument,
+        or with some ``default_columns`` set on the catalog by the catalog provider."""
+        if self.hc_structure.original_schema is None:
+            # This case corresponds to Datasets that have not yet been
+            # serialized, and thus cannot have a discrepancy between
+            # the original schema and the loaded schema.  In this case,
+            # this property is equivalent to the columns property.
+            return self.columns
+        col_names = self.hc_structure.original_schema.names
+        if self.meta.index.name in col_names:
+            col_names.remove(self.meta.index.name)
+        return col_names
+
+    @property
+    def original_schema(self):
+        """Returns the schema of the original Dataset"""
+        if self.hc_structure.original_schema is None:
+            raise ValueError("Original catalog schema is not available")
+        return self.hc_structure.original_schema
 
     def _compute_column_size_ratio(self) -> float | None:
         """Compute the ratio of loaded column sizes to original column sizes based on Arrow schema.
@@ -111,7 +158,7 @@ class HealpixDataset:
         if original_schema is None:
             return None
 
-        current_schema = get_arrow_schema(self._ddf)
+        current_schema = get_arrow_schema(self._operation)
 
         for field in current_schema:
             if field.name not in original_schema.names:
@@ -191,19 +238,171 @@ class HealpixDataset:
             f"<strong>lazily</strong>, meaning no data has been read, only the catalog schema</div>"
         ) + est_size_text
 
-    def __getitem__(self, item):
-        """Select a column or columns from the catalog."""
-        # The number of types with which multiple columns can be specified
-        # is extensive, so it's safer to check only those type configurations
-        # which are known to be either a column name or sequence thereof.
+    def _create_modified_hc_structure(
+        self, hc_structure=None, updated_schema=None, **kwargs
+    ) -> HCHealpixDataset:
+        """Copy the catalog structure and override the specified catalog info parameters."""
+        if hc_structure is None:
+            hc_structure = self.hc_structure
+        return hc_structure.__class__(
+            catalog_info=hc_structure.catalog_info.copy_and_update(**kwargs),
+            pixels=hc_structure.pixel_tree,
+            catalog_path=hc_structure.catalog_path,
+            schema=hc_structure.schema if updated_schema is None else updated_schema,
+            snapshot=hc_structure.snapshot,
+            moc=hc_structure.moc,
+        )
+
+    def _create_updated_dataset(
+        self,
+        op: Operation | None = None,
+        hc_structure: HCHealpixDataset | None = None,
+        updated_catalog_info_params: dict | None = None,
+    ) -> Self:
+        """Creates a new copy of the catalog, updating any provided arguments
+
+        Shallow copies the ddf and ddf_pixel_map if not provided. Creates a new hc_structure if not provided.
+        Updates the hc_structure with any provided catalog info parameters, resets the total rows, removes
+        any default columns that don't exist, and updates the pyarrow schema to reflect the new ddf.
+
+        Parameters
+        ----------
+        ddf : nd.NestedFrame or None, default None
+            The catalog ddf to update in the new catalog
+        ddf_pixel_map : DaskDFPixelMap or None, default None
+            The partition to healpix pixel map to update in the new catalog
+        hc_structure : HCHealpixDataset or None, default None
+            The hats HealpixDataset object to update in the new catalog
+        updated_catalog_info_params : dict or None, default None
+            The dictionary of updates to the parameters of the hats dataset object's catalog_info
+
+        Returns
+        -------
+        Self
+            A new dataset object with the arguments updated to those provided to the function, and the
+            hc_structure metadata updated to match the new ddf
+        """
+        op = op if op is not None else self._operation
+        hc_structure = hc_structure if hc_structure is not None else self.hc_structure
+        updated_catalog_info_params = updated_catalog_info_params or {}
+        if (
+            "default_columns" not in updated_catalog_info_params
+            and hc_structure.catalog_info.default_columns is not None
+        ):
+            updated_catalog_info_params["default_columns"] = [
+                col for col in hc_structure.catalog_info.default_columns if col in op.meta.columns
+            ]
+        if "total_rows" not in updated_catalog_info_params:
+            updated_catalog_info_params["total_rows"] = None
+        updated_schema = get_arrow_schema(op.meta)
+        hc_structure = self._create_modified_hc_structure(
+            hc_structure=hc_structure, updated_schema=updated_schema, **updated_catalog_info_params
+        )
+        return self.__class__(op, hc_structure)
+
+    def apply_map_partitions_operation(
+        self, op_class: type[Operation], func, *args, meta=None, include_pixel=False, **kwargs
+    ) -> Self | dd.Series:
+        new_op = op_class(self._operation, func, *args, meta=meta, include_pixel=include_pixel, **kwargs)
+        new_cat = self._create_updated_dataset(op=new_op)
+        if not isinstance(new_op.meta, pd.DataFrame):
+            warnings.warn(
+                "output of the function must be a DataFrame to generate an LSDB `Catalog`. "
+                "`map_partitions` will return a dask object instead of a Catalog.",
+                RuntimeWarning,
+            )
+            return new_cat.to_dask_dataframe()
+        return new_cat
+
+    def map_partitions(
+        self,
+        func: Callable[..., npd.NestedFrame],
+        *args,
+        meta: pd.DataFrame | pd.Series | dict | Iterable | tuple | None = None,
+        include_pixel: bool = False,
+        compute_single_partition: bool = False,
+        partition_index: int | HealpixPixel | None = None,
+        **kwargs,
+    ) -> Self | dd.Series:
+        """Applies a function to each partition in the catalog.
+
+        The ra and dec of each row is assumed to remain unchanged.
+
+        Parameters
+        ----------
+        func : Callable
+            The function applied to each partition, which will be called with:
+            `func(partition: npd.NestedFrame, *args, **kwargs)` with the additional args and kwargs passed
+            to the `map_partitions` function. If the `include_pixel` parameter is set, the function will
+            be called with the `healpix_pixel` as the second positional argument set to the healpix pixel
+            of the partition as
+            `func(partition: npd.NestedFrame, healpix_pixel: HealpixPixel, *args, **kwargs)`
+        *args
+            Additional positional arguments to call `func` with.
+        meta : pd.DataFrame | pd.Series | Dict | Iterable | Tuple | None, default None
+            An empty pandas DataFrame that has columns matching the output of the function applied to a
+            partition. Other types are accepted to describe the output dataframe format, for full details
+            see the dask documentation https://blog.dask.org/2022/08/09/understanding-meta-keyword-argument
+            If meta is None (default), LSDB will try to work out the output schema of the function by
+            calling the function with an empty DataFrame. If the function does not work with an empty
+            DataFrame, this will raise an error and meta must be set. Note that some operations in LSDB
+            will generate empty partitions, though these can be removed by calling the
+            `Catalog.prune_empty_partitions` method.
+        include_pixel : bool, default False
+            Whether to pass the Healpix Pixel of the partition as a `HealpixPixel`
+            object to the second positional argument of the function
+        compute_single_partition : bool, default False
+            If true, runs the function on a single partition only in the local thread, without going through
+            dask. This is useful for testing and debugging functions on a single partition, as all normal
+            debugging tools can be used. Note that when this is true, which partition is computed is
+            determined by the `partition_index` parameter.
+        partition_index : int | HealpixPixel | None, default None
+            The index of the partition to compute when compute_single_partition is True. Also accepts a
+            HealpixPixel object to specify the partition by its HEALPix order and pixel.
+            If None, defaults to 0.
+        **kwargs
+            Additional keyword args to pass to the function. These are passed to the Dask DataFrame
+            `dask.dataframe.map_partitions` function, so any of the dask function's keyword args such as
+            `transform_divisions` will be passed through and work as described in the dask documentation
+            https://docs.dask.org/en/stable/generated/dask.dataframe.DataFrame.map_partitions.html
+
+        Returns
+        -------
+        Self or dd.Series
+            A new catalog with each partition replaced with the output of the function applied to the original
+            partition. If the function returns a non dataframe output, a dask Series will be returned.
+        """
+        if compute_single_partition:
+            if partition_index is None:
+                partition_index = 0
+            partition_cat = self.partitions[partition_index]
+            pixel = partition_cat.get_healpix_pixels()[0]
+            partition = partition_cat.compute()
+            result = (
+                func(partition, pixel, *args, **kwargs) if include_pixel else func(partition, *args, **kwargs)
+            )
+            output_op = FromHealpixMap(lambda pix, df: df, [pixel], result, meta=result.iloc[:0].copy())
+            hc_structure = self.hc_structure.__class__(
+                catalog_info=self.hc_structure.catalog_info,
+                pixels=[pixel],
+                snapshot=self.hc_structure.snapshot,
+            )
+            return self.__class__(output_op, hc_structure)
+
+        return self.apply_map_partitions_operation(
+            MapPartitions, func, *args, meta=meta, include_pixel=include_pixel, **kwargs
+        )
+
+    def __getitem__(self, item: str | list[str]) -> Self:
+        """Select a column or columns from the catalog, always returning a catalog (not a Series)."""
         if isinstance(item, str):
             self._check_unloaded_columns([item])
         elif isinstance(item, Sequence):
             self._check_unloaded_columns([col for col in item if isinstance(col, str)])
-        result = self._ddf.__getitem__(item)
-        if isinstance(result, nd.NestedFrame):
-            return self._create_updated_dataset(ddf=result)
-        return result
+        meta = self.meta
+        if isinstance(meta, npd.NestedFrame) and meta._is_key_list(item):
+            return self.apply_map_partitions_operation(SelectColumns, None, item)
+        return self.apply_map_partitions_operation(MapPartitions, lambda df, item: df[item], item)
 
     def __len__(self):
         """The number of rows in the catalog.
@@ -226,10 +425,10 @@ class HealpixDataset:
         list[str]
             The list of nested columns in the catalog.
         """
-        return self._ddf.nested_columns
+        return self.meta.nested_columns
 
     def _repr_data(self):
-        meta = self._ddf._meta
+        meta = self.meta
         index = self._repr_divisions
         cols = meta.columns
         if len(cols) == 0:
@@ -264,7 +463,32 @@ class HealpixDataset:
             res = self._ddf.compute()
         return res
 
-    def to_delayed(self, optimize_graph: bool = True) -> list[Delayed]:
+    def to_dask_dataframe(self, optimize_graph=False, divisions=True):
+        """Converts to a lsdb.nested Dask DataFrame
+
+        Parameters
+        ----------
+        optimize_graph : bool, default False
+            Whether to perform graph optimization before creating the
+            Dask DataFrame. By default False, as it should not be necessary in
+            most cases.
+        divisions : bool or list, default True
+            Whether to set the divisions of the Dask DataFrame to the HEALPix
+            pixels. If True, will set divisions to the HEALPix pixels. If
+            False, will not set divisions.
+        """
+        meta = self.meta
+        if divisions:
+            pixels = self.get_ordered_healpix_pixels()
+            divisions = get_pixels_divisions(pixels)
+        else:
+            divisions = None
+
+        delayed_tasks = self.to_delayed(optimize_graph=optimize_graph)
+
+        return dd.from_delayed(delayed_tasks, meta=meta, divisions=divisions)
+
+    def to_delayed(self, optimize_graph: bool = False) -> list[Delayed]:
         """Get a list of Dask Delayed objects for each partition in the dataset
 
         Used for more advanced custom operations, but to use again with LSDB, the delayed objects
@@ -281,85 +505,22 @@ class HealpixDataset:
         list[Delayed]
             A list of Dask delayed partitions.
         """
-        return self._ddf.to_delayed(optimize_graph=optimize_graph)
+        build = self._operation.build()
+        graph = build.graph
+        keys = build.keys
 
-    def to_dask_dataframe(self) -> dd.DataFrame:
-        """Convert the dataset to a Dask DataFrame.
+        graph_delayed = [Delayed(key, graph) for key in keys]
 
-        Returns
-        -------
-        dd.DataFrame
-            The Dask DataFrame representation of the dataset.
+        if not optimize_graph:
+            return graph_delayed
 
-        Examples
-        --------
-        >>> import lsdb
-        >>> catalog = lsdb.from_dataframe(pd.DataFrame({"ra":[0, 10], "dec":[5, 15],
-        ...                                             "mag":[21, 22], "mag_err":[.1, .2]}))
-        >>> ddf = catalog.to_dask_dataframe()
-        >>> ddf  # doctest: +NORMALIZE_WHITESPACE
-        Dask DataFrame Structure:
-                                         ra             dec             mag          mag_err
-        npartitions=1
-        1369094286720630784  int64[pyarrow]  int64[pyarrow]  int64[pyarrow]  double[pyarrow]
-        1441151880758558720             ...             ...             ...              ...
-        Dask Name: nestedframe, 3 expressions
-        Expr=Dask NestedFrame Structure:
-                                         ra             dec             mag          mag_err
-        npartitions=1
-        1369094286720630784  int64[pyarrow]  int64[pyarrow]  int64[pyarrow]  double[pyarrow]
-        1441151880758558720             ...             ...             ...              ...
-        Dask Name: nestedframe, 3 expressions
-        Expr=MapPartitions(NestedFrame)
-
-        Notes
-        -----
-        This method returns a Dask DataFrame. However, be aware that
-        the underlying in-memory DataFrame for each partition is still a
-        nested-pandas NestedFrame, rather than a pandas DataFrame.
-        """
-        # self._ddf is a NestedFrame, which is a subclass of dd.DataFrame
-        return dd.DataFrame(self._ddf)
-
-    @property
-    def name(self):
-        """The name of the catalog"""
-        return self.hc_structure.catalog_name
-
-    @property
-    def dtypes(self):
-        """Returns the pandas datatypes of the columns in the Dataset"""
-        return self._ddf.dtypes
-
-    @property
-    def columns(self):
-        """Returns the names of columns available in the Dataset"""
-        return self._ddf.columns
-
-    @property
-    def all_columns(self):
-        """Returns the names of all columns in the original Dataset.
-
-        This is different from the `columns` property, as you can open a catalog with
-        only a subset of the columns, either explicitly with the ``columns=`` argument,
-        or with some ``default_columns`` set on the catalog by the catalog provider."""
-        if self.hc_structure.original_schema is None:
-            # This case corresponds to Datasets that have not yet been
-            # serialized, and thus cannot have a discrepancy between
-            # the original schema and the loaded schema.  In this case,
-            # this property is equivalent to the columns property.
-            return self.columns
-        col_names = self.hc_structure.original_schema.names
-        if self._ddf.index.name in col_names:
-            col_names.remove(self._ddf.index.name)
-        return col_names
-
-    @property
-    def original_schema(self):
-        """Returns the schema of the original Dataset"""
-        if self.hc_structure.original_schema is None:
-            raise ValueError("Original catalog schema is not available")
-        return self.hc_structure.original_schema
+        # I don't know if we will actually ever need to do this
+        shared_graph = dict(graph_delayed[0].__dask_graph__())
+        optimized_graph = []
+        for d in graph_delayed:
+            culled_graph, _ = cull(shared_graph, list(d.__dask_keys__()))
+            optimized_graph.append(Delayed(d.key, culled_graph))
+        return optimized_graph
 
     def _check_unloaded_columns(self, column_names: Sequence[str | None] | None):
         """Check the list of given column names for any that are valid
@@ -389,70 +550,6 @@ class HealpixDataset:
             pixels = ["Empty Catalog"]
         divisions = pd.Index(pixels, name=name)
         return divisions
-
-    def _create_modified_hc_structure(
-        self, hc_structure=None, updated_schema=None, **kwargs
-    ) -> HCHealpixDataset:
-        """Copy the catalog structure and override the specified catalog info parameters."""
-        if hc_structure is None:
-            hc_structure = self.hc_structure
-        return hc_structure.__class__(
-            catalog_info=hc_structure.catalog_info.copy_and_update(**kwargs),
-            pixels=hc_structure.pixel_tree,
-            catalog_path=hc_structure.catalog_path,
-            schema=hc_structure.schema if updated_schema is None else updated_schema,
-            snapshot=hc_structure.snapshot,
-            moc=hc_structure.moc,
-        )
-
-    def _create_updated_dataset(
-        self,
-        ddf: nd.NestedFrame | None = None,
-        ddf_pixel_map: DaskDFPixelMap | None = None,
-        hc_structure: HCHealpixDataset | None = None,
-        updated_catalog_info_params: dict | None = None,
-    ) -> Self:
-        """Creates a new copy of the catalog, updating any provided arguments
-
-        Shallow copies the ddf and ddf_pixel_map if not provided. Creates a new hc_structure if not provided.
-        Updates the hc_structure with any provided catalog info parameters, resets the total rows, removes
-        any default columns that don't exist, and updates the pyarrow schema to reflect the new ddf.
-
-        Parameters
-        ----------
-        ddf : nd.NestedFrame or None, default None
-            The catalog ddf to update in the new catalog
-        ddf_pixel_map : DaskDFPixelMap or None, default None
-            The partition to healpix pixel map to update in the new catalog
-        hc_structure : HCHealpixDataset or None, default None
-            The hats HealpixDataset object to update in the new catalog
-        updated_catalog_info_params : dict or None, default None
-            The dictionary of updates to the parameters of the hats dataset object's catalog_info
-
-        Returns
-        -------
-        Self
-            A new dataset object with the arguments updated to those provided to the function, and the
-            hc_structure metadata updated to match the new ddf
-        """
-        ddf = ddf if ddf is not None else self._ddf
-        ddf_pixel_map = ddf_pixel_map if ddf_pixel_map is not None else self._ddf_pixel_map
-        hc_structure = hc_structure if hc_structure is not None else self.hc_structure
-        updated_catalog_info_params = updated_catalog_info_params or {}
-        if (
-            "default_columns" not in updated_catalog_info_params
-            and hc_structure.catalog_info.default_columns is not None
-        ):
-            updated_catalog_info_params["default_columns"] = [
-                col for col in hc_structure.catalog_info.default_columns if col in ddf.columns
-            ]
-        if "total_rows" not in updated_catalog_info_params:
-            updated_catalog_info_params["total_rows"] = None
-        updated_schema = get_arrow_schema(ddf)
-        hc_structure = self._create_modified_hc_structure(
-            hc_structure=hc_structure, updated_schema=updated_schema, **updated_catalog_info_params
-        )
-        return self.__class__(ddf, ddf_pixel_map, hc_structure, loading_config=self.loading_config)
 
     def get_healpix_pixels(self) -> list[HealpixPixel]:
         """Get all HEALPix pixels that are contained in the catalog
@@ -570,7 +667,7 @@ class HealpixDataset:
             include_pixels=include_pixels,
         )
 
-    def get_partition(self, order: int, pixel: int) -> nd.NestedFrame:
+    def get_partition(self, order: int, pixel: int) -> Self:
         """Get the dask partition for a given HEALPix pixel
 
         Parameters
@@ -609,34 +706,7 @@ class HealpixDataset:
         154968715224527848   17.57041    29.8936  9853
         67780378363846894    45.08384   31.95611  8297
         """
-        partition_index = self.get_partition_index(order, pixel)
-        return self._ddf.partitions[partition_index]
-
-    def get_partition_index(self, order: int, pixel: int) -> int:
-        """Get the dask partition for a given HEALPix pixel
-
-        Parameters
-        ----------
-        order: int
-            Order of HEALPix pixel
-        pixel: int
-            HEALPix pixel number in NESTED ordering scheme
-
-        Returns
-        -------
-        int
-            The index of the partition with data at that pixel
-
-        Raises
-        ------
-        ValueError
-            If no data exists for the specified pixel
-        """
-        hp_pixel = HealpixPixel(order, pixel)
-        if hp_pixel not in self._ddf_pixel_map:
-            raise ValueError(f"Pixel at order {order} pixel {pixel} not in Catalog")
-        partition_index = self._ddf_pixel_map[hp_pixel]
-        return partition_index
+        return self.partitions[HealpixPixel(order, pixel)]
 
     @property
     def partitions(self):
@@ -663,16 +733,16 @@ class HealpixDataset:
         """
         dfs = []
         remaining_rows = n
-        for partition in self._ddf.partitions:
+        for partition in self.partitions:
             if remaining_rows == 0:
                 break
-            partition_head = partition.head(remaining_rows)
+            partition_head = partition.compute().head(remaining_rows)
             if len(partition_head) > 0:
                 dfs.append(partition_head)
                 remaining_rows -= len(partition_head)
         if len(dfs) > 0:
             return npd.NestedFrame(pd.concat(dfs))
-        return self._ddf._meta
+        return self.meta
 
     def tail(self, n: int = 5) -> npd.NestedFrame:
         """Returns a few rows of data from the end of the catalog for previewing purposes.
@@ -689,16 +759,16 @@ class HealpixDataset:
         """
         dfs = []
         remaining_rows = n
-        for partition in self._ddf.partitions:
+        for partition in self.partitions:
             if remaining_rows == 0:
                 break
-            partition_tail = partition.tail(remaining_rows)
+            partition_tail = partition.compute().tail(remaining_rows)
             if len(partition_tail) > 0:
                 dfs.append(partition_tail)
                 remaining_rows -= len(partition_tail)
         if len(dfs) > 0:
             return npd.NestedFrame(pd.concat(dfs))
-        return self._ddf._meta
+        return self.meta
 
     def sample(self, partition_id: int, n: int = 5, seed: int | None = None) -> npd.NestedFrame:
         """Returns a few randomly sampled rows from a given partition.
@@ -733,16 +803,16 @@ class HealpixDataset:
         npartitions = len(self.get_healpix_pixels())
         if not 0 <= partition_id < npartitions:
             raise IndexError(f"{partition_id} is out of range [0, {npartitions})")
-        partition = self._ddf.partitions[partition_id]
+        partition = self.partitions[partition_id].compute()
         # Get the count of rows in the partition.
         pixel_rows = len(partition)
         if pixel_rows == 0:
             fraction = 0.0
             logging.debug("Zero rows in partition %d, returning empty", partition_id)
-            return partition._meta
+            return partition
         fraction = n / pixel_rows
         logging.debug("Getting %d / %d = %f", n, pixel_rows, fraction)
-        return partition.sample(frac=fraction).compute()
+        return partition.sample(frac=fraction)
 
     def random_sample(self, n: int = 5, seed: int | None = None) -> npd.NestedFrame:
         """Returns a few randomly sampled rows, like self.sample(), except that
@@ -782,24 +852,29 @@ class HealpixDataset:
             rep_col = self.columns[0]
             row_counts = stats[f"{rep_col}: row_count"].map(int)
         else:
-            row_counts = np.array(dask.compute(*[dp.shape[0].to_delayed() for dp in self._ddf.partitions]))
+            row_counts = np.array(self[self.columns[0]].map_partitions(len).compute())
         rows_per_partition = np.random.multinomial(n, row_counts / row_counts.sum())
         # With this breakdown, we randomly sample rows from each partition
         # to collect the entire sampling.
         # Logic is borrowed from self.sample(), but we already have a full list
         # of row counts, so we can avoid a lot of overhead.
-        for i, (rows, part, part_rows) in enumerate(
-            zip(rows_per_partition, self._ddf.partitions, row_counts)
-        ):
-            if not rows:
-                continue
-            fraction = rows / part_rows
-            logging.debug("Sampling %d / %d rows from partition %d", rows, part_rows, i)
-            selection = part.sample(frac=fraction)
-            dfs += selection.to_delayed()
-        if len(dfs) > 0:
-            return npd.NestedFrame(pd.concat(dask.compute(*dfs)))
-        return self._ddf._meta
+        non_zero_partition_indexes = np.nonzero(rows_per_partition)[0]
+        rows_per_pixel = dict(
+            zip(
+                np.array(self.get_healpix_pixels())[non_zero_partition_indexes],
+                rows_per_partition[non_zero_partition_indexes],
+            )
+        )
+        pixels = list(rows_per_pixel.keys())
+        if len(non_zero_partition_indexes) > 0:
+            return (
+                self[pixels]
+                .map_partitions(
+                    lambda df, pixel, rows_per_pixel: df.sample(frac=rows_per_pixel[pixel] / len(df))
+                )
+                .compute()
+            )
+        return self.meta
 
     def query(self, expr: str) -> Self:
         """Filters catalog using a complex query expression.
@@ -819,8 +894,7 @@ class HealpixDataset:
             A catalog that contains the data from the original catalog that complies
             with the query expression
         """
-        ndf = self._ddf.query(expr)
-        return self._create_updated_dataset(ddf=ndf)
+        return self.map_partitions(lambda df: df.query(expr))
 
     def drop(self, columns: str | list[str], errors: str = "raise") -> Self:
         """Drop specified columns from the catalog.
@@ -846,8 +920,10 @@ class HealpixDataset:
         >>> catalog._ddf.exploded_columns
         ['ra', 'dec', 'id', 'nested', 'nested.t', 'nested.flux', 'nested.band']
         """
-        ndf = self._ddf.drop(columns=columns, errors=errors)
-        return self._create_updated_dataset(ddf=ndf)
+        return self.map_partitions(
+            lambda x: npd.NestedFrame(x).drop(columns=columns, errors=errors),
+            meta=self.meta.drop(columns=columns, errors=errors),
+        )
 
     def rename(self, columns: Renamer) -> Self:
         """Renames catalog columns (not indices) using a dictionary or function mapping.
@@ -1109,136 +1185,6 @@ class HealpixDataset:
             new_loading_config.path_generator = self.loading_config.path_generator
 
         return _load_catalog(hc_structure, new_loading_config)
-
-    def map_partitions(
-        self,
-        func: Callable[..., npd.NestedFrame],
-        *args,
-        meta: pd.DataFrame | pd.Series | dict | Iterable | tuple | None = None,
-        include_pixel: bool = False,
-        compute_single_partition: bool = False,
-        partition_index: int | HealpixPixel | None = None,
-        **kwargs,
-    ) -> Self | dd.Series:
-        """Applies a function to each partition in the catalog.
-
-        The ra and dec of each row is assumed to remain unchanged.
-
-        Parameters
-        ----------
-        func : Callable
-            The function applied to each partition, which will be called with:
-            `func(partition: npd.NestedFrame, *args, **kwargs)` with the additional args and kwargs passed
-            to the `map_partitions` function. If the `include_pixel` parameter is set, the function will
-            be called with the `healpix_pixel` as the second positional argument set to the healpix pixel
-            of the partition as
-            `func(partition: npd.NestedFrame, healpix_pixel: HealpixPixel, *args, **kwargs)`
-        *args
-            Additional positional arguments to call `func` with.
-        meta : pd.DataFrame | pd.Series | Dict | Iterable | Tuple | None, default None
-            An empty pandas DataFrame that has columns matching the output of the function applied to a
-            partition. Other types are accepted to describe the output dataframe format, for full details
-            see the dask documentation https://blog.dask.org/2022/08/09/understanding-meta-keyword-argument
-            If meta is None (default), LSDB will try to work out the output schema of the function by
-            calling the function with an empty DataFrame. If the function does not work with an empty
-            DataFrame, this will raise an error and meta must be set. Note that some operations in LSDB
-            will generate empty partitions, though these can be removed by calling the
-            `Catalog.prune_empty_partitions` method.
-        include_pixel : bool, default False
-            Whether to pass the Healpix Pixel of the partition as a `HealpixPixel`
-            object to the second positional argument of the function
-        compute_single_partition : bool, default False
-            If true, runs the function on a single partition only in the local thread, without going through
-            dask. This is useful for testing and debugging functions on a single partition, as all normal
-            debugging tools can be used. Note that when this is true, which partition is computed is
-            determined by the `partition_index` parameter.
-        partition_index : int | HealpixPixel | None, default None
-            The index of the partition to compute when compute_single_partition is True. Also accepts a
-            HealpixPixel object to specify the partition by its HEALPix order and pixel.
-            If None, defaults to 0.
-        **kwargs
-            Additional keyword args to pass to the function. These are passed to the Dask DataFrame
-            `dask.dataframe.map_partitions` function, so any of the dask function's keyword args such as
-            `transform_divisions` will be passed through and work as described in the dask documentation
-            https://docs.dask.org/en/stable/generated/dask.dataframe.DataFrame.map_partitions.html
-
-        Returns
-        -------
-        Self or dd.Series
-            A new catalog with each partition replaced with the output of the function applied to the original
-            partition. If the function returns a non dataframe output, a dask Series will be returned.
-        """
-        if compute_single_partition:
-            if partition_index is None:
-                partition_index = 0
-            if isinstance(partition_index, HealpixPixel):
-                partition_index = self.get_partition_index(partition_index.order, partition_index.pixel)
-            partition = self.partitions[partition_index].compute()
-            pixel = [p for p, ind in self._ddf_pixel_map.items() if ind == partition_index][0]
-            result = (
-                func(partition, pixel, *args, **kwargs) if include_pixel else func(partition, *args, **kwargs)
-            )
-            output_ddf = nd.NestedFrame.from_single_partition(result)
-            partition_map = {pixel: 0}
-            hc_structure = self.hc_structure.__class__(
-                catalog_info=self.hc_structure.catalog_info,
-                pixels=[pixel],
-                snapshot=self.hc_structure.snapshot,
-            )
-            return self.__class__(output_ddf, partition_map, hc_structure)
-
-        if meta is None:
-            if include_pixel:
-                meta = func(self._ddf._meta.copy(), HealpixPixel(0, 0), *args, **kwargs)
-            else:
-                meta = func(self._ddf._meta.copy(), *args, **kwargs)
-            if meta is None:
-                raise ValueError(
-                    "func returned None for empty DataFrame input. The function must return a value, changing"
-                    " the partitions in place will not work. If the function does not work for empty inputs, "
-                    "please specify a `meta` argument."
-                )
-        if include_pixel:
-            pixels = self.get_ordered_healpix_pixels()
-
-            def apply_func(df, *args, partition_info=None, **kwargs):
-                """Uses `partition_info` passed by dask `map_partitions` to get healpix pixel to pass to
-                ufunc"""
-                assert partition_info is not None, "partition_info must be provided by dask map_partitions"
-                partition_number = partition_info["number"]
-                pixel = pixels[partition_number]
-                try:
-                    return func(df, pixel, *args, **kwargs)
-                except Exception as e:
-                    raise RuntimeError(
-                        f"Error applying function {func.__name__} to partition "
-                        f"{partition_number}, pixel {pixel}: {e}"
-                    ) from e
-
-            output_ddf = self._ddf.map_partitions(apply_func, *args, meta=meta, **kwargs)
-        else:
-
-            def apply_func(df, *args, partition_info=None, **kwargs):
-                """Applies the function to the partition without pixel information"""
-                assert partition_info is not None, "partition_info must be provided by dask map_partitions"
-                partition_number = partition_info["number"]
-                try:
-                    return func(df, *args, **kwargs)
-                except Exception as e:
-                    raise RuntimeError(
-                        f"Error applying function {func.__name__} to partition {partition_number}: {str(e)}"
-                    ) from e
-
-            output_ddf = self._ddf.map_partitions(apply_func, *args, meta=meta, **kwargs)
-
-        if isinstance(output_ddf, nd.NestedFrame) | isinstance(output_ddf, dd.DataFrame):
-            return self._create_updated_dataset(ddf=nd.NestedFrame.from_dask_dataframe(output_ddf))
-        warnings.warn(
-            "output of the function must be a DataFrame to generate an LSDB `Catalog`. `map_partitions` "
-            "will return a dask object instead of a Catalog.",
-            RuntimeWarning,
-        )
-        return output_ddf
 
     def prune_empty_partitions(self, persist: bool = False) -> Self:
         """Prunes the catalog of its empty partitions

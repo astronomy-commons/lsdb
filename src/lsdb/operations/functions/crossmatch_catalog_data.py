@@ -12,7 +12,7 @@ from hats.pixel_tree import PixelAlignment, PixelAlignmentType
 import lsdb.nested as nd
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
 from lsdb.core.crossmatch.crossmatch_args import CrossmatchArgs
-from lsdb.dask.merge_catalog_functions import (
+from lsdb.operations.functions.merge_catalog_functions import (
     align_and_apply,
     align_catalogs,
     concat_partition_and_margin,

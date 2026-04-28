@@ -26,19 +26,30 @@ from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatc
 from lsdb.core.crossmatch.kdtree_match import KdTreeCrossmatch
 from lsdb.core.search.abstract_search import AbstractSearch
 from lsdb.core.search.index_search import IndexSearch
-from lsdb.dask.concat_catalog_data import _assert_same_ra_dec, concat_catalog_data, handle_margins_for_concat
-from lsdb.dask.crossmatch_catalog_data import crossmatch_catalog_data, crossmatch_catalog_data_nested
-from lsdb.dask.join_catalog_data import (
+from lsdb.operations.functions.concat_catalog_data import (
+    _assert_same_ra_dec,
+    concat_catalog_data,
+    handle_margins_for_concat,
+)
+from lsdb.operations.functions.crossmatch_catalog_data import (
+    crossmatch_catalog_data,
+    crossmatch_catalog_data_nested,
+)
+from lsdb.operations.functions.join_catalog_data import (
     join_catalog_data_nested,
     join_catalog_data_on,
     join_catalog_data_through,
     merge_asof_catalog_data,
 )
-from lsdb.dask.merge_catalog_functions import DEFAULT_SUFFIX_METHOD, create_merged_catalog_info
-from lsdb.dask.merge_map_catalog_data import merge_map_catalog_data
+from lsdb.operations.functions.merge_catalog_functions import (
+    DEFAULT_SUFFIX_METHOD,
+    create_merged_catalog_info,
+)
+from lsdb.operations.functions.merge_map_catalog_data import merge_map_catalog_data
 from lsdb.io.schema import get_arrow_schema
 from lsdb.loaders.hats.hats_loading_config import HatsLoadingConfig
 from lsdb.nested.core import NestedFrame
+from lsdb.operations.operation import Operation
 from lsdb.types import DaskDFPixelMap
 
 
@@ -65,8 +76,7 @@ class Catalog(HealpixDataset):
 
     def __init__(
         self,
-        ddf: NestedFrame,
-        ddf_pixel_map: DaskDFPixelMap,
+        operation: Operation,
         hc_structure: hc.catalog.Catalog,
         *,
         loading_config: HatsLoadingConfig | None = None,
@@ -90,7 +100,7 @@ class Catalog(HealpixDataset):
         margin: MarginCatalog or None, default None
             The margin catalog.
         """
-        super().__init__(ddf, ddf_pixel_map, hc_structure, loading_config)
+        super().__init__(operation, hc_structure, loading_config)
         self.margin = margin
 
     def _create_updated_dataset(

@@ -17,18 +17,18 @@ from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 from nested_pandas.nestedframe.io import from_pyarrow
 from upath import UPath
 
-import lsdb.nested as nd
 from lsdb.catalog.association_catalog import AssociationCatalog
-from lsdb.catalog.catalog import Catalog, DaskDFPixelMap, MarginCatalog
-from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
-from lsdb.catalog.map_catalog import MapCatalog
-from lsdb.catalog.margin_catalog import _validate_margin_catalog
 from lsdb.core.search.abstract_search import AbstractSearch
-from lsdb.dask.divisions import get_pixels_divisions
-from lsdb.io.schema import get_arrow_schema
 from lsdb.loaders.hats.hats_loading_config import HatsLoadingConfig
 
+from lsdb.catalog import Catalog, MapCatalog
+from lsdb.catalog.dataset.healpix_dataset import HealpixDataset, get_arrow_schema
+from lsdb.catalog import MarginCatalog
+
 MAX_PYARROW_FILTERS = 10
+
+from lsdb.operations.lsdb_ops import FromHealpixMap
+from lsdb.operations.operation import Operation
 
 
 def open_catalog(
@@ -40,7 +40,7 @@ def open_catalog(
     filters: list[tuple[str]] | None = None,
     path_generator: Callable[[UPath, HealpixPixel, dict | None, str], UPath] = hc.io.pixel_catalog_file,
     **kwargs,
-) -> Catalog:
+) -> HealpixDataset:
     """Open a catalog from a HATS path.
 
     Catalogs exist in collections or stand-alone.
@@ -113,7 +113,7 @@ def open_catalog(
 
     Returns
     -------
-    Catalog
+    HealpixDataset
         The catalog loaded according to the specified arguments.
     """
     hc_catalog = hc.read_hats(path)
@@ -280,14 +280,18 @@ def _update_hc_structure(catalog: HealpixDataset):
     """Create the modified schema of the catalog after all the processing on the `read_hats` call"""
     # pylint: disable=protected-access
     default_columns = None
+
+    def exploded_columns(df):
+        return df.columns.to_list() + df.get_subcolumns()
+
     if catalog.hc_structure.catalog_info.default_columns is not None:
         default_columns = [
             col
             for col in catalog.hc_structure.catalog_info.default_columns
-            if col in catalog._ddf.exploded_columns
+            if col in exploded_columns(catalog.meta)
         ]
     return catalog._create_modified_hc_structure(
-        updated_schema=get_arrow_schema(catalog._ddf),
+        updated_schema=get_arrow_schema(catalog.meta),
         default_columns=default_columns,
     )
 
@@ -301,12 +305,37 @@ def _load_association_catalog(hc_catalog, config):
         Catalog object with data from the source given at loader initialization
     """
     if hc_catalog.catalog_info.contains_leaf_files:
-        dask_df, dask_df_pixel_map = _load_dask_df_and_map(hc_catalog, config)
+        operation = _load_operation(hc_catalog, config)
     else:
         dask_meta_schema = _load_dask_meta_schema(hc_catalog, config)
-        dask_df = nd.NestedFrame.from_single_partition(dask_meta_schema)
-        dask_df_pixel_map = {}
-    return AssociationCatalog(dask_df, dask_df_pixel_map, hc_catalog, loading_config=config)
+        operation = FromHealpixMap(None, [], meta=dask_meta_schema)
+    return AssociationCatalog(operation, hc_catalog, loading_config=config)
+
+
+def _load_object_catalog(hc_catalog, config):
+    """Load a catalog from the configuration specified when the loader was created
+
+    Returns
+    -------
+    HealpixDataset
+        Catalog object with data from the source given at loader initialization
+    """
+    if config.search_filter:
+        hc_catalog = config.search_filter.filter_hc_catalog(hc_catalog)
+        if len(hc_catalog.get_healpix_pixels()) == 0 and config.error_empty_filter:
+            raise ValueError("The selected sky region has no coverage")
+        pyarrow_filter = _generate_pyarrow_filters_from_moc(hc_catalog)
+        if len(pyarrow_filter) > 0 and not config.filters:
+            config.filters = pyarrow_filter
+    operation = _load_operation(hc_catalog, config)
+    catalog = Catalog(operation, hc_catalog)
+    if config.search_filter is not None:
+        catalog = catalog.search(config.search_filter)
+    if config.margin_cache is not None:
+        margin_hc_catalog = hc.read_hats(config.margin_cache, single_catalog=True, read_moc=False)
+        margin = _load_margin_catalog(margin_hc_catalog, config)
+        catalog.margin = margin
+    return catalog
 
 
 def _load_margin_catalog(hc_catalog, config):
@@ -322,38 +351,11 @@ def _load_margin_catalog(hc_catalog, config):
         pyarrow_filter = _generate_pyarrow_filters_from_moc(hc_catalog)
         if len(pyarrow_filter) > 0 and not config.filters:
             config.filters = pyarrow_filter
-    dask_df, dask_df_pixel_map = _load_dask_df_and_map(hc_catalog, config)
-    margin = MarginCatalog(dask_df, dask_df_pixel_map, hc_catalog, loading_config=config)
+    operation = _load_operation(hc_catalog, config)
+    margin = MarginCatalog(operation, hc_catalog)
     if config.search_filter is not None:
         margin = margin.search(config.search_filter)
     return margin
-
-
-def _load_object_catalog(hc_catalog, config):
-    """Load a catalog from the configuration specified when the loader was created
-
-    Returns
-    -------
-    Catalog
-        Catalog object with data from the source given at loader initialization
-    """
-    if config.search_filter:
-        hc_catalog = config.search_filter.filter_hc_catalog(hc_catalog)
-        if len(hc_catalog.get_healpix_pixels()) == 0 and config.error_empty_filter:
-            raise ValueError("The selected sky region has no coverage")
-        pyarrow_filter = _generate_pyarrow_filters_from_moc(hc_catalog)
-        if len(pyarrow_filter) > 0 and not config.filters:
-            config.filters = pyarrow_filter
-    dask_df, dask_df_pixel_map = _load_dask_df_and_map(hc_catalog, config)
-    catalog = Catalog(dask_df, dask_df_pixel_map, hc_catalog, loading_config=config)
-    if config.search_filter is not None:
-        catalog = catalog.search(config.search_filter)
-    if config.margin_cache is not None:
-        margin_hc_catalog = hc.read_hats(config.margin_cache, single_catalog=True, read_moc=False)
-        margin = _load_margin_catalog(margin_hc_catalog, config)
-        _validate_margin_catalog(margin, catalog)
-        catalog.margin = margin
-    return catalog
 
 
 def _generate_pyarrow_filters_from_moc(filtered_catalog):
@@ -396,8 +398,8 @@ def _load_map_catalog(hc_catalog, config):
     MapCatalog
         Catalog object with data from the source given at loader initialization
     """
-    dask_df, dask_df_pixel_map = _load_dask_df_and_map(hc_catalog, config)
-    return MapCatalog(dask_df, dask_df_pixel_map, hc_catalog)
+    operation = _load_operation(hc_catalog, config)
+    return MapCatalog(operation, hc_catalog)
 
 
 def _load_dask_meta_schema(hc_catalog, config) -> npd.NestedFrame:
@@ -424,38 +426,32 @@ def _load_dask_meta_schema(hc_catalog, config) -> npd.NestedFrame:
     return dask_meta_schema
 
 
-def _load_dask_df_and_map(catalog: HCHealpixDataset, config) -> tuple[nd.NestedFrame, DaskDFPixelMap]:
+def _load_operation(catalog: HCHealpixDataset, config) -> Operation:
     """Load Dask DF from parquet files and make dict of HEALPix pixel to partition index"""
     pixels = catalog.get_healpix_pixels()
     ordered_pixels = np.array(pixels)[get_pixel_argsort(pixels)]
-    divisions = get_pixels_divisions(ordered_pixels)
     dask_meta_schema = _load_dask_meta_schema(catalog, config)
     index_column = dask_meta_schema.index.name
     query_url_params = None
     if isinstance(file_io.get_upath(catalog.catalog_base_dir).fs, HTTPFileSystem):
         query_url_params = config.make_query_url_params()
     npix_suffix = catalog.catalog_info.npix_suffix
-    if len(ordered_pixels) > 0:
-        ddf = nd.NestedFrame.from_map(
-            read_pixel,
-            ordered_pixels,
-            path_generator=config.path_generator,
-            catalog_base_dir=catalog.catalog_base_dir,
-            npix_suffix=npix_suffix,
-            query_url_params=query_url_params,
-            columns=config.columns,
-            schema=catalog.schema,
-            filters=config.filters,
-            index_column=index_column,
-            divisions=divisions,
-            meta=dask_meta_schema,
-            is_dir=(npix_suffix == "/"),
-            **config.kwargs,
-        )
-    else:
-        ddf = nd.NestedFrame.from_single_partition(dask_meta_schema)
-    pixel_to_index_map = {pixel: index for index, pixel in enumerate(ordered_pixels)}
-    return ddf, pixel_to_index_map
+    op = FromHealpixMap(
+        read_pixel,
+        ordered_pixels,
+        path_generator=config.path_generator,
+        catalog_base_dir=catalog.catalog_base_dir,
+        npix_suffix=npix_suffix,
+        query_url_params=query_url_params,
+        columns=config.columns,
+        schema=catalog.schema,
+        filters=config.filters,
+        index_column=index_column,
+        meta=dask_meta_schema,
+        is_dir=(npix_suffix == "/"),
+        **config.kwargs,
+    )
+    return op
 
 
 def read_pixel(

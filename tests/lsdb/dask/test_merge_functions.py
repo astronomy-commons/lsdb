@@ -4,7 +4,7 @@ import nested_pandas as npd
 import pandas as pd
 from hats.pixel_math import HealpixPixel
 
-from lsdb.dask.merge_catalog_functions import (
+from lsdb.operations.functions.merge_catalog_functions import (
     align_catalog_to_partitions,
     create_merged_catalog_info,
     create_pixel_ndfs,

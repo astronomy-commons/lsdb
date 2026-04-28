@@ -9,7 +9,7 @@ from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN, spatial_index_to
 
 import lsdb
 import lsdb.nested as nd
-from lsdb.dask.merge_catalog_functions import align_catalogs
+from lsdb.operations.functions.merge_catalog_functions import align_catalogs
 
 
 def test_small_sky_join_small_sky_order1(small_sky_catalog, small_sky_order1_catalog, helpers):

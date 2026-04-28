@@ -1,7 +1,7 @@
 import hats as hc
 import numpy.testing as npt
 
-from lsdb.dask.divisions import get_pixels_divisions
+from lsdb.operations.functions.divisions import get_pixels_divisions
 
 
 def test_divisions_are_independent_of_pixel_order(small_sky_order1_catalog):
