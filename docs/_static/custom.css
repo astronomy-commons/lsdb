@@ -5,3 +5,51 @@
 .skip-link {
     background-color: transparent !important;
 }
+
+.api-surface-wrapper {
+    position: relative;
+    margin: 1.5rem auto;
+    max-width: 100%;
+}
+
+.api-surface-image {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-width: 100%;
+    margin: 0 auto;
+    border: 0;
+}
+
+.api-surface-debug-layer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+.api-surface-debug-box {
+    position: absolute;
+    border: 1px solid rgba(255, 0, 0, 0.85);
+    background: rgba(255, 0, 0, 0.12);
+    box-sizing: border-box;
+}
+
+.api-surface-debug-label {
+    position: absolute;
+    top: 0;
+    left: 0;
+    transform: translate(0, -100%);
+    font-size: 11px;
+    line-height: 1.2;
+    padding: 2px 4px;
+    color: #111;
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(255, 0, 0, 0.75);
+    border-radius: 2px;
+    white-space: nowrap;
+}
+
+#lsdb a:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+}
