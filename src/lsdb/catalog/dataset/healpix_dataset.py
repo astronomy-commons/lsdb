@@ -1425,6 +1425,7 @@ class HealpixDataset:
     def to_lance(
         self,
         base_catalog_path: str | Path | UPath,
+        table_name: str = "data",
         *,
         overwrite: bool = False,
         progress_bar: bool = True,
@@ -1434,12 +1435,15 @@ class HealpixDataset:
         All partitions are written as a single flat Lance dataset. Every column
         in the catalog — including the HEALPix spatial index — is preserved.
         The resulting dataset can be opened with
-        ``lance.dataset(base_catalog_path)``.
+        ``lancedb.connect(base_catalog_path).open_table("data")``.
 
         Parameters
         ----------
         base_catalog_path : str | Path | UPath
             Path where the Lance dataset will be written.
+        table_name : str, default "data"
+            The name of the table to be written in the Lance dataset. Defaults to
+            "data".
         overwrite : bool, default False
             If True, an existing dataset at ``base_catalog_path`` is
             overwritten. If False and a dataset already exists there, an error
@@ -1450,7 +1454,7 @@ class HealpixDataset:
         Raises
         ------
         ImportError
-            If the ``lance`` package is not installed.
+            If the ``lancedb`` package is not installed.
         RuntimeError
             If the catalog is empty.
 
@@ -1463,6 +1467,7 @@ class HealpixDataset:
         io.to_lance(
             self,
             base_catalog_path=base_catalog_path,
+            table_name=table_name,
             overwrite=overwrite,
             progress_bar=progress_bar,
         )
