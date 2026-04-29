@@ -45,8 +45,12 @@ class FromHealpixMap(Operation):
             return first_part.iloc[:0].copy()
 
     @property
-    def dependencies(self) -> list[Self]:
+    def dependencies(self) -> list[Operation]:
         return []
+
+    @property
+    def healpix_pixels(self) -> list[HealpixPixel]:
+        return self.pixels
 
     def build(self) -> HealpixGraph:
         graph = {}
@@ -57,6 +61,17 @@ class FromHealpixMap(Operation):
             graph[key] = task
             pixel_keys[pixel] = key
         return HealpixGraph(graph, pixel_keys)
+
+
+class FromSinglePartition(FromHealpixMap):
+    def __init__(self, partition, pixel):
+        meta = partition.iloc[:0].copy()
+        super().__init__(lambda pix, df: df, [pixel], partition, meta=meta)
+
+
+class EmptyOperation(FromHealpixMap):
+    def __init__(self, meta):
+        super().__init__(None, [], meta=meta)
 
 
 def map_parts_meta(func, base_meta: npd.NestedFrame, *args, include_pixel=False, **kwargs) -> npd.NestedFrame:
@@ -116,6 +131,10 @@ class MapPartitions(Operation):
     def dependencies(self) -> list[Operation]:
         return [self.base]
 
+    @property
+    def healpix_pixels(self) -> list[HealpixPixel]:
+        return self.base.healpix_pixels
+
     def build(self) -> HealpixGraph:
         previous = self.base.build()
         graph = previous.graph
@@ -163,8 +182,12 @@ class SelectPixels(Operation):
         return self.base.meta
 
     @property
-    def dependencies(self) -> list[Self]:
+    def dependencies(self) -> list[Operation]:
         return [self.base]
+
+    @property
+    def healpix_pixels(self) -> list[HealpixPixel]:
+        return list(self.pixels)
 
     def build(self) -> HealpixGraph:
         previous = self.base.build()
@@ -227,6 +250,10 @@ class AlignAndApply(Operation):
     @property
     def meta(self) -> npd.NestedFrame:
         return self._meta
+
+    @property
+    def healpix_pixels(self) -> list[HealpixPixel]:
+        return list(self.output_pixels)
 
     def build(self) -> HealpixGraph:
         input_ops = self.input_ops

@@ -9,6 +9,7 @@ import dask
 import hats as hc
 import nested_pandas as npd
 import numpy as np
+import pandas as pd
 import pyarrow.parquet as pq
 from hats.catalog import CatalogType, PartitionInfo
 from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
@@ -25,15 +26,16 @@ from lsdb.io.common import new_provenance_properties, set_default_write_table_kw
 DONE_DIR_NAME = "done"
 HISTOGRAM_DIR_NAME = "hists"
 
+WRITE_RESULT_META = pd.DataFrame({"count": pd.Series(dtype=int), "histogram": pd.Series(dtype=object)})
 
-@dask.delayed
+
 def perform_write(
     df: npd.NestedFrame,
     hp_pixel: HealpixPixel,
     base_catalog_dir: UPath,
     histogram_order: int,
     **kwargs,
-) -> tuple[int, SparseHistogram]:
+) -> pd.DataFrame:
     """Writes a pandas dataframe to a single parquet file and returns the total count
     for the partition as well as a count histogram at the specified order.
 
@@ -57,7 +59,10 @@ def perform_write(
         at the specified order.
     """
     if len(df) == 0:
-        return 0, SparseHistogram([], [], histogram_order)
+        histogram = SparseHistogram([], [], histogram_order)
+        write_histogram(histogram, base_catalog_dir, hp_pixel)
+        write_done_pixel(base_catalog_dir, hp_pixel)
+        return pd.DataFrame({"count": [0], "histogram": [histogram]})
     pixel_dir = hc.io.pixel_directory(base_catalog_dir, hp_pixel.order, hp_pixel.pixel)
     hc.io.file_io.make_directory(pixel_dir, exist_ok=True)
     pixel_path = hc.io.paths.pixel_catalog_file(base_catalog_dir, hp_pixel)
@@ -65,7 +70,7 @@ def perform_write(
     histogram = calculate_histogram(df, histogram_order)
     write_histogram(histogram, base_catalog_dir, hp_pixel)
     write_done_pixel(base_catalog_dir, hp_pixel)
-    return len(df), histogram
+    return pd.DataFrame({"count": [len(df)], "histogram": [histogram]})
 
 
 def calculate_histogram(df: npd.NestedFrame, histogram_order: int) -> SparseHistogram:
@@ -488,27 +493,28 @@ def write_partitions(
         as well as the array with the sparse count histograms.
     """
     base_catalog_dir_fp = hc.io.file_io.get_upath(base_catalog_dir_fp)
-    results, pixels = [], []
-    partitions = catalog._ddf.to_delayed()
+    pixels = []
     existing_pixels_set = set(existing_pixels) if existing_pixels is not None else set()
 
-    for pixel, partition_index in catalog._ddf_pixel_map.items():
+    for pixel in catalog.get_healpix_pixels():
         if pixel in existing_pixels_set:
             continue
-        results.append(
-            perform_write(
-                partitions[partition_index],
-                pixel,
-                base_catalog_dir_fp,
-                histogram_order,
-                **kwargs,
-            )
-        )
         pixels.append(pixel)
 
-    if len(results) > 0:
-        results = dask.compute(*results)
-        counts, histograms = list(zip(*results))
+    write_cat = catalog.partitions[pixels]
+
+    res_cat = write_cat.map_partitions(
+        perform_write,
+        base_catalog_dir_fp,
+        histogram_order,
+        meta=WRITE_RESULT_META,
+        include_pixel=True,
+        **kwargs,
+    )
+
+    if len(pixels) > 0:
+        results = res_cat.compute()
+        counts, histograms = results["count"].tolist(), results["histogram"].tolist()
     else:
         counts, histograms = (), ()
 
