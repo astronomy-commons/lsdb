@@ -27,7 +27,7 @@ from lsdb.catalog import MarginCatalog
 
 MAX_PYARROW_FILTERS = 10
 
-from lsdb.operations.lsdb_ops import FromHealpixMap
+from lsdb.operations.lsdb_ops import FromHealpixMap, EmptyOperation
 from lsdb.operations.operation import Operation
 
 
@@ -308,7 +308,7 @@ def _load_association_catalog(hc_catalog, config):
         operation = _load_operation(hc_catalog, config)
     else:
         dask_meta_schema = _load_dask_meta_schema(hc_catalog, config)
-        operation = FromHealpixMap(None, [], meta=dask_meta_schema)
+        operation = EmptyOperation(dask_meta_schema)
     return AssociationCatalog(operation, hc_catalog, loading_config=config)
 
 

@@ -45,8 +45,14 @@ class Operation(ABC):
 
     @property
     @abstractmethod
-    def dependencies(self) -> list[Self]:
+    def dependencies(self) -> list[Operation]:
         """Returns the list of input operations for this operation"""
+        pass
+
+    @property
+    @abstractmethod
+    def healpix_pixels(self) -> list[HealpixGraph]:
+        """Returns the list of HEALPix pixels that this operation's partitions correspond to"""
         pass
 
     def optimize(self) -> Self:
