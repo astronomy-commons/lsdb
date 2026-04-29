@@ -29,7 +29,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        uv pip install --system -e .[dev,full]
+        uv pip install --system -e .[dev,full,lance]
         if [ -f requirements.txt ]; then uv pip install --system -r requirements.txt; fi
     - name: Run unit tests with pytest
       run: |
