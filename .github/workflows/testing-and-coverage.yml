@@ -57,7 +57,7 @@ jobs:
         else
           uv pip compile --resolution=lowest-direct pyproject.toml -o requirements_lowest.txt
         fi
-        uv pip install --constraint=requirements_lowest.txt -e .[dev]
+        uv pip install --constraint=requirements_lowest.txt -e .[dev,lance]
     - name: List dependencies
       run: |
         pip list
