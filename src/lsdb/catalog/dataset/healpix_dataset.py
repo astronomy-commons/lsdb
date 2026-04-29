@@ -1550,13 +1550,13 @@ class HealpixDataset:
         Examples
         --------
 
-        Writing a function that takes a row as a dictionary:
-
         >>> import numpy as np
         >>> import lsdb
         >>> import pandas as pd
         >>> catalog = lsdb.from_dataframe(pd.DataFrame({"ra":[0, 10], "dec":[5, 15],
         ...                                             "mag":[21, 22], "mag_err":[.1, .2]}))
+
+        Writing a function that takes a row as a dictionary:
 
         >>> def my_sigma(row):
         ...    '''map_rows will return a NestedFrame with two columns'''
@@ -1569,7 +1569,6 @@ class HealpixDataset:
                    _healpix_29  plus_one  minus_one
         0  1372475556631677955      21.1       20.9
         1  1389879706834706546      22.2       21.8
-
 
         Writing the same function using positional arguments:
 
