@@ -1,7 +1,19 @@
+import importlib
+import sys
+
 import pandas as pd
 import pytest
 
 lancedb = pytest.importorskip("lancedb")
+
+
+def test_import_error_without_lancedb(monkeypatch):
+    """Importing to_lance without lancedb installed raises a helpful ImportError."""
+    monkeypatch.setitem(sys.modules, "lancedb", None)
+    monkeypatch.delitem(sys.modules, "lsdb.io.to_lance", raising=False)
+
+    with pytest.raises(ImportError, match="to_lance requires the `lancedb` package"):
+        importlib.import_module("lsdb.io.to_lance")
 
 
 def test_to_lance_writes_dataset(small_sky_catalog, tmp_path):
@@ -68,20 +80,24 @@ def test_to_lance_data_matches(small_sky_catalog, tmp_path):
     pd.testing.assert_frame_equal(lance_df, original_df, check_like=True)
 
 
-def test_to_lance_empty_catalog_raises(small_sky_order1_catalog, tmp_path):
+def test_to_lance_multiple_partitions(small_sky_order1_catalog, tmp_path):
+    """Catalogs with multiple partitions exercise the table.add() branch."""
+    ds_path = tmp_path / "small_sky_order1"
+    assert len(small_sky_order1_catalog._ddf_pixel_map) > 1, "fixture must have >1 partition"
+    small_sky_order1_catalog.to_lance(ds_path)
+
+    db = lancedb.connect(str(ds_path))
+    tbl = db.open_table("data")
+    expected_rows = len(small_sky_order1_catalog.compute())
+    assert tbl.count_rows() == expected_rows
+
+
+def test_to_lance_empty_catalog_raises(small_sky_catalog, tmp_path, monkeypatch):
     """An all-empty catalog raises RuntimeError with an informative message."""
     ds_path = tmp_path / "small_sky"
 
-    # cone_search(0, -80, 1) is known to produce an empty result for this catalog
-    empty_catalog = small_sky_order1_catalog.cone_search(0, -80, 1)
-    assert empty_catalog._ddf.npartitions >= 1
-
-    non_empty_pixels = [
-        pixel
-        for pixel, partition_index in empty_catalog._ddf_pixel_map.items()
-        if len(empty_catalog._ddf.partitions[partition_index]) > 0
-    ]
-    assert len(non_empty_pixels) == 0
+    # Patch the pixel map to be empty so no partitions are iterated
+    monkeypatch.setattr(small_sky_catalog, "_ddf_pixel_map", {})
 
     with pytest.raises(RuntimeError, match="The output catalog is empty"):
-        empty_catalog.to_lance(ds_path)
+        small_sky_catalog.to_lance(ds_path)

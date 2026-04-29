@@ -111,7 +111,6 @@ def to_lance(
         raise RuntimeError("The output catalog is empty. No data was written to Lance.")
 
     # TODO: Replace with appropriate logging message and level
-    if table is not None:
-        print("Optimizing Lance dataset...")
-        table.optimize(cleanup_older_than=timedelta(0), delete_unverified=True)
-        print(f"Finished writing output to lance. Path: {path}, Table name: {table_name}")
+    print("Optimizing Lance dataset...")
+    table.optimize(cleanup_older_than=timedelta(0), delete_unverified=True)
+    print(f"Finished writing output to lance. Path: {path}, Table name: {table_name}")
