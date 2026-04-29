@@ -55,6 +55,9 @@ dev = [
 s3fs = [
     "s3fs>0.5",
 ]
+lance = [
+    "lancedb", # Used to write lance datasets in to_lance.py
+]
 full = [
     "fsspec[full]", # complete file system specs.
     "ipykernel", # Support for Jupyter notebooks
