@@ -517,14 +517,45 @@ class HealpixDataset:
             include_pixels=include_pixels,
         )
 
+    @deprecated(
+        version="0.9.1",
+        reason="`per_pixel_statistics` will be removed in the future, "
+        "use `per_partition_statistics` instead.",
+    )
     def per_pixel_statistics(
         self,
+        *,
         use_default_columns: bool = True,
         exclude_hats_columns: bool = True,
         exclude_columns: list[str] | None = None,
         include_columns: list[str] | None = None,
         include_stats: list[str] | None = None,
         multi_index=False,
+        include_pixels: list[HealpixPixel] | None = None,
+    ):  # pragma: no cover
+        """Read footer statistics in parquet metadata, and report on
+        min/max values for for each data partition."""
+        return self.per_partition_statistics(
+            use_default_columns=use_default_columns,
+            exclude_hats_columns=exclude_hats_columns,
+            exclude_columns=exclude_columns,
+            include_columns=include_columns,
+            include_stats=include_stats,
+            multi_index=multi_index,
+            include_pixels=include_pixels,
+        )
+
+    def per_partition_statistics(
+        self,
+        *,
+        use_default_columns: bool = True,
+        exclude_hats_columns: bool = True,
+        exclude_columns: list[str] | None = None,
+        include_columns: list[str] | None = None,
+        only_numeric_columns: bool = False,
+        include_stats: list[str] | None = None,
+        multi_index: bool = False,
+        per_row_group: bool = False,
         include_pixels: list[HealpixPixel] | None = None,
     ) -> pd.DataFrame:
         """Read footer statistics in parquet metadata, and report on
@@ -542,6 +573,9 @@ class HealpixDataset:
         include_columns : list[str] or None, default None
             If specified, only return statistics for the column
             names provided. Defaults to None, and returns all non-hats columns.
+        only_numeric_columns : bool, default False
+            Only return statistics for numeric columns. This will prevent the returned dataframe
+            from converting types to string.
         include_stats : list[str] or None, default None
             If specified, only return the kinds of values from list (min_value, max_value,
             null_count, row_count). Defaults to None, and returns all values.
@@ -549,6 +583,9 @@ class HealpixDataset:
             Should the returned frame be created with a multi-index, first on
             pixel, then on column name? Default is False, and instead indexes on pixel, with
             separate columns per-data-column and stat value combination.
+        per_row_group : bool, default False
+            Should the returned frame contain a row per row-group, or aggregate the statistics
+            to return only one row per data partition?
         include_pixels : list[HealpixPixel] or None, default None
             If specified, only return statistics for the pixels indicated. Defaults to none,
             and returns all pixels.
@@ -561,12 +598,14 @@ class HealpixDataset:
         if use_default_columns and include_columns is None:
             include_columns = self.hc_structure.catalog_info.default_columns
 
-        return self.hc_structure.per_pixel_statistics(
+        return self.hc_structure.per_partition_statistics(
             exclude_hats_columns=exclude_hats_columns,
             exclude_columns=exclude_columns,
             include_columns=include_columns,
+            only_numeric_columns=only_numeric_columns,
             include_stats=include_stats,
             multi_index=multi_index,
+            per_row_group=per_row_group,
             include_pixels=include_pixels,
         )
 
@@ -774,7 +813,7 @@ class HealpixDataset:
         random.seed(seed)
         dfs = []
         if self.hc_structure.catalog_info.total_rows is not None:
-            stats = self.hc_structure.per_pixel_statistics()
+            stats = self.hc_structure.per_partition_statistics()
             # These stats are one *row* per pixel.  The number of
             # columns is permuted, with names like "colname:
             # row_count".  We only need one representative column.
@@ -1779,7 +1818,7 @@ class HealpixDataset:
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            pixel_stats = self.per_pixel_statistics(
+            pixel_stats = self.per_partition_statistics(
                 multi_index=True,
                 use_default_columns=False,
                 exclude_hats_columns=False,
