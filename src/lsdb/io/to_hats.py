@@ -67,7 +67,11 @@ def perform_write(
     if len(df) == 0:
         return 0, SparseHistogram([], [], histogram_order)
     pixel_path = hc.io.paths.new_pixel_catalog_file(
-        base_catalog_dir, hp_pixel, npix_suffix=npix_suffix, npix_parquet_name=npix_parquet_name
+        base_catalog_dir,
+        hp_pixel,
+        create_dirs=True,
+        npix_suffix=npix_suffix,
+        npix_parquet_name=npix_parquet_name,
     )
     df.to_parquet(pixel_path.path, filesystem=pixel_path.fs, **kwargs)
     histogram = calculate_histogram(df, histogram_order)
