@@ -556,18 +556,18 @@ def test_aggregate_column_statistics(small_sky_order1_catalog):
     assert_column_stat_as_floats(result_frame, "dec", min_value=-69.5, max_value=-47.5, row_count=42)
 
 
-def test_per_pixel_statistics(small_sky_order1_catalog):
-    result_frame = small_sky_order1_catalog.per_pixel_statistics()
+def test_per_partition_statistics(small_sky_order1_catalog):
+    result_frame = small_sky_order1_catalog.per_partition_statistics()
     # 4 = 4 pixels
     # 30 = 5 columns * 6 stats per-column
     assert result_frame.shape == (4, 30)
 
-    result_frame = small_sky_order1_catalog.per_pixel_statistics(exclude_hats_columns=False)
+    result_frame = small_sky_order1_catalog.per_partition_statistics(exclude_hats_columns=False)
     # 4 = 4 pixels
     # 36 = 6 columns * 6 stats per-column
     assert result_frame.shape == (4, 36)
 
-    result_frame = small_sky_order1_catalog.per_pixel_statistics(include_columns=["ra", "dec"])
+    result_frame = small_sky_order1_catalog.per_partition_statistics(include_columns=["ra", "dec"])
     # 4 = 4 pixels
     # 12 = 2 columns * 6 stats per-column
     assert result_frame.shape == (4, 12)
@@ -575,7 +575,7 @@ def test_per_pixel_statistics(small_sky_order1_catalog):
     filtered_catalog = small_sky_order1_catalog.cone_search(315, -66.443, 0.1, fine=False)
 
     with pytest.warns(UserWarning, match="modified catalog"):
-        result_frame = filtered_catalog.per_pixel_statistics(
+        result_frame = filtered_catalog.per_partition_statistics(
             include_stats=["row_count"], include_columns=["ra", "dec"]
         )
     # 1 = 1 pixel
