@@ -311,7 +311,7 @@ def test_save_empty_catalog_no_error(small_sky_order1_catalog, tmp_path):
 
     catalog = lsdb.read_hats(base_catalog_path)
     assert len(catalog.get_healpix_pixels()) == 0
-    assert len(catalog.per_pixel_statistics()) == 0
+    assert len(catalog.per_partition_statistics()) == 0
     pd.testing.assert_frame_equal(cone_search_catalog._ddf._meta, catalog._ddf._meta)
     pd.testing.assert_frame_equal(cone_search_catalog.compute(), catalog.compute())
 
@@ -374,7 +374,7 @@ def _assert_catalog_matches_reference(catalog, ref_cat):
     assert_catalog_info_is_correct(ref_cat.hc_structure.catalog_info, catalog.hc_structure.catalog_info)
     assert catalog.hc_structure.moc == ref_cat.hc_structure.moc
     pd.testing.assert_frame_equal(catalog.compute(), ref_cat.compute())
-    pd.testing.assert_frame_equal(catalog.per_pixel_statistics(), ref_cat.per_pixel_statistics())
+    pd.testing.assert_frame_equal(catalog.per_partition_statistics(), ref_cat.per_partition_statistics())
 
 
 def test_resume_catalog_write(small_sky_order1_catalog, tmp_path):
