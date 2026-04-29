@@ -532,7 +532,7 @@ class HealpixDataset:
         include_stats: list[str] | None = None,
         multi_index=False,
         include_pixels: list[HealpixPixel] | None = None,
-    ):
+    ):  # pragma: no cover
         """Read footer statistics in parquet metadata, and report on
         min/max values for for each data partition."""
         return self.per_partition_statistics(
