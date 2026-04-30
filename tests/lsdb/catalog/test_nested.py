@@ -66,14 +66,14 @@ def test_nest_lists_only_list_columns(small_sky_with_nested_sources):
 
 
 def test_map_rows(small_sky_with_nested_sources):
-    def mean_mag(mag):
-        return {"mean_mag": np.mean(mag)}
+    def mean_mag(ra, dec, mag):
+        return {"ra": ra, "dec": dec, "mean_mag": np.mean(mag)}
 
     reduced_cat = small_sky_with_nested_sources.map_rows(
         mean_mag,
-        columns=["sources.mag"],
+        columns=["ra", "dec", "sources.mag"],
         row_container="args",
-        meta={"mean_mag": float},
+        meta={"ra": float, "dec": float, "mean_mag": float},
     )
     assert isinstance(reduced_cat, Catalog)
     assert isinstance(reduced_cat._ddf, nd.NestedFrame)
@@ -86,9 +86,9 @@ def test_map_rows(small_sky_with_nested_sources):
 
     reduced_ddf = small_sky_with_nested_sources._ddf.map_rows(
         mean_mag,
-        columns=["sources.mag"],
+        columns=["ra", "dec", "sources.mag"],
         row_container="args",
-        meta={"mean_mag": float},
+        meta={"ra": float, "dec": float, "mean_mag": float},
     )
 
     pd.testing.assert_frame_equal(reduced_cat_compute, reduced_ddf.compute())
@@ -98,19 +98,6 @@ def test_map_rows_meta_required(small_sky_with_nested_sources):
     with pytest.raises(ValueError, match="specify `meta`"):
         small_sky_with_nested_sources.map_rows(
             lambda mag: {"mean_mag": np.mean(mag)}, columns=["sources.mag"], meta=None
-        )
-
-
-def test_map_rows_raises_on_radec_overwrite(small_sky_with_nested_sources):
-    def mean_mag(ra, dec, mag):
-        return {"ra": ra, "dec": dec, "mean_mag": np.mean(mag)}
-
-    with pytest.raises(ValueError, match="specifies positional columns"):
-        small_sky_with_nested_sources.map_rows(
-            mean_mag,
-            columns=["ra", "dec", "sources.mag"],
-            row_container="args",
-            meta={"ra": float, "dec": float, "mean_mag": float},
         )
 
 

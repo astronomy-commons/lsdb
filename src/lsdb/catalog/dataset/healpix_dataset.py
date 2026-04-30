@@ -1124,8 +1124,7 @@ class HealpixDataset:
             to the `map_partitions` function. If the `include_pixel` parameter is set, the function will
             be called with the `healpix_pixel` as the second positional argument set to the healpix pixel
             of the partition as
-            `func(partition: npd.NestedFrame, healpix_pixel: HealpixPixel, *args, **kwargs)`.
-            See the Notes for recommendations on writing functions.
+            `func(partition: npd.NestedFrame, healpix_pixel: HealpixPixel, *args, **kwargs)`
         *args
             Additional positional arguments to call `func` with.
         meta : pd.DataFrame | pd.Series | Dict | Iterable | Tuple | None, default None
@@ -1160,17 +1159,6 @@ class HealpixDataset:
         Self or dd.Series
             A new catalog with each partition replaced with the output of the function applied to the original
             partition. If the function returns a non dataframe output, a dask Series will be returned.
-
-        Notes
-        -----
-        When `meta` is specified, make sure it is consistent with the return value of `func`.
-
-        `func` should NOT update positional columns (ra/dec). If you wish to update coordinates,
-        transform the HealpixDataset into a Dask Dataframe, using `HealpixDataset.to_dask_dataframe()`
-        and apply a similar `map_partitions` call. Then, compute the data into a DataFrame using
-        `HealpixDataset.compute()` and reimport it using `lsdb.from_dataframe()`. If the data is not
-        expected to fit in memory, write it to disk instead, using `dask.DataFrame.to_parquet()`,
-        and reimport with `hats-import`.
         """
         if compute_single_partition:
             if partition_index is None:
@@ -1544,17 +1532,6 @@ class HealpixDataset:
         -----
         Make sure `meta` is consistent with the return value of `func`.
 
-        `func` should NOT update positional columns (ra/dec). If you wish to update coordinates,
-        transform the HealpixDataset into a Dask Dataframe, using `HealpixDataset.to_dask_dataframe()`
-        and apply a similar `map_partitions` call. Then, compute the data into a DataFrame using
-        `HealpixDataset.compute()` and reimport it using `lsdb.from_dataframe()`. If the data is not
-        expected to fit in memory, write it to disk instead, using `dask.DataFrame.to_parquet()`,
-        and reimport with `hats-import`.
-
-        To return unmodified values of ra/dec from a `map_rows` call, set `append_columns=True`,
-        and remember to only return the new columns to append. If you wish to only keep a subset
-        of the resulting columns, select them after the `map_rows` call.
-
         If `append_columns` is True, `func` should only return the columns to be appended. Make
         sure neither `func` nor the provided `meta` contain columns to append to the Catalog that
         overlap in name with pre-existing columns.
@@ -1624,18 +1601,6 @@ class HealpixDataset:
             self_meta = self_meta.assign(**{col: meta[col] for col in added_nested_subcols})
             meta = meta.drop(columns=added_nested_subcols)
             meta = concat_metas([self_meta, meta])
-        else:
-            radec_columns = {
-                self.hc_structure.catalog_info.ra_column,
-                self.hc_structure.catalog_info.dec_column,
-            }
-            if radec_columns & set(meta.columns):
-                raise ValueError(
-                    f"`meta` specifies positional columns {list(radec_columns)} that should NOT be modified. "
-                    "To preserve unmodified ra/dec columns set `append_columns=True`, and remember to only"
-                    " return the new columns to append. If you wish to only keep a subset of the resulting "
-                    "columns, select them after the `map_rows` call."
-                )
 
         ndf = self._ddf.map_rows(
             func,
