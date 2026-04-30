@@ -1468,6 +1468,7 @@ class HealpixDataset:
         *,
         overwrite: bool = False,
         progress_bar: bool = True,
+        optimize_dataset: bool = True,
     ) -> None:
         """Save the catalog to a Lance dataset.
 
@@ -1489,6 +1490,10 @@ class HealpixDataset:
             is raised.
         progress_bar : bool, default True
             If True, shows a progress bar while writing partitions.
+        optimize_dataset : bool, default True
+            If True, runs a final optimization step after writing the dataset to
+            combine small files into larger ones. This will improve query performance
+            at the cost of increased write time.
 
         Raises
         ------
@@ -1511,6 +1516,7 @@ class HealpixDataset:
             table_name=table_name,
             overwrite=overwrite,
             progress_bar=progress_bar,
+            optimize_dataset=optimize_dataset,
         )
 
     def nest_lists(

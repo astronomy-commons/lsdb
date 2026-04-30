@@ -19,6 +19,7 @@ def to_lance(
     table_name: str = _TABLE_NAME,
     overwrite: bool = False,
     progress_bar: bool = True,
+    optimize_dataset: bool = True,
 ) -> None:
     """Writes a catalog to a Lance dataset.
 
@@ -41,6 +42,10 @@ def to_lance(
         If False and a dataset already exists there, an error is raised.
     progress_bar : bool, default True
         If True, shows a progress bar while writing partitions.
+    optimize_dataset : bool, default True
+        If True, optimizes the Lance dataset after writing all partitions.
+        This will improve query performance but will increase the total time required
+        to write the dataset.
 
     Raises
     ------
@@ -111,7 +116,9 @@ def to_lance(
     if table is None:
         raise RuntimeError("The output catalog is empty. No data was written to Lance.")
 
-    # TODO: Replace with appropriate logging message and level
-    print("Optimizing Lance dataset...")
-    table.optimize(cleanup_older_than=timedelta(0), delete_unverified=True)
+    if optimize_dataset:
+        # TODO: Replace with appropriate logging message and level
+        print("Optimizing Lance dataset...")
+        table.optimize(cleanup_older_than=timedelta(0), delete_unverified=True)
+
     print(f"Finished writing output to lance. Path: {path}, Table name: {table_name}")

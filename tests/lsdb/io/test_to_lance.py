@@ -103,3 +103,32 @@ def test_to_lance_empty_catalog_raises(small_sky_catalog, tmp_path, monkeypatch)
 
     with pytest.raises(RuntimeError, match="The output catalog is empty"):
         small_sky_catalog.to_lance(ds_path)
+
+def test_to_lance_nested_partitions(small_sky_with_nested_sources, tmp_path):
+    """Catalogs with nested sources has all rows included in the output dataset."""
+    ds_path = tmp_path / "small_sky_nested"
+    assert len(small_sky_with_nested_sources._ddf_pixel_map) > 1, "fixture must have >1 partition"
+    small_sky_with_nested_sources.to_lance(ds_path)
+
+    db = lancedb.connect(str(ds_path))
+    tbl = db.open_table("data")
+    expected_rows = len(small_sky_with_nested_sources.compute())
+    assert tbl.count_rows() == expected_rows
+
+
+def test_to_lance_data_matches_nested(small_sky_with_nested_sources, tmp_path):
+    """Values in the Lance dataset match the original catalog data."""
+    ds_path = tmp_path / "small_sky_nested"
+    small_sky_with_nested_sources.to_lance(ds_path)
+
+    db = lancedb.connect(str(ds_path))
+    tbl = db.open_table("data")
+    lance_df = tbl.to_pandas()
+
+    original_df = small_sky_with_nested_sources.compute().reset_index()
+    index_col = small_sky_with_nested_sources.compute().index.name
+
+    lance_df = lance_df.sort_values(index_col).reset_index(drop=True)
+    original_df = pd.DataFrame(original_df).sort_values(index_col).reset_index(drop=True)
+
+    pd.testing.assert_frame_equal(lance_df, original_df, check_like=True)
