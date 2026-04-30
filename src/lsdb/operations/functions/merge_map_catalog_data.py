@@ -12,11 +12,11 @@ from hats.pixel_tree.pixel_alignment import align_with_mocs
 import lsdb.nested as nd
 from lsdb.operations.functions.merge_catalog_functions import (
     align_and_apply,
-    construct_catalog_args,
     filter_by_spatial_index_to_pixel,
     get_healpix_pixels_from_alignment,
+    get_aligned_pixels_from_alignment,
 )
-from lsdb.types import DaskDFPixelMap
+from lsdb.operations.operation import Operation
 
 if TYPE_CHECKING:
     from lsdb.catalog import Catalog, MapCatalog
@@ -86,7 +86,7 @@ def merge_map_catalog_data(
     *args,
     meta: npd.NestedFrame | None = None,
     **kwargs,
-) -> tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]:
+) -> tuple[Operation, PixelAlignment]:
     """Applies a function to each pair of partitions in this catalog and the map catalog.
 
     The pixels from each catalog are aligned via a `PixelAlignment`, and the respective dataframes
@@ -151,14 +151,16 @@ def merge_map_catalog_data(
     )
 
     left_pixels, right_pixels = get_healpix_pixels_from_alignment(alignment)
+    aligned_pixels = get_aligned_pixels_from_alignment(alignment)
 
-    partitions_with_func = align_and_apply(
+    op = align_and_apply(
         [(point_catalog, left_pixels), (map_catalog, right_pixels)],
         perform_merge_map,
         meta,
+        aligned_pixels,
         func,
         *args,
         **kwargs,
     )
 
-    return construct_catalog_args(partitions_with_func, alignment)
+    return op, alignment
