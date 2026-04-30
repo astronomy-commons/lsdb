@@ -41,7 +41,7 @@ A minimal ``Dockerfile``:
 
 .. code-block:: dockerfile
 
-    FROM python:3.12-slim
+    FROM python:3.12.3-slim
 
     RUN pip install --no-cache-dir \
         lsdb \
@@ -62,6 +62,15 @@ Build and push the image to your registry:
 
     Pin package versions in production images (e.g. ``lsdb==0.5.0``) so that
     your results are reproducible across runs.
+
+.. tip::
+
+    Pin the Python base image to a specific patch release (``python:3.12.3-slim``),
+    not just the minor series (``python:3.12-slim``), and match it to the Python
+    version of the client environment you connect from. Dask compares Python and
+    package versions across the client, scheduler, and workers, and minor
+    differences can produce a ``VersionMismatchWarning`` or, in some cases,
+    serialization errors.
 
 Installing the Dask Kubernetes Operator
 ---------------------------------------
@@ -187,17 +196,120 @@ Apply the manifest:
     to both the scheduler and worker pod specs. Public images (e.g. on Docker Hub
     or GitHub Container Registry with public visibility) do not need this.
 
+.. tip::
+
+    The example above sets ``limits.memory`` but not ``limits.cpu``, which lets
+    workers burst above their CPU request when the node has spare capacity. If
+    your namespace has a ``ResourceQuota`` or ``LimitRange`` that requires every
+    container to declare ``limits.cpu``, the manifest will be rejected with
+    ``failed quota: ... must specify limits.cpu``. Add ``cpu: "2"`` (or your
+    chosen ceiling) under ``limits`` for both the worker and scheduler containers
+    in that case.
+
 The PersistentVolumeClaim ``hats-catalog-pvc`` should point to storage containing your
 HATS catalogs. If your catalogs are accessed over the network (e.g. via
 ``https://data.lsdb.io``), you can remove the volume mount entirely.
+
+Providing the catalog volume
+............................
+
+The manifest above mounts a PVC named ``hats-catalog-pvc`` at ``/data`` on every
+worker. You need to create that PVC (and, depending on your environment, the
+PersistentVolume backing it) before applying the ``DaskCluster`` manifest.
+
+The simplest case is a cluster with a default ``StorageClass`` that supports
+``ReadWriteMany`` (NFS, CephFS, EFS, Azure Files, GCP Filestore, etc.). All
+workers must be able to read the catalog at the same time, so ``ReadWriteMany``
+is required for multi-worker setups:
+
+.. code-block:: yaml
+
+    apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      name: hats-catalog-pvc
+    spec:
+      accessModes:
+        - ReadWriteMany
+      resources:
+        requests:
+          storage: 100Gi
+      # storageClassName: nfs-client   # set to a RWX-capable StorageClass
+
+.. tip::
+
+    If the PVC stays in ``Pending`` after you apply it, your cluster likely has
+    no default ``StorageClass``, or its default does not support
+    ``ReadWriteMany``. Run ``kubectl get storageclass`` to list what is
+    available, then uncomment ``storageClassName`` and set it to the name of a
+    RWX-capable class.
+
+If your cluster does not have a dynamic provisioner for shared storage, you can
+back the PVC with a statically defined NFS PersistentVolume. Adjust the server
+address, export path, and capacity to match your environment:
+
+.. code-block:: yaml
+
+    apiVersion: v1
+    kind: PersistentVolume
+    metadata:
+      name: hats-catalog-pv
+    spec:
+      capacity:
+        storage: 100Gi
+      accessModes:
+        - ReadWriteMany
+      persistentVolumeReclaimPolicy: Retain
+      nfs:
+        server: nfs.example.com
+        path: /exports/hats-catalogs
+      mountOptions:
+        - nfsvers=4.1
+    ---
+    apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      name: hats-catalog-pvc
+    spec:
+      accessModes:
+        - ReadWriteMany
+      resources:
+        requests:
+          storage: 100Gi
+      storageClassName: ""   # bind to the static PV above
+      volumeName: hats-catalog-pv
+
+Apply the storage objects before the ``DaskCluster``:
+
+.. code-block:: bash
+
+    kubectl apply -f hats-catalog-storage.yaml
+    kubectl get pvc hats-catalog-pvc
+
+Wait for the PVC to report ``Bound`` before applying the ``DaskCluster`` manifest;
+worker pods will stay in ``Pending`` until the volume is available.
+
+.. note::
+
+    For object-storage catalogs (S3, GCS, Azure Blob), do not use a PVC at all.
+    Drop the ``volumes`` and ``volumeMounts`` blocks from the worker spec, install
+    the appropriate filesystem driver in your image (``s3fs``, ``gcsfs``,
+    ``adlfs``), and pass the bucket URL to ``lsdb.open_catalog`` (e.g.
+    ``s3://my-bucket/catalogs/my_catalog``).
 
 Connecting LSDB to the cluster
 ------------------------------
 
 Once the scheduler is running, connect to it from a Python session inside the cluster
 (e.g. a Jupyter pod in the same namespace) or via ``kubectl port-forward``.
+The two paths below are mutually exclusive; pick whichever matches where your Python
+session runs and use that connection string consistently.
 
-From inside the cluster:
+Option A: From inside the cluster
+.................................
+
+If your Python session runs in a pod in the same namespace as the scheduler (for
+example, a Jupyter pod), connect directly to the scheduler service:
 
 .. code-block:: python
 
@@ -214,15 +326,32 @@ From inside the cluster:
         columns=["ra", "dec", "phot_g_mean_mag"],
     )
     result = catalog.compute()
+    print(result.head())
     client.close()
 
-From outside the cluster, forward the scheduler port first:
+The ``print(result.head())`` line gives you immediate, human-readable confirmation
+that the cluster is functioning end to end (catalog open, distributed compute,
+result collection).
+
+Option B: From outside the cluster
+..................................
+
+If your Python session runs on your laptop or another machine outside the cluster,
+forward the scheduler port first:
 
 .. code-block:: bash
 
     kubectl port-forward svc/lsdb-cluster-scheduler 8786:8786
 
-Then connect to ``tcp://localhost:8786`` in your local Python session.
+Then, in your local Python session, use ``tcp://localhost:8786`` instead of the
+in-cluster service name when constructing the client:
+
+.. code-block:: python
+
+    client = Client("tcp://localhost:8786")
+
+The rest of the LSDB code (``open_catalog``, ``compute``, ``print(result.head())``)
+is identical to Option A.
 
 Resource sizing recommendations
 -------------------------------
@@ -297,15 +426,40 @@ Check the Dask dashboard memory bars or ``kubectl describe pod`` for ``OOMKilled
 - Use ``lsdb.open_catalog(columns=...)`` to load only the columns you need.
 - Reduce ``--nthreads`` to lower per-worker memory pressure.
 
-Tasks are slow or idle workers
-..............................
+Idle workers
+............
 
-If you see many idle workers while tasks queue up, the graph may not have enough partitions
-to keep all workers busy.
+If you see many idle workers while a small number stay busy, the graph likely does
+not have enough partitions to spread the work across the cluster.
 
-- Check ``catalog.npartitions`` to see how many partitions are available.
-- Use ``lsdb.open_catalog(search_filter=...)`` to narrow the spatial region before
-  expanding to the full sky.
+- Check ``catalog.npartitions``. As a rule of thumb, you want at least one
+  partition per worker thread, and ideally several, so that the scheduler has
+  something to assign to each worker.
+- If ``npartitions`` is much smaller than your worker count, scale the cluster
+  down to match the available parallelism. HATS catalogs are partitioned at
+  import time by HEALPix order, so the partition count of an existing catalog
+  is fixed; if you need more partitions, re-import the source data with a finer
+  HEALPix order using the ``hats-import`` pipeline.
+- Inspect the task stream and progress panels in the Dask dashboard to confirm
+  that the bottleneck is the number of tasks, not data movement or memory
+  pressure (which look very different in the dashboard).
+
+Note that narrowing the spatial region with ``search_filter`` would *reduce* the
+partition count further and make this symptom worse. ``search_filter`` is the right
+tool for the slow-tasks-and-memory-pressure case below, not for idle workers.
+
+Slow tasks or memory pressure
+.............................
+
+If individual tasks take a long time, workers spill to disk, or the dashboard
+shows yellow or red memory bars, the per-partition working set is likely too
+large for the worker's memory budget.
+
+- Use ``lsdb.open_catalog(search_filter=...)`` to narrow the spatial region so
+  each partition processes less data.
+- Use ``lsdb.open_catalog(columns=[...])`` to read only the columns you need.
+- Increase the worker memory request and limit in the ``DaskCluster`` manifest.
+- Reduce ``--nthreads`` so each task on a worker has more memory headroom.
 
 Scheduler unreachable
 .....................
