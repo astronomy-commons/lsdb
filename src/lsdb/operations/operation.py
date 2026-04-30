@@ -50,6 +50,11 @@ class Operation(ABC):
         pass
 
     @property
+    def is_reloadable(self) -> bool:
+        """Whether this operation can be reconstructed from disk via _reload_with_filter."""
+        return False
+
+    @property
     @abstractmethod
     def healpix_pixels(self) -> list[HealpixGraph]:
         """Returns the list of HEALPix pixels that this operation's partitions correspond to"""

@@ -437,7 +437,7 @@ class Helpers:
         )
         if SPATIAL_INDEX_COLUMN in schema_to_pandas.columns:
             schema_to_pandas = schema_to_pandas.set_index(SPATIAL_INDEX_COLUMN)
-        pd.testing.assert_frame_equal(cat._ddf._meta, schema_to_pandas)
+        pd.testing.assert_frame_equal(cat.meta, schema_to_pandas)
 
     @staticmethod
     def assert_default_columns_in_columns(cat):

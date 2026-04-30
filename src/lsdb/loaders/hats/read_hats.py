@@ -328,7 +328,7 @@ def _load_object_catalog(hc_catalog, config):
         if len(pyarrow_filter) > 0 and not config.filters:
             config.filters = pyarrow_filter
     operation = _load_operation(hc_catalog, config)
-    catalog = Catalog(operation, hc_catalog)
+    catalog = Catalog(operation, hc_catalog, loading_config=config)
     if config.search_filter is not None:
         catalog = catalog.search(config.search_filter)
     if config.margin_cache is not None:
@@ -352,7 +352,7 @@ def _load_margin_catalog(hc_catalog, config):
         if len(pyarrow_filter) > 0 and not config.filters:
             config.filters = pyarrow_filter
     operation = _load_operation(hc_catalog, config)
-    margin = MarginCatalog(operation, hc_catalog)
+    margin = MarginCatalog(operation, hc_catalog, loading_config=config)
     if config.search_filter is not None:
         margin = margin.search(config.search_filter)
     return margin
@@ -399,7 +399,7 @@ def _load_map_catalog(hc_catalog, config):
         Catalog object with data from the source given at loader initialization
     """
     operation = _load_operation(hc_catalog, config)
-    return MapCatalog(operation, hc_catalog)
+    return MapCatalog(operation, hc_catalog, loading_config=config)
 
 
 def _load_dask_meta_schema(hc_catalog, config) -> npd.NestedFrame:
