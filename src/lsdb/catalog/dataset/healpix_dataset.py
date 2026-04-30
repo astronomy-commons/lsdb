@@ -20,6 +20,8 @@ from astropy.units import Quantity
 from dask.dataframe.core import _repr_data_series
 from dask.delayed import Delayed
 from dask.optimization import cull
+from dask import threaded
+from dask.base import get_scheduler
 from deprecated import deprecated  # type: ignore
 from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
 from hats.pixel_math import HealpixPixel
@@ -101,7 +103,10 @@ class HealpixDataset:
         self.loading_config = loading_config
 
     def __repr__(self):
+        # TODO: This changes to just be the operation name, not the lazy df view.
+        # Should we add a df like repr?
         return self._operation.__repr__()
+        #return self._repr_data()
 
     @property
     def name(self):
@@ -164,7 +169,7 @@ class HealpixDataset:
         if original_schema is None:
             return None
 
-        current_schema = get_arrow_schema(self._operation)
+        current_schema = get_arrow_schema(self._operation.meta)
 
         for field in current_schema:
             if field.name not in original_schema.names:
@@ -487,7 +492,13 @@ class HealpixDataset:
 
         desc = tqdm_kwargs.pop("desc", "Computing Catalog") if tqdm_kwargs else "Computing Catalog"
         with TqdmCallback(desc=desc, disable=not progress_bar, **(tqdm_kwargs or {})):
-            res = self._ddf.compute()
+            #res = self._ddf.compute()
+            schedule = get_scheduler()
+            if schedule is None:
+                schedule = threaded.get
+            healpix_graph = self._operation.build()
+            result = schedule(healpix_graph.graph, healpix_graph.keys)
+        return pd.concat(result)
         return res
 
     def to_dask_dataframe(self, optimize_graph=False, divisions=True):
@@ -1138,7 +1149,8 @@ class HealpixDataset:
             A new Catalog containing the points filtered to those matching the search parameters.
         """
         if (
-            self.hc_structure.catalog_info.total_rows is not None
+            self._operation.is_reloadable
+            and self.hc_structure.catalog_info.total_rows is not None
             and self.hc_structure.catalog_base_dir is not None
             and self.hc_structure.original_schema is not None
         ):

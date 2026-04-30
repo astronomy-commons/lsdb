@@ -47,6 +47,10 @@ class FromHealpixMap(Operation):
     @property
     def dependencies(self) -> list[Operation]:
         return []
+    
+    @property
+    def is_reloadable(self) -> bool:
+        return True
 
     @property
     def healpix_pixels(self) -> list[HealpixPixel]:
@@ -67,6 +71,10 @@ class FromSinglePartition(FromHealpixMap):
     def __init__(self, partition, pixel):
         meta = partition.iloc[:0].copy()
         super().__init__(lambda pix, df: df, [pixel], partition, meta=meta)
+
+    @property
+    def is_reloadable(self) -> bool:
+        return False
 
 
 class EmptyOperation(FromHealpixMap):
@@ -130,6 +138,10 @@ class MapPartitions(Operation):
     @property
     def dependencies(self) -> list[Operation]:
         return [self.base]
+    
+    @property
+    def is_reloadable(self) -> bool:
+        return self.base.is_reloadable
 
     @property
     def healpix_pixels(self) -> list[HealpixPixel]:
@@ -184,6 +196,10 @@ class SelectPixels(Operation):
     @property
     def dependencies(self) -> list[Operation]:
         return [self.base]
+    
+    @property
+    def is_reloadable(self) -> bool:
+        return self.base.is_reloadable
 
     @property
     def healpix_pixels(self) -> list[HealpixPixel]:
