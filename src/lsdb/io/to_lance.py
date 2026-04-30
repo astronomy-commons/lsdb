@@ -9,13 +9,6 @@ from upath import UPath
 
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
 
-try:
-    import lancedb
-except ImportError as err:
-    raise ImportError(
-        "to_lance requires the `lancedb` package. Install it with `pip install lancedb`."
-    ) from err
-
 _TABLE_NAME = "data"
 
 
@@ -72,6 +65,14 @@ def to_lance(
     >>> db = lancedb.connect("/tmp/my_catalog")  # doctest: +SKIP
     >>> tbl = db.open_table("data")  # doctest: +SKIP
     """
+
+    try:
+        # pylint: disable=import-outside-toplevel
+        import lancedb
+    except ImportError as err:
+        raise ImportError(
+            "to_lance requires the `lancedb` package. Install it with `pip install lancedb`."
+        ) from err
 
     base_catalog_path = UPath(base_catalog_path)
     lance_table_path = base_catalog_path / f"{table_name}.lance"

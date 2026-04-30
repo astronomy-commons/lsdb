@@ -1503,7 +1503,9 @@ class HealpixDataset:
         >>> catalog = lsdb.read_hats("path/to/small_sky")  # doctest: +SKIP
         >>> catalog.to_lance("/tmp/my_catalog.lance")  # doctest: +SKIP
         """
-        io.to_lance(
+        from lsdb.io.to_lance import to_lance as _to_lance
+
+        _to_lance(
             self,
             base_catalog_path=base_catalog_path,
             table_name=table_name,

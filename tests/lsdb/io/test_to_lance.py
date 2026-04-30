@@ -12,8 +12,10 @@ def test_import_error_without_lancedb(monkeypatch):
     monkeypatch.setitem(sys.modules, "lancedb", None)
     monkeypatch.delitem(sys.modules, "lsdb.io.to_lance", raising=False)
 
+    module = importlib.import_module("lsdb.io.to_lance")
+    # Call to_lance with dummy arguments to trigger ImportError
     with pytest.raises(ImportError, match="to_lance requires the `lancedb` package"):
-        importlib.import_module("lsdb.io.to_lance")
+        module.to_lance(None, base_catalog_path="/tmp/does_not_matter")
 
 
 def test_to_lance_writes_dataset(small_sky_catalog, tmp_path):
