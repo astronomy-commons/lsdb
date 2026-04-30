@@ -237,6 +237,7 @@ def to_hats(
     skymap_alt_orders: list[int] | None = None,
     addl_hats_properties: dict | None = None,
     error_if_empty: bool = True,
+    create_per_partition_stats: bool = False,
     **kwargs,
 ):
     """Writes a catalog to disk, in HATS format.
@@ -282,6 +283,9 @@ def to_hats(
         ``hats.properties`` file.
     error_if_empty : bool, default True
         If True, raises an error if the output catalog is empty
+    create_per_partition_stats : bool, default False
+        If True, writes ``per_partition_statistics.parquet`` containing summary
+        statistics from all columns in data partition files.
     **kwargs :
         Arguments to pass to the parquet write operations
     """
@@ -337,7 +341,9 @@ def to_hats(
     # Save parquet metadata and create a data thumbnail if needed
     hats_max_rows = int(max(counts)) if counts else 0
 
-    _write_parquet_metadata(base_catalog_path, catalog, create_thumbnail, hats_max_rows, pixels)
+    _write_parquet_metadata(
+        base_catalog_path, catalog, create_thumbnail, hats_max_rows, pixels, create_per_partition_stats
+    )
     # Save partition info
     PartitionInfo(pixels).write_to_file(base_catalog_path / "partition_info.csv")
 
@@ -405,12 +411,16 @@ def _write_parquet_metadata(
     create_thumbnail: bool,
     hats_max_rows: int,
     pixels: list[Any],
+    create_per_partition_stats: bool,
 ):
     """Writes the parquet metadata for the catalog. If there are no pixels,
     writes empty metadata files with the correct schema."""
     if len(pixels) > 0:
         hc.io.write_parquet_metadata(
-            base_catalog_path, create_thumbnail=create_thumbnail, thumbnail_threshold=hats_max_rows
+            base_catalog_path,
+            create_thumbnail=create_thumbnail,
+            thumbnail_threshold=hats_max_rows,
+            create_per_partition_stats=create_per_partition_stats,
         )
     else:
         metadata_path = hc.io.paths.get_parquet_metadata_pointer(base_catalog_path)
