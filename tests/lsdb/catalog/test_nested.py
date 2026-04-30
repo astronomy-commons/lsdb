@@ -101,29 +101,17 @@ def test_map_rows_meta_required(small_sky_with_nested_sources):
         )
 
 
-def test_map_rows_warns_on_radec_overwrite(small_sky_with_nested_sources):
+def test_map_rows_raises_on_radec_overwrite(small_sky_with_nested_sources):
     def mean_mag(ra, dec, mag):
         return {"ra": ra, "dec": dec, "mean_mag": np.mean(mag)}
 
-    with pytest.warns(RuntimeWarning, match="specifies positional columns"):
-        reduced_cat = small_sky_with_nested_sources.map_rows(
+    with pytest.raises(ValueError, match="specifies positional columns"):
+        small_sky_with_nested_sources.map_rows(
             mean_mag,
             columns=["ra", "dec", "sources.mag"],
             row_container="args",
             meta={"ra": float, "dec": float, "mean_mag": float},
         )
-
-    assert reduced_cat.hc_structure.catalog_info.ra_column == ""
-    assert reduced_cat.hc_structure.catalog_info.dec_column == ""
-
-    reduced_ddf = small_sky_with_nested_sources._ddf.map_rows(
-        mean_mag,
-        columns=["ra", "dec", "sources.mag"],
-        row_container="args",
-        meta={"ra": float, "dec": float, "mean_mag": float},
-    )
-
-    pd.testing.assert_frame_equal(reduced_cat.compute(), reduced_ddf.compute())
 
 
 def test_map_rows_append_columns(small_sky_with_nested_sources):

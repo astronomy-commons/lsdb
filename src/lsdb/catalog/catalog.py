@@ -809,7 +809,8 @@ class Catalog(HealpixDataset):
             to the `map_partitions` function. If the `include_pixel` parameter is set, the function will
             be called with the `healpix_pixel` as the second positional argument set to the healpix pixel
             of the partition as
-            `func(partition: npd.NestedFrame, healpix_pixel: HealpixPixel, *args, **kwargs)`
+            `func(partition: npd.NestedFrame, healpix_pixel: HealpixPixel, *args, **kwargs)`.
+            See the Notes for recommendations on writing functions.
         *args
             Additional positional arguments to call `func` with.
         meta : pd.DataFrame | pd.Series | Dict | Iterable | Tuple | None, default None
@@ -845,6 +846,17 @@ class Catalog(HealpixDataset):
         Catalog | dd.Series
             A new catalog with each partition replaced with the output of the function applied to the original
             partition. If the function returns a non dataframe output, a dask Series will be returned.
+
+        Notes
+        -----
+        When `meta` is specified, make sure it is consistent with the return value of `func`.
+
+        `func` should NOT update positional columns (ra/dec). If you wish to update coordinates,
+        transform the Catalog into a Dask Dataframe, using `Catalog.to_dask_dataframe()`
+        and apply a similar `map_partitions` call. Then, compute the data into a DataFrame using
+        `Catalog.compute()` and reimport it using `lsdb.from_dataframe()`. If the data is not
+        expected to fit in memory, write it to disk instead, using `dask.DataFrame.to_parquet()`,
+        and reimport with `hats-import`.
 
         Examples
         --------
@@ -1386,10 +1398,18 @@ class Catalog(HealpixDataset):
 
         Notes
         -----
-        `func` should NOT update positional columns (ra/dec). A warning is issued to alert the user
-        that this will lead to the creation of an LSDB Catalog with an invalid HATS structure.
-        If you wish to update positional coordinates, consider adding them as separate columns.
         Make sure `meta` is consistent with the return value of `func`.
+
+        `func` should NOT update positional columns (ra/dec). If you wish to update coordinates,
+        transform the Catalog into a Dask Dataframe, using `Catalog.to_dask_dataframe()`
+        and apply a similar `map_partitions` call. Then, compute the data into a DataFrame using
+        `Catalog.compute()` and reimport it using `lsdb.from_dataframe()`. If the data is not
+        expected to fit in memory, write it to disk instead, using `dask.DataFrame.to_parquet()`,
+        and reimport with `hats-import`.
+
+        To return unmodified values of ra/dec from a `map_rows` call, set `append_columns=True`,
+        and remember to only return the new columns to append. If you wish to only keep a subset
+        of the resulting columns, select them after the `map_rows` call.
 
         If `append_columns` is True, `func` should only return the columns to be appended. Make
         sure neither `func` nor the provided `meta` contain columns to append to the Catalog that
