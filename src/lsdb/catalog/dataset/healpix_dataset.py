@@ -58,7 +58,6 @@ from lsdb.operations.lsdb_ops import (
 )
 from lsdb.operations.operation import Operation
 from lsdb.types import DaskDFPixelMap
-from testing.testing_delayed import optimized_graph
 
 if TYPE_CHECKING:
     from astropy.visualization.wcsaxes import WCSAxes
