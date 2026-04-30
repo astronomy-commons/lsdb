@@ -23,10 +23,10 @@ def to_lance(
 ) -> None:
     """Writes a catalog to a Lance dataset.
 
-    All primary catalog partitions are written as a single flat Lance dataset. Every column in
-    the catalog — including the HEALPix spatial index — is preserved. The margin catalog (if present) is not written to Lance. The
-    resulting dataset can be opened with
-    ``lancedb.connect(base_catalog_path).open_table("data")``.
+    All primary catalog partitions are written as a single flat Lance dataset.
+    Every column in the catalog — including the HEALPix spatial index — is preserved.
+    The margin catalog (if present) is not written to Lance. The resulting dataset
+    can be opened with ``lancedb.connect(base_catalog_path).open_table("data")``.
 
     Parameters
     ----------

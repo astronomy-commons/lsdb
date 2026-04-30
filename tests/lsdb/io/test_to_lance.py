@@ -104,6 +104,7 @@ def test_to_lance_empty_catalog_raises(small_sky_catalog, tmp_path, monkeypatch)
     with pytest.raises(RuntimeError, match="The output catalog is empty"):
         small_sky_catalog.to_lance(ds_path)
 
+
 def test_to_lance_nested_partitions(small_sky_with_nested_sources, tmp_path):
     """Catalogs with nested sources has all rows included in the output dataset."""
     ds_path = tmp_path / "small_sky_nested"
