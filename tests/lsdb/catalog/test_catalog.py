@@ -202,13 +202,12 @@ def test_tail(small_sky_order1_catalog):
 
 
 def test_tail_rows_less_than_requested(small_sky_order1_catalog):
-    schema = small_sky_order1_catalog.dtypes
-    two_rows = small_sky_order1_catalog.partitions[0].compute()[-2:]
-    tiny_df = pd.DataFrame(data=two_rows, columns=schema.index, dtype=schema.to_numpy())
-    altered_ndf = nd.NestedFrame.from_single_partition(tiny_df)
-    catalog = lsdb.Catalog(altered_ndf, {}, small_sky_order1_catalog.hc_structure)
-    # The tail only contains two values
-    assert len(catalog.tail()) == 2
+    # Use map_partitions to return just 4 rows (first from each partition)
+    def _get_first_row(df):
+        return df.iloc[[0]]
+    head_cat = small_sky_order1_catalog.map_partitions(_get_first_row, meta=small_sky_order1_catalog.meta)
+    # The head only contains four values
+    assert len(head_cat.tail()) == 4
 
 
 def test_tail_first_partition_is_empty(small_sky_order1_catalog):

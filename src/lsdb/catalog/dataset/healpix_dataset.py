@@ -891,6 +891,9 @@ class HealpixDataset:
             row_counts = stats[f"{rep_col}: row_count"].map(int)
         else:
             row_counts = np.array(self[self.columns[0]].map_partitions(len).compute())
+            #row_counts = np.array(
+            #    self.map_partitions(lambda df: pd.Series([len(df)]), meta=pd.Series(dtype=int)).compute()
+            #    )
         rows_per_partition = np.random.multinomial(n, row_counts / row_counts.sum())
         # With this breakdown, we randomly sample rows from each partition
         # to collect the entire sampling.
@@ -906,9 +909,12 @@ class HealpixDataset:
         pixels = list(rows_per_pixel.keys())
         if len(non_zero_partition_indexes) > 0:
             return (
-                self[pixels]
+                self.search(PixelSearch(pixels))
                 .map_partitions(
-                    lambda df, pixel, rows_per_pixel: df.sample(frac=rows_per_pixel[pixel] / len(df))
+                    lambda df, pixel, rows_per_pixel: df.sample(frac=rows_per_pixel[pixel] / len(df)),
+                    rows_per_pixel,
+                    include_pixel=True,
+                    meta=self.meta,
                 )
                 .compute()
             )
