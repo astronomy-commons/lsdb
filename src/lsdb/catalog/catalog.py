@@ -105,15 +105,13 @@ class Catalog(HealpixDataset):
 
     def _create_updated_dataset(
         self,
-        ddf: NestedFrame | None = None,
-        ddf_pixel_map: DaskDFPixelMap | None = None,
+        op: Operation | None = None,
         hc_structure: HCHealpixDataset | None = None,
         updated_catalog_info_params: dict | None = None,
         margin: MarginCatalog | None = None,
     ) -> Self:
         cat = super()._create_updated_dataset(
-            ddf,
-            ddf_pixel_map,
+            op,
             hc_structure,
             updated_catalog_info_params,
         )
