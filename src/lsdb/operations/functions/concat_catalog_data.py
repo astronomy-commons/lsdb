@@ -17,6 +17,7 @@ from lsdb.operations.functions.merge_catalog_functions import (
     get_aligned_pixels_from_alignment,
     get_healpix_pixels_from_alignment,
 )
+from lsdb.operations.operation import Operation
 from lsdb.types import DaskDFPixelMap
 
 if TYPE_CHECKING:
@@ -393,7 +394,7 @@ def concat_catalog_data(
     left: Catalog,
     right: Catalog,
     **kwargs,
-) -> tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]:
+) -> tuple[Operation, PixelAlignment]:
     """Concatenate main catalog data for two catalogs using pixel alignment.
 
     Parameters
@@ -424,23 +425,24 @@ def concat_catalog_data(
 
     # Build the meta (union of schemas) with deterministic column order (left then right)
     # pylint: disable=protected-access
-    meta_left = left._ddf._meta
-    meta_right = right._ddf._meta
+    meta_left = left.meta
+    meta_right = right.meta
 
     _check_strict_column_types(meta_left, meta_right)
 
     meta_df = pd.concat([meta_left, meta_right], **kwargs)
     # pylint: enable=protected-access
     # Lazy per-pixel concatenation
-    joined_partitions = align_and_apply(
+    op = align_and_apply(
         [(left, left_pixels), (right, right_pixels), (None, aligned_pixels)],
         perform_concat,
         meta_df,
+        aligned_pixels,
         aligned_meta=meta_df,
         **kwargs,
     )
 
-    return construct_catalog_args(joined_partitions, alignment)
+    return op, alignment
 
 
 # pylint: disable=too-many-locals
@@ -483,15 +485,15 @@ def concat_margin_data(
 
     # Build the meta (union of schemas) with deterministic column order (left then right)
     # pylint: disable=protected-access
-    meta_left = left._ddf._meta
-    meta_right = right._ddf._meta
+    meta_left = left.meta
+    meta_right = right.meta
 
     _check_strict_column_types(meta_left, meta_right)
 
     meta_df = pd.concat([meta_left, meta_right], **kwargs)
     # pylint: enable=protected-access
     # Lazy per-pixel concatenation for margins
-    joined_partitions = align_and_apply(
+    op = align_and_apply(
         [
             (left, left_pixels),
             (left.margin, left_pixels),
@@ -501,12 +503,13 @@ def concat_margin_data(
         ],
         perform_margin_concat,
         meta_df,
+        aligned_pixels,
         margin_radius=margin_radius,
         aligned_meta=meta_df,
         **kwargs,
     )
 
-    return construct_catalog_args(joined_partitions, alignment)
+    return op, alignment
 
 
 # pylint: disable=too-many-locals

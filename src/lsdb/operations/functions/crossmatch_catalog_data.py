@@ -16,14 +16,13 @@ from lsdb.operations.functions.merge_catalog_functions import (
     align_and_apply,
     align_catalogs,
     concat_partition_and_margin,
-    construct_catalog_args,
     filter_by_spatial_index_to_pixel,
     generate_meta_df_for_joined_tables,
     generate_meta_df_for_nested_tables,
     get_aligned_pixels_from_alignment,
     get_healpix_pixels_from_alignment,
 )
-from lsdb.types import DaskDFPixelMap
+from lsdb.operations.operation import Operation
 
 if TYPE_CHECKING:
     from lsdb.catalog.catalog import Catalog
@@ -312,7 +311,7 @@ def crossmatch_catalog_data(
     suffixes: tuple[str, str],
     suffix_method: str | None = None,
     log_changes: bool = True,
-) -> tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]:
+) -> tuple[Operation, PixelAlignment]:
     """Cross-matches the data from two catalogs
 
     Parameters
@@ -373,10 +372,11 @@ def crossmatch_catalog_data(
     )
 
     # perform the crossmatch on each partition pairing using dask delayed for lazy computation
-    joined_partitions = align_and_apply(
+    op = align_and_apply(
         [(left, left_pixels), (right, right_pixels), (right.margin, right_pixels), (None, aligned_pixels)],
         perform_crossmatch,
         meta_df,
+        aligned_pixels,
         algorithm,
         how,
         suffixes,
@@ -384,9 +384,7 @@ def crossmatch_catalog_data(
         meta_df,
     )
 
-    nf, pixel_map, alignment = construct_catalog_args(joined_partitions, alignment)
-
-    return nf, pixel_map, alignment
+    return op, alignment
 
 
 # pylint: disable=too-many-locals
@@ -396,7 +394,7 @@ def crossmatch_catalog_data_nested(
     algorithm: AbstractCrossmatchAlgorithm,
     how: str,
     nested_column_name: str,
-) -> tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]:
+) -> tuple[Operation, PixelAlignment]:
     """Crossmatches the data from two catalogs with the result from the right catalog in a nested column
 
     Parameters
@@ -446,14 +444,15 @@ def crossmatch_catalog_data_nested(
     )
 
     # perform the crossmatch on each partition pairing using dask delayed for lazy computation
-    joined_partitions = align_and_apply(
+    op = align_and_apply(
         [(left, left_pixels), (right, right_pixels), (right.margin, right_pixels), (None, aligned_pixels)],
         perform_crossmatch_nested,
         meta_df,
+        aligned_pixels,
         algorithm,
         how,
         nested_column_name,
         meta_df,
     )
 
-    return construct_catalog_args(joined_partitions, alignment)
+    return op, alignment

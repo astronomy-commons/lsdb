@@ -4,7 +4,6 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Callable, Literal, Sequence
 
-import dask.dataframe as dd
 import hats.pixel_math.healpix_shim as hp
 import nested_pandas as npd
 import numpy as np
@@ -23,7 +22,8 @@ from hats.pixel_tree.pixel_alignment import align_with_mocs
 from tabulate import tabulate
 
 import lsdb.nested as nd
-from lsdb.types import DaskDFPixelMap
+from lsdb.operations.lsdb_ops import AlignAndApply
+from lsdb.operations.operation import Operation
 
 if TYPE_CHECKING:
     from lsdb.catalog.association_catalog import AssociationCatalog
@@ -485,9 +485,10 @@ def align_and_apply(
     catalog_mappings: list[tuple[HealpixDataset | None, list[HealpixPixel]]],
     func: Callable,
     meta: npd.NestedFrame | pd.DataFrame | pd.Series,
+    output_pixels: list[HealpixPixel],
     *args,
     **kwargs,
-) -> nd.NestedFrame:
+) -> Operation:
     """Aligns catalogs to a given ordering of pixels and applies a function each set of aligned partitions
 
     Parameters
@@ -517,6 +518,10 @@ def align_and_apply(
     meta : npd.NestedFrame | pd.DataFrame | pd.Series
         The meta dataframe to use for the resulting delayed object. This should be a nested dataframe with the
          same columns as the dataframe returned by the function
+    output_pixels : list[HealpixPixel]
+        The list of HealpixPixels representing the pixel order of the output partition for each aligned
+        partition in the input catalogs. This should be the same length as the list of pixels in each catalog
+        mapping.
     *args
         Additional arguments to pass to the function
     **kwargs
@@ -533,60 +538,10 @@ def align_and_apply(
         if len(p) == 0:
             raise RuntimeError("Catalogs do not overlap")
 
-    catalog_infos = [
-        cat.hc_structure.catalog_info if cat is not None else None for (cat, _) in catalog_mappings
-    ]
+    catalogs = [cat for (cat, _) in catalog_mappings]
 
-    # aligns the catalog's partitions to the given pixels for each catalog
-    aligned_ndfs = [align_catalog_to_partitions(cat, pixels) for (cat, pixels) in catalog_mappings]
-    pixel_ndfs = [create_pixel_ndfs(ps) for ps in pixels]
-
-    result = dd.map_partitions(
-        perform_align_and_apply_func,
-        len(aligned_ndfs),
-        func,
-        *aligned_ndfs,
-        *pixel_ndfs,
-        *catalog_infos,
-        *args,
-        **kwargs,
-        meta=meta,
-    )
-    return result
-
-
-def create_pixel_ndfs(pixels: Sequence[HealpixPixel | None]) -> npd.NestedFrame:
-    """Creates a nested dataframe with the pixel order and index, one for each partition"""
-    return nd.NestedFrame.from_dict(
-        {
-            "order": [p.order if p is not None else -99 for p in pixels],
-            "pixel": [p.pixel if p is not None else -99 for p in pixels],
-        },
-        npartitions=len(pixels),
-    )
-
-
-def perform_align_and_apply_func(num_partitions, func, *args, **kwargs):
-    """Performs the function inside `align_and_apply` and updates hive columns"""
-    filtered_parts = []
-    partitions = args[:num_partitions]
-    pixel_dfs = args[num_partitions : 2 * num_partitions]
-    pixels = [
-        HealpixPixel(df.iloc[0]["order"], df.iloc[0]["pixel"]) if df.iloc[0]["order"] >= 0 else None
-        for df in pixel_dfs
-    ]
-    for df in partitions:
-        if len(df.columns) > 0:
-            filtered_parts.append(remove_hips_columns(df))
-        else:
-            filtered_parts.append(None)
-
-    return func(
-        *filtered_parts,
-        *pixels,
-        *args[2 * num_partitions :],
-        **kwargs,
-    )
+    result_op = AlignAndApply(catalogs, pixels, func, meta, output_pixels, *args, **kwargs)
+    return result_op
 
 
 def filter_by_spatial_index_to_pixel(
@@ -690,31 +645,6 @@ def filter_by_spatial_index_to_margin(
     mask = np.isin(margin_order_hp_pix, margin_pixels)
     filtered_df = dataframe[mask]
     return filtered_df
-
-
-def construct_catalog_args(
-    partitions: nd.NestedFrame, alignment: PixelAlignment
-) -> tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]:
-    """Constructs the arguments needed to create a catalog from a dataframe and an alignment
-
-    Parameters
-    ----------
-    partitions : nd.NestedFrame
-        The nested dataframe with one partition per pixel in the alignment, in the same order as the pixels
-        in the alignment
-    alignment : PixelAlignment
-        The alignment used to create the delayed partition
-
-    Returns
-    -------
-    tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]
-        A tuple of (ddf, partition_map, alignment) with the dask dataframe, the partition map, and the
-        alignment needed to create the catalog
-    """
-    # generate dask df partition map from alignment
-    partition_map = get_partition_map_from_alignment_pixels(alignment.pixel_mapping)
-    # create dask df from delayed partitions
-    return partitions, partition_map, alignment
 
 
 def get_healpix_pixels_from_alignment(
@@ -848,8 +778,8 @@ def generate_meta_df_for_joined_tables(
     """
     # Construct meta for crossmatched catalog columns
     left_meta, right_meta = apply_suffixes(
-        catalogs[0]._ddf._meta,
-        catalogs[1]._ddf._meta,
+        catalogs[0].meta,
+        catalogs[1].meta,
         suffixes,
         suffix_method,
         log_changes=log_changes,
@@ -859,7 +789,7 @@ def generate_meta_df_for_joined_tables(
     if extra_columns is not None:
         meta = pd.concat([meta, extra_columns], axis=1)
     if index_type is None:
-        index_type = catalogs[0]._ddf._meta.index.dtype
+        index_type = catalogs[0].meta.index.dtype
     if catalogs[0].hc_structure.has_healpix_column():
         index_name = catalogs[0].hc_structure.catalog_info.healpix_column  # type: ignore[assignment]
     index = pd.Index(pd.Series(dtype=index_type), name=index_name)
@@ -918,13 +848,13 @@ def generate_meta_df_for_nested_tables(
         meta.update(extra_columns)
 
     if index_type is None:
-        index_type = catalogs[0]._ddf._meta.index.dtype
+        index_type = catalogs[0].meta.index.dtype
     index = pd.Index(pd.Series(dtype=index_type), name=index_name)
     meta_df = pd.DataFrame(meta, index)
 
     # make an empty copy of the nested catalog, removing the column that will be joined on (and removed from
     # the eventual dataframe)
-    nested_catalog_meta = nested_catalog._ddf._meta.copy().iloc[:0]
+    nested_catalog_meta = nested_catalog.meta.copy().iloc[:0]
     if join_column_name is not None:
         nested_catalog_meta = nested_catalog_meta.drop(join_column_name, axis=1)
     if extra_nested_columns is not None:
@@ -956,63 +886,6 @@ def concat_metas(metas: Sequence[npd.NestedFrame | dict]):
     for meta in metas:
         pandas_metas.append(npd.NestedFrame(make_meta(meta)))
     return npd.NestedFrame(pd.concat(pandas_metas, axis=1))
-
-
-def get_partition_map_from_alignment_pixels(join_pixels: pd.DataFrame) -> DaskDFPixelMap:
-    """Gets a dictionary mapping HEALPix pixel to index of pixel in the pixel_mapping of a `PixelAlignment`
-
-    Parameters
-    ----------
-    join_pixels : pd.DataFrame
-        The pixel_mapping from a `PixelAlignment` object
-
-    Returns
-    -------
-    DaskDFPixelMap
-        A dictionary mapping HEALPix pixel to the index that the pixel occurs in the pixel_mapping table
-    """
-    partition_map = {}
-    for i, (_, row) in enumerate(join_pixels.iterrows()):
-        pixel = HealpixPixel(
-            order=row[PixelAlignment.ALIGNED_ORDER_COLUMN_NAME],
-            pixel=row[PixelAlignment.ALIGNED_PIXEL_COLUMN_NAME],
-        )
-        partition_map[pixel] = i
-    return partition_map
-
-
-def align_catalog_to_partitions(
-    catalog: HealpixDataset | None, pixels: Sequence[HealpixPixel | None]
-) -> nd.NestedFrame:
-    """Aligns the partitions of a Catalog to a dataframe with HEALPix pixels in each row
-
-    Parameters
-    ----------
-    catalog : HealpixDataset | None
-        The catalog to align
-    pixels : list[HealpixPixel | None]
-        The list of HealpixPixels specifying the order of partitions
-
-    Returns
-    -------
-    list[Delayed | None]
-        A list of dask delayed objects, each one representing the data in a HEALPix pixel in the
-        order they appear in the input dataframe
-    """
-    if catalog is None:
-        empty_ddf = nd.NestedFrame.from_single_partition(pd.DataFrame())
-        return empty_ddf.partitions[[0] * len(pixels)]
-    partition_indexes = [
-        (
-            catalog.get_partition_index(pix.order, pix.pixel)
-            if pix is not None and pix in catalog.hc_structure.pixel_tree
-            else -1
-        )
-        for pix in pixels
-    ]
-    empty_ndf = nd.NestedFrame.from_single_partition(catalog._ddf._meta)
-    ndf = dd.concat([catalog._ddf, empty_ndf], axis=0, ignore_unknown_divisions=True)
-    return ndf.partitions[partition_indexes]
 
 
 def create_merged_catalog_info(

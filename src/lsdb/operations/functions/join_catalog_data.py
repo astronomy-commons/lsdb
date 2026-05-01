@@ -21,7 +21,6 @@ from lsdb.operations.functions.merge_catalog_functions import (
     apply_right_suffix,
     apply_suffixes,
     concat_partition_and_margin,
-    construct_catalog_args,
     filter_by_spatial_index_to_pixel,
     generate_meta_df_for_joined_tables,
     generate_meta_df_for_nested_tables,
@@ -29,7 +28,7 @@ from lsdb.operations.functions.merge_catalog_functions import (
     get_healpix_pixels_from_alignment,
     get_healpix_pixels_from_association,
 )
-from lsdb.types import DaskDFPixelMap
+from lsdb.operations.operation import Operation
 
 if TYPE_CHECKING:
     from lsdb.catalog.catalog import Catalog
@@ -373,7 +372,7 @@ def join_catalog_data_on(
     suffixes: tuple[str, str],
     suffix_method: str | None = None,
     log_changes: bool = True,
-) -> tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]:
+) -> tuple[Operation, PixelAlignment]:
     """Joins two catalogs spatially on a specified column
 
     Parameters
@@ -416,22 +415,24 @@ def join_catalog_data_on(
     alignment = align_catalogs(left, right)
 
     left_pixels, right_pixels = get_healpix_pixels_from_alignment(alignment)
+    aligned_pixels = get_aligned_pixels_from_alignment(alignment)
 
     meta_df = generate_meta_df_for_joined_tables(
         (left, right), suffixes, suffix_method=suffix_method, log_changes=log_changes
     )
 
-    joined_partitions = align_and_apply(
+    op = align_and_apply(
         [(left, left_pixels), (right, right_pixels), (right.margin, right_pixels)],
         perform_join_on,
         meta_df,
+        aligned_pixels,
         left_on,
         right_on,
         suffixes,
         suffix_method,
     )
 
-    return construct_catalog_args(joined_partitions, alignment)
+    return op, alignment
 
 
 def join_catalog_data_nested(
@@ -441,7 +442,7 @@ def join_catalog_data_nested(
     right_on: str,
     nested_column_name: str | None = None,
     how: str = "inner",
-) -> tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]:
+) -> tuple[Operation, PixelAlignment]:
     """Joins two catalogs spatially on a specified column, adding the right as a nested column with nested
     dask
 
@@ -488,18 +489,19 @@ def join_catalog_data_nested(
 
     meta_df = generate_meta_df_for_nested_tables([left], right, nested_column_name, join_column_name=right_on)
 
-    joined_partitions = align_and_apply(
+    op = align_and_apply(
         [(left, left_pixels), (right, right_pixels), (right.margin, right_pixels), (None, aligned_pixels)],
         perform_join_nested,
         meta_df,
+        aligned_pixels,
         left_on,
         right_on,
         nested_column_name,
-        right._ddf._meta,  # pylint: disable=protected-access
+        right.meta,  # pylint: disable=protected-access
         how,
     )
 
-    return construct_catalog_args(joined_partitions, alignment)
+    return op, alignment
 
 
 def join_catalog_data_through(
@@ -509,7 +511,7 @@ def join_catalog_data_through(
     suffixes: tuple[str, str],
     suffix_method: str | None = None,
     log_changes: bool = True,
-) -> tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]:
+) -> tuple[Operation, PixelAlignment]:
     """Joins two catalogs with an association table
 
     Parameters
@@ -578,6 +580,7 @@ def join_catalog_data_through(
 
     alignment = align_catalogs_with_association(left, association, right)
     left_pixels, assoc_pixels, right_pixels = get_healpix_pixels_from_association(alignment)
+    aligned_pixels = get_aligned_pixels_from_alignment(alignment)
 
     association_join_columns = [
         association.hc_structure.catalog_info.primary_column_association,
@@ -586,12 +589,12 @@ def join_catalog_data_through(
     non_joining_columns = [c for c in NON_JOINING_ASSOCIATION_COLUMNS if c in association.columns]
 
     # pylint: disable=protected-access
-    extra_df = association._ddf._meta.drop(non_joining_columns + association_join_columns, axis=1)
+    extra_df = association.meta.drop(non_joining_columns + association_join_columns, axis=1)
     meta_df = generate_meta_df_for_joined_tables(
         (left, right), suffixes, extra_columns=extra_df, suffix_method=suffix_method, log_changes=log_changes
     )
 
-    joined_partitions = align_and_apply(
+    op = align_and_apply(
         [
             (left, left_pixels),
             (right, right_pixels),
@@ -600,11 +603,12 @@ def join_catalog_data_through(
         ],
         perform_join_through,
         meta_df,
+        aligned_pixels,
         suffixes,
         suffix_method,
     )
 
-    return construct_catalog_args(joined_partitions, alignment)
+    return op, alignment
 
 
 def merge_asof_catalog_data(
@@ -614,7 +618,7 @@ def merge_asof_catalog_data(
     direction: str = "backward",
     suffix_method: str | None = None,
     log_changes: bool = True,
-) -> tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]:
+) -> tuple[Operation, PixelAlignment]:
     """Uses the pandas `merge_asof` function to merge two catalogs on their indices by distance of keys
 
     Must be along catalog indices, and does not include margin caches, meaning results may be incomplete for
@@ -654,18 +658,20 @@ def merge_asof_catalog_data(
     alignment = align_catalogs(left, right)
 
     left_pixels, right_pixels = get_healpix_pixels_from_alignment(alignment)
+    aligned_pixels = get_aligned_pixels_from_alignment(alignment)
 
     meta_df = generate_meta_df_for_joined_tables(
         (left, right), suffixes, suffix_method=suffix_method, log_changes=log_changes
     )
 
-    joined_partitions = align_and_apply(
+    op = align_and_apply(
         [(left, left_pixels), (right, right_pixels)],
         perform_merge_asof,
         meta_df,
+        aligned_pixels,
         suffixes,
         direction,
         suffix_method,
     )
 
-    return construct_catalog_args(joined_partitions, alignment)
+    return op, alignment
