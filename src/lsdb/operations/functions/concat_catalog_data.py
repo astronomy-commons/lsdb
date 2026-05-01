@@ -11,12 +11,14 @@ from lsdb.operations.functions.merge_catalog_functions import (
     align_and_apply,
     concat_align_catalogs,
     concat_partition_and_margin,
+    #construct_catalog_args,
     filter_by_spatial_index_to_margin,
     filter_by_spatial_index_to_pixel,
     get_aligned_pixels_from_alignment,
     get_healpix_pixels_from_alignment,
 )
 from lsdb.operations.operation import Operation
+#from lsdb.types import DaskDFPixelMap
 
 if TYPE_CHECKING:
     from lsdb.catalog.catalog import Catalog

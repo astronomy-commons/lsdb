@@ -27,8 +27,8 @@ import lsdb.nested as nd
 from lsdb.catalog.catalog import Catalog
 from lsdb.io.common import new_provenance_properties
 from lsdb.io.schema import get_arrow_schema
-from lsdb.loaders.dataframe.from_dataframe_utils import _generate_op, _has_named_index
-from lsdb.operations.operation import Operation
+from lsdb.loaders.dataframe.from_dataframe_utils import _generate_dask_dataframe, _has_named_index
+#from lsdb.types import DaskDFPixelMap
 
 pd.options.mode.chained_assignment = None  # default='warn'
 
