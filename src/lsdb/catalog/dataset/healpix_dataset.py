@@ -491,7 +491,6 @@ class HealpixDataset:
 
         desc = tqdm_kwargs.pop("desc", "Computing Catalog") if tqdm_kwargs else "Computing Catalog"
         with TqdmCallback(desc=desc, disable=not progress_bar, **(tqdm_kwargs or {})):
-            # res = self._ddf.compute()
             schedule = get_scheduler()
             if schedule is None:
                 schedule = threaded.get
@@ -960,7 +959,7 @@ class HealpixDataset:
         >>> import lsdb
         >>> catalog = lsdb.generate_catalog(5, 1, seed=1)
         >>> catalog = catalog.drop(["a","b","nested.flux_err"])
-        >>> catalog._ddf.exploded_columns
+        >>> catalog.meta.columns + catalog.meta.get_subcolumns()
         ['ra', 'dec', 'id', 'nested', 'nested.t', 'nested.flux', 'nested.band']
         """
         return self.map_partitions(

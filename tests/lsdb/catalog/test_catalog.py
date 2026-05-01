@@ -127,12 +127,11 @@ def test_get_catalog_partition_gets_correct_partition(small_sky_order1_catalog):
         hp_order = healpix_pixel.order
         hp_pixel = healpix_pixel.pixel
         partition = small_sky_order1_catalog.get_partition(hp_order, hp_pixel)
-        pixel = HealpixPixel(order=hp_order, pixel=hp_pixel)
-        partition_index = small_sky_order1_catalog._ddf_pixel_map[pixel]
-        ddf_partition = small_sky_order1_catalog.partitions[partition_index]
-        assert isinstance(partition, nd.NestedFrame)
-        assert isinstance(partition.compute(), npd.NestedFrame)
-        pd.testing.assert_frame_equal(partition.compute(), ddf_partition.compute())
+        assert isinstance(partition, Catalog)
+        pd.testing.assert_frame_equal(
+            partition.compute(),
+            small_sky_order1_catalog.partitions[healpix_pixel].compute()
+        )
 
 
 def test_npartitions_property(small_sky_order1_catalog):
@@ -342,8 +341,10 @@ def test_drop(small_sky_with_nested_sources):
     cols_to_delete = ["id", "sources.source_id"]
 
     expected_cat = small_sky_with_nested_sources.drop(cols_to_delete)
-    assert expected_cat.exploded_columns == [
-        c for c in small_sky_with_nested_sources.exploded_columns if c not in cols_to_delete
+    expected_cols = expected_cat.meta.base_columns + expected_cat.meta.get_subcolumns()
+    actual_cols = small_sky_with_nested_sources.meta.base_columns + small_sky_with_nested_sources.meta.get_subcolumns()
+    assert expected_cols == [
+        c for c in actual_cols if c not in cols_to_delete
     ]
 
     # The columns do not exist, and errors="raise"
@@ -354,7 +355,7 @@ def test_drop(small_sky_with_nested_sources):
 
     # Some columns do not exist but errors="ignore"
     assert "b" not in small_sky_with_nested_sources.columns
-    assert "b" not in small_sky_with_nested_sources["sources"].columns
+    assert "b" not in small_sky_with_nested_sources.meta["sources"].columns
     cat = small_sky_with_nested_sources.drop(cols_to_delete + ["b", "sources.b"], errors="ignore")
     pd.testing.assert_frame_equal(expected_cat.compute(), cat.compute())
 
@@ -735,13 +736,11 @@ def test_map_partitions_single_partition(small_sky_order1_catalog):
     assert mapped.dtypes["a"] == mapped.dtypes["ra"]
 
     # Verify that only one partition was updated
-    assert len(mapped._ddf_pixel_map) == 1
+    assert len(mapped.get_healpix_pixels()) == 1
 
     # Get the pixel for the updated partition
-    pixel = list(mapped._ddf_pixel_map.keys())[0]
-    original_pixel = [
-        p for p, idx in small_sky_order1_catalog._ddf_pixel_map.items() if idx == default_partition_index
-    ][0]
+    pixel = list(mapped.get_healpix_pixels())[0]
+    original_pixel = small_sky_order1_catalog.get_healpix_pixels()[default_partition_index]
 
     # Verify it's the same pixel as the original partition
     assert pixel.order == original_pixel.order
@@ -779,13 +778,11 @@ def test_map_partitions_single_partition_with_margin(small_sky_order1_source_wit
     assert mapped.dtypes["a"] == mapped.dtypes["source_ra"]
 
     # Verify that only one partition was updated in the main catalog
-    assert len(mapped._ddf_pixel_map) == 1
+    assert len(mapped.get_healpix_pixels()) == 1
 
     # Get the pixel for the updated partition
-    pixel = list(mapped._ddf_pixel_map.keys())[0]
-    original_pixel = [
-        p for p, idx in small_sky_order1_source_with_margin._ddf_pixel_map.items() if idx == partition_index
-    ][0]
+    pixel = list(mapped.get_healpix_pixels())[0]
+    original_pixel = small_sky_order1_source_with_margin.get_healpix_pixels()[partition_index]
 
     # Verify it's the same pixel as the original partition
     assert pixel.order == original_pixel.order
@@ -816,31 +813,26 @@ def test_square_bracket_single_partition(small_sky_order1_catalog):
     index = 1
     subset = small_sky_order1_catalog.partitions[index]
     assert isinstance(subset, Catalog)
-    assert 1 == len(subset._ddf_pixel_map)
+    assert 1 == len(subset.get_healpix_pixels())
     pixel = subset.get_healpix_pixels()[0]
-    assert index == small_sky_order1_catalog.get_partition_index(pixel.order, pixel.pixel)
-    pd.testing.assert_frame_equal(
-        small_sky_order1_catalog.partitions[index].compute(), subset.compute()
-    )
-    assert isinstance(subset.compute(), npd.NestedFrame)
+    assert pixel == small_sky_order1_catalog.get_healpix_pixels()[index]
 
 
 def test_square_bracket_multiple_partitions(small_sky_order1_catalog):
     indices = [0, 1, 2]
     subset = small_sky_order1_catalog.partitions[indices]
     assert isinstance(subset, Catalog)
-    assert 3 == len(subset._ddf_pixel_map)
-    for pixel, partition_index in subset._ddf_pixel_map.items():
-        original_index = small_sky_order1_catalog.get_partition_index(pixel.order, pixel.pixel)
-        original_partition = small_sky_order1_catalog.partitions[original_index]
-        subset_partition = subset.partitions[partition_index]
+    assert 3 == len(subset.get_healpix_pixels())
+    for pixel in subset.get_healpix_pixels():
+        original_partition = small_sky_order1_catalog.partitions[pixel]
+        subset_partition = subset.partitions[pixel]
         pd.testing.assert_frame_equal(original_partition.compute(), subset_partition.compute())
 
 
 def test_square_bracket_slice_partitions(small_sky_order1_catalog):
     subset = small_sky_order1_catalog.partitions[:2]
     assert isinstance(subset, Catalog)
-    assert 2 == len(subset._ddf_pixel_map)
+    assert 2 == len(subset.get_healpix_pixels())
     subset_2 = small_sky_order1_catalog.partitions[0:2]
     assert isinstance(subset, Catalog)
     pd.testing.assert_frame_equal(subset_2.compute(), subset.compute())
