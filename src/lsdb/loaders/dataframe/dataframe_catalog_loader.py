@@ -27,8 +27,8 @@ import lsdb.nested as nd
 from lsdb.catalog.catalog import Catalog
 from lsdb.io.common import new_provenance_properties
 from lsdb.io.schema import get_arrow_schema
-from lsdb.loaders.dataframe.from_dataframe_utils import _generate_dask_dataframe, _has_named_index
-from lsdb.types import DaskDFPixelMap
+from lsdb.loaders.dataframe.from_dataframe_utils import _generate_op, _has_named_index
+from lsdb.operations.operation import Operation
 
 pd.options.mode.chained_assignment = None  # default='warn'
 
@@ -252,19 +252,15 @@ class DataframeCatalogLoader:
         """
         self._set_spatial_index()
         pixel_list = self._compute_pixel_list()
-        ddf, ddf_pixel_map, total_rows = self._generate_dask_df_and_map(pixel_list)
+        op, total_rows = self._generate_op(pixel_list)
         self.catalog_info.total_rows = total_rows
         moc = self._generate_moc() if self.should_generate_moc else None
-        schema = self.schema if self.schema is not None else get_arrow_schema(ddf)
+        schema = self.schema if self.schema is not None else get_arrow_schema(op.meta)
         hc_structure = hc.catalog.Catalog(
             self.catalog_info, pixel_list, moc=moc, schema=schema, generate_snapshot=True
         )
 
-        # Recover NestedDtype (https://github.com/astronomy-commons/lsdb/issues/730)
-        if len(self.dataframe.nested_columns) > 0:
-            ddf = ddf.astype({col: self.dataframe[col].dtype for col in self.dataframe.nested_columns})
-
-        return Catalog(ddf, ddf_pixel_map, hc_structure)
+        return Catalog(op, hc_structure)
 
     def _set_spatial_index(self):
         """Generates the spatial indices for each data point and assigns
@@ -322,9 +318,7 @@ class DataframeCatalogLoader:
         pixel_list = list({HealpixPixel(tup[0], tup[1]) for tup in alignment if not tup is None})
         return list(np.array(pixel_list)[get_pixel_argsort(pixel_list)])
 
-    def _generate_dask_df_and_map(
-        self, pixel_list: list[HealpixPixel]
-    ) -> tuple[nd.NestedFrame, DaskDFPixelMap, int]:
+    def _generate_op(self, pixel_list: list[HealpixPixel]) -> tuple[Operation, int]:
         """Load Dask DataFrame from HEALPix pixel Dataframes and
         generate a mapping of HEALPix pixels to HEALPix Dataframes
 
@@ -337,12 +331,7 @@ class DataframeCatalogLoader:
         # Dataframes for each destination HEALPix pixel
         pixel_dfs: list[npd.NestedFrame] = []
 
-        # Mapping HEALPix pixels to the respective Dataframe indices
-        ddf_pixel_map: dict[HealpixPixel, int] = {}
-
-        for hp_pixel_index, hp_pixel in enumerate(pixel_list):
-            # Store HEALPix pixel in map
-            ddf_pixel_map[hp_pixel] = hp_pixel_index
+        for hp_pixel in pixel_list:
             # Obtain Dataframe for current HEALPix pixel, using NESTED characteristics.
             left_bound = healpix_to_spatial_index(hp_pixel.order, hp_pixel.pixel)
             right_bound = healpix_to_spatial_index(hp_pixel.order, hp_pixel.pixel + 1)
@@ -351,9 +340,9 @@ class DataframeCatalogLoader:
             ]
             pixel_dfs.append(pixel_df)
 
-        # Generate Dask Dataframe with the original schema and desired backend
-        ddf, total_rows = _generate_dask_dataframe(pixel_dfs, pixel_list, self.use_pyarrow_types)
-        return ddf, ddf_pixel_map, total_rows
+        # Generate operation with the original schema and desired backend
+        op, total_rows = _generate_op(pixel_dfs, pixel_list, self.use_pyarrow_types)
+        return op, total_rows
 
     def _generate_moc(self):
         lon = self.dataframe[self.catalog_info.ra_column].to_numpy() * u.deg

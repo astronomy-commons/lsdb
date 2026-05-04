@@ -7,11 +7,17 @@ from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 
 import lsdb.nested as nd
 from lsdb.operations.functions.divisions import get_pixels_divisions
+from lsdb.operations.lsdb_ops import FromHealpixMap
+from lsdb.operations.operation import Operation
 
 
-def _generate_dask_dataframe(
+def _pixel_df(pixel, df=None):
+    return npd.NestedFrame(df)
+
+
+def _generate_op(
     pixel_dfs: list[npd.NestedFrame], pixels: list[HealpixPixel], use_pyarrow_types: bool = True
-) -> tuple[nd.NestedFrame, int]:
+) -> tuple[Operation, int]:
     """Create the Dask Dataframe from the list of HEALPix pixel Dataframes
 
     Parameters
@@ -29,11 +35,9 @@ def _generate_dask_dataframe(
         The catalog's Dask Dataframe and its total number of rows.
     """
     pixel_dfs = [_convert_dtypes_to_pyarrow(df) for df in pixel_dfs] if use_pyarrow_types else pixel_dfs
-    schema = pixel_dfs[0].iloc[:0, :].copy() if len(pixels) > 0 else []
-    delayed_dfs = [delayed(df) for df in pixel_dfs]
-    divisions = get_pixels_divisions(pixels)
-    ddf = nd.NestedFrame.from_delayed(delayed_dfs, meta=schema, divisions=divisions)
-    return ddf, len(ddf)
+    schema = npd.NestedFrame(pixel_dfs[0].iloc[:0, :].copy()) if len(pixels) > 0 else npd.NestedFrame()
+    op = FromHealpixMap(_pixel_df, pixels=pixels, meta=schema, map_kwargs={"df": pixel_dfs})
+    return op, sum(len(df) for df in pixel_dfs)
 
 
 def _convert_dtypes_to_pyarrow(df: pd.DataFrame) -> pd.DataFrame:
