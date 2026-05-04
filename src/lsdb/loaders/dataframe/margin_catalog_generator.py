@@ -19,8 +19,10 @@ from lsdb.io.common import new_provenance_properties
 from lsdb.loaders.dataframe.from_dataframe_utils import (
     _convert_dtypes_to_pyarrow,
     _format_margin_partition_dataframe,
-    _generate_dask_dataframe,
+    _generate_op,
 )
+from lsdb.operations.lsdb_ops import EmptyOperation
+from lsdb.operations.operation import Operation
 
 
 class MarginCatalogGenerator:
@@ -111,13 +113,13 @@ class MarginCatalogGenerator:
         pixels, partitions = self._get_margins()
         if len(pixels) == 0:
             return self._create_empty_catalog()
-        ddf, ddf_pixel_map, total_rows = self._generate_dask_df_and_map(pixels, partitions)
+        op, total_rows = self._generate_op(pixels, partitions)
         catalog_info = self._create_catalog_info(**self.catalog_info_kwargs, total_rows=total_rows)
-        margin_pixels = list(ddf_pixel_map.keys())
+        margin_pixels = list(op.healpix_pixels)
         margin_structure = hc.catalog.MarginCatalog(
             catalog_info, margin_pixels, schema=self.hc_structure.schema, generate_snapshot=True
         )
-        return MarginCatalog(ddf, ddf_pixel_map, margin_structure)
+        return MarginCatalog(op, margin_structure)
 
     def _create_empty_catalog(self) -> MarginCatalog:
         """Create an empty margin catalog"""
@@ -129,10 +131,10 @@ class MarginCatalogGenerator:
             dask_meta_schema = pd.DataFrame()
         if SPATIAL_INDEX_COLUMN in dask_meta_schema.columns:
             dask_meta_schema = dask_meta_schema.set_index(SPATIAL_INDEX_COLUMN)
-        ddf = nd.NestedFrame.from_single_partition(dask_meta_schema)
+        op = EmptyOperation(npd.NestedFrame(dask_meta_schema))
         catalog_info = self._create_catalog_info(**self.catalog_info_kwargs, total_rows=0)
         margin_structure = hc.catalog.MarginCatalog(catalog_info, [], schema=self.hc_structure.schema)
-        return MarginCatalog(ddf, {}, margin_structure)
+        return MarginCatalog(op, margin_structure)
 
     def _get_margins(self) -> tuple[list[HealpixPixel], list[npd.NestedFrame]]:
         """Generates the list of pixels that have margin data, and the dataframes
@@ -153,9 +155,9 @@ class MarginCatalogGenerator:
         pixels, partitions = list(margins_pixel_df.keys()), list(margins_pixel_df.values())
         return pixels, partitions
 
-    def _generate_dask_df_and_map(
+    def _generate_op(
         self, pixels: list[HealpixPixel], partitions: list[pd.DataFrame]
-    ) -> tuple[nd.NestedFrame, dict[HealpixPixel, int], int]:
+    ) -> tuple[Operation, int]:
         """Create the Dask Dataframe containing the data points in the margins
         for the catalog as well as the mapping of those HEALPix to Dataframes
 
@@ -177,10 +179,9 @@ class MarginCatalogGenerator:
         pixel_order = get_pixel_argsort(pixels)
         ordered_pixels = np.asarray(pixels)[pixel_order]
         ordered_partitions = [partitions[i] for i in pixel_order]
-        ddf_pixel_map = {pixel: index for index, pixel in enumerate(ordered_pixels)}
-        # Generate the dask dataframe with the pixels and partitions
-        ddf, total_rows = _generate_dask_dataframe(ordered_partitions, ordered_pixels, self.use_pyarrow_types)
-        return ddf, ddf_pixel_map, total_rows
+        # Generate the operation with the pixels and partitions
+        op, total_rows = _generate_op(ordered_partitions, ordered_pixels, self.use_pyarrow_types)
+        return op, total_rows
 
     def _find_margin_pixel_pairs(self, pixels: list[HealpixPixel]) -> pd.DataFrame:
         """Calculate the pairs of catalog pixels and their margin pixels

@@ -59,7 +59,6 @@ from lsdb.operations.lsdb_ops import (
     SelectPixels,
 )
 from lsdb.operations.operation import Operation
-from lsdb.types import DaskDFPixelMap
 
 if TYPE_CHECKING:
     from astropy.visualization.wcsaxes import WCSAxes
@@ -106,7 +105,7 @@ class HealpixDataset:
         # TODO: This changes to just be the operation name, not the lazy df view.
         # Should we add a df like repr?
         return self._operation.__repr__()
-        #return self._repr_data()
+        # return self._repr_data()
 
     @property
     def name(self):
@@ -492,7 +491,7 @@ class HealpixDataset:
 
         desc = tqdm_kwargs.pop("desc", "Computing Catalog") if tqdm_kwargs else "Computing Catalog"
         with TqdmCallback(desc=desc, disable=not progress_bar, **(tqdm_kwargs or {})):
-            #res = self._ddf.compute()
+            # res = self._ddf.compute()
             schedule = get_scheduler()
             if schedule is None:
                 schedule = threaded.get
@@ -891,7 +890,7 @@ class HealpixDataset:
             row_counts = stats[f"{rep_col}: row_count"].map(int)
         else:
             row_counts = np.array(self[self.columns[0]].map_partitions(len).compute())
-            #row_counts = np.array(
+            # row_counts = np.array(
             #    self.map_partitions(lambda df: pd.Series([len(df)]), meta=pd.Series(dtype=int)).compute()
             #    )
         rows_per_partition = np.random.multinomial(n, row_counts / row_counts.sum())
