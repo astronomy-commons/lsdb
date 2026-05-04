@@ -18,15 +18,20 @@ class PartitionIndexer:
     def __init__(self, cat: HealpixDataset):
         self.cat = cat
 
+    @property
+    def healpix_pixels(self) -> list[HealpixPixel]:
+        """List of HEALPix pixels corresponding to the catalog partitions."""
+        return self.cat._operation.healpix_pixels
+
     def __getitem__(self, item):
-        if isinstance(item, (int, HealpixPixel)):
+        if isinstance(item, (int, np.integer, HealpixPixel)):
             item = [item]
         if all(isinstance(i, HealpixPixel) for i in item):
             pixels = np.array(item)
         else:
-            pixels = np.array(self.cat.get_healpix_pixels())[item]
+            pixels = np.array(self.healpix_pixels)[item]
         return self.cat.search(PixelSearch(pixels))
 
     def __iter__(self) -> Iterator:
-        for pixel in self.cat.get_healpix_pixels():
+        for pixel in self.healpix_pixels:
             yield self.cat.search(PixelSearch([pixel]))

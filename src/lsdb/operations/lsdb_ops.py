@@ -19,11 +19,20 @@ if TYPE_CHECKING:
 
 
 class FromHealpixMap(Operation):
-    def __init__(self, func, pixels, *args, meta=None, **kwargs):
+    def __init__(self, func, pixels, *args, meta=None, map_kwargs=None, **kwargs):
         self.func = func
         self.pixels = pixels
         self.args = args
         self._meta = meta
+        if map_kwargs is not None:
+            for k in map_kwargs:
+                if k in kwargs:
+                    raise ValueError(f"Cannot specify {k} in both map_kwargs and kwargs for FromHealpixMap")
+                if len(map_kwargs[k]) != len(pixels):
+                    raise ValueError(
+                        f"Length of map_kwargs for {k} must match number of pixels in FromHealpixMap"
+                    )
+        self.map_kwargs = map_kwargs
         self.kwargs = kwargs
 
     @property
@@ -47,7 +56,7 @@ class FromHealpixMap(Operation):
     @property
     def dependencies(self) -> list[Operation]:
         return []
-    
+
     @property
     def is_reloadable(self) -> bool:
         return True
@@ -61,7 +70,8 @@ class FromHealpixMap(Operation):
         pixel_keys = {}
         for i, pixel in enumerate(self.pixels):
             key = (self.key_name, i)
-            task = Task(key, self.func, pixel, *self.args, **self.kwargs)
+            map_kwargs = {k: v[i] for k, v in self.map_kwargs.items()} if self.map_kwargs is not None else {}
+            task = Task(key, self.func, pixel, *self.args, **self.kwargs, **map_kwargs)
             graph[key] = task
             pixel_keys[pixel] = key
         return HealpixGraph(graph, pixel_keys)
@@ -138,7 +148,7 @@ class MapPartitions(Operation):
     @property
     def dependencies(self) -> list[Operation]:
         return [self.base]
-    
+
     @property
     def is_reloadable(self) -> bool:
         return self.base.is_reloadable
@@ -196,7 +206,7 @@ class SelectPixels(Operation):
     @property
     def dependencies(self) -> list[Operation]:
         return [self.base]
-    
+
     @property
     def is_reloadable(self) -> bool:
         return self.base.is_reloadable

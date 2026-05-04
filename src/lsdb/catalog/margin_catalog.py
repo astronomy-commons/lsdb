@@ -13,7 +13,6 @@ import lsdb.nested as nd
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
 from lsdb.loaders.hats.hats_loading_config import HatsLoadingConfig
 from lsdb.operations.operation import Operation
-from lsdb.types import DaskDFPixelMap
 
 if TYPE_CHECKING:
     from lsdb.catalog import Catalog

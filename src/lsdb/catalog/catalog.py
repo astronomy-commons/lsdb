@@ -50,7 +50,6 @@ from lsdb.io.schema import get_arrow_schema
 from lsdb.loaders.hats.hats_loading_config import HatsLoadingConfig
 from lsdb.nested.core import NestedFrame
 from lsdb.operations.operation import Operation
-from lsdb.types import DaskDFPixelMap
 
 
 def _default_suffixes(left_name: str, right_name: str) -> tuple[str, str]:

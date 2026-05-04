@@ -17,6 +17,7 @@ from mocpy import MOC
 import lsdb
 import lsdb.nested as nd
 from lsdb.catalog.margin_catalog import MarginCatalog, _validate_margin_catalog
+from lsdb.operations.operation import Operation
 
 
 def get_catalog_kwargs(catalog, **kwargs):
@@ -41,7 +42,7 @@ def test_from_dataframe(small_sky_order1_df, small_sky_order1_catalog, helpers):
     # Read CSV file for the small sky order 1 catalog
     catalog = lsdb.from_dataframe(small_sky_order1_df, margin_threshold=None, **kwargs)
     assert isinstance(catalog, lsdb.Catalog)
-    assert isinstance(catalog._ddf, nd.NestedFrame)
+    assert isinstance(catalog.meta, npd.NestedFrame)
     # Catalogs have the same information
     # New catalog doesn't have a skymap order yet.
     helpers.assert_catalog_info_is_correct(
@@ -57,14 +58,12 @@ def test_from_dataframe(small_sky_order1_df, small_sky_order1_catalog, helpers):
     # The partition_rows threshold was specified properly
     assert catalog.hc_structure.catalog_info.hats_max_rows <= 50
     # Index is set to spatial index
-    assert catalog._ddf.index.name == SPATIAL_INDEX_COLUMN
+    assert catalog.meta.index.name == SPATIAL_INDEX_COLUMN
     # Dataframes have the same data (column data types may differ)
     pd.testing.assert_frame_equal(
         catalog.compute().sort_values([SPATIAL_INDEX_COLUMN, "id"]),
         small_sky_order1_catalog.compute().sort_values([SPATIAL_INDEX_COLUMN, "id"]),
     )
-    # Divisions belong to the respective HEALPix pixels
-    helpers.assert_divisions_are_correct(catalog)
     # The arrow schema was automatically inferred
     helpers.assert_schema_correct(catalog)
     assert isinstance(catalog.compute(), npd.NestedFrame)
@@ -109,34 +108,32 @@ def test_from_dataframe_invalid_partitioning_parameters(small_sky_order1_df, sma
         lsdb.from_dataframe(small_sky_order1_df, margin_threshold=None, **kwargs)
 
 
-def test_partitions_on_map_equal_partitions_in_df(small_sky_order1_df, small_sky_order1_catalog):
+def test_partitions_on_healpix_pixels_equal_partitions_in_df(small_sky_order1_df, small_sky_order1_catalog):
     """Tests that partitions on the partition map exist in the Dask Dataframe"""
     kwargs = get_catalog_kwargs(small_sky_order1_catalog)
     catalog = lsdb.from_dataframe(small_sky_order1_df, margin_threshold=None, **kwargs)
-    for hp_pixel, partition_index in catalog._ddf_pixel_map.items():
-        partition_df = catalog._ddf.partitions[partition_index].compute()
-        assert isinstance(partition_df, pd.DataFrame)
+    for partition_index, hp_pixel in enumerate(catalog.get_healpix_pixels()):
+        partition_df = catalog.partitions[partition_index].compute()
+        assert isinstance(partition_df, npd.NestedFrame)
         for _, row in partition_df.iterrows():
             ipix = hp.radec2pix(hp_pixel.order, row["ra"], row["dec"])
             assert ipix == hp_pixel.pixel
 
 
-def test_partitions_in_partition_info_equal_partitions_on_map(small_sky_order1_df, small_sky_order1_catalog):
+def test_partitions_in_partition_info_equal_partitions_on_operation(
+    small_sky_order1_df, small_sky_order1_catalog
+):
     """Tests that partitions in the partition info match those on the partition map"""
     kwargs = get_catalog_kwargs(small_sky_order1_catalog)
     catalog = lsdb.from_dataframe(small_sky_order1_df, margin_threshold=None, **kwargs)
-    for hp_pixel in catalog.hc_structure.get_healpix_pixels():
-        partition_from_df = catalog.get_partition(hp_pixel.order, hp_pixel.pixel)
-        partition_index = catalog._ddf_pixel_map[hp_pixel]
-        partition_from_map = catalog._ddf.partitions[partition_index]
-        pd.testing.assert_frame_equal(partition_from_df.compute(), partition_from_map.compute())
+    assert catalog.get_healpix_pixels() == catalog._operation.healpix_pixels
 
 
-def test_partitions_on_map_match_pixel_tree(small_sky_order1_df, small_sky_order1_catalog):
+def test_partitions_on_operation_match_pixel_tree(small_sky_order1_df, small_sky_order1_catalog):
     """Tests that HEALPix pixels on the partition map exist in pixel tree"""
     kwargs = get_catalog_kwargs(small_sky_order1_catalog)
     catalog = lsdb.from_dataframe(small_sky_order1_df, margin_threshold=None, **kwargs)
-    for hp_pixel, _ in catalog._ddf_pixel_map.items():
+    for hp_pixel in catalog._operation.healpix_pixels:
         assert hp_pixel in catalog.hc_structure.pixel_tree
 
 
@@ -163,8 +160,8 @@ def test_partitions_obey_partition_rows(small_sky_order1_df, small_sky_order1_ca
     )
     catalog = lsdb.from_dataframe(small_sky_order1_df, margin_threshold=None, **kwargs)
     # Calculate size of dataframe per partition
-    partition_rowss = [len(partition_df) for partition_df in catalog._ddf.partitions]
-    assert all(size <= partition_rows for size in partition_rowss)
+    rows_per_partition = [len(partition.compute()) for partition in catalog.partitions]
+    assert all(size <= partition_rows for size in rows_per_partition)
 
 
 def test_partitions_obey_partition_bytes(small_sky_order1_df, small_sky_order1_catalog):
@@ -179,8 +176,8 @@ def test_partitions_obey_partition_bytes(small_sky_order1_df, small_sky_order1_c
     )
     catalog = lsdb.from_dataframe(small_sky_order1_df, margin_threshold=None, **kwargs)
     # Calculate size of dataframe per partition
-    for partition_df in catalog._ddf.partitions:
-        partition_memory = partition_df.memory_usage(deep=True).sum().compute()
+    for partition in catalog.partitions:
+        partition_memory = partition.compute().memory_usage(deep=True).sum()
         assert partition_memory <= partition_bytes
 
 
@@ -220,9 +217,7 @@ def test_from_dataframe_large_input(small_sky_order1_catalog, helpers):
     assert catalog.hc_structure.catalog_info.__pydantic_extra__["obs_regime"] == "Optical"
     assert catalog.hc_structure.catalog_info.__pydantic_extra__["hats_builder"].startswith("lsdb")
     # Index is set to spatial index
-    assert catalog._ddf.index.name == SPATIAL_INDEX_COLUMN
-    # Divisions belong to the respective HEALPix pixels
-    helpers.assert_divisions_are_correct(catalog)
+    assert catalog.meta.index.name == SPATIAL_INDEX_COLUMN
 
 
 def test_partitions_obey_default_partition_rows_when_no_arguments_specified(
@@ -237,7 +232,7 @@ def test_partitions_obey_default_partition_rows_when_no_arguments_specified(
     kwargs = get_catalog_kwargs(small_sky_order1_catalog, partition_rows=None, partition_bytes=None)
     catalog = lsdb.from_dataframe(small_sky_order1_df, margin_threshold=None, **kwargs)
     # Calculate number of pixels per partition
-    num_partition_pixels = [len(partition_df.compute().index) for partition_df in catalog._ddf.partitions]
+    num_partition_pixels = [len(partition.compute().index) for partition in catalog.partitions]
     assert all(num_pixels <= default_threshold for num_pixels in num_partition_pixels)
 
 
@@ -285,18 +280,18 @@ def test_from_dataframe_small_sky_source_with_margins(
     assert catalog.margin is not None
     margin = catalog.margin
     assert isinstance(margin, MarginCatalog)
-    assert isinstance(margin._ddf, nd.NestedFrame)
+    assert isinstance(margin.meta, npd.NestedFrame)
     assert margin.get_healpix_pixels() == small_sky_source_margin_catalog.get_healpix_pixels()
 
     # The points of this margin catalog will be a superset of the hats-imported one,
     # as fine filtering is not enabled here.
     for hp_pixel in margin.hc_structure.get_healpix_pixels():
-        partition_from_df = margin.get_partition(hp_pixel.order, hp_pixel.pixel)
-        expected_df = small_sky_source_margin_catalog.get_partition(hp_pixel.order, hp_pixel.pixel)
-        assert len(expected_df) <= len(partition_from_df)
+        partition_from_cat = margin.get_partition(hp_pixel.order, hp_pixel.pixel)
+        expected_cat = small_sky_source_margin_catalog.get_partition(hp_pixel.order, hp_pixel.pixel)
+        assert len(expected_cat.compute()) <= len(partition_from_cat.compute())
 
-        margin_source_ids = set(partition_from_df["source_id"])
-        expected_source_ids = set(expected_df["source_id"])
+        margin_source_ids = set(partition_from_cat.compute()["source_id"])
+        expected_source_ids = set(expected_cat.compute()["source_id"])
         assert len(expected_source_ids - margin_source_ids) == 0
 
     assert isinstance(margin.compute(), npd.NestedFrame)
@@ -328,7 +323,7 @@ def test_from_dataframe_margin_threshold_from_order(small_sky_source_df, helpers
     assert len(catalog.margin.get_healpix_pixels()) == 19
     margin_threshold_order3 = hp.order2mindist(3) * 60.0
     assert catalog.margin.hc_structure.catalog_info.margin_threshold == margin_threshold_order3
-    assert catalog.margin._ddf.index.name == catalog._ddf.index.name
+    assert catalog.margin.meta.index.name == catalog.meta.index.name
     _validate_margin_catalog(catalog.margin, catalog)
     helpers.assert_schema_correct(catalog.margin)
     helpers.assert_schema_correct(catalog)
@@ -364,8 +359,8 @@ def test_from_dataframe_margin_is_empty(small_sky_order1_df, helpers):
         partition_rows=100,
     )
     assert len(catalog.margin.get_healpix_pixels()) == 0
-    assert catalog.margin._ddf_pixel_map == {}
-    assert catalog.margin._ddf.index.name == catalog._ddf.index.name
+    assert catalog.margin._operation.healpix_pixels == []
+    assert catalog.margin.meta.index.name == catalog.meta.index.name
     assert catalog.margin.hc_structure.catalog_info.margin_threshold == 5.0
     _validate_margin_catalog(catalog.margin, catalog)
     helpers.assert_schema_correct(catalog.margin)
@@ -382,8 +377,8 @@ def test_from_dataframe_margin_threshold_zero(small_sky_order1_df, helpers):
         margin_threshold=0,
     )
     assert len(catalog.margin.get_healpix_pixels()) == 0
-    assert catalog.margin._ddf_pixel_map == {}
-    assert catalog.margin._ddf.index.name == catalog._ddf.index.name
+    assert catalog.margin._operation.healpix_pixels == []
+    assert catalog.margin.meta.index.name == catalog.meta.index.name
     assert catalog.margin.hc_structure.catalog_info.margin_threshold == 0
     _validate_margin_catalog(catalog.margin, catalog)
     helpers.assert_schema_correct(catalog.margin)
@@ -442,9 +437,9 @@ def test_from_dataframe_keeps_named_index(small_sky_order1_df):
     assert small_sky_order1_df.index.name is None
     small_sky_order1_df.set_index("id", inplace=True)
     catalog = lsdb.from_dataframe(small_sky_order1_df, margin_threshold=None)
-    assert catalog._ddf.index.name == "_healpix_29"
+    assert catalog.meta.index.name == "_healpix_29"
     assert "id" in catalog.columns
-    ids = catalog["id"].compute().to_numpy()
+    ids = catalog.compute()["id"].to_numpy()
     expected_ids = small_sky_order1_df.index.to_numpy()
     assert np.array_equal(ids, expected_ids)
 
@@ -454,7 +449,7 @@ def test_from_dataframe_does_not_keep_unnamed_index(small_sky_order1_df):
     range_index = pd.RangeIndex(start=0, stop=len(small_sky_order1_df), step=1)
     assert small_sky_order1_df.index.equals(range_index)
     catalog = lsdb.from_dataframe(small_sky_order1_df, margin_threshold=None)
-    assert catalog._ddf.index.name == "_healpix_29"
+    assert catalog.meta.index.name == "_healpix_29"
     assert "index" not in catalog.columns
 
 
@@ -466,7 +461,7 @@ def test_from_dataframe_all_sky(sm_all_sky_df):
     catalog = lsdb.from_dataframe(
         sm_all_sky_df, ra_column="RA", dec_column="DEC", drop_empty_siblings=True, margin_threshold=None
     )
-    assert catalog._ddf.index.name == "_healpix_29"
+    assert catalog.meta.index.name == "_healpix_29"
     assert len(catalog.get_healpix_pixels()) == 12
 
 
