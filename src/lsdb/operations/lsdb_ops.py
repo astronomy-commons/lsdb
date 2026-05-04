@@ -91,6 +91,10 @@ class EmptyOperation(FromHealpixMap):
     def __init__(self, meta):
         super().__init__(None, [], meta=meta)
 
+    @property
+    def is_reloadable(self) -> bool:
+        return False
+
 
 def map_parts_meta(func, base_meta: npd.NestedFrame, *args, include_pixel=False, **kwargs) -> npd.NestedFrame:
     try:

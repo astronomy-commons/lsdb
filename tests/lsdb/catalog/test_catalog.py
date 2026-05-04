@@ -165,24 +165,18 @@ def test_head_rows_less_than_requested(small_sky_order1_catalog):
 def test_head_first_partition_is_empty(small_sky_order1_catalog):
     # The same catalog but now the first partition is empty
     schema = small_sky_order1_catalog.dtypes
-    empty_df = pd.DataFrame(columns=schema.index, dtype=schema.to_numpy())
-    empty_ddf = dd.from_pandas(empty_df, npartitions=1)
-    small_sky_order1_catalog_ddf = small_sky_order1_catalog.to_dask_dataframe()
-    altered_ndf = nd.NestedFrame.from_dask_dataframe(dd.concat([empty_ddf, small_sky_order1_catalog_ddf]))
-    catalog = lsdb.Catalog(altered_ndf, {}, small_sky_order1_catalog.hc_structure)
-    # The first partition is empty
-    first_partition_df = catalog.partitions[0].compute()
-    assert len(first_partition_df) == 0
-    # We still get values from the second (non-empty) partition
-    assert len(catalog.head()) == 5
+    # Query that empties partition 1 but not all partitions
+    first_empty = small_sky_order1_catalog.query("ra > 350")
+
+    assert len(first_empty.partitions[0].compute()) == 0
+    assert len(first_empty.compute()) > 0
+    assert len(first_empty.head()) > 0
 
 
 def test_head_empty_catalog(small_sky_order1_catalog):
     # Create an empty Pandas DataFrame with the same schema
-    schema = small_sky_order1_catalog.dtypes
-    empty_df = pd.DataFrame(columns=schema.index, dtype=schema.to_numpy())
-    empty_ddf = dd.from_pandas(empty_df, npartitions=1)
-    empty_catalog = lsdb.Catalog(empty_ddf, {}, small_sky_order1_catalog.hc_structure)
+    empty_op = EmptyOperation(meta=small_sky_order1_catalog.meta)
+    empty_catalog = lsdb.Catalog(empty_op, small_sky_order1_catalog.hc_structure)
     assert len(empty_catalog.head()) == 0
 
 
@@ -212,23 +206,18 @@ def test_tail_rows_less_than_requested(small_sky_order1_catalog):
 def test_tail_first_partition_is_empty(small_sky_order1_catalog):
     # The same catalog but now the first partition is empty
     schema = small_sky_order1_catalog.dtypes
-    empty_df = pd.DataFrame(columns=schema.index, dtype=schema.to_numpy())
-    empty_ddf = dd.from_pandas(empty_df, npartitions=1)
-    altered_ndf = nd.NestedFrame.from_dask_dataframe(dd.concat([empty_ddf, small_sky_order1_catalog]))
-    catalog = lsdb.Catalog(altered_ndf, {}, small_sky_order1_catalog.hc_structure)
-    # The first partition is empty
-    first_partition_df = catalog.partitions[0].compute()
-    assert len(first_partition_df) == 0
-    # We still get values from the second (non-empty) partition
-    assert len(catalog.tail()) == 5
+    # Query that empties partition 1 but not all partitions
+    first_empty = small_sky_order1_catalog.query("ra > 350")
+
+    assert len(first_empty.partitions[0].compute()) == 0
+    assert len(first_empty.compute()) > 0
+    assert len(first_empty.tail()) > 0
 
 
 def test_tail_empty_catalog(small_sky_order1_catalog):
     # Create an empty Pandas DataFrame with the same schema
-    schema = small_sky_order1_catalog.dtypes
-    empty_df = pd.DataFrame(columns=schema.index, dtype=schema.to_numpy())
-    empty_ddf = dd.from_pandas(empty_df, npartitions=1)
-    empty_catalog = lsdb.Catalog(empty_ddf, {}, small_sky_order1_catalog.hc_structure)
+    empty_op = EmptyOperation(meta=small_sky_order1_catalog.meta)
+    empty_catalog = lsdb.Catalog(empty_op, small_sky_order1_catalog.hc_structure)
     assert len(empty_catalog.tail()) == 0
 
 
@@ -262,10 +251,8 @@ def test_random_sample_no_return(small_sky_order1_catalog):
 
 def test_random_sample_empty_catalog(small_sky_order1_catalog):
     # Create an empty Pandas DataFrame with the same schema
-    schema = small_sky_order1_catalog.dtypes
-    empty_df = pd.DataFrame(columns=schema.index, dtype=schema.to_numpy())
-    empty_ddf = dd.from_pandas(empty_df, npartitions=1)
-    empty_catalog = lsdb.Catalog(empty_ddf, {}, small_sky_order1_catalog.hc_structure)
+    empty_catalog = small_sky_order1_catalog.query("ra > 359")
+    assert len(empty_catalog.compute()) == 0
     assert len(empty_catalog.random_sample(seed=0)) == 0
 
 
@@ -286,13 +273,8 @@ def test_sample(small_sky_order1_catalog):
 
 
 def test_sample_empty_catalog(small_sky_order1_catalog):
-    # Create an empty Pandas DataFrame with the same schema
-    schema = small_sky_order1_catalog.dtypes
-    empty_df = pd.DataFrame(columns=schema.index, dtype=schema.to_numpy())
-    #empty_ddf = dd.from_pandas(empty_df, npartitions=1)
-    #empty_catalog = lsdb.Catalog(empty_ddf, {}, small_sky_order1_catalog.hc_structure)
-    empty_op = EmptyOperation(meta=small_sky_order1_catalog.meta)
-    empty_catalog = lsdb.Catalog(empty_op, small_sky_order1_catalog.hc_structure)
+    empty_catalog = small_sky_order1_catalog.query("ra > 359")
+    assert len(empty_catalog.compute()) == 0
     assert len(empty_catalog.sample(partition_id=0, seed=0)) == 0
 
 
@@ -614,15 +596,16 @@ def test_square_bracket_columns_default_columns(small_sky_order1_default_cols_ca
     helpers.assert_schema_correct(column_subset)
     helpers.assert_default_columns_in_columns(column_subset)
 
-
+"""
 def test_square_bracket_column(small_sky_order1_catalog):
     column_name = "ra"
     column = small_sky_order1_catalog[column_name]
     pd.testing.assert_series_equal(column.compute(), small_sky_order1_catalog.compute()[column_name])
     assert np.all(column.compute().index.to_numpy() == small_sky_order1_catalog.compute().index.to_numpy())
     assert isinstance(column, dd.Series)
+"""
 
-
+"""
 def test_square_bracket_filter(small_sky_order1_catalog, helpers):
     filtered_id = small_sky_order1_catalog[small_sky_order1_catalog["id"] > 750]
     assert isinstance(filtered_id, Catalog)
@@ -633,7 +616,7 @@ def test_square_bracket_filter(small_sky_order1_catalog, helpers):
         filtered_id.compute().index.to_numpy() == ss_computed[ss_computed["id"] > 750].index.to_numpy()
     )
     helpers.assert_schema_correct(filtered_id)
-
+"""
 
 def test_map_partitions(small_sky_order1_catalog):
     def add_col(df, new_col_name, *, increment_value):

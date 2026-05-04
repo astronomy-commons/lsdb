@@ -888,10 +888,15 @@ class HealpixDataset:
             rep_col = self.columns[0]
             row_counts = stats[f"{rep_col}: row_count"].map(int)
         else:
-            row_counts = np.array(self[self.columns[0]].map_partitions(len).compute())
-            # row_counts = np.array(
-            #    self.map_partitions(lambda df: pd.Series([len(df)]), meta=pd.Series(dtype=int)).compute()
-            #    )
+            row_counts = np.array(
+                self.map_partitions(lambda df: npd.NestedFrame({"len": [len(df)]}), meta=npd.NestedFrame({"len": pd.Series(dtype=int)}))
+                .compute()["len"]
+                .to_numpy()
+            )
+
+        total = row_counts.sum()
+        if total == 0:
+            return self.meta
         rows_per_partition = np.random.multinomial(n, row_counts / row_counts.sum())
         # With this breakdown, we randomly sample rows from each partition
         # to collect the entire sampling.
