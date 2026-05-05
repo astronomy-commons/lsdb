@@ -125,12 +125,18 @@ def _coerce_to_meta(result) -> npd.NestedFrame:
     if isinstance(result, pd.Series):
         return npd.NestedFrame({"result": pd.Series(dtype=result.dtype)})
     if isinstance(result, dict):
-        return npd.NestedFrame({
-            k: pd.Series(dtype=pd.api.types.pandas_dtype(type(v[0] if hasattr(v, '__len__') and len(v) > 0 else v)))
-            for k, v in result.items()
-        })
+        return npd.NestedFrame(
+            {
+                k: pd.Series(
+                    dtype=pd.api.types.pandas_dtype(type(v[0] if hasattr(v, "__len__") and len(v) > 0 else v))
+                )
+                for k, v in result.items()
+            }
+        )
     if isinstance(result, (list, tuple)):
-        return npd.NestedFrame({"result": pd.Series(dtype=pd.api.types.pandas_dtype(type(result[0])) if result else object)})
+        return npd.NestedFrame(
+            {"result": pd.Series(dtype=pd.api.types.pandas_dtype(type(result[0])) if result else object)}
+        )
     # scalar
     return npd.NestedFrame({"result": pd.Series(dtype=pd.api.types.pandas_dtype(type(result)))})
 
@@ -144,11 +150,12 @@ def _coerce_to_frame(result) -> npd.NestedFrame:
     if isinstance(result, pd.Series):
         return npd.NestedFrame({"result": result.values}, index=result.index)
     if isinstance(result, dict):
-        return npd.NestedFrame({k: [v] if not hasattr(v, '__len__') else v for k, v in result.items()})
+        return npd.NestedFrame({k: [v] if not hasattr(v, "__len__") else v for k, v in result.items()})
     if isinstance(result, (list, tuple)):
         return npd.NestedFrame({"result": result})
     # scalar
     return npd.NestedFrame({"result": [result]})
+
 
 def _normalize_meta(meta) -> npd.NestedFrame:
     """Normalize meta input to an npd.NestedFrame, accepting the same formats as Dask."""
@@ -197,7 +204,7 @@ class MapPartitions(Operation):
 
     @functools.cached_property
     def key_name(self) -> str:
-        return f"{funcname(self.func)}-{_tokenize_deterministic(self.base.meta, self.base.name, self.args, self.kwargs)}"
+        return f"{funcname(self.func)}-{_tokenize_deterministic(self.base.meta, self.base.key_name, self.args, self.kwargs)}"
 
     @property
     def meta(self) -> npd.NestedFrame:
@@ -280,7 +287,7 @@ class SelectPixels(Operation):
 
     @functools.cached_property
     def key_name(self) -> str:
-        return f"select_pixels-{_tokenize_deterministic(self.base.meta, self.base.name, *self.pixels)}"
+        return f"select_pixels-{_tokenize_deterministic(self.base.meta, self.base.key_name, *self.pixels)}"
 
     @property
     def meta(self) -> npd.NestedFrame:
@@ -353,8 +360,8 @@ class AlignAndApply(Operation):
 
     @functools.cached_property
     def key_name(self) -> str:
-        names = [op.name if op is not None else None for op in self.input_ops]
-        return f"{funcname(self.func)}-{_tokenize_deterministic(*self.metas, *names, *self.pixel_lists, *self.catalog_infos, *self.args, self.kwargs)}"
+        key_names = [op.key_name if op is not None else None for op in self.input_ops]
+        return f"{funcname(self.func)}-{_tokenize_deterministic(*self.metas, *key_names, *self.pixel_lists, *self.catalog_infos, *self.args, self.kwargs)}"
 
     @property
     def meta(self) -> npd.NestedFrame:
