@@ -28,7 +28,7 @@ from lsdb.catalog.catalog import Catalog
 from lsdb.io.common import new_provenance_properties
 from lsdb.io.schema import get_arrow_schema
 from lsdb.loaders.dataframe.from_dataframe_utils import _has_named_index
-#from lsdb.types import DaskDFPixelMap
+from lsdb.operations.lsdb_ops import FromHealpixMap
 
 pd.options.mode.chained_assignment = None  # default='warn'
 
@@ -259,8 +259,8 @@ class DataframeCatalogLoader:
         hc_structure = hc.catalog.Catalog(
             self.catalog_info, pixel_list, moc=moc, schema=schema, generate_snapshot=True
         )
-
-        return Catalog(op, hc_structure)
+        # No config as it's not disk-backed
+        return Catalog(op, hc_structure, loading_config=None)
 
     def _set_spatial_index(self):
         """Generates the spatial indices for each data point and assigns
@@ -329,7 +329,8 @@ class DataframeCatalogLoader:
             to the respective Pandas Dataframes and the total number of rows.
         """
         # Dataframes for each destination HEALPix pixel
-        pixel_dfs: list[npd.NestedFrame] = []
+        pixel_dfs: dict[HealpixPixel, npd.NestedFrame] = {}
+        total_rows = 0
 
         for hp_pixel in pixel_list:
             # Obtain Dataframe for current HEALPix pixel, using NESTED characteristics.
@@ -338,10 +339,19 @@ class DataframeCatalogLoader:
             pixel_df = self.dataframe.loc[
                 (self.dataframe.index >= left_bound) & (self.dataframe.index < right_bound)
             ]
-            pixel_dfs.append(pixel_df)
+            pixel_dfs[hp_pixel] = pixel_df
+            total_rows += len(pixel_df)
+
+        meta = next(iter(pixel_dfs.values())).iloc[:0] if pixel_dfs else self.dataframe.iloc[:0]
 
         # Generate operation with the original schema and desired backend
-        op, total_rows = _generate_op(pixel_dfs, pixel_list, self.use_pyarrow_types)
+        op = FromHealpixMap(
+            lambda pixel, dfs: dfs[pixel],
+            pixel_list,
+            pixel_dfs,
+            meta=meta,
+        )
+        #op, total_rows = _generate_op(pixel_dfs, pixel_list, self.use_pyarrow_types)
         return op, total_rows
 
     def _generate_moc(self):

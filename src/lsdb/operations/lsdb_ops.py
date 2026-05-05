@@ -112,19 +112,25 @@ def map_parts_meta(func, base_meta: npd.NestedFrame, *args, include_pixel=False,
 
 def _coerce_to_meta(result) -> npd.NestedFrame:
     """Coerce a function result to an empty npd.NestedFrame for use as meta."""
+    if result is None:
+        raise ValueError(
+            "Cannot infer meta for MapPartitions. Function returned None for an empty "
+            "DataFrame input. Either make sure your function works with an empty DataFrame "
+            "input, or supply a meta for your function"
+        )
     if isinstance(result, npd.NestedFrame):
         return result.iloc[:0]
     if isinstance(result, pd.DataFrame):
         return npd.NestedFrame(result.iloc[:0])
+    if isinstance(result, pd.Series):
+        return npd.NestedFrame({"result": pd.Series(dtype=result.dtype)})
     if isinstance(result, dict):
-        return npd.NestedFrame(
-            {
-                k: pd.Series(
-                    dtype=pd.api.types.pandas_dtype(type(v[0] if hasattr(v, "__len__") and len(v) > 0 else v))
-                )
-                for k, v in result.items()
-            }
-        )
+        return npd.NestedFrame({
+            k: pd.Series(dtype=pd.api.types.pandas_dtype(type(v[0] if hasattr(v, '__len__') and len(v) > 0 else v)))
+            for k, v in result.items()
+        })
+    if isinstance(result, (list, tuple)):
+        return npd.NestedFrame({"result": pd.Series(dtype=pd.api.types.pandas_dtype(type(result[0])) if result else object)})
     # scalar
     return npd.NestedFrame({"result": pd.Series(dtype=pd.api.types.pandas_dtype(type(result)))})
 
@@ -135,10 +141,29 @@ def _coerce_to_frame(result) -> npd.NestedFrame:
         return result
     if isinstance(result, pd.DataFrame):
         return npd.NestedFrame(result)
+    if isinstance(result, pd.Series):
+        return npd.NestedFrame({"result": result.values}, index=result.index)
     if isinstance(result, dict):
-        return npd.NestedFrame({k: [v] if not hasattr(v, "__len__") else v for k, v in result.items()})
+        return npd.NestedFrame({k: [v] if not hasattr(v, '__len__') else v for k, v in result.items()})
+    if isinstance(result, (list, tuple)):
+        return npd.NestedFrame({"result": result})
     # scalar
     return npd.NestedFrame({"result": [result]})
+
+def _normalize_meta(meta) -> npd.NestedFrame:
+    """Normalize meta input to an npd.NestedFrame, accepting the same formats as Dask."""
+    if isinstance(meta, npd.NestedFrame):
+        return meta
+    if isinstance(meta, pd.DataFrame):
+        return npd.NestedFrame(meta)
+    if isinstance(meta, dict):
+        return npd.NestedFrame({k: pd.Series(dtype=v) for k, v in meta.items()})
+    if isinstance(meta, (list, tuple)) and all(isinstance(m, tuple) and len(m) == 2 for m in meta):
+        # list of (name, dtype) tuples — another Dask-accepted format
+        return npd.NestedFrame({k: pd.Series(dtype=v) for k, v in meta})
+    raise ValueError(
+        f"meta must be a DataFrame, dict of {{name: dtype}}, or list of (name, dtype) tuples, got {type(meta)}"
+    )
 
 
 class MapPartitions(Operation):
@@ -155,7 +180,8 @@ class MapPartitions(Operation):
             )
         self._func = func
         self.args = args
-        self._meta = meta
+        # Ensure that input meta is normalized to a NestedFrame
+        self._meta = _normalize_meta(meta) if meta is not None else None
         self.include_pixel = include_pixel
         self.kwargs = kwargs
 
@@ -201,20 +227,29 @@ class MapPartitions(Operation):
         func = self.func
         include_pixel = self.include_pixel
 
-        def wrapped_func(df, *args, **kwargs):
-            if include_pixel:
-                # pixel is already injected as first arg by the include_pixel path
-                result = func(df, *args, **kwargs)
-            else:
-                result = func(df, *args, **kwargs)
-            return _coerce_to_frame(result)
+        def wrapped_func(df, _partition_index, *args, **kwargs):
+            try:
+                if include_pixel:
+                    # pixel is already injected as first arg by the include_pixel path
+                    result = func(df, *args, **kwargs)
+                else:
+                    result = func(df, *args, **kwargs)
+                return _coerce_to_frame(result)
+            except Exception as e:
+                if include_pixel and args:
+                    raise RuntimeError(
+                        f"Error applying function {funcname(func)} to partition {_partition_index}, pixel {args[0]}: {e}"
+                    ) from e
+                raise RuntimeError(
+                    f"Error applying function {funcname(func)} to partition {_partition_index}: {e}"
+                ) from e
 
         for i, (pixel, prev_key) in enumerate(previous.pixel_to_key_map.items()):
             args = self.args
             if self.include_pixel:
                 args = (HealpixPixel(*pixel),) + args
             key = (self.key_name, i)
-            task = Task(key, wrapped_func, TaskRef(prev_key), *args, **self.kwargs)
+            task = Task(key, wrapped_func, TaskRef(prev_key), i, *args, **self.kwargs)
             graph[key] = task
             pixel_keys[pixel] = key
         return HealpixGraph(graph, pixel_keys)
