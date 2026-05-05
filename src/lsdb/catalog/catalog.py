@@ -1327,16 +1327,14 @@ class Catalog(HealpixDataset):
         func,
         columns=None,
         *,
+        meta,
         row_container="dict",
         output_names=None,
         infer_nesting=True,
         append_columns=False,
-        meta=None,
         **kwargs,
     ) -> Catalog:
         """Takes a function and applies it to each top-level row of the Catalog.
-
-        docstring copied from nested-pandas
 
         Nested columns are packaged alongside base columns and available for function use, where base columns
         are passed as scalars and nested columns are passed as numpy arrays. The way in which the row data is
@@ -1346,38 +1344,38 @@ class Catalog(HealpixDataset):
         ----------
         func : callable
             Function to apply to each nested dataframe. The first arguments to `func` should be which
-            columns to apply the function to. See the Notes for recommendations
-            on writing func outputs.
+            columns to apply the function to. Make sure `meta` is consistent with the return value of
+            `func`. See the Notes for recommendations on writing func outputs.
         columns : None | str | list of str, default None
             Specifies which columns to pass to the function in the row_container format.
             If None, all columns are passed. If list of str, those columns are passed.
             If str, a single column is passed or if the string is a nested column, then all nested sub-columns
             are passed (e.g. columns="nested" passes all columns of the nested dataframe "nested"). To pass
             individual nested sub-columns, use the hierarchical column name (e.g. columns=["nested.t",...]).
+        meta : dataframe or series-like
+            The dask meta of the output. If `append_columns` is True, the meta should only specify the
+            additional columns output by func. Make sure `meta` is consistent with the return value of `func`.
         row_container : 'dict' or 'args', default 'dict'
             Specifies how the row data will be packaged when passed as an input to the function.
             If 'dict', the function will be called as `func({"col1": value, ...}, **kwargs)`, so func should
             expect a single dictionary input with keys corresponding to column names.
             If 'args', the function will be called as `func(value, ..., **kwargs)`, so func should expect
-            positional arguments corresponding to the columns specified in `args`. (Default value = "dict")
-        output_names : None | str | list of str
+            positional arguments corresponding to the columns specified in `args`.
+        output_names : None | str | list of str, default None
             Specifies the names of the output columns in the resulting NestedFrame. If None, the function
             will return whatever names the user function returns. If specified will override any names
             returned by the user function provided the number of names matches the number of outputs. When not
             specified and the user function returns values without names (e.g. a list or tuple), the output
-            columns will be enumerated (e.g. "0", "1", ...). (Default value = None)
+            columns will be enumerated (e.g. "0", "1", ...).
         infer_nesting : bool, default True
             If True, the function will pack output columns into nested
             structures based on column names adhering to a nested naming
             scheme. E.g. "nested.b" and "nested.c" will be packed into a column
             called "nested" with columns "b" and "c". If False, all outputs
             will be returned as base columns. Note that this will trigger off of names specified in
-            `output_names` in addition to names returned by the user function. (Default value = True)
+            `output_names` in addition to names returned by the user function.
         append_columns : bool, default False
-            if True, the output columns should be appended to those in the original NestedFrame
-        meta : dataframe or series-like, optional, default None
-            The dask meta of the output. If append_columns is True, the meta should specify just the
-            additional columns output by func.
+            if True, the output columns should be appended to those in the original NestedFrame.
         kwargs : keyword arguments, optional
             Keyword arguments to pass to the function.
 
@@ -1388,14 +1386,18 @@ class Catalog(HealpixDataset):
 
         Notes
         -----
-        If concerned about performance, specify `columns` to only include the columns
-        needed for the function, as this will avoid the overhead of packaging
-        all columns for each row.
+        Make sure `meta` is consistent with the return value of `func`.
 
-        By default, `map_rows` will produce a `NestedFrame` with enumerated
-        column names for each returned value of the function. It's recommended
-        to either specify `output_names` or have `func` return a dictionary
-        where each key is an output column of the dataframe returned by
+        If `append_columns` is True, `func` should only return the columns to be appended. Make
+        sure neither `func` nor the provided `meta` contain columns to append to the Catalog that
+        overlap in name with pre-existing columns.
+
+        If concerned about performance, specify `columns` to only include the columns needed for
+        the function, as this will avoid the overhead of packaging all columns for each row.
+
+        By default, `map_rows` will produce a `NestedFrame` with enumerated column names for each
+        returned value of the function. It's recommended to either specify `output_names` or have
+        `func` return a dictionary where each key is an output column of the dataframe returned by
         `map_rows` (as shown above).
 
         Examples
