@@ -443,7 +443,7 @@ class Helpers:
     def assert_default_columns_in_columns(cat):
         if cat.hc_structure.catalog_info.default_columns is not None:
             for col in cat.hc_structure.catalog_info.default_columns:
-                assert col in cat._ddf.exploded_columns
+                assert col in cat.exploded_columns
 
     @staticmethod
     def assert_columns_in_nested_joined_catalog(

@@ -125,6 +125,11 @@ class HealpixDataset:
     def columns(self):
         """Returns the names of columns available in the Dataset"""
         return self.meta.columns
+    
+    @property
+    def exploded_columns(self) -> list[str]:
+        """returns the list of column names and nested subcolumn names (in exploded, dot notation)"""
+        return self.columns.to_list() + self.meta.get_subcolumns()
 
     @property
     def all_columns(self):
@@ -496,8 +501,11 @@ class HealpixDataset:
                 schedule = threaded.get
             healpix_graph = self._operation.build()
             result = schedule(healpix_graph.graph, healpix_graph.keys)
+        # If no partitions, return an empty dataframe with the correct schema
+        # This can happen through partition pruning operations
+        if len(result) == 0:
+            return self.meta.copy()
         return pd.concat(result)
-        return res
 
     def to_dask_dataframe(self, optimize_graph=False, divisions=True):
         """Converts to a lsdb.nested Dask DataFrame
