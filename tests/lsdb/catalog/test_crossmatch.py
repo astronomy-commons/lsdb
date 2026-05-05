@@ -971,3 +971,29 @@ def test_crossmatch_nested_inner_join_no_nulls_in_nested_column():
 
     # No null values in the nested column — every row must have at least one match
     assert not result["matches"].isna().any()
+
+
+def test_self_crossmatch_default_suffixes(small_sky_catalog):
+    """Self-crossmatch should not fail with default suffixes (issue #1275).
+
+    When a catalog is crossmatched against itself the default suffixes
+    used to be identical, causing a ``ValueError`` due to duplicate
+    column labels.  After the fix, unique ``_l`` / ``_r`` suffixes are
+    generated automatically.
+    """
+    from lsdb.catalog.catalog import _default_suffixes
+
+    name = small_sky_catalog.name
+    left_suffix, right_suffix = _default_suffixes(name, name)
+    assert left_suffix != right_suffix, "Self-crossmatch suffixes must differ"
+    assert left_suffix == f"_{name}_l"
+    assert right_suffix == f"_{name}_r"
+
+
+def test_default_suffixes_different_names():
+    """When catalog names differ the original suffix scheme is preserved."""
+    from lsdb.catalog.catalog import _default_suffixes
+
+    left_suffix, right_suffix = _default_suffixes("cat_a", "cat_b")
+    assert left_suffix == "_cat_a"
+    assert right_suffix == "_cat_b"
