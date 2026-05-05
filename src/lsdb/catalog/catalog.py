@@ -416,7 +416,7 @@ class Catalog(HealpixDataset):
             suffix_method,
         )
         hc_catalog = self.hc_structure.__class__(
-            new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(ddf), moc=alignment.moc
+            new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(op.meta), moc=alignment.moc
         )
         return self.__class__(op, hc_catalog)
 
@@ -666,7 +666,7 @@ class Catalog(HealpixDataset):
         hc_catalog = self.hc_structure.__class__(
             self.hc_structure.catalog_info,
             alignment.pixel_tree,
-            schema=get_arrow_schema(op),
+            schema=get_arrow_schema(op.meta),
             moc=alignment.moc,
         )
         return self._create_updated_dataset(op=op, hc_structure=hc_catalog)
@@ -1067,7 +1067,7 @@ class Catalog(HealpixDataset):
             suffix_method,
         )
         hc_catalog = hc.catalog.Catalog(
-            new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(op), moc=alignment.moc
+            new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(op.meta), moc=alignment.moc
         )
         return self.__class__(op, hc_catalog)
 
@@ -1193,7 +1193,7 @@ class Catalog(HealpixDataset):
             suffix_method,
         )
         hc_catalog = hc.catalog.Catalog(
-            new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(op), moc=alignment.moc
+            new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(op.meta), moc=alignment.moc
         )
         return self.__class__(op, hc_catalog)
 
@@ -1263,7 +1263,7 @@ class Catalog(HealpixDataset):
             catalog_name=output_catalog_name, total_rows=None
         )
         hc_catalog = hc.catalog.Catalog(
-            new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(op), moc=alignment.moc
+            new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(op.meta), moc=alignment.moc
         )
         return self.__class__(op, hc_catalog)
 
