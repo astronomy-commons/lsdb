@@ -112,6 +112,12 @@ def map_parts_meta(func, base_meta: npd.NestedFrame, *args, include_pixel=False,
 
 def _coerce_to_meta(result) -> npd.NestedFrame:
     """Coerce a function result to an empty npd.NestedFrame for use as meta."""
+    if result is None:
+        raise ValueError(
+            "Cannot infer meta for MapPartitions. Function returned None for an empty "
+            "DataFrame input. Either make sure your function works with an empty DataFrame "
+            "input, or supply a meta for your function"
+        )
     if isinstance(result, npd.NestedFrame):
         return result.iloc[:0]
     if isinstance(result, pd.DataFrame):
