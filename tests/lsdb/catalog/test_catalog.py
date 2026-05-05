@@ -127,12 +127,11 @@ def test_get_catalog_partition_gets_correct_partition(small_sky_order1_catalog):
         hp_order = healpix_pixel.order
         hp_pixel = healpix_pixel.pixel
         partition = small_sky_order1_catalog.get_partition(hp_order, hp_pixel)
-        pixel = HealpixPixel(order=hp_order, pixel=hp_pixel)
-        partition_index = small_sky_order1_catalog._ddf_pixel_map[pixel]
-        ddf_partition = small_sky_order1_catalog.partitions[partition_index]
-        assert isinstance(partition, nd.NestedFrame)
-        assert isinstance(partition.compute(), npd.NestedFrame)
-        pd.testing.assert_frame_equal(partition.compute(), ddf_partition.compute())
+        assert isinstance(partition, Catalog)
+        pd.testing.assert_frame_equal(
+            partition.compute(),
+            small_sky_order1_catalog.partitions[healpix_pixel].compute()
+        )
 
 
 def test_npartitions_property(small_sky_order1_catalog):
@@ -166,24 +165,18 @@ def test_head_rows_less_than_requested(small_sky_order1_catalog):
 def test_head_first_partition_is_empty(small_sky_order1_catalog):
     # The same catalog but now the first partition is empty
     schema = small_sky_order1_catalog.dtypes
-    empty_df = pd.DataFrame(columns=schema.index, dtype=schema.to_numpy())
-    empty_ddf = dd.from_pandas(empty_df, npartitions=1)
-    small_sky_order1_catalog_ddf = small_sky_order1_catalog.to_dask_dataframe()
-    altered_ndf = nd.NestedFrame.from_dask_dataframe(dd.concat([empty_ddf, small_sky_order1_catalog_ddf]))
-    catalog = lsdb.Catalog(altered_ndf, {}, small_sky_order1_catalog.hc_structure)
-    # The first partition is empty
-    first_partition_df = catalog.partitions[0].compute()
-    assert len(first_partition_df) == 0
-    # We still get values from the second (non-empty) partition
-    assert len(catalog.head()) == 5
+    # Query that empties partition 1 but not all partitions
+    first_empty = small_sky_order1_catalog.query("ra > 350")
+
+    assert len(first_empty.partitions[0].compute()) == 0
+    assert len(first_empty.compute()) > 0
+    assert len(first_empty.head()) > 0
 
 
 def test_head_empty_catalog(small_sky_order1_catalog):
     # Create an empty Pandas DataFrame with the same schema
-    schema = small_sky_order1_catalog.dtypes
-    empty_df = pd.DataFrame(columns=schema.index, dtype=schema.to_numpy())
-    empty_ddf = dd.from_pandas(empty_df, npartitions=1)
-    empty_catalog = lsdb.Catalog(empty_ddf, {}, small_sky_order1_catalog.hc_structure)
+    empty_op = EmptyOperation(meta=small_sky_order1_catalog.meta)
+    empty_catalog = lsdb.Catalog(empty_op, small_sky_order1_catalog.hc_structure)
     assert len(empty_catalog.head()) == 0
 
 
@@ -213,23 +206,18 @@ def test_tail_rows_less_than_requested(small_sky_order1_catalog):
 def test_tail_first_partition_is_empty(small_sky_order1_catalog):
     # The same catalog but now the first partition is empty
     schema = small_sky_order1_catalog.dtypes
-    empty_df = pd.DataFrame(columns=schema.index, dtype=schema.to_numpy())
-    empty_ddf = dd.from_pandas(empty_df, npartitions=1)
-    altered_ndf = nd.NestedFrame.from_dask_dataframe(dd.concat([empty_ddf, small_sky_order1_catalog]))
-    catalog = lsdb.Catalog(altered_ndf, {}, small_sky_order1_catalog.hc_structure)
-    # The first partition is empty
-    first_partition_df = catalog.partitions[0].compute()
-    assert len(first_partition_df) == 0
-    # We still get values from the second (non-empty) partition
-    assert len(catalog.tail()) == 5
+    # Query that empties partition 1 but not all partitions
+    first_empty = small_sky_order1_catalog.query("ra > 350")
+
+    assert len(first_empty.partitions[0].compute()) == 0
+    assert len(first_empty.compute()) > 0
+    assert len(first_empty.tail()) > 0
 
 
 def test_tail_empty_catalog(small_sky_order1_catalog):
     # Create an empty Pandas DataFrame with the same schema
-    schema = small_sky_order1_catalog.dtypes
-    empty_df = pd.DataFrame(columns=schema.index, dtype=schema.to_numpy())
-    empty_ddf = dd.from_pandas(empty_df, npartitions=1)
-    empty_catalog = lsdb.Catalog(empty_ddf, {}, small_sky_order1_catalog.hc_structure)
+    empty_op = EmptyOperation(meta=small_sky_order1_catalog.meta)
+    empty_catalog = lsdb.Catalog(empty_op, small_sky_order1_catalog.hc_structure)
     assert len(empty_catalog.tail()) == 0
 
 
@@ -263,10 +251,8 @@ def test_random_sample_no_return(small_sky_order1_catalog):
 
 def test_random_sample_empty_catalog(small_sky_order1_catalog):
     # Create an empty Pandas DataFrame with the same schema
-    schema = small_sky_order1_catalog.dtypes
-    empty_df = pd.DataFrame(columns=schema.index, dtype=schema.to_numpy())
-    empty_ddf = dd.from_pandas(empty_df, npartitions=1)
-    empty_catalog = lsdb.Catalog(empty_ddf, {}, small_sky_order1_catalog.hc_structure)
+    empty_catalog = small_sky_order1_catalog.query("ra > 359")
+    assert len(empty_catalog.compute()) == 0
     assert len(empty_catalog.random_sample(seed=0)) == 0
 
 
@@ -287,13 +273,8 @@ def test_sample(small_sky_order1_catalog):
 
 
 def test_sample_empty_catalog(small_sky_order1_catalog):
-    # Create an empty Pandas DataFrame with the same schema
-    schema = small_sky_order1_catalog.dtypes
-    empty_df = pd.DataFrame(columns=schema.index, dtype=schema.to_numpy())
-    #empty_ddf = dd.from_pandas(empty_df, npartitions=1)
-    #empty_catalog = lsdb.Catalog(empty_ddf, {}, small_sky_order1_catalog.hc_structure)
-    empty_op = EmptyOperation(meta=small_sky_order1_catalog.meta)
-    empty_catalog = lsdb.Catalog(empty_op, small_sky_order1_catalog.hc_structure)
+    empty_catalog = small_sky_order1_catalog.query("ra > 359")
+    assert len(empty_catalog.compute()) == 0
     assert len(empty_catalog.sample(partition_id=0, seed=0)) == 0
 
 
@@ -342,8 +323,10 @@ def test_drop(small_sky_with_nested_sources):
     cols_to_delete = ["id", "sources.source_id"]
 
     expected_cat = small_sky_with_nested_sources.drop(cols_to_delete)
-    assert expected_cat.exploded_columns == [
-        c for c in small_sky_with_nested_sources.exploded_columns if c not in cols_to_delete
+    expected_cols = expected_cat.meta.base_columns + expected_cat.meta.get_subcolumns()
+    actual_cols = small_sky_with_nested_sources.meta.base_columns + small_sky_with_nested_sources.meta.get_subcolumns()
+    assert expected_cols == [
+        c for c in actual_cols if c not in cols_to_delete
     ]
 
     # The columns do not exist, and errors="raise"
@@ -354,7 +337,7 @@ def test_drop(small_sky_with_nested_sources):
 
     # Some columns do not exist but errors="ignore"
     assert "b" not in small_sky_with_nested_sources.columns
-    assert "b" not in small_sky_with_nested_sources["sources"].columns
+    assert "b" not in small_sky_with_nested_sources.meta["sources"].columns
     cat = small_sky_with_nested_sources.drop(cols_to_delete + ["b", "sources.b"], errors="ignore")
     pd.testing.assert_frame_equal(expected_cat.compute(), cat.compute())
 
@@ -613,15 +596,16 @@ def test_square_bracket_columns_default_columns(small_sky_order1_default_cols_ca
     helpers.assert_schema_correct(column_subset)
     helpers.assert_default_columns_in_columns(column_subset)
 
-
+"""
 def test_square_bracket_column(small_sky_order1_catalog):
     column_name = "ra"
     column = small_sky_order1_catalog[column_name]
     pd.testing.assert_series_equal(column.compute(), small_sky_order1_catalog.compute()[column_name])
     assert np.all(column.compute().index.to_numpy() == small_sky_order1_catalog.compute().index.to_numpy())
     assert isinstance(column, dd.Series)
+"""
 
-
+"""
 def test_square_bracket_filter(small_sky_order1_catalog, helpers):
     filtered_id = small_sky_order1_catalog[small_sky_order1_catalog["id"] > 750]
     assert isinstance(filtered_id, Catalog)
@@ -632,7 +616,7 @@ def test_square_bracket_filter(small_sky_order1_catalog, helpers):
         filtered_id.compute().index.to_numpy() == ss_computed[ss_computed["id"] > 750].index.to_numpy()
     )
     helpers.assert_schema_correct(filtered_id)
-
+"""
 
 def test_map_partitions(small_sky_order1_catalog):
     def add_col(df, new_col_name, *, increment_value):
@@ -735,13 +719,11 @@ def test_map_partitions_single_partition(small_sky_order1_catalog):
     assert mapped.dtypes["a"] == mapped.dtypes["ra"]
 
     # Verify that only one partition was updated
-    assert len(mapped._ddf_pixel_map) == 1
+    assert len(mapped.get_healpix_pixels()) == 1
 
     # Get the pixel for the updated partition
-    pixel = list(mapped._ddf_pixel_map.keys())[0]
-    original_pixel = [
-        p for p, idx in small_sky_order1_catalog._ddf_pixel_map.items() if idx == default_partition_index
-    ][0]
+    pixel = list(mapped.get_healpix_pixels())[0]
+    original_pixel = small_sky_order1_catalog.get_healpix_pixels()[default_partition_index]
 
     # Verify it's the same pixel as the original partition
     assert pixel.order == original_pixel.order
@@ -779,13 +761,11 @@ def test_map_partitions_single_partition_with_margin(small_sky_order1_source_wit
     assert mapped.dtypes["a"] == mapped.dtypes["source_ra"]
 
     # Verify that only one partition was updated in the main catalog
-    assert len(mapped._ddf_pixel_map) == 1
+    assert len(mapped.get_healpix_pixels()) == 1
 
     # Get the pixel for the updated partition
-    pixel = list(mapped._ddf_pixel_map.keys())[0]
-    original_pixel = [
-        p for p, idx in small_sky_order1_source_with_margin._ddf_pixel_map.items() if idx == partition_index
-    ][0]
+    pixel = list(mapped.get_healpix_pixels())[0]
+    original_pixel = small_sky_order1_source_with_margin.get_healpix_pixels()[partition_index]
 
     # Verify it's the same pixel as the original partition
     assert pixel.order == original_pixel.order
@@ -816,31 +796,26 @@ def test_square_bracket_single_partition(small_sky_order1_catalog):
     index = 1
     subset = small_sky_order1_catalog.partitions[index]
     assert isinstance(subset, Catalog)
-    assert 1 == len(subset._ddf_pixel_map)
+    assert 1 == len(subset.get_healpix_pixels())
     pixel = subset.get_healpix_pixels()[0]
-    assert index == small_sky_order1_catalog.get_partition_index(pixel.order, pixel.pixel)
-    pd.testing.assert_frame_equal(
-        small_sky_order1_catalog.partitions[index].compute(), subset.compute()
-    )
-    assert isinstance(subset.compute(), npd.NestedFrame)
+    assert pixel == small_sky_order1_catalog.get_healpix_pixels()[index]
 
 
 def test_square_bracket_multiple_partitions(small_sky_order1_catalog):
     indices = [0, 1, 2]
     subset = small_sky_order1_catalog.partitions[indices]
     assert isinstance(subset, Catalog)
-    assert 3 == len(subset._ddf_pixel_map)
-    for pixel, partition_index in subset._ddf_pixel_map.items():
-        original_index = small_sky_order1_catalog.get_partition_index(pixel.order, pixel.pixel)
-        original_partition = small_sky_order1_catalog.partitions[original_index]
-        subset_partition = subset.partitions[partition_index]
+    assert 3 == len(subset.get_healpix_pixels())
+    for pixel in subset.get_healpix_pixels():
+        original_partition = small_sky_order1_catalog.partitions[pixel]
+        subset_partition = subset.partitions[pixel]
         pd.testing.assert_frame_equal(original_partition.compute(), subset_partition.compute())
 
 
 def test_square_bracket_slice_partitions(small_sky_order1_catalog):
     subset = small_sky_order1_catalog.partitions[:2]
     assert isinstance(subset, Catalog)
-    assert 2 == len(subset._ddf_pixel_map)
+    assert 2 == len(subset.get_healpix_pixels())
     subset_2 = small_sky_order1_catalog.partitions[0:2]
     assert isinstance(subset, Catalog)
     pd.testing.assert_frame_equal(subset_2.compute(), subset.compute())

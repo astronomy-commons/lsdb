@@ -491,7 +491,6 @@ class HealpixDataset:
 
         desc = tqdm_kwargs.pop("desc", "Computing Catalog") if tqdm_kwargs else "Computing Catalog"
         with TqdmCallback(desc=desc, disable=not progress_bar, **(tqdm_kwargs or {})):
-            # res = self._ddf.compute()
             schedule = get_scheduler()
             if schedule is None:
                 schedule = threaded.get
@@ -889,10 +888,15 @@ class HealpixDataset:
             rep_col = self.columns[0]
             row_counts = stats[f"{rep_col}: row_count"].map(int)
         else:
-            row_counts = np.array(self[self.columns[0]].map_partitions(len).compute())
-            # row_counts = np.array(
-            #    self.map_partitions(lambda df: pd.Series([len(df)]), meta=pd.Series(dtype=int)).compute()
-            #    )
+            row_counts = np.array(
+                self.map_partitions(lambda df: npd.NestedFrame({"len": [len(df)]}), meta=npd.NestedFrame({"len": pd.Series(dtype=int)}))
+                .compute()["len"]
+                .to_numpy()
+            )
+
+        total = row_counts.sum()
+        if total == 0:
+            return self.meta
         rows_per_partition = np.random.multinomial(n, row_counts / row_counts.sum())
         # With this breakdown, we randomly sample rows from each partition
         # to collect the entire sampling.
@@ -960,7 +964,7 @@ class HealpixDataset:
         >>> import lsdb
         >>> catalog = lsdb.generate_catalog(5, 1, seed=1)
         >>> catalog = catalog.drop(["a","b","nested.flux_err"])
-        >>> catalog._ddf.exploded_columns
+        >>> catalog.meta.columns + catalog.meta.get_subcolumns()
         ['ra', 'dec', 'id', 'nested', 'nested.t', 'nested.flux', 'nested.band']
         """
         return self.map_partitions(

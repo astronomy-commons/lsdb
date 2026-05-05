@@ -885,15 +885,14 @@ class Catalog(HealpixDataset):
                 pixel = catalog.get_healpix_pixels()[0]
 
                 # Update the margin for this pixel only
-                if pixel in self.margin._ddf_pixel_map:
-                    margin_partition_index = self.margin.get_partition_index(pixel.order, pixel.pixel)
+                if pixel in self.margin.get_healpix_pixels():
                     catalog.margin = self.margin.map_partitions(
                         func,
                         *args,
                         meta=meta,
                         include_pixel=include_pixel,
                         compute_single_partition=True,
-                        partition_index=margin_partition_index,
+                        partition_index=pixel,
                         **kwargs,
                     )  # type: ignore[assignment]
             else:
@@ -973,8 +972,8 @@ class Catalog(HealpixDataset):
         if not right_index:
             names_to_check += make_strlist(right_on)
         self._check_unloaded_columns(names_to_check)
-        return self._ddf.merge(
-            other._ddf,
+        return self.to_dask_dataframe().merge(
+            other.to_dask_dataframe(),
             how=how,
             on=on,
             left_on=left_on,

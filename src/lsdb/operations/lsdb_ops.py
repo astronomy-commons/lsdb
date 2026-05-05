@@ -91,18 +91,48 @@ class EmptyOperation(FromHealpixMap):
     def __init__(self, meta):
         super().__init__(None, [], meta=meta)
 
+    @property
+    def is_reloadable(self) -> bool:
+        return False
+
 
 def map_parts_meta(func, base_meta: npd.NestedFrame, *args, include_pixel=False, **kwargs) -> npd.NestedFrame:
     try:
         if include_pixel:
-            return func(base_meta, HealpixPixel(0, 0), *args, **kwargs)
-        return func(base_meta, *args, **kwargs)
+            result = func(base_meta, HealpixPixel(0, 0), *args, **kwargs)
+        else:
+            result = func(base_meta, *args, **kwargs)
     except Exception as e:
         raise ValueError(
             "Cannot infer meta for MapPartitions. Either make sure your function works with an"
             " empty dataframe input, or supply a meta for your function"
         ) from e
+    return _coerce_to_meta(result)
 
+def _coerce_to_meta(result) -> npd.NestedFrame:
+    """Coerce a function result to an empty npd.NestedFrame for use as meta."""
+    if isinstance(result, npd.NestedFrame):
+        return result.iloc[:0]
+    if isinstance(result, pd.DataFrame):
+        return npd.NestedFrame(result.iloc[:0])
+    if isinstance(result, dict):
+        return npd.NestedFrame({
+            k: pd.Series(dtype=pd.api.types.pandas_dtype(type(v[0] if hasattr(v, '__len__') and len(v) > 0 else v)))
+            for k, v in result.items()
+        })
+    # scalar
+    return npd.NestedFrame({"result": pd.Series(dtype=pd.api.types.pandas_dtype(type(result)))})
+
+def _coerce_to_frame(result) -> npd.NestedFrame:
+    """Coerce a partition function result to an npd.NestedFrame at execution time."""
+    if isinstance(result, npd.NestedFrame):
+        return result
+    if isinstance(result, pd.DataFrame):
+        return npd.NestedFrame(result)
+    if isinstance(result, dict):
+        return npd.NestedFrame({k: [v] if not hasattr(v, '__len__') else v for k, v in result.items()})
+    # scalar
+    return npd.NestedFrame({"result": [result]})
 
 class MapPartitions(Operation):
     class_func = None
@@ -161,12 +191,23 @@ class MapPartitions(Operation):
         previous = self.base.build()
         graph = previous.graph
         pixel_keys = {}
+        func = self.func
+        include_pixel = self.include_pixel
+
+        def wrapped_func(df, *args, **kwargs):
+            if include_pixel:
+                # pixel is already injected as first arg by the include_pixel path
+                result = func(df, *args, **kwargs)
+            else:
+                result = func(df, *args, **kwargs)
+            return _coerce_to_frame(result)
+
         for i, (pixel, prev_key) in enumerate(previous.pixel_to_key_map.items()):
             args = self.args
             if self.include_pixel:
                 args = (HealpixPixel(*pixel),) + args
             key = (self.key_name, i)
-            task = Task(key, self.func, TaskRef(prev_key), *args, **self.kwargs)
+            task = Task(key, wrapped_func, TaskRef(prev_key), *args, **self.kwargs)
             graph[key] = task
             pixel_keys[pixel] = key
         return HealpixGraph(graph, pixel_keys)

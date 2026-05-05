@@ -26,10 +26,10 @@ class PartitionIndexer:
     def __getitem__(self, item):
         if isinstance(item, (int, np.integer, HealpixPixel)):
             item = [item]
-        if all(isinstance(i, HealpixPixel) for i in item):
-            pixels = np.array(item)
+        if isinstance(item, slice) or not all(isinstance(i, HealpixPixel) for i in item):
+            pixels = np.array(self.cat.get_healpix_pixels())[item]
         else:
-            pixels = np.array(self.healpix_pixels)[item]
+            pixels = np.array(item)
         return self.cat.search(PixelSearch(pixels))
 
     def __iter__(self) -> Iterator:
