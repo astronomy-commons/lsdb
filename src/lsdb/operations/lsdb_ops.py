@@ -109,6 +109,7 @@ def map_parts_meta(func, base_meta: npd.NestedFrame, *args, include_pixel=False,
         ) from e
     return _coerce_to_meta(result)
 
+
 def _coerce_to_meta(result) -> npd.NestedFrame:
     """Coerce a function result to an empty npd.NestedFrame for use as meta."""
     if isinstance(result, npd.NestedFrame):
@@ -116,12 +117,17 @@ def _coerce_to_meta(result) -> npd.NestedFrame:
     if isinstance(result, pd.DataFrame):
         return npd.NestedFrame(result.iloc[:0])
     if isinstance(result, dict):
-        return npd.NestedFrame({
-            k: pd.Series(dtype=pd.api.types.pandas_dtype(type(v[0] if hasattr(v, '__len__') and len(v) > 0 else v)))
-            for k, v in result.items()
-        })
+        return npd.NestedFrame(
+            {
+                k: pd.Series(
+                    dtype=pd.api.types.pandas_dtype(type(v[0] if hasattr(v, "__len__") and len(v) > 0 else v))
+                )
+                for k, v in result.items()
+            }
+        )
     # scalar
     return npd.NestedFrame({"result": pd.Series(dtype=pd.api.types.pandas_dtype(type(result)))})
+
 
 def _coerce_to_frame(result) -> npd.NestedFrame:
     """Coerce a partition function result to an npd.NestedFrame at execution time."""
@@ -130,9 +136,10 @@ def _coerce_to_frame(result) -> npd.NestedFrame:
     if isinstance(result, pd.DataFrame):
         return npd.NestedFrame(result)
     if isinstance(result, dict):
-        return npd.NestedFrame({k: [v] if not hasattr(v, '__len__') else v for k, v in result.items()})
+        return npd.NestedFrame({k: [v] if not hasattr(v, "__len__") else v for k, v in result.items()})
     # scalar
     return npd.NestedFrame({"result": [result]})
+
 
 class MapPartitions(Operation):
     class_func = None
@@ -291,7 +298,7 @@ class AlignAndApply(Operation):
 
     @property
     def input_ops(self) -> list[Operation | None]:
-        return [cat.operation if cat is not None else None for cat in self.input_cats]
+        return [cat._operation if cat is not None else None for cat in self.input_cats]
 
     @property
     def dependencies(self) -> list[Operation]:
