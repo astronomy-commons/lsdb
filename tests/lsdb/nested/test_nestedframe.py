@@ -368,7 +368,7 @@ def test_from_delayed(with_nested):
 
     nf = nd.datasets.generate_data(10, 10)
     if not with_nested:
-        nf = nf.drop("nested", axis=1)
+        nf = nf.drop("nested")
 
     delayed = nf.to_delayed()
 

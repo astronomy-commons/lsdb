@@ -22,13 +22,15 @@ dependencies = [
     # dask diagnostics is required to spin up the dashboard for profiling.
     "dask[complete]>=2025.3.0",
     "deprecated",
-    "hats>=0.8,<0.9",
+    "hats>=0.9.0,<0.10",
+    "human_readable>=2.0.0",
     "nested-pandas>=0.6.7,<0.7.0",
     "numpy",
     "pyarrow",
     "scipy>=1.7.2", # kdtree
     "tabulate>=0.7.0",
     "universal-pathlib",
+    "tqdm>=4.59.0",
 ]
 
 [project.urls]

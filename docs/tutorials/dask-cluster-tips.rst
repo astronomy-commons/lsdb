@@ -23,7 +23,7 @@ This simple example runs a local cluster and starts a client connected to it.
     from lsdb import open_catalog, ConeSearch
 
     catalog = lsdb.open_catalog(
-        'https://data.lsdb.io/hats/gaia_dr3/gaia',
+        's3://stpubdata/gaia/gaia_dr3/public/hats',
         search_filter=ConeSearch(ra=0, dec=0, radius=1),
     )
     client = Client()
@@ -236,8 +236,51 @@ it means that the workers were killed or died.
 This may happen if workers overused their memory limit or, in multiple-node clusters, because of network issues.
 Increasing the memory limit and network timeouts may help keep workers alive.
 
+Dask pyarrow string conversion tasks
+------------------------------------
+By default, Dask will check for any numpy object columns and convert them to pyarrow string columns,
+which is a more efficient format for string data,
+`as they explain here <https://docs.coiled.io/blog/pyarrow-strings-in-dask-dataframes.html>`_.
+You will see these tasks as ``to_pyarrow_string`` or ``to_string_dtype`` if you look at the Dask Dashboard.
+
+LSDB and HATS by default use pyarrow columns for all data types, so these conversion tasks take a minimal
+amount of time and do no real work. However, if you switch to using different dtype backends when
+loading a catalog (e.g. by using the ``dtype_backend`` parameter of ``open_catalog`` or by using the
+``use_pyarrow_types`` parameter of ``from_dataframe``) then these conversion tasks will convert any object
+columns to pyarrow string columns. This may take a significant amount of time if you have many string columns,
+which may not be worth the performance cost if your analysis does not involve string operations. And if you
+have any object columns that are not strings, these tasks will convert your objects to their string
+representation.
+
+To turn off this conversion, you can change the default Dask configuration for string conversion with the
+following code:
+
+.. code-block:: python
+
+    import dask
+    dask.config.set({"dataframe.convert-string": False})
+
+
+.. tip::
+    We do recommend using pyarrow types where possible, as they are more efficient for string data and nested
+    data structures, and they make serialization for storage in parquet and distributed computing more
+    efficient. If you do create your own columns in your analysis code, such as with ``map_partitions`` or
+    ``map_rows``, you can construct a series of pyarrow string dtype with:
+
+    .. code-block:: python
+
+        import pyarrow as pa
+        import pandas as pd
+
+        def my_func(df):
+            # Create a new column with pyarrow string dtype
+            df["new_col"] = pd.Series(["a", "b", "c"], dtype=pd.ArrowDtype(pa.string()))
+            return df
+
+        catalog.map_partitions(my_func)
+
 
 Understanding common Dask errors and warnings
-.............................................
+---------------------------------------------
 
 :doc:`Dask Messages Guide </tutorials/dask-messages-guide>`

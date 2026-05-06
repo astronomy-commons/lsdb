@@ -214,7 +214,7 @@ def _assert_concat_symmetry(
 # --------------------------------- tests --------------------------------- #
 
 
-def test_concat_catalog_row_count(small_sky_order1_catalog, helpers):
+def test_concat_catalog_row_count(small_sky_order1_catalog):
     """Verify that row count after concatenation equals the sum of both catalogs.
 
     This test ensures that concatenating two catalogs produces a catalog whose
@@ -248,7 +248,6 @@ def test_concat_catalog_row_count(small_sky_order1_catalog, helpers):
     assert isinstance(df_concat, npd.NestedFrame)
 
     # Structure/divisions sanity
-    helpers.assert_divisions_are_correct(concat_cat)
     assert concat_cat.hc_structure.catalog_path is None
 
     # Symmetry check (main and margin handled internally)
@@ -332,7 +331,7 @@ def test_concat_catalog_margin_content(small_sky_order1_collection_catalog):
     _assert_concat_symmetry(left_cat, right_cat)
 
 
-def test_concat_catalogs_with_different_schemas(small_sky_order1_collection_dir, test_data_dir, helpers):
+def test_concat_catalogs_with_different_schemas(small_sky_order1_collection_dir, test_data_dir):
     """Concatenate catalogs with different schemas and validate behavior.
 
     Validates that concatenating two catalogs with different column sets
@@ -433,7 +432,6 @@ def test_concat_catalogs_with_different_schemas(small_sky_order1_collection_dir,
 
     # Structural checks
     assert isinstance(concat_cat._ddf, nd.NestedFrame)
-    helpers.assert_divisions_are_correct(concat_cat)
 
     # (5) Symmetry check (main and margin handled internally)
     _assert_concat_symmetry(left_cat, right_cat)

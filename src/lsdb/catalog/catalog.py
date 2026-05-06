@@ -154,17 +154,42 @@ class Catalog(HealpixDataset):
 
         >>> import lsdb
         >>> from lsdb.nested.datasets import generate_data
-        >>> nf = generate_data(1000, 5, seed=0, ra_range=(0.0, 300.0), dec_range=(-50.0, 50.0))
-        >>> catalog = lsdb.from_dataframe(nf.compute()[["ra", "dec", "id"]])
+        >>> nf = generate_data(1000, 10, seed=0, ra_range=(0.0, 300.0), dec_range=(-50.0, 50.0))
+        >>> catalog = lsdb.from_dataframe(nf.compute())
         >>> filtered = catalog.query("ra < 100 and dec > 0")
-        >>> filtered.head()  # doctest: +NORMALIZE_WHITESPACE
-                                ra        dec    id
+        >>> filtered.head()[["ra", "dec", "id"]]  # doctest: +NORMALIZE_WHITESPACE
+                                   ra        dec    id
         _healpix_29
         118362963675428450  52.696686  39.675892  8154
         98504457942331510   89.913567  46.147079  3437
         70433374600953220   40.528952  35.350965  8214
         154968715224527848   17.57041    29.8936  9853
         67780378363846894    45.08384   31.95611  8297
+
+        Filter nested values:
+
+        >>> filtered = filtered.query("nested.flux > 50.0")
+        >>> filtered.head()[["nested", "id"]]  # doctest: +NORMALIZE_WHITESPACE
+                                                                       nested    id
+        _healpix_29
+        118362963675428450  [{t: 5.431006, flux: 88.466194, band: 'r', flu...  8154
+        98504457942331510   [{t: 12.235667, flux: 67.145637, band: 'r', fl...  3437
+        70433374600953220   [{t: 1.395766, flux: 61.888264, band: 'r', flu...  8214
+        154968715224527848  [{t: 5.057078, flux: 60.744756, band: 'r', flu...  9853
+        67780378363846894   [{t: 0.001474, flux: 76.631059, band: 'g', flu...  8297
+
+        Most of the Series and NestedSeries attributes and methods are available.
+        This will filter by the light curve length:
+
+        >>> filtered = filtered.query("nested.list_lengths >= 5")
+        >>> filtered.head()[["nested", "id"]]  # doctest: +NORMALIZE_WHITESPACE
+                                                                       nested    id
+        _healpix_29
+        98504457942331510   [{t: 12.235667, flux: 67.145637, band: 'r', fl...  3437
+        70433374600953220   [{t: 1.395766, flux: 61.888264, band: 'r', flu...  8214
+        67780378363846894   [{t: 0.001474, flux: 76.631059, band: 'g', flu...  8297
+        153045793800159522  [{t: 11.363245, flux: 72.987868, band: 'r', fl...  5758
+        81822373343408413   [{t: 15.681661, flux: 77.580224, band: 'g', fl...  9413
         """
         catalog = super().query(expr)
         if self.margin is not None:
@@ -399,6 +424,7 @@ class Catalog(HealpixDataset):
         output_catalog_name: str | None = None,
         require_right_margin: bool = False,
         nested_column_name: str | None = None,
+        how: str = "inner",
     ) -> Catalog:
         # pylint:disable=unused-argument
         """Perform a cross-match between two catalogs, adding the result as a nested column
@@ -475,6 +501,9 @@ class Catalog(HealpixDataset):
         nested_column_name : str, default uses the name of the right catalog
             The name of the nested column that will contain the crossmatched rows
             from the right catalog.
+        how : str
+            How to handle the crossmatch of the two catalogs.
+            One of {'left', 'inner'}; defaults to 'inner'.
 
         Returns
         -------
@@ -507,7 +536,9 @@ class Catalog(HealpixDataset):
         if output_catalog_name is None:
             output_catalog_name = f"{self.name}_x_{other.name}"
 
-        ddf, ddf_map, alignment = crossmatch_catalog_data_nested(self, other, algorithm, nested_column_name)
+        ddf, ddf_map, alignment = crossmatch_catalog_data_nested(
+            self, other, algorithm, how, nested_column_name
+        )
         hc_catalog = self.hc_structure.__class__(
             self.hc_structure.catalog_info,
             alignment.pixel_tree,
@@ -1296,16 +1327,14 @@ class Catalog(HealpixDataset):
         func,
         columns=None,
         *,
+        meta,
         row_container="dict",
         output_names=None,
         infer_nesting=True,
         append_columns=False,
-        meta=None,
         **kwargs,
     ) -> Catalog:
         """Takes a function and applies it to each top-level row of the Catalog.
-
-        docstring copied from nested-pandas
 
         Nested columns are packaged alongside base columns and available for function use, where base columns
         are passed as scalars and nested columns are passed as numpy arrays. The way in which the row data is
@@ -1315,38 +1344,38 @@ class Catalog(HealpixDataset):
         ----------
         func : callable
             Function to apply to each nested dataframe. The first arguments to `func` should be which
-            columns to apply the function to. See the Notes for recommendations
-            on writing func outputs.
+            columns to apply the function to. Make sure `meta` is consistent with the return value of
+            `func`. See the Notes for recommendations on writing func outputs.
         columns : None | str | list of str, default None
             Specifies which columns to pass to the function in the row_container format.
             If None, all columns are passed. If list of str, those columns are passed.
             If str, a single column is passed or if the string is a nested column, then all nested sub-columns
             are passed (e.g. columns="nested" passes all columns of the nested dataframe "nested"). To pass
             individual nested sub-columns, use the hierarchical column name (e.g. columns=["nested.t",...]).
+        meta : dataframe or series-like
+            The dask meta of the output. If `append_columns` is True, the meta should only specify the
+            additional columns output by func. Make sure `meta` is consistent with the return value of `func`.
         row_container : 'dict' or 'args', default 'dict'
             Specifies how the row data will be packaged when passed as an input to the function.
             If 'dict', the function will be called as `func({"col1": value, ...}, **kwargs)`, so func should
             expect a single dictionary input with keys corresponding to column names.
             If 'args', the function will be called as `func(value, ..., **kwargs)`, so func should expect
-            positional arguments corresponding to the columns specified in `args`. (Default value = "dict")
-        output_names : None | str | list of str
+            positional arguments corresponding to the columns specified in `args`.
+        output_names : None | str | list of str, default None
             Specifies the names of the output columns in the resulting NestedFrame. If None, the function
             will return whatever names the user function returns. If specified will override any names
             returned by the user function provided the number of names matches the number of outputs. When not
             specified and the user function returns values without names (e.g. a list or tuple), the output
-            columns will be enumerated (e.g. "0", "1", ...). (Default value = None)
+            columns will be enumerated (e.g. "0", "1", ...).
         infer_nesting : bool, default True
             If True, the function will pack output columns into nested
             structures based on column names adhering to a nested naming
             scheme. E.g. "nested.b" and "nested.c" will be packed into a column
             called "nested" with columns "b" and "c". If False, all outputs
             will be returned as base columns. Note that this will trigger off of names specified in
-            `output_names` in addition to names returned by the user function. (Default value = True)
+            `output_names` in addition to names returned by the user function.
         append_columns : bool, default False
-            if True, the output columns should be appended to those in the original NestedFrame
-        meta : dataframe or series-like, optional, default None
-            The dask meta of the output. If append_columns is True, the meta should specify just the
-            additional columns output by func.
+            if True, the output columns should be appended to those in the original NestedFrame.
         kwargs : keyword arguments, optional
             Keyword arguments to pass to the function.
 
@@ -1357,14 +1386,18 @@ class Catalog(HealpixDataset):
 
         Notes
         -----
-        If concerned about performance, specify `columns` to only include the columns
-        needed for the function, as this will avoid the overhead of packaging
-        all columns for each row.
+        Make sure `meta` is consistent with the return value of `func`.
 
-        By default, `map_rows` will produce a `NestedFrame` with enumerated
-        column names for each returned value of the function. It's recommended
-        to either specify `output_names` or have `func` return a dictionary
-        where each key is an output column of the dataframe returned by
+        If `append_columns` is True, `func` should only return the columns to be appended. Make
+        sure neither `func` nor the provided `meta` contain columns to append to the Catalog that
+        overlap in name with pre-existing columns.
+
+        If concerned about performance, specify `columns` to only include the columns needed for
+        the function, as this will avoid the overhead of packaging all columns for each row.
+
+        By default, `map_rows` will produce a `NestedFrame` with enumerated column names for each
+        returned value of the function. It's recommended to either specify `output_names` or have
+        `func` return a dictionary where each key is an output column of the dataframe returned by
         `map_rows` (as shown above).
 
         Examples
@@ -1441,6 +1474,8 @@ class Catalog(HealpixDataset):
         default_columns: list[str] | None = None,
         as_collection: bool = True,
         overwrite: bool = False,
+        progress_bar: bool = True,
+        tqdm_kwargs: dict | None = None,
         error_if_empty: bool = True,
         **kwargs,
     ):
@@ -1451,6 +1486,8 @@ class Catalog(HealpixDataset):
             default_columns=default_columns,
             as_collection=as_collection,
             overwrite=overwrite,
+            progress_bar=progress_bar,
+            tqdm_kwargs=tqdm_kwargs,
             error_if_empty=error_if_empty,
             **kwargs,
         )
@@ -1463,6 +1500,9 @@ class Catalog(HealpixDataset):
         default_columns: list[str] | None = None,
         as_collection: bool = True,
         overwrite: bool = False,
+        resume: bool = False,
+        progress_bar: bool = True,
+        tqdm_kwargs: dict | None = None,
         create_thumbnail: bool = True,
         error_if_empty: bool = True,
         **kwargs,
@@ -1483,6 +1523,16 @@ class Catalog(HealpixDataset):
             If True, saves the catalog and its margin as a collection
         overwrite : bool, default False
             If True existing catalog is overwritten
+        resume : bool, default False
+            If True, resumes a previous write operation, skipping partitions that were
+            already written to disk.
+        progress_bar : bool, default True
+            If True, shows a progress bar for the export process. Defaults to True.
+        tqdm_kwargs : dict, default None
+            Additional kwargs to pass to the tqdm progress bar.
+        create_thumbnail : bool, default True
+            If True, creates a ``data_thumbnail.parquet`` file containing one row
+            per partition, for quick previewing of the catalog's contents.
         error_if_empty : bool, default True
             If True, raises an error if the catalog is empty.
         **kwargs
@@ -1506,6 +1556,9 @@ class Catalog(HealpixDataset):
                 catalog_name=catalog_name,
                 default_columns=default_columns,
                 overwrite=overwrite,
+                resume=resume,
+                progress_bar=progress_bar,
+                tqdm_kwargs=tqdm_kwargs,
                 error_if_empty=error_if_empty,
                 create_thumbnail=create_thumbnail,
                 **kwargs,
@@ -1516,6 +1569,9 @@ class Catalog(HealpixDataset):
                 catalog_name=catalog_name,
                 default_columns=default_columns,
                 overwrite=overwrite,
+                resume=resume,
+                progress_bar=progress_bar,
+                tqdm_kwargs=tqdm_kwargs,
                 create_thumbnail=create_thumbnail,
                 error_if_empty=error_if_empty,
                 **kwargs,

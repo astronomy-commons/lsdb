@@ -14,6 +14,7 @@ import hats as hc
 import nested_pandas as npd
 import numpy as np
 import pandas as pd
+import pyarrow as pa
 from astropy.coordinates import SkyCoord
 from astropy.units import Quantity
 from dask.dataframe.core import _repr_data_series
@@ -22,8 +23,10 @@ from deprecated import deprecated  # type: ignore
 from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
 from hats.pixel_math import HealpixPixel
 from hats.pixel_math.healpix_pixel_function import get_pixel_argsort
+from human_readable import file_size, int_comma
 from mocpy import MOC
 from pandas._typing import Renamer
+from tqdm.dask import TqdmCallback
 from typing_extensions import Self
 from upath import UPath
 
@@ -49,6 +52,9 @@ if TYPE_CHECKING:
     from astropy.visualization.wcsaxes import WCSAxes
     from astropy.visualization.wcsaxes.frame import BaseFrame
     from matplotlib.figure import Figure
+
+
+COMPUTE_SIZE_WARNING_THRESHOLD_KiB = 1 << 20  # pylint: disable=invalid-name
 
 
 # pylint: disable=protected-access,too-many-public-methods,too-many-lines,import-outside-toplevel,cyclic-import
@@ -88,16 +94,102 @@ class HealpixDataset:
     def __repr__(self):
         return self._ddf.__repr__()
 
+    def _compute_column_size_ratio(self) -> float | None:
+        """Compute the ratio of loaded column sizes to original column sizes based on Arrow schema.
+
+        Uses the Arrow schema data types to estimate the actual memory footprint of columns,
+        always including the index column in the calculation.
+
+        Returns
+        -------
+        float
+            Ratio of loaded columns size to original columns size
+        """
+
+        # Get the original schema if available, otherwise use current schema
+        original_schema = self.hc_structure.original_schema
+        if original_schema is None:
+            return None
+
+        current_schema = get_arrow_schema(self._ddf)
+
+        for field in current_schema:
+            if field.name not in original_schema.names:
+                return None
+
+        # Helper function to estimate size of an Arrow type
+        def estimate_type_size(arrow_type: pa.DataType) -> int | None:
+            """Estimate the size in bytes of an Arrow data type using PyArrow's bit_width when available."""
+            # For fixed-width types, use bit_width
+            try:
+                return arrow_type.bit_width // 8  # Convert bits to bytes
+            except (AttributeError, TypeError, ValueError):
+                return None
+
+        original_field_sizes = [estimate_type_size(field.type) for field in original_schema]
+        if any(size is None for size in original_field_sizes):
+            snapshot_info = self.hc_structure.snapshot.catalog_info if self.hc_structure.snapshot else None
+            original_size_per_row = (
+                snapshot_info.hats_estsize * 1024 / snapshot_info.total_rows
+                if snapshot_info and snapshot_info.hats_estsize and snapshot_info.total_rows
+                else None
+            )
+        else:
+            original_size_per_row = sum(original_field_sizes)  # type: ignore[arg-type]
+
+        if original_size_per_row is None:
+            return None
+
+        # Compute total size of loaded columns (including index)
+        loaded_size = 0.0
+        non_fixed_column = False
+
+        for field in current_schema:
+            field_size = estimate_type_size(field.type)
+            if field_size is not None:
+                loaded_size += field_size
+            else:
+                non_fixed_column = True
+
+        if non_fixed_column:
+            total_fixed_size_per_row = sum(size for size in original_field_sizes if size is not None)
+            loaded_size += original_size_per_row - total_fixed_size_per_row
+
+        return loaded_size / original_size_per_row
+
+    def est_size(self) -> float | None:
+        """Estimate the size of the catalog in KiB
+
+        Size estimate is based on the estimated size in the metadata, scaled by the ratio of loaded to
+        original columns and partitions.
+        """
+        if self.hc_structure.catalog_info.hats_estsize is not None:
+            snapshot = self.hc_structure.snapshot
+            if snapshot is not None and snapshot.partition_info is not None:
+                if len(snapshot.partition_info) == 0:
+                    return 0.0
+                partition_ratio = len(self.get_healpix_pixels()) / len(snapshot.partition_info)
+                column_ratio = self._compute_column_size_ratio()
+                if column_ratio is not None:
+                    return float(self.hc_structure.catalog_info.hats_estsize) * partition_ratio * column_ratio
+        return None
+
     def _repr_html_(self):
         data = self._repr_data().to_html(max_rows=5, show_dimensions=False, notebook=True)
         loaded_cols = len(self.columns)
         available_cols = len(self.all_columns)
+        est_size = self.est_size()
+        est_size_text = (
+            f"<div>This catalog has an estimated size of {file_size(est_size * 1024)}</div>"
+            if est_size is not None
+            else ""
+        )
         return (
             f"<div><strong>lsdb Catalog {self.name}:</strong></div>"
             f"{data}"
             f"<div>{loaded_cols} out of {available_cols} available columns in the catalog have been loaded "
             f"<strong>lazily</strong>, meaning no data has been read, only the catalog schema</div>"
-        )
+        ) + est_size_text
 
     def __getitem__(self, item):
         """Select a column or columns from the catalog."""
@@ -146,9 +238,31 @@ class HealpixDataset:
             series_df = pd.concat([_repr_data_series(s, index=index) for _, s in meta.items()], axis=1)
         return series_df
 
-    def compute(self) -> npd.NestedFrame:
-        """Compute dask distributed dataframe to pandas dataframe"""
-        return self._ddf.compute()
+    def compute(self, progress_bar=True, tqdm_kwargs=None) -> npd.NestedFrame:
+        """Compute dask distributed dataframe to pandas dataframe.
+
+        Note:
+            This method materializes the computation result in memory. If the
+            computation is expected to be time- or memory-intensive, we recommend
+            using ``Catalog.write_catalog`` instead. It supports automatic resumption
+            via ``resume=True``, which allows recovery from both interruptions and
+            late-breaking errors in long-running computations.
+        """
+        est_size = self.est_size()
+        if est_size is not None and est_size > COMPUTE_SIZE_WARNING_THRESHOLD_KiB:
+            est_size_text = file_size(int(est_size * 1024))
+            logging.warning(
+                "The estimated size of the catalog is %s. Computing the catalog "
+                "will load all data into memory and may cause your system to run out of memory."
+                "Consider using `write_catalog` to write the catalog to disk, or selecting a subset of the "
+                "catalog to compute.",
+                est_size_text,
+            )
+
+        desc = tqdm_kwargs.pop("desc", "Computing Catalog") if tqdm_kwargs else "Computing Catalog"
+        with TqdmCallback(desc=desc, disable=not progress_bar, **(tqdm_kwargs or {})):
+            res = self._ddf.compute()
+        return res
 
     def to_delayed(self, optimize_graph: bool = True) -> list[Delayed]:
         """Get a list of Dask Delayed objects for each partition in the dataset
@@ -287,7 +401,7 @@ class HealpixDataset:
             pixels=hc_structure.pixel_tree,
             catalog_path=hc_structure.catalog_path,
             schema=hc_structure.schema if updated_schema is None else updated_schema,
-            original_schema=hc_structure.original_schema,
+            snapshot=hc_structure.snapshot,
             moc=hc_structure.moc,
         )
 
@@ -403,14 +517,45 @@ class HealpixDataset:
             include_pixels=include_pixels,
         )
 
+    @deprecated(
+        version="0.9.1",
+        reason="`per_pixel_statistics` will be removed in the future, "
+        "use `per_partition_statistics` instead.",
+    )
     def per_pixel_statistics(
         self,
+        *,
         use_default_columns: bool = True,
         exclude_hats_columns: bool = True,
         exclude_columns: list[str] | None = None,
         include_columns: list[str] | None = None,
         include_stats: list[str] | None = None,
         multi_index=False,
+        include_pixels: list[HealpixPixel] | None = None,
+    ):  # pragma: no cover
+        """Read footer statistics in parquet metadata, and report on
+        min/max values for for each data partition."""
+        return self.per_partition_statistics(
+            use_default_columns=use_default_columns,
+            exclude_hats_columns=exclude_hats_columns,
+            exclude_columns=exclude_columns,
+            include_columns=include_columns,
+            include_stats=include_stats,
+            multi_index=multi_index,
+            include_pixels=include_pixels,
+        )
+
+    def per_partition_statistics(
+        self,
+        *,
+        use_default_columns: bool = True,
+        exclude_hats_columns: bool = True,
+        exclude_columns: list[str] | None = None,
+        include_columns: list[str] | None = None,
+        only_numeric_columns: bool = False,
+        include_stats: list[str] | None = None,
+        multi_index: bool = False,
+        per_row_group: bool = False,
         include_pixels: list[HealpixPixel] | None = None,
     ) -> pd.DataFrame:
         """Read footer statistics in parquet metadata, and report on
@@ -428,6 +573,9 @@ class HealpixDataset:
         include_columns : list[str] or None, default None
             If specified, only return statistics for the column
             names provided. Defaults to None, and returns all non-hats columns.
+        only_numeric_columns : bool, default False
+            Only return statistics for numeric columns. This will prevent the returned dataframe
+            from converting types to string.
         include_stats : list[str] or None, default None
             If specified, only return the kinds of values from list (min_value, max_value,
             null_count, row_count). Defaults to None, and returns all values.
@@ -435,6 +583,9 @@ class HealpixDataset:
             Should the returned frame be created with a multi-index, first on
             pixel, then on column name? Default is False, and instead indexes on pixel, with
             separate columns per-data-column and stat value combination.
+        per_row_group : bool, default False
+            Should the returned frame contain a row per row-group, or aggregate the statistics
+            to return only one row per data partition?
         include_pixels : list[HealpixPixel] or None, default None
             If specified, only return statistics for the pixels indicated. Defaults to none,
             and returns all pixels.
@@ -447,12 +598,14 @@ class HealpixDataset:
         if use_default_columns and include_columns is None:
             include_columns = self.hc_structure.catalog_info.default_columns
 
-        return self.hc_structure.per_pixel_statistics(
+        return self.hc_structure.per_partition_statistics(
             exclude_hats_columns=exclude_hats_columns,
             exclude_columns=exclude_columns,
             include_columns=include_columns,
+            only_numeric_columns=only_numeric_columns,
             include_stats=include_stats,
             multi_index=multi_index,
+            per_row_group=per_row_group,
             include_pixels=include_pixels,
         )
 
@@ -660,7 +813,7 @@ class HealpixDataset:
         random.seed(seed)
         dfs = []
         if self.hc_structure.catalog_info.total_rows is not None:
-            stats = self.hc_structure.per_pixel_statistics()
+            stats = self.hc_structure.per_partition_statistics()
             # These stats are one *row* per pixel.  The number of
             # columns is permuted, with names like "colname:
             # row_count".  We only need one representative column.
@@ -706,6 +859,33 @@ class HealpixDataset:
             with the query expression
         """
         ndf = self._ddf.query(expr)
+        return self._create_updated_dataset(ddf=ndf)
+
+    def drop(self, columns: str | list[str], errors: str = "raise") -> Self:
+        """Drop specified columns from the catalog.
+
+        Parameters
+        ----------
+        columns: single label or list-like
+            Column labels to drop. Nested sub-columns are accessed
+            using dot notation (e.g. "nested.col1").
+        errors: {‘ignore’, ‘raise’}, default ‘raise’
+            If ‘ignore’, suppress error and only existing labels are dropped.
+
+        Returns
+        -------
+        Self
+           A catalog containing all columns except for those specified.
+
+        Examples
+        --------
+        >>> import lsdb
+        >>> catalog = lsdb.generate_catalog(5, 1, seed=1)
+        >>> catalog = catalog.drop(["a","b","nested.flux_err"])
+        >>> catalog._ddf.exploded_columns
+        ['ra', 'dec', 'id', 'nested', 'nested.t', 'nested.flux', 'nested.band']
+        """
+        ndf = self._ddf.drop(columns=columns, errors=errors)
         return self._create_updated_dataset(ddf=ndf)
 
     def rename(self, columns: Renamer) -> Self:
@@ -844,7 +1024,7 @@ class HealpixDataset:
         return self.search(OrderSearch(min_order, max_order))
 
     def pixel_search(
-        self, pixels: tuple[int, int] | HealpixPixel | list[tuple[int, int] | HealpixPixel]
+        self, pixels: tuple[int, int] | HealpixPixel | list[tuple[int, int] | HealpixPixel], fine=False
     ) -> Self:
         """Finds all catalog pixels that overlap with the requested pixel set.
 
@@ -858,7 +1038,7 @@ class HealpixDataset:
         Self
             A new Catalog containing only the pixels that overlap with the requested pixel set.
         """
-        return self.search(PixelSearch(pixels))
+        return self.search(PixelSearch(pixels, fine=fine))
 
     def moc_search(self, moc: MOC, fine: bool = True) -> Self:
         """Finds all catalog points that are contained within a moc.
@@ -1042,6 +1222,7 @@ class HealpixDataset:
             hc_structure = self.hc_structure.__class__(
                 catalog_info=self.hc_structure.catalog_info,
                 pixels=[pixel],
+                snapshot=self.hc_structure.snapshot,
             )
             return self.__class__(output_ddf, partition_map, hc_structure)
 
@@ -1210,6 +1391,8 @@ class HealpixDataset:
         catalog_name: str | None = None,
         default_columns: list[str] | None = None,
         overwrite: bool = False,
+        progress_bar: bool = True,
+        tqdm_kwargs: dict | None = None,
         error_if_empty: bool = True,
         **kwargs,
     ):
@@ -1219,6 +1402,8 @@ class HealpixDataset:
             catalog_name=catalog_name,
             default_columns=default_columns,
             overwrite=overwrite,
+            progress_bar=progress_bar,
+            tqdm_kwargs=tqdm_kwargs,
             error_if_empty=error_if_empty,
             **kwargs,
         )
@@ -1230,6 +1415,9 @@ class HealpixDataset:
         catalog_name: str | None = None,
         default_columns: list[str] | None = None,
         overwrite: bool = False,
+        resume: bool = False,
+        progress_bar: bool = True,
+        tqdm_kwargs: dict | None = None,
         error_if_empty: bool = True,
         **kwargs,
     ):
@@ -1247,6 +1435,13 @@ class HealpixDataset:
             original hats catalogs if they exist.
         overwrite : bool, default False
             If True existing catalog is overwritten
+        resume : bool, default False
+            If True, resumes a previous write operation, skipping partitions that were
+            already written to disk.
+        progress_bar : bool, default True
+            If True, displays a progress bar during the save operation
+        tqdm_kwargs : dict or None, default None
+            Keyword arguments to pass to tqdm for customizing the progress bar
         error_if_empty : bool, default True
             If True, raises an error if the catalog is empty.
         **kwargs
@@ -1259,6 +1454,9 @@ class HealpixDataset:
             catalog_name=catalog_name,
             default_columns=default_columns,
             overwrite=overwrite,
+            resume=resume,
+            progress_bar=progress_bar,
+            tqdm_kwargs=tqdm_kwargs,
             error_if_empty=error_if_empty,
             **kwargs,
         )
@@ -1320,16 +1518,14 @@ class HealpixDataset:
         func,
         columns=None,
         *,
+        meta,
         row_container="dict",
         output_names=None,
         infer_nesting=True,
         append_columns=False,
-        meta=None,
         **kwargs,
     ) -> Self:
         """Takes a function and applies it to each top-level row of the Catalog.
-
-        docstring copied from nested-pandas
 
         Nested columns are packaged alongside base columns and available for function use, where base columns
         are passed as scalars and nested columns are passed as numpy arrays. The way in which the row data is
@@ -1339,14 +1535,17 @@ class HealpixDataset:
         ----------
         func : callable
             Function to apply to each nested dataframe. The first arguments to `func` should be which
-            columns to apply the function to. See the Notes for recommendations
-            on writing func outputs.
+            columns to apply the function to. Make sure `meta` is consistent with the return value of
+            `func`. See the Notes for recommendations on writing func outputs.
         columns : None | str | list of str, default None
             Specifies which columns to pass to the function in the row_container format.
             If None, all columns are passed. If list of str, those columns are passed.
             If str, a single column is passed or if the string is a nested column, then all nested sub-columns
             are passed (e.g. columns="nested" passes all columns of the nested dataframe "nested"). To pass
             individual nested sub-columns, use the hierarchical column name (e.g. columns=["nested.t",...]).
+        meta : dataframe or series-like
+            The dask meta of the output. If `append_columns` is True, the meta should only specify the
+            additional columns output by func. Make sure `meta` is consistent with the return value of `func`.
         row_container : 'dict' or 'args', default 'dict'
             Specifies how the row data will be packaged when passed as an input to the function.
             If 'dict', the function will be called as `func({"col1": value, ...}, **kwargs)`, so func should
@@ -1368,9 +1567,6 @@ class HealpixDataset:
             `output_names` in addition to names returned by the user function.
         append_columns : bool, default False
             if True, the output columns should be appended to those in the original NestedFrame.
-        meta : dataframe or series-like, default None
-            The dask meta of the output. If append_columns is True, the meta should specify just the
-            additional columns output by func.
         kwargs : keyword arguments, optional
             Keyword arguments to pass to the function.
 
@@ -1381,25 +1577,30 @@ class HealpixDataset:
 
         Notes
         -----
-        If concerned about performance, specify `columns` to only include the columns
-        needed for the function, as this will avoid the overhead of packaging
-        all columns for each row.
+        Make sure `meta` is consistent with the return value of `func`.
 
-        By default, `map_rows` will produce a `NestedFrame` with enumerated
-        column names for each returned value of the function. It's recommended
-        to either specify `output_names` or have `func` return a dictionary
-        where each key is an output column of the dataframe returned by
+        If `append_columns` is True, `func` should only return the columns to be appended. Make
+        sure neither `func` nor the provided `meta` contain columns to append to the Catalog that
+        overlap in name with pre-existing columns.
+
+        If concerned about performance, specify `columns` to only include the columns needed for
+        the function, as this will avoid the overhead of packaging all columns for each row.
+
+        By default, `map_rows` will produce a `NestedFrame` with enumerated column names for each
+        returned value of the function. It's recommended to either specify `output_names` or have
+        `func` return a dictionary where each key is an output column of the dataframe returned by
         `map_rows` (as shown above).
+
         Examples
         --------
-
-        Writing a function that takes a row as a dictionary:
 
         >>> import numpy as np
         >>> import lsdb
         >>> import pandas as pd
         >>> catalog = lsdb.from_dataframe(pd.DataFrame({"ra":[0, 10], "dec":[5, 15],
         ...                                             "mag":[21, 22], "mag_err":[.1, .2]}))
+
+        Writing a function that takes a row as a dictionary:
 
         >>> def my_sigma(row):
         ...    '''map_rows will return a NestedFrame with two columns'''
@@ -1412,7 +1613,6 @@ class HealpixDataset:
                    _healpix_29  plus_one  minus_one
         0  1372475556631677955      21.1       20.9
         1  1389879706834706546      22.2       21.8
-
 
         Writing the same function using positional arguments:
 
@@ -1433,21 +1633,21 @@ class HealpixDataset:
         """
         self._check_unloaded_columns(columns)
 
-        ra_column = self.hc_structure.catalog_info.ra_column
-        dec_column = self.hc_structure.catalog_info.dec_column
+        if meta is None:
+            raise ValueError("Please specify `meta`.")
+        self_meta = self._ddf._meta.copy()
+        meta = npd.NestedFrame(make_meta(meta))
 
-        def _make_result_meta(self_meta, meta):
+        if append_columns:
+            overlapping_columns = set(self_meta.columns) & set(meta.columns)
+            if overlapping_columns:
+                raise ValueError(
+                    f"`meta` specifies columns to append that already exist: {list(overlapping_columns)}."
+                )
             added_nested_subcols = [str(col) for col in meta.columns if "." in str(col)]
             self_meta = self_meta.assign(**{col: meta[col] for col in added_nested_subcols})
             meta = meta.drop(columns=added_nested_subcols)
-            return concat_metas([self_meta, meta])
-
-        if append_columns:
-            self_meta = self._ddf._meta.copy()
-            meta = npd.NestedFrame(make_meta(meta))
-            if ra_column in meta.columns or dec_column in meta.columns:
-                raise ValueError("ra and dec columns can not be modified using `map_rows`")
-            meta = _make_result_meta(self_meta, meta)
+            meta = concat_metas([self_meta, meta])
 
         ndf = self._ddf.map_rows(
             func,
@@ -1459,11 +1659,7 @@ class HealpixDataset:
             meta=meta,
             **kwargs,
         )
-
-        hc_updates = {}
-        if not append_columns:
-            hc_updates = {"ra_column": "", "dec_column": ""}
-        return self._create_updated_dataset(ddf=ndf, updated_catalog_info_params=hc_updates)
+        return self._create_updated_dataset(ddf=ndf)
 
     # pylint: disable=duplicate-code
     def plot_points(
@@ -1620,7 +1816,7 @@ class HealpixDataset:
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            pixel_stats = self.per_pixel_statistics(
+            pixel_stats = self.per_partition_statistics(
                 multi_index=True,
                 use_default_columns=False,
                 exclude_hats_columns=False,
@@ -1632,11 +1828,11 @@ class HealpixDataset:
         orig_cat = hc.read_hats(self.hc_structure.catalog_path)
         expected_cat_rows = int(get_row_count(pixel_stats))
         row_pct = expected_cat_rows / int(orig_cat.catalog_info.total_rows) * 100
-        expected_cat_rows = f"{expected_cat_rows:,}"
+        expected_cat_rows = int_comma(expected_cat_rows)
 
         # In-memory and on disk estimates
-        mem_size = _human_file_size(get_mem_size(pixel_stats))
-        disk_size = _human_file_size(get_disk_size(pixel_stats))
+        mem_size = file_size(get_mem_size(pixel_stats), binary=True)
+        disk_size = file_size(get_disk_size(pixel_stats), binary=True)
 
         print(
             f"You selected {len(self.columns)}/{len(self.all_columns)} columns.\n"
@@ -1645,12 +1841,3 @@ class HealpixDataset:
             f"Expect up to {mem_size} in MEMORY.\n"
             f"Expect up to {disk_size} on DISK."
         )
-
-
-def _human_file_size(size_bytes):
-    """Convert bytes to human readable format (binary units only)."""
-    for unit in ["B", "KiB", "MiB", "GiB", "TiB"]:
-        if size_bytes < 1024:
-            return f"{size_bytes:.1f} {unit}"
-        size_bytes /= 1024
-    return f"{size_bytes:.2f} PiB"

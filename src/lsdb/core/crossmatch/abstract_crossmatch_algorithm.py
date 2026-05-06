@@ -113,7 +113,9 @@ class AbstractCrossmatchAlgorithm(ABC):
             suffix_method,
         )
 
-    def crossmatch_nested(self, crossmatch_args: CrossmatchArgs, nested_column_name: str) -> npd.NestedFrame:
+    def crossmatch_nested(
+        self, crossmatch_args: CrossmatchArgs, nested_column_name: str, how: str
+    ) -> npd.NestedFrame:
         """Perform a crossmatch and store results in nested column.
 
         Parameters
@@ -122,6 +124,9 @@ class AbstractCrossmatchAlgorithm(ABC):
             The partitions and respective pixel information.
         nested_column_name : str
             The name of the column where the matches should be stored.
+        how : str
+            How to handle the crossmatch of the two catalogs.
+            One of {'left', 'inner'}.
 
         Returns
         -------
@@ -140,6 +145,7 @@ class AbstractCrossmatchAlgorithm(ABC):
             r_inds,
             extra_cols,
             nested_column_name,
+            how,
         )
 
     def perform_crossmatch(
@@ -349,6 +355,7 @@ class AbstractCrossmatchAlgorithm(ABC):
         right_idx: npt.NDArray[np.int64],
         extra_cols: pd.DataFrame,
         nested_column_name: str,
+        how: str,
     ) -> npd.NestedFrame:
         """Creates a df containing the crossmatch result from matching indices and additional columns
 
@@ -366,6 +373,9 @@ class AbstractCrossmatchAlgorithm(ABC):
             Dataframe containing additional columns from crossmatching
         nested_column_name : str
             The name of the column where the matches should be stored.
+        how : str
+            How to handle the crossmatch of the two catalogs.
+            One of {'left', 'inner'}.
 
         Returns
         -------
@@ -380,6 +390,6 @@ class AbstractCrossmatchAlgorithm(ABC):
         right_join_part["new_index_col"] = left_idx
         right_join_part = right_join_part.set_index("new_index_col")
         self._append_extra_columns(right_join_part, extra_cols)
-        out = left_join_part.join_nested(right_join_part, nested_column_name)
+        out = left_join_part.join_nested(right_join_part, nested_column_name, how=how)
         out.set_index(index_name, inplace=True)
-        return npd.NestedFrame(out)
+        return out

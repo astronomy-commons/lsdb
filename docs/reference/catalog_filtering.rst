@@ -8,6 +8,7 @@ Filtering Methods
 
     Catalog.iloc
     Catalog.loc
+    Catalog.drop
     Catalog.query
     Catalog.rename
     Catalog.head

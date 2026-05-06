@@ -7,15 +7,6 @@ assignees: 'delucchi-cmu'
 
 ---
 
-
-## Packages to release
-
-Please check which packages you would like to be released:
-
-- [ ] hats
-- [ ] lsdb
-- [ ] hats-import
-
 ## Additional context
 
 e.g. major/minor/patch, deadlines, blocking issues, breaking changes, folks to notify
@@ -30,50 +21,36 @@ e.g. major/minor/patch, deadlines, blocking issues, breaking changes, folks to n
 
 ## github and pypi steps
 
+`hats`, `hats-import`, and `lsdb` are expected to use the same semantic versioning. 
+Even if there are no notable changes, please release all three together.
+
 ### hats 
 
-- [ ] tag in github
-- [ ] confirm on [pypi](https://pypi.org/manage/project/hats/releases/)
-
-*At this point, you may want to skip down to do the hats conda release first, then return here and do the rest--the conda-forge release process can take a little while once triggered.*
+- [ ] tag in [github](https://github.com/astronomy-commons/hats/releases)
+- [ ] confirm on [pypi](https://pypi.org/project/hats/)
 
 ### lsdb
 
-- [ ] update pinned versions (e.g. hats and nested) (or confirm no updates to pins)
-- [ ] tag in github
-- [ ] confirm on [pypi](https://pypi.org/manage/project/lsdb/releases/)
+- [ ] update pinned versions (e.g. hats patch release and nested minor release)
+- [ ] tag in [github](https://github.com/astronomy-commons/lsdb/releases)
+- [ ] confirm on [pypi](https://pypi.org/project/lsdb/)
 
 ### hats-import
 
-- [ ] update pinned versions (e.g. hats) (or confirm no updates to pins)
-- [ ] tag in github
-- [ ] confirm on [pypi](https://pypi.org/manage/project/hats-import/releases/)
+- [ ] update pinned versions (e.g. hats patch release)
+- [ ] tag in [github](https://github.com/astronomy-commons/hats-import/releases)
+- [ ] confirm on [pypi](https://pypi.org/project/hats-import/)
 
 ## conda-forge steps
 
-*Note: if the CI of any of the below steps fails due to a hash mismatch, you need to regenerate the hash used in the `recipe/meta.yaml`. Get the new hash by running `curl -L https://github.com/<org>/<repo>/archive/refs/tags/<tag>.tar.gz | shasum -a 256`, where the url is your desired release's .tar.gz (found in the repo's releases page).*
-
-### hats 
-
-- [ ] request new conda-forge version (open [bot command issue](https://github.com/conda-forge/hats-feedstock/issues/) 
-  with title `@conda-forge-admin, please update version`)
-- [ ] edit the `recipe/meta.yaml` in the auto-generated PR to match any dependency changes that have been made to the `pyproject.toml` in this release
-- [ ] approve conda-forge PR
-- [ ] confirm on [conda-forge](https://anaconda.org/conda-forge/hats)
-
-### lsdb
+### single conda recipe
 
 - [ ] request new conda-forge version (open [bot command issue](https://github.com/conda-forge/lsdb-feedstock/issues/) 
   with title `@conda-forge-admin, please update version`)
-- [ ] confirm tagged `hats` and `nested-pandas` versions (and any other dependencies that have changed in the pyproject) and approve
-- [ ] confirm on [conda-forge](https://anaconda.org/conda-forge/lsdb)
-
-### hats-import
-
-- [ ] request new conda-forge version (open [bot command issue](https://github.com/conda-forge/hats-import-feedstock/issues/)  
-  with title `@conda-forge-admin, please update version`)
-- [ ] confirm tagged hats version (and any other dependencies that have changed in the pyproject) and approve
-- [ ] confirm on [conda-forge](https://anaconda.org/conda-forge/hats-import)
+- [ ] confirm tagged `hats` and `nested-pandas` versions (and any other dependencies that have changed in the pyproject)
+- [ ] approve and merge PR
+- [ ] confirm on conda-forge: [hats](https://anaconda.org/conda-forge/hats), [lsdb](https://anaconda.org/conda-forge/lsdb), [hats-import](https://anaconda.org/conda-forge/hats-import)
+- [ ] confirm new version exists in `mamba search lsdb -c conda-forge --override-channels` (or conda search, which is slower)
 
 ### tie it together
 

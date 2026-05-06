@@ -4,7 +4,9 @@ from typing import Optional
 import dask
 import numpy as np
 import pandas as pd
+from dask.delayed import Delayed
 from dask.distributed import Client, Future
+from dask.optimization import cull
 
 from lsdb import Catalog
 
@@ -42,8 +44,9 @@ class CatalogStream:
         `client.compute()`.
     partitions_per_chunk : int
         Number of partitions to yield. It will be clipped to the total number
-        of partitions. Be mindful when setting this value larger than 1, as
-        holding multiple partitions in memory at once will increase memory usage.
+        of partitions. By default, one partition will be yielded at a time,
+        however, if using a distributed client, it's recommended to set this to
+        at least 2x the number of workers to allow proper parallelism.
     shuffle : bool
         Whether to shuffle the partition order before streaming. If False, the
         partitions will be streamed in their original order. True by default.
@@ -95,6 +98,21 @@ class CatalogStream:
         else:
             self.rng = np.random.default_rng((1 << 32, self.seed))
 
+        # Pre-extract delayed partitions with one-time graph optimization.
+        # This avoids repeated graph construction, optimization, and catalog
+        # search/reload overhead on every iteration.
+        #
+        # Crucially, to_delayed() returns Delayed objects that all share the
+        # same full graph. We cull each to its own subgraph so that
+        # client.compute() only sends the minimal per-partition graph to the
+        # scheduler, avoiding O(N^2) graph transmission overhead.
+        raw_delayed = catalog.to_delayed(optimize_graph=True)
+        shared_graph = dict(raw_delayed[0].__dask_graph__())
+        self._delayed_partitions = []
+        for d in raw_delayed:
+            culled_graph, _ = cull(shared_graph, list(d.__dask_keys__()))
+            self._delayed_partitions.append(Delayed(d.key, culled_graph))
+
     def get_next_partitions(
         self, partitions_left: np.ndarray, rng: np.random.Generator  # pylint: disable=unused-argument
     ) -> tuple[np.ndarray, np.ndarray]:
@@ -107,12 +125,17 @@ class CatalogStream:
 
     def submit_next_partitions(self, partitions: np.ndarray) -> Future | _FakeFuture:
         """Submit the next set of partitions for computation."""
-        sliced_catalog = self.catalog.partitions[partitions]
-        futurable = sliced_catalog._ddf  # pylint: disable=protected-access
+        selected = [self._delayed_partitions[i] for i in partitions]
 
+        if len(selected) == 1:
+            if self.client is None:
+                return _FakeFuture(selected[0].compute())
+            return self.client.compute(selected[0])
+
+        combined = dask.delayed(pd.concat)(selected)
         if self.client is None:
-            return _FakeFuture(dask.compute(futurable)[0])
-        return self.client.compute(futurable)
+            return _FakeFuture(combined.compute())
+        return self.client.compute(combined)
 
     def __iter__(self) -> "CatalogIterator":
         """Return an iterator for this iterable."""

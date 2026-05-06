@@ -37,6 +37,7 @@ def test_kdtree_crossmatch(small_sky_catalog, small_sky_xmatch_catalog, xmatch_c
     assert xmatched_cat.hc_structure.catalog_info.dec_column in xmatched_cat.columns
     assert xmatched_cat.hc_structure.catalog_info.ra_column == "ra_small_sky"
     assert xmatched_cat.hc_structure.catalog_info.dec_column == "dec_small_sky"
+    assert xmatched_cat.est_size() is None
 
 
 def test_kdtree_crossmatch_nested(small_sky_catalog, small_sky_xmatch_catalog, xmatch_correct):
@@ -814,3 +815,159 @@ def test_crossmatch_alignment_pixel_left_join_filters_and_aligns():
     assert aligned_orders
     assert max(aligned_orders) >= max(right_orders)
     assert min(aligned_orders) > min(left_orders)
+
+
+def test_crossmatch_nested_left_join_misaligned_trees():
+    """Left join with crossmatch_nested on misaligned partition trees and n_neighbors>1.
+
+    The left catalog is at order 1 and right at order 3, so their HEALPix trees don't
+    align: some left partitions have no corresponding right partition (right_pix=None)
+    and vice-versa. All left rows must appear in the result exactly once, unmatched rows
+    must have a null nested column, and matches must satisfy the radius constraint.
+    Using n_neighbors=2 exercises the multiple-neighbors path simultaneously.
+    """
+    left_df = pd.DataFrame({"id": [1, 2, 3], "ra": [0.0, 0.01, 180.0], "dec": [0.0, 0.01, 0.0]})
+    left_df["id"] = left_df["id"].astype(pd.ArrowDtype(pa.int64()))
+    # Two right points close to left point 1 (within radius), one far from any left point
+    right_df = pd.DataFrame({"id": [101, 102, 201], "ra": [0.0002, 0.0004, 90.0], "dec": [0.0, 0.0, 45.0]})
+    right_df["id"] = right_df["id"].astype(pd.ArrowDtype(pa.int64()))
+
+    left_catalog = lsdb.from_dataframe(
+        left_df,
+        ra_column="ra",
+        dec_column="dec",
+        lowest_order=1,
+        highest_order=1,
+        margin_order=2,
+        margin_threshold=30,
+    )
+    right_catalog = lsdb.from_dataframe(
+        right_df,
+        ra_column="ra",
+        dec_column="dec",
+        lowest_order=3,
+        highest_order=3,
+        margin_order=4,
+        margin_threshold=30,
+    )
+
+    result = left_catalog.crossmatch_nested(
+        right_catalog,
+        n_neighbors=2,
+        radius_arcsec=10,
+        how="left",
+        nested_column_name="matches",
+    ).compute()
+
+    # Output length must equal input length
+    assert len(result) == len(left_df)
+
+    # All left rows must be present
+    assert set(result["id"].to_numpy()) == {1, 2, 3}
+
+    # No duplicate left rows
+    assert not result.index.duplicated().any()
+
+    # Left point 1 (id=1) is close to right points 101 and 102 — both should be matched
+    row1 = result[result["id"] == 1]
+    assert len(row1) == 1
+    matches1 = row1["matches"].iloc[0]
+    assert matches1 is not None
+    assert set(matches1["id"].to_numpy()) == {101, 102}
+
+    # Left points 2 and 3 (id=2,3) are far from all right points — should have null nested column
+    for left_id in [2, 3]:
+        row = result[result["id"] == left_id]
+        assert len(row) == 1
+        assert row["matches"].isna().iloc[0], f"Expected null matches for left id={left_id}"
+
+
+def test_crossmatch_nested_left_join_same_pixel_partial_right_coverage():
+    """Left join where a single left partition has BOTH None and non-None right sub-pixel pairs.
+
+    This tests the alignment scenario where one left pixel contains points in different
+    order-3 sub-regions, but the right catalog only has data in ONE of those sub-regions.
+    The alignment produces two pairs for the same left pixel: (left, right_sub_pix) and
+    (left, None). Without proper aligned_pixel filtering, the None pair would return all
+    left rows unfiltered, causing duplicates with the non-None pair's output.
+    """
+    # All 4 left points fall in the same order-1 left pixel, but in different order-3 sub-pixels
+    left_df = pd.DataFrame({"id": [1, 2, 3, 4], "ra": [0.0, 5.0, 10.0, 15.0], "dec": [0.0, 0.0, 0.0, 0.0]})
+    left_df["id"] = left_df["id"].astype(pd.ArrowDtype(pa.int64()))
+    # Right has only one point in one order-3 sub-pixel of that left pixel
+    right_df = pd.DataFrame({"id": [101], "ra": [0.05], "dec": [0.0]})
+    right_df["id"] = right_df["id"].astype(pd.ArrowDtype(pa.int64()))
+
+    left_catalog = lsdb.from_dataframe(
+        left_df,
+        ra_column="ra",
+        dec_column="dec",
+        lowest_order=1,
+        highest_order=1,
+        margin_order=2,
+        margin_threshold=30,
+    )
+    right_catalog = lsdb.from_dataframe(
+        right_df,
+        ra_column="ra",
+        dec_column="dec",
+        lowest_order=3,
+        highest_order=3,
+        margin_order=4,
+        margin_threshold=30,
+    )
+
+    result = left_catalog.crossmatch_nested(
+        right_catalog,
+        n_neighbors=2,
+        radius_arcsec=100,
+        how="left",
+        nested_column_name="matches",
+    ).compute()
+
+    # Must have exactly as many rows as the left catalog — no duplicates from the None pair
+    assert len(result) == len(left_df)
+    assert not result.index.duplicated().any()
+    assert set(result["id"].to_numpy()) == {1, 2, 3, 4}
+
+
+def test_crossmatch_nested_inner_join_no_nulls_in_nested_column():
+    """Inner join with crossmatch_nested must not have null values in the nested column."""
+    left_df = pd.DataFrame({"id": [1, 2, 3], "ra": [0.0, 0.01, 180.0], "dec": [0.0, 0.01, 0.0]})
+    left_df["id"] = left_df["id"].astype(pd.ArrowDtype(pa.int64()))
+    right_df = pd.DataFrame({"id": [101, 102], "ra": [0.0002, 0.0004], "dec": [0.0, 0.0]})
+    right_df["id"] = right_df["id"].astype(pd.ArrowDtype(pa.int64()))
+
+    left_catalog = lsdb.from_dataframe(
+        left_df,
+        ra_column="ra",
+        dec_column="dec",
+        lowest_order=1,
+        highest_order=1,
+        margin_order=2,
+        margin_threshold=30,
+    )
+    right_catalog = lsdb.from_dataframe(
+        right_df,
+        ra_column="ra",
+        dec_column="dec",
+        lowest_order=3,
+        highest_order=3,
+        margin_order=4,
+        margin_threshold=30,
+    )
+
+    result = left_catalog.crossmatch_nested(
+        right_catalog,
+        n_neighbors=2,
+        radius_arcsec=10,
+        how="inner",
+        nested_column_name="matches",
+    ).compute()
+
+    # Only matched left rows should appear — left id=3 (ra=180) has no match
+    assert len(result) < len(left_df)
+    assert 3 not in result["id"].to_numpy()
+
+    # No null values in the nested column — every row must have at least one match
+    assert not result["matches"].isna().any()

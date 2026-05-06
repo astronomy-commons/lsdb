@@ -349,7 +349,7 @@ def _load_object_catalog(hc_catalog, config):
     if config.search_filter is not None:
         catalog = catalog.search(config.search_filter)
     if config.margin_cache is not None:
-        margin_hc_catalog = hc.read_hats(config.margin_cache)
+        margin_hc_catalog = hc.read_hats(config.margin_cache, single_catalog=True, read_moc=False)
         margin = _load_margin_catalog(margin_hc_catalog, config)
         _validate_margin_catalog(margin, catalog)
         catalog.margin = margin
@@ -496,30 +496,8 @@ def read_pixel(
     npd.NestedFrame
         The pixel data, as read from its parquet file.
     """
-    return _read_parquet_file(
-        path_generator(
-            catalog_base_dir,
-            pixel,
-            query_url_params,
-            npix_suffix,
-        ),
-        columns=columns,
-        schema=schema,
-        index_column=index_column,
-        is_dir=is_dir,
-        **kwargs,
-    )
+    path = path_generator(catalog_base_dir, pixel, query_url_params, npix_suffix)
 
-
-def _read_parquet_file(
-    path: UPath,
-    *,
-    columns=None,
-    schema=None,
-    index_column=None,
-    is_dir=False,
-    **kwargs,
-) -> npd.NestedFrame:
     if (
         columns is not None
         and schema is not None

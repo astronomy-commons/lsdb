@@ -65,6 +65,49 @@ def test_catalog_compute_equals_ddf_compute(small_sky_order1_catalog):
     pd.testing.assert_frame_equal(small_sky_order1_catalog.compute(), small_sky_order1_catalog._ddf.compute())
 
 
+def test_catalog_compute_shows_progress_bar(small_sky_order1_catalog, mocker):
+    in_progress = {"active": False}
+
+    class _ProgressContext:
+        def __enter__(self):
+            in_progress["active"] = True
+
+        def __exit__(self, exc_type, exc, tb):
+            in_progress["active"] = False
+
+    tqdm_callback = mocker.patch(
+        "lsdb.catalog.dataset.healpix_dataset.TqdmCallback",
+        return_value=_ProgressContext(),
+    )
+    original_compute = small_sky_order1_catalog._ddf.compute
+
+    def _checked_compute(*args, **kwargs):
+        assert in_progress["active"]
+        return original_compute(*args, **kwargs)
+
+    mocker.patch.object(small_sky_order1_catalog._ddf, "compute", side_effect=_checked_compute)
+
+    small_sky_order1_catalog.compute(progress_bar=True)
+
+    tqdm_callback.assert_called_once_with(desc="Computing Catalog", disable=False)
+
+
+def test_catalog_compute_without_progress_bar(small_sky_order1_catalog, mocker):
+    tqdm_callback = mocker.patch("lsdb.catalog.dataset.healpix_dataset.TqdmCallback")
+
+    small_sky_order1_catalog.compute(progress_bar=False)
+
+    tqdm_callback.assert_called_once_with(desc="Computing Catalog", disable=True)
+
+
+def test_catalog_compute_progress_bar_kwargs(small_sky_order1_catalog, mocker):
+    tqdm_callback = mocker.patch("lsdb.catalog.dataset.healpix_dataset.TqdmCallback")
+
+    small_sky_order1_catalog.compute(tqdm_kwargs={"ascii": True, "desc": "Custom Desc"})
+
+    tqdm_callback.assert_called_once_with(desc="Custom Desc", disable=False, ascii=True)
+
+
 def test_catalog_uses_dask_expressions(small_sky_order1_catalog):
     assert hasattr(small_sky_order1_catalog._ddf, "expr")
 
@@ -293,6 +336,27 @@ def test_query_margin(small_sky_xmatch_with_margin):
     assert isinstance(result_catalog.margin._ddf, nd.NestedFrame)
 
 
+def test_drop(small_sky_with_nested_sources):
+    cols_to_delete = ["id", "sources.source_id"]
+
+    expected_cat = small_sky_with_nested_sources.drop(cols_to_delete)
+    assert expected_cat._ddf.exploded_columns == [
+        c for c in small_sky_with_nested_sources._ddf.exploded_columns if c not in cols_to_delete
+    ]
+
+    # The columns do not exist, and errors="raise"
+    with pytest.raises(KeyError):
+        small_sky_with_nested_sources.drop("a")
+    with pytest.raises(KeyError):
+        small_sky_with_nested_sources.drop("sources.a")
+
+    # Some columns do not exist but errors="ignore"
+    assert "b" not in small_sky_with_nested_sources.columns
+    assert "b" not in small_sky_with_nested_sources["sources"].columns
+    cat = small_sky_with_nested_sources.drop(cols_to_delete + ["b", "sources.b"], errors="ignore")
+    pd.testing.assert_frame_equal(expected_cat.compute(), cat.compute())
+
+
 def test_rename_with_callable(small_sky_xmatch_with_margin):
     uppercase_catalog = small_sky_xmatch_with_margin.rename(columns=str.upper)
     assert len(small_sky_xmatch_with_margin.columns) == len(
@@ -492,18 +556,18 @@ def test_aggregate_column_statistics(small_sky_order1_catalog):
     assert_column_stat_as_floats(result_frame, "dec", min_value=-69.5, max_value=-47.5, row_count=42)
 
 
-def test_per_pixel_statistics(small_sky_order1_catalog):
-    result_frame = small_sky_order1_catalog.per_pixel_statistics()
+def test_per_partition_statistics(small_sky_order1_catalog):
+    result_frame = small_sky_order1_catalog.per_partition_statistics()
     # 4 = 4 pixels
     # 30 = 5 columns * 6 stats per-column
     assert result_frame.shape == (4, 30)
 
-    result_frame = small_sky_order1_catalog.per_pixel_statistics(exclude_hats_columns=False)
+    result_frame = small_sky_order1_catalog.per_partition_statistics(exclude_hats_columns=False)
     # 4 = 4 pixels
     # 36 = 6 columns * 6 stats per-column
     assert result_frame.shape == (4, 36)
 
-    result_frame = small_sky_order1_catalog.per_pixel_statistics(include_columns=["ra", "dec"])
+    result_frame = small_sky_order1_catalog.per_partition_statistics(include_columns=["ra", "dec"])
     # 4 = 4 pixels
     # 12 = 2 columns * 6 stats per-column
     assert result_frame.shape == (4, 12)
@@ -511,7 +575,7 @@ def test_per_pixel_statistics(small_sky_order1_catalog):
     filtered_catalog = small_sky_order1_catalog.cone_search(315, -66.443, 0.1, fine=False)
 
     with pytest.warns(UserWarning, match="modified catalog"):
-        result_frame = filtered_catalog.per_pixel_statistics(
+        result_frame = filtered_catalog.per_partition_statistics(
             include_stats=["row_count"], include_columns=["ra", "dec"]
         )
     # 1 = 1 pixel
