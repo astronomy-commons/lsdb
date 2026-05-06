@@ -1089,7 +1089,7 @@ class Catalog(HealpixDataset):
             suffix_method,
         )
         hc_catalog = hc.catalog.Catalog(
-            new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(op.meta), moc=alignment.moc
+            new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(op.meta), moc=alignment.moc,
         )
         return self.__class__(op, hc_catalog)
 
@@ -1215,7 +1215,7 @@ class Catalog(HealpixDataset):
             suffix_method,
         )
         hc_catalog = hc.catalog.Catalog(
-            new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(op.meta), moc=alignment.moc
+            new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(op.meta), moc=alignment.moc,
         )
         return self.__class__(op, hc_catalog)
 
@@ -1285,8 +1285,7 @@ class Catalog(HealpixDataset):
             catalog_name=output_catalog_name, total_rows=None
         )
         hc_catalog = hc.catalog.Catalog(
-            new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(op.meta), moc=alignment.moc
-        )
+            new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(op.meta), moc=alignment.moc)
         return self.__class__(op, hc_catalog)
 
     def nest_lists(
