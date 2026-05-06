@@ -209,6 +209,18 @@
     renderDebugOverlay(image, map, dims, rendered);
   }
 
+  function prepareImageForInteraction(image) {
+    if (image.dataset.interactionReady === "1") {
+      return;
+    }
+
+    image.dataset.interactionReady = "1";
+    image.setAttribute("draggable", "false");
+    image.addEventListener("dragstart", (event) => {
+      event.preventDefault();
+    });
+  }
+
   function initialize() {
     const images = Array.from(document.querySelectorAll("img.api-surface-image[usemap]"));
     if (images.length === 0) {
@@ -220,6 +232,7 @@
     };
 
     images.forEach((image) => {
+      prepareImageForInteraction(image);
       if (image.complete) {
         resizeImageMap(image);
       } else {

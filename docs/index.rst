@@ -19,6 +19,9 @@ operations.
 
 .. raw:: html
 
+    <div class="api-surface-callout" role="note">
+       Interactive map: click any labeled box to open its API reference page.
+    </div>
     <div class="api-surface-wrapper">
        <img src="_static/API_Surface_Feb_12.png"
                alt="LSDB API surface map with clickable function and class labels"
