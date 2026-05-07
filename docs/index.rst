@@ -33,7 +33,7 @@ operations.
                       data-hitbox-scale-x="1.0"
                       data-hitbox-scale-y="1.0"
                       data-magnify-zoom="2.0"
-                      data-magnify-size="220"
+                     data-magnify-size="300"
                class="api-surface-image" />
                    <div class="api-surface-magnifier" aria-hidden="true"></div>
        <map name="lsdb-api-surface-map">

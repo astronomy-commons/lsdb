@@ -43,8 +43,8 @@
 
 .api-surface-magnifier {
     position: absolute;
-    width: 220px;
-    height: 220px;
+    width: 300px;
+    height: 300px;
     border-radius: 50%;
     border: 2px solid #1f6feb;
     box-shadow: 0 8px 28px rgba(0, 0, 0, 0.24);

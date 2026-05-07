@@ -192,11 +192,15 @@
 
   function getMagnifierConfig(image) {
     const zoom = Number(image.dataset.magnifyZoom || 2);
-    const size = Number(image.dataset.magnifySize || 220);
+    const size = Number(image.dataset.magnifySize || 300);
     return {
       zoom: Number.isFinite(zoom) && zoom > 1 ? zoom : 2,
-      size: Number.isFinite(size) && size >= 100 ? size : 220,
+      size: Number.isFinite(size) && size >= 100 ? size : 300,
     };
+  }
+
+  function isPointInsideRect(x, y, rect) {
+    return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
   }
 
   function ensureMagnifier(image) {
@@ -292,27 +296,26 @@
       state.wrapper.classList.remove("is-magnifying");
     };
 
-    const show = (event) => {
-      state.active = true;
-      state.wrapper.classList.add("is-magnifying");
-      if (event) {
-        state.lastClientX = event.clientX;
-        state.lastClientY = event.clientY;
-        updateMagnifier(image, event.clientX, event.clientY);
-      }
-    };
-
-    image.addEventListener("pointerenter", show);
-    image.addEventListener("pointermove", (event) => {
-      if (!state.active) {
+    const updateFromEvent = (event) => {
+      const imageRect = image.getBoundingClientRect();
+      if (!isPointInsideRect(event.clientX, event.clientY, imageRect)) {
+        hide();
         return;
+      }
+
+      if (!state.active) {
+        state.active = true;
+        state.wrapper.classList.add("is-magnifying");
       }
       state.lastClientX = event.clientX;
       state.lastClientY = event.clientY;
       updateMagnifier(image, event.clientX, event.clientY);
-    });
-    image.addEventListener("pointerleave", hide);
-    image.addEventListener("pointercancel", hide);
+    };
+
+    state.wrapper.addEventListener("pointerenter", updateFromEvent);
+    state.wrapper.addEventListener("pointermove", updateFromEvent);
+    state.wrapper.addEventListener("pointerleave", hide);
+    state.wrapper.addEventListener("pointercancel", hide);
 
     image.dataset.magnifierReady = "1";
   }
