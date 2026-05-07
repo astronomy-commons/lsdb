@@ -3,9 +3,8 @@ from __future__ import annotations
 import logging
 import random
 import warnings
-from collections.abc import Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Iterable, Type, cast, overload
+from typing import TYPE_CHECKING, Any, Callable, Iterable, Literal, Type, cast, overload, Sequence
 
 import astropy
 import dask
@@ -475,8 +474,20 @@ class HealpixDataset:
             series_df = pd.concat([_repr_data_series(s, index=index) for _, s in meta.items()], axis=1)
         return series_df
 
-    def compute(self, progress_bar=True, tqdm_kwargs=None) -> npd.NestedFrame:
+    def compute(
+        self, progress_bar: Literal["tqdm", "plot"] | None = "tqdm", tqdm_kwargs=None
+    ) -> npd.NestedFrame:
         """Compute dask distributed dataframe to pandas dataframe.
+
+        Parameters
+        ----------
+        progress_bar : Literal["tqdm", "plot"] | None
+            Controls the progress display during computation. ``"tqdm"`` shows a
+            standard progress bar. ``"plot"`` shows a live HEALPix pixel map that
+            turns pixels green as they complete (requires a distributed scheduler and
+            a ``%matplotlib widget`` backend). ``None`` disables progress reporting.
+        tqdm_kwargs : dict | None
+            Additional keyword arguments forwarded to tqdm when ``progress_bar="tqdm"``.
 
         Note:
             This method materializes the computation result in memory. If the
@@ -500,15 +511,72 @@ class HealpixDataset:
         healpix_graph = self._operation.build()
         schedule = get_scheduler()
         if schedule is None:
-            with TqdmCallback(desc=desc, disable=not progress_bar, **(tqdm_kwargs or {})):
+            with TqdmCallback(desc=desc, disable=progress_bar is None, **(tqdm_kwargs or {})):
                 result = threaded.get(healpix_graph.graph, healpix_graph.keys, sync=False)
         else:
             futures = schedule(healpix_graph.graph, healpix_graph.keys, sync=False)
             result_map = {}
-            with tqdm(total=len(futures), desc=desc, disable=not progress_bar, **(tqdm_kwargs or {})) as pbar:
+            if progress_bar == "tqdm":
+                with tqdm(total=len(futures), desc=desc, **(tqdm_kwargs or {})) as pbar:
+                    for future in as_completed(futures):
+                        result_map[future.key] = future.result()
+                        pbar.update(1)
+            elif progress_bar == "plot":
+                import io
+
+                import ipywidgets as widgets
+                from IPython.display import display
+                from hats.inspection._plotting import _cull_from_pixel_map, _cull_to_fov
+                from hats.inspection.visualize_catalog import plot_healpix_map
+                from matplotlib.colors import BoundaryNorm, ListedColormap
+                import matplotlib.pyplot as plt
+
+                pixels = self.get_healpix_pixels()
+                pixel_to_idx = {p: i for i, p in enumerate(pixels)}
+                status = np.zeros(len(pixels))
+                ipix = np.array([p.pixel for p in pixels])
+                depth_arr = np.array([p.order for p in pixels])
+
+                cmap = ListedColormap(["orange", "green"])
+                norm = BoundaryNorm([0, 0.5, 1], cmap.N)
+
+                fig, ax = plot_healpix_map(
+                    status, ipix=ipix, depth=depth_arr, cmap=cmap, norm=norm, cbar=False, title=desc
+                )
+                plt.close(fig)
+                col = ax.collections[0]
+                wcs = ax.wcs
+
+                img = widgets.Image(format="png")
+                display(img)
+
+                def _render():
+                    buf = io.BytesIO()
+                    fig.savefig(buf, format="png", bbox_inches="tight")
+                    img.value = buf.getvalue()
+
+                _render()
+
+                key_to_pixel = {v: k for k, v in healpix_graph.pixel_to_key_map.items()}
+                future_to_pixel = {f: key_to_pixel[f.key] for f in futures}
+
+                def _culled_values(s):
+                    depth_ipix_d = {
+                        int(d): (ipix[depth_arr == d], s[depth_arr == d]) for d in np.unique(depth_arr)
+                    }
+                    culled = _cull_from_pixel_map(_cull_to_fov(depth_ipix_d, wcs), wcs)
+                    return np.concatenate([vals for _, (_, vals) in sorted(culled.items())])
+
+                with tqdm(total=len(futures), desc=desc, **(tqdm_kwargs or {})) as pbar:
+                    for future in as_completed(futures):
+                        result_map[future.key] = future.result()
+                        status[pixel_to_idx[future_to_pixel[future]]] = 1
+                        col.set_array(_culled_values(status))
+                        _render()
+                        pbar.update(1)
+            else:
                 for future in as_completed(futures):
                     result_map[future.key] = future.result()
-                    pbar.update(1)
             result = [
                 result_map[healpix_graph.pixel_to_key_map[p]] for p in self.get_ordered_healpix_pixels()
             ]
