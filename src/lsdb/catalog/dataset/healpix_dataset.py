@@ -567,13 +567,32 @@ class HealpixDataset:
                     culled = _cull_from_pixel_map(_cull_to_fov(depth_ipix_d, wcs), wcs)
                     return np.concatenate([vals for _, (_, vals) in sorted(culled.items())])
 
-                with tqdm(total=len(futures), desc=desc, **(tqdm_kwargs or {})) as pbar:
-                    for future in as_completed(futures):
-                        result_map[future.key] = future.result()
-                        status[pixel_to_idx[future_to_pixel[future]]] = 1
-                        col.set_array(_culled_values(status))
-                        _render()
-                        pbar.update(1)
+                import threading
+
+                _dirty = threading.Event()
+                _stop = threading.Event()
+
+                def _render_worker():
+                    while not _stop.is_set():
+                        if _dirty.wait(timeout=0.5):
+                            _dirty.clear()
+                            col.set_array(_culled_values(status.copy()))
+                            _render()
+
+                _render_thread = threading.Thread(target=_render_worker, daemon=True)
+                _render_thread.start()
+                try:
+                    with tqdm(total=len(futures), desc=desc, **(tqdm_kwargs or {})) as pbar:
+                        for future in as_completed(futures):
+                            result_map[future.key] = future.result()
+                            status[pixel_to_idx[future_to_pixel[future]]] = 1
+                            _dirty.set()
+                            pbar.update(1)
+                finally:
+                    _stop.set()
+                    _render_thread.join()
+                col.set_array(_culled_values(status))
+                _render()
             else:
                 for future in as_completed(futures):
                     result_map[future.key] = future.result()
