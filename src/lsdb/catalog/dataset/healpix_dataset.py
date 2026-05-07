@@ -23,6 +23,7 @@ from dask.optimization import cull
 from dask import threaded
 from dask.base import get_scheduler
 from deprecated import deprecated  # type: ignore
+from distributed import as_completed
 from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
 from hats.pixel_math import HealpixPixel
 from hats.pixel_math.healpix_pixel_function import get_pixel_argsort
@@ -30,6 +31,7 @@ from human_readable import file_size, int_comma
 from mocpy import MOC
 from nested_pandas.series.packer import pack_lists
 from pandas._typing import Renamer
+from tqdm.auto import tqdm
 from tqdm.dask import TqdmCallback
 from typing_extensions import Self
 from upath import UPath
@@ -125,7 +127,7 @@ class HealpixDataset:
     def columns(self):
         """Returns the names of columns available in the Dataset"""
         return self.meta.columns
-    
+
     @property
     def exploded_columns(self) -> list[str]:
         """returns the list of column names and nested subcolumn names (in exploded, dot notation)"""
@@ -495,17 +497,27 @@ class HealpixDataset:
             )
 
         desc = tqdm_kwargs.pop("desc", "Computing Catalog") if tqdm_kwargs else "Computing Catalog"
-        with TqdmCallback(desc=desc, disable=not progress_bar, **(tqdm_kwargs or {})):
-            schedule = get_scheduler()
-            if schedule is None:
-                schedule = threaded.get
-            healpix_graph = self._operation.build()
-            result = schedule(healpix_graph.graph, healpix_graph.keys)
+        healpix_graph = self._operation.build()
+        schedule = get_scheduler()
+        if schedule is None:
+            with TqdmCallback(desc=desc, disable=not progress_bar, **(tqdm_kwargs or {})):
+                result = threaded.get(healpix_graph.graph, healpix_graph.keys, sync=False)
+        else:
+            futures = schedule(healpix_graph.graph, healpix_graph.keys, sync=False)
+            result_map = {}
+            with tqdm(total=len(futures), desc=desc, disable=not progress_bar, **(tqdm_kwargs or {})) as pbar:
+                for future in as_completed(futures):
+                    result_map[future.key] = future.result()
+                    pbar.update(1)
+            result = [
+                result_map[healpix_graph.pixel_to_key_map[p]] for p in self.get_ordered_healpix_pixels()
+            ]
+
         # If no partitions, return an empty dataframe with the correct schema
         # This can happen through partition pruning operations
         if len(result) == 0:
             return self.meta.copy()
-        return pd.concat(result)
+        return npd.NestedFrame(pd.concat(result))
 
     def to_dask_dataframe(self, optimize_graph=False, divisions=True):
         """Converts to a lsdb.nested Dask DataFrame
@@ -897,7 +909,10 @@ class HealpixDataset:
             row_counts = stats[f"{rep_col}: row_count"].map(int)
         else:
             row_counts = np.array(
-                self.map_partitions(lambda df: npd.NestedFrame({"len": [len(df)]}), meta=npd.NestedFrame({"len": pd.Series(dtype=int)}))
+                self.map_partitions(
+                    lambda df: npd.NestedFrame({"len": [len(df)]}),
+                    meta=npd.NestedFrame({"len": pd.Series(dtype=int)}),
+                )
                 .compute()["len"]
                 .to_numpy()
             )
