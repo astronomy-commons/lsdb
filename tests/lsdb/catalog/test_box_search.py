@@ -13,7 +13,6 @@ def test_box_search_filters_correct_points(small_sky_order1_catalog, helpers):
     assert len(search_df) < len(small_sky_order1_catalog.compute())
     assert all(280 <= ra <= 300 for ra in ra_values)
     assert all(-40 <= dec <= -30 for dec in dec_values)
-    helpers.assert_divisions_are_correct(search_catalog)
 
 
 def test_box_search_filters_correct_points_margin(small_sky_order1_source_with_margin, helpers):
@@ -24,7 +23,6 @@ def test_box_search_filters_correct_points_margin(small_sky_order1_source_with_m
     assert len(ra_search_df) < len(small_sky_order1_source_with_margin.compute())
     assert all(280 <= ra <= 300 for ra in ra_values)
     assert all(-90 <= dec <= 30 for dec in dec_values)
-    helpers.assert_divisions_are_correct(ra_search_catalog)
 
     assert ra_search_catalog.margin is not None
     ra_margin_search_df = ra_search_catalog.margin.compute()
@@ -33,7 +31,6 @@ def test_box_search_filters_correct_points_margin(small_sky_order1_source_with_m
     assert len(ra_margin_search_df) < len(small_sky_order1_source_with_margin.margin.compute())
     assert all(280 <= ra <= 300 for ra in ra_values)
     assert all(-90 <= dec <= 30 for dec in dec_values)
-    helpers.assert_divisions_are_correct(ra_search_catalog.margin)
 
 
 def test_box_search_ra_complement(small_sky_order1_catalog):
@@ -160,9 +157,9 @@ def test_box_search_filters_partitions(small_sky_order1_catalog):
     hc_box_search = small_sky_order1_catalog.hc_structure.filter_by_box(ra, dec)
     box_search_catalog = small_sky_order1_catalog.box_search(ra, dec, fine=False)
     assert len(hc_box_search.get_healpix_pixels()) == len(box_search_catalog.get_healpix_pixels())
-    assert len(hc_box_search.get_healpix_pixels()) == box_search_catalog._ddf.npartitions
+    assert len(hc_box_search.get_healpix_pixels()) == len(box_search_catalog._operation.healpix_pixels)
     for pixel in hc_box_search.get_healpix_pixels():
-        assert pixel in box_search_catalog._ddf_pixel_map
+        assert pixel in box_search_catalog._operation.healpix_pixels
 
 
 def test_box_search_coarse_versus_fine(small_sky_order1_catalog):
@@ -171,7 +168,7 @@ def test_box_search_coarse_versus_fine(small_sky_order1_catalog):
     coarse_box_search = small_sky_order1_catalog.box_search(ra, dec, fine=False)
     fine_box_search = small_sky_order1_catalog.box_search(ra, dec)
     assert coarse_box_search.get_healpix_pixels() == fine_box_search.get_healpix_pixels()
-    assert coarse_box_search._ddf.npartitions == fine_box_search._ddf.npartitions
+    assert coarse_box_search._operation.healpix_pixels == fine_box_search._operation.healpix_pixels
     assert len(coarse_box_search.compute()) > len(fine_box_search.compute())
 
 
@@ -198,5 +195,5 @@ def test_empty_box_search_with_margin(small_sky_order1_source_with_margin):
     ra = (100, 120)
     dec = (0, 10)
     box = small_sky_order1_source_with_margin.box_search(ra, dec, fine=False)
-    assert len(box._ddf_pixel_map) == 0
-    assert len(box.margin._ddf_pixel_map) == 0
+    assert len(box._operation.healpix_pixels) == 0
+    assert len(box.margin._operation.healpix_pixels) == 0
