@@ -258,15 +258,8 @@
 
     const imageLeft = imageRect.left - wrapperRect.left;
     const imageTop = imageRect.top - wrapperRect.top;
-    const minLeft = imageLeft;
-    const maxLeft = imageLeft + imageRect.width - state.size;
-    const minTop = imageTop;
-    const maxTop = imageTop + imageRect.height - state.size;
-
-    const desiredLeft = imageLeft + localX - radius;
-    const desiredTop = imageTop + localY - radius;
-    const lensLeft = Math.max(minLeft, Math.min(maxLeft, desiredLeft));
-    const lensTop = Math.max(minTop, Math.min(maxTop, desiredTop));
+    const lensLeft = imageLeft + localX - radius;
+    const lensTop = imageTop + localY - radius;
 
     state.lens.style.left = `${lensLeft}px`;
     state.lens.style.top = `${lensTop}px`;
