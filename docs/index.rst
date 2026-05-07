@@ -20,7 +20,7 @@ operations.
 .. raw:: html
 
     <div class="api-surface-callout" role="note">
-       Interactive map: click any labeled box to open its API reference page.
+       Interactive map: hover to magnify and click any labeled box to open its API reference page.
     </div>
     <div class="api-surface-wrapper">
        <img src="_static/API_Surface_Feb_12.png"
@@ -30,9 +30,12 @@ operations.
          data-map-height="2164"
          data-original-map-width="3719"
          data-original-map-height="2164"
-               data-hitbox-scale-x="1.0"
-               data-hitbox-scale-y="1.0"
+                      data-hitbox-scale-x="1.0"
+                      data-hitbox-scale-y="1.0"
+                      data-magnify-zoom="2.0"
+                      data-magnify-size="220"
                class="api-surface-image" />
+                   <div class="api-surface-magnifier" aria-hidden="true"></div>
        <map name="lsdb-api-surface-map">
           <area shape="rect" coords="126,178,549,243" href="reference/api/lsdb.open_catalog.html" alt="open_catalog" />
           <area shape="rect" coords="126,238,549,303" href="reference/api/lsdb.from_dataframe.html" alt="from_dataframe" />

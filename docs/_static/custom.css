@@ -37,6 +37,28 @@
     touch-action: manipulation;
 }
 
+.api-surface-wrapper.is-magnifying .api-surface-image {
+    cursor: zoom-in;
+}
+
+.api-surface-magnifier {
+    position: absolute;
+    width: 220px;
+    height: 220px;
+    border-radius: 50%;
+    border: 2px solid #1f6feb;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.24);
+    background-color: #fff;
+    background-repeat: no-repeat;
+    pointer-events: none;
+    display: none;
+    z-index: 4;
+}
+
+.api-surface-wrapper.is-magnifying .api-surface-magnifier {
+    display: block;
+}
+
 .api-surface-debug-layer {
     position: absolute;
     inset: 0;
@@ -68,4 +90,10 @@
 #lsdb a:focus-visible {
     outline: 2px solid currentColor;
     outline-offset: 2px;
+}
+
+@media (hover: none), (pointer: coarse) {
+    .api-surface-magnifier {
+        display: none !important;
+    }
 }
