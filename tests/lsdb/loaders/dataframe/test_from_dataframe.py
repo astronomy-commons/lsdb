@@ -15,7 +15,6 @@ from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 from mocpy import MOC
 
 import lsdb
-import lsdb.nested as nd
 from lsdb.catalog.margin_catalog import MarginCatalog, _validate_margin_catalog
 from lsdb.operations.operation import Operation
 

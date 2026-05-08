@@ -9,7 +9,6 @@ from hats.pixel_math import HealpixPixel
 from hats.pixel_tree import PixelAlignment, PixelAlignmentType
 from hats.pixel_tree.pixel_alignment import align_with_mocs
 
-import lsdb.nested as nd
 from lsdb.operations.functions.merge_catalog_functions import (
     align_and_apply,
     filter_by_spatial_index_to_pixel,
@@ -124,9 +123,8 @@ def merge_map_catalog_data(
 
     Returns
     -------
-    tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]
-        A tuple of the dask dataframe with the result of the operation, the pixel map from HEALPix
-        pixel to partition index within the dataframe, and the PixelAlignment of the two input
+    tuple[Operation, PixelAlignment]
+        A tuple of the LSDB Operation mapping to the result, and the PixelAlignment of the two input
         catalogs.
     """
     if meta is None:

@@ -9,7 +9,6 @@ from hats.pixel_math import HealpixPixel
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 
 import lsdb
-import lsdb.nested as nd
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
 from lsdb.core.crossmatch.crossmatch_args import CrossmatchArgs
 from lsdb.operations.functions.merge_catalog_functions import align_catalogs, apply_suffixes
@@ -18,7 +17,6 @@ from lsdb.operations.functions.merge_catalog_functions import align_catalogs, ap
 def test_kdtree_crossmatch(small_sky_catalog, small_sky_xmatch_catalog, xmatch_correct, helpers):
     with pytest.warns(RuntimeWarning, match="Results may be incomplete and/or inaccurate"):
         xmatched_cat = small_sky_catalog.crossmatch(small_sky_xmatch_catalog, radius_arcsec=0.01 * 3600)
-        assert isinstance(xmatched_cat._ddf, nd.NestedFrame)
         xmatched = xmatched_cat.compute()
     alignment = align_catalogs(small_sky_catalog, small_sky_xmatch_catalog)
     assert xmatched_cat.hc_structure.moc == alignment.moc
@@ -45,7 +43,6 @@ def test_kdtree_crossmatch_nested(small_sky_catalog, small_sky_xmatch_catalog, x
         xmatched_cat = small_sky_catalog.crossmatch_nested(
             small_sky_xmatch_catalog, radius_arcsec=0.01 * 3600
         )
-        assert isinstance(xmatched_cat._ddf, nd.NestedFrame)
         xmatched = xmatched_cat.compute()
     alignment = align_catalogs(small_sky_catalog, small_sky_xmatch_catalog)
     assert xmatched_cat.hc_structure.moc == alignment.moc
@@ -72,7 +69,6 @@ def test_kdtree_crossmatch_nested_custom_name(small_sky_catalog, small_sky_xmatc
             nested_column_name=nested_column_name,
             output_catalog_name=cat_name,
         )
-        assert isinstance(xmatched_cat._ddf, nd.NestedFrame)
         assert xmatched_cat.name == cat_name
         xmatched = xmatched_cat.compute()
     alignment = align_catalogs(small_sky_catalog, small_sky_xmatch_catalog)
@@ -97,7 +93,6 @@ def test_kdtree_crossmatch_default_cols(
         xmatched_cat = small_sky_order1_default_cols_catalog.crossmatch(
             small_sky_xmatch_catalog, radius_arcsec=0.01 * 3600
         )
-        assert isinstance(xmatched_cat._ddf, nd.NestedFrame)
         xmatched = xmatched_cat.compute()
     helpers.assert_schema_correct(xmatched_cat)
     helpers.assert_default_columns_in_columns(xmatched_cat)

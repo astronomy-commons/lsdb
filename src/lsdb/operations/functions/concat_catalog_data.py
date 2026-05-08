@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING
 import pandas as pd
 from hats.pixel_tree import PixelAlignment, PixelAlignmentType
 
-import lsdb.nested as nd
 from lsdb.operations.functions.merge_catalog_functions import (
     align_and_apply,
     concat_align_catalogs,
@@ -408,8 +407,8 @@ def concat_catalog_data(
 
     Returns
     -------
-    tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]
-        Tuple containing the concatenated NestedFrame, pixel map, and pixel alignment.
+    tuple[Operation, PixelAlignment]
+        Tuple containing the resulting LSDB Operation, and pixel alignment.
     """
     # Build alignment across both trees (including margins as pixel trees, but filtered by MOCs)
     alignment = concat_align_catalogs(
@@ -451,7 +450,7 @@ def concat_margin_data(
     right: Catalog,
     margin_radius: float,
     **kwargs,
-) -> tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]:
+) -> tuple[Operation, PixelAlignment]:
     """Concatenate margin data for two catalogs using pixel alignment.
 
     Parameters
@@ -467,8 +466,8 @@ def concat_margin_data(
 
     Returns
     -------
-    tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]
-        Tuple containing the concatenated NestedFrame, pixel map,
+    tuple[Operation, PixelAlignment]
+        Tuple containing the resulting LSDB Operation,
         and pixel alignment for the margin data.
     """
     # Build alignment across both trees (including margins as pixel trees), no MOC filtering

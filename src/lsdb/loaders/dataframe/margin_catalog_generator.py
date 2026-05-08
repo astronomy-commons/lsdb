@@ -12,7 +12,6 @@ from hats.pixel_math import HealpixPixel, get_margin
 from hats.pixel_math.healpix_pixel_function import get_pixel_argsort
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 
-import lsdb.nested as nd
 from lsdb import Catalog
 from lsdb.catalog.margin_catalog import MarginCatalog
 from lsdb.io.common import new_provenance_properties
@@ -171,9 +170,8 @@ class MarginCatalogGenerator:
 
         Returns
         -------
-        tuple[nd.NestedFrame, dict[HealpixPixel, int], int]
-            Tuple containing the Dask Dataframe, the mapping of margin HEALPix
-            to the respective partitions and the total number of rows.
+        tuple[Operation, dict[HealpixPixel, int], int]
+            Tuple containing the LSDB Operation and the total number of rows.
         """
         # Generate pixel map ordered by _healpix_29
         pixel_order = get_pixel_argsort(pixels)

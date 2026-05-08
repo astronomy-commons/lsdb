@@ -6,14 +6,12 @@ import pandas as pd
 from hats.io.paths import get_data_thumbnail_pointer
 
 import lsdb
-import lsdb.nested as nd
 from lsdb.catalog.margin_catalog import MarginCatalog
 
 
 def test_read_margin_catalog(small_sky_xmatch_margin_dir):
     margin = lsdb.read_hats(small_sky_xmatch_margin_dir)
     assert isinstance(margin, MarginCatalog)
-    assert isinstance(margin._ddf, nd.NestedFrame)
     hc_margin = hc.read_hats(small_sky_xmatch_margin_dir)
     assert margin.hc_structure.catalog_info == hc_margin.catalog_info
     assert margin.hc_structure.get_healpix_pixels() == hc_margin.get_healpix_pixels()

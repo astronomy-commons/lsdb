@@ -34,7 +34,6 @@ from tqdm.dask import TqdmCallback
 from typing_extensions import Self
 from upath import UPath
 
-import lsdb.nested as nd
 from lsdb import io
 from lsdb.core.plotting.plot_points import plot_points
 from lsdb.core.search.abstract_search import AbstractSearch
@@ -88,10 +87,8 @@ class HealpixDataset:
 
         Parameters
         ----------
-        ddf: nd.NestedFrame
-            Dask Nested DataFrame with the source data of the catalog
-        ddf_pixel_map: DaskDFPixelMap
-            Dictionary mapping HEALPix order and pixel to partition index of ddf
+        operation: Operation
+            The LSDB operation that created the dataset
         hc_structure: HCHealpixDataset
             Object with hats metadata of the catalog
         loading_config: HatsLoadingConfig or None, default None
@@ -282,10 +279,9 @@ class HealpixDataset:
 
         Parameters
         ----------
-        ddf : nd.NestedFrame or None, default None
-            The catalog ddf to update in the new catalog
-        ddf_pixel_map : DaskDFPixelMap or None, default None
-            The partition to healpix pixel map to update in the new catalog
+        op : Operation or None, default None
+            The LSDB operation that created the new catalog. If None, the same
+            operation as the current catalog is used
         hc_structure : HCHealpixDataset or None, default None
             The hats HealpixDataset object to update in the new catalog
         updated_catalog_info_params : dict or None, default None
@@ -508,7 +504,7 @@ class HealpixDataset:
         return pd.concat(result)
 
     def to_dask_dataframe(self, optimize_graph=False, divisions=True):
-        """Converts to a lsdb.nested Dask DataFrame
+        """Converts to a Dask DataFrame
 
         Parameters
         ----------
@@ -712,7 +708,7 @@ class HealpixDataset:
         )
 
     def get_partition(self, order: int, pixel: int) -> Self:
-        """Get the dask partition for a given HEALPix pixel
+        """Get the partition for a given HEALPix pixel
 
         Parameters
         ----------
@@ -723,8 +719,8 @@ class HealpixDataset:
 
         Returns
         -------
-        nd.NestedFrame
-            Dask Dataframe with a single partition with data at that pixel
+        HealpixDataset
+            A new HealpixDataset object containing only the data from the specified HEALPix pixel
 
         Raises
         ------
@@ -736,7 +732,7 @@ class HealpixDataset:
         Get a single HEALPix partition from a small synthetic catalog:
 
         >>> import lsdb
-        >>> from lsdb.nested.datasets import generate_data
+        >>> from lsdb import generate_data
         >>> nf = generate_data(1000, 5, seed=0, ra_range=(0.0, 300.0), dec_range=(-50.0, 50.0))
         >>> catalog = lsdb.from_dataframe(nf.compute()[["ra", "dec", "id"]])
         >>> hp = catalog.get_healpix_pixels()[0]
@@ -1037,7 +1033,7 @@ class HealpixDataset:
         Filter a small synthetic catalog to a cone on the sky:
 
         >>> import lsdb
-        >>> from lsdb.nested.datasets import generate_data
+        >>> from lsdb import generate_data
         >>> nf = generate_data(1000, 5, seed=42, ra_range=(0.0, 300.0), dec_range=(-50.0, 50.0))
         >>> catalog = lsdb.from_dataframe(nf.compute()[["ra", "dec", "id"]])
         >>> cone = catalog.cone_search(ra=150.0, dec=0.0, radius_arcsec=7200)
@@ -1264,7 +1260,7 @@ class HealpixDataset:
         Plot pixel density for a small synthetic catalog:
 
         >>> import lsdb
-        >>> from lsdb.nested.datasets import generate_data
+        >>> from lsdb import generate_data
         >>> nf = generate_data(1000, 5, seed=0, ra_range=(0.0, 300.0), dec_range=(-50.0, 50.0))
         >>> catalog = lsdb.from_dataframe(nf.compute()[["ra", "dec", "id"]])
         >>> fig, ax = catalog.plot_pixels()  # doctest: +SKIP
@@ -1288,7 +1284,7 @@ class HealpixDataset:
         Plot coverage for a small synthetic catalog:
 
         >>> import lsdb
-        >>> from lsdb.nested.datasets import generate_data
+        >>> from lsdb import generate_data
         >>> nf = generate_data(1000, 5, seed=0, ra_range=(0.0, 300.0), dec_range=(-50.0, 50.0))
         >>> catalog = lsdb.from_dataframe(nf.compute()[["ra", "dec", "id"]])
         >>> fig, ax = catalog.plot_coverage()  # doctest: +SKIP

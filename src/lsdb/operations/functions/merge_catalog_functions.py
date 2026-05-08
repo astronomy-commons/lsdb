@@ -21,7 +21,6 @@ from hats.pixel_tree.moc_utils import copy_moc
 from hats.pixel_tree.pixel_alignment import align_with_mocs
 from tabulate import tabulate
 
-import lsdb.nested as nd
 from lsdb.operations.lsdb_ops import AlignAndApply
 from lsdb.operations.operation import Operation
 
@@ -529,8 +528,8 @@ def align_and_apply(
 
     Returns
     -------
-    nd.NestedFrame
-        A nested dataframe with the results of applying the function to each set of aligned partitions
+    Operation
+        A LSDB Operation with the results of applying the function to each set of aligned partitions
     """
     # gets the pixels and hc_structures to pass to the function
     pixels = [pixels for (_, pixels) in catalog_mappings]

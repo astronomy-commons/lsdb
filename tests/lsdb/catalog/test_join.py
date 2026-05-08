@@ -8,7 +8,6 @@ from hats.pixel_math import HealpixPixel
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN, spatial_index_to_healpix
 
 import lsdb
-import lsdb.nested as nd
 from lsdb.operations.functions.merge_catalog_functions import align_catalogs
 
 
@@ -18,7 +17,6 @@ def test_small_sky_join_small_sky_order1(small_sky_catalog, small_sky_order1_cat
         joined = small_sky_catalog.join(
             small_sky_order1_catalog, left_on="id", right_on="id", suffixes=suffixes
         )
-        assert isinstance(joined._ddf, nd.NestedFrame)
 
     expected_columns = [
         "id_a",
@@ -66,7 +64,6 @@ def test_small_sky_join_overlapping_suffix(small_sky_catalog, small_sky_order1_c
             suffixes=suffixes,
             suffix_method="overlapping_columns",
         )
-        assert isinstance(joined._ddf, nd.NestedFrame)
 
     expected_columns = [
         "id_a",
@@ -189,7 +186,6 @@ def test_join_association(
     joined = small_sky_catalog.join(
         small_sky_order1_source_collection_catalog, through=small_sky_to_o1source_catalog, suffixes=suffixes
     )
-    assert isinstance(joined._ddf, nd.NestedFrame)
     alignment = align_catalogs(small_sky_catalog, small_sky_order1_source_collection_catalog)
     assert joined.hc_structure.moc == alignment.moc
     assert joined.get_healpix_pixels() == alignment.pixel_tree.get_healpix_pixels()
@@ -439,7 +435,6 @@ def test_join_nested_invalid_how(small_sky_order1_catalog, small_sky_order1_sour
 def test_merge_asof(small_sky_catalog, small_sky_xmatch_catalog, direction):
     suffixes = ("_a", "_b")
     joined = small_sky_catalog.merge_asof(small_sky_xmatch_catalog, direction=direction, suffixes=suffixes)
-    assert isinstance(joined._ddf, nd.NestedFrame)
     alignment = align_catalogs(small_sky_catalog, small_sky_xmatch_catalog)
     assert joined.hc_structure.moc == alignment.moc
     assert joined.get_healpix_pixels() == alignment.pixel_tree.get_healpix_pixels()

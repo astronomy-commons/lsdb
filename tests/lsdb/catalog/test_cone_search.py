@@ -6,7 +6,6 @@ from astropy.coordinates import SkyCoord
 from astropy.visualization.wcsaxes import SphericalCircle
 from hats.pixel_math.validators import ValidatorsErrors
 
-import lsdb.nested as nd
 from lsdb import ConeSearch
 
 
@@ -17,7 +16,6 @@ def test_cone_search_filters_correct_points(small_sky_order1_catalog, helpers):
     radius = radius_degrees * 3600
     center_coord = SkyCoord(ra, dec, unit="deg")
     cone_search_catalog = small_sky_order1_catalog.cone_search(ra, dec, radius)
-    assert isinstance(cone_search_catalog._ddf, nd.NestedFrame)
     cone_search_df = cone_search_catalog.compute()
     assert isinstance(cone_search_df, npd.NestedFrame)
     for _, row in small_sky_order1_catalog.compute().iterrows():
@@ -40,7 +38,6 @@ def test_multiple_cone_search_filters_correct_points(small_sky_order1_catalog, h
     center_coord = SkyCoord(ra, dec, unit="deg")
     cone_search_catalog = small_sky_order1_catalog.cone_search(ra, dec, radius)
     cone_search_catalog = cone_search_catalog.cone_search(ra, dec, radius)
-    assert isinstance(cone_search_catalog._ddf, nd.NestedFrame)
     cone_search_df = cone_search_catalog.compute()
     assert isinstance(cone_search_df, npd.NestedFrame)
     for _, row in small_sky_order1_catalog.compute().iterrows():

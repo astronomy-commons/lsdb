@@ -9,7 +9,6 @@ from hats.catalog import TableProperties
 from hats.pixel_math import HealpixPixel
 from hats.pixel_tree import PixelAlignment, PixelAlignmentType
 
-import lsdb.nested as nd
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
 from lsdb.core.crossmatch.crossmatch_args import CrossmatchArgs
 from lsdb.operations.functions.merge_catalog_functions import (
@@ -341,9 +340,9 @@ def crossmatch_catalog_data(
 
     Returns
     -------
-    tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]
-        A tuple of the dask dataframe with the result of the cross-match, the pixel map from HEALPix
-        pixel to partition index within the dataframe, and the PixelAlignment of the two input catalogs.
+    tuple[Operation, PixelAlignment]
+        A tuple of the LSDB Operation with the result of the cross-match,
+        and the PixelAlignment of the two input catalogs.
     """
     # Validate the algorithm parameters
     algorithm.validate(left, right)
@@ -416,9 +415,9 @@ def crossmatch_catalog_data_nested(
 
     Returns
     -------
-    tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]
-        A tuple of the dask dataframe with the result of the cross-match, the pixel map from HEALPix
-        pixel to partition index within the dataframe, and the PixelAlignment of the two input catalogs.
+    tuple[Operation, PixelAlignment]
+        A tuple of the LSDB Operation with the result of the cross-match,
+        and the PixelAlignment of the two input catalogs.
     """
     # Validate the algorithm parameters
     algorithm.validate(left, right)

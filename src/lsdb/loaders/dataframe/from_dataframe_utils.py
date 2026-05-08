@@ -5,7 +5,6 @@ from dask import delayed
 from hats.pixel_math import HealpixPixel
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 
-import lsdb.nested as nd
 from lsdb.operations.functions.divisions import get_pixels_divisions
 from lsdb.operations.lsdb_ops import FromHealpixMap
 from lsdb.operations.operation import Operation
@@ -31,8 +30,8 @@ def _generate_op(
 
     Returns
     -------
-    tuple[nd.NestedFrame, int]
-        The catalog's Dask Dataframe and its total number of rows.
+    tuple[Operation, int]
+        The catalog's Operation and its total number of rows.
     """
     pixel_dfs = [_convert_dtypes_to_pyarrow(df) for df in pixel_dfs] if use_pyarrow_types else pixel_dfs
     schema = npd.NestedFrame(pixel_dfs[0].iloc[:0, :].copy()) if len(pixels) > 0 else npd.NestedFrame()

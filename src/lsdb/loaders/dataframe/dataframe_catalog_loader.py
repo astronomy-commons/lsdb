@@ -23,7 +23,6 @@ from hats.pixel_math.spatial_index import (
 )
 from mocpy import MOC
 
-import lsdb.nested as nd
 from lsdb.catalog.catalog import Catalog
 from lsdb.io.common import new_provenance_properties
 from lsdb.io.schema import get_arrow_schema
@@ -324,9 +323,8 @@ class DataframeCatalogLoader:
 
         Returns
         -------
-        tuple[nd.NestedFrame, DaskDFPixelMap, int]
-            Tuple containing the Dask Dataframe, the mapping of HEALPix pixels
-            to the respective Pandas Dataframes and the total number of rows.
+        tuple[Operation, int]
+            Tuple containing the LSDB Operation and the total number of rows.
         """
         # Dataframes for each destination HEALPix pixel
         pixel_dfs: dict[HealpixPixel, npd.NestedFrame] = {}

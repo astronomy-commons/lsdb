@@ -2,14 +2,12 @@ import pandas as pd
 import pytest
 from hats.pixel_math import HealpixPixel
 
-import lsdb.nested as nd
 from lsdb.core.search.region_search import PixelSearch
 
 
 def test_pixel_search(small_sky_catalog, small_sky_order1_catalog):
     # Searching for pixels at a higher order
     catalog = small_sky_catalog.pixel_search([(1, 44), (1, 45)])
-    assert isinstance(catalog._ddf, nd.NestedFrame)
     assert 1 == len(catalog._ddf_pixel_map)
     assert [HealpixPixel(0, 11)] == catalog.get_healpix_pixels()
     # Searching for pixels at a lower order
