@@ -4,8 +4,6 @@ import sys
 import pandas as pd
 import pytest
 
-lancedb = pytest.importorskip("lancedb")
-
 
 def test_import_error_without_lancedb(monkeypatch):
     """Importing to_lance without lancedb installed raises a helpful ImportError."""
@@ -20,6 +18,8 @@ def test_import_error_without_lancedb(monkeypatch):
 
 def test_to_lance_writes_dataset(small_sky_catalog, tmp_path):
     """Basic write: dataset exists and row count matches."""
+    lancedb = pytest.importorskip("lancedb")
+
     ds_path = tmp_path / "small_sky"
     small_sky_catalog.to_lance(ds_path)
 
@@ -31,6 +31,8 @@ def test_to_lance_writes_dataset(small_sky_catalog, tmp_path):
 
 def test_to_lance_columns_match(small_sky_catalog, tmp_path):
     """All catalog columns (including the spatial index) appear in the Lance dataset."""
+    lancedb = pytest.importorskip("lancedb")
+
     ds_path = tmp_path / "small_sky"
     small_sky_catalog.to_lance(ds_path)
 
@@ -45,6 +47,8 @@ def test_to_lance_columns_match(small_sky_catalog, tmp_path):
 
 def test_to_lance_overwrite(small_sky_catalog, tmp_path):
     """overwrite=True replaces an existing dataset."""
+    lancedb = pytest.importorskip("lancedb")
+
     ds_path = tmp_path / "small_sky"
     small_sky_catalog.to_lance(ds_path)
     small_sky_catalog.to_lance(ds_path, overwrite=True)
@@ -66,6 +70,8 @@ def test_to_lance_overwrite_false_raises(small_sky_catalog, tmp_path):
 
 def test_to_lance_data_matches(small_sky_catalog, tmp_path):
     """Values in the Lance dataset match the original catalog data."""
+    lancedb = pytest.importorskip("lancedb")
+
     ds_path = tmp_path / "small_sky"
     small_sky_catalog.to_lance(ds_path)
 
@@ -84,6 +90,8 @@ def test_to_lance_data_matches(small_sky_catalog, tmp_path):
 
 def test_to_lance_multiple_partitions(small_sky_order1_catalog, tmp_path):
     """Catalogs with multiple partitions exercise the table.add() branch."""
+    lancedb = pytest.importorskip("lancedb")
+
     ds_path = tmp_path / "small_sky_order1"
     assert len(small_sky_order1_catalog._ddf_pixel_map) > 1, "fixture must have >1 partition"
     small_sky_order1_catalog.to_lance(ds_path)
@@ -94,19 +102,21 @@ def test_to_lance_multiple_partitions(small_sky_order1_catalog, tmp_path):
     assert tbl.count_rows() == expected_rows
 
 
-def test_to_lance_empty_catalog_raises(small_sky_catalog, tmp_path, monkeypatch):
+def test_to_lance_empty_catalog_raises(small_sky_catalog, tmp_path):
     """An all-empty catalog raises RuntimeError with an informative message."""
     ds_path = tmp_path / "small_sky"
 
-    # Patch the pixel map to be empty so no partitions are iterated
-    monkeypatch.setattr(small_sky_catalog, "_ddf_pixel_map", {})
+    # Intentionally search an empty area so no partitions are iterated
+    cone_search_catalog = small_sky_catalog.cone_search(0, -80, 1)
 
     with pytest.raises(RuntimeError, match="The output catalog is empty"):
-        small_sky_catalog.to_lance(ds_path)
+        cone_search_catalog.to_lance(ds_path)
 
 
 def test_to_lance_nested_partitions(small_sky_with_nested_sources, tmp_path):
     """Catalogs with nested sources has all rows included in the output dataset."""
+    lancedb = pytest.importorskip("lancedb")
+
     ds_path = tmp_path / "small_sky_nested"
     assert len(small_sky_with_nested_sources._ddf_pixel_map) > 1, "fixture must have >1 partition"
     small_sky_with_nested_sources.to_lance(ds_path)
@@ -119,6 +129,8 @@ def test_to_lance_nested_partitions(small_sky_with_nested_sources, tmp_path):
 
 def test_to_lance_data_matches_nested(small_sky_with_nested_sources, tmp_path):
     """Values in the Lance dataset match the original catalog data."""
+    lancedb = pytest.importorskip("lancedb")
+
     ds_path = tmp_path / "small_sky_nested"
     small_sky_with_nested_sources.to_lance(ds_path)
 
