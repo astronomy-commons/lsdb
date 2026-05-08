@@ -90,10 +90,8 @@ class Catalog(HealpixDataset):
 
         Parameters
         ----------
-        ddf: nd.NestedFrame
-            Dask Nested DataFrame with the source data of the catalog
-        ddf_pixel_map: DaskDFPixelMap
-            Dictionary mapping HEALPix order and pixel to partition index of ddf
+        operation: Operation
+            The LSDB operation that created the catalog
         hc_structure: HCHealpixDataset
             Object with hats metadata of the catalog
         loading_config: HatsLoadingConfig or None, default None

@@ -88,10 +88,8 @@ class HealpixDataset:
 
         Parameters
         ----------
-        ddf: nd.NestedFrame
-            Dask Nested DataFrame with the source data of the catalog
-        ddf_pixel_map: DaskDFPixelMap
-            Dictionary mapping HEALPix order and pixel to partition index of ddf
+        operation: Operation
+            The LSDB operation that created the dataset
         hc_structure: HCHealpixDataset
             Object with hats metadata of the catalog
         loading_config: HatsLoadingConfig or None, default None
@@ -282,10 +280,9 @@ class HealpixDataset:
 
         Parameters
         ----------
-        ddf : nd.NestedFrame or None, default None
-            The catalog ddf to update in the new catalog
-        ddf_pixel_map : DaskDFPixelMap or None, default None
-            The partition to healpix pixel map to update in the new catalog
+        op : Operation or None, default None
+            The LSDB operation that created the new catalog. If None, the same
+            operation as the current catalog is used
         hc_structure : HCHealpixDataset or None, default None
             The hats HealpixDataset object to update in the new catalog
         updated_catalog_info_params : dict or None, default None
@@ -751,7 +748,7 @@ class HealpixDataset:
         )
 
     def get_partition(self, order: int, pixel: int) -> Self:
-        """Get the dask partition for a given HEALPix pixel
+        """Get the partition for a given HEALPix pixel
 
         Parameters
         ----------
@@ -762,8 +759,8 @@ class HealpixDataset:
 
         Returns
         -------
-        nd.NestedFrame
-            Dask Dataframe with a single partition with data at that pixel
+        HealpixDataset
+            A new HealpixDataset object containing only the data from the specified HEALPix pixel
 
         Raises
         ------

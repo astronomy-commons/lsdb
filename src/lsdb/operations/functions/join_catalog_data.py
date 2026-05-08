@@ -537,9 +537,8 @@ def join_catalog_data_through(
 
     Returns
     -------
-    tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]
-        A tuple of the dask dataframe with the result of the join, the pixel map from HEALPix
-        pixel to partition index within the dataframe, and the PixelAlignment of the two input
+    tuple[Operation, PixelAlignment]
+        A tuple of the LSDB Operation with the result of the join, and the PixelAlignment of the two input
         catalogs.
     """
     if (
@@ -650,9 +649,8 @@ def merge_asof_catalog_data(
 
     Returns
     -------
-    tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]
-        A tuple of the dask dataframe with the result of the join, the pixel map from HEALPix
-        pixel to partition index within the dataframe, and the PixelAlignment of the two input
+    tuple[Operation, PixelAlignment]
+        A tuple of the LSDB Operation with the result of the join, and the PixelAlignment of the two input
         catalogs.
     """
     alignment = align_catalogs(left, right)

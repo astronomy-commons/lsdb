@@ -171,9 +171,8 @@ class MarginCatalogGenerator:
 
         Returns
         -------
-        tuple[nd.NestedFrame, dict[HealpixPixel, int], int]
-            Tuple containing the Dask Dataframe, the mapping of margin HEALPix
-            to the respective partitions and the total number of rows.
+        tuple[Operation, dict[HealpixPixel, int], int]
+            Tuple containing the LSDB Operation and the total number of rows.
         """
         # Generate pixel map ordered by _healpix_29
         pixel_order = get_pixel_argsort(pixels)

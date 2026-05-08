@@ -341,9 +341,9 @@ def crossmatch_catalog_data(
 
     Returns
     -------
-    tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]
-        A tuple of the dask dataframe with the result of the cross-match, the pixel map from HEALPix
-        pixel to partition index within the dataframe, and the PixelAlignment of the two input catalogs.
+    tuple[Operation, PixelAlignment]
+        A tuple of the LSDB Operation with the result of the cross-match,
+        and the PixelAlignment of the two input catalogs.
     """
     # Validate the algorithm parameters
     algorithm.validate(left, right)
@@ -416,9 +416,9 @@ def crossmatch_catalog_data_nested(
 
     Returns
     -------
-    tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]
-        A tuple of the dask dataframe with the result of the cross-match, the pixel map from HEALPix
-        pixel to partition index within the dataframe, and the PixelAlignment of the two input catalogs.
+    tuple[Operation, PixelAlignment]
+        A tuple of the LSDB Operation with the result of the cross-match,
+        and the PixelAlignment of the two input catalogs.
     """
     # Validate the algorithm parameters
     algorithm.validate(left, right)

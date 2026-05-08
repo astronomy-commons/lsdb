@@ -124,9 +124,8 @@ def merge_map_catalog_data(
 
     Returns
     -------
-    tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]
-        A tuple of the dask dataframe with the result of the operation, the pixel map from HEALPix
-        pixel to partition index within the dataframe, and the PixelAlignment of the two input
+    tuple[Operation, PixelAlignment]
+        A tuple of the LSDB Operation mapping to the result, and the PixelAlignment of the two input
         catalogs.
     """
     if meta is None:

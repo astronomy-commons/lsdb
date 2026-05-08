@@ -31,8 +31,8 @@ def _generate_op(
 
     Returns
     -------
-    tuple[nd.NestedFrame, int]
-        The catalog's Dask Dataframe and its total number of rows.
+    tuple[Operation, int]
+        The catalog's Operation and its total number of rows.
     """
     pixel_dfs = [_convert_dtypes_to_pyarrow(df) for df in pixel_dfs] if use_pyarrow_types else pixel_dfs
     schema = npd.NestedFrame(pixel_dfs[0].iloc[:0, :].copy()) if len(pixels) > 0 else npd.NestedFrame()
