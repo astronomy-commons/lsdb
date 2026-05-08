@@ -9,7 +9,6 @@ from hats.pixel_math import HealpixPixel
 from hats.pixel_tree import PixelAlignment, PixelAlignmentType
 from hats.pixel_tree.pixel_alignment import align_with_mocs
 
-import lsdb.nested as nd
 from lsdb.operations.functions.merge_catalog_functions import (
     align_and_apply,
     filter_by_spatial_index_to_pixel,

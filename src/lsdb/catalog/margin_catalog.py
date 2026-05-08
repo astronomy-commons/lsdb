@@ -9,7 +9,6 @@ from deprecated import deprecated  # type: ignore
 from hats.io import paths
 from upath import UPath
 
-import lsdb.nested as nd
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
 from lsdb.loaders.hats.hats_loading_config import HatsLoadingConfig
 from lsdb.operations.operation import Operation

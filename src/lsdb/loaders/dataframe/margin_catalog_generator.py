@@ -12,7 +12,6 @@ from hats.pixel_math import HealpixPixel, get_margin
 from hats.pixel_math.healpix_pixel_function import get_pixel_argsort
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 
-import lsdb.nested as nd
 from lsdb import Catalog
 from lsdb.catalog.margin_catalog import MarginCatalog
 from lsdb.io.common import new_provenance_properties

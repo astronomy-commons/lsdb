@@ -6,7 +6,6 @@ from astropy.coordinates import SkyCoord
 from astropy.visualization.wcsaxes import SphericalCircle
 from hats.pixel_math.validators import ValidatorsErrors
 
-import lsdb.nested as nd
 from lsdb import ConeSearch
 
 

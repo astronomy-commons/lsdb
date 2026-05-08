@@ -6,7 +6,6 @@ from nested_pandas import datasets
 
 import lsdb
 from lsdb.core.search.region_search import BoxSearch, ConeSearch, PixelSearch
-from lsdb.nested.core import NestedFrame
 
 
 def generate_data(
@@ -39,12 +38,14 @@ def generate_data(
 
     Returns
     -------
-    NestedFrame
-        The constructed Dask NestedFrame.
+    DataFrame
+        A Dask DataFrame wrapping the nested-pandas nestedframe partitions. Note
+        that Dask DataFrames do not support nested columns, so the nested columns
+        be largely inaccessible unless computed or loaded into a Catalog via `lsdb.from_dataframe`.
 
     Examples
     --------
-    >>> from lsdb.nested.datasets import generate_data
+    >>> from lsdb import generate_data
     >>> nf = generate_data(10,100)
     >>> nf = generate_data(10, {"nested_a": 100, "nested_b": 200})
 
@@ -93,11 +94,9 @@ def generate_data(
     # reorder columns nicely
     base_nf = base_nf[["ra", "dec", "id", "a", "b"] + base_nf.nested_columns]
 
-    # Convert to lsdb.nested NestedFrame
+    # Load into Dask DataFrame
     result = dd.from_pandas(base_nf, npartitions=npartitions)
-    base_nf = NestedFrame.from_dask_dataframe(result)
-
-    return base_nf
+    return result
 
 
 def _generate_cone_search(
@@ -204,7 +203,7 @@ def generate_catalog(
 
     Examples
     --------
-    >>> from lsdb.nested.datasets import generate_catalog
+    >>> from lsdb import generate_catalog
     >>> gen_cat = generate_catalog(10,100)
     >>> gen_cat = generate_catalog(1000, 10, ra_range=(0.,10.), dec_range=(-5.,0.))
 

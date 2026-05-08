@@ -17,7 +17,6 @@ from hats.pixel_math.spatial_index import (
 )
 
 import lsdb
-import lsdb.nested as nd
 
 DATA_DIR_NAME = "data"
 SMALL_SKY_DIR_NAME = "small_sky"
@@ -482,34 +481,3 @@ class Helpers:
 @pytest.fixture
 def helpers():
     return Helpers()
-
-
-@pytest.fixture
-def test_dataset():
-    """create a toy dataset for testing purposes"""
-    n_base = 50
-    layer_size = 500
-    randomstate = np.random.RandomState(seed=1)  # pylint: disable=no-member
-
-    # Generate base data
-    base_data = {"a": randomstate.random(n_base), "b": randomstate.random(n_base) * 2}
-    base_nf = npd.NestedFrame(data=base_data)
-
-    layer_data = {
-        "t": randomstate.random(layer_size * n_base) * 20,
-        "flux": randomstate.random(layer_size * n_base) * 100,
-        # Ensure pyarrow[string] dtype, not large_string
-        # https://github.com/lincc-frameworks/nested-dask/issues/71
-        "band": pd.Series(
-            randomstate.choice(["r", "g"], size=layer_size * n_base), dtype=pd.ArrowDtype(pa.string())
-        ),
-        "index": np.arange(layer_size * n_base) % n_base,
-    }
-    layer_nf = npd.NestedFrame(data=layer_data).set_index("index").sort_index()
-
-    result = dd.from_pandas(base_nf, npartitions=5)
-    base_nd = nd.NestedFrame.from_dask_dataframe(result)
-    result = dd.from_pandas(layer_nf, npartitions=10)
-    layer_nd = nd.NestedFrame.from_dask_dataframe(result)
-
-    return base_nd.join_nested(layer_nd, "nested")

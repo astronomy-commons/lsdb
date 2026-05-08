@@ -6,7 +6,6 @@ import pandas as pd
 from hats.io.paths import get_data_thumbnail_pointer
 
 import lsdb
-import lsdb.nested as nd
 from lsdb.catalog.margin_catalog import MarginCatalog
 
 

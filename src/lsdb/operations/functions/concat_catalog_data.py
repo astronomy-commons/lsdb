@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING
 import pandas as pd
 from hats.pixel_tree import PixelAlignment, PixelAlignmentType
 
-import lsdb.nested as nd
 from lsdb.operations.functions.merge_catalog_functions import (
     align_and_apply,
     concat_align_catalogs,
