@@ -324,9 +324,8 @@ class DataframeCatalogLoader:
 
         Returns
         -------
-        tuple[nd.NestedFrame, DaskDFPixelMap, int]
-            Tuple containing the Dask Dataframe, the mapping of HEALPix pixels
-            to the respective Pandas Dataframes and the total number of rows.
+        tuple[Operation, int]
+            Tuple containing the LSDB Operation and the total number of rows.
         """
         # Dataframes for each destination HEALPix pixel
         pixel_dfs: dict[HealpixPixel, npd.NestedFrame] = {}
