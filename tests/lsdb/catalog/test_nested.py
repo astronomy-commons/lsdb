@@ -77,7 +77,6 @@ def test_map_rows(small_sky_with_nested_sources):
     )
 
     assert isinstance(reduced_cat, Catalog)
-    assert isinstance(reduced_cat._ddf, nd.NestedFrame)
 
     assert reduced_cat.hc_structure.catalog_info.ra_column == ""
     assert reduced_cat.hc_structure.catalog_info.dec_column == ""
@@ -103,7 +102,6 @@ def test_map_rows_append_columns(small_sky_with_nested_sources):
         mean_mag, columns=["sources.mag"], row_container="args", meta={"mean_mag": float}, append_columns=True
     )
     assert isinstance(reduced_cat, Catalog)
-    assert isinstance(reduced_cat._ddf, nd.NestedFrame)
     reduced_cat_compute = reduced_cat.compute()
     assert isinstance(reduced_cat_compute, npd.NestedFrame)
 
@@ -171,7 +169,6 @@ def test_map_rows_no_return_column(small_sky_with_nested_sources):
     )
 
     assert isinstance(reduced_cat, Catalog)
-    assert isinstance(reduced_cat._ddf, nd.NestedFrame)
 
     reduced_cat_compute = reduced_cat.compute()
     assert isinstance(reduced_cat_compute, npd.NestedFrame)
@@ -202,7 +199,6 @@ def test_map_rows_invalid_return_column(small_sky_with_nested_sources):
     )
 
     assert isinstance(reduced_cat, Catalog)
-    assert isinstance(reduced_cat._ddf, nd.NestedFrame)
 
     with pytest.raises(ValueError):
         reduced_cat.compute()

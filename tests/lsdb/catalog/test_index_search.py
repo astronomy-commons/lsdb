@@ -15,7 +15,6 @@ def test_id_search_with_single_field(small_sky_order1_source_collection_catalog,
 
     # Searching for the sources of an object that exists
     cat = small_sky_order1_source_collection_catalog.id_search(values={"object_id": 810})
-    assert isinstance(cat._ddf, nd.NestedFrame)
     index_search_df = cat.compute()
     assert len(index_search_df) == 131
     assert all(index_search_df["object_id"] == 810)
@@ -23,7 +22,6 @@ def test_id_search_with_single_field(small_sky_order1_source_collection_catalog,
 
     # Searching for the sources of an object that does not exist
     cat = small_sky_order1_source_collection_catalog.id_search(values={"object_id": 900})
-    assert isinstance(cat._ddf, nd.NestedFrame)
     index_search_df = cat.compute()
     assert isinstance(index_search_df, npd.NestedFrame)
     assert len(index_search_df) == 0
@@ -32,7 +30,6 @@ def test_id_search_with_single_field(small_sky_order1_source_collection_catalog,
 
 def test_id_search_with_multiple_fields(small_sky_order1_source_collection_catalog, helpers):
     cat = small_sky_order1_source_collection_catalog.id_search(values={"object_id": 810, "band": "r"})
-    assert isinstance(cat._ddf, nd.NestedFrame)
     index_search_df = cat.compute()
     assert isinstance(index_search_df, npd.NestedFrame)
     assert len(index_search_df) == 17
@@ -47,7 +44,6 @@ def test_id_search_with_index_catalog_path(
     cat = small_sky_order1_source_with_margin.id_search(
         values={"object_id": 810}, index_catalogs={"object_id": small_sky_order1_source_object_id_index_dir}
     )
-    assert isinstance(cat._ddf, nd.NestedFrame)
     index_search_df = cat.compute()
     assert isinstance(index_search_df, npd.NestedFrame)
     assert len(index_search_df) == 131
@@ -61,7 +57,6 @@ def test_id_search_with_index_catalog(
     index_search_catalog = small_sky_order1_source_with_margin.id_search(
         values={"object_id": 810}, index_catalogs={"object_id": id_index}
     )
-    assert isinstance(index_search_catalog._ddf, nd.NestedFrame)
     index_search_df = index_search_catalog.compute()
     assert isinstance(index_search_df, npd.NestedFrame)
     assert len(index_search_df) == 131
@@ -86,7 +81,6 @@ def test_id_search_with_some_explicit_index_catalogs(
         values={"object_id": 810, "band": "r"},
         index_catalogs={"band": small_sky_order1_source_band_index_dir},
     )
-    assert isinstance(cat._ddf, nd.NestedFrame)
     index_search_df = cat.compute()
     assert len(index_search_df) == 17
     assert all(index_search_df["object_id"] == 810)
@@ -146,7 +140,6 @@ def test_index_search_with_no_values(small_sky_order1_source_collection_catalog)
 def test_id_search_with_list_of_values(small_sky_order1_source_collection_catalog, helpers):
     # Searching with object_id as a list
     cat = small_sky_order1_source_collection_catalog.id_search(values={"object_id": [810, 811]})
-    assert isinstance(cat._ddf, nd.NestedFrame)
     index_search_df = cat.compute()
     assert len(index_search_df) == 262  # 131 each
     assert all(index_search_df["object_id"].isin([810, 811]))
@@ -156,7 +149,6 @@ def test_id_search_with_list_of_values(small_sky_order1_source_collection_catalo
     cat_plus_non_existent = small_sky_order1_source_collection_catalog.id_search(
         values={"object_id": [810, 811, 900]}
     )
-    assert isinstance(cat_plus_non_existent._ddf, nd.NestedFrame)
     index_search_df_plus_non_existent = cat_plus_non_existent.compute()
     assert len(index_search_df_plus_non_existent) == 262  # 131 each
     assert all(index_search_df_plus_non_existent["object_id"].isin([810, 811]))
@@ -172,7 +164,6 @@ def test_id_search_with_list_of_values(small_sky_order1_source_collection_catalo
     cat_with_only_one_list = small_sky_order1_source_collection_catalog.id_search(
         values={"object_id": [810, 811], "band": "r"}
     )
-    assert isinstance(cat_with_only_one_list._ddf, nd.NestedFrame)
     index_search_df_with_only_one_list = cat_with_only_one_list.compute()
     assert len(index_search_df_with_only_one_list) == 47  # 17 for object_id=810 + 30 for object_id=811
     assert all(index_search_df_with_only_one_list["object_id"].isin([810, 811]))

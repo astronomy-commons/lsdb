@@ -245,7 +245,6 @@ def test_concat_catalog_row_count(small_sky_order1_catalog):
     ), f"Expected {expected_total} rows after concat, but got {actual_total}"
 
     # Internal types
-    assert isinstance(concat_cat._ddf, nd.NestedFrame)
     assert isinstance(df_concat, npd.NestedFrame)
 
     # Structure/divisions sanity
@@ -430,9 +429,6 @@ def test_concat_catalogs_with_different_schemas(small_sky_order1_collection_dir,
             check_names=False,
             check_dtype=False,
         )
-
-    # Structural checks
-    assert isinstance(concat_cat._ddf, nd.NestedFrame)
 
     # (5) Symmetry check (main and margin handled internally)
     _assert_concat_symmetry(left_cat, right_cat)

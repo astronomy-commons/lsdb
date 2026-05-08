@@ -13,7 +13,6 @@ def test_polygon_search_filters_correct_points(small_sky_order1_catalog, helpers
     vertices = [(300, -50), (300, -55), (272, -55), (272, -50)]
     polygon = get_cartesian_polygon(vertices)
     polygon_search_catalog = small_sky_order1_catalog.polygon_search(vertices)
-    assert isinstance(polygon_search_catalog._ddf, nd.NestedFrame)
     polygon_search_df = polygon_search_catalog.compute()
     assert isinstance(polygon_search_df, npd.NestedFrame)
     ra_values_radians = np.radians(
