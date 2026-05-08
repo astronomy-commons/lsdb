@@ -1,4 +1,3 @@
-import importlib
 import sys
 
 import pandas as pd
@@ -7,13 +6,14 @@ import pytest
 
 def test_import_error_without_lancedb(monkeypatch):
     """Importing to_lance without lancedb installed raises a helpful ImportError."""
-    monkeypatch.setitem(sys.modules, "lancedb", None)
-    monkeypatch.delitem(sys.modules, "lsdb.io.to_lance", raising=False)
+    # pylint: disable=import-outside-toplevel
+    from lsdb.io.to_lance import to_lance  # noqa: F401
 
-    module = importlib.import_module("lsdb.io.to_lance")
+    monkeypatch.setitem(sys.modules, "lancedb", None)
+
     # Call to_lance with dummy arguments to trigger ImportError
     with pytest.raises(ImportError, match="to_lance requires the `lancedb` package"):
-        module.to_lance(None, base_catalog_path="/tmp/does_not_matter")
+        to_lance(None, base_catalog_path="/tmp/does_not_matter")
 
 
 def test_to_lance_writes_dataset(small_sky_catalog, tmp_path):
