@@ -61,6 +61,7 @@ def test_to_lance_overwrite(small_sky_catalog, tmp_path):
 
 def test_to_lance_overwrite_false_raises(small_sky_catalog, tmp_path):
     """Writing to an existing dataset without overwrite=True raises an error."""
+    pytest.importorskip("lancedb")
     ds_path = tmp_path / "small_sky"
     small_sky_catalog.to_lance(ds_path)
 
@@ -104,6 +105,7 @@ def test_to_lance_multiple_partitions(small_sky_order1_catalog, tmp_path):
 
 def test_to_lance_empty_catalog_raises(small_sky_catalog, tmp_path):
     """An all-empty catalog raises RuntimeError with an informative message."""
+    pytest.importorskip("lancedb")
     ds_path = tmp_path / "small_sky"
 
     # Intentionally search an empty area so no partitions are iterated
