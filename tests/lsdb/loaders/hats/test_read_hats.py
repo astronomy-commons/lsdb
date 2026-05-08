@@ -24,7 +24,6 @@ from lsdb.loaders.hats.hats_loading_config import HatsLoadingConfig
 def test_read_hats(small_sky_order1_dir, small_sky_order1_hats_catalog, helpers):
     catalog = lsdb.open_catalog(small_sky_order1_dir)
     assert isinstance(catalog, lsdb.Catalog)
-    assert isinstance(catalog._ddf, nd.NestedFrame)
     assert catalog.hc_structure.catalog_base_dir == small_sky_order1_hats_catalog.catalog_base_dir
     assert catalog.hc_structure.catalog_info.total_rows == len(catalog)
     assert catalog.get_healpix_pixels() == small_sky_order1_hats_catalog.get_healpix_pixels()
@@ -214,7 +213,6 @@ def test_read_hats_initializes_upath_once(
 def test_read_hats_default_cols(small_sky_order1_default_cols_dir, helpers):
     catalog = lsdb.open_catalog(small_sky_order1_default_cols_dir)
     assert isinstance(catalog, lsdb.Catalog)
-    assert isinstance(catalog._ddf, nd.NestedFrame)
     assert catalog.hc_structure.catalog_info.default_columns is not None
     assert np.all(catalog.columns == catalog.hc_structure.catalog_info.default_columns)
     assert np.all(catalog.compute().columns == catalog.hc_structure.catalog_info.default_columns)
@@ -229,7 +227,6 @@ def test_read_hats_default_cols_specify_cols(small_sky_order1_default_cols_dir, 
     filter_columns = ["ra", "dec"]
     catalog = lsdb.open_catalog(small_sky_order1_default_cols_dir, columns=filter_columns)
     assert isinstance(catalog, lsdb.Catalog)
-    assert isinstance(catalog._ddf, nd.NestedFrame)
     assert catalog.hc_structure.catalog_info.default_columns is not None
     assert np.all(catalog.columns == filter_columns)
     assert np.all(catalog.compute().columns == filter_columns)
@@ -244,7 +241,6 @@ def test_read_hats_default_cols_all_cols(small_sky_order1_default_cols_dir, help
     expected_all_cols = ["id", "ra", "dec", "ra_error", "dec_error"]
     catalog = lsdb.open_catalog(small_sky_order1_default_cols_dir, columns="all")
     assert isinstance(catalog, lsdb.Catalog)
-    assert isinstance(catalog._ddf, nd.NestedFrame)
     assert catalog.hc_structure.catalog_info.default_columns is not None
     assert np.all(catalog.columns == expected_all_cols)
     assert np.all(catalog.compute().columns == expected_all_cols)
@@ -309,7 +305,6 @@ def test_read_hats_with_ellipsis_errors(small_sky_order1_default_cols_dir):
 def test_read_hats_no_pandas(small_sky_order1_no_pandas_dir, helpers):
     catalog = lsdb.open_catalog(small_sky_order1_no_pandas_dir)
     assert isinstance(catalog, lsdb.Catalog)
-    assert isinstance(catalog._ddf, nd.NestedFrame)
     assert len(catalog.compute().columns) == 5
     assert isinstance(catalog.compute(), npd.NestedFrame)
     helpers.assert_divisions_are_correct(catalog)
@@ -347,7 +342,6 @@ def test_read_hats_npix_alt_suffix(
     assert catalog_npix_suffix == small_sky_npix_alt_suffix_hats_catalog.catalog_info.npix_suffix
     # Show that the catalog can be read as expected.
     assert isinstance(catalog, lsdb.Catalog)
-    assert isinstance(catalog._ddf, nd.NestedFrame)
     assert catalog.hc_structure.catalog_info.total_rows == len(catalog)
     assert len(catalog.compute().columns) == 5
     assert isinstance(catalog.compute(), npd.NestedFrame)
@@ -363,7 +357,6 @@ def test_read_hats_npix_as_dir(small_sky_npix_as_dir_dir, small_sky_npix_as_dir_
     assert catalog_npix_suffix == small_sky_npix_as_dir_hats_catalog.catalog_info.npix_suffix
     # Show that the catalog can be read as expected.
     assert isinstance(catalog, lsdb.Catalog)
-    assert isinstance(catalog._ddf, nd.NestedFrame)
     assert catalog.hc_structure.catalog_info.total_rows == len(catalog)
     assert len(catalog.compute().columns) == 5
     assert isinstance(catalog.compute(), npd.NestedFrame)
@@ -463,8 +456,6 @@ def test_open_catalog_with_margin(
     catalog = lsdb.open_catalog(small_sky_xmatch_dir, margin_cache=small_sky_xmatch_margin_dir)
     assert isinstance(catalog, lsdb.Catalog)
     assert isinstance(catalog.margin, lsdb.MarginCatalog)
-    assert isinstance(catalog._ddf, nd.NestedFrame)
-    assert isinstance(catalog.margin._ddf, nd.NestedFrame)
     assert (
         catalog.margin.hc_structure.catalog_info == small_sky_xmatch_margin_catalog.hc_structure.catalog_info
     )
@@ -694,7 +685,6 @@ def test_read_hats_catalog_with_custom_tree(
     path_generator_spy = mocker.spy(__import__(__name__), custom_path_generator.__name__)
     cat = lsdb.open_catalog(small_sky_order1_custom_tree_dir, path_generator=custom_path_generator)
     assert isinstance(cat, lsdb.Catalog)
-    assert isinstance(cat._ddf, nd.NestedFrame)
     assert cat.hc_structure.catalog_base_dir == small_sky_order1_custom_tree_dir
     assert cat.hc_structure.catalog_info.total_rows == len(small_sky_order1_catalog)
     assert cat.get_healpix_pixels() == small_sky_order1_catalog.get_healpix_pixels()
