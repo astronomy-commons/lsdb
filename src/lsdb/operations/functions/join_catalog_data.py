@@ -11,7 +11,6 @@ from hats.pixel_math import HealpixPixel
 from hats.pixel_tree import PixelAlignment, PixelAlignmentType
 from nested_pandas.series.packer import pack_flat
 
-import lsdb.nested as nd
 from lsdb.catalog.association_catalog import AssociationCatalog
 from lsdb.operations.functions.merge_catalog_functions import (
     align_and_apply,

@@ -6,7 +6,6 @@ import pytest
 from nested_pandas import NestedDtype
 
 import lsdb
-import lsdb.nested as nd
 from lsdb import Catalog
 
 

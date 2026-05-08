@@ -48,7 +48,6 @@ from lsdb.operations.functions.merge_catalog_functions import (
 from lsdb.operations.functions.merge_map_catalog_data import merge_map_catalog_data
 from lsdb.io.schema import get_arrow_schema
 from lsdb.loaders.hats.hats_loading_config import HatsLoadingConfig
-from lsdb.nested.core import NestedFrame
 from lsdb.operations.operation import Operation
 
 
@@ -158,7 +157,7 @@ class Catalog(HealpixDataset):
         Filter a small synthetic catalog using a pandas-style query string:
 
         >>> import lsdb
-        >>> from lsdb.nested.datasets import generate_data
+        >>> from lsdb import generate_data
         >>> nf = generate_data(1000, 10, seed=0, ra_range=(0.0, 300.0), dec_range=(-50.0, 50.0))
         >>> catalog = lsdb.from_dataframe(nf.compute())
         >>> filtered = catalog.query("ra < 100 and dec > 0")
@@ -336,7 +335,7 @@ class Catalog(HealpixDataset):
         Crossmatch two small synthetic catalogs:
 
         >>> import lsdb
-        >>> from lsdb.nested.datasets import generate_data
+        >>> from lsdb import generate_data
         >>> nf = generate_data(1000, 5, seed=0, ra_range=(0.0, 300.0), dec_range=(-50.0, 50.0))
         >>> df = nf.compute()[["ra", "dec", "id"]]
         >>> left = lsdb.from_dataframe(df, catalog_name="left")
@@ -852,7 +851,7 @@ class Catalog(HealpixDataset):
         Apply a function to each partition (e.g., add a derived column):
 
         >>> import lsdb
-        >>> from lsdb.nested.datasets import generate_data
+        >>> from lsdb import generate_data
         >>> nf = generate_data(1000, 5, seed=0, ra_range=(0.0, 300.0), dec_range=(-50.0, 50.0))
         >>> catalog = lsdb.from_dataframe(nf.compute()[["ra", "dec", "id"]])
         >>> def add_flag(df):
@@ -1128,7 +1127,7 @@ class Catalog(HealpixDataset):
         Join two catalogs on a shared key within the same sky partitions:
 
         >>> import lsdb
-        >>> from lsdb.nested.datasets import generate_data
+        >>> from lsdb import generate_data
         >>> nf = generate_data(1000, 5, seed=0, ra_range=(0.0, 300.0), dec_range=(-50.0, 50.0))
         >>> base = lsdb.from_dataframe(nf.compute()[["ra", "dec", "id"]])
         >>> left = base.rename({"ra": "ra_left", "dec": "dec_left"})
@@ -1540,7 +1539,7 @@ class Catalog(HealpixDataset):
         Write a small synthetic catalog to disk:
 
         >>> import lsdb
-        >>> from lsdb.nested.datasets import generate_data
+        >>> from lsdb import generate_data
         >>> nf = generate_data(1000, 5, seed=0, ra_range=(0.0, 300.0), dec_range=(-50.0, 50.0))
         >>> catalog = lsdb.from_dataframe(nf.compute()[["ra", "dec", "id"]], catalog_name="demo")
         >>> catalog.write_catalog(<your path here> / "demo_catalog", overwrite=True)  # doctest: +SKIP

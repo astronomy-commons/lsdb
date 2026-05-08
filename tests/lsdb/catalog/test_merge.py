@@ -1,8 +1,6 @@
 import pandas as pd
 import pytest
 
-import lsdb.nested as nd
-
 
 @pytest.mark.parametrize("how", ["left", "right", "inner", "outer"])
 def test_catalog_merge_on_indices(small_sky_catalog, small_sky_order1_catalog, how):

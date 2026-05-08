@@ -13,7 +13,6 @@ from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 from upath import UPath
 
 import lsdb
-import lsdb.nested as nd
 from lsdb.catalog.margin_catalog import _validate_margin_catalog
 from lsdb.core.search.index_search import IndexSearch
 from lsdb.core.search.region_search import BoxSearch, ConeSearch, OrderSearch, PolygonSearch

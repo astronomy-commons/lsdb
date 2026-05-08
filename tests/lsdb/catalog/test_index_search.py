@@ -6,7 +6,6 @@ import pytest
 from hats.catalog.dataset.collection_properties import CollectionProperties
 
 import lsdb
-import lsdb.nested as nd
 from lsdb.core.search.index_search import IndexSearch
 
 

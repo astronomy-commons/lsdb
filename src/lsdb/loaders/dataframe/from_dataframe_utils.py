@@ -5,7 +5,6 @@ from dask import delayed
 from hats.pixel_math import HealpixPixel
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 
-import lsdb.nested as nd
 from lsdb.operations.functions.divisions import get_pixels_divisions
 from lsdb.operations.lsdb_ops import FromHealpixMap
 from lsdb.operations.operation import Operation

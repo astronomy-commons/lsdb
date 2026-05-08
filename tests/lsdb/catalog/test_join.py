@@ -8,7 +8,6 @@ from hats.pixel_math import HealpixPixel
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN, spatial_index_to_healpix
 
 import lsdb
-import lsdb.nested as nd
 from lsdb.operations.functions.merge_catalog_functions import align_catalogs
 
 

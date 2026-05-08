@@ -34,7 +34,6 @@ from tqdm.dask import TqdmCallback
 from typing_extensions import Self
 from upath import UPath
 
-import lsdb.nested as nd
 from lsdb import io
 from lsdb.core.plotting.plot_points import plot_points
 from lsdb.core.search.abstract_search import AbstractSearch
@@ -505,7 +504,7 @@ class HealpixDataset:
         return pd.concat(result)
 
     def to_dask_dataframe(self, optimize_graph=False, divisions=True):
-        """Converts to a lsdb.nested Dask DataFrame
+        """Converts to a Dask DataFrame
 
         Parameters
         ----------
@@ -733,7 +732,7 @@ class HealpixDataset:
         Get a single HEALPix partition from a small synthetic catalog:
 
         >>> import lsdb
-        >>> from lsdb.nested.datasets import generate_data
+        >>> from lsdb import generate_data
         >>> nf = generate_data(1000, 5, seed=0, ra_range=(0.0, 300.0), dec_range=(-50.0, 50.0))
         >>> catalog = lsdb.from_dataframe(nf.compute()[["ra", "dec", "id"]])
         >>> hp = catalog.get_healpix_pixels()[0]
@@ -1034,7 +1033,7 @@ class HealpixDataset:
         Filter a small synthetic catalog to a cone on the sky:
 
         >>> import lsdb
-        >>> from lsdb.nested.datasets import generate_data
+        >>> from lsdb import generate_data
         >>> nf = generate_data(1000, 5, seed=42, ra_range=(0.0, 300.0), dec_range=(-50.0, 50.0))
         >>> catalog = lsdb.from_dataframe(nf.compute()[["ra", "dec", "id"]])
         >>> cone = catalog.cone_search(ra=150.0, dec=0.0, radius_arcsec=7200)
@@ -1261,7 +1260,7 @@ class HealpixDataset:
         Plot pixel density for a small synthetic catalog:
 
         >>> import lsdb
-        >>> from lsdb.nested.datasets import generate_data
+        >>> from lsdb import generate_data
         >>> nf = generate_data(1000, 5, seed=0, ra_range=(0.0, 300.0), dec_range=(-50.0, 50.0))
         >>> catalog = lsdb.from_dataframe(nf.compute()[["ra", "dec", "id"]])
         >>> fig, ax = catalog.plot_pixels()  # doctest: +SKIP
@@ -1285,7 +1284,7 @@ class HealpixDataset:
         Plot coverage for a small synthetic catalog:
 
         >>> import lsdb
-        >>> from lsdb.nested.datasets import generate_data
+        >>> from lsdb import generate_data
         >>> nf = generate_data(1000, 5, seed=0, ra_range=(0.0, 300.0), dec_range=(-50.0, 50.0))
         >>> catalog = lsdb.from_dataframe(nf.compute()[["ra", "dec", "id"]])
         >>> fig, ax = catalog.plot_coverage()  # doctest: +SKIP

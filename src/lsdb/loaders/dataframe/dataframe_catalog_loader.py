@@ -23,7 +23,6 @@ from hats.pixel_math.spatial_index import (
 )
 from mocpy import MOC
 
-import lsdb.nested as nd
 from lsdb.catalog.catalog import Catalog
 from lsdb.io.common import new_provenance_properties
 from lsdb.io.schema import get_arrow_schema

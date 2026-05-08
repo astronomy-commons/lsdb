@@ -21,7 +21,6 @@ from hats.pixel_tree.moc_utils import copy_moc
 from hats.pixel_tree.pixel_alignment import align_with_mocs
 from tabulate import tabulate
 
-import lsdb.nested as nd
 from lsdb.operations.lsdb_ops import AlignAndApply
 from lsdb.operations.operation import Operation
 

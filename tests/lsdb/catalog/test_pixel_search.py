@@ -2,7 +2,6 @@ import pandas as pd
 import pytest
 from hats.pixel_math import HealpixPixel
 
-import lsdb.nested as nd
 from lsdb.core.search.region_search import PixelSearch
 
 

@@ -11,7 +11,6 @@ import pytest
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 
 import lsdb
-import lsdb.nested as nd
 from lsdb import ConeSearch
 from lsdb.catalog.catalog import Catalog
 from lsdb.operations.functions import concat_catalog_data, merge_catalog_functions

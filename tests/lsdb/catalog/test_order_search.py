@@ -1,7 +1,6 @@
 import pandas as pd
 import pytest
 
-import lsdb.nested as nd
 from lsdb.core.search.region_search import OrderSearch
 
 
