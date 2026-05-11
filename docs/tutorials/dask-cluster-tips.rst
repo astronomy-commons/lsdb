@@ -284,3 +284,13 @@ Understanding common Dask errors and warnings
 ---------------------------------------------
 
 :doc:`Dask Messages Guide </tutorials/dask-messages-guide>`
+
+About
+----------------------------------------
+
+**Authors**: Kostya Malanchev
+
+**Last updated on**: April 27, 2026
+
+If you use ``lsdb`` for published research, please cite following 
+`instructions <https://docs.lsdb.io/en/stable/citation.html>`__.
