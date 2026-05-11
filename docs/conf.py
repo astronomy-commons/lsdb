@@ -4,10 +4,11 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
 
+import json
 import os
 import sys
+import urllib.request
 from importlib.metadata import version
-import urllib.request, json, os
 
 # Define path to the code to be documented **relative to where conf.py (this file) is kept**
 sys.path.insert(0, os.path.abspath("../src/"))
@@ -83,6 +84,7 @@ intersphinx_mapping = {
     "hats": ("http://hats.readthedocs.io/en/stable/", None),
 }
 
+
 # Automatically update getting started guide with the current version of lsdb
 # conf.py
 def _latest_lsdb_version():
@@ -91,13 +93,14 @@ def _latest_lsdb_version():
         with urllib.request.urlopen("https://pypi.org/pypi/lsdb/json", timeout=10) as r:
             return json.load(r)["info"]["version"]
     except Exception:
-        from importlib.metadata import version as _v
-        from packaging.version import Version
-        return Version(_v("lsdb")).base_version
+        # In the event that pypi is down, default to a known version.
+        # This will get increasingly out of date, but the odds of a PyPI
+        # outage should be low.
+        return "0.9.0"
+
 
 current_release = _latest_lsdb_version()
 
 rst_prolog = f"""
 .. |lsdb_release| replace:: {current_release}
 """
-
