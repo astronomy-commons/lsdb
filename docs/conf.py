@@ -9,6 +9,7 @@ import os
 import sys
 import urllib.request
 from importlib.metadata import version
+import subprocess
 
 # Define path to the code to be documented **relative to where conf.py (this file) is kept**
 sys.path.insert(0, os.path.abspath("../src/"))
@@ -89,14 +90,32 @@ intersphinx_mapping = {
 # conf.py
 def _latest_lsdb_version():
     # Allow offline/sandboxed builds to fall back gracefully
+    #try:
+    #    with urllib.request.urlopen("https://pypi.org/pypi/lsdb/json", timeout=10) as r:
+    #        return json.load(r)["info"]["version"]
+    #except Exception:
+    #    pass
     try:
-        with urllib.request.urlopen("https://pypi.org/pypi/lsdb/json", timeout=10) as r:
-            return json.load(r)["info"]["version"]
+        out = subprocess.check_output(
+            ["git", "describe", "--tags", "--abbrev=0", "--match", "v*"],
+            cwd=os.path.dirname(__file__),
+            text=True,
+        ).strip()
+        return out.lstrip("v")
     except Exception:
-        # In the event that pypi is down, default to a known version.
-        # This will get increasingly out of date, but the odds of a PyPI
-        # outage should be low.
-        return "0.9.0"
+        pass
+    return "0.9.0" # fallback to an older hardcoded version as last resort
+    
+def _latest_git_tag():
+    # --tags: include non-annotated tags
+    # --abbrev=0: just the tag name, no commit suffix
+    # HEAD: most recent tag reachable from current commit
+    out = subprocess.check_output(
+        ["git", "describe", "--tags", "--abbrev=0", "--match", "v*"],
+        cwd=os.path.dirname(__file__),
+        text=True,
+    ).strip()
+    return out.lstrip("v")  # "v0.9.0" -> "0.9.0"
 
 
 current_release = _latest_lsdb_version()
