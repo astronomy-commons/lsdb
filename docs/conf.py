@@ -100,7 +100,7 @@ def _latest_lsdb_version():
         return out
     except Exception:
         pass
-    return "0.9.0" # fallback to an older hardcoded version as last resort
+    return "0.8.0" # fallback to an older hardcoded version as last resort
     
 def _latest_git_tag():
     # --tags: include non-annotated tags
