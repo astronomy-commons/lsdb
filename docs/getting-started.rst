@@ -46,9 +46,9 @@ Installation
 
 The latest release version of LSDB is available to install with `pip <https://pypi.org/project/lsdb/>`_ or `conda <https://anaconda.org/conda-forge/lsdb/>`_.
 
-.. code-block:: bash
+.. parsed-literal::
 
-    pip install "lsdb>=0.8.1"
+    pip install lsdb==\ |lsdb_release|
 
 .. code-block:: bash
 

@@ -81,3 +81,8 @@ pygments_style = "sphinx"
 intersphinx_mapping = {
     "hats": ("http://hats.readthedocs.io/en/stable/", None),
 }
+
+# Automatically update getting started guide with the current version of lsdb
+rst_prolog = f"""
+.. |lsdb_release| replace:: {release}
+"""
