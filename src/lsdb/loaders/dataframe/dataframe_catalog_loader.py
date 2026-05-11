@@ -318,6 +318,7 @@ class DataframeCatalogLoader:
             threshold=(self.partition_rows if self.partition_rows is not None else self.partition_bytes),
             drop_empty_siblings=self.drop_empty_siblings,
             mem_size_histogram=mem_size_histogram,
+            use_lower_order=True,
         )
         pixel_list = list({HealpixPixel(tup[0], tup[1]) for tup in alignment if not tup is None})
         return list(np.array(pixel_list)[get_pixel_argsort(pixel_list)])
