@@ -7,6 +7,7 @@
 import os
 import sys
 from importlib.metadata import version
+import urllib.request, json, os
 
 # Define path to the code to be documented **relative to where conf.py (this file) is kept**
 sys.path.insert(0, os.path.abspath("../src/"))
@@ -83,6 +84,20 @@ intersphinx_mapping = {
 }
 
 # Automatically update getting started guide with the current version of lsdb
+# conf.py
+def _latest_lsdb_version():
+    # Allow offline/sandboxed builds to fall back gracefully
+    try:
+        with urllib.request.urlopen("https://pypi.org/pypi/lsdb/json", timeout=10) as r:
+            return json.load(r)["info"]["version"]
+    except Exception:
+        from importlib.metadata import version as _v
+        from packaging.version import Version
+        return Version(_v("lsdb")).base_version
+
+current_release = _latest_lsdb_version()
+
 rst_prolog = f"""
-.. |lsdb_release| replace:: {release}
+.. |lsdb_release| replace:: {current_release}
 """
+
