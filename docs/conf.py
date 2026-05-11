@@ -96,12 +96,8 @@ def _latest_lsdb_version():
     #except Exception:
     #    pass
     try:
-        out = subprocess.check_output(
-            ["git", "describe", "--tags", "--abbrev=0", "--match", "v*"],
-            cwd=os.path.dirname(__file__),
-            text=True,
-        ).strip()
-        return out.lstrip("v")
+        out = _latest_git_tag()
+        return out
     except Exception:
         pass
     return "0.9.0" # fallback to an older hardcoded version as last resort
@@ -111,11 +107,12 @@ def _latest_git_tag():
     # --abbrev=0: just the tag name, no commit suffix
     # HEAD: most recent tag reachable from current commit
     out = subprocess.check_output(
-        ["git", "describe", "--tags", "--abbrev=0", "--match", "v*"],
-        cwd=os.path.dirname(__file__),
+        ["git", "tag", "--list", "v*", "--sort=-v:refname"],
+        cwd=os.path.dirname(os.path.abspath(__file__)),
         text=True,
-    ).strip()
-    return out.lstrip("v")  # "v0.9.0" -> "0.9.0"
+        timeout=10,
+    ).strip().splitlines()
+    return out[0].lstrip("v")
 
 
 current_release = _latest_lsdb_version()
