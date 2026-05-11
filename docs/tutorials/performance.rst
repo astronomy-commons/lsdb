@@ -76,3 +76,13 @@ Summarizing, the cross-matching approach implemented in LSDB is competitive with
 Also, LSDB enables the use of out-of-memory datasets to perform cross-matching with large catalogs, which is not possible with astropy and smatch.
 
 The complete code of the analysis is available `here <https://github.com/lincc-frameworks/notebooks_lf/tree/main/lsdb_crossmatch_benchmarking>`__.
+
+About
+----------------------------------------
+
+**Authors**: Kostya Malanchev
+
+**Last updated on**: February 13, 2025
+
+If you use ``lsdb`` for published research, please cite following 
+`instructions <https://docs.lsdb.io/en/stable/citation.html>`__.
