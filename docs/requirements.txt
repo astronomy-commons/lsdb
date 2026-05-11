@@ -13,4 +13,5 @@ sphinx-book-theme
 sphinx-design
 numpydoc
 s3fs
+lancedb
 git+https://github.com/astronomy-commons/hats-import.git@main
