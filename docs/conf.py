@@ -6,10 +6,10 @@
 
 import json
 import os
+import subprocess
 import sys
 import urllib.request
 from importlib.metadata import version
-import subprocess
 
 # Define path to the code to be documented **relative to where conf.py (this file) is kept**
 sys.path.insert(0, os.path.abspath("../src/"))
@@ -90,28 +90,33 @@ intersphinx_mapping = {
 # conf.py
 def _latest_lsdb_version():
     # Allow offline/sandboxed builds to fall back gracefully
-    #try:
-    #    with urllib.request.urlopen("https://pypi.org/pypi/lsdb/json", timeout=10) as r:
-    #        return json.load(r)["info"]["version"]
-    #except Exception:
-    #    pass
+    try:
+        with urllib.request.urlopen("https://pypi.org/pypi/lsdb/json", timeout=10) as r:
+            return json.load(r)["info"]["version"]
+    except Exception:
+        pass
     try:
         out = _latest_git_tag()
         return out
     except Exception:
         pass
-    return "0.8.0" # fallback to an older hardcoded version as last resort
-    
+    return "0.9.0"  # fallback to an older hardcoded version as last resort
+
+
 def _latest_git_tag():
     # --tags: include non-annotated tags
     # --abbrev=0: just the tag name, no commit suffix
     # HEAD: most recent tag reachable from current commit
-    out = subprocess.check_output(
-        ["git", "tag", "--list", "v*", "--sort=-v:refname"],
-        cwd=os.path.dirname(os.path.abspath(__file__)),
-        text=True,
-        timeout=10,
-    ).strip().splitlines()
+    out = (
+        subprocess.check_output(
+            ["git", "tag", "--list", "v*", "--sort=-v:refname"],
+            cwd=os.path.dirname(os.path.abspath(__file__)),
+            text=True,
+            timeout=10,
+        )
+        .strip()
+        .splitlines()
+    )
     return out[0].lstrip("v")
 
 
