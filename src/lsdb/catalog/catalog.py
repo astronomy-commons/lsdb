@@ -171,7 +171,7 @@ class Catalog(HealpixDataset):
         >>> filtered = filtered.query("nested.flux > 50.0")
         >>> filtered.head()[["nested", "id"]]  # doctest: +NORMALIZE_WHITESPACE
                                                                        nested    id
-        _healpix_29                                                                
+        _healpix_29
         118362963675428450  [{t: 5.431006, flux: 88.466194, flux_error: 1....  8154
         98504457942331510   [{t: 12.235667, flux: 67.145637, flux_error: 1...  3437
         70433374600953220   [{t: 1.395766, flux: 61.888264, flux_error: 1....  8214
@@ -184,7 +184,7 @@ class Catalog(HealpixDataset):
         >>> filtered = filtered.query("nested.list_lengths >= 5")
         >>> filtered.head()[["nested", "id"]]  # doctest: +NORMALIZE_WHITESPACE
                                                                        nested    id
-        _healpix_29                                                                
+        _healpix_29
         98504457942331510   [{t: 12.235667, flux: 67.145637, flux_error: 1...  3437
         70433374600953220   [{t: 1.395766, flux: 61.888264, flux_error: 1....  8214
         67780378363846894   [{t: 0.001474, flux: 76.631059, flux_error: 1....  8297
