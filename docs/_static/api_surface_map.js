@@ -66,16 +66,13 @@
   }
 
   function getRenderedSize(image, dims) {
-    const renderedWidth = image.clientWidth;
-    if (!renderedWidth || renderedWidth <= 0) {
-      return null;
-    }
+    // Use getBoundingClientRect for more reliable rendering size calculation
+    // across all browsers, especially Safari which has issues with clientWidth/clientHeight
+    const rect = image.getBoundingClientRect();
+    const renderedWidth = rect.width;
+    const renderedHeight = rect.height;
 
-    const renderedHeight =
-      image.clientHeight ||
-      image.getBoundingClientRect().height ||
-      (renderedWidth * dims.baseHeight) / dims.baseWidth;
-    if (!renderedHeight || renderedHeight <= 0) {
+    if (!renderedWidth || renderedWidth <= 0 || !renderedHeight || renderedHeight <= 0) {
       return null;
     }
 
@@ -91,6 +88,7 @@
       return null;
     }
 
+    // Calculate scale factors between the authored coordinates and the rendered display
     const toBaseX = dims.baseWidth / dims.authoredWidth;
     const toBaseY = dims.baseHeight / dims.authoredHeight;
     const baseRect = scaleRect(authored, toBaseX, toBaseY);
@@ -101,7 +99,12 @@
     const toRenderedX = rendered.renderedWidth / dims.baseWidth;
     const toRenderedY = rendered.renderedHeight / dims.baseHeight;
     const renderedRect = scaleRect(baseRect, toRenderedX, toRenderedY);
-    return renderedRect ? shrinkRect(renderedRect, rendered.image) : null;
+    
+    if (!renderedRect || !renderedRect.every(val => Number.isFinite(val))) {
+      return null;
+    }
+    
+    return shrinkRect(renderedRect, rendered.image);
   }
 
   function shrinkRect(rect, image) {
@@ -343,7 +346,7 @@
 
     map.querySelectorAll("area[coords]").forEach((area) => {
       const rect = getRenderedRect(area, dims, rendered);
-      if (rect) {
+      if (rect && rect.length === 4 && rect.every(val => Number.isFinite(val))) {
         area.coords = rect.join(",");
       }
     });
@@ -378,14 +381,23 @@
       prepareImageForInteraction(image);
       attachMagnifier(image);
       if (image.complete) {
-        resizeImageMap(image);
+        // Defer initial sizing to next tick for more reliable measurements
+        requestAnimationFrame(() => {
+          resizeImageMap(image);
+        });
       } else {
-        image.addEventListener("load", () => resizeImageMap(image), { once: true });
+        image.addEventListener("load", () => {
+          requestAnimationFrame(() => {
+            resizeImageMap(image);
+          });
+        }, { once: true });
       }
     });
 
     window.addEventListener("resize", refresh);
     window.addEventListener("orientationchange", refresh);
+    // Also recalculate on scroll, as image position relative to viewport matters
+    document.addEventListener("scroll", refresh, { passive: true });
   }
 
   if (document.readyState === "loading") {
