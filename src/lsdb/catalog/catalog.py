@@ -171,12 +171,12 @@ class Catalog(HealpixDataset):
         >>> filtered = filtered.query("nested.flux > 50.0")
         >>> filtered.head()[["nested", "id"]]  # doctest: +NORMALIZE_WHITESPACE
                                                                        nested    id
-        _healpix_29
-        118362963675428450  [{t: 5.431006, flux: 88.466194, band: 'r', flu...  8154
-        98504457942331510   [{t: 12.235667, flux: 67.145637, band: 'r', fl...  3437
-        70433374600953220   [{t: 1.395766, flux: 61.888264, band: 'r', flu...  8214
-        154968715224527848  [{t: 5.057078, flux: 60.744756, band: 'r', flu...  9853
-        67780378363846894   [{t: 0.001474, flux: 76.631059, band: 'g', flu...  8297
+        _healpix_29                                                                
+        118362963675428450  [{t: 5.431006, flux: 88.466194, flux_error: 1....  8154
+        98504457942331510   [{t: 12.235667, flux: 67.145637, flux_error: 1...  3437
+        70433374600953220   [{t: 1.395766, flux: 61.888264, flux_error: 1....  8214
+        154968715224527848  [{t: 5.057078, flux: 60.744756, flux_error: 1....  9853
+        67780378363846894   [{t: 0.001474, flux: 76.631059, flux_error: 1....  8297
 
         Most of the Series and NestedSeries attributes and methods are available.
         This will filter by the light curve length:
@@ -184,12 +184,12 @@ class Catalog(HealpixDataset):
         >>> filtered = filtered.query("nested.list_lengths >= 5")
         >>> filtered.head()[["nested", "id"]]  # doctest: +NORMALIZE_WHITESPACE
                                                                        nested    id
-        _healpix_29
-        98504457942331510   [{t: 12.235667, flux: 67.145637, band: 'r', fl...  3437
-        70433374600953220   [{t: 1.395766, flux: 61.888264, band: 'r', flu...  8214
-        67780378363846894   [{t: 0.001474, flux: 76.631059, band: 'g', flu...  8297
-        153045793800159522  [{t: 11.363245, flux: 72.987868, band: 'r', fl...  5758
-        81822373343408413   [{t: 15.681661, flux: 77.580224, band: 'g', fl...  9413
+        _healpix_29                                                                
+        98504457942331510   [{t: 12.235667, flux: 67.145637, flux_error: 1...  3437
+        70433374600953220   [{t: 1.395766, flux: 61.888264, flux_error: 1....  8214
+        67780378363846894   [{t: 0.001474, flux: 76.631059, flux_error: 1....  8297
+        153045793800159522  [{t: 11.363245, flux: 72.987868, flux_error: 1...  5758
+        81822373343408413   [{t: 15.681661, flux: 77.580224, flux_error: 1...  9413
         """
         catalog = super().query(expr)
         if self.margin is not None:

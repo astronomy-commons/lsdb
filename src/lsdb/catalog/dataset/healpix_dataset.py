@@ -883,7 +883,7 @@ class HealpixDataset:
         >>> catalog = lsdb.generate_catalog(5, 1, seed=1)
         >>> catalog = catalog.drop(["a","b","nested.flux_err"])
         >>> catalog._ddf.exploded_columns
-        ['ra', 'dec', 'id', 'nested', 'nested.t', 'nested.flux', 'nested.band']
+        ['ra', 'dec', 'id', 'nested', 'nested.t', 'nested.flux', 'nested.flux_error', 'nested.band']
         """
         ndf = self._ddf.drop(columns=columns, errors=errors)
         return self._create_updated_dataset(ddf=ndf)
