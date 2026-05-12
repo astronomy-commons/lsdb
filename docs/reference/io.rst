@@ -26,3 +26,4 @@ and they will call these io methods with appropriate settings.
     io.to_hats
     io.to_collection
     io.to_association
+    io.to_lance
