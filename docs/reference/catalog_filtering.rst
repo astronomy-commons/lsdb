@@ -10,6 +10,7 @@ Filtering Methods
     Catalog.loc
     Catalog.drop
     Catalog.query
+    Catalog.rename
     Catalog.head
     Catalog.tail
     Catalog.sample

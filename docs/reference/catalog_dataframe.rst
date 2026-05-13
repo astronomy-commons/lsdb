@@ -10,6 +10,7 @@ Dataframe Methods
     Catalog.map_partitions
     Catalog.write_catalog
     Catalog.compute
+    Catalog.to_delayed
     Catalog.get_partition
     Catalog.get_partition_index
     Catalog.prune_empty_partitions
