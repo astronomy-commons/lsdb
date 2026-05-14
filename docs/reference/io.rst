@@ -9,6 +9,7 @@ Construction
     :toctree: api/
 
     open_catalog
+    show_versions
     from_dataframe
     from_astropy
     nested.datasets.generation.generate_catalog
@@ -25,3 +26,4 @@ and they will call these io methods with appropriate settings.
     io.to_hats
     io.to_collection
     io.to_association
+    io.to_lance

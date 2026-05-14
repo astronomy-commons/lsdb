@@ -5,3 +5,95 @@
 .skip-link {
     background-color: transparent !important;
 }
+
+.api-surface-callout {
+    margin: 1rem auto 0.75rem;
+    padding: 0.6rem 0.8rem;
+    border-left: 4px solid #1f6feb;
+    background: #eef6ff;
+    line-height: 1.4;
+}
+
+.api-surface-wrapper {
+    position: relative;
+    margin: 1.5rem auto;
+    max-width: 100%;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.api-surface-image {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-width: 100%;
+    margin: 0 auto;
+    border: 0;
+    cursor: pointer;
+    -webkit-user-drag: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+    touch-action: manipulation;
+}
+
+.api-surface-wrapper.is-magnifying .api-surface-image {
+    cursor: zoom-in;
+}
+
+.api-surface-magnifier {
+    position: absolute;
+    width: 300px;
+    height: 300px;
+    border-radius: 50%;
+    border: 2px solid #1f6feb;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.24);
+    background-color: #fff;
+    background-repeat: no-repeat;
+    pointer-events: none;
+    display: none;
+    z-index: 4;
+}
+
+.api-surface-wrapper.is-magnifying .api-surface-magnifier {
+    display: block;
+}
+
+.api-surface-debug-layer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+.api-surface-debug-box {
+    position: absolute;
+    border: 1px solid rgba(255, 0, 0, 0.85);
+    background: rgba(255, 0, 0, 0.12);
+    box-sizing: border-box;
+}
+
+.api-surface-debug-label {
+    position: absolute;
+    top: 0;
+    left: 0;
+    transform: translate(0, -100%);
+    font-size: 11px;
+    line-height: 1.2;
+    padding: 2px 4px;
+    color: #111;
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(255, 0, 0, 0.75);
+    border-radius: 2px;
+    white-space: nowrap;
+}
+
+#lsdb a:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+}
+
+@media (hover: none), (pointer: coarse) {
+    .api-surface-magnifier {
+        display: none !important;
+    }
+}
