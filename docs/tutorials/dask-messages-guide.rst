@@ -306,3 +306,13 @@ dozen-terabyte scale catalogs, Dask may spend a lot of time and memory
 of the main process before any computation starts.  This happens
 because Dask builds and optimizes the computation graph, which happens
 on the main process (one you create ``Client`` on).
+
+About
+----------------------------------------
+
+**Authors**: Derek Jones
+
+**Last updated on**: August 4, 2025
+
+If you use ``lsdb`` for published research, please cite following 
+`instructions <https://docs.lsdb.io/en/stable/citation.html>`__.

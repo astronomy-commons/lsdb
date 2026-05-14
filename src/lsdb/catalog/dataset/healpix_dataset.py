@@ -883,7 +883,7 @@ class HealpixDataset:
         >>> catalog = lsdb.generate_catalog(5, 1, seed=1)
         >>> catalog = catalog.drop(["a","b","nested.flux_err"])
         >>> catalog._ddf.exploded_columns
-        ['ra', 'dec', 'id', 'nested', 'nested.t', 'nested.flux', 'nested.band']
+        ['ra', 'dec', 'id', 'nested', 'nested.t', 'nested.flux', 'nested.flux_error', 'nested.band']
         """
         ndf = self._ddf.drop(columns=columns, errors=errors)
         return self._create_updated_dataset(ddf=ndf)
@@ -1459,6 +1459,62 @@ class HealpixDataset:
             tqdm_kwargs=tqdm_kwargs,
             error_if_empty=error_if_empty,
             **kwargs,
+        )
+
+    def to_lance(
+        self,
+        base_catalog_path: str | Path | UPath,
+        table_name: str = "data",
+        *,
+        overwrite: bool = False,
+        progress_bar: bool = True,
+        optimize_dataset: bool = True,
+    ) -> None:
+        """Save the catalog to a Lance dataset.
+
+        All partitions are written as a single flat Lance dataset. Every column
+        in the catalog — including the HEALPix spatial index — is preserved.
+        The resulting dataset can be opened with
+        ``lancedb.connect(base_catalog_path).open_table("data")``.
+
+        Parameters
+        ----------
+        base_catalog_path : str | Path | UPath
+            Path where the Lance dataset will be written.
+        table_name : str, default "data"
+            The name of the table to be written in the Lance dataset. Defaults to
+            "data".
+        overwrite : bool, default False
+            If True, an existing dataset at ``base_catalog_path`` is
+            overwritten. If False and a dataset already exists there, an error
+            is raised.
+        progress_bar : bool, default True
+            If True, shows a progress bar while writing partitions.
+        optimize_dataset : bool, default True
+            If True, runs a final optimization step after writing the dataset to
+            combine small files into larger ones. This will improve query performance
+            at the cost of increased write time.
+
+        Raises
+        ------
+        ImportError
+            If the ``lancedb`` package is not installed.
+        RuntimeError
+            If the catalog is empty.
+
+        Examples
+        --------
+        >>> import lsdb
+        >>> catalog = lsdb.read_hats("path/to/small_sky")  # doctest: +SKIP
+        >>> catalog.to_lance("/tmp/my_catalog.lance")  # doctest: +SKIP
+        """
+        io.to_lance(
+            self,
+            base_catalog_path=base_catalog_path,
+            table_name=table_name,
+            overwrite=overwrite,
+            progress_bar=progress_bar,
+            optimize_dataset=optimize_dataset,
         )
 
     def nest_lists(
