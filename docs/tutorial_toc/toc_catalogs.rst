@@ -12,4 +12,5 @@ An introduction to LSDB's core feature: ``Catalog``
     Region selection filtering (e.g. search_filter) </tutorials/region_selection>
     Row filtering (e.g. .query) </tutorials/row_filtering>
     Single row selection </tutorials/pre_executed/index_table>
+    Margin Catalogs </tutorials/margins>
     Custom Structured Search </tutorials/pre_executed/custom_search>
