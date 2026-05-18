@@ -302,6 +302,14 @@ class Catalog(HealpixDataset):
         how : str
             How to handle the crossmatch of the two catalogs.
             One of {'left', 'inner'}; defaults to 'inner'.
+
+            - ``'inner'`` (default): keep only rows where a match was found in both
+              catalogs. Left-catalog sources with no counterpart within the search radius
+              are silently dropped. Use this when you only care about confirmed matches.
+            - ``'left'``: keep every row from the left catalog. Sources with no match
+              get ``<NA>`` in all right-catalog columns. Use this when you need to
+              preserve every source from your primary catalog (e.g. for completeness
+              analysis or flagging unmatched sources).
         suffixes : Tuple[str,str] or None
             A pair of suffixes to be appended to the end of each column
             name when they are joined. Default uses the name of the catalog for the suffix.
@@ -504,6 +512,12 @@ class Catalog(HealpixDataset):
         how : str
             How to handle the crossmatch of the two catalogs.
             One of {'left', 'inner'}; defaults to 'inner'.
+
+            - ``'inner'`` (default): keep only rows where a match was found in both
+              catalogs. Left-catalog sources with no counterpart within the search radius
+              are silently dropped.
+            - ``'left'``: keep every row from the left catalog. Sources with no match
+              get ``<NA>`` values in the nested right-catalog column.
 
         Returns
         -------
