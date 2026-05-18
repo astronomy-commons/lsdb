@@ -7,7 +7,6 @@ An introduction to the most common Catalog operations
     :maxdepth: 1
 
     Setting up a Dask Client </tutorials/dask_client>
-    Margins </tutorials/margins>
     Crossmatching catalogs </tutorials/pre_executed/crossmatching>
     Applying a function (e.g. map_partitions) </tutorials/pre_executed/map_partitions>
     Working with TimeSeries </tutorials/pre_executed/timeseries>
