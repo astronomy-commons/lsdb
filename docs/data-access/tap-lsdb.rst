@@ -23,8 +23,8 @@ When a query arrives, hats-tap:
 
 1. **Parses** the ADQL query using `queryparser <https://pypi.org/project/queryparser/>`__.
 2. **Translates** it into an equivalent sequence of `LSDB <https://lsdb.readthedocs.io>`__
-   Python calls — for example, mapping a cone search to ``lsdb.ConeSearch`` and column
-   filters to ``catalog.query()``.
+   Python calls (eg, mapping a cone search to ``lsdb.ConeSearch`` and column
+   filters to ``catalog.query()``).
 3. **Executes** the translated query against the HATS catalogs hosted at
    `data.lsdb.io <https://data.lsdb.io>`__.
 4. **Returns** results in VOTable format, compatible with tools like
@@ -36,9 +36,9 @@ Endpoints
 
 The service exposes the following endpoints:
 
-- **GET/POST** ``/sync`` — submit a synchronous ADQL query
-- **GET** ``/tables`` — list available catalogs and their columns
-- **GET** ``/capabilities`` — service metadata following the TAP standard
+- **GET/POST** ``/sync``: submit a synchronous ADQL query
+- **GET** ``/tables``: list available catalogs and their columns
+- **GET** ``/capabilities``: service metadata following the TAP standard
 
 Example Query
 ----------------------------------------------------------------------------------------
@@ -137,31 +137,32 @@ Not Yet Supported
 The following ADQL features are recognized by the standard but are not yet implemented.
 Queries using them will return an error.
 
-- **SELECT \*** — wildcard column selection is not supported; column names must be
+- **SELECT \*** - wildcard column selection is not supported; column names must be
   listed explicitly (`issue #22 <https://github.com/astronomy-commons/hats-tap/issues/22>`__).
-- **BETWEEN** — range predicates (``col BETWEEN a AND b``) are not yet translated
+- **BETWEEN** - range predicates (``col BETWEEN a AND b``) are not yet translated
   (`issue #17 <https://github.com/astronomy-commons/hats-tap/issues/17>`__).
-- **Arithmetic expressions** — computed columns or filter values involving arithmetic
+- **Arithmetic expressions** - computed columns or filter values involving arithmetic
   (e.g. ``ra + 10``) are not supported
   (`issue #10 <https://github.com/astronomy-commons/hats-tap/issues/10>`__).
-- **Aggregation functions** — ``COUNT``, ``MIN``, ``MAX``, ``SUM``, ``AVG``, and
+- **Aggregation functions** - ``COUNT``, ``MIN``, ``MAX``, ``SUM``, ``AVG``, and
   similar aggregate functions are not yet implemented
   (`issue #20 <https://github.com/astronomy-commons/hats-tap/issues/20>`__).
-- **COUNT(DISTINCT ...)** — unique-value counting is not supported
+- **COUNT(DISTINCT ...)** - unique-value counting is not supported
   (`issue #19 <https://github.com/astronomy-commons/hats-tap/issues/19>`__).
-- **Multiple CONTAINS clauses** — only a single spatial constraint per query is
+- **Multiple CONTAINS clauses** - only a single spatial constraint per query is
   allowed.
-- **POINT or CIRCLE outside of CONTAINS** — these geometry functions must appear
-  inside a ``CONTAINS`` expression.
-- **OR conditions** — only ``AND``-connected predicates in the ``WHERE`` clause are
+- **DISTANCE function** - computing the angular distance between two points
+  (e.g. ``DISTANCE(POINT(...), POINT(...))``) is not yet supported. Use
+  ``CONTAINS``/``CIRCLE`` for proximity searches instead.
+- **OR conditions** - only ``AND``-connected predicates in the ``WHERE`` clause are
   supported.
-- **JOIN** — multi-table joins are not yet translated
+- **JOIN** - multi-table joins are not yet translated
   (`issue #16 <https://github.com/astronomy-commons/hats-tap/issues/16>`__).
-- **Subqueries** — nested ``SELECT`` statements are not supported.
-- **ID lookups (``id_search``)** — queries that filter on a catalog's primary ID column
+- **Subqueries** - nested ``SELECT`` statements are not supported.
+- **ID lookups (``id_search``)** - queries that filter on a catalog's primary ID column
   are not yet optimized via ``lsdb.id_search``
   (`issue #14 <https://github.com/astronomy-commons/hats-tap/issues/14>`__).
-- **Nearest-neighbor / self-join** — crossmatch-style queries are not yet supported
+- **Nearest-neighbor / self-join** - crossmatch-style queries are not yet supported
   (`issue #15 <https://github.com/astronomy-commons/hats-tap/issues/15>`__).
 
 Getting Help
