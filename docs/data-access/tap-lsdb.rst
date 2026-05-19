@@ -159,7 +159,7 @@ Queries using them will return an error.
 - **JOIN** - multi-table joins are not yet translated
   (`issue #16 <https://github.com/astronomy-commons/hats-tap/issues/16>`__).
 - **Subqueries** - nested ``SELECT`` statements are not supported.
-- **ID lookups (``id_search``)** - queries that filter on a catalog's primary ID column
+- **ID lookups** (``id_search``) - queries that filter on a catalog's primary ID column
   are not yet optimized via ``lsdb.id_search``
   (`issue #14 <https://github.com/astronomy-commons/hats-tap/issues/14>`__).
 - **Nearest-neighbor / self-join** - crossmatch-style queries are not yet supported
