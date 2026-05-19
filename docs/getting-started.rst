@@ -267,3 +267,16 @@ This creates the following HATS Catalog on disk:
     ├── partition_info.csv
     └── skymap.fits
 
+Where to Go Next
+--------------------------
+
+Once you're comfortable with the quickstart above, choose the section that matches what you want to do:
+
+- :doc:`filtering-and-selecting` — the catalog object, spatial searches, row and column filters, margin caches
+- :doc:`combining-catalogs` — crossmatching, joining, and index-based lookups
+- :doc:`nested-and-timeseries` — NestedFrame, light curves, and time-series workflows
+- :doc:`importing-and-exporting` — convert your own data to HATS format and save results
+- :doc:`infrastructure-and-performance` — Dask setup, cluster configuration, and scaling
+
+If you're working with Rubin Observatory data, see :doc:`rubin`.
+

@@ -1,0 +1,16 @@
+Working with Rubin Data
+========================================================================================
+
+These tutorials cover accessing and analyzing data from the Rubin Observatory's
+Data Preview 1 (DP1). They assume you have Rubin data rights and are familiar with
+the core LSDB operations covered in :doc:`tutorials`.
+
+.. toctree::
+   :maxdepth: 1
+
+   Accessing Rubin Data Preview 1 </tutorials/pre_executed/rubin_dp1>
+   Intro to Rubin Catalog Operations </tutorials/pre_executed/using_rubin_data>
+   Accessing Rubin Data Preview 1 photo-z </tutorials/pre_executed/rubin_dp1_photoz>
+   Cross-matching with Variable Star Index catalog </tutorials/pre_executed/rubin_dp1_vsx>
+   Astrometric Epoch Propagation with Gaia </tutorials/pre_executed/dp1-gaia-epoch-prop>
+   Visualizing Periodic Lightcurves </tutorials/pre_executed/visualize_periodic_lcs>

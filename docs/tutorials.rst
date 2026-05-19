@@ -1,19 +1,15 @@
 Tutorials
 ========================================================================================
 
-These pages contain a set of tutorial notebooks for working through core and more advanced LSDB
-functionality.
+These tutorials cover individual LSDB features and operations — pick whichever section
+matches what you're trying to do. For end-to-end science workflows on real survey data,
+see :doc:`science-examples`. For Rubin Observatory-specific content, see :doc:`rubin`.
 
 .. toctree::
-   :numbered: 1
-   :maxdepth: 2
-    
-   tutorial_toc/toc_catalogs
-   tutorial_toc/toc_analyzing
-   tutorial_toc/toc_nested
-   tutorial_toc/toc_hats
-   tutorial_toc/toc_performance
-   tutorial_toc/toc_rubin
-   tutorial_toc/toc_science
-   tutorial_toc/toc_debugging
+   :maxdepth: 1
 
+   Filtering and Selecting Data <filtering-and-selecting>
+   Combining Catalogs <combining-catalogs>
+   Nested and Time-Series Data <nested-and-timeseries>
+   Importing and Exporting <importing-and-exporting>
+   Infrastructure and Performance <infrastructure-and-performance>
