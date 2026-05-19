@@ -113,13 +113,19 @@ operations.
 
 Using this Guide
 -------------------------------------------------------------------------------
-.. grid:: 1 1 1 1
+.. grid:: 1 1 2 2
 
    .. grid-item-card:: Getting Started
        :link: getting-started
        :link-type: doc
 
        Installation and QuickStart Guide
+
+   .. grid-item-card:: Tutorials
+       :link: tutorials
+       :link-type: doc
+
+       Learn the LSDB features by working through our guides
 
 .. grid:: 1 1 2 2
 
@@ -163,11 +169,7 @@ Using this Guide
 
    Home page <self>
    Getting Started <getting-started>
-   Filtering and Selecting Data <filtering-and-selecting>
-   Combining Catalogs <combining-catalogs>
-   Nested and Time-Series Data <nested-and-timeseries>
-   Importing and Exporting <importing-and-exporting>
-   Infrastructure and Performance <infrastructure-and-performance>
+   Tutorials <tutorials>
    Working with Rubin Data <rubin>
    Science Examples <science-examples>
    Data Access <data-access>
