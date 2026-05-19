@@ -12,11 +12,13 @@ import lsdb
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
 from lsdb.core.crossmatch.crossmatch_args import CrossmatchArgs
 from lsdb.operations.functions.merge_catalog_functions import align_catalogs, apply_suffixes
+from lsdb.operations.lsdb_ops import MapPartitions
 
 
 def test_kdtree_crossmatch(small_sky_catalog, small_sky_xmatch_catalog, xmatch_correct, helpers):
     with pytest.warns(RuntimeWarning, match="Results may be incomplete and/or inaccurate"):
         xmatched_cat = small_sky_catalog.crossmatch(small_sky_xmatch_catalog, radius_arcsec=0.01 * 3600)
+        assert isinstance(xmatched_cat.meta, npd.NestedFrame)
         xmatched = xmatched_cat.compute()
     alignment = align_catalogs(small_sky_catalog, small_sky_xmatch_catalog)
     assert xmatched_cat.hc_structure.moc == alignment.moc
@@ -43,6 +45,7 @@ def test_kdtree_crossmatch_nested(small_sky_catalog, small_sky_xmatch_catalog, x
         xmatched_cat = small_sky_catalog.crossmatch_nested(
             small_sky_xmatch_catalog, radius_arcsec=0.01 * 3600
         )
+        assert isinstance(xmatched_cat.meta, npd.NestedFrame)
         xmatched = xmatched_cat.compute()
     alignment = align_catalogs(small_sky_catalog, small_sky_xmatch_catalog)
     assert xmatched_cat.hc_structure.moc == alignment.moc
@@ -69,6 +72,7 @@ def test_kdtree_crossmatch_nested_custom_name(small_sky_catalog, small_sky_xmatc
             nested_column_name=nested_column_name,
             output_catalog_name=cat_name,
         )
+        assert isinstance(xmatched_cat.meta, npd.NestedFrame)
         assert xmatched_cat.name == cat_name
         xmatched = xmatched_cat.compute()
     alignment = align_catalogs(small_sky_catalog, small_sky_xmatch_catalog)
@@ -93,6 +97,7 @@ def test_kdtree_crossmatch_default_cols(
         xmatched_cat = small_sky_order1_default_cols_catalog.crossmatch(
             small_sky_xmatch_catalog, radius_arcsec=0.01 * 3600
         )
+        assert isinstance(xmatched_cat.meta, npd.NestedFrame)
         xmatched = xmatched_cat.compute()
     helpers.assert_schema_correct(xmatched_cat)
     helpers.assert_default_columns_in_columns(xmatched_cat)
@@ -418,9 +423,9 @@ def test_crossmatch_empty_left_partition(small_sky_order1_catalog, small_sky_xma
     radius_arcsec = 3 * 3600
     cone = small_sky_order1_catalog.cone_search(ra, dec, radius_arcsec)
     assert len(cone.get_healpix_pixels()) == 2
-    assert len(cone.get_partition(1, 44)) == 5
+    assert len(cone.get_partition(1, 44).compute()) == 5
     # There is an empty partition in the left catalog
-    assert len(cone.get_partition(1, 46)) == 0
+    assert len(cone.get_partition(1, 46).compute()) == 0
     with pytest.warns(RuntimeWarning, match="Results may be incomplete and/or inaccurate"):
         xmatched = cone.crossmatch(small_sky_xmatch_catalog, radius_arcsec=0.01 * 3600).compute()
     assert len(xmatched) == 3
@@ -433,9 +438,9 @@ def test_crossmatch_empty_right_partition(small_sky_order1_catalog, small_sky_xm
     radius_arcsec = 3.4 * 3600
     cone = small_sky_xmatch_catalog.cone_search(ra, dec, radius_arcsec)
     assert len(cone.get_healpix_pixels()) == 2
-    assert len(cone.get_partition(1, 44)) == 5
+    assert len(cone.get_partition(1, 44).compute()) == 5
     # There is an empty partition in the right catalog
-    assert len(cone.get_partition(1, 46)) == 0
+    assert len(cone.get_partition(1, 46).compute()) == 0
     with pytest.warns(RuntimeWarning, match="Results may be incomplete and/or inaccurate"):
         xmatched = small_sky_order1_catalog.crossmatch(cone, radius_arcsec=0.01 * 3600).compute()
     assert len(xmatched) == 3
@@ -482,13 +487,16 @@ def test_kdtree_crossmatch_left_join_non_unique_left_index(
 ):
     """Check that left join handles non-unique values in the left index correctly."""
     # Create a left catalog with deliberately non-unique index values
-    left_ddf = small_sky_order1_catalog._ddf
+    left_op = small_sky_order1_catalog._operation
     # Duplicate the index to create non-unique values
-    left_ddf_dup_index = left_ddf.copy()
-    left_ddf_dup_index.index = left_ddf_dup_index.index.map(lambda x: x if x % 2 == 0 else 0)
-    small_sky_order1_catalog_dup_idx = small_sky_order1_catalog._create_updated_dataset(
-        ddf=left_ddf_dup_index
-    )
+
+    def duplicate_index(df):
+        df = df.copy()
+        df.index = df.index.map(lambda x: x if x % 2 == 0 else 0)
+        return df
+
+    left_op_dup_index = MapPartitions(left_op, duplicate_index, meta=left_op.meta)
+    small_sky_order1_catalog_dup_idx = small_sky_order1_catalog._create_updated_dataset(op=left_op_dup_index)
 
     radius = 0.01 * 3600
     with pytest.warns(RuntimeWarning, match="Results may be incomplete and/or inaccurate"):
