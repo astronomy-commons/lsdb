@@ -7,6 +7,8 @@ An introduction to the most common Catalog operations
     :maxdepth: 1
 
     Setting up a Dask Client </tutorials/dask_client>
+    Margins </tutorials/margins>
+    Small-scale analysis (e.g. cone_search, partitions, random_sample) </tutorials/small_scale>
     Crossmatching catalogs </tutorials/pre_executed/crossmatching>
     Applying a function (e.g. map_partitions) </tutorials/pre_executed/map_partitions>
     Working with TimeSeries </tutorials/pre_executed/timeseries>
