@@ -186,6 +186,23 @@ a new release of LSDB, HATS, and HATS import packages, create a
 Contribute a tutorial notebook
 -------------------------------------------------------------------------------
 
-Tutorials follow general style guidelines; feel free to use our 
-`tutorial notebook template <https://github.com/astronomy-commons/lsdb/blob/main/docs/developer/tutorial_template.ipynb>`__ 
+Tutorials follow general style guidelines; feel free to use our
+:doc:`tutorial notebook template </developer/tutorial_template>`
 to get started.
+
+Where to place a new notebook
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Notebooks live in one of two directories:
+
+* ``docs/tutorials/`` — for notebooks that ReadTheDocs can execute on its own during
+  the documentation build. These should run in a few minutes using only publicly
+  accessible data and standard dependencies.
+
+* ``docs/tutorials/pre_executed/`` — for notebooks that cannot be run by ReadTheDocs,
+  either because they take too long, require special access credentials (e.g. Rubin
+  data rights), or depend on environments not available in the RTD build. Outputs
+  are committed to the repository so the rendered page still shows results.
+
+From a reader's perspective both locations look identical on docs.lsdb.io — the
+distinction is purely a build constraint, not a conceptual one.

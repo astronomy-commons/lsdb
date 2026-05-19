@@ -127,6 +127,20 @@ Using this Guide
 
        Learn the LSDB features by working through our guides
 
+.. grid:: 1 1 2 2
+
+   .. grid-item-card:: Working with Rubin Data
+       :link: rubin
+       :link-type: doc
+
+       Tutorials for Rubin Observatory Data Preview 1
+
+   .. grid-item-card:: Science Examples
+       :link: science-examples
+       :link-type: doc
+
+       End-to-end analysis workflows on real survey data
+
 .. grid:: 1 1 1 1
 
    .. grid-item-card:: Data Access
@@ -156,6 +170,8 @@ Using this Guide
    Home page <self>
    Getting Started <getting-started>
    Tutorials <tutorials>
+   Working with Rubin Data <rubin>
+   Science Examples <science-examples>
    Data Access <data-access>
    API Reference <reference>
 

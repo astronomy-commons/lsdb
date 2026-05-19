@@ -267,3 +267,18 @@ This creates the following HATS Catalog on disk:
     ├── partition_info.csv
     └── skymap.fits
 
+Recommended Learning Path
+--------------------------
+
+Once you're comfortable with the quickstart above, we suggest working through the
+following tutorials in order before exploring the rest of the docs:
+
+1. :doc:`/tutorials/catalog_object` — understand the Catalog object, its metadata, and how lazy loading works
+2. :doc:`/tutorials/region_selection` — spatially filter catalogs using cone, box, polygon, and MOC searches
+3. :doc:`/tutorials/row_filtering` — filter by column values using ``.query()`` and boolean indexing
+4. :doc:`/tutorials/margins` — understand margin caches and why they matter for crossmatching
+5. :doc:`/tutorials/pre_executed/crossmatching` — match two catalogs spatially
+
+From there, head to :doc:`tutorials` for the full set of tutorials organized by task, or
+:doc:`rubin` if you're working with Rubin Observatory data.
+
