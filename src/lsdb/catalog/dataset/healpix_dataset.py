@@ -1549,7 +1549,7 @@ class HealpixDataset:
                     f"""List column '{col}' dtype ({self.dtypes[col]}) is not a pyarrow list dtype.
         Refer to the docstring for guidance on dtype requirements and assignment."""
                 )
-            if not pa.types.is_list(self.dtypes[col].dtype.pyarrow_dtype):
+            if not pa.types.is_list(self.dtypes[col].pyarrow_dtype):
                 raise TypeError(
                     f"""List column '{col}' dtype ({self.dtypes[col]}) is not a pyarrow list dtype.
         Refer to the docstring for guidance on dtype requirements and assignment."""
