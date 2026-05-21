@@ -244,6 +244,7 @@ def test_concat_catalog_row_count(small_sky_order1_catalog):
     ), f"Expected {expected_total} rows after concat, but got {actual_total}"
 
     # Internal types
+    assert isinstance(concat_cat.meta, npd.NestedFrame)
     assert isinstance(df_concat, npd.NestedFrame)
 
     # Structure/divisions sanity
@@ -346,13 +347,13 @@ def test_concat_catalogs_with_different_schemas(small_sky_order1_collection_dir,
         test_data_dir: Base directory containing right catalog and margin cache.
         helpers: Utility fixture with helper assertions.
     """
-    left_cat = cast(Catalog, lsdb.open_catalog(small_sky_order1_collection_dir))
+    left_cat = lsdb.open_catalog(small_sky_order1_collection_dir)
     left_margin = getattr(left_cat, "margin", None)
     assert left_margin is not None
 
     right_dir = test_data_dir / "small_sky_order3_source"
     right_margin_dir = test_data_dir / "small_sky_order3_source_margin"
-    right_cat = cast(Catalog, lsdb.open_catalog(right_dir, margin_cache=right_margin_dir))
+    right_cat = lsdb.open_catalog(right_dir, margin_cache=right_margin_dir)
     right_margin = getattr(right_cat, "margin", None)
     assert right_margin is not None
 
@@ -428,6 +429,9 @@ def test_concat_catalogs_with_different_schemas(small_sky_order1_collection_dir,
             check_names=False,
             check_dtype=False,
         )
+
+    # Structural checks
+    assert isinstance(concat_cat.meta, npd.NestedFrame)
 
     # (5) Symmetry check (main and margin handled internally)
     _assert_concat_symmetry(left_cat, right_cat)
@@ -692,7 +696,7 @@ def test_concat_kwargs_forwarding_does_not_change_content(test_data_dir):
         test_data_dir: Base directory containing test catalogs.
     """
     src_dir = test_data_dir / "small_sky_order3_source"
-    cat = cast(Catalog, lsdb.open_catalog(src_dir))
+    cat = lsdb.open_catalog(src_dir)
 
     left = cat.search(ConeSearch(325, -55, 36000))
     right = cat.search(ConeSearch(325, -25, 36000))
@@ -703,9 +707,7 @@ def test_concat_kwargs_forwarding_does_not_change_content(test_data_dir):
     df_default = concat_default.compute().reset_index()
     df_kwargs = concat_kwargs.compute().reset_index()
     df_default, df_kwargs = _align_columns(df_default, df_kwargs)
-    assert _row_multiset(df_default) == _row_multiset(
-        df_kwargs
-    ), "Passing kwargs to concat should not change the logical content"
+    pd.testing.assert_frame_equal(df_default, df_kwargs, check_dtype=False)
 
 
 def test_concat_both_margins_uses_smallest_threshold(small_sky_order1_collection_dir, test_data_dir):
