@@ -40,7 +40,7 @@ def open_catalog(
     filters: list[tuple[str]] | None = None,
     path_generator: Callable[[UPath, HealpixPixel, dict | None, str], UPath] = hc.io.pixel_catalog_file,
     **kwargs,
-) -> HealpixDataset:
+) -> Catalog:
     """Open a catalog from a HATS path.
 
     Catalogs exist in collections or stand-alone.

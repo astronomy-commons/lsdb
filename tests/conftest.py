@@ -453,7 +453,7 @@ class Helpers:
                 assert (col_name, dtype) in joined_cat.dtypes.items()
         for col_name, dtype in right_cat.dtypes.items():
             if col_name not in right_ignore_columns and col_name not in paths.HIVE_COLUMNS:
-                assert (col_name, dtype.pyarrow_dtype) in joined_cat[
+                assert (col_name, dtype.pyarrow_dtype) in joined_cat.meta[
                     nested_colname
                 ].dtypes.column_dtypes.items()
 
