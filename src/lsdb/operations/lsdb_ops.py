@@ -102,6 +102,8 @@ def map_parts_meta(func, base_meta: npd.NestedFrame, *args, include_pixel=False,
             result = func(base_meta, HealpixPixel(0, 0), *args, **kwargs)
         else:
             result = func(base_meta, *args, **kwargs)
+    except (KeyError, TypeError, ValueError):
+        raise  # let meaningful validation errors through unchanged
     except Exception as e:
         raise ValueError(
             "Cannot infer meta for MapPartitions. Either make sure your function works with an"
