@@ -17,11 +17,11 @@ import pandas as pd
 import pyarrow as pa
 from astropy.coordinates import SkyCoord
 from astropy.units import Quantity
+from dask import threaded
+from dask.base import get_scheduler
 from dask.dataframe.core import _repr_data_series
 from dask.delayed import Delayed
 from dask.optimization import cull
-from dask import threaded
-from dask.base import get_scheduler
 from deprecated import deprecated  # type: ignore
 from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
 from hats.pixel_math import HealpixPixel
@@ -45,16 +45,16 @@ from lsdb.core.search.region_search import (
     PixelSearch,
     PolygonSearch,
 )
+from lsdb.io.schema import get_arrow_schema
+from lsdb.loaders.hats.hats_loading_config import HatsLoadingConfig
 from lsdb.operations.functions.divisions import get_pixels_divisions
 from lsdb.operations.functions.merge_catalog_functions import concat_metas, make_meta
 from lsdb.operations.functions.partition_indexer import PartitionIndexer
-from lsdb.io.schema import get_arrow_schema
-from lsdb.loaders.hats.hats_loading_config import HatsLoadingConfig
 from lsdb.operations.lsdb_ops import (
+    EmptyOperation,
+    FromSinglePartition,
     MapPartitions,
     SelectColumns,
-    FromSinglePartition,
-    EmptyOperation,
     SelectPixels,
 )
 from lsdb.operations.operation import Operation
@@ -785,6 +785,9 @@ class HealpixDataset:
         154968715224527848   17.57041    29.8936  9853
         67780378363846894    45.08384   31.95611  8297
         """
+        hp_pixel = HealpixPixel(order, pixel)
+        if hp_pixel not in self.get_healpix_pixels():
+            raise ValueError(f"No data exists for the pixel at order {order}, pixel {pixel}")
         return self.partitions[HealpixPixel(order, pixel)]
 
     @property
@@ -987,7 +990,7 @@ class HealpixDataset:
             A catalog that contains the data from the original catalog that complies
             with the query expression
         """
-        return self.map_partitions(lambda df: df.query(expr))
+        return self.map_partitions(lambda df: df.query(expr), meta=self.meta)
 
     def drop(self, columns: str | list[str], errors: str = "raise") -> Self:
         """Drop specified columns from the catalog.

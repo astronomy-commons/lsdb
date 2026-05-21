@@ -17,17 +17,16 @@ from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 from nested_pandas.nestedframe.io import from_pyarrow
 from upath import UPath
 
+from lsdb.catalog import Catalog, MapCatalog, MarginCatalog
 from lsdb.catalog.association_catalog import AssociationCatalog
+from lsdb.catalog.dataset.healpix_dataset import HealpixDataset, get_arrow_schema
+from lsdb.catalog.margin_catalog import _validate_margin_catalog
 from lsdb.core.search.abstract_search import AbstractSearch
 from lsdb.loaders.hats.hats_loading_config import HatsLoadingConfig
 
-from lsdb.catalog import Catalog, MapCatalog
-from lsdb.catalog.dataset.healpix_dataset import HealpixDataset, get_arrow_schema
-from lsdb.catalog import MarginCatalog
-
 MAX_PYARROW_FILTERS = 10
 
-from lsdb.operations.lsdb_ops import FromHealpixMap, EmptyOperation
+from lsdb.operations.lsdb_ops import EmptyOperation, FromHealpixMap
 from lsdb.operations.operation import Operation
 
 
@@ -334,6 +333,7 @@ def _load_object_catalog(hc_catalog, config):
     if config.margin_cache is not None:
         margin_hc_catalog = hc.read_hats(config.margin_cache, single_catalog=True, read_moc=False)
         margin = _load_margin_catalog(margin_hc_catalog, config)
+        _validate_margin_catalog(margin, catalog)
         catalog.margin = margin
     return catalog
 

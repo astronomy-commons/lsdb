@@ -26,6 +26,8 @@ from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatc
 from lsdb.core.crossmatch.kdtree_match import KdTreeCrossmatch
 from lsdb.core.search.abstract_search import AbstractSearch
 from lsdb.core.search.index_search import IndexSearch
+from lsdb.io.schema import get_arrow_schema
+from lsdb.loaders.hats.hats_loading_config import HatsLoadingConfig
 from lsdb.operations.functions.concat_catalog_data import (
     _assert_same_ra_dec,
     concat_catalog_data,
@@ -46,8 +48,6 @@ from lsdb.operations.functions.merge_catalog_functions import (
     create_merged_catalog_info,
 )
 from lsdb.operations.functions.merge_map_catalog_data import merge_map_catalog_data
-from lsdb.io.schema import get_arrow_schema
-from lsdb.loaders.hats.hats_loading_config import HatsLoadingConfig
 from lsdb.operations.operation import Operation
 
 
@@ -169,8 +169,8 @@ class Catalog(HealpixDataset):
         118362963675428450  52.696686  39.675892  8154
         98504457942331510   89.913567  46.147079  3437
         70433374600953220   40.528952  35.350965  8214
-        154968715224527848   17.57041    29.8936  9853
-        67780378363846894    45.08384   31.95611  8297
+        154968715224527848  17.570410  29.893600  9853
+        67780378363846894   45.083840  31.956110  8297
 
         Filter nested values:
 
@@ -925,7 +925,6 @@ class Catalog(HealpixDataset):
                 )  # type: ignore[assignment]
         return catalog
 
-
     def merge_asof(
         self,
         other: Catalog,
@@ -1010,7 +1009,10 @@ class Catalog(HealpixDataset):
             suffix_method,
         )
         hc_catalog = hc.catalog.Catalog(
-            new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(op.meta), moc=alignment.moc,
+            new_catalog_info,
+            alignment.pixel_tree,
+            schema=get_arrow_schema(op.meta),
+            moc=alignment.moc,
         )
         return self.__class__(op, hc_catalog)
 
@@ -1136,7 +1138,10 @@ class Catalog(HealpixDataset):
             suffix_method,
         )
         hc_catalog = hc.catalog.Catalog(
-            new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(op.meta), moc=alignment.moc,
+            new_catalog_info,
+            alignment.pixel_tree,
+            schema=get_arrow_schema(op.meta),
+            moc=alignment.moc,
         )
         return self.__class__(op, hc_catalog)
 
@@ -1206,7 +1211,8 @@ class Catalog(HealpixDataset):
             catalog_name=output_catalog_name, total_rows=None
         )
         hc_catalog = hc.catalog.Catalog(
-            new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(op.meta), moc=alignment.moc)
+            new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(op.meta), moc=alignment.moc
+        )
         return self.__class__(op, hc_catalog)
 
     def nest_lists(

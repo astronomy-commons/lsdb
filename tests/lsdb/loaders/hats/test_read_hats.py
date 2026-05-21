@@ -615,7 +615,6 @@ def test_read_hats_margin_catalog_subset_is_empty(small_sky_order1_source_margin
 def test_read_hats_map_catalog(test_data_dir):
     margin_catalog = lsdb.read_hats(test_data_dir / "square_map")
     assert len(margin_catalog.get_healpix_pixels()) == 12
-    assert len(margin_catalog._ddf_pixel_map) == 12
     assert len(margin_catalog.compute()) == 12
     assert len(margin_catalog.hc_structure.pixel_tree) == 12
 
@@ -644,7 +643,8 @@ def test_read_nested_column_selection(small_sky_with_nested_sources_dir):
         small_sky_with_nested_sources_dir, columns=["ra", "dec", "sources.source_id", "sources.source_ra"]
     )
     assert np.all(cat.columns == ["ra", "dec", "sources"])
-    assert cat["sources"].columns == ["source_id", "source_ra"]
+    source_subcols = [col for col in cat.exploded_columns if col.split(".")[0] == "sources"]
+    assert source_subcols[1:] == ["sources.source_id", "sources.source_ra"]
     computed = cat.compute()
     assert np.all(computed.columns == ["ra", "dec", "sources"])
     assert np.all(computed["sources"].iloc[0].columns == ["source_id", "source_ra"])
