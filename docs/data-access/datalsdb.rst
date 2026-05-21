@@ -19,9 +19,8 @@ Let's consider the example Figure above and explain briefly the numbered callout
 
 1. **Catalog list:** the left sidebar that lets you browse catalogs and releases. If there are multiple providers of a given catalog, they will be grouped under the same catalog name, with different hosting regions and access methods indicated.
 2. **Catalog overview:** the title and description for the selected catalog, including the simplest way on how to access the data through LSDB and how to  download directly.
-3. **Region description:** describes the hosting region (for example, ``US-EAST``). See discussion below for details of various options.
-4. **Access type:** describes the access path, which are either ``S3`` or ``HTTP`` endpoints. See discussion below for details and more information is available in the :doc:`remote data access page <remote_data>`.
-5. **Catalog metadata:** summary table showing the number of rows, columns, partitions, size on disk and which version of HATS builder or pipeline was used to create the catalog. See discussion about versioning below for details.
+3. **Region and access type:** describes the hosting region (for example, ``US-EAST``) and the access path, which are either ``S3`` or ``HTTP`` endpoints. See discussion below for details of various options. More information is available in the :doc:`remote data access page <remote_data>`.
+4. **Catalog metadata:** summary table showing the number of rows, columns, partitions, size on disk and which version of HATS builder or pipeline was used to create the catalog. See discussion about versioning below for details.
 
 
 Region description and access type
