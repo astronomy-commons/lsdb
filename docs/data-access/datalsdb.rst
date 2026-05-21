@@ -9,7 +9,7 @@ At `data.lsdb.io <https://data.lsdb.io/>`__ we provide information about all cat
 data.lsdb.io Layout
 ----------------------------------------------------------------------------------------
 
-.. figure:: ../_static/data-access-overview-annotated.png
+.. figure:: ../_static/data-access-overview-annotated.webp
    :alt: Annotated data.lsdb.io catalog browser with numbered callouts.
    :width: 100%
 
@@ -45,7 +45,7 @@ Skymaps page
 
 Some catalogs have an additional page with pre-generated HEALPix skymaps. These skymaps summarize the spatial distribution of column values (like magnitude or redshift) across the sky.
 
-.. figure:: ../_static/data-access-skymaps-page.png
+.. figure:: ../_static/data-access-skymaps-page.webp
    :alt: Example of the Skymaps page for Gaia DR3.
    :width: 100%
 
