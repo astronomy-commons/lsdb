@@ -7,8 +7,10 @@ Find below the access pages for external data centers who provide a large number
 Links
 ----------------------------------------------------------------------------------------
 
+- CDS (France) LSDB access guide: https://vizcat.cds.unistra.fr/hats/
+- HuggingFace LSDB access guide: https://huggingface.co/collections/UniverseTBD/multimodal-universe-lsdb-hats
 - LIneA (Brazil) LSDB access guide: https://data.linea.org.br/en/index.html 
-- CDS (France) LSDB access guide: https://vizcat.cds.unistra.fr/hats/ 
+
 
 Notes
 ----------------------------------------------------------------------------------------

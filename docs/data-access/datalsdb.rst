@@ -9,7 +9,7 @@ At `data.lsdb.io <https://data.lsdb.io/>`__ we provide information about all cat
 data.lsdb.io Layout
 ----------------------------------------------------------------------------------------
 
-.. figure:: ../_static/data-access-overview-annotated.png
+.. figure:: ../_static/data-access-overview-annotated.webp
    :alt: Annotated data.lsdb.io catalog browser with numbered callouts.
    :width: 100%
 
@@ -19,9 +19,9 @@ Let's consider the example Figure above and explain briefly the numbered callout
 
 1. **Catalog list:** the left sidebar that lets you browse catalogs and releases. If there are multiple providers of a given catalog, they will be grouped under the same catalog name, with different hosting regions and access methods indicated.
 2. **Catalog overview:** the title and description for the selected catalog, including the simplest way on how to access the data through LSDB and how to  download directly.
-3. **Region description:** describes the hosting region (for example, ``US-EAST``). See discussion below for details of various options.
-4. **Access type:** describes the access path, which are either ``S3`` or ``HTTP`` endpoints. See discussion below for details and more information is available in the :doc:`remote data access page <remote_data>`.
-5. **Catalog metadata:** summary table showing the number of rows, columns, partitions, size on disk and which version of HATS builder or pipeline was used to create the catalog. See discussion about versioning below for details.
+3. **Region and access type:** describes the hosting region (for example, ``US-EAST``) and the access path, which are either ``S3`` or ``HTTP`` endpoints. See discussion below for details of various options. More information is available in the :doc:`remote data access page <remote_data>`.
+4. **Catalog metadata:** summary table showing the number of rows, columns, partitions, size on disk and which version of HATS builder or pipeline was used to create the catalog. See discussion about versioning below for details.
+5. **External data mirrors:** links to the pages of external providers hosting HATS catalogs. See the :doc:`external data centers <external>` page for more information about these providers and which catalogs they host.
 
 
 Region description and access type
@@ -38,6 +38,20 @@ Below are details about each provider:
 ``US-WEST & S3``: These datasets are hosted in Amazon Web Services (AWS) S3 buckets in the US West region, provided by IPAC/IRSA. They can also be accessed via ``s3://`` URLs, and should provide better performance due to robust cloud infrastructure.
 
 ``Europe & HTTP``: These datasets are hosted at the Centre de Données astronomiques de Strasbourg (CDS) in Europe on static HTTP/S endpoints. They are using experimental HATS-on-the-fly serving infrastructure. More information is avaliable at :doc:`External providers page <external>`.
+
+
+Skymaps page
+----------------------------------------------------------------------------------------
+
+Some catalogs have an additional page with pre-generated HEALPix skymaps. These skymaps summarize the spatial distribution of column values (like magnitude or redshift) across the sky.
+
+.. figure:: ../_static/data-access-skymaps-page.webp
+   :alt: Example of the Skymaps page for Gaia DR3.
+   :width: 100%
+
+   Example of the Skymaps page for Gaia DR3.
+
+If this page is available for a catalog, a button named ``View Skymaps`` appears next to its region information.
 
 
 Catalog Metadata - Version

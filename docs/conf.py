@@ -74,7 +74,7 @@ html_static_path = ["_static"]
 html_css_files = ["custom.css"]
 html_js_files = ["api_surface_map.js"]
 
-html_logo = "_static/lincc_logo.png"
+html_logo = "_static/lsdb-logo.png"
 html_title = "LSDB"
 html_context = {"default_mode": "light"}
 
