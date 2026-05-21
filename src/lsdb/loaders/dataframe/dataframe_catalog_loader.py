@@ -26,8 +26,9 @@ from mocpy import MOC
 from lsdb.catalog.catalog import Catalog
 from lsdb.io.common import new_provenance_properties
 from lsdb.io.schema import get_arrow_schema
-from lsdb.loaders.dataframe.from_dataframe_utils import _has_named_index
+from lsdb.loaders.dataframe.from_dataframe_utils import _has_named_index, _generate_op
 from lsdb.operations.lsdb_ops import FromHealpixMap
+from lsdb.operations.operation import Operation
 
 pd.options.mode.chained_assignment = None  # default='warn'
 
@@ -328,8 +329,7 @@ class DataframeCatalogLoader:
             Tuple containing the LSDB Operation and the total number of rows.
         """
         # Dataframes for each destination HEALPix pixel
-        pixel_dfs: dict[HealpixPixel, npd.NestedFrame] = {}
-        total_rows = 0
+        pixel_dfs: list[npd.NestedFrame] = []
 
         for hp_pixel in pixel_list:
             # Obtain Dataframe for current HEALPix pixel, using NESTED characteristics.
@@ -338,19 +338,10 @@ class DataframeCatalogLoader:
             pixel_df = self.dataframe.loc[
                 (self.dataframe.index >= left_bound) & (self.dataframe.index < right_bound)
             ]
-            pixel_dfs[hp_pixel] = pixel_df
-            total_rows += len(pixel_df)
-
-        meta = next(iter(pixel_dfs.values())).iloc[:0] if pixel_dfs else self.dataframe.iloc[:0]
+            pixel_dfs.append(pixel_df)
 
         # Generate operation with the original schema and desired backend
-        op = FromHealpixMap(
-            lambda pixel, dfs: dfs[pixel],
-            pixel_list,
-            pixel_dfs,
-            meta=meta,
-        )
-        #op, total_rows = _generate_op(pixel_dfs, pixel_list, self.use_pyarrow_types)
+        op, total_rows = _generate_op(pixel_dfs, pixel_list, self.use_pyarrow_types)
         return op, total_rows
 
     def _generate_moc(self):

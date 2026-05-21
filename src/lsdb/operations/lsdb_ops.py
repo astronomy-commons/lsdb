@@ -41,7 +41,7 @@ class FromHealpixMap(Operation):
 
     @functools.cached_property
     def key_name(self) -> str:
-        return f"{funcname(self.func)}-{_tokenize_deterministic(self.func, *self.args, self.kwargs)}"
+        return f"{funcname(self.func)}-{_tokenize_deterministic(self.func, *self.args, self.kwargs, self.map_kwargs)}"
 
     @property
     def meta(self) -> npd.NestedFrame:

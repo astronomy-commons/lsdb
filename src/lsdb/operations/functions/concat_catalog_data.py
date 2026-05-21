@@ -10,14 +10,15 @@ from lsdb.operations.functions.merge_catalog_functions import (
     align_and_apply,
     concat_align_catalogs,
     concat_partition_and_margin,
-    #construct_catalog_args,
+    # construct_catalog_args,
     filter_by_spatial_index_to_margin,
     filter_by_spatial_index_to_pixel,
     get_aligned_pixels_from_alignment,
     get_healpix_pixels_from_alignment,
 )
 from lsdb.operations.operation import Operation
-#from lsdb.types import DaskDFPixelMap
+
+# from lsdb.types import DaskDFPixelMap
 
 if TYPE_CHECKING:
     from lsdb.catalog.catalog import Catalog
@@ -556,16 +557,13 @@ def handle_margins_for_concat(
             lm.hc_structure.catalog_info.margin_threshold or 0.0,
             rm.hc_structure.catalog_info.margin_threshold or 0.0,
         )
-        margin_ddf, margin_ddf_map, margin_alignment = concat_margin_data(
-            left, right, smallest_margin_radius, **kwargs
-        )
+        margin_op, margin_alignment = concat_margin_data(left, right, smallest_margin_radius, **kwargs)
         margin_hc_catalog = lm.hc_structure.__class__(
             lm.hc_structure.catalog_info,
             margin_alignment.pixel_tree,
         )
         return lm._create_updated_dataset(  # pylint: disable=protected-access
-            ddf=margin_ddf,
-            ddf_pixel_map=margin_ddf_map,
+            op=margin_op,
             hc_structure=margin_hc_catalog,
             updated_catalog_info_params={"margin_threshold": smallest_margin_radius},
         )
@@ -598,16 +596,13 @@ def handle_margins_for_concat(
             "resulting concatenated margin may be incomplete.",
         )
 
-        margin_ddf, margin_ddf_map, margin_alignment = concat_margin_data(
-            left, right, existing_radius, **kwargs
-        )
+        margin_op, margin_alignment = concat_margin_data(left, right, existing_radius, **kwargs)
         margin_hc_catalog = existing.hc_structure.__class__(
             existing.hc_structure.catalog_info,
             margin_alignment.pixel_tree,
         )
         return existing._create_updated_dataset(  # pylint: disable=protected-access
-            ddf=margin_ddf,
-            ddf_pixel_map=margin_ddf_map,
+            op=margin_op,
             hc_structure=margin_hc_catalog,
             updated_catalog_info_params={"margin_threshold": existing_radius},
         )

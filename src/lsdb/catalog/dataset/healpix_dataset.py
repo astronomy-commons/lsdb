@@ -122,7 +122,7 @@ class HealpixDataset:
     def columns(self):
         """Returns the names of columns available in the Dataset"""
         return self.meta.columns
-    
+
     @property
     def exploded_columns(self) -> list[str]:
         """returns the list of column names and nested subcolumn names (in exploded, dot notation)"""
@@ -309,7 +309,7 @@ class HealpixDataset:
         hc_structure = self._create_modified_hc_structure(
             hc_structure=hc_structure, updated_schema=updated_schema, **updated_catalog_info_params
         )
-        return self.__class__(op, hc_structure)
+        return self.__class__(op, hc_structure, loading_config=self.loading_config)
 
     def _apply_partitionwise_operation(
         self, op_class: type[MapPartitions], func=None, *args, meta=None, **kwargs
@@ -932,7 +932,10 @@ class HealpixDataset:
             row_counts = stats[f"{rep_col}: row_count"].map(int)
         else:
             row_counts = np.array(
-                self.map_partitions(lambda df: npd.NestedFrame({"len": [len(df)]}), meta=npd.NestedFrame({"len": pd.Series(dtype=int)}))
+                self.map_partitions(
+                    lambda df: npd.NestedFrame({"len": [len(df)]}),
+                    meta=npd.NestedFrame({"len": pd.Series(dtype=int)}),
+                )
                 .compute()["len"]
                 .to_numpy()
             )

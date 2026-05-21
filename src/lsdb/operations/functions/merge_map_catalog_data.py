@@ -129,8 +129,8 @@ def merge_map_catalog_data(
     """
     if meta is None:
         meta = func(
-            point_catalog._ddf._meta.copy(),
-            map_catalog._ddf._meta.copy(),
+            point_catalog.meta.copy(),
+            map_catalog.meta.copy(),
             HealpixPixel(0, 0),
             HealpixPixel(0, 0),
         )
