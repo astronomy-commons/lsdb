@@ -399,31 +399,28 @@ def cone_search_margin_expected(cone_search_expected_dir):
 class Helpers:
     @staticmethod
     def assert_divisions_are_correct(catalog):
-        # Check that number of divisions == number of pixels + 1
-        hp_pixels = [None] * len(catalog._ddf_pixel_map)
-        for pix, index in catalog._ddf_pixel_map.items():
-            hp_pixels[index] = pix
+        ddf = catalog.to_dask_dataframe()
+        hp_pixels = catalog.get_healpix_pixels()
         if len(hp_pixels) == 0:
             # Special case if there are no partitions.
-            assert catalog._ddf.divisions == (None, None)
+            assert ddf.divisions == (None, None)
             return
-        assert len(catalog._ddf.divisions) == len(hp_pixels) + 1
+        assert len(ddf.divisions) == len(hp_pixels) + 1
         # Check that the divisions are not None
-        assert None not in catalog._ddf.divisions
+        assert None not in ddf.divisions
         # Check that divisions belong to the correct pixel
-        for division, hp_pixel in zip(catalog._ddf.divisions, hp_pixels):
+        for division, hp_pixel in zip(ddf.divisions, hp_pixels):
             div_pixel = spatial_index_to_healpix([division], target_order=hp_pixel.order)
             assert hp_pixel.pixel == div_pixel
         # The last division corresponds to the largest healpix value
-        assert catalog._ddf.divisions[-1] == healpix_to_spatial_index(
-            hp_pixels[-1].order, hp_pixels[-1].pixel + 1
-        )
+        assert ddf.divisions[-1] == healpix_to_spatial_index(hp_pixels[-1].order, hp_pixels[-1].pixel + 1)
 
     @staticmethod
     def assert_index_correct(cat):
-        assert cat._ddf.index.name == SPATIAL_INDEX_COLUMN
+        ddf = cat.to_dask_dataframe()
+        assert ddf.index.name == SPATIAL_INDEX_COLUMN
         cat_comp = cat.compute()
-        assert cat_comp.index.name == SPATIAL_INDEX_COLUMN
+        assert ddf.index.name == SPATIAL_INDEX_COLUMN
         npt.assert_array_equal(
             cat_comp.index.to_numpy(),
             compute_spatial_index(cat_comp["ra"].to_numpy(), cat_comp["dec"].to_numpy()),
