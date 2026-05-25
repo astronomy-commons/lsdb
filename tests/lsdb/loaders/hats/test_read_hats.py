@@ -398,6 +398,27 @@ def test_read_hats_no_pandas_with_index_column(small_sky_order1_no_pandas_dir, h
     helpers.assert_schema_correct(catalog)
 
 
+def test_set_columns_includes_healpix_column():
+    """healpix_column is auto-appended to the column list, same as ra/dec."""
+    from hats.catalog import TableProperties
+
+    from lsdb.loaders.hats.hats_loading_config import HatsLoadingConfig
+
+    catalog_info = TableProperties(
+        catalog_name="test",
+        catalog_type="object",
+        total_rows=0,
+        ra_column="ra",
+        dec_column="dec",
+        hats_col_healpix="_healpix_29",
+    )
+    config = HatsLoadingConfig(columns=["id"])
+    config.set_columns_from_catalog_info(catalog_info)
+    assert "_healpix_29" in config.columns
+    assert "ra" in config.columns
+    assert "dec" in config.columns
+
+
 def test_read_hats_with_extra_kwargs(small_sky_order1_dir):
     catalog = lsdb.open_catalog(small_sky_order1_dir, filters=[("ra", ">", 300)])
     assert isinstance(catalog, lsdb.Catalog)
