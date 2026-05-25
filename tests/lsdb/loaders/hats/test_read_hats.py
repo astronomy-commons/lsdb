@@ -6,6 +6,7 @@ import nested_pandas as npd
 import numpy as np
 import pandas as pd
 import pytest
+from hats.catalog import TableProperties
 from hats.io.file_io import get_upath_for_protocol
 from hats.io.paths import PARTITION_ORDER, PARTITION_PIXEL
 from hats.pixel_math import HealpixPixel
@@ -17,6 +18,7 @@ import lsdb.nested as nd
 from lsdb.catalog.margin_catalog import _validate_margin_catalog
 from lsdb.core.search.index_search import IndexSearch
 from lsdb.core.search.region_search import BoxSearch, ConeSearch, OrderSearch, PolygonSearch
+from lsdb.loaders.hats.hats_loading_config import HatsLoadingConfig
 
 
 def test_read_hats(small_sky_order1_dir, small_sky_order1_hats_catalog, helpers):
@@ -400,10 +402,6 @@ def test_read_hats_no_pandas_with_index_column(small_sky_order1_no_pandas_dir, h
 
 def test_set_columns_includes_healpix_column():
     """healpix_column is auto-appended to the column list, same as ra/dec."""
-    from hats.catalog import TableProperties
-
-    from lsdb.loaders.hats.hats_loading_config import HatsLoadingConfig
-
     catalog_info = TableProperties(
         catalog_name="test",
         catalog_type="object",
