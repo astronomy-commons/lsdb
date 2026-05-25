@@ -448,11 +448,11 @@ def _write_skymaps(
 def _validate_default_columns(catalog: HealpixDataset, default_columns: list[str]):
     """Checks that the provided default columns are valid"""
     # Check if any of the default columns is missing
-    missing_columns = set(default_columns) - set(catalog._ddf.exploded_columns)
+    missing_columns = set(default_columns) - set(catalog.exploded_columns)
     if missing_columns:
         raise ValueError(f"Default columns `{missing_columns}` not found in catalog")
     # Check for full and partial load of the same column and error
-    all_subcolumns = catalog._ddf._meta.get_subcolumns()
+    all_subcolumns = catalog.meta.get_subcolumns()
     for col in default_columns:
         if col in all_subcolumns:
             nested_col = col.split(".")[0]
@@ -501,18 +501,17 @@ def write_partitions(
             continue
         pixels.append(pixel)
 
-    write_cat = catalog.partitions[pixels]
-
-    res_cat = write_cat.map_partitions(
-        perform_write,
-        base_catalog_dir_fp,
-        histogram_order,
-        meta=WRITE_RESULT_META,
-        include_pixel=True,
-        **kwargs,
-    )
-
     if len(pixels) > 0:
+        write_cat = catalog.partitions[pixels]
+
+        res_cat = write_cat.map_partitions(
+            perform_write,
+            base_catalog_dir_fp,
+            histogram_order,
+            meta=WRITE_RESULT_META,
+            include_pixel=True,
+            **kwargs,
+        )
         results = res_cat.compute()
         counts, histograms = results["count"].tolist(), results["histogram"].tolist()
     else:
