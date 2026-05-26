@@ -34,4 +34,4 @@ class PartitionIndexer:
 
     def __iter__(self) -> Iterator:
         for pixel in self.healpix_pixels:
-            yield self.cat.search(PixelSearch([pixel]))
+            yield self.__getitem__(pixel)

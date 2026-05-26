@@ -251,14 +251,16 @@ class HealpixDataset:
         ) + est_size_text
 
     def _create_modified_hc_structure(
-        self, hc_structure=None, updated_schema=None, **kwargs
+        self, hc_structure=None, updated_schema=None, updated_pixels=None, **kwargs
     ) -> HCHealpixDataset:
         """Copy the catalog structure and override the specified catalog info parameters."""
         if hc_structure is None:
             hc_structure = self.hc_structure
+        if updated_pixels is None:
+            updated_pixels = hc_structure.pixel_tree
         return hc_structure.__class__(
             catalog_info=hc_structure.catalog_info.copy_and_update(**kwargs),
-            pixels=hc_structure.pixel_tree,
+            pixels=updated_pixels,
             catalog_path=hc_structure.catalog_path,
             schema=hc_structure.schema if updated_schema is None else updated_schema,
             snapshot=hc_structure.snapshot,
@@ -749,7 +751,9 @@ class HealpixDataset:
         hp_pixel = HealpixPixel(order, pixel)
         if hp_pixel not in self.get_healpix_pixels():
             raise ValueError(f"No data exists for the pixel at order {order}, pixel {pixel}")
-        return self.partitions[HealpixPixel(order, pixel)]
+        updated_structure = self._create_modified_hc_structure(updated_pixels=[hp_pixel])
+        filtered_op = SelectPixels(self._operation, [hp_pixel])
+        return self._create_updated_dataset(op=filtered_op, hc_structure=updated_structure)
 
     @property
     def partitions(self):

@@ -1221,11 +1221,10 @@ class _DummyMargin:  # pylint: disable=too-few-public-methods
         # capture arguments passed to _create_updated_dataset
         self._last_kwargs = None
 
-    def _create_updated_dataset(self, *, ddf, ddf_pixel_map, hc_structure, updated_catalog_info_params):
+    def _create_updated_dataset(self, *, op, hc_structure, updated_catalog_info_params):
         # store for assertions
         self._last_kwargs = {
-            "ddf": ddf,
-            "ddf_pixel_map": ddf_pixel_map,
+            "op": op,
             "hc_structure": hc_structure,
             "updated_catalog_info_params": updated_catalog_info_params,
         }
@@ -1247,7 +1246,7 @@ def test_handle_margins_both_have_margin_uses_min_threshold_and_calls_concat(mon
     right = _DummyCat(margin=right_margin)
 
     # Spy concat_margin_data to capture args and return a lightweight triple
-    fake_concat = MagicMock(return_value=("DD", "MAP", SimpleNamespace(pixel_tree="PIXELS")))
+    fake_concat = MagicMock(return_value=("OP", SimpleNamespace(pixel_tree="PIXELS")))
     monkeypatch.setattr(concat_catalog_data, "concat_margin_data", fake_concat)
 
     got = concat_catalog_data.handle_margins_for_concat(left, right, ignore_empty_margins=False)
@@ -1314,7 +1313,7 @@ def test_handle_margins_one_side_has_margin_keep_existing_calls_concat(monkeypat
     right = _DummyCat(margin=None)
 
     # Spy concat_margin_data to capture args and return a lightweight triple
-    fake_concat = MagicMock(return_value=("DD", "MAP", SimpleNamespace(pixel_tree="PIXELS")))
+    fake_concat = MagicMock(return_value=("OP", SimpleNamespace(pixel_tree="PIXELS")))
     monkeypatch.setattr(concat_catalog_data, "concat_margin_data", fake_concat)
 
     with pytest.warns(UserWarning, match=r"ignore_empty_margins=True.*treated as empty"):

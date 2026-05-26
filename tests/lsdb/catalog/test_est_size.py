@@ -24,7 +24,7 @@ def test_est_size_default_column_subset(small_sky_order1_default_cols_catalog):
     cat = small_sky_order1_default_cols_catalog
     hats_estsize = cat.hc_structure.catalog_info.hats_estsize
     original_schema = cat.hc_structure.original_schema
-    current_schema = get_arrow_schema(cat._ddf)
+    current_schema = get_arrow_schema(cat.meta)
     expected = hats_estsize * (_row_bytes(current_schema) / _row_bytes(original_schema))
     assert cat.est_size() == pytest.approx(expected)
 
@@ -33,7 +33,7 @@ def test_est_size_explicit_two_column_subset(small_sky_order1_default_cols_catal
     cat = small_sky_order1_default_cols_catalog[["ra", "dec"]]
     hats_estsize = cat.hc_structure.catalog_info.hats_estsize
     original_schema = cat.hc_structure.original_schema
-    current_schema = get_arrow_schema(cat._ddf)
+    current_schema = get_arrow_schema(cat.meta)
     expected = hats_estsize * (_row_bytes(current_schema) / _row_bytes(original_schema))
     assert cat.est_size() == pytest.approx(expected)
 
@@ -56,7 +56,7 @@ def test_est_size_column_and_partition_ratios_combine(small_sky_order1_default_c
     original_n_partitions = len(cat.hc_structure.snapshot.partition_info)
     pixel = cat.get_healpix_pixels()[0]
     subset = cat[["ra", "dec"]].search(lsdb.PixelSearch([pixel]))
-    current_schema = get_arrow_schema(subset._ddf)
+    current_schema = get_arrow_schema(subset.meta)
     expected = (
         hats_estsize
         * (1 / original_n_partitions)
