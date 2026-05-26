@@ -74,11 +74,14 @@ class HatsLoadingConfig:
 
         ra_col = catalog_info.ra_column
         dec_col = catalog_info.dec_column
+        healpix_col = catalog_info.healpix_column
         if columns is not None:
             if ra_col is not None and ra_col not in columns:
                 columns.append(ra_col)
             if dec_col is not None and dec_col not in columns:
                 columns.append(dec_col)
+            if healpix_col is not None and healpix_col not in columns:
+                columns.append(healpix_col)
         self.columns = columns
 
     def make_query_url_params(self) -> dict:
