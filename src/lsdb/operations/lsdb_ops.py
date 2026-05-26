@@ -4,6 +4,7 @@ import functools
 from typing import TYPE_CHECKING, Self, Callable
 
 from dask._task_spec import Task, TaskRef, cull
+from dask.dataframe.utils import check_meta
 from dask.tokenize import _tokenize_deterministic
 from dask.utils import funcname
 
@@ -18,12 +19,24 @@ if TYPE_CHECKING:
     from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
 
 
+def run_and_verify_meta(func, meta, *args, **kwargs):
+    result = func(*args, **kwargs)
+    if not isinstance(result, meta.__class__):
+        raise ValueError(
+            f"Function returned result of type {type(result)}, but meta is of type {type(meta)}. "
+            "Function must return the same type as meta for meta inference to work correctly."
+        )
+    check_meta(result, meta, funcname=funcname(func))
+    return result
+
+
 class FromHealpixMap(Operation):
-    def __init__(self, func, pixels, *args, meta=None, map_kwargs=None, **kwargs):
+    def __init__(self, func, pixels, *args, meta=None, map_kwargs=None, verify_meta=True, **kwargs):
         self.func = func
         self.pixels = pixels
         self.args = args
         self._meta = meta
+        self.verify_meta = verify_meta
         if map_kwargs is not None:
             for k in map_kwargs:
                 if k in kwargs:
@@ -71,7 +84,12 @@ class FromHealpixMap(Operation):
         for i, pixel in enumerate(self.pixels):
             key = (self.key_name, i)
             map_kwargs = {k: v[i] for k, v in self.map_kwargs.items()} if self.map_kwargs is not None else {}
-            task = Task(key, self.func, pixel, *self.args, **self.kwargs, **map_kwargs)
+            func = (
+                functools.partial(run_and_verify_meta, self.func, self.meta)
+                if self.verify_meta
+                else self.func
+            )
+            task = Task(key, func, pixel, *self.args, **self.kwargs, **map_kwargs)
             graph[key] = task
             pixel_keys[pixel] = key
         return HealpixGraph(graph, pixel_keys)
@@ -179,7 +197,9 @@ class MapPartitions(Operation):
     class_func = None
     class_include_pixels = None
 
-    def __init__(self, base: Operation, func, *args, meta=None, include_pixel=False, **kwargs):
+    def __init__(
+        self, base: Operation, func, *args, meta=None, include_pixel=False, verify_meta=True, **kwargs
+    ):
         self.base = base
         if self.class_func is not None and func is not None:
             raise ValueError("Cannot specify func for MapPartitions when class_func is set")
@@ -192,6 +212,7 @@ class MapPartitions(Operation):
         # Ensure that input meta is normalized to a NestedFrame
         self._meta = _normalize_meta(meta) if meta is not None else None
         self.include_pixel = include_pixel
+        self.verify_meta = verify_meta
         self.kwargs = kwargs
 
     @property
@@ -234,15 +255,13 @@ class MapPartitions(Operation):
         graph = previous.graph
         pixel_keys = {}
         func = self.func
+        if self.verify_meta:
+            func = functools.partial(run_and_verify_meta, func, self.meta)
         include_pixel = self.include_pixel
 
         def wrapped_func(df, _partition_index, *args, **kwargs):
             try:
-                if include_pixel:
-                    # pixel is already injected as first arg by the include_pixel path
-                    result = func(df, *args, **kwargs)
-                else:
-                    result = func(df, *args, **kwargs)
+                result = func(df, *args, **kwargs)
                 return _coerce_to_frame(result)
             except Exception as e:
                 if include_pixel and args:
@@ -328,6 +347,7 @@ class AlignAndApply(Operation):
         meta,
         output_pixels: Sequence[HealpixPixel],
         *args,
+        verify_meta=True,
         **kwargs,
     ):
         self.input_cats = input_cats
@@ -338,6 +358,7 @@ class AlignAndApply(Operation):
         self._meta = meta
         self.output_pixels = output_pixels
         self.args = args
+        self.verify_meta = verify_meta
         self.kwargs = kwargs
 
     @property
@@ -378,6 +399,7 @@ class AlignAndApply(Operation):
         graphs = [op.build() if op is not None else None for op in input_ops]
         metas = self.metas
         catalog_infos = self.catalog_infos
+        func = functools.partial(run_and_verify_meta, self.func, self.meta) if self.verify_meta else self.func
         graph = {}
         pixel_key_map = {}
         for g in graphs:
@@ -397,7 +419,7 @@ class AlignAndApply(Operation):
             args = task_refs + list(pixels) + catalog_infos + list(self.args)
             kwargs = self.kwargs
             key = (self.key_name, i)
-            task = Task(key, self.func, *args, **kwargs)
+            task = Task(key, func, *args, **kwargs)
             graph[key] = task
             pixel_key_map[output_pixel] = key
         culled_graph = cull(graph, list(pixel_key_map.values()))
