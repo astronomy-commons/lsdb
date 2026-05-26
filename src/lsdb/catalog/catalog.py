@@ -216,6 +216,26 @@ class Catalog(HealpixDataset):
             catalog.margin = self.margin.rename(columns)
         return catalog
 
+    def rename_catalog(self, name: str) -> Catalog:
+        """Renames the catalog and its margin if one exists.
+
+        Parameters
+        ----------
+        name : str
+            The new name for the catalog.
+
+        Returns
+        -------
+        Catalog
+            A new catalog with the updated name. If a margin exists, it is
+            renamed to ``{name}_{margin_threshold}arcs``.
+        """
+        catalog = super().rename_catalog(name)
+        if self.margin is not None:
+            margin_threshold = self.margin.hc_structure.catalog_info.margin_threshold
+            catalog.margin = self.margin.rename_catalog(f"{name}_{margin_threshold}arcs")
+        return catalog
+
     def crossmatch(
         self,
         other: Catalog,

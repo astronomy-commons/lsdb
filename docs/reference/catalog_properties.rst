@@ -13,3 +13,4 @@ Properties
     Catalog.all_columns
     Catalog.original_schema
     Catalog.margin
+    Catalog.rename_catalog
