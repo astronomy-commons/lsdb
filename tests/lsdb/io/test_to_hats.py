@@ -25,6 +25,7 @@ from lsdb.io.to_hats import (
     perform_write,
     write_histogram,
     write_partitions,
+    WRITE_RESULT_META,
 )
 
 
@@ -39,13 +40,13 @@ def test_save_catalog(small_sky_catalog, tmp_path, helpers):
     assert expected_catalog.hc_structure.schema.pandas_metadata is None
     assert expected_catalog.hc_structure.catalog_name == new_catalog_name
     assert expected_catalog.get_healpix_pixels() == small_sky_catalog.get_healpix_pixels()
-    pd.testing.assert_frame_equal(expected_catalog.compute(), small_sky_catalog._ddf.compute())
+    pd.testing.assert_frame_equal(expected_catalog.compute(), small_sky_catalog.compute())
 
     # When saving a catalog with write_catalog, we update the hats_max_rows
     # to the maximum count of points per partition. In this case there
     # is only one with 131 rows, so that is the value we expect.
-    partition_sizes = small_sky_catalog._ddf.map_partitions(len).compute()
-    assert max(partition_sizes) == 131
+    partition_sizes = small_sky_catalog.map_partitions(lambda df: {"len": [len(df)]}).compute()
+    assert max(partition_sizes["len"]) == 131
 
     helpers.assert_catalog_info_is_correct(
         expected_catalog.hc_structure.catalog_info,
@@ -89,7 +90,7 @@ def test_save_catalog_default_columns(small_sky_with_nested_sources, tmp_path, h
     assert expected_catalog.hc_structure.catalog_name == new_catalog_name
     assert expected_catalog.get_healpix_pixels() == cat.get_healpix_pixels()
     assert expected_catalog.hc_structure.catalog_info.default_columns == default_columns
-    assert len(expected_catalog["sources"].nest.columns) == 8
+    assert len(expected_catalog.meta["sources"].nest.columns) == 8
     pd.testing.assert_frame_equal(expected_catalog.compute(), cat.compute())
     helpers.assert_schema_correct(expected_catalog)
     helpers.assert_default_columns_in_columns(expected_catalog)
@@ -106,7 +107,7 @@ def test_save_catalog_default_nested_columns(small_sky_with_nested_sources, tmp_
     assert expected_catalog.hc_structure.catalog_name == new_catalog_name
     assert expected_catalog.get_healpix_pixels() == cat.get_healpix_pixels()
     assert expected_catalog.hc_structure.catalog_info.default_columns == default_columns
-    assert len(expected_catalog["sources"].nest.columns) == 2
+    assert len(expected_catalog.meta["sources"].nest.columns) == 2
     pd.testing.assert_frame_equal(expected_catalog.compute(), cat.compute())
     helpers.assert_schema_correct(expected_catalog)
     helpers.assert_default_columns_in_columns(expected_catalog)
@@ -168,7 +169,7 @@ def test_save_catalog_empty_default_columns(small_sky_order1_default_cols_catalo
     assert expected_catalog.hc_structure.catalog_info.default_columns is None
     assert expected_catalog.hc_structure.catalog_name == new_catalog_name
     assert expected_catalog.get_healpix_pixels() == cat.get_healpix_pixels()
-    pd.testing.assert_frame_equal(expected_catalog.compute(), cat._ddf.compute())
+    pd.testing.assert_frame_equal(expected_catalog.compute(), cat.compute())
     helpers.assert_schema_correct(expected_catalog)
     helpers.assert_default_columns_in_columns(expected_catalog)
 
@@ -302,11 +303,11 @@ def test_save_catalog_when_catalog_is_empty(small_sky_order1_catalog, tmp_path):
 
     # The result of this cone search is known to be empty
     cone_search_catalog = small_sky_order1_catalog.cone_search(0, -80, 1)
-    assert cone_search_catalog._ddf.npartitions == 1
+    assert len(cone_search_catalog._operation.healpix_pixels) == 1
 
     non_empty_pixels = []
-    for pixel, partition_index in cone_search_catalog._ddf_pixel_map.items():
-        if len(cone_search_catalog._ddf.partitions[partition_index]) > 0:
+    for pixel in cone_search_catalog.get_healpix_pixels():
+        if len(cone_search_catalog.partitions[pixel].compute()) > 0:
             non_empty_pixels.append(pixel)
     assert len(non_empty_pixels) == 0
 
@@ -320,11 +321,11 @@ def test_save_empty_catalog_no_error(small_sky_order1_catalog, tmp_path):
 
     # The result of this cone search is known to be empty
     cone_search_catalog = small_sky_order1_catalog.cone_search(0, -80, 1)
-    assert cone_search_catalog._ddf.npartitions == 1
+    assert len(cone_search_catalog._operation.healpix_pixels) == 1
 
     non_empty_pixels = []
-    for pixel, partition_index in cone_search_catalog._ddf_pixel_map.items():
-        if len(cone_search_catalog._ddf.partitions[partition_index]) > 0:
+    for pixel in cone_search_catalog.get_healpix_pixels():
+        if len(cone_search_catalog.partitions[pixel].compute()) > 0:
             non_empty_pixels.append(pixel)
     assert len(non_empty_pixels) == 0
 
@@ -334,7 +335,7 @@ def test_save_empty_catalog_no_error(small_sky_order1_catalog, tmp_path):
     catalog = lsdb.read_hats(base_catalog_path)
     assert len(catalog.get_healpix_pixels()) == 0
     assert len(catalog.per_partition_statistics()) == 0
-    pd.testing.assert_frame_equal(cone_search_catalog._ddf._meta, catalog._ddf._meta)
+    pd.testing.assert_frame_equal(cone_search_catalog.meta, catalog.meta)
     pd.testing.assert_frame_equal(cone_search_catalog.compute(), catalog.compute())
 
 
@@ -343,11 +344,11 @@ def test_save_catalog_with_some_empty_partitions(small_sky_order1_catalog, tmp_p
 
     # The result of this cone search is known to have one empty partition
     cone_search_catalog = small_sky_order1_catalog.cone_search(0, -80, 15 * 3600)
-    assert cone_search_catalog._ddf.npartitions == 2
+    assert len(cone_search_catalog._operation.healpix_pixels) == 2
 
     non_empty_pixels = []
-    for pixel, partition_index in cone_search_catalog._ddf_pixel_map.items():
-        if len(cone_search_catalog._ddf.partitions[partition_index]) > 0:
+    for pixel in cone_search_catalog.get_healpix_pixels():
+        if len(cone_search_catalog.partitions[pixel].compute()) > 0:
             non_empty_pixels.append(pixel)
     assert len(non_empty_pixels) == 1
 
@@ -356,27 +357,20 @@ def test_save_catalog_with_some_empty_partitions(small_sky_order1_catalog, tmp_p
     # Confirm that we can read the catalog from disk, and that it was
     # written with no empty partitions
     catalog = lsdb.read_hats(base_catalog_path)
-    assert catalog._ddf.npartitions == 1
-    assert len(catalog._ddf.partitions[0]) > 0
-    assert list(catalog._ddf_pixel_map.keys()) == non_empty_pixels
+    assert len(catalog._operation.healpix_pixels) == 1
+    assert len(catalog.partitions[0].compute()) > 0
+    assert list(catalog._operation.healpix_pixels) == non_empty_pixels
 
 
 def _write_partial_catalog(catalog, path, pixels_to_write):
-    partitions = catalog._ddf.to_delayed()
-    results, pixels = [], []
-    for pixel in pixels_to_write:
-        partition_index = catalog._ddf_pixel_map[pixel]
-        results.append(
-            perform_write(
-                partitions[partition_index],
-                pixel,
-                path,
-                catalog.hc_structure.catalog_info.skymap_order,
-                **set_default_write_table_kwargs(None),
-            )
-        )
-        pixels.append(pixel)
-    dask.compute(*results)
+    catalog.partitions[pixels_to_write].map_partitions(
+        perform_write,
+        path,
+        catalog.hc_structure.catalog_info.skymap_order,
+        meta=WRITE_RESULT_META,
+        include_pixel=True,
+        **set_default_write_table_kwargs(None),
+    ).compute()
 
 
 def _copy_metadata_files(reference_catalog_path, base_catalog_path):
