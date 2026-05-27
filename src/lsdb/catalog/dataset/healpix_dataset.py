@@ -323,7 +323,7 @@ class HealpixDataset:
 
     @property
     def name(self):
-        """The name of the catalog"""
+        """The name of the catalog. To change it, use :meth:`rename_catalog`."""
         return self.hc_structure.catalog_name
 
     @property
@@ -916,6 +916,21 @@ class HealpixDataset:
             if new_dec_col != dec_col:
                 updated_params["dec_column"] = new_dec_col
         return self._create_updated_dataset(ddf=ndf, updated_catalog_info_params=updated_params)
+
+    def rename_catalog(self, name: str) -> Self:
+        """Renames the catalog.
+
+        Parameters
+        ----------
+        name : str
+            The new name for the catalog.
+
+        Returns
+        -------
+        Self
+            A new catalog with the updated name.
+        """
+        return self._create_updated_dataset(updated_catalog_info_params={"catalog_name": name})
 
     def cone_search(self, ra: float, dec: float, radius_arcsec: float, fine: bool = True) -> Self:
         """Perform a cone search to filter the catalog.

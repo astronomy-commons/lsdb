@@ -432,6 +432,16 @@ def test_rename_not_ra_dec(small_sky_order1_catalog):
     )
 
 
+def test_rename_catalog(small_sky_xmatch_with_margin):
+    renamed = small_sky_xmatch_with_margin.rename_catalog("new_name")
+    assert renamed.name == "new_name"
+    assert renamed.hc_structure.catalog_info.catalog_name == "new_name"
+    margin_threshold = small_sky_xmatch_with_margin.margin.hc_structure.catalog_info.margin_threshold
+    expected_margin_name = f"new_name_{margin_threshold}arcs"
+    assert renamed.margin.name == expected_margin_name
+    assert renamed.margin.hc_structure.catalog_info.catalog_name == expected_margin_name
+
+
 def test_read_hats(small_sky_catalog, tmp_path):
     new_catalog_name = "small_sky"
     base_catalog_path = Path(tmp_path) / new_catalog_name
