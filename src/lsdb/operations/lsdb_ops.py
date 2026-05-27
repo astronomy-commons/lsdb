@@ -27,7 +27,22 @@ def run_and_verify_meta(func, meta, *args, **kwargs):
             "Function must return the same type as meta for meta inference to work correctly."
         )
     check_meta(result, meta, funcname=funcname(func))
+    if result.index.name != meta.index.name:
+        raise ValueError(
+            f"Metadata mismatch found in `{funcname(func)}`.\n"
+            f"Index name mismatch: result has {result.index.name!r}, meta has {meta.index.name!r}."
+        )
     return result
+
+
+def _verified(func, meta):
+    """Wrap func with run_and_verify_meta while preserving func's name for dask."""
+
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        return run_and_verify_meta(func, meta, *args, **kwargs)
+
+    return wrapper
 
 
 class FromHealpixMap(Operation):
@@ -84,11 +99,7 @@ class FromHealpixMap(Operation):
         for i, pixel in enumerate(self.pixels):
             key = (self.key_name, i)
             map_kwargs = {k: v[i] for k, v in self.map_kwargs.items()} if self.map_kwargs is not None else {}
-            func = (
-                functools.partial(run_and_verify_meta, self.func, self.meta)
-                if self.verify_meta
-                else self.func
-            )
+            func = _verified(self.func, self.meta) if self.verify_meta else self.func
             task = Task(key, func, pixel, *self.args, **self.kwargs, **map_kwargs)
             graph[key] = task
             pixel_keys[pixel] = key
@@ -117,9 +128,9 @@ class EmptyOperation(FromHealpixMap):
 def map_parts_meta(func, base_meta: npd.NestedFrame, *args, include_pixel=False, **kwargs) -> npd.NestedFrame:
     try:
         if include_pixel:
-            result = func(base_meta, HealpixPixel(0, 0), *args, **kwargs)
+            result = func(base_meta.copy(), HealpixPixel(0, 0), *args, **kwargs)
         else:
-            result = func(base_meta, *args, **kwargs)
+            result = func(base_meta.copy(), *args, **kwargs)
     except (KeyError, TypeError, ValueError):
         raise  # let meaningful validation errors through unchanged
     except Exception as e:
@@ -255,8 +266,6 @@ class MapPartitions(Operation):
         graph = previous.graph
         pixel_keys = {}
         func = self.func
-        if self.verify_meta:
-            func = functools.partial(run_and_verify_meta, func, self.meta)
         include_pixel = self.include_pixel
 
         def wrapped_func(df, _partition_index, *args, **kwargs):
@@ -277,7 +286,8 @@ class MapPartitions(Operation):
             if self.include_pixel:
                 args = (HealpixPixel(*pixel),) + args
             key = (self.key_name, i)
-            task = Task(key, wrapped_func, TaskRef(prev_key), i, *args, **self.kwargs)
+            task_func = _verified(wrapped_func, self.meta) if self.verify_meta else wrapped_func
+            task = Task(key, task_func, TaskRef(prev_key), i, *args, **self.kwargs)
             graph[key] = task
             pixel_keys[pixel] = key
         return HealpixGraph(graph, pixel_keys)
@@ -399,7 +409,7 @@ class AlignAndApply(Operation):
         graphs = [op.build() if op is not None else None for op in input_ops]
         metas = self.metas
         catalog_infos = self.catalog_infos
-        func = functools.partial(run_and_verify_meta, self.func, self.meta) if self.verify_meta else self.func
+        func = _verified(self.func, self.meta) if self.verify_meta else self.func
         graph = {}
         pixel_key_map = {}
         for g in graphs:

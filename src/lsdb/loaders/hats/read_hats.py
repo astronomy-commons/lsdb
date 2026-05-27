@@ -506,4 +506,4 @@ def read_pixel(
     )
     if dataframe.index.name != index_column and index_column in dataframe.columns:
         dataframe = dataframe.set_index(index_column)
-    return dataframe
+    return npd.NestedFrame(dataframe)
