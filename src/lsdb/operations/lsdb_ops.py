@@ -27,11 +27,6 @@ def run_and_verify_meta(func, meta, *args, **kwargs):
             "Function must return the same type as meta for meta inference to work correctly."
         )
     check_meta(result, meta, funcname=funcname(func))
-    if result.index.name != meta.index.name:
-        raise ValueError(
-            f"Metadata mismatch found in `{funcname(func)}`.\n"
-            f"Index name mismatch: result has {result.index.name!r}, meta has {meta.index.name!r}."
-        )
     return result
 
 
@@ -154,7 +149,7 @@ def _coerce_to_meta(result) -> npd.NestedFrame:
     if isinstance(result, pd.DataFrame):
         return npd.NestedFrame(result.iloc[:0])
     if isinstance(result, pd.Series):
-        return npd.NestedFrame({"result": pd.Series(dtype=result.dtype)})
+        return npd.NestedFrame({"result": pd.Series(dtype=result.dtype)}, index=result.index)
     if isinstance(result, dict):
         return npd.NestedFrame(
             {
