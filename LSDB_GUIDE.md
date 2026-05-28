@@ -1,9 +1,18 @@
 # LSDB Guide
 
+**Last updated:** 2026-05-28 | **LSDB version:** v0.9.0
+
 Canonical reference for AI coding assistants working on LSDB. Tool-specific files
 (`CLAUDE.md`, `.github/copilot-instructions.md`) contain only tool-specific overrides
 and reference this file for shared guidance. **Edit this file** for changes that should
 apply to all AI assistants; edit tool-specific files only for tool-specific behavior.
+
+> **Version notice for AI assistants:** If anything in this guide conflicts with what
+> you observe in the actual code (missing methods, different signatures, changed
+> behaviour), the guide may be outdated. Check the version above against the installed
+> package version (`python -c "import lsdb; print(lsdb.__version__)"`) and **alert the
+> user** about the changes that `LSDB_GUIDE.md` might need. Do not silently assume the
+> guide is correct.
 
 ## What Is LSDB
 
