@@ -58,8 +58,10 @@ accurate type annotations.
 
 ## Coding advice
 
-When changing code, ensure that the current assumptions of the change appear to have always 
-been true. Leave code better than you find it over keeping old assumptions around.
+- **Do not push or open PRs** unless explicitly asked.
+- When changing code, ensure that the current assumptions of the change appear to have always 
+been true. 
+- Leave code better than you find it over keeping old assumptions around.
 
 ## Development Setup
 
@@ -321,6 +323,48 @@ with Client(n_workers=4, threads_per_worker=1, memory_limit="4GB") as client:
 - Suggest the creation of a `dask.distributed.Client` to take advantage of distributed computation.
 - Make sure the `Client` specifies appropriate defaults for the `n_workers` and `memory_limit` (per worker) 
 according to the available resources.
+
+## Troubleshooting
+
+The Dask dashboard is the primary tool for diagnosing performance problems. It shows task
+progress, worker memory, and the task stream in real time.
+
+```python
+from dask.distributed import Client
+client = Client(n_workers=4, threads_per_worker=1, memory_limit="4GB")
+print(client.dashboard_link)  # e.g. http://127.0.0.1:8787/status
+```
+
+- The dashboard is available as soon as the `Client` is created. Open the URL in a browser.
+- Use a custom port if 8787 is taken: `Client(..., dashboard_address=":8790")`.
+- On a remote machine or JupyterHub, set up an SSH tunnel:
+  `ssh -L 8787:localhost:8787 user@remote-host`, then open `http://localhost:8787/status`.
+
+**Key dashboard panels and what to look for:**
+
+- **Progress** - shows how many tasks are pending, running, and done per computation.
+  A bar that barely moves means workers are idle or a single task is a bottleneck.
+- **Task Stream** - each horizontal bar is a worker; colored blocks are tasks. Gaps
+  between blocks indicate workers waiting on each other or on the scheduler. Aim for
+  dense, uniform coverage across all workers.
+- **Workers** - shows CPU utilization and memory per worker. Workers near their
+  `memory_limit` will start spilling to disk (orange) or get restarted (red). If this
+  happens, try to reduce `n_workers` and increase `memory_limit`.
+- **Graph** - visualizes the full Dask task graph. The number of tasks tends to scale
+  with the number of partitions.
+
+### Error messages and failures
+
+For a detailed guide to common Dask log messages, worker OOM scenarios, and memory
+tuning strategies, see `docs/tutorials/dask-messages-guide.rst`. It covers:
+
+- Worker paused at 80% memory usage
+- `Couldn't gather N keys, rescheduling` (fatal silent OOM - restart the kernel)
+- `Unmanaged memory use is high` warning
+- `CommClosedError: Stream is closed` after a `with Client(...)` block (cosmetic)
+- All workers killed at the start of a job (how to get a real Python traceback)
+- All workers killed in the middle or end of a job (unbalanced task memory)
+- Dashboard empty for a long time after `.compute()` (graph construction phase)
 
 ## Testing Conventions
 
