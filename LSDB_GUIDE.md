@@ -315,7 +315,13 @@ for chunk in stream:
 ```python
 from dask.distributed import Client
 
-with Client(n_workers=4, threads_per_worker=1, memory_limit="4GB") as client:
+with Client(
+    n_workers=4, 
+    threads_per_worker=1, 
+    memory_limit="4GB", 
+    local_directory="/tmp/dask-scratch",
+) as client:
+  
   # Write to HATS (Parquet-based, re-readable by lsdb.open_catalog)
   cat.write_catalog("/output/path")
 
@@ -331,7 +337,7 @@ with Client(n_workers=4, threads_per_worker=1, memory_limit="4GB") as client:
 - Plan the computation by chaining lazy operations and only compute/write the results at the very end!
 - Suggest the creation of a `dask.distributed.Client` to take advantage of distributed computation.
 - Make sure the `Client` specifies appropriate defaults for the `n_workers` and `memory_limit` (per worker) 
-according to the available resources.
+according to the available resources. It should also specify a local temporary directory for Dask to use.
 
 ## Troubleshooting
 
