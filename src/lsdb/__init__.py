@@ -2,6 +2,7 @@ from hats.pixel_math import HealpixPixel
 
 from ._version import __version__
 from .catalog import Catalog, MarginCatalog
+from .core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
 from .core.crossmatch.crossmatch import crossmatch
 from .core.search.region_search import BoxSearch, ConeSearch, PixelSearch, PolygonSearch
 from .io.show_versions import show_versions
