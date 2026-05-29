@@ -23,6 +23,9 @@ Euclid, and Roman. It is built on Dask for distributed parallelization and uses 
 LSDB handles the boilerplate around loading, querying, cross-matching, and transforming
 sky catalogs so astronomers can focus on science.
 
+For a deep dive into the underlying file format and HATS library classes, see 
+[HATS_GUIDE.md](https://github.com/astronomy-commons/hats/blob/main/HATS_GUIDE.md). 
+
 ## Design goals and north stars
 
 **CRITICAL: Always keep these design principles in mind when making changes to LSDB.**
