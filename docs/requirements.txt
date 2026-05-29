@@ -1,4 +1,3 @@
-
 ipykernel
 ipython
 ipywidgets
@@ -6,6 +5,7 @@ jupytext
 lsst-sphgeom
 matplotlib
 nbconvert
+myst-parser
 nbsphinx
 sphinx
 sphinx-copybutton
