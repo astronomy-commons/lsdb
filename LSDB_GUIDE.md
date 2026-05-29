@@ -14,7 +14,7 @@ apply to all AI assistants; edit tool-specific files only for tool-specific beha
 > user** about the changes that `LSDB_GUIDE.md` might need. Do not silently assume the
 > guide is correct.
 
-## What Is LSDB
+## What is LSDB
 
 LSDB is a Python library for scalable spatial analysis of large
 astronomical catalogs, designed to handle order of billion sources from upcoming surveys like LSST,
@@ -23,7 +23,7 @@ Euclid, and Roman. It is built on Dask for distributed parallelization and uses 
 LSDB handles the boilerplate around loading, querying, cross-matching, and transforming
 sky catalogs so astronomers can focus on science.
 
-## Design Goals and North Stars
+## Design goals and north stars
 
 **CRITICAL: Always keep these design principles in mind when making changes to LSDB.**
 
@@ -72,7 +72,7 @@ accurate type annotations.
 been true. 
 - Leave code better than you find it over keeping old assumptions around.
 
-## Development Setup
+## Development setup
 
 - **Python ≥ 3.11** (see `pyproject.toml` `requires-python`)
 - Create a conda env: `conda create -n lsdb python=3.11 && conda activate lsdb`
@@ -86,7 +86,7 @@ been true.
 - For bleeding-edge dependency versions (hats + nested-pandas from `main`): `pip install -r requirements.txt`
 - For documentation dependencies: `pip install -r docs/requirements.txt`
 
-## Common Commands
+## Common commands
 
 ```bash
 # Run the full test suite (includes doctests in src/ and docs/)
@@ -118,7 +118,7 @@ cd docs && make html
 cd benchmarks && asv run --quick
 ```
 
-## Repository Structure
+## Repository structure
 
 ```
 src/lsdb/               Main package
@@ -152,7 +152,7 @@ Key files:
 | `src/lsdb/core/search/abstract_search.py`                   | Abstract class to implement custom spatial searches            |
 | `src/lsdb/dask/`                                            | Internal Dask graph construction - not public API              |
 
-## Architecture: Catalog Class Hierarchy
+## Architecture: Catalog class hierarchy
 
 All catalog types inherit from `HealpixDataset` and carry three core attributes:
 
@@ -160,7 +160,10 @@ All catalog types inherit from `HealpixDataset` and carry three core attributes:
 - `ddf_pixel_map` - `Dict[HealpixPixel, int]` mapping HEALPix pixels to Dask partition indices
 - `hc_structure` - the corresponding `hats` metadata object (no actual data)
 
-### Catalog (`src/lsdb/catalog/catalog.py`)
+### Catalog
+
+Key file: `src/lsdb/catalog/catalog.py`
+
 The primary user-facing class. Wraps a HATS-partitioned sky catalog.
 
 **Key method groups:**
@@ -172,24 +175,36 @@ The primary user-facing class. Wraps a HATS-partitioned sky catalog.
 - **Sampling (eager execution):** `head`, `tail`, `sample`, `random_sample`
 - **Computing (eager execution):** `compute`, `write_catalog`
 
-### MarginCatalog (`src/lsdb/catalog/margin_catalog.py`)
+### MarginCatalog
+
+Key file: `src/lsdb/catalog/margin_catalog.py`
+
 Holds objects from neighboring partitions within a specified angular radius of
 each partition boundary. A `Catalog` has often a corresponding margin which can
 be access via `catalog.margin`.
 
-### MapCatalog (`src/lsdb/catalog/map_catalog.py`)
+### MapCatalog
+
+Key file: `src/lsdb/catalog/map_catalog.py`
+
 Represent non-point-source data (e.g. dust extinction, survey depth values) in a continuous map.
 
-### AssociationCatalog (`src/lsdb/catalog/association_catalog.py`)
+### AssociationCatalog
+
+Key file: `src/lsdb/catalog/association_catalog.py`
+
 Represents the pre-computed result of a crossmatch or join operation. Carries the pixels to join to recreate the full
 crossmatch/join result and any extra columns (e.g. object distance in arcseconds). Each association catalog is defined
 by a `max_separation` (arcseconds) for which the association catalog is valid. When joining catalogs through an
 association, the right catalog must have a margin threshold at least as high as the `max_separation` to ensure all
 matches are captured.
 
-## Architecture: Search and Crossmatch Extension Points
+## Architecture: search and crossmatch
 
-### AbstractSearch (`src/lsdb/core/search/abstract_search.py`)
+### AbstractSearch 
+
+Key file: `src/lsdb/core/search/abstract_search.py`
+
 Subclass to implement a custom spatial filter. Must implement:
 - `filter_hc_catalog(hc_structure)` - return the subset of HEALPix pixels that
   could contain matching objects.
@@ -197,7 +212,10 @@ Subclass to implement a custom spatial filter. Must implement:
 
 Pass an instance to `catalog.search(my_search)`.
 
-### AbstractCrossmatchAlgorithm (`src/lsdb/core/crossmatch/abstract_crossmatch_algorithm.py`)
+### AbstractCrossmatchAlgorithm
+
+Key file: `src/lsdb/core/crossmatch/abstract_crossmatch_algorithm.py`
+
 Subclass to implement a custom crossmatch algorithm and pass an instance to the crossmatch:
 `catalog.crossmatch(other, algorithm=MyCustomAlgorithm())`. The default algorithm
 is `KdTreeCrossmatch`, an efficient implementation using `scipy.spatial.cKDTree` for fast nearest neighbor search.
@@ -218,7 +236,7 @@ A typical LSDB workflow involves:
 5. **Transforming results** with `map_partitions` or `map_rows` for custom computations.
 6. **Writing results** to HATS format for downstream use or sharing.
 
-### Load catalogs
+### Open catalogs
 
 LSDB can handle local or remote catalogs with `fsspec`. All paths are transformed into `UPath` objects internally.
 
@@ -247,9 +265,39 @@ cat = lsdb.generate_catalog(500, 10, seed=1)
 - Only load the columns you need when running your analysis to minimize memory usage and speed up operations. 
 - Use the `columns` argument in `open_catalog` to specify the desired subset of columns.
 
+### Explore metadata
+
+Explore the distribution of the data before using it and modifying it.
+
+```python
+# Number of rows
+n = len(cat)
+
+# Column names and dtypes
+print(cat.dtypes)
+
+# Sky MOC (multi-order coverage) map
+cat.plot_coverage()
+
+# Sky HEALPix map
+cat.plot_pixels()
+
+# Sky point density map (using `hats` library)
+hats.inspection.plot_density(cat.hc_structure)
+
+# Per-column statistics (mean, min, max, etc.)
+column_stats = cat.aggregate_column_statistics()
+
+# Per-pixel statistics (mean, min, max, etc.)
+pixel_stats = cat.per_pixel_statistics()
+
+# Estimated size in KB
+size_kb = cat.est_size()
+```
+
 ### Spatial queries
 ```python
-# Cone search (returns a new Catalog, lazy)
+# Cone search
 result = cat.cone_search(ra=180.0, dec=-30.0, radius_arcsec=3600)
 
 # Box search
@@ -355,7 +403,7 @@ print(client.dashboard_link)  # e.g. http://127.0.0.1:8787/status
 - On a remote machine or JupyterHub, set up an SSH tunnel:
   `ssh -L 8787:localhost:8787 user@remote-host`, then open `http://localhost:8787/status`.
 
-**Key dashboard panels and what to look for:**
+#### What to look for
 
 - **Progress** - shows how many tasks are pending, running, and done per computation.
   A bar that barely moves means workers are idle or a single task is a bottleneck.
@@ -368,7 +416,7 @@ print(client.dashboard_link)  # e.g. http://127.0.0.1:8787/status
 - **Graph** - visualizes the full Dask task graph. The number of tasks tends to scale
   with the number of partitions.
 
-### Error messages and failures
+#### Common error messages and failures
 
 For a detailed guide to common Dask log messages, worker OOM scenarios, and memory
 tuning strategies, see `docs/tutorials/dask-messages-guide.rst`. It covers:
