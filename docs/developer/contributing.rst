@@ -7,6 +7,15 @@ make sure that any discourse is open and inclusive, and we ask that everyone
 involved read and adhere to the 
 `LINCC Frameworks Code of Conduct <https://lsstdiscoveryalliance.org/programs/lincc-frameworks/code-conduct/>`_
 
+Read the LSDB Guide
+-------------------------------------------------------------------------------
+
+Before diving in, read the :doc:`LSDB Guide <lsdb-guide>`.
+It is the canonical reference for LSDB's design principles, core abstractions,
+API conventions, and performance constraints. It was written with AI coding
+assistants in mind, but it is equally useful for any new contributor who wants
+a fast, structured overview of how LSDB works and why it is built the way it is.
+
 Installation from Source
 ------------------------
 
