@@ -450,6 +450,9 @@ class HealpixDataset:
             raise ValueError(f"Column '{bool_col}' must have boolean dtype for boolean filtering")
         pixels = self.get_healpix_pixels()
 
+        if not pixels == boolean_cat.get_healpix_pixels():
+            raise ValueError("Both catalogs must have the same HEALPix partitioning for boolean filtering")
+
         def filter_func(data_df, bool_df, data_pixel, bool_pixel, data_info, bool_info):
             return data_df[bool_df[bool_col].values]
 
