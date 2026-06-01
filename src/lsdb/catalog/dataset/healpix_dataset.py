@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Iterable, Type, cast, overload
 
 import astropy
-import dask
 import dask.dataframe as dd
 import hats as hc
 import nested_pandas as npd
@@ -48,10 +47,9 @@ from lsdb.core.search.region_search import (
 from lsdb.io.schema import get_arrow_schema
 from lsdb.loaders.hats.hats_loading_config import HatsLoadingConfig
 from lsdb.operations.functions.divisions import get_pixels_divisions
-from lsdb.operations.functions.merge_catalog_functions import concat_metas, make_meta
+from lsdb.operations.functions.merge_catalog_functions import align_and_apply, concat_metas, make_meta
 from lsdb.operations.functions.partition_indexer import PartitionIndexer
 from lsdb.operations.lsdb_ops import (
-    EmptyOperation,
     FromSinglePartition,
     MapPartitions,
     SelectColumns,
@@ -427,8 +425,10 @@ class HealpixDataset:
             return new_cat.to_dask_dataframe()
         return new_cat
 
-    def __getitem__(self, item: str | list[str]) -> Self:
-        """Select a column or columns from the catalog, always returning a catalog (not a Series)."""
+    def __getitem__(self, item: str | list[str] | HealpixDataset) -> Self:
+        """Select a column or columns, or filter rows by a boolean single-column catalog."""
+        if isinstance(item, HealpixDataset):
+            return self._filter_by_boolean_catalog(item)
         if isinstance(item, str):
             self._check_unloaded_columns([item])
         elif isinstance(item, Sequence):
@@ -437,6 +437,105 @@ class HealpixDataset:
         if isinstance(meta, npd.NestedFrame) and meta._is_key_list(item):
             return self._apply_partitionwise_operation(SelectColumns, None, item)
         return self._apply_partitionwise_operation(MapPartitions, lambda df, item: df[item], item)
+
+    def _filter_by_boolean_catalog(self, boolean_cat: HealpixDataset) -> Self:
+        """Filter rows using a boolean single-column catalog."""
+        if len(boolean_cat.columns) != 1:
+            raise ValueError(
+                "Boolean filtering requires a single-column boolean catalog. "
+                "Use catalog['column'] > value to create one."
+            )
+        bool_col = boolean_cat.columns[0]
+        if not pd.api.types.is_bool_dtype(boolean_cat.meta.dtypes[bool_col]):
+            raise ValueError(f"Column '{bool_col}' must have boolean dtype for boolean filtering")
+        pixels = self.get_healpix_pixels()
+
+        if not pixels == boolean_cat.get_healpix_pixels():
+            raise ValueError("Both catalogs must have the same HEALPix partitioning for boolean filtering")
+
+        def filter_func(data_df, bool_df, data_pixel, bool_pixel, data_info, bool_info):
+            return data_df[bool_df[bool_col].values]
+
+        new_op = align_and_apply(
+            [(self, pixels), (boolean_cat, pixels)],
+            filter_func,
+            self.meta,
+            pixels,
+        )
+        return self._create_updated_dataset(op=new_op)
+
+    def _check_single_column_for_boolean_op(self, op_name: str) -> None:
+        if len(self.columns) != 1:
+            raise ValueError(
+                f"Operator '{op_name}' requires a single-column catalog. "
+                "Use catalog['column_name'] to select a column first."
+            )
+
+    def _apply_comparison(self, op, other) -> Self:
+        col = self.columns[0]
+        return self.map_partitions(lambda df, v: df.assign(**{col: op(df[col], v)}), other)
+
+    def __gt__(self, other) -> Self:
+        self._check_single_column_for_boolean_op(">")
+        return self._apply_comparison(lambda a, b: a > b, other)
+
+    def __lt__(self, other) -> Self:
+        self._check_single_column_for_boolean_op("<")
+        return self._apply_comparison(lambda a, b: a < b, other)
+
+    def __ge__(self, other) -> Self:
+        self._check_single_column_for_boolean_op(">=")
+        return self._apply_comparison(lambda a, b: a >= b, other)
+
+    def __le__(self, other) -> Self:
+        self._check_single_column_for_boolean_op("<=")
+        return self._apply_comparison(lambda a, b: a <= b, other)
+
+    def __eq__(self, other) -> Self:
+        self._check_single_column_for_boolean_op("==")
+        return self._apply_comparison(lambda a, b: a == b, other)
+
+    def __ne__(self, other) -> Self:
+        self._check_single_column_for_boolean_op("!=")
+        return self._apply_comparison(lambda a, b: a != b, other)
+
+    __hash__ = None
+
+    def __invert__(self) -> Self:
+        """Negate a boolean single-column catalog (~mask)."""
+        self._check_single_column_for_boolean_op("~")
+        col = self.columns[0]
+        if not pd.api.types.is_bool_dtype(self.meta.dtypes[col]):
+            raise ValueError(f"Cannot invert non-boolean column '{col}'")
+        return self.map_partitions(lambda df: df.assign(**{col: ~df[col]}), meta=self.meta)
+
+    def __and__(self, other: HealpixDataset) -> Self:
+        """Combine two boolean single-column catalogs with logical AND (&)."""
+        self._check_single_column_for_boolean_op("&")
+        left_col = self.columns[0]
+        right_col = other.columns[0]
+        pixels = self.get_healpix_pixels()
+        meta = self.meta
+
+        def and_func(left_df, right_df, left_pixel, right_pixel, left_info, right_info):
+            return npd.NestedFrame({left_col: left_df[left_col] & right_df[right_col]})
+
+        new_op = align_and_apply([(self, pixels), (other, pixels)], and_func, meta, pixels)
+        return self._create_updated_dataset(op=new_op)
+
+    def __or__(self, other: HealpixDataset) -> Self:
+        """Combine two boolean single-column catalogs with logical OR (|)."""
+        self._check_single_column_for_boolean_op("|")
+        left_col = self.columns[0]
+        right_col = other.columns[0]
+        pixels = self.get_healpix_pixels()
+        meta = self.meta
+
+        def or_func(left_df, right_df, left_pixel, right_pixel, left_info, right_info):
+            return npd.NestedFrame({left_col: left_df[left_col] | right_df[right_col]})
+
+        new_op = align_and_apply([(self, pixels), (other, pixels)], or_func, meta, pixels)
+        return self._create_updated_dataset(op=new_op)
 
     def __len__(self):
         """The number of rows in the catalog.

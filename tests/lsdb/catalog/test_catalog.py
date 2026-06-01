@@ -1079,3 +1079,71 @@ def test_to_dask_dataframe(small_sky_order1_catalog):
     assert isinstance(ddf, dd.DataFrame)
     pd.testing.assert_frame_equal(ddf.compute(), small_sky_order1_catalog.compute())
     assert isinstance(ddf.compute(), npd.NestedFrame)
+
+
+def test_boolean_filter_gt(small_sky_order1_catalog):
+    threshold = 300
+    filtered = small_sky_order1_catalog[small_sky_order1_catalog["ra"] > threshold]
+    assert isinstance(filtered, Catalog)
+    result = filtered.compute()
+    assert (result["ra"] > threshold).all()
+
+
+def test_boolean_filter_lt(small_sky_order1_catalog):
+    threshold = 300
+    filtered = small_sky_order1_catalog[small_sky_order1_catalog["ra"] < threshold]
+    result = filtered.compute()
+    assert (result["ra"] < threshold).all()
+
+
+def test_boolean_filter_and(small_sky_order1_catalog):
+    filtered = small_sky_order1_catalog[
+        (small_sky_order1_catalog["ra"] > 280) & (small_sky_order1_catalog["ra"] < 320)
+    ]
+    result = filtered.compute()
+    assert ((result["ra"] > 280) & (result["ra"] < 320)).all()
+
+
+def test_boolean_filter_or(small_sky_order1_catalog):
+    filtered = small_sky_order1_catalog[
+        (small_sky_order1_catalog["ra"] < 200) | (small_sky_order1_catalog["ra"] > 300)
+    ]
+    result = filtered.compute()
+    assert ((result["ra"] < 200) | (result["ra"] > 300)).all()
+
+
+def test_boolean_filter_invert(small_sky_order1_catalog):
+    threshold = 300
+    filtered = small_sky_order1_catalog[~(small_sky_order1_catalog["ra"] > threshold)]
+    result = filtered.compute()
+    assert (result["ra"] <= threshold).all()
+
+
+def test_boolean_filter_eq(small_sky_order1_catalog):
+    all_ids = small_sky_order1_catalog.compute()["id"]
+    target_id = int(all_ids.iloc[0])
+    filtered = small_sky_order1_catalog[small_sky_order1_catalog["id"] == target_id]
+    result = filtered.compute()
+    assert len(result) == 1
+    assert int(result["id"].iloc[0]) == target_id
+
+
+def test_boolean_filter_preserves_columns(small_sky_order1_catalog):
+    original_cols = small_sky_order1_catalog.columns.tolist()
+    filtered = small_sky_order1_catalog[small_sky_order1_catalog["ra"] > 0]
+    assert filtered.columns.tolist() == original_cols
+
+
+def test_boolean_filter_errors_on_multi_column(small_sky_order1_catalog):
+    with pytest.raises(ValueError, match="single-column"):
+        _ = small_sky_order1_catalog > 0
+
+
+def test_boolean_filter_errors_on_non_boolean(small_sky_order1_catalog):
+    with pytest.raises(ValueError, match="boolean dtype"):
+        small_sky_order1_catalog[small_sky_order1_catalog["ra"]]
+
+
+def test_boolean_filter_errors_on_different_partitioning(small_sky_catalog, small_sky_order1_catalog):
+    with pytest.raises(ValueError, match="same HEALPix partitioning"):
+        small_sky_order1_catalog[small_sky_catalog["ra"] > 0]
