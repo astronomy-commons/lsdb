@@ -44,6 +44,8 @@ from lsdb.types import DaskDFPixelMap
 
 def _default_suffixes(left_name: str, right_name: str) -> tuple[str, str]:
     """Return the default pair of suffixes for left/right catalog names."""
+    if left_name == right_name:
+        return ("_l", "_r")
     return (f"_{left_name}", f"_{right_name}")
 
 
