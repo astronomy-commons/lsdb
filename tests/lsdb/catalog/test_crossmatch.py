@@ -976,6 +976,6 @@ def test_crossmatch_nested_inner_join_no_nulls_in_nested_column():
 def test_self_crossmatch_default_suffixes(small_sky_catalog):
     result = small_sky_catalog.crossmatch(small_sky_catalog).compute()
     for col in small_sky_catalog.columns:
-        assert f"{col}_l" in result.columns
-        assert f"{col}_r" in result.columns
+        assert f"{col}" in result.columns
+        assert f"{col}_right" in result.columns
     assert len(set(result.columns)) == len(result.columns)
