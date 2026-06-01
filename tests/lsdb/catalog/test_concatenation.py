@@ -704,10 +704,15 @@ def test_concat_kwargs_forwarding_does_not_change_content(test_data_dir):
     concat_default = left.concat(right)
     concat_kwargs = left.concat(right, ignore_index=True)
 
-    df_default = concat_default.compute().reset_index()
-    df_kwargs = concat_kwargs.compute().reset_index()
+    result_default = concat_default.compute()
+    result_kwargs = concat_kwargs.compute()
+
+    df_default = result_default.reset_index(drop=True)
+    df_kwargs = result_kwargs.reset_index(drop=True)
     df_default, df_kwargs = _align_columns(df_default, df_kwargs)
-    pd.testing.assert_frame_equal(df_default, df_kwargs, check_dtype=False)
+    pd.testing.assert_frame_equal(df_default, df_kwargs)
+
+    assert result_default.index != result_kwargs.index
 
 
 def test_concat_both_margins_uses_smallest_threshold(small_sky_order1_collection_dir, test_data_dir):

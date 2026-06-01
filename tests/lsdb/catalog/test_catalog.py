@@ -39,9 +39,9 @@ def test_catalog_pixels_equals_hc_catalog_pixels(small_sky_order1_catalog, small
     assert small_sky_order1_catalog.get_healpix_pixels() == small_sky_order1_hats_catalog.get_healpix_pixels()
 
 
-#def test_catalog_repr_equals_ddf_repr(small_sky_order1_catalog):
+# def test_catalog_repr_equals_ddf_repr(small_sky_order1_catalog):
 #    # TODO: Failing as repr is just the operation name
-     # Switching to data_repr, which will not be the same as ddf but is reasonable
+# Switching to data_repr, which will not be the same as ddf but is reasonable
 #    assert repr(small_sky_order1_catalog) == repr(small_sky_order1_catalog.to_dask_dataframe())
 
 
@@ -64,8 +64,9 @@ def test_catalog_html_repr_empty(small_sky_order1_catalog):
 
 
 def test_catalog_compute_equals_ddf_compute(small_sky_order1_catalog):
-    pd.testing.assert_frame_equal(small_sky_order1_catalog.compute(),
-                                  small_sky_order1_catalog.to_dask_dataframe().compute())
+    pd.testing.assert_frame_equal(
+        small_sky_order1_catalog.compute(), small_sky_order1_catalog.to_dask_dataframe().compute()
+    )
 
 
 def test_catalog_compute_shows_progress_bar(small_sky_order1_catalog, mocker):
@@ -128,8 +129,7 @@ def test_get_catalog_partition_gets_correct_partition(small_sky_order1_catalog):
         partition = small_sky_order1_catalog.get_partition(hp_order, hp_pixel)
         assert isinstance(partition, Catalog)
         pd.testing.assert_frame_equal(
-            partition.compute(),
-            small_sky_order1_catalog.partitions[healpix_pixel].compute()
+            partition.compute(), small_sky_order1_catalog.partitions[healpix_pixel].compute()
         )
 
 
@@ -156,6 +156,7 @@ def test_head_rows_less_than_requested(small_sky_order1_catalog):
     # Use map_partitions to return just 4 rows (first from each partition)
     def _get_first_row(df):
         return df.iloc[[0]]
+
     head_cat = small_sky_order1_catalog.map_partitions(_get_first_row, meta=small_sky_order1_catalog.meta)
     # The head only contains four values
     assert len(head_cat.head()) == 4
@@ -197,6 +198,7 @@ def test_tail_rows_less_than_requested(small_sky_order1_catalog):
     # Use map_partitions to return just 4 rows (first from each partition)
     def _get_first_row(df):
         return df.iloc[[0]]
+
     head_cat = small_sky_order1_catalog.map_partitions(_get_first_row, meta=small_sky_order1_catalog.meta)
     # The head only contains four values
     assert len(head_cat.tail()) == 4
@@ -308,9 +310,7 @@ def test_query_margin(small_sky_xmatch_with_margin):
         (small_sky_xmatch_with_margin_ddf["ra"] > 300) & (small_sky_xmatch_with_margin_ddf["dec"] < -50)
     ]
     margin_ddf = small_sky_xmatch_with_margin.margin.to_dask_dataframe()
-    expected_margin_ddf = margin_ddf.copy()[
-        (margin_ddf["ra"] > 300) & (margin_ddf["dec"] < -50)
-    ]
+    expected_margin_ddf = margin_ddf.copy()[(margin_ddf["ra"] > 300) & (margin_ddf["dec"] < -50)]
 
     result_catalog = small_sky_xmatch_with_margin.query("ra > 300 and dec < -50")
     assert result_catalog.margin is not None
@@ -323,10 +323,10 @@ def test_drop(small_sky_with_nested_sources):
 
     expected_cat = small_sky_with_nested_sources.drop(cols_to_delete)
     expected_cols = expected_cat.meta.base_columns + expected_cat.meta.get_subcolumns()
-    actual_cols = small_sky_with_nested_sources.meta.base_columns + small_sky_with_nested_sources.meta.get_subcolumns()
-    assert expected_cols == [
-        c for c in actual_cols if c not in cols_to_delete
-    ]
+    actual_cols = (
+        small_sky_with_nested_sources.meta.base_columns + small_sky_with_nested_sources.meta.get_subcolumns()
+    )
+    assert expected_cols == [c for c in actual_cols if c not in cols_to_delete]
 
     # The columns do not exist, and errors="raise"
     with pytest.raises(KeyError):
@@ -595,6 +595,7 @@ def test_square_bracket_columns_default_columns(small_sky_order1_default_cols_ca
     helpers.assert_schema_correct(column_subset)
     helpers.assert_default_columns_in_columns(column_subset)
 
+
 """
 def test_square_bracket_column(small_sky_order1_catalog):
     column_name = "ra"
@@ -616,6 +617,7 @@ def test_square_bracket_filter(small_sky_order1_catalog, helpers):
     )
     helpers.assert_schema_correct(filtered_id)
 """
+
 
 def test_map_partitions(small_sky_order1_catalog):
     def add_col(df, new_col_name, *, increment_value):
@@ -663,6 +665,7 @@ def test_map_partitions_specify_meta(small_sky_order1_catalog):
 def test_map_partitions_non_df(small_sky_order1_catalog):
     def get_col(df):
         return df["ra"] + 1
+
     mapped = small_sky_order1_catalog.map_partitions(get_col)
 
     assert isinstance(mapped, Catalog)

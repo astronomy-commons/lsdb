@@ -189,9 +189,6 @@ def _concat_meta_safe(meta: pd.DataFrame, parts: list[pd.DataFrame | None], **kw
     if not keep:
         return _reindex_and_coerce_dtypes(meta.iloc[0:0].copy(), meta)
 
-    if len(keep) == 1:
-        return _reindex_and_coerce_dtypes(keep[0], meta)
-
     # Reindex and coerce all kept DataFrames to meta before concatenation
     keep = [_reindex_and_coerce_dtypes(df, meta) for df in keep]
     out = pd.concat(keep, **kwargs)
