@@ -429,11 +429,15 @@ def _load_dask_df_and_map(catalog: HCHealpixDataset, config) -> tuple[nd.NestedF
     pixels = catalog.get_healpix_pixels()
     ordered_pixels = np.array(pixels)[get_pixel_argsort(pixels)]
     divisions = get_pixels_divisions(ordered_pixels)
-    dask_meta_schema = _load_dask_meta_schema(catalog, config)
-    index_column = dask_meta_schema.index.name
+
+    # Assign query parameters before a potential change of `config.columns`
+    # by _load_dask_meta_schema call.
     query_url_params = None
     if isinstance(file_io.get_upath(catalog.catalog_base_dir).fs, HTTPFileSystem):
         query_url_params = config.make_query_url_params()
+
+    dask_meta_schema = _load_dask_meta_schema(catalog, config)
+    index_column = dask_meta_schema.index.name
     npix_suffix = catalog.catalog_info.npix_suffix
     if len(ordered_pixels) > 0:
         ddf = nd.NestedFrame.from_map(

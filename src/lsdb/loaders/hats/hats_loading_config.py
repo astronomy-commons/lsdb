@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from copy import copy
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable
@@ -89,7 +90,7 @@ class HatsLoadingConfig:
         url_params: dict[str, Any] = {}
 
         if self.columns and len(self.columns) > 0:
-            url_params["columns"] = self.columns
+            url_params["columns"] = copy(self.columns)
 
         if self.filters:
             filters = []
