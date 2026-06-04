@@ -235,7 +235,7 @@ class MapPartitions(Operation):
     def key_name(self) -> str:
         return f"{funcname(self.func)}-{_tokenize_deterministic(self.func, self.base.meta, self.base.key_name, self.args, self.kwargs)}"
 
-    @property
+    @functools.cached_property
     def meta(self) -> npd.NestedFrame:
         if self._meta is not None:
             return self._meta
@@ -262,6 +262,7 @@ class MapPartitions(Operation):
         pixel_keys = {}
         func = self.func
         include_pixel = self.include_pixel
+        meta = self.meta
 
         def wrapped_func(df, _partition_index, *args, **kwargs):
             try:
@@ -281,7 +282,7 @@ class MapPartitions(Operation):
             if self.include_pixel:
                 args = (HealpixPixel(*pixel),) + args
             key = (self.key_name, i)
-            task_func = _verified(wrapped_func, self.meta) if self.verify_meta else wrapped_func
+            task_func = _verified(wrapped_func, meta) if self.verify_meta else wrapped_func
             task = Task(key, task_func, TaskRef(prev_key), i, *args, **self.kwargs)
             graph[key] = task
             pixel_keys[pixel] = key
