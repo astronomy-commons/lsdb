@@ -239,6 +239,7 @@ def to_hats(
     progress_bar: bool = True,
     tqdm_kwargs=None,
     create_thumbnail: bool = False,
+    create_metadata: bool = True,
     skymap_alt_orders: list[int] | None = None,
     addl_hats_properties: dict | None = None,
     error_if_empty: bool = True,
@@ -342,7 +343,9 @@ def to_hats(
     # Save parquet metadata and create a data thumbnail if needed
     hats_max_rows = int(max(counts)) if counts else 0
 
-    _write_parquet_metadata(base_catalog_path, catalog, create_thumbnail, hats_max_rows, pixels)
+    _write_parquet_metadata(
+        base_catalog_path, catalog, create_thumbnail, hats_max_rows, pixels, create_metadata=create_metadata
+    )
     # Save partition info
     PartitionInfo(pixels).write_to_file(base_catalog_path / "partition_info.csv")
 
@@ -410,12 +413,16 @@ def _write_parquet_metadata(
     create_thumbnail: bool,
     hats_max_rows: int,
     pixels: list[Any],
+    create_metadata: bool = True,
 ):
     """Writes the parquet metadata for the catalog. If there are no pixels,
     writes empty metadata files with the correct schema."""
     if len(pixels) > 0:
         hc.io.write_parquet_metadata(
-            base_catalog_path, create_thumbnail=create_thumbnail, thumbnail_threshold=hats_max_rows
+            base_catalog_path,
+            create_thumbnail=create_thumbnail,
+            thumbnail_threshold=hats_max_rows,
+            create_metadata=create_metadata,
         )
     else:
         metadata_path = hc.io.paths.get_parquet_metadata_pointer(base_catalog_path)
