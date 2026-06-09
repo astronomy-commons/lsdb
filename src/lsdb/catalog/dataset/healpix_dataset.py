@@ -65,12 +65,6 @@ if TYPE_CHECKING:
 
 COMPUTE_SIZE_WARNING_THRESHOLD_KiB = 1 << 20  # pylint: disable=invalid-name
 
-FILTER_COLUMN_NAME = "filter_series"
-
-
-def filter_func(data_df, series_df, data_pixel, bool_pixel, data_info, bool_info):
-    return data_df[series_df[FILTER_COLUMN_NAME]]
-
 
 # pylint: disable=protected-access,too-many-public-methods,too-many-lines,import-outside-toplevel,cyclic-import
 class HealpixDataset:
@@ -430,11 +424,15 @@ class HealpixDataset:
 
         healpix_pixels = self.get_healpix_pixels()
 
-        series_df = series.to_frame(FILTER_COLUMN_NAME)
+        filter_column_name = "filter_series"
+        series_df = series.to_frame(filter_column_name)
 
         operation = FromDaskExpression(series_df.expr, healpix_pixels)
 
         filter_cat = HealpixDataset(operation, self.hc_structure)
+
+        def filter_func(data_df, series_df, data_pixel, bool_pixel, data_info, bool_info):
+            return data_df[series_df[filter_column_name]]
 
         new_op = align_and_apply(
             [(self, healpix_pixels), (filter_cat, healpix_pixels)],
