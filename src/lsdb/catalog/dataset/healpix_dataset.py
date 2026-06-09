@@ -47,6 +47,7 @@ from lsdb.core.search.region_search import (
 )
 from lsdb.io.schema import get_arrow_schema
 from lsdb.loaders.hats.hats_loading_config import HatsLoadingConfig
+from lsdb.operations.expressions import FromOperation, FromDaskExpression
 from lsdb.operations.functions.divisions import get_pixels_divisions
 from lsdb.operations.functions.merge_catalog_functions import align_and_apply, concat_metas, make_meta
 from lsdb.operations.functions.partition_indexer import PartitionIndexer
@@ -65,6 +66,12 @@ if TYPE_CHECKING:
 
 
 COMPUTE_SIZE_WARNING_THRESHOLD_KiB = 1 << 20  # pylint: disable=invalid-name
+
+FILTER_COLUMN_NAME = "filter_series"
+
+
+def filter_func(data_df, series_df, data_pixel, bool_pixel, data_info, bool_info):
+    return data_df[series_df[FILTER_COLUMN_NAME]]
 
 
 # pylint: disable=protected-access,too-many-public-methods,too-many-lines,import-outside-toplevel,cyclic-import
@@ -426,18 +433,45 @@ class HealpixDataset:
             return new_cat.to_dask_dataframe()
         return new_cat
 
-    def __getitem__(self, item: str | list[str] | HealpixDataset) -> Self:
+    def __getitem__(self, item: str | list[str] | HealpixDataset) -> Self | dd.Series:
         """Select a column or columns, or filter rows by a boolean single-column catalog."""
         if isinstance(item, HealpixDataset):
             return self._filter_by_boolean_catalog(item)
+        if isinstance(item, dd.Series):
+            return self._filter_by_dask_series(item)
         if isinstance(item, str):
             self._check_unloaded_columns([item])
+            single_column_catalog = self[[item]]
+            return single_column_catalog.to_dask_dataframe()[item]
         elif isinstance(item, Sequence):
             self._check_unloaded_columns([col for col in item if isinstance(col, str)])
         meta = self.meta
         if isinstance(meta, npd.NestedFrame) and meta._is_key_list(item):
             return self._apply_partitionwise_operation(SelectColumns, None, item)
         return self._apply_partitionwise_operation(MapPartitions, lambda df, item: df[item], item)
+
+    def _filter_by_dask_series(self, series: dd.Series) -> Self:
+        """Filter rows using a dask Series."""
+        if series.npartitions != len(self.get_healpix_pixels()):
+            raise ValueError(
+                "Number of partitions in Series must match the number of partitions in the catalog"
+            )
+
+        healpix_pixels = self.get_healpix_pixels()
+
+        series_df = series.to_frame(FILTER_COLUMN_NAME)
+
+        operation = FromDaskExpression(series_df.expr, healpix_pixels)
+
+        filter_cat = HealpixDataset(operation, self.hc_structure)
+
+        new_op = align_and_apply(
+            [(self, healpix_pixels), (filter_cat, healpix_pixels)],
+            filter_func,
+            self.meta,
+            healpix_pixels,
+        )
+        return self._create_updated_dataset(op=new_op)
 
     def _filter_by_boolean_catalog(self, boolean_cat: HealpixDataset) -> Self:
         """Filter rows using a boolean single-column catalog."""
@@ -703,7 +737,7 @@ class HealpixDataset:
             return self.meta.copy()
         return npd.NestedFrame(pd.concat(result))
 
-    def to_dask_dataframe(self, optimize_graph=False, divisions=True):
+    def to_dask_dataframe(self):
         """Converts to a Dask DataFrame
 
         Parameters
@@ -717,16 +751,10 @@ class HealpixDataset:
             pixels. If True, will set divisions to the HEALPix pixels. If
             False, will not set divisions.
         """
-        meta = self.meta
-        if divisions:
-            pixels = self.get_ordered_healpix_pixels()
-            divisions = get_pixels_divisions(pixels)
-        else:
-            divisions = None
+        expr = FromOperation(self._operation)
+        df = dd.DataFrame(expr)
 
-        delayed_tasks = self.to_delayed(optimize_graph=optimize_graph)
-
-        return dd.from_delayed(delayed_tasks, meta=meta, divisions=divisions)
+        return df
 
     def to_delayed(self, optimize_graph: bool = False) -> list[Delayed]:
         """Get a list of Dask Delayed objects for each partition in the dataset

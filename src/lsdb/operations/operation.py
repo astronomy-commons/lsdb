@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from typing import Self
 
 import nested_pandas as npd
+from hats import HealpixPixel
 
 
 class HealpixGraph:
@@ -56,7 +57,7 @@ class Operation(ABC):
 
     @property
     @abstractmethod
-    def healpix_pixels(self) -> list[HealpixGraph]:
+    def healpix_pixels(self) -> list[HealpixPixel]:
         """Returns the list of HEALPix pixels that this operation's partitions correspond to"""
         pass
 
