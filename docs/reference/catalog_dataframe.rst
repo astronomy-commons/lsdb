@@ -11,6 +11,5 @@ Dataframe Methods
     Catalog.write_catalog
     Catalog.compute
     Catalog.get_partition
-    Catalog.get_partition_index
     Catalog.prune_empty_partitions
     Catalog.to_dask_dataframe

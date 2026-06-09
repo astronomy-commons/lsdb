@@ -105,6 +105,7 @@ def open_catalog(
           - pixel: HealpixPixel - pixel to generate path for
           - query_params: dict | None - dictionary used to generate HTTP query string
           - npix_suffix: str - "/" for leaf directory, filename suffix like ".parquet" for leaf file
+
         The catalog metadata files need to live where the HATS standard expects them.
         Defaults to `hats.io.pixel_catalog_file`.
     **kwargs

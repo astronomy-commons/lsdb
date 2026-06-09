@@ -11,7 +11,7 @@ Construction
     open_catalog
     from_dataframe
     from_astropy
-    nested.datasets.generation.generate_catalog
+    catalog.generation.generate_catalog
 
 Materializing
 ~~~~~~~~~~~~~~~~~~
