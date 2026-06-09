@@ -12,6 +12,5 @@ Dataframe Methods
     Catalog.compute
     Catalog.to_delayed
     Catalog.get_partition
-    Catalog.get_partition_index
     Catalog.prune_empty_partitions
     Catalog.to_dask_dataframe

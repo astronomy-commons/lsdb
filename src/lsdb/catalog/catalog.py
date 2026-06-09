@@ -1034,8 +1034,8 @@ class Catalog(HealpixDataset):
         This is an inner join: only rows with matching join keys are returned (unmatched rows are dropped).
 
         The operation only joins data from matching partitions, and does not join rows that have a matching
-        column value but are in separate partitions in the sky. For a more general join, see the `merge`
-        function.
+        column value but are in separate partitions in the sky. For a more general join, consider using Dasks
+        `merge` function by converting the catalog to a Dask DataFrame with `to_dask_dataframe`.
 
         Parameters
         ----------
@@ -1165,7 +1165,8 @@ class Catalog(HealpixDataset):
 
         The operation only joins data from matching partitions and their margin caches, and does not join rows
         that have a matching column value but are in separate partitions in the sky. For a more general join,
-        see the `merge` function.
+        consider using Dasks `merge` function by converting the catalog to a Dask DataFrame with
+        `to_dask_dataframe`.
 
         Parameters
         ----------
