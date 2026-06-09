@@ -233,7 +233,8 @@ class MapPartitions(Operation):
 
     @functools.cached_property
     def key_name(self) -> str:
-        return f"{funcname(self.func)}-{_tokenize_deterministic(self.func, self.base.meta, self.base.key_name, self.args, self.kwargs)}"
+        func_name = funcname(self.func) if self.class_func is None else type(self).__name__
+        return f"{func_name}-{_tokenize_deterministic(self.func, self.base.meta, self.base.key_name, self.args, self.kwargs)}"
 
     @functools.cached_property
     def meta(self) -> npd.NestedFrame:
