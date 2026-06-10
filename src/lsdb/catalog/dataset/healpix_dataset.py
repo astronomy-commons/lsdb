@@ -1116,8 +1116,10 @@ class HealpixDataset:
         >>> import lsdb
         >>> catalog = lsdb.generate_catalog(5, 1, seed=1)
         >>> catalog = catalog.drop(["a","b","nested.flux_err"])
-        >>> catalog.meta.columns + catalog.meta.get_subcolumns()
-        ['ra', 'dec', 'id', 'nested', 'nested.t', 'nested.flux', 'nested.flux_error', 'nested.band']
+        >>> list(catalog.meta.columns)
+        ['ra', 'dec', 'id', 'nested']
+        >>> list(catalog.meta.get_subcolumns())
+        ['nested.t', 'nested.flux', 'nested.flux_error', 'nested.band']
         """
         return self.map_partitions(
             lambda x: cast(npd.NestedFrame, npd.NestedFrame(x).drop(columns=columns, errors=errors)),
@@ -1798,26 +1800,23 @@ class HealpixDataset:
 
         if meta is None:
             raise ValueError("Please specify `meta`.")
-        self_meta = self._ddf._meta.copy()
+        self_meta = self.meta.copy()
         meta = npd.NestedFrame(make_meta(meta))
 
         if append_columns:
+            ra_col = self.hc_structure.catalog_info.ra_column
+            dec_col = self.hc_structure.catalog_info.dec_column
             overlapping_columns = set(self_meta.columns) & set(meta.columns)
             if overlapping_columns:
                 raise ValueError(
                     f"`meta` specifies columns to append that already exist: {list(overlapping_columns)}."
                 )
+            if ra_col in meta.columns or dec_col in meta.columns:
+                raise ValueError("ra and dec columns can not be modified using `map_rows`")
             added_nested_subcols = [str(col) for col in meta.columns if "." in str(col)]
             self_meta = self_meta.assign(**{col: meta[col] for col in added_nested_subcols})
             meta = meta.drop(columns=added_nested_subcols)
-            return concat_metas([self_meta, meta])
-
-        if append_columns:
-            self_meta = self.meta.copy()
-            meta = npd.NestedFrame(make_meta(meta))
-            if ra_column in meta.columns or dec_column in meta.columns:
-                raise ValueError("ra and dec columns can not be modified using `map_rows`")
-            meta = _make_result_meta(self_meta, meta)
+            meta = concat_metas([self_meta, meta])
 
         def perform_map_rows(df, func, *args, **kwargs):
             return df.map_rows(func, *args, **kwargs)
@@ -1837,7 +1836,12 @@ class HealpixDataset:
 
         hc_updates = {}
         if not append_columns:
-            hc_updates = {"ra_column": "", "dec_column": ""}
+            ra_col = self.hc_structure.catalog_info.ra_column
+            dec_col = self.hc_structure.catalog_info.dec_column
+            hc_updates = {
+                "ra_column": ra_col if ra_col in meta.columns else "",
+                "dec_column": dec_col if dec_col in meta.columns else "",
+            }
         return self._create_updated_dataset(op=op, updated_catalog_info_params=hc_updates)
 
     # pylint: disable=duplicate-code

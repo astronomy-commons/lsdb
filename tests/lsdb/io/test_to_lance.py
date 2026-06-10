@@ -94,7 +94,7 @@ def test_to_lance_multiple_partitions(small_sky_order1_catalog, tmp_path):
     lancedb = pytest.importorskip("lancedb")
 
     ds_path = tmp_path / "small_sky_order1"
-    assert len(small_sky_order1_catalog._ddf_pixel_map) > 1, "fixture must have >1 partition"
+    assert small_sky_order1_catalog.npartitions > 1, "fixture must have >1 partition"
     small_sky_order1_catalog.to_lance(ds_path)
 
     db = lancedb.connect(str(ds_path))
@@ -120,7 +120,7 @@ def test_to_lance_nested_partitions(small_sky_with_nested_sources, tmp_path):
     lancedb = pytest.importorskip("lancedb")
 
     ds_path = tmp_path / "small_sky_nested"
-    assert len(small_sky_with_nested_sources._ddf_pixel_map) > 1, "fixture must have >1 partition"
+    assert small_sky_with_nested_sources.npartitions > 1, "fixture must have >1 partition"
     small_sky_with_nested_sources.to_lance(ds_path)
 
     db = lancedb.connect(str(ds_path))

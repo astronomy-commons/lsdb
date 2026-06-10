@@ -19,16 +19,22 @@ def test_nest_lists(small_sky_with_nested_sources):
     def listify_sources(nf):
         nf_result = nf.join(nf["sources"].to_lists())
         # Need to set dtypes properly
-        return nf_result.astype({"source_id": pd.ArrowDtype(pa.list_(pa.int64())),
-                                 "source_ra": pd.ArrowDtype(pa.list_(pa.float64())),
-                                 "source_dec": pd.ArrowDtype(pa.list_(pa.float64())),
-                                 "mag": pd.ArrowDtype(pa.list_(pa.float64()))})
+        return nf_result.astype(
+            {
+                "source_id": pd.ArrowDtype(pa.list_(pa.int64())),
+                "source_ra": pd.ArrowDtype(pa.list_(pa.float64())),
+                "source_dec": pd.ArrowDtype(pa.list_(pa.float64())),
+                "mag": pd.ArrowDtype(pa.list_(pa.float64())),
+            }
+        )
+
     meta_sampler = small_sky_with_nested_sources.head(1)
     meta = listify_sources(meta_sampler)
     list_sources = small_sky_with_nested_sources.map_partitions(listify_sources, meta=meta)
 
-    cat_renested = list_sources.nest_lists(name="repacked",
-                                           list_columns=["source_id", "source_ra", "source_dec", "mag"])
+    cat_renested = list_sources.nest_lists(
+        name="repacked", list_columns=["source_id", "source_ra", "source_dec", "mag"]
+    )
 
     assert "repacked.source_id" in cat_renested.exploded_columns
     assert "repacked.source_ra" in cat_renested.exploded_columns
@@ -67,8 +73,9 @@ def test_map_rows(small_sky_with_nested_sources):
             row_container="args",
         )
 
-    reduced_mp_cat = small_sky_with_nested_sources.map_partitions(map_row_part,
-                                                                  meta=reduced_cat_compute.head(0))
+    reduced_mp_cat = small_sky_with_nested_sources.map_partitions(
+        map_row_part, meta=reduced_cat_compute.head(0)
+    )
 
     pd.testing.assert_frame_equal(reduced_cat_compute, reduced_mp_cat.compute())
 
@@ -92,11 +99,11 @@ def test_map_rows_append_columns(small_sky_with_nested_sources):
     assert isinstance(reduced_cat_compute, npd.NestedFrame)
 
     def map_row_part(nf):
-        return nf.map_rows(
-            mean_mag, columns=["sources.mag"], row_container="args", append_columns=True
-        )
+        return nf.map_rows(mean_mag, columns=["sources.mag"], row_container="args", append_columns=True)
 
-    reduced_mp_cat = small_sky_with_nested_sources.map_partitions(map_row_part, meta=reduced_cat_compute.head(0))
+    reduced_mp_cat = small_sky_with_nested_sources.map_partitions(
+        map_row_part, meta=reduced_cat_compute.head(0)
+    )
     pd.testing.assert_series_equal(reduced_cat_compute["mean_mag"], reduced_mp_cat.compute()["mean_mag"])
     pd.testing.assert_frame_equal(
         reduced_cat_compute[small_sky_with_nested_sources.columns], small_sky_with_nested_sources.compute()
@@ -124,8 +131,9 @@ def test_map_rows_append_columns(small_sky_with_nested_sources):
             append_columns=True,
         )
 
-    reduced_mp_cat = small_sky_with_nested_sources.map_partitions(map_row_part_2,
-                                                                  meta=reduced_cat_compute.head(0))
+    reduced_mp_cat = small_sky_with_nested_sources.map_partitions(
+        map_row_part_2, meta=reduced_cat_compute.head(0)
+    )
     expected_t_ra = reduced_mp_cat.compute()["sources.t_ra"]
     pd.testing.assert_series_equal(expected_t_ra, reduced_cat_compute["sources.t_ra"])
 
@@ -165,7 +173,7 @@ def test_map_rows_append_columns_raises_error_with_full_meta(small_sky_with_nest
     def calc_magerr(ra_err, dec_err):
         return {"mean_err": abs(ra_err - dec_err) / 2}
 
-    meta = small_sky_with_nested_sources._ddf._meta.copy()
+    meta = small_sky_with_nested_sources.meta.copy()
     meta["mean_err"] = np.float64(0)
 
     with pytest.raises(ValueError, match="already exist"):
@@ -203,7 +211,9 @@ def test_map_rows_no_return_column(small_sky_with_nested_sources):
             append_columns=True,
         )
 
-    reduced_mp_cat = small_sky_with_nested_sources.map_partitions(map_row_part, meta=reduced_cat_compute.head(0))
+    reduced_mp_cat = small_sky_with_nested_sources.map_partitions(
+        map_row_part, meta=reduced_cat_compute.head(0)
+    )
 
     pd.testing.assert_series_equal(reduced_cat_compute[0], reduced_mp_cat.compute()[0])
     pd.testing.assert_frame_equal(
