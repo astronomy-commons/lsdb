@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Callable
+from urllib.parse import urlparse
 
 import hats as hc
+from hats.io.file_io.file_pointer import _VIZCAT_HOST
 import nested_pandas as npd
 import numpy as np
 import pyarrow as pa
@@ -320,14 +322,8 @@ def _load_margin_catalog(hc_catalog, config):
 
     if config.search_filter:
         hc_catalog = config.search_filter.filter_hc_catalog(hc_catalog)
-        path_generator_options = (
-            hc_catalog.catalog_base_dir.fs.cache_options
-            if hasattr(hc_catalog.catalog_base_dir.fs, "cache_options")
-            else None
-        )
         pyarrow_filter = _generate_pyarrow_filters_from_moc(
             hc_catalog,
-            generation_options=path_generator_options,
         )
         if len(pyarrow_filter) > 0 and not config.filters:
             config.filters = pyarrow_filter
@@ -350,17 +346,9 @@ def _load_object_catalog(hc_catalog, config):
         hc_catalog = config.search_filter.filter_hc_catalog(hc_catalog)
         if len(hc_catalog.get_healpix_pixels()) == 0 and config.error_empty_filter:
             raise ValueError("The selected sky region has no coverage")
-        path_generator_options = (
-            hc_catalog.catalog_base_dir.fs.cache_options
-            if hasattr(hc_catalog.catalog_base_dir.fs, "cache_options")
-            else None
-        )
-        pyarrow_filter = _generate_pyarrow_filters_from_moc(
-            hc_catalog,
-            generation_options=path_generator_options,
-        )
+        pyarrow_filter = _generate_pyarrow_filters_from_moc(hc_catalog)
         if len(pyarrow_filter) > 0:
-            if "hp29func" in (path_generator_options or {}) and path_generator_options["hp29func"]:
+            if use_healpix_func_filter(hc_catalog):
                 config.url_only_filters = pyarrow_filter
             elif not config.filters:
                 config.filters = pyarrow_filter
@@ -376,7 +364,11 @@ def _load_object_catalog(hc_catalog, config):
     return catalog
 
 
-def _generate_pyarrow_filters_from_moc(filtered_catalog, generation_options=None):
+def use_healpix_func_filter(filtered_catalog):
+    return urlparse(filtered_catalog.catalog_base_dir.path).netloc == _VIZCAT_HOST
+
+
+def _generate_pyarrow_filters_from_moc(filtered_catalog):
     pyarrow_filter = []
     if not (
         filtered_catalog.has_healpix_column()
@@ -385,10 +377,11 @@ def _generate_pyarrow_filters_from_moc(filtered_catalog, generation_options=None
         return pyarrow_filter
     healpix_column = filtered_catalog.catalog_info.healpix_column
     healpix_order = filtered_catalog.catalog_info.healpix_order
-    if "hp29func" in (generation_options or {}):
-        if generation_options["hp29func"]:
-            healpix_order = 29
-            healpix_column = f"hpx(29, {filtered_catalog.catalog_info.ra_column}, {filtered_catalog.catalog_info.dec_column})"
+    if use_healpix_func_filter(filtered_catalog):
+        healpix_order = 29
+        healpix_column = (
+            f"hpx(29, {filtered_catalog.catalog_info.ra_column}, {filtered_catalog.catalog_info.dec_column})"
+        )
     if filtered_catalog.moc is not None:
         moc = (
             filtered_catalog.moc
