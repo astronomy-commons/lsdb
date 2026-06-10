@@ -243,7 +243,7 @@ def _get_collection_margin(
 
 
 def _load_catalog(hc_catalog: hc.catalog.Dataset, config: HatsLoadingConfig) -> HealpixDataset:
-    config.set_columns_from_catalog_info(hc_catalog.catalog_info, hc_catalog.schema)
+    config.set_columns_from_catalog_info(hc_catalog.catalog_info)
     if hc_catalog.schema is None:
         raise ValueError(
             "The catalog schema could not be loaded from metadata."

@@ -53,7 +53,7 @@ class HatsLoadingConfig:
                     f"Invalid keyword argument '{nonused_kwarg}' found. Did you mean 'margin_cache'?"
                 )
 
-    def set_columns_from_catalog_info(self, catalog_info, schema=None):
+    def set_columns_from_catalog_info(self, catalog_info):
         """Set the appropriate columns to load, based on the user-provided `columns` argument
         and the actual columns of the dataset."""
         columns = self.columns
