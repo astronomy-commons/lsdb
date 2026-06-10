@@ -132,7 +132,7 @@ class HatsLoadingConfig:
                 filter = f
 
         if filter:
-            url_params["filters"] = filter
+            url_params["filter"] = filter
 
         return url_params
 
