@@ -26,7 +26,7 @@ from mocpy import MOC
 from lsdb.catalog.catalog import Catalog
 from lsdb.io.common import new_provenance_properties
 from lsdb.io.schema import get_arrow_schema
-from lsdb.loaders.dataframe.from_dataframe_utils import _has_named_index, _generate_op
+from lsdb.loaders.dataframe.from_dataframe_utils import _generate_op, _has_named_index
 from lsdb.operations.lsdb_ops import FromHealpixMap
 from lsdb.operations.operation import Operation
 

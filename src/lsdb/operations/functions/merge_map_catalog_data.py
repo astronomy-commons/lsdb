@@ -12,8 +12,8 @@ from hats.pixel_tree.pixel_alignment import align_with_mocs
 from lsdb.operations.functions.merge_catalog_functions import (
     align_and_apply,
     filter_by_spatial_index_to_pixel,
-    get_healpix_pixels_from_alignment,
     get_aligned_pixels_from_alignment,
+    get_healpix_pixels_from_alignment,
 )
 from lsdb.operations.operation import Operation
 

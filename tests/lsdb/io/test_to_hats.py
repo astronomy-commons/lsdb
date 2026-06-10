@@ -22,10 +22,10 @@ from lsdb.io.common import set_default_write_table_kwargs
 from lsdb.io.to_hats import (
     DONE_DIR_NAME,
     HISTOGRAM_DIR_NAME,
+    WRITE_RESULT_META,
     perform_write,
     write_histogram,
     write_partitions,
-    WRITE_RESULT_META,
 )
 
 

@@ -6,11 +6,10 @@ from typing import TYPE_CHECKING
 import pandas as pd
 from hats.pixel_tree import PixelAlignment, PixelAlignmentType
 
-from lsdb.operations.functions.merge_catalog_functions import (
+from lsdb.operations.functions.merge_catalog_functions import (  # construct_catalog_args,
     align_and_apply,
     concat_align_catalogs,
     concat_partition_and_margin,
-    # construct_catalog_args,
     filter_by_spatial_index_to_margin,
     filter_by_spatial_index_to_pixel,
     get_aligned_pixels_from_alignment,

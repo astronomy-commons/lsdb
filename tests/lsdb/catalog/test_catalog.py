@@ -21,8 +21,8 @@ from nested_pandas.datasets import generate_data
 
 import lsdb
 from lsdb import Catalog, MarginCatalog
-from lsdb.operations.lsdb_ops import EmptyOperation, FromSinglePartition
 from lsdb.core.search.region_search import MOCSearch
+from lsdb.operations.lsdb_ops import EmptyOperation, FromSinglePartition
 
 
 @pytest.fixture(autouse=True)

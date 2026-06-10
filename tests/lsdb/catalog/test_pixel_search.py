@@ -1,8 +1,8 @@
+import nested_pandas as npd
 import pandas as pd
 import pytest
 from hats.pixel_math import HealpixPixel
 
-import nested_pandas as npd
 from lsdb.core.search.region_search import PixelSearch
 
 

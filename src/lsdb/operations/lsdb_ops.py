@@ -1,15 +1,14 @@
 from __future__ import annotations
 
 import functools
-from typing import TYPE_CHECKING, Self, Callable
+from typing import TYPE_CHECKING, Callable, Self
 
+import nested_pandas as npd
+import pandas as pd
 from dask._task_spec import Task, TaskRef, cull
 from dask.dataframe.utils import check_meta
 from dask.tokenize import _tokenize_deterministic
 from dask.utils import funcname
-
-import pandas as pd
-import nested_pandas as npd
 from hats import HealpixPixel
 from pyarrow.lib import Sequence
 

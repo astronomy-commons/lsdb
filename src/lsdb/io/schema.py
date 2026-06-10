@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import pyarrow as pa
 import pandas as pd
+import pyarrow as pa
 
 from lsdb.operations.operation import Operation
 

@@ -15,7 +15,6 @@ from lsdb import ConeSearch
 from lsdb.catalog.catalog import Catalog
 from lsdb.operations.functions import concat_catalog_data, merge_catalog_functions
 
-
 # pylint: disable=too-many-lines
 
 # ------------------------------- helpers ---------------------------------- #
