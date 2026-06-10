@@ -2,7 +2,6 @@ import shutil
 from importlib.metadata import version
 from pathlib import Path
 
-import dask
 import hats as hc
 import numpy as np
 import numpy.testing as npt

@@ -547,7 +547,6 @@ def write_partitions(
             npix_parquet_name,
             meta=WRITE_RESULT_META,
             include_pixel=True,
-
             **kwargs,
         )
         results = res_cat.compute()

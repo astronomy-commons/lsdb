@@ -1,12 +1,9 @@
 from pathlib import Path
 
-import dask.dataframe as dd
 import hats as hc
 import nested_pandas as npd
-import numpy as np
 import numpy.testing as npt
 import pandas as pd
-import pyarrow as pa
 import pytest
 from hats.io import paths
 from hats.pixel_math import spatial_index_to_healpix

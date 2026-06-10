@@ -5,7 +5,7 @@ from hats.pixel_math.validators import ValidatorsErrors
 import lsdb
 
 
-def test_box_search_filters_correct_points(small_sky_order1_catalog, helpers):
+def test_box_search_filters_correct_points(small_sky_order1_catalog):
     search_catalog = small_sky_order1_catalog.box_search(ra=(280, 300), dec=(-40, -30))
     search_df = search_catalog.compute()
     ra_values = search_df[small_sky_order1_catalog.hc_structure.catalog_info.ra_column]
@@ -15,7 +15,7 @@ def test_box_search_filters_correct_points(small_sky_order1_catalog, helpers):
     assert all(-40 <= dec <= -30 for dec in dec_values)
 
 
-def test_box_search_filters_correct_points_margin(small_sky_order1_source_with_margin, helpers):
+def test_box_search_filters_correct_points_margin(small_sky_order1_source_with_margin):
     ra_search_catalog = small_sky_order1_source_with_margin.box_search(ra=(280, 300), dec=(-90, 30))
     ra_search_df = ra_search_catalog.compute()
     ra_values = ra_search_df[small_sky_order1_source_with_margin.hc_structure.catalog_info.ra_column]

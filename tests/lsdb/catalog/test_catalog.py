@@ -22,7 +22,7 @@ from nested_pandas.datasets import generate_data
 import lsdb
 from lsdb import Catalog, MarginCatalog
 from lsdb.core.search.region_search import MOCSearch
-from lsdb.operations.lsdb_ops import EmptyOperation, FromSinglePartition
+from lsdb.operations.lsdb_ops import EmptyOperation
 
 
 @pytest.fixture(autouse=True)
@@ -163,8 +163,6 @@ def test_head_rows_less_than_requested(small_sky_order1_catalog):
 
 
 def test_head_first_partition_is_empty(small_sky_order1_catalog):
-    # The same catalog but now the first partition is empty
-    schema = small_sky_order1_catalog.dtypes
     # Query that empties partition 1 but not all partitions
     first_empty = small_sky_order1_catalog.query("ra > 350")
 
@@ -205,8 +203,6 @@ def test_tail_rows_less_than_requested(small_sky_order1_catalog):
 
 
 def test_tail_first_partition_is_empty(small_sky_order1_catalog):
-    # The same catalog but now the first partition is empty
-    schema = small_sky_order1_catalog.dtypes
     # Query that empties partition 1 but not all partitions
     first_empty = small_sky_order1_catalog.query("ra > 350")
 
@@ -604,29 +600,6 @@ def test_square_bracket_columns_default_columns(small_sky_order1_default_cols_ca
     )
     helpers.assert_schema_correct(column_subset)
     helpers.assert_default_columns_in_columns(column_subset)
-
-
-"""
-def test_square_bracket_column(small_sky_order1_catalog):
-    column_name = "ra"
-    column = small_sky_order1_catalog[column_name]
-    pd.testing.assert_series_equal(column.compute(), small_sky_order1_catalog.compute()[column_name])
-    assert np.all(column.compute().index.to_numpy() == small_sky_order1_catalog.compute().index.to_numpy())
-    assert isinstance(column, dd.Series)
-"""
-
-"""
-def test_square_bracket_filter(small_sky_order1_catalog, helpers):
-    filtered_id = small_sky_order1_catalog[small_sky_order1_catalog["id"] > 750]
-    assert isinstance(filtered_id, Catalog)
-    assert isinstance(filtered_id.compute(), npd.NestedFrame)
-    ss_computed = small_sky_order1_catalog.compute()
-    pd.testing.assert_frame_equal(filtered_id.compute(), ss_computed[ss_computed["id"] > 750])
-    assert np.all(
-        filtered_id.compute().index.to_numpy() == ss_computed[ss_computed["id"] > 750].index.to_numpy()
-    )
-    helpers.assert_schema_correct(filtered_id)
-"""
 
 
 def test_map_partitions(small_sky_order1_catalog):
