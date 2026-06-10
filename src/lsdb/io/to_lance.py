@@ -90,18 +90,18 @@ def to_lance(
 
     path = str(base_catalog_path)
     # pylint: disable=protected-access
-    delayed_partitions = catalog._ddf.to_delayed()
-    pixel_partition_pairs = list(catalog._ddf_pixel_map.items())
+    delayed_partitions = catalog.to_delayed()
 
     db = lancedb.connect(path)
     table: lancedb.Table | None = None
 
-    for _, partition_index in tqdm(
-        pixel_partition_pairs,
+    for partition_index, partition in tqdm(
+        enumerate(delayed_partitions),
+        total=len(delayed_partitions),
         desc="Writing to Lance",
         disable=not progress_bar,
     ):
-        df = delayed_partitions[partition_index].compute()
+        df = partition.compute()
         if len(df) == 0:
             continue
 
