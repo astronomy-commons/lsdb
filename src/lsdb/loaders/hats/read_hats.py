@@ -243,7 +243,7 @@ def _get_collection_margin(
 
 
 def _load_catalog(hc_catalog: hc.catalog.Dataset, config: HatsLoadingConfig) -> HealpixDataset:
-    config.set_columns_from_catalog_info(hc_catalog.catalog_info)
+    config.set_columns_from_catalog_info(hc_catalog.catalog_info, hc_catalog.schema)
     if hc_catalog.schema is None:
         raise ValueError(
             "The catalog schema could not be loaded from metadata."
@@ -317,9 +317,18 @@ def _load_margin_catalog(hc_catalog, config):
     MarginCatalog
         Catalog object with data from the source given at loader initialization
     """
+
     if config.search_filter:
         hc_catalog = config.search_filter.filter_hc_catalog(hc_catalog)
-        pyarrow_filter = _generate_pyarrow_filters_from_moc(hc_catalog)
+        path_generator_options = (
+            hc_catalog.catalog_base_dir.fs.cache_options
+            if hasattr(hc_catalog.catalog_base_dir.fs, "cache_options")
+            else None
+        )
+        pyarrow_filter = _generate_pyarrow_filters_from_moc(
+            hc_catalog,
+            generation_options=path_generator_options,
+        )
         if len(pyarrow_filter) > 0 and not config.filters:
             config.filters = pyarrow_filter
     dask_df, dask_df_pixel_map = _load_dask_df_and_map(hc_catalog, config)
@@ -341,9 +350,20 @@ def _load_object_catalog(hc_catalog, config):
         hc_catalog = config.search_filter.filter_hc_catalog(hc_catalog)
         if len(hc_catalog.get_healpix_pixels()) == 0 and config.error_empty_filter:
             raise ValueError("The selected sky region has no coverage")
-        pyarrow_filter = _generate_pyarrow_filters_from_moc(hc_catalog)
-        if len(pyarrow_filter) > 0 and not config.filters:
-            config.filters = pyarrow_filter
+        path_generator_options = (
+            hc_catalog.catalog_base_dir.fs.cache_options
+            if hasattr(hc_catalog.catalog_base_dir.fs, "cache_options")
+            else None
+        )
+        pyarrow_filter = _generate_pyarrow_filters_from_moc(
+            hc_catalog,
+            generation_options=path_generator_options,
+        )
+        if len(pyarrow_filter) > 0:
+            if "hp29func" in (path_generator_options or {}) and path_generator_options["hp29func"]:
+                config.url_only_filters = pyarrow_filter
+            elif not config.filters:
+                config.filters = pyarrow_filter
     dask_df, dask_df_pixel_map = _load_dask_df_and_map(hc_catalog, config)
     catalog = Catalog(dask_df, dask_df_pixel_map, hc_catalog, loading_config=config)
     if config.search_filter is not None:
@@ -356,7 +376,7 @@ def _load_object_catalog(hc_catalog, config):
     return catalog
 
 
-def _generate_pyarrow_filters_from_moc(filtered_catalog):
+def _generate_pyarrow_filters_from_moc(filtered_catalog, generation_options=None):
     pyarrow_filter = []
     if not (
         filtered_catalog.has_healpix_column()
@@ -365,6 +385,10 @@ def _generate_pyarrow_filters_from_moc(filtered_catalog):
         return pyarrow_filter
     healpix_column = filtered_catalog.catalog_info.healpix_column
     healpix_order = filtered_catalog.catalog_info.healpix_order
+    if "hp29func" in (generation_options or {}):
+        if generation_options["hp29func"]:
+            healpix_order = 29
+            healpix_column = f"hpx(29, {filtered_catalog.catalog_info.ra_column}, {filtered_catalog.catalog_info.dec_column})"
     if filtered_catalog.moc is not None:
         moc = (
             filtered_catalog.moc
@@ -410,7 +434,7 @@ def _load_dask_meta_schema(hc_catalog, config) -> npd.NestedFrame:
         return dask_meta_schema
     healpix_column = hc_catalog.catalog_info.healpix_column
     if columns is not None and healpix_column not in columns:
-        columns = columns + [healpix_column]
+        columns = [healpix_column] + columns
     if columns is not None:
         dask_meta_schema = dask_meta_schema[columns]
     if dask_meta_schema.index.name != healpix_column and healpix_column in dask_meta_schema.columns:

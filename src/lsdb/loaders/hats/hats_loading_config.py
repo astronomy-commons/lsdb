@@ -39,6 +39,9 @@ class HatsLoadingConfig:
     filters: Any = None
     """Pyarrow filters to apply on reading parquet"""
 
+    url_only_filters: Any = None
+    """Filters to apply only to the URL parameters, but not to the parquet reader."""
+
     kwargs: dict = field(default_factory=dict)
     """Extra kwargs for the pandas parquet file reader"""
 
@@ -50,7 +53,7 @@ class HatsLoadingConfig:
                     f"Invalid keyword argument '{nonused_kwarg}' found. Did you mean 'margin_cache'?"
                 )
 
-    def set_columns_from_catalog_info(self, catalog_info):
+    def set_columns_from_catalog_info(self, catalog_info, schema=None):
         """Set the appropriate columns to load, based on the user-provided `columns` argument
         and the actual columns of the dataset."""
         columns = self.columns
@@ -82,7 +85,7 @@ class HatsLoadingConfig:
             if dec_col is not None and dec_col not in columns:
                 columns.append(dec_col)
             if healpix_col is not None and healpix_col not in columns:
-                columns.append(healpix_col)
+                columns.insert(0, healpix_col)
         self.columns = columns
 
     def make_query_url_params(self) -> dict:
@@ -113,4 +116,34 @@ class HatsLoadingConfig:
                     filters.append(",".join(conj))
             url_params["filters"] = join_char.join(filters)
 
+        filter_strings = []
+
+        if self.filters:
+            filter_strings.append(self.generate_filter_string(self.filters))
+        if self.url_only_filters:
+            filter_strings.append(self.generate_filter_string(self.url_only_filters))
+
+        filter = ""
+
+        for f in filter_strings:
+            if filter:
+                filter = f"({filter}) AND (f)"
+            else:
+                filter = f
+
+        if filter:
+            url_params["filters"] = filter
+
         return url_params
+
+    @staticmethod
+    def generate_filter_string(filters: Any) -> str:
+        """Generates a filter string from the provided filters, for use in URL parameters."""
+        if isinstance(filters[0][0], str):
+            filters = " AND ".join([f"{f[0]}{f[1]}{f[2]}" for f in filters])
+        else:
+            or_clauses = [
+                "(" + " AND ".join([f"{f[0]}{f[1]}{f[2]}" for f in clause]) + ")" for clause in filters
+            ]
+            filters = " OR ".join(or_clauses)
+        return filters
