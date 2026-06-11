@@ -245,11 +245,7 @@ class MapPartitions(Operation):
 
     @functools.cached_property
     def key_name(self) -> str:
-        return f"{funcname(self.func)}-{_tokenize_deterministic(self.func,
-                                                                self.base.meta,
-                                                                self.base.key_name,
-                                                                self.args,
-                                                                self.kwargs)}"
+        return f"{funcname(self.func)}-{_tokenize_deterministic(self.func, self.base.meta, self.base.key_name, self.args, self.kwargs)}"
 
     @functools.cached_property
     def meta(self) -> npd.NestedFrame:
@@ -416,13 +412,7 @@ class AlignAndApply(Operation):
     @functools.cached_property
     def key_name(self) -> str:
         key_names = [op.key_name if op is not None else None for op in self.input_ops]
-        return f"{funcname(self.func)}-{_tokenize_deterministic(self.func,
-                                                                *self.metas,
-                                                                *key_names,
-                                                                *self.pixel_lists,
-                                                                *self.catalog_infos,
-                                                                *self.args,
-                                                                self.kwargs)}"
+        return f"{funcname(self.func)}-{_tokenize_deterministic(self.func, *self.metas, *key_names, *self.pixel_lists, *self.catalog_infos, *self.args, self.kwargs)}"
 
     @property
     def meta(self) -> npd.NestedFrame:
