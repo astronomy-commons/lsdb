@@ -111,7 +111,7 @@ class CatalogStream:
         # TODO: Follow up on this after custom graph construction
         healpix_graph = catalog._operation.build()
         self._delayed_partitions = []
-        for pixel, key in healpix_graph.pixel_to_key_map.items():
+        for _, key in healpix_graph.pixel_to_key_map.items():
             culled_graph, _ = cull(healpix_graph.graph, [key])
             self._delayed_partitions.append(Delayed(key, culled_graph))
 

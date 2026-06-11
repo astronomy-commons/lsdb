@@ -1114,9 +1114,9 @@ def test_boolean_filter_errors_on_multi_column(small_sky_order1_catalog):
 
 def test_boolean_filter_errors_on_non_boolean(small_sky_order1_catalog):
     with pytest.raises(ValueError, match="boolean dtype"):
-        small_sky_order1_catalog[small_sky_order1_catalog["ra"]]
+        small_sky_order1_catalog[small_sky_order1_catalog["ra"]]  # pylint: disable=pointless-statement
 
 
 def test_boolean_filter_errors_on_different_partitioning(small_sky_catalog, small_sky_order1_catalog):
     with pytest.raises(ValueError, match="same HEALPix partitioning"):
-        small_sky_order1_catalog[small_sky_catalog["ra"] > 0]
+        small_sky_order1_catalog[small_sky_catalog["ra"] > 0]  # pylint: disable=pointless-statement

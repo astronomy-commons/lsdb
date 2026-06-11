@@ -95,7 +95,7 @@ def to_lance(
     db = lancedb.connect(path)
     table: lancedb.Table | None = None
 
-    for partition_index, partition in tqdm(
+    for _, partition in tqdm(
         enumerate(delayed_partitions),
         total=len(delayed_partitions),
         desc="Writing to Lance",

@@ -23,11 +23,10 @@ from lsdb.catalog.dataset.healpix_dataset import HealpixDataset, get_arrow_schem
 from lsdb.catalog.margin_catalog import _validate_margin_catalog
 from lsdb.core.search.abstract_search import AbstractSearch
 from lsdb.loaders.hats.hats_loading_config import HatsLoadingConfig
-
-MAX_PYARROW_FILTERS = 10
-
 from lsdb.operations.lsdb_ops import EmptyOperation, FromHealpixMap
 from lsdb.operations.operation import Operation
+
+MAX_PYARROW_FILTERS = 10
 
 
 def open_catalog(

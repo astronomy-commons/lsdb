@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import functools
-from typing import TYPE_CHECKING, Callable, Self
+from typing import TYPE_CHECKING, Callable
 
 import nested_pandas as npd
 import pandas as pd
@@ -19,6 +19,7 @@ if TYPE_CHECKING:
 
 
 def run_and_verify_meta(func, meta, *args, **kwargs):
+    """Run func and verify that its output matches the provided meta."""
     result = func(*args, **kwargs)
     if not isinstance(result, meta.__class__):
         raise ValueError(
@@ -40,6 +41,8 @@ def _verified(func, meta):
 
 
 class FromHealpixMap(Operation):
+    """An Operation that constructs a HealpixGraph from a function that maps HealpixPixels to DataFrames."""
+
     def __init__(self, func, pixels, *args, meta=None, map_kwargs=None, verify_meta=True, **kwargs):
         self.func = func
         self.pixels = pixels
@@ -63,17 +66,19 @@ class FromHealpixMap(Operation):
 
     @functools.cached_property
     def key_name(self) -> str:
-        return f"{funcname(self.func)}-{_tokenize_deterministic(self.func, *self.args, self.kwargs, self.map_kwargs)}"
+        return f"{funcname(self.func)}-{_tokenize_deterministic(self.func,
+                                                                *self.args,
+                                                                self.kwargs,
+                                                                self.map_kwargs)}"
 
     @property
     def meta(self) -> npd.NestedFrame:
         if self._meta is not None:
             return self._meta
-        else:
-            first_part = self.func(self.pixels[0], *self.args, **self.kwargs)
-            if not isinstance(first_part, pd.DataFrame):
-                raise ValueError("FromMap function must return a pandas DataFrame")
-            return first_part.iloc[:0].copy()
+        first_part = self.func(self.pixels[0], *self.args, **self.kwargs)
+        if not isinstance(first_part, pd.DataFrame):
+            raise ValueError("FromMap function must return a pandas DataFrame")
+        return first_part.iloc[:0].copy()
 
     @property
     def dependencies(self) -> list[Operation]:
@@ -101,6 +106,8 @@ class FromHealpixMap(Operation):
 
 
 class FromSinglePartition(FromHealpixMap):
+    """A FromHealpixMap that constructs a HealpixGraph from a single partition, ignoring the pixel input."""
+
     def __init__(self, partition, pixel):
         meta = partition.iloc[:0].copy()
         super().__init__(lambda pix, df: df, [pixel], partition, meta=meta)
@@ -111,6 +118,8 @@ class FromSinglePartition(FromHealpixMap):
 
 
 class EmptyOperation(FromHealpixMap):
+    """An Operation that produces an empty partition with the specified meta."""
+
     def __init__(self, meta):
         super().__init__(None, [], meta=meta)
 
@@ -120,6 +129,7 @@ class EmptyOperation(FromHealpixMap):
 
 
 def map_parts_meta(func, base_meta: npd.NestedFrame, *args, include_pixel=False, **kwargs) -> npd.NestedFrame:
+    """Infer meta for a MapPartitions operation by running func on an empty DataFrame."""
     try:
         if include_pixel:
             result = func(base_meta.copy(), HealpixPixel(0, 0), *args, **kwargs)
@@ -199,6 +209,8 @@ def _normalize_meta(meta) -> npd.NestedFrame:
 
 
 class MapPartitions(Operation):
+    """An Operation that applies a function to each partition of a HealpixGraph."""
+
     class_func = None
     class_include_pixels = None
 
@@ -222,6 +234,7 @@ class MapPartitions(Operation):
 
     @property
     def func(self) -> Callable:
+        """Return the function to apply to each partition, using class_func if set."""
         if self.class_func is None:
             return self._func
         return self.class_func
@@ -232,16 +245,19 @@ class MapPartitions(Operation):
 
     @functools.cached_property
     def key_name(self) -> str:
-        return f"{funcname(self.func)}-{_tokenize_deterministic(self.func, self.base.meta, self.base.key_name, self.args, self.kwargs)}"
+        return f"{funcname(self.func)}-{_tokenize_deterministic(self.func,
+                                                                self.base.meta,
+                                                                self.base.key_name,
+                                                                self.args,
+                                                                self.kwargs)}"
 
     @functools.cached_property
     def meta(self) -> npd.NestedFrame:
         if self._meta is not None:
             return self._meta
-        else:
-            return map_parts_meta(
-                self.func, self.base.meta, *self.args, include_pixel=self.include_pixel, **self.kwargs
-            )
+        return map_parts_meta(
+            self.func, self.base.meta, *self.args, include_pixel=self.include_pixel, **self.kwargs
+        )
 
     @property
     def dependencies(self) -> list[Operation]:
@@ -256,6 +272,7 @@ class MapPartitions(Operation):
         return self.base.healpix_pixels
 
     def build(self) -> HealpixGraph:
+        """Build the HealpixGraph from the Operation"""
         previous = self.base.build()
         graph = previous.graph
         pixel_keys = {}
@@ -289,20 +306,27 @@ class MapPartitions(Operation):
 
 
 def perform_select_columns(df, columns):
+    """Helper function to select columns from a DataFrame for SelectColumns operation."""
     return df[columns]
 
 
 class SelectColumns(MapPartitions):
+    """An Operation that selects a subset of columns from each partition of a HealpixGraph."""
+
     @staticmethod
     def class_func(df, item):
+        """Select the specified columns from the DataFrame."""
         return df[item]
 
     @property
     def column_selector(self):
+        """Return the column selector, which is the first argument."""
         return self.args[0]
 
 
 class SelectPixels(Operation):
+    """An Operation that selects a subset of HealpixPixels from a HealpixGraph."""
+
     def __init__(self, base: Operation, pixels: Sequence[HealpixPixel]):
         self.base = base
         self.pixels = pixels
@@ -332,6 +356,7 @@ class SelectPixels(Operation):
         return list(self.pixels)
 
     def build(self) -> HealpixGraph:
+        """Build the HealpixGraph from the Operation."""
         previous = self.base.build()
         selected_pixels = self.pixels
         for p in selected_pixels:
@@ -344,6 +369,8 @@ class SelectPixels(Operation):
 
 
 class AlignAndApply(Operation):
+    """An Operation that applies a function to aligned partitions from multiple HealpixGraphs."""
+
     def __init__(
         self,
         input_cats: Sequence[HealpixDataset],
@@ -389,7 +416,13 @@ class AlignAndApply(Operation):
     @functools.cached_property
     def key_name(self) -> str:
         key_names = [op.key_name if op is not None else None for op in self.input_ops]
-        return f"{funcname(self.func)}-{_tokenize_deterministic(self.func, *self.metas, *key_names, *self.pixel_lists, *self.catalog_infos, *self.args, self.kwargs)}"
+        return f"{funcname(self.func)}-{_tokenize_deterministic(self.func,
+                                                                *self.metas,
+                                                                *key_names,
+                                                                *self.pixel_lists,
+                                                                *self.catalog_infos,
+                                                                *self.args,
+                                                                self.kwargs)}"
 
     @property
     def meta(self) -> npd.NestedFrame:
@@ -400,6 +433,7 @@ class AlignAndApply(Operation):
         return list(self.output_pixels)
 
     def build(self) -> HealpixGraph:
+        """Build the HealpixGraph from the Operation."""
         input_ops = self.input_ops
         graphs = [op.build() if op is not None else None for op in input_ops]
         metas = self.metas

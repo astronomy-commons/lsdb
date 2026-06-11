@@ -16,7 +16,6 @@ from mocpy import MOC
 
 import lsdb
 from lsdb.catalog.margin_catalog import MarginCatalog, _validate_margin_catalog
-from lsdb.operations.operation import Operation
 
 
 def get_catalog_kwargs(catalog, **kwargs):
@@ -180,7 +179,7 @@ def test_partitions_obey_partition_bytes(small_sky_order1_df, small_sky_order1_c
         assert partition_memory <= partition_bytes
 
 
-def test_from_dataframe_large_input(small_sky_order1_catalog, helpers):
+def test_from_dataframe_large_input(small_sky_order1_catalog):
     """Tests that we can initialize a catalog from a LARGE Pandas Dataframe and
     that we're warned about the catalog's size"""
     original_catalog_info = small_sky_order1_catalog.hc_structure.catalog_info

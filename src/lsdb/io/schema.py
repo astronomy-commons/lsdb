@@ -3,8 +3,6 @@ from __future__ import annotations
 import pandas as pd
 import pyarrow as pa
 
-from lsdb.operations.operation import Operation
-
 
 def get_arrow_schema(df: pd.DataFrame) -> pa.Schema:
     """Constructs the pyarrow schema from a Pandas DataFrame.

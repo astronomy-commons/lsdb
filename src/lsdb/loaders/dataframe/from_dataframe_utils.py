@@ -1,16 +1,14 @@
 import nested_pandas as npd
 import pandas as pd
 import pyarrow as pa
-from dask import delayed
 from hats.pixel_math import HealpixPixel
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 
-from lsdb.operations.functions.divisions import get_pixels_divisions
 from lsdb.operations.lsdb_ops import FromHealpixMap
 from lsdb.operations.operation import Operation
 
 
-def _pixel_df(pixel, df=None):
+def _pixel_df(df=None):
     return npd.NestedFrame(df)
 
 
