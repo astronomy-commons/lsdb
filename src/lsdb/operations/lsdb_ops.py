@@ -10,7 +10,7 @@ from dask.dataframe.utils import check_meta
 from dask.tokenize import _tokenize_deterministic
 from dask.utils import funcname
 from hats import HealpixPixel
-from pyarrow.lib import Sequence
+from typing import Sequence
 
 from lsdb.operations.operation import HealpixGraph, Operation
 
