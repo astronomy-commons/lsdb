@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import functools
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING, Callable, Sequence
 
 import nested_pandas as npd
 import pandas as pd
@@ -10,7 +10,6 @@ from dask.dataframe.utils import check_meta
 from dask.tokenize import _tokenize_deterministic
 from dask.utils import funcname
 from hats import HealpixPixel
-from typing import Sequence
 
 from lsdb.operations.operation import HealpixGraph, Operation
 
@@ -155,7 +154,7 @@ def _coerce_to_meta(result) -> npd.NestedFrame:
     if isinstance(result, pd.DataFrame):
         return npd.NestedFrame(result.iloc[:0])
     if isinstance(result, pd.Series):
-        return npd.NestedFrame({"result": pd.Series(dtype=result.dtype)}, index=result.index)
+        return npd.NestedFrame({"result": result.iloc[:0]})
     if isinstance(result, dict):
         return npd.NestedFrame(
             {
