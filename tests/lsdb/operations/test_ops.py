@@ -1,11 +1,16 @@
 import nested_pandas as npd
 import pandas as pd
 import pytest
+from dask.utils import funcname
 from hats.pixel_math import HealpixPixel
 
 from lsdb.operations.lsdb_ops import (
+    AlignAndApply,
     EmptyOperation,
     FromHealpixMap,
+    MapPartitions,
+    SelectColumns,
+    SelectPixels,
     _coerce_to_frame,
     _coerce_to_meta,
     _normalize_meta,
@@ -186,3 +191,124 @@ def test_normalize_meta_accepted_formats_produce_equivalent_nestedframe(meta):
 def test_normalize_meta_invalid_input_raises_value_error(bad_meta):
     with pytest.raises(ValueError, match="meta must be a DataFrame"):
         _normalize_meta(bad_meta)
+
+
+def _base_mp():
+    meta = npd.NestedFrame({"a": pd.Series(dtype="int64"), "b": pd.Series(dtype="float64")})
+    return EmptyOperation(meta=meta)
+
+
+def _func(df):
+    return df
+
+
+def test_map_partitions_class_func_conflict():
+    # SelectColumns sets class_func, so passing a non-None func conflicts.
+    with pytest.raises(ValueError, match="Cannot specify func for MapPartitions when class_func is set"):
+        SelectColumns(_base_mp(), _func, ["a"])
+
+    # Correct usage: func=None lets class_func take over.
+    op = SelectColumns(_base_mp(), None, ["a"])
+    assert op.func is SelectColumns.class_func
+
+
+class _IncludePixelOp(MapPartitions):
+    class_include_pixels = True
+
+
+@pytest.mark.parametrize("include_pixel", [False, None])
+def test_map_partitions_class_include_pixels_conflict(include_pixel):
+    kwargs = {} if include_pixel is None else {"include_pixel": include_pixel}
+
+    with pytest.raises(
+        ValueError, match="Cannot specify include_pixel for MapPartitions when class_include_pixels is set"
+    ):
+        _IncludePixelOp(_base_mp(), _func, **kwargs)
+
+    # Correct usage: include_pixel matches class_include_pixels.
+    op = _IncludePixelOp(_base_mp(), _func, include_pixel=True)
+    assert op.include_pixel is True
+
+
+def test_map_partitions_name_and_dependencies():
+    base = _base_mp()
+    op = MapPartitions(base, _func)
+
+    assert op.name == f"MapPartitions({funcname(_func)}, {base.name})"
+    assert op.dependencies == [base]
+
+
+def _base_select():
+    meta = npd.NestedFrame({"a": pd.Series(dtype="int64"), "b": pd.Series(dtype="float64")})
+
+    def func(pixel, *args, **kwargs):
+        return pd.DataFrame({"a": [1], "b": [1.0]})
+
+    pixels = [HealpixPixel(0, 0), HealpixPixel(0, 1)]
+    return FromHealpixMap(func, pixels, meta=meta)
+
+
+def test_select_columns_column_selector_returns_first_arg():
+    op = SelectColumns(_base_select(), None, ["a", "b"])
+
+    assert op.column_selector == ["a", "b"]
+
+
+def test_select_pixels_name_and_dependencies():
+    base = _base_select()
+    op = SelectPixels(base, base.healpix_pixels[:1])
+
+    assert op.name == f"SelectPixels({base.name})"
+    assert op.dependencies == [base]
+
+
+def test_select_pixels_build_raises_for_pixel_not_in_base():
+    base = _base_select()
+    op = SelectPixels(base, [HealpixPixel(5, 5)])
+
+    with pytest.raises(ValueError, match="not found in operation"):
+        op.build()
+
+
+def _meta_AA():
+    return npd.NestedFrame({"a": pd.Series(dtype="int64")})
+
+
+def _func_AA(*args, **kwargs):
+    return pd.DataFrame({"a": [1]})
+
+
+class _MockCatalog:
+    """Stand-in for a HealpixDataset, exposing only what AlignAndApply needs."""
+
+    def __init__(self, operation):
+        self._operation = operation
+
+
+def test_align_and_apply_mismatched_input_lengths_raises_value_error():
+    with pytest.raises(ValueError, match="Inccorect Align and Apply Setup"):
+        AlignAndApply(input_cats=[], pixel_lists=[[]], func=_func_AA, meta=_meta_AA(), output_pixels=[])
+
+
+def test_align_and_apply_dependencies_filters_out_none_inputs():
+    op1 = EmptyOperation(meta=_meta_AA())
+    op2 = EmptyOperation(meta=_meta_AA())
+    input_cats = [_MockCatalog(op1), None, _MockCatalog(op2)]
+
+    aa = AlignAndApply(
+        input_cats=input_cats, pixel_lists=[[], [], []], func=_func_AA, meta=_meta_AA(), output_pixels=[]
+    )
+
+    assert aa.dependencies == [op1, op2]
+
+
+def test_align_and_apply_name_includes_func_and_input_op_names_or_none():
+    op1 = EmptyOperation(meta=_meta_AA())
+    op2 = EmptyOperation(meta=_meta_AA())
+    input_cats = [_MockCatalog(op1), None, _MockCatalog(op2)]
+
+    aa = AlignAndApply(
+        input_cats=input_cats, pixel_lists=[[], [], []], func=_func_AA, meta=_meta_AA(), output_pixels=[]
+    )
+
+    assert aa.name == f"AlignAndApply({funcname(_func_AA)}, {op1.name}, None, {op2.name})"
