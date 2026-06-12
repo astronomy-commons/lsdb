@@ -79,7 +79,7 @@ The `Gaia DR3 microturbulence catalog (I/358/vmicro) <https://vizier.cds.unistra
    # Request _RAJ2000 and _DEJ2000 explicitly; "**" includes all native columns.
    # Most VizieR catalogs provide these computed columns (degrees, J2000),
    # and they are recommended as the ra/dec columns when creating HATS catalogs.
-   vizier = Vizier(row_limit=1_000, columns=["_RAJ2000", "_DEJ2000", "**"])  # I/358/vmicro has 363 rows
+   vizier = Vizier(row_limit=-1, columns=["_RAJ2000", "_DEJ2000", "**"])
    tables = vizier.get_catalogs("I/358/vmicro")
 
    cat = lsdb.from_astropy(tables[0], ra_column="_RAJ2000", dec_column="_DEJ2000", catalog_name="vmicro")
