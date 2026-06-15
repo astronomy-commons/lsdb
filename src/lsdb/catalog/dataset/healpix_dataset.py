@@ -604,15 +604,11 @@ class HealpixDataset:
             return self.meta.copy()
         return pd.concat(result)
 
-    def to_dask_dataframe(self, optimize_graph=False, divisions=True):
+    def to_dask_dataframe(self, divisions=True):
         """Converts to a Dask DataFrame
 
         Parameters
         ----------
-        optimize_graph : bool, default False
-            Whether to perform graph optimization before creating the
-            Dask DataFrame. By default False, as it should not be necessary in
-            most cases.
         divisions : bool or list, default True
             Whether to set the divisions of the Dask DataFrame to the HEALPix
             pixels. If True, will set divisions to the HEALPix pixels. If
@@ -625,21 +621,16 @@ class HealpixDataset:
         else:
             divisions = None
 
-        delayed_tasks = self.to_delayed(optimize_graph=optimize_graph)
+        delayed_tasks = self.to_delayed()
 
         return dd.from_delayed(delayed_tasks, meta=meta, divisions=divisions)
 
-    def to_delayed(self, optimize_graph: bool = False) -> list[Delayed]:
+    def to_delayed(self) -> list[Delayed]:
         """Get a list of Dask Delayed objects for each partition in the dataset
 
         Used for more advanced custom operations, but to use again with LSDB, the delayed objects
         must be converted to a Dask DataFrame and used with extra metadata to construct an
         LSDB Dataset.
-
-        Parameters
-        ----------
-        optimize_graph: bool, default True
-            Whether to optimize the Dask task graph.
 
         Returns
         -------
@@ -652,16 +643,7 @@ class HealpixDataset:
 
         graph_delayed = [Delayed(key, graph) for key in keys]
 
-        if not optimize_graph:
-            return graph_delayed
-
-        # I don't know if we will actually ever need to do this
-        shared_graph = dict(graph_delayed[0].__dask_graph__())
-        optimized_graph = []
-        for d in graph_delayed:
-            culled_graph, _ = cull(shared_graph, list(d.__dask_keys__()))
-            optimized_graph.append(Delayed(d.key, culled_graph))
-        return optimized_graph
+        return graph_delayed
 
     def _check_unloaded_columns(self, column_names: Sequence[str | None] | None):
         """Check the list of given column names for any that are valid

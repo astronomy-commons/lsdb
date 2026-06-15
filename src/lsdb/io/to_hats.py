@@ -5,7 +5,6 @@ from copy import copy
 from pathlib import Path
 from typing import Any
 
-import dask
 import hats as hc
 import nested_pandas as npd
 import numpy as np
