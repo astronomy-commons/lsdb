@@ -65,7 +65,8 @@ class FromHealpixMap(Operation):
 
     @functools.cached_property
     def key_name(self) -> str:
-        return f"{funcname(self.func)}-{_tokenize_deterministic(self.func, *self.args, self.kwargs, self.map_kwargs)}"
+        tokenized = _tokenize_deterministic(self.func, *self.args, self.kwargs, self.map_kwargs)
+        return f"{funcname(self.func)}-{tokenized}"
 
     @property
     def meta(self) -> npd.NestedFrame:
@@ -241,7 +242,10 @@ class MapPartitions(Operation):
 
     @functools.cached_property
     def key_name(self) -> str:
-        return f"{funcname(self.func)}-{_tokenize_deterministic(self.func, self.base.meta, self.base.key_name, self.args, self.kwargs)}"
+        tokenized = _tokenize_deterministic(
+            self.func, self.base.meta, self.base.key_name, self.args, self.kwargs
+        )
+        return f"{funcname(self.func)}-{tokenized}"
 
     @functools.cached_property
     def meta(self) -> npd.NestedFrame:
@@ -387,35 +391,53 @@ class AlignAndApply(Operation):
 
     @property
     def input_ops(self) -> list[Operation | None]:
+        """Get the operations corresponding to the input catalogs"""
         return [cat._operation if cat is not None else None for cat in self.input_cats]
 
     @property
     def dependencies(self) -> list[Operation]:
+        """Get the dependencies of the input operations"""
         return [op for op in self.input_ops if op is not None]
 
     @property
     def metas(self):
+        """Get the metas of the input operations"""
         return [op.meta if op is not None else None for op in self.input_ops]
 
     @property
     def catalog_infos(self):
+        """Get the catalog infos of the input catalogs"""
         return [cat.hc_structure.catalog_info if cat is not None else None for cat in self.input_cats]
 
     @property
     def name(self) -> str:
-        return f"AlignAndApply({funcname(self.func)}, {', '.join(op.name if op is not None else 'None' for op in self.input_ops)})"
+        """Return the name of the resulting AlignAndApply operation"""
+        op_names = ", ".join(op.name if op is not None else "None" for op in self.input_ops)
+        return f"AlignAndApply({funcname(self.func)}, {op_names})"
 
     @functools.cached_property
     def key_name(self) -> str:
+        """Return key names for the resulting operation"""
         key_names = [op.key_name if op is not None else None for op in self.input_ops]
-        return f"{funcname(self.func)}-{_tokenize_deterministic(self.func, *self.metas, *key_names, *self.pixel_lists, *self.catalog_infos, *self.args, self.kwargs)}"
+        tokenized = _tokenize_deterministic(
+            self.func,
+            *self.metas,
+            *key_names,
+            *self.pixel_lists,
+            *self.catalog_infos,
+            *self.args,
+            self.kwargs,
+        )
+        return f"{funcname(self.func)}-{tokenized}"
 
     @property
     def meta(self) -> npd.NestedFrame:
+        """Return the dask-style meta for the operation"""
         return self._meta
 
     @property
     def healpix_pixels(self) -> list[HealpixPixel]:
+        """Return the HealpixPixels corresponding to the output pixels of the operation"""
         return list(self.output_pixels)
 
     def build(self) -> HealpixGraph:

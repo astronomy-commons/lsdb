@@ -20,7 +20,6 @@ from dask import threaded
 from dask.base import get_scheduler
 from dask.dataframe.core import _repr_data_series
 from dask.delayed import Delayed
-from dask.optimization import cull
 from deprecated import deprecated  # type: ignore
 from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
 from hats.pixel_math import HealpixPixel
@@ -109,6 +108,7 @@ class HealpixDataset:
 
     @property
     def meta(self):
+        """Returns the dask-style meta for the Dataset"""
         return self._operation.meta
 
     @property
@@ -453,7 +453,9 @@ class HealpixDataset:
         if not pixels == boolean_cat.get_healpix_pixels():
             raise ValueError("Both catalogs must have the same HEALPix partitioning for boolean filtering")
 
-        def filter_func(data_df, bool_df, data_pixel, bool_pixel, data_info, bool_info):
+        def filter_func(
+            data_df, bool_df, data_pixel, bool_pixel, data_info, bool_info
+        ):  # pylint: disable=unused-argument
             return data_df[bool_df[bool_col].values]
 
         new_op = align_and_apply(
@@ -517,7 +519,9 @@ class HealpixDataset:
         pixels = self.get_healpix_pixels()
         meta = self.meta
 
-        def and_func(left_df, right_df, left_pixel, right_pixel, left_info, right_info):
+        def and_func(
+            left_df, right_df, left_pixel, right_pixel, left_info, right_info
+        ):  # pylint: disable=unused-argument
             return npd.NestedFrame({left_col: left_df[left_col] & right_df[right_col]})
 
         new_op = align_and_apply([(self, pixels), (other, pixels)], and_func, meta, pixels)
@@ -531,7 +535,9 @@ class HealpixDataset:
         pixels = self.get_healpix_pixels()
         meta = self.meta
 
-        def or_func(left_df, right_df, left_pixel, right_pixel, left_info, right_info):
+        def or_func(
+            left_df, right_df, left_pixel, right_pixel, left_info, right_info
+        ):  # pylint: disable=unused-argument
             return npd.NestedFrame({left_col: left_df[left_col] | right_df[right_col]})
 
         new_op = align_and_apply([(self, pixels), (other, pixels)], or_func, meta, pixels)
@@ -1009,7 +1015,6 @@ class HealpixDataset:
         as in unit tests.
         """
         random.seed(seed)
-        dfs = []
         if self.hc_structure.catalog_info.total_rows is not None:
             stats = self.hc_structure.per_partition_statistics()
             # These stats are one *row* per pixel.  The number of
@@ -1364,7 +1369,7 @@ class HealpixDataset:
             A new catalog containing only its non-empty partitions
         """
         warnings.warn("Pruning empty partitions is expensive. It may run slow!", RuntimeWarning)
-        non_empty_pixels, non_empty_partitions = self._get_non_empty_partitions()
+        non_empty_pixels, _ = self._get_non_empty_partitions()
         search_op = SelectPixels(self._operation, non_empty_pixels)
         filtered_hc_structure = self.hc_structure.filter_from_pixel_list(non_empty_pixels)
         return self._create_updated_dataset(op=search_op, hc_structure=filtered_hc_structure)

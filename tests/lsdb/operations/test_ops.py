@@ -18,7 +18,7 @@ from lsdb.operations.lsdb_ops import (
 )
 
 
-def _make_frame(pixel, *args, **kwargs):
+def _make_frame(pixel):
     """A simple FromHealpixMap function that returns a populated DataFrame."""
     return pd.DataFrame({"a": [pixel.pixel, pixel.pixel + 1], "b": [float(pixel.order), float(pixel.order)]})
 
@@ -58,7 +58,7 @@ def test_meta_inferred_with_map_kwargs_raises_type_error():
     ],
 )
 def test_meta_raises_value_error_for_non_dataframe_result(bad_result):
-    def bad_func(pixel, *args, **kwargs):
+    def bad_func(pixel):  # pylint: disable=unused-argument
         return bad_result
 
     op = FromHealpixMap(bad_func, [HealpixPixel(0, 0)])
@@ -132,7 +132,7 @@ def test_coerce_to_meta_unsupported_scalar_type_raises_type_error():
     # branch and raises an unwrapped TypeError from `_coerce_to_meta`. This
     # is *not* caught by `map_parts_meta`'s try/except, since the call to
     # `_coerce_to_meta` happens after that block, so it surfaces directly.
-    class Custom:
+    class Custom:  # pylint: disable=too-few-public-methods
         pass
 
     with pytest.raises(TypeError, match="not understood"):
@@ -239,13 +239,12 @@ def test_map_partitions_name_and_dependencies():
 
 
 def _base_select():
-    meta = npd.NestedFrame({"a": pd.Series(dtype="int64"), "b": pd.Series(dtype="float64")})
 
-    def func(pixel, *args, **kwargs):
+    def func(pixel):
         return pd.DataFrame({"a": [1], "b": [1.0]})
 
     pixels = [HealpixPixel(0, 0), HealpixPixel(0, 1)]
-    return FromHealpixMap(func, pixels, meta=meta)
+    return FromHealpixMap(func, pixels)
 
 
 def test_select_columns_column_selector_returns_first_arg():
@@ -270,15 +269,15 @@ def test_select_pixels_build_raises_for_pixel_not_in_base():
         op.build()
 
 
-def _meta_AA():
+def _meta_aa():
     return npd.NestedFrame({"a": pd.Series(dtype="int64")})
 
 
-def _func_AA(*args, **kwargs):
+def _func_aa():
     return pd.DataFrame({"a": [1]})
 
 
-class _MockCatalog:
+class _MockCatalog:  # pylint: disable=too-few-public-methods
     """Stand-in for a HealpixDataset, exposing only what AlignAndApply needs."""
 
     def __init__(self, operation):
@@ -287,28 +286,28 @@ class _MockCatalog:
 
 def test_align_and_apply_mismatched_input_lengths_raises_value_error():
     with pytest.raises(ValueError, match="Inccorect Align and Apply Setup"):
-        AlignAndApply(input_cats=[], pixel_lists=[[]], func=_func_AA, meta=_meta_AA(), output_pixels=[])
+        AlignAndApply(input_cats=[], pixel_lists=[[]], func=_func_aa, meta=_meta_aa(), output_pixels=[])
 
 
 def test_align_and_apply_dependencies_filters_out_none_inputs():
-    op1 = EmptyOperation(meta=_meta_AA())
-    op2 = EmptyOperation(meta=_meta_AA())
+    op1 = EmptyOperation(meta=_meta_aa())
+    op2 = EmptyOperation(meta=_meta_aa())
     input_cats = [_MockCatalog(op1), None, _MockCatalog(op2)]
 
     aa = AlignAndApply(
-        input_cats=input_cats, pixel_lists=[[], [], []], func=_func_AA, meta=_meta_AA(), output_pixels=[]
+        input_cats=input_cats, pixel_lists=[[], [], []], func=_func_aa, meta=_meta_aa(), output_pixels=[]
     )
 
     assert aa.dependencies == [op1, op2]
 
 
 def test_align_and_apply_name_includes_func_and_input_op_names_or_none():
-    op1 = EmptyOperation(meta=_meta_AA())
-    op2 = EmptyOperation(meta=_meta_AA())
+    op1 = EmptyOperation(meta=_meta_aa())
+    op2 = EmptyOperation(meta=_meta_aa())
     input_cats = [_MockCatalog(op1), None, _MockCatalog(op2)]
 
     aa = AlignAndApply(
-        input_cats=input_cats, pixel_lists=[[], [], []], func=_func_AA, meta=_meta_AA(), output_pixels=[]
+        input_cats=input_cats, pixel_lists=[[], [], []], func=_func_aa, meta=_meta_aa(), output_pixels=[]
     )
 
-    assert aa.name == f"AlignAndApply({funcname(_func_AA)}, {op1.name}, None, {op2.name})"
+    assert aa.name == f"AlignAndApply({funcname(_func_aa)}, {op1.name}, None, {op2.name})"
