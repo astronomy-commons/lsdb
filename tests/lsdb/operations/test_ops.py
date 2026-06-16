@@ -240,7 +240,7 @@ def test_map_partitions_name_and_dependencies():
 
 def _base_select():
 
-    def func(pixel):
+    def func(pixel):  # pylint: disable=unused-argument
         return pd.DataFrame({"a": [1], "b": [1.0]})
 
     pixels = [HealpixPixel(0, 0), HealpixPixel(0, 1)]
