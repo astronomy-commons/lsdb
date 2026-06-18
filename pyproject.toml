@@ -45,6 +45,7 @@ dev = [
     "black", # Used for static linting of files
     "jupyter", # Clears output from Jupyter notebooks
     "mypy", # Used for static type checking of files
+    "pandas-stubs", # additional type info for pandas, used for static type checking of files
     "pre-commit", # Used to run checks before finalizing a git commit
     "pylint", # Used for static linting of files
     "pytest",
