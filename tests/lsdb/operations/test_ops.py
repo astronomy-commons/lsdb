@@ -285,7 +285,7 @@ class _MockCatalog:  # pylint: disable=too-few-public-methods
 
 
 def test_align_and_apply_mismatched_input_lengths_raises_value_error():
-    with pytest.raises(ValueError, match="Inccorect Align and Apply Setup"):
+    with pytest.raises(ValueError, match="Incorrect Align and Apply Setup"):
         AlignAndApply(input_cats=[], pixel_lists=[[]], func=_func_aa, meta=_meta_aa(), output_pixels=[])
 
 

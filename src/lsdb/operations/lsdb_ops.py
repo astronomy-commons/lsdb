@@ -201,7 +201,7 @@ def _normalize_meta(meta) -> npd.NestedFrame:
         # list of (name, dtype) tuples — another Dask-accepted format
         return npd.NestedFrame({k: pd.Series(dtype=v) for k, v in meta})
     raise ValueError(
-        f"meta must be a DataFrame, dict of {{name: dtype}}, or list of (name, dtype) tuples, got {type(meta)}"
+        f"meta must be a DataFrame, dict of {{name: dtype}}, or list of (name, dtype) tuples, got {type(meta)}"  # pylint: disable=line-too-long
     )
 
 
@@ -283,7 +283,7 @@ class MapPartitions(Operation):
             except Exception as e:
                 if include_pixel and args:
                     raise RuntimeError(
-                        f"Error applying function {funcname(func)} to partition {_partition_index}, pixel {args[0]}: {e}"
+                        f"Error applying function {funcname(func)} to partition {_partition_index}, pixel {args[0]}: {e}"  # pylint: disable=line-too-long
                     ) from e
                 raise RuntimeError(
                     f"Error applying function {funcname(func)} to partition {_partition_index}: {e}"
@@ -360,7 +360,8 @@ class SelectPixels(Operation):
                 raise ValueError(f"Selected Pixel {p} not found in operation")
         selected_keys = [previous.pixel_to_key_map[p] for p in selected_pixels]
         culled_graph = cull(previous.graph, selected_keys)
-        pixel_keys = {p: k for p, k in zip(selected_pixels, selected_keys)}
+        pixel_keys = dict(zip(selected_pixels, selected_keys))
+        # pixel_keys = {p: k for p, k in zip(selected_pixels, selected_keys)}
         return HealpixGraph(culled_graph, pixel_keys)
 
 
@@ -381,7 +382,7 @@ class AlignAndApply(Operation):
         self.input_cats = input_cats
         self.pixel_lists = pixel_lists
         if len(self.input_cats) != len(self.pixel_lists):
-            raise ValueError("Inccorect Align and Apply Setup")
+            raise ValueError("Incorrect Align and Apply Setup")
         self.func = func
         self._meta = meta
         self.output_pixels = output_pixels
@@ -392,7 +393,9 @@ class AlignAndApply(Operation):
     @property
     def input_ops(self) -> list[Operation | None]:
         """Get the operations corresponding to the input catalogs"""
-        return [cat._operation if cat is not None else None for cat in self.input_cats]
+        return [
+            cat._operation if cat is not None else None for cat in self.input_cats
+        ]  # pylint: disable=protected-access
 
     @property
     def dependencies(self) -> list[Operation]:
@@ -444,8 +447,6 @@ class AlignAndApply(Operation):
         """Build the HealpixGraph from the Operation."""
         input_ops = self.input_ops
         graphs = [op.build() if op is not None else None for op in input_ops]
-        metas = self.metas
-        catalog_infos = self.catalog_infos
         func = _verified(self.func, self.meta) if self.verify_meta else self.func
         graph = {}
         pixel_key_map = {}
@@ -456,14 +457,14 @@ class AlignAndApply(Operation):
             output_pixel = all_pixels[0]
             pixels = all_pixels[1:]
             task_refs = []
-            for g, m, p in zip(graphs, metas, pixels):
+            for g, m, p in zip(graphs, self.metas, pixels):
                 if g is None:
                     task_refs.append(None)
                 elif p is None or p not in g.pixel_to_key_map:
                     task_refs.append(m)
                 else:
                     task_refs.append(TaskRef(g.pixel_to_key_map[p]))
-            args = task_refs + list(pixels) + catalog_infos + list(self.args)
+            args = task_refs + list(pixels) + self.catalog_infos + list(self.args)
             kwargs = self.kwargs
             key = (self.key_name, i)
             task = Task(key, func, *args, **kwargs)

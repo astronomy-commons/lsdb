@@ -4,8 +4,8 @@ from astropy.coordinates import Angle, SkyCoord
 from cdshealpix.nested import healpix_to_lonlat
 from nested_pandas import datasets
 
-import lsdb
 from lsdb.core.search.region_search import BoxSearch, ConeSearch, PixelSearch
+from lsdb.loaders.dataframe.from_dataframe import from_dataframe
 
 
 def generate_data(
@@ -222,5 +222,5 @@ def generate_catalog(
     )
     # Give it a default catalog name if not provided
     if "catalog_name" not in kwargs:
-        return lsdb.from_dataframe(base_nf.compute(), catalog_name="generated_catalog", **kwargs)
-    return lsdb.from_dataframe(base_nf.compute(), **kwargs)
+        return from_dataframe(base_nf.compute(), catalog_name="generated_catalog", **kwargs)
+    return from_dataframe(base_nf.compute(), **kwargs)

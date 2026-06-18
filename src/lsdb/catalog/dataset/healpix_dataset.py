@@ -312,7 +312,7 @@ class HealpixDataset:
         return self.__class__(op, hc_structure, loading_config=self.loading_config)
 
     def _apply_partitionwise_operation(
-        self, op_class: type[MapPartitions], func=None, *args, meta=None, **kwargs
+        self, op_class: type[MapPartitions], func, *args, meta=None, **kwargs
     ) -> Self:
         new_op = op_class(self._operation, func, *args, meta=meta, **kwargs)
         return self._create_updated_dataset(op=new_op)
