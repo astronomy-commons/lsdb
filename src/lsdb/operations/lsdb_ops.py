@@ -209,7 +209,7 @@ class MapPartitions(Operation):
     """An Operation that applies a function to each partition of a HealpixGraph."""
 
     class_func = None
-    class_include_pixels = None
+    class_include_pixels: bool | None = None
 
     def __init__(
         self, base: Operation, func, *args, meta=None, include_pixel=False, verify_meta=True, **kwargs
@@ -370,7 +370,7 @@ class AlignAndApply(Operation):
 
     def __init__(
         self,
-        input_cats: Sequence[HealpixDataset],
+        input_cats: Sequence[HealpixDataset | None],
         pixel_lists: Sequence[Sequence[HealpixPixel | None]],
         func,
         meta,
@@ -394,8 +394,9 @@ class AlignAndApply(Operation):
     def input_ops(self) -> list[Operation | None]:
         """Get the operations corresponding to the input catalogs"""
         return [
-            cat._operation if cat is not None else None for cat in self.input_cats
-        ]  # pylint: disable=protected-access
+            cat._operation if cat is not None else None
+            for cat in self.input_cats  # pylint: disable=protected-access
+        ]
 
     @property
     def dependencies(self) -> list[Operation]:
@@ -448,7 +449,7 @@ class AlignAndApply(Operation):
         input_ops = self.input_ops
         graphs = [op.build() if op is not None else None for op in input_ops]
         func = _verified(self.func, self.meta) if self.verify_meta else self.func
-        graph = {}
+        graph: dict = {}
         pixel_key_map = {}
         for g in graphs:
             if g is not None:
@@ -456,7 +457,7 @@ class AlignAndApply(Operation):
         for i, all_pixels in enumerate(zip(self.output_pixels, *self.pixel_lists)):
             output_pixel = all_pixels[0]
             pixels = all_pixels[1:]
-            task_refs = []
+            task_refs: list = []
             for g, m, p in zip(graphs, self.metas, pixels):
                 if g is None:
                     task_refs.append(None)

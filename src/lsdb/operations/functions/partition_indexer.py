@@ -8,7 +8,7 @@ from hats import HealpixPixel
 from lsdb.core.search.region_search import PixelSearch
 
 if TYPE_CHECKING:
-    from lsdb import HealpixDataset
+    from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
 
 
 # pylint: disable=protected-access

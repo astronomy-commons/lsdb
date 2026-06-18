@@ -331,7 +331,7 @@ class HealpixDataset:
     @overload
     def map_partitions(
         self,
-        func: Callable[..., Any],
+        func: Callable[..., pd.Series],
         *args: Any,
         meta: pd.DataFrame | pd.Series | dict | Iterable | tuple | None = None,
         include_pixel: bool = False,
@@ -493,15 +493,15 @@ class HealpixDataset:
         self._check_single_column_for_boolean_op("<=")
         return self._apply_comparison(lambda a, b: a <= b, other)
 
-    def __eq__(self, other) -> Self:
+    def __eq__(self, other) -> Self:  # type: ignore[override]
         self._check_single_column_for_boolean_op("==")
         return self._apply_comparison(lambda a, b: a == b, other)
 
-    def __ne__(self, other) -> Self:
+    def __ne__(self, other) -> Self:  # type: ignore[override]
         self._check_single_column_for_boolean_op("!=")
         return self._apply_comparison(lambda a, b: a != b, other)
 
-    __hash__ = None
+    __hash__: None = None  # type: ignore[assignment]
 
     def __invert__(self) -> Self:
         """Negate a boolean single-column catalog (~mask)."""
@@ -1322,7 +1322,7 @@ class HealpixDataset:
             return self._reload_with_filter(search)
         filtered_cat = search.filter_hc_catalog(self.hc_structure)
         filtered_pixels = filtered_cat.get_healpix_pixels()
-        filtered_op = SelectPixels(self._operation, filtered_pixels)
+        filtered_op: SelectPixels | MapPartitions = SelectPixels(self._operation, filtered_pixels)
         if search.fine:
             filtered_op = MapPartitions(filtered_op, search.search_points, filtered_cat.catalog_info)
         return self._create_updated_dataset(filtered_op, hc_structure=filtered_cat)

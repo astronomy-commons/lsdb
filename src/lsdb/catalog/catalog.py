@@ -807,7 +807,7 @@ class Catalog(HealpixDataset):
         cat.margin = self.margin.search(search) if self.margin is not None else None
         return cat
 
-    def map_partitions(
+    def map_partitions(  # type: ignore[override]
         self,
         func: Callable[..., npd.NestedFrame],
         *args,
