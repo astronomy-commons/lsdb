@@ -394,8 +394,8 @@ class AlignAndApply(Operation):
     def input_ops(self) -> list[Operation | None]:
         """Get the operations corresponding to the input catalogs"""
         return [
-            cat._operation if cat is not None else None
-            for cat in self.input_cats  # pylint: disable=protected-access
+            cat._operation if cat is not None else None  # pylint: disable=protected-access
+            for cat in self.input_cats
         ]
 
     @property

@@ -807,7 +807,7 @@ class Catalog(HealpixDataset):
         cat.margin = self.margin.search(search) if self.margin is not None else None
         return cat
 
-    def map_partitions(  # type: ignore[override]
+    def map_partitions(
         self,
         func: Callable[..., npd.NestedFrame],
         *args,
@@ -816,7 +816,7 @@ class Catalog(HealpixDataset):
         compute_single_partition: bool = False,
         partition_index: int | HealpixPixel | None = None,
         **kwargs,
-    ) -> Catalog | dd.Series:
+    ) -> Catalog | dd.Series:  # type: ignore[override]
         """Applies a function to each partition in the catalog and respective margin.
 
         The ra and dec of each row is assumed to remain unchanged. If the function returns a DataFrame,
