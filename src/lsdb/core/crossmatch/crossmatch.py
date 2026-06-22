@@ -20,7 +20,18 @@ def _validate_and_convert_to_catalog(
         data_args["catalog_name"] = suffix if suffix else default_suffix
 
     # Convert the DataFrame to a Catalog.
-    data = from_dataframe(data, **data_args)
+    try:
+        data = from_dataframe(data, **data_args)
+    except ValueError as error:
+        for coordinate in ("ra", "dec"):
+            if str(error) == f"No column found for {coordinate}":
+                column_arg = f"{coordinate}_column"
+                raise ValueError(
+                    f"{error}. Specify the column with "
+                    f"{default_suffix}_args={{'{column_arg}': '<column_name>'}}, "
+                    f"or use {column_arg}=... when both inputs share the same column name."
+                ) from error
+        raise
     return data
 
 
