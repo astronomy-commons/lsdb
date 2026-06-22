@@ -47,6 +47,8 @@ If you use Rubin Data Preview 1 (DP1) with LSDB, please also cite: ["Variability
 
 Find full citation information [here](./CITATION.bib).
 
+To explore the science enabled by LSDB, browse our [NASA ADS library of papers using LSDB](https://ui.adsabs.harvard.edu/public-libraries/6PlU_HPIQw6Riwl7ywyV0A).
+
 ## Acknowledgements
 
 This project is supported by Schmidt Sciences.
