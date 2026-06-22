@@ -151,12 +151,18 @@ def test_ra_dec_columns_crossmatch(small_sky_catalog, small_sky_xmatch_catalog, 
     right_dataframe_abnormal_dec_col = right_dataframe.rename(columns={"dec": "abnormal_dec_col_name"})
 
     # Crossmatch method attempts to use default column names and fails
-    with pytest.raises(ValueError, match="No column found for ra"):
+    with pytest.raises(
+        ValueError,
+        match=r"No column found for ra.*right_args=\{'ra_column': '<column_name>'\}",
+    ):
         lsdb.crossmatch(
             left_dataframe,
             right_dataframe_abnormal_ra_col,
         )
-    with pytest.raises(ValueError, match="No column found for dec"):
+    with pytest.raises(
+        ValueError,
+        match=r"No column found for dec.*right_args=\{'dec_column': '<column_name>'\}",
+    ):
         lsdb.crossmatch(
             left_dataframe,
             right_dataframe_abnormal_dec_col,
