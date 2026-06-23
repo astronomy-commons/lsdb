@@ -69,11 +69,16 @@ advanced installation instructions in the :doc:`contribution guide </developer/c
 Quickstart
 --------------------------
 
-LSDB is built on top of `Dask DataFrame <https://docs.dask.org/en/stable/dataframe.html>`_, which allows workflows
-to run in parallel on distributed environments and scale to large, out-of-memory datasets. For this to work,
-when catalogs are opened, they are loaded **lazily**, meaning that only the metadata is loaded at first. This way, LSDB can plan
-how tasks will be executed in the future without actually doing any computation. See our :doc:`tutorials </tutorials>`
-for more information.
+LSDB is designed to work with large astronomical catalogs, which often will not fit into your system's memory
+all at one time. To enable this, LSDB uses a "lazy" evaluation model, where commands build a plan of work to
+execute, but do not actually perform any computation until the user explicitly requests it. LSDB uses the
+`Dask <https://dask.org/>`_ library to handle workflow execution, Dask handles the parallelization and
+memory management of the workflow, while simultaneously providing tooling to define your cluster configuration
+and monitor any in-progress computation. While the LSDB `Catalog` object is not built directly on Dask,
+it shares a lot of similarity to the `Dask DataFrame <https://docs.dask.org/en/stable/dataframe.html>`_ (and
+therefore the `Pandas DataFrame <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html>`_). See
+our :doc:`tutorials </tutorials>` for much more detail on LSDB, performance tips, motivated science examples,
+and debugging tips.
 
 
 Opening a Catalog

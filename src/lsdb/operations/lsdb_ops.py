@@ -69,7 +69,7 @@ class FromHealpixMap(Operation):
         return f"{funcname(self.func)}-{tokenized}"
 
     @property
-    def meta(self) -> npd.NestedFrame:
+    def meta(self) -> npd.NestedFrame | pd.DataFrame:
         if self._meta is not None:
             return self._meta
         first_part = self.func(self.pixels[0], *self.args, **self.kwargs)
