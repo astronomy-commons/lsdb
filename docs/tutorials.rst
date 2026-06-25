@@ -24,7 +24,7 @@ We run hands-on LSDB tutorials at hackathons, workshops, and conferences. The
 materials from these events live in standalone GitHub repositories that you can clone and
 work through on your own:
 
-* `AstroAI 2026 LSDB Tutorial <https://github.com/lincc-frameworks/astroai2026-tutorial-lsdb>`_
+* `AstroAI Workshop 2026 LSDB Tutorial <https://github.com/lincc-frameworks/astroai2026-tutorial-lsdb>`_
 * `LSST-DA Regional Meeting at JHU 2026 — "From Transients to Cosmology" <https://github.com/lincc-frameworks/LSST-DA-meeting-JHU>`_
 * `DESC Dark Matter Workshop 2025 — Stellar Streams in LSST <https://github.com/lincc-frameworks/DESC_Stellar_Streams_2025>`_
 * `Rubin Community Workshop 2025 Hackathon <https://github.com/lincc-frameworks/RCW_Hackathon_2025_LSDB>`_
