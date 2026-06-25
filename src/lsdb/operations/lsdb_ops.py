@@ -211,6 +211,7 @@ class MapPartitions(Operation):
     class_func = None
     """Subclasses with a predictable function supply this, and a custom user-function cannot be applied in that case"""
     class_include_pixels: bool | None = None
+    """Subclasses that determine their own pixels will supply this, and a custom user-defined set of pixels cannot be supplied in that case."""
 
     def __init__(
         self, base: Operation, func, *args, meta=None, include_pixel=False, verify_meta=True, **kwargs
