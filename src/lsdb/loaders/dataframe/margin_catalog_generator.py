@@ -170,7 +170,7 @@ class MarginCatalogGenerator:
 
         Returns
         -------
-        tuple[Operation, dict[HealpixPixel, int], int]
+        tuple[Operation, int]
             Tuple containing the LSDB Operation and the total number of rows.
         """
         # Generate pixel map ordered by _healpix_29
