@@ -209,6 +209,7 @@ class MapPartitions(Operation):
     """An Operation that applies a function to each partition of a HealpixGraph."""
 
     class_func = None
+    """Subclasses with a predictable function supply this, and a custom user-function cannot be applied in that case"""
     class_include_pixels: bool | None = None
 
     def __init__(
