@@ -17,7 +17,6 @@ from lsdb.operations.functions.merge_catalog_functions import (  # construct_cat
 )
 from lsdb.operations.operation import Operation
 
-# from lsdb.types import DaskDFPixelMap
 
 if TYPE_CHECKING:
     from lsdb.catalog.catalog import Catalog
