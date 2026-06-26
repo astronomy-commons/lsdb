@@ -48,6 +48,38 @@ Finally, to check that your package has been correctly installed, run the packag
     most recent non-development version of HATS.
 
 
+Use of Generative AI
+-------------------------------------------------------------------------------
+
+Generative AI tools are often helpful. However, the output of these tools is the
+responsibility of the human contributor. LINCC Frameworks expects real authentic
+engagement in our community. As such, when using AI, please carefully consider
+what and how to communicate, question results, think things through thoroughly
+and make well-informed decisions.
+
+Some examples of acceptable and unacceptable AI uses are:
+
+**Acceptable uses**
+
+- Gaining understanding of the existing code
+- Getting solution ideas
+- Translating or proof-reading your comments or PR descriptions: please keep the
+  wording as close as possible to your original wording.
+
+**Unacceptable uses**
+
+- External AI tooling (e.g. bots, agents) directly interacting with the project;
+  including creating issues, PRs or commenting on GitHub or Discourse, including
+  good first issue PRs.
+- Solving topics that you wouldn't be able to solve yourself without AI
+- Using AI output without ensuring that you fully understand the output or without
+  verifying that it is the correct approach.
+- Increasing breadth of contributions, i.e. simultaneously contributing to several
+  projects. Instead of spreading your resources, you can provide greater value by
+  engaging more deeply with one or two projects.
+
+Adapted from `matplotlib generative ai policy <https://matplotlib.org/devdocs/devel/contribute.html#good-first-issues>`__.
+
 Find (or make) a new GitHub issue
 -------------------------------------------------------------------------------
 
