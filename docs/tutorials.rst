@@ -7,7 +7,7 @@ functionality.
 .. toctree::
    :numbered: 1
    :maxdepth: 2
-    
+
    tutorial_toc/toc_catalogs
    tutorial_toc/toc_analyzing
    tutorial_toc/toc_nested
@@ -22,10 +22,15 @@ Workshop & Event Materials
 
 We run hands-on LSDB tutorials at hackathons, workshops, and conferences. The
 materials from these events live in standalone GitHub repositories that you can clone and
-work through on your own:
+work through on your own.
 
-* `AstroAI Workshop 2026 LSDB Tutorial <https://github.com/lincc-frameworks/astroai2026-tutorial-lsdb>`_
-* `LSST-DA Regional Meeting at JHU 2026 — "From Transients to Cosmology" <https://github.com/lincc-frameworks/LSST-DA-meeting-JHU>`_
+**Most recent tutorials:**
+
+* June 2026: `AstroAI Workshop 2026 LSDB Tutorial <https://github.com/lincc-frameworks/astroai2026-tutorial-lsdb>`_. Focused on remote machine learning training, remote catalog access, and streaming interface.
+* May 2026: `LSST-DA Regional Meeting at JHU 2026 — "From Transients to Cosmology" <https://github.com/lincc-frameworks/LSST-DA-meeting-JHU>`_. Focused on working with Rubin Data Preview on the Rubin Science Platform, cross-matching with other catalogs, and light-curve analysis.
+
+**Legacy tutorials:**
+
 * `DESC Dark Matter Workshop 2025 — Stellar Streams in LSST <https://github.com/lincc-frameworks/DESC_Stellar_Streams_2025>`_
 * `Rubin Community Workshop 2025 Hackathon <https://github.com/lincc-frameworks/RCW_Hackathon_2025_LSDB>`_
 * `AGN Science Collaboration Meeting 2025 Hackathon <https://github.com/lincc-frameworks/AGN_SC_2025_LSDB>`_
