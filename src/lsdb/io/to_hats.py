@@ -70,8 +70,6 @@ def perform_write(
         write_histogram(histogram, base_catalog_dir, hp_pixel)
         write_done_pixel(base_catalog_dir, hp_pixel)
         return pd.DataFrame({"count": [0], "histogram": [histogram]})
-    pixel_dir = hc.io.pixel_directory(base_catalog_dir, hp_pixel.order, hp_pixel.pixel)
-    hc.io.file_io.make_directory(pixel_dir, exist_ok=True)
     pixel_path = hc.io.paths.new_pixel_catalog_file(
         base_catalog_dir,
         hp_pixel,
@@ -527,31 +525,26 @@ def write_partitions(
         as well as the array with the sparse count histograms.
     """
     base_catalog_dir_fp = hc.io.file_io.get_upath(base_catalog_dir_fp)
-    pixels = []
     existing_pixels_set = set(existing_pixels) if existing_pixels is not None else set()
+    pixels = [p for p in catalog.get_healpix_pixels() if p not in existing_pixels_set]
 
-    for pixel in catalog.get_healpix_pixels():
-        if pixel in existing_pixels_set:
-            continue
-        pixels.append(pixel)
+    if len(pixels) == 0:
+        return [], [], []
 
-    if len(pixels) > 0:
-        write_cat = catalog.partitions[pixels]
+    write_cat = catalog.partitions[pixels]
 
-        res_cat = write_cat.map_partitions(
-            perform_write,
-            base_catalog_dir_fp,
-            histogram_order,
-            npix_suffix,
-            npix_parquet_name,
-            meta=WRITE_RESULT_META,
-            include_pixel=True,
-            **kwargs,
-        )
-        results = res_cat.compute()
-        counts, histograms = results["count"].tolist(), results["histogram"].tolist()
-    else:
-        counts, histograms = (), ()
+    res_cat = write_cat.map_partitions(
+        perform_write,
+        base_catalog_dir_fp,
+        histogram_order,
+        npix_suffix,
+        npix_parquet_name,
+        meta=WRITE_RESULT_META,
+        include_pixel=True,
+        **kwargs,
+    )
+    results = res_cat.compute()
+    counts, histograms = results["count"].tolist(), results["histogram"].tolist()
 
     non_empty_indices = np.nonzero(counts)
     non_empty_pixels = np.array(pixels)[non_empty_indices]

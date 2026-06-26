@@ -273,9 +273,9 @@ class HealpixDataset:
     ) -> Self:
         """Creates a new copy of the catalog, updating any provided arguments
 
-        Shallow copies the ddf and ddf_pixel_map if not provided. Creates a new hc_structure if not provided.
-        Updates the hc_structure with any provided catalog info parameters, resets the total rows, removes
-        any default columns that don't exist, and updates the pyarrow schema to reflect the new ddf.
+        Creates a new hc_structure if not provided. Updates the hc_structure with any provided catalog info
+        parameters, resets the total rows, removes any default columns that don't exist, and updates the
+        pyarrow schema to reflect the new catalog.
 
         Parameters
         ----------
@@ -291,7 +291,7 @@ class HealpixDataset:
         -------
         Self
             A new dataset object with the arguments updated to those provided to the function, and the
-            hc_structure metadata updated to match the new ddf
+            hc_structure metadata updated to match the new catalog.
         """
         op = op if op is not None else self._operation
         hc_structure = hc_structure if hc_structure is not None else self.hc_structure
