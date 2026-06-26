@@ -439,7 +439,15 @@ class HealpixDataset:
         return self._apply_partitionwise_operation(MapPartitions, lambda df, item: df[item], item)
 
     def _filter_by_boolean_catalog(self, boolean_cat: HealpixDataset) -> Self:
-        """Filter rows using a boolean single-column catalog."""
+        """Filter rows using a boolean single-column catalog.
+
+        If the boolean catalog has more than one column, a ValueError is raised. The boolean catalog must
+        have the same HEALPix partitioning as the original catalog, otherwise a ValueError is raised.
+
+        Masking with a non-boolean catalog such as with an integer or float column will raise a ValueError.
+
+        The function returns a new catalog with only the rows where the boolean column is True.
+        """
         if len(boolean_cat.columns) != 1:
             raise ValueError(
                 "Boolean filtering requires a single-column boolean catalog. "
@@ -474,6 +482,32 @@ class HealpixDataset:
             )
 
     def _apply_comparison(self, op, other) -> Self:
+        """Applies a comparison operator to a single-column catalog.
+
+        Used to allow filtering such as `cat[cat['column'] > value]` to create a boolean catalog for
+        filtering. Applies a comparison operation function to a single-column catalog, returning a new
+        catalog with the result of the comparison.
+
+        Comparison operators must be applied to a single-column catalog. If the catalog has more than one
+        column, a ValueError is raised.
+
+        The value to compare against must be a scalar or a value that can be broadcast to the column's shape
+        in every partition. This means something like `cat['column'] > 5` is valid, but
+        `cat['column'] > cat['other_column']` is not.
+
+        Parameters
+        ----------
+        op : Callable
+            A comparison operator function that supports element-wise comparison
+        other : Any
+            The value to compare the column against. Must be a scalar or a value that can be broadcast to
+            the column's shape in every partition.
+        """
+        if len(self.columns) != 1:
+            raise ValueError(
+                "Comparison operations require a single-column catalog. "
+                "Use catalog['column_name'] to select a column first."
+            )
         col = self.columns[0]
         return self.map_partitions(lambda df, v: df.assign(**{col: op(df[col], v)}), other)
 
@@ -517,6 +551,10 @@ class HealpixDataset:
         left_col = self.columns[0]
         right_col = other.columns[0]
         pixels = self.get_healpix_pixels()
+        if not pixels == other.get_healpix_pixels():
+            raise ValueError(
+                "Both catalogs must have the same HEALPix partitioning for logical AND operation"
+            )
         meta = self.meta
 
         def and_func(
@@ -533,6 +571,8 @@ class HealpixDataset:
         left_col = self.columns[0]
         right_col = other.columns[0]
         pixels = self.get_healpix_pixels()
+        if not pixels == other.get_healpix_pixels():
+            raise ValueError("Both catalogs must have the same HEALPix partitioning for logical OR operation")
         meta = self.meta
 
         def or_func(
