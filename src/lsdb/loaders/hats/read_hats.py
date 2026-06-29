@@ -430,8 +430,6 @@ def _load_operation(catalog: HCHealpixDataset, config) -> Operation:
     """Load Dask DF from parquet files and make dict of HEALPix pixel to partition index"""
     pixels = catalog.get_healpix_pixels()
     ordered_pixels = np.array(pixels)[get_pixel_argsort(pixels)]
-    dask_meta_schema = _load_dask_meta_schema(catalog, config)
-    index_column = dask_meta_schema.index.name
     query_url_params = None
     if isinstance(file_io.get_upath(catalog.catalog_base_dir).fs, HTTPFileSystem):
         query_url_params = config.make_query_url_params()
