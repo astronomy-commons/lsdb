@@ -126,17 +126,16 @@ def test_coerce_to_meta_scalar_infers_dtype_from_type(scalar, expected_dtype):
     assert meta["result"].dtype == expected_dtype
 
 
-def test_coerce_to_meta_unsupported_scalar_type_raises_type_error():
-    # KNOWN ISSUE: an object of a type pandas doesn't recognize as a dtype
-    # (e.g. a custom class instance, or a set) falls through to the scalar
-    # branch and raises an unwrapped TypeError from `_coerce_to_meta`. This
-    # is *not* caught by `map_parts_meta`'s try/except, since the call to
-    # `_coerce_to_meta` happens after that block, so it surfaces directly.
+def test_coerce_to_meta_unsafe_pandas_type():
+
     class Custom:  # pylint: disable=too-few-public-methods
         pass
 
-    with pytest.raises(TypeError, match="not understood"):
-        _coerce_to_meta(Custom())
+    # result should be a pd.series with dtype=object
+    meta = _coerce_to_meta(Custom())
+    assert len(meta) == 0
+    assert list(meta.columns) == ["result"]
+    assert meta["result"].dtype == object
 
 
 @pytest.mark.parametrize("values", [[1, 2, 3], (1, 2, 3)])

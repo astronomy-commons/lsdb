@@ -4,6 +4,7 @@ import functools
 from typing import TYPE_CHECKING, Callable, Sequence
 
 import nested_pandas as npd
+import numpy as np
 import pandas as pd
 from dask._task_spec import Task, TaskRef, cull
 from dask.dataframe.utils import check_meta
@@ -144,6 +145,14 @@ def map_parts_meta(func, base_meta: npd.NestedFrame, *args, include_pixel=False,
 
 def _coerce_to_meta(result) -> npd.NestedFrame:
     """Coerce a function result to an empty npd.NestedFrame for use as meta."""
+
+    def _safe_dtype(t: type) -> np.dtype:
+        """Return the pandas dtype, falling back to object for unsupported types."""
+        try:
+            return pd.api.types.pandas_dtype(t)
+        except TypeError:
+            return np.dtype("object")
+
     if result is None:
         raise ValueError(
             "Cannot infer meta for MapPartitions. Function returned None for an empty "
@@ -159,18 +168,16 @@ def _coerce_to_meta(result) -> npd.NestedFrame:
     if isinstance(result, dict):
         return npd.NestedFrame(
             {
-                k: pd.Series(
-                    dtype=pd.api.types.pandas_dtype(type(v[0] if hasattr(v, "__len__") and len(v) > 0 else v))
-                )
+                k: pd.Series(dtype=_safe_dtype(type(v[0] if hasattr(v, "__len__") and len(v) > 0 else v)))
                 for k, v in result.items()
             }
         )
     if isinstance(result, (list, tuple)):
         return npd.NestedFrame(
-            {"result": pd.Series(dtype=pd.api.types.pandas_dtype(type(result[0])) if result else object)}
+            {"result": pd.Series(dtype=_safe_dtype(type(result[0])) if result else object)}
         )
     # scalar
-    return npd.NestedFrame({"result": pd.Series(dtype=pd.api.types.pandas_dtype(type(result)))})
+    return npd.NestedFrame({"result": pd.Series(dtype=_safe_dtype(type(result)))})
 
 
 def _coerce_to_frame(result) -> npd.NestedFrame:
