@@ -38,7 +38,7 @@ class Operation(ABC):
         pass
 
     @abstractmethod
-    def build(self) -> HealpixGraph:  # pragma: no cover
+    def build(self, pixels: list[HealpixPixel] | None = None) -> HealpixGraph:  # pragma: no cover
         """Returns the task graph for this operation, where each node corresponds to a HEALPix pixel"""
         pass
 

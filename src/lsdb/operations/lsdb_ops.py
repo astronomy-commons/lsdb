@@ -90,10 +90,13 @@ class FromHealpixMap(Operation):
     def healpix_pixels(self) -> list[HealpixPixel]:
         return self.pixels
 
-    def build(self) -> HealpixGraph:
+    def build(self, pixels: list[HealpixPixel] | None = None) -> HealpixGraph:
+        target = set(pixels) if pixels is not None else None
         graph = {}
         pixel_keys = {}
         for i, pixel in enumerate(self.pixels):
+            if target is not None and pixel not in target:
+                continue
             key = (self.key_name, i)
             map_kwargs = {k: v[i] for k, v in self.map_kwargs.items()} if self.map_kwargs is not None else {}
             func = _verified(self.func, self.meta) if self.verify_meta else self.func
@@ -276,11 +279,12 @@ class MapPartitions(Operation):
     def healpix_pixels(self) -> list[HealpixPixel]:
         return self.base.healpix_pixels
 
-    def build(self) -> HealpixGraph:
+    def build(self, pixels: list[HealpixPixel] | None = None) -> HealpixGraph:
         """Build the HealpixGraph from the Operation"""
-        previous = self.base.build()
+        previous = self.base.build(pixels=pixels)
         graph = previous.graph
         pixel_keys = {}
+        pixel_to_index = {pixel: i for i, pixel in enumerate(self.healpix_pixels)}
         func = self.func
         include_pixel = self.include_pixel
         meta = self.meta
@@ -298,7 +302,8 @@ class MapPartitions(Operation):
                     f"Error applying function {funcname(func)} to partition {_partition_index}: {e}"
                 ) from e
 
-        for i, (pixel, prev_key) in enumerate(previous.pixel_to_key_map.items()):
+        for pixel, prev_key in previous.pixel_to_key_map.items():
+            i = pixel_to_index[pixel]
             args = self.args
             if self.include_pixel:
                 args = (HealpixPixel(*pixel),) + args
@@ -360,9 +365,11 @@ class SelectPixels(Operation):
     def healpix_pixels(self) -> list[HealpixPixel]:
         return list(self.pixels)
 
-    def build(self) -> HealpixGraph:
+    def build(self, pixels: list[HealpixPixel] | None = None) -> HealpixGraph:
         """Build the HealpixGraph from the Operation."""
-        previous = self.base.build()
+        # intersect the caller's requested subset with a provided pixel filter
+        effective = [p for p in self.pixels if pixels is None or p in set(pixels)]
+        previous = self.base.build(pixels=effective if pixels is not None else None)
         selected_pixels = self.pixels
         for p in selected_pixels:
             if p not in previous.pixel_to_key_map:
@@ -453,28 +460,45 @@ class AlignAndApply(Operation):
         """Return the HealpixPixels corresponding to the output pixels of the operation"""
         return list(self.output_pixels)
 
-    def build(self) -> HealpixGraph:
+    def build(self, pixels: list[HealpixPixel] | None = None) -> HealpixGraph:
         """Build the HealpixGraph from the Operation."""
         input_ops = self.input_ops
-        graphs = [op.build() if op is not None else None for op in input_ops]
+
+        # resolve against a custom input pixel list
+        if pixels is not None:
+            requested = set(pixels)
+            output_indices = [i for i, p in enumerate(self.output_pixels) if p in requested]
+            input_pixel_subsets = [
+                list({pixel_list[i] for i in output_indices if pixel_list[i] is not None})
+                for pixel_list in self.pixel_lists
+            ]
+        else:
+            output_indices = list(range(len(self.output_pixels)))
+            input_pixel_subsets = [None] * len(input_ops)
+
+        graphs = [
+            op.build(pixels=subset) if op is not None else None
+            for op, subset in zip(input_ops, input_pixel_subsets)
+        ]
+
         func = _verified(self.func, self.meta) if self.verify_meta else self.func
         graph: dict = {}
         pixel_key_map = {}
         for g in graphs:
             if g is not None:
                 graph = graph | g.graph
-        for i, all_pixels in enumerate(zip(self.output_pixels, *self.pixel_lists)):
-            output_pixel = all_pixels[0]
-            pixels = all_pixels[1:]
+        for i in output_indices:
+            output_pixel = self.output_pixels[i]
+            input_pixels = tuple(pl[i] for pl in self.pixel_lists)
             task_refs: list = []
-            for g, m, p in zip(graphs, self.metas, pixels):
+            for g, m, p in zip(graphs, self.metas, input_pixels):
                 if g is None:
                     task_refs.append(None)
                 elif p is None or p not in g.pixel_to_key_map:
                     task_refs.append(m)
                 else:
                     task_refs.append(TaskRef(g.pixel_to_key_map[p]))
-            args = task_refs + list(pixels) + self.catalog_infos + list(self.args)
+            args = task_refs + list(input_pixels) + self.catalog_infos + list(self.args)
             kwargs = self.kwargs
             key = (self.key_name, i)
             task = Task(key, func, *args, **kwargs)

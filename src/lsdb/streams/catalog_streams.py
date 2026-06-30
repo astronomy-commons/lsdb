@@ -1,3 +1,4 @@
+import sys
 from collections.abc import Iterator
 from typing import Optional
 
@@ -9,6 +10,33 @@ from dask.distributed import Client, Future
 from dask.optimization import cull
 
 from lsdb import Catalog
+
+
+def _graph_nbytes(graph: dict) -> int:
+    """Approximate memory footprint of a task graph dict.
+    Recurses into dicts, tuples, lists and sets, but skips
+    callables and types since those are shared across graphs."""
+    seen = set()
+    total = 0
+
+    def _traverse(obj):
+        nonlocal total
+        oid = id(obj)
+        if oid in seen:
+            return
+        seen.add(oid)
+        total += sys.getsizeof(obj)
+        if isinstance(obj, dict):
+            for k, v in obj.items():
+                _traverse(k)
+                _traverse(v)
+        elif isinstance(obj, (tuple, list, frozenset, set)):
+            for item in obj:
+                _traverse(item)
+        # skip: callables, types, modules — shared, not owned by this graph
+
+    _traverse(graph)
+    return total
 
 
 class _FakeFuture:
@@ -109,11 +137,14 @@ class CatalogStream:
 
         # It's possible that the full build here practically limits the memory gains of streaming
         # TODO: Follow up on this after custom graph construction
-        healpix_graph = catalog._operation.build()
-        self._delayed_partitions = []
-        for _, key in healpix_graph.pixel_to_key_map.items():
-            culled_graph, _ = cull(healpix_graph.graph, [key])
-            self._delayed_partitions.append(Delayed(key, culled_graph))
+        # healpix_graph = catalog._operation.build()
+        # self._delayed_partitions = []
+        # for _, key in healpix_graph.pixel_to_key_map.items():
+        #    culled_graph, _ = cull(healpix_graph.graph, [key])
+        #    self._delayed_partitions.append(Delayed(key, culled_graph))
+        self._pixels = catalog._operation.healpix_pixels
+
+        # self.catalog_op = self.catalog._operation
 
     def get_next_partitions(
         self, partitions_left: np.ndarray, rng: np.random.Generator  # pylint: disable=unused-argument
@@ -127,7 +158,19 @@ class CatalogStream:
 
     def submit_next_partitions(self, partitions: np.ndarray) -> Future | _FakeFuture:
         """Submit the next set of partitions for computation."""
-        selected = [self._delayed_partitions[i] for i in partitions]
+
+        # Intended to be used with single partition builds
+        def _to_delayed(operation, pixel):
+            build = operation.build(pixels=[pixel])
+            graph = build.graph
+            key = build.pixel_to_key_map[pixel]
+            return Delayed(key, graph)
+
+        selected = [_to_delayed(self.catalog._operation, self._pixels[i]) for i in partitions]
+
+        # DEBUG: Print size of graph per iteration
+        build = self.catalog._operation.build(pixels=[...])
+        print(f"chunk graph: {_graph_nbytes(build.graph):,} bytes  ({len(build.graph)} tasks)")
 
         if len(selected) == 1:
             if self.client is None:
