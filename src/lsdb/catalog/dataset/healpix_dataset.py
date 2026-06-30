@@ -510,8 +510,7 @@ class HealpixDataset:
             non_nested_cols = [c for c in cols if c not in self.nested_columns]
             if len(non_nested_cols) == 0:
                 return None
-            # TODO: Read from less expensive metadata summary.
-            return self.per_pixel_statistics(
+            return self.per_partition_statistics(
                 use_default_columns=False,
                 exclude_hats_columns=True,
                 include_columns=non_nested_cols,
