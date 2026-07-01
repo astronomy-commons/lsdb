@@ -10,12 +10,12 @@ from dask.distributed import Client, Future
 from dask.optimization import cull
 
 from lsdb import Catalog
-
+from dask._task_spec import Task
 
 def _graph_nbytes(graph: dict) -> int:
-    """Approximate memory footprint of a task graph dict.
-    Recurses into dicts, tuples, lists and sets, but skips
-    callables and types since those are shared across graphs."""
+    """Approximate owned memory of a dask task graph dict.
+    Recurses into dicts, tuples, lists, sets, and Task objects.
+    Skips callables and types since those are shared across graphs."""
     seen = set()
     total = 0
 
@@ -26,7 +26,11 @@ def _graph_nbytes(graph: dict) -> int:
             return
         seen.add(oid)
         total += sys.getsizeof(obj)
-        if isinstance(obj, dict):
+        if isinstance(obj, Task):
+            _traverse(obj.key)
+            _traverse(obj.args)   # tuple — will be recursed below
+            _traverse(obj.kwargs) # dict — will be recursed below
+        elif isinstance(obj, dict):
             for k, v in obj.items():
                 _traverse(k)
                 _traverse(v)
@@ -110,6 +114,7 @@ class CatalogStream:
         partitions_per_chunk: int = 1,
         shuffle: bool = True,
         seed: int | None = None,
+        log_graph_size: bool = False,
     ) -> None:
         self.catalog = catalog
 
@@ -120,6 +125,7 @@ class CatalogStream:
         self.partitions_per_chunk = min(partitions_per_chunk, self.catalog.npartitions)
         self.shuffle = shuffle
         self.seed = seed
+        self.log_graph_size = log_graph_size
 
         if self.seed is None:
             self.rng = np.random.default_rng()
@@ -156,6 +162,9 @@ class CatalogStream:
             partitions_left[-self.partitions_per_chunk :],
         )
 
+    def show_graph_size_DEBUG(self):
+        print(f"full graph: {_graph_nbytes(self.catalog._operation.build().graph):,} bytes  ({len(self.catalog._operation.build().graph)} tasks)")
+
     def submit_next_partitions(self, partitions: np.ndarray) -> Future | _FakeFuture:
         """Submit the next set of partitions for computation."""
 
@@ -168,9 +177,15 @@ class CatalogStream:
 
         selected = [_to_delayed(self.catalog._operation, self._pixels[i]) for i in partitions]
 
-        # DEBUG: Print size of graph per iteration
-        build = self.catalog._operation.build(pixels=[...])
-        print(f"chunk graph: {_graph_nbytes(build.graph):,} bytes  ({len(build.graph)} tasks)")
+        if self.log_graph_size:
+            # DEBUG: Print size of graph per iteration
+            pixel_list = self.catalog._operation.healpix_pixels  # grab once, outside the loop
+
+            for i in partitions:
+                pixel = pixel_list[i]   # HealpixPixel, not the integer i
+                build = self.catalog._operation.build(pixels=[pixel])
+                print(f"chunk graph: {_graph_nbytes(build.graph):,} bytes  ({len(build.graph)} tasks)")
+        # End debug
 
         if len(selected) == 1:
             if self.client is None:
