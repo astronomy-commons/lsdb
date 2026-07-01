@@ -153,7 +153,7 @@ def test_ra_dec_columns_crossmatch(small_sky_catalog, small_sky_xmatch_catalog, 
     # Crossmatch method attempts to use default column names and fails
     with pytest.raises(
         ValueError,
-        match=r"No column found for ra.*right_args=\{'ra_column': '<column_name>'\}",
+        match=r"No column found for ra in catalog 'right'.*Specify ra_column='<column_name>'",
     ):
         lsdb.crossmatch(
             left_dataframe,
@@ -161,7 +161,7 @@ def test_ra_dec_columns_crossmatch(small_sky_catalog, small_sky_xmatch_catalog, 
         )
     with pytest.raises(
         ValueError,
-        match=r"No column found for dec.*right_args=\{'dec_column': '<column_name>'\}",
+        match=r"No column found for dec in catalog 'right'.*Specify dec_column='<column_name>'",
     ):
         lsdb.crossmatch(
             left_dataframe,

@@ -477,6 +477,11 @@ def test_from_dataframe_finds_radec_columns(small_sky_order1_df):
     df_no_radec = small_sky_order1_df.drop(columns=["ra", "dec"])
     with pytest.raises(ValueError, match="No column found"):
         lsdb.from_dataframe(df_no_radec, margin_threshold=None)
+    with pytest.raises(
+        ValueError,
+        match=r"No column found for ra in catalog 'sample_catalog'.*Specify ra_column='<column_name>'",
+    ):
+        lsdb.from_dataframe(df_no_radec, catalog_name="sample_catalog", margin_threshold=None)
     # If multiple matches are found it's ambiguous, and an error is raised
     small_sky_order1_df["RA"] = small_sky_order1_df["ra"].copy()
     with pytest.raises(ValueError, match="possible columns"):
