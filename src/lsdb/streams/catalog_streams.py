@@ -1,4 +1,3 @@
-import sys
 from collections.abc import Iterator
 from typing import Optional
 
@@ -7,40 +6,8 @@ import numpy as np
 import pandas as pd
 from dask.delayed import Delayed
 from dask.distributed import Client, Future
-from dask.optimization import cull
 
 from lsdb import Catalog
-from dask._task_spec import Task
-
-def _graph_nbytes(graph: dict) -> int:
-    """Approximate owned memory of a dask task graph dict.
-    Recurses into dicts, tuples, lists, sets, and Task objects.
-    Skips callables and types since those are shared across graphs."""
-    seen = set()
-    total = 0
-
-    def _traverse(obj):
-        nonlocal total
-        oid = id(obj)
-        if oid in seen:
-            return
-        seen.add(oid)
-        total += sys.getsizeof(obj)
-        if isinstance(obj, Task):
-            _traverse(obj.key)
-            _traverse(obj.args)   # tuple — will be recursed below
-            _traverse(obj.kwargs) # dict — will be recursed below
-        elif isinstance(obj, dict):
-            for k, v in obj.items():
-                _traverse(k)
-                _traverse(v)
-        elif isinstance(obj, (tuple, list, frozenset, set)):
-            for item in obj:
-                _traverse(item)
-        # skip: callables, types, modules — shared, not owned by this graph
-
-    _traverse(graph)
-    return total
 
 
 class _FakeFuture:
@@ -114,43 +81,24 @@ class CatalogStream:
         partitions_per_chunk: int = 1,
         shuffle: bool = True,
         seed: int | None = None,
-        log_graph_size: bool = False,
     ) -> None:
         self.catalog = catalog
 
         if not isinstance(catalog, Catalog):
             raise ValueError(f"The provided catalog input type {type(catalog)} is not a lsdb.Catalog object.")
 
+        self.operation = catalog._operation  # pylint: disable=protected-access
+        self._pixels = catalog._operation.healpix_pixels  # pylint: disable=protected-access
+
         self.client = client
         self.partitions_per_chunk = min(partitions_per_chunk, self.catalog.npartitions)
         self.shuffle = shuffle
         self.seed = seed
-        self.log_graph_size = log_graph_size
 
         if self.seed is None:
             self.rng = np.random.default_rng()
         else:
             self.rng = np.random.default_rng((1 << 32, self.seed))
-
-        # Pre-extract delayed partitions with one-time graph optimization.
-        # This avoids repeated graph construction, optimization, and catalog
-        # search/reload overhead on every iteration.
-        #
-        # Crucially, to_delayed() returns Delayed objects that all share the
-        # same full graph. We cull each to its own subgraph so that
-        # client.compute() only sends the minimal per-partition graph to the
-        # scheduler, avoiding O(N^2) graph transmission overhead.
-
-        # It's possible that the full build here practically limits the memory gains of streaming
-        # TODO: Follow up on this after custom graph construction
-        # healpix_graph = catalog._operation.build()
-        # self._delayed_partitions = []
-        # for _, key in healpix_graph.pixel_to_key_map.items():
-        #    culled_graph, _ = cull(healpix_graph.graph, [key])
-        #    self._delayed_partitions.append(Delayed(key, culled_graph))
-        self._pixels = catalog._operation.healpix_pixels
-
-        # self.catalog_op = self.catalog._operation
 
     def get_next_partitions(
         self, partitions_left: np.ndarray, rng: np.random.Generator  # pylint: disable=unused-argument
@@ -162,9 +110,6 @@ class CatalogStream:
             partitions_left[-self.partitions_per_chunk :],
         )
 
-    def show_graph_size_DEBUG(self):
-        print(f"full graph: {_graph_nbytes(self.catalog._operation.build().graph):,} bytes  ({len(self.catalog._operation.build().graph)} tasks)")
-
     def submit_next_partitions(self, partitions: np.ndarray) -> Future | _FakeFuture:
         """Submit the next set of partitions for computation."""
 
@@ -175,17 +120,7 @@ class CatalogStream:
             key = build.pixel_to_key_map[pixel]
             return Delayed(key, graph)
 
-        selected = [_to_delayed(self.catalog._operation, self._pixels[i]) for i in partitions]
-
-        if self.log_graph_size:
-            # DEBUG: Print size of graph per iteration
-            pixel_list = self.catalog._operation.healpix_pixels  # grab once, outside the loop
-
-            for i in partitions:
-                pixel = pixel_list[i]   # HealpixPixel, not the integer i
-                build = self.catalog._operation.build(pixels=[pixel])
-                print(f"chunk graph: {_graph_nbytes(build.graph):,} bytes  ({len(build.graph)} tasks)")
-        # End debug
+        selected = [_to_delayed(self.operation, self._pixels[i]) for i in partitions]
 
         if len(selected) == 1:
             if self.client is None:
