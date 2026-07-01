@@ -414,8 +414,10 @@ class HealpixDataset:
             )
             return self.__class__(output_op, hc_structure)
 
-        new_cat = self._apply_partitionwise_operation(MapPartitions, func, *args, meta=meta, include_pixel=include_pixel, **kwargs)
-        if not isinstance(new_cat, pd.DataFrame):
+        new_cat = self._apply_partitionwise_operation(
+            MapPartitions, func, *args, meta=meta, include_pixel=include_pixel, **kwargs
+        )
+        if not isinstance(new_cat._operation.meta, pd.DataFrame):
             warnings.warn(
                 "output of the function must be a DataFrame to generate an LSDB `Catalog`. "
                 "`map_partitions` will return a dask object instead of a Catalog.",
