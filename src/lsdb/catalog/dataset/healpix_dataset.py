@@ -5,7 +5,7 @@ import random
 import warnings
 from collections.abc import Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Iterable, Type, cast, overload
+from typing import TYPE_CHECKING, Callable, Iterable, Type, cast
 
 import astropy
 import dask.dataframe as dd
@@ -317,38 +317,16 @@ class HealpixDataset:
         new_op = op_class(self._operation, func, *args, meta=meta, **kwargs)
         return self._create_updated_dataset(op=new_op)
 
-    @overload
     def map_partitions(
         self,
-        func: Callable[..., pd.DataFrame],
-        *args: Any,
-        meta: pd.DataFrame | pd.Series | dict | Iterable | tuple | None = None,
-        include_pixel: bool = False,
-        compute_single_partition: bool = False,
-        partition_index: int | HealpixPixel | None = None,
-        **kwargs: Any,
-    ) -> Self: ...
-    @overload
-    def map_partitions(
-        self,
-        func: Callable[..., pd.Series],
-        *args: Any,
-        meta: pd.DataFrame | pd.Series | dict | Iterable | tuple | None = None,
-        include_pixel: bool = False,
-        compute_single_partition: bool = False,
-        partition_index: int | HealpixPixel | None = None,
-        **kwargs: Any,
-    ) -> Self | dd.Series: ...
-    def map_partitions(
-        self,
-        func: Callable[..., npd.NestedFrame],
+        func: Callable,
         *args,
         meta: pd.DataFrame | pd.Series | dict | Iterable | tuple | None = None,
         include_pixel: bool = False,
         compute_single_partition: bool = False,
         partition_index: int | HealpixPixel | None = None,
         **kwargs,
-    ) -> Self | dd.Series:
+    ) -> Self:
         """Applies a function to each partition in the catalog.
 
         The ra and dec of each row is assumed to remain unchanged.
@@ -393,9 +371,9 @@ class HealpixDataset:
 
         Returns
         -------
-        Self or dd.Series
+        Self
             A new catalog with each partition replaced with the output of the function applied to the original
-            partition. If the function returns a non dataframe output, a dask Series will be returned.
+            partition.
         """
         if compute_single_partition:
             if partition_index is None:
@@ -414,15 +392,9 @@ class HealpixDataset:
             )
             return self.__class__(output_op, hc_structure)
 
-        new_op = MapPartitions(self._operation, func, *args, meta=meta, include_pixel=include_pixel, **kwargs)
-        new_cat = self._create_updated_dataset(op=new_op)
-        if not isinstance(new_op.meta, pd.DataFrame):
-            warnings.warn(
-                "output of the function must be a DataFrame to generate an LSDB `Catalog`. "
-                "`map_partitions` will return a dask object instead of a Catalog.",
-                RuntimeWarning,
-            )
-            return new_cat.to_dask_dataframe()
+        new_cat = self._apply_partitionwise_operation(
+            MapPartitions, func, *args, meta=meta, include_pixel=include_pixel, **kwargs
+        )
         return new_cat
 
     def __getitem__(self, item: str | list[str] | HealpixDataset) -> Self:
@@ -1179,8 +1151,10 @@ class HealpixDataset:
             new_dec_col = dec_col_df.rename(columns=columns).columns[0]
             if new_dec_col != dec_col:
                 updated_params["dec_column"] = new_dec_col
-        new_op = MapPartitions(self._operation, lambda df: df.rename(columns=columns))
-        return self._create_updated_dataset(op=new_op, updated_catalog_info_params=updated_params)
+        renamed = self.map_partitions(
+            lambda df: df.rename(columns=columns), meta=self.meta.rename(columns=columns)
+        )
+        return self._create_updated_dataset(op=renamed._operation, updated_catalog_info_params=updated_params)
 
     def rename_catalog(self, name: str) -> Self:
         """Renames the catalog.
