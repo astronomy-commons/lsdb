@@ -1481,6 +1481,7 @@ class Catalog(HealpixDataset):
         tqdm_kwargs: dict | None = None,
         create_thumbnail: bool = True,
         error_if_empty: bool = True,
+        create_summary: bool = True,
         **kwargs,
     ):
         """Save the catalog to disk in HATS format.
@@ -1537,6 +1538,7 @@ class Catalog(HealpixDataset):
                 tqdm_kwargs=tqdm_kwargs,
                 error_if_empty=error_if_empty,
                 create_thumbnail=create_thumbnail,
+                create_summary=create_summary,
                 **kwargs,
             )
         else:
@@ -1550,5 +1552,6 @@ class Catalog(HealpixDataset):
                 tqdm_kwargs=tqdm_kwargs,
                 create_thumbnail=create_thumbnail,
                 error_if_empty=error_if_empty,
+                create_summary=create_summary,
                 **kwargs,
             )

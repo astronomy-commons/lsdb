@@ -1390,6 +1390,7 @@ class HealpixDataset:
         progress_bar: bool = True,
         tqdm_kwargs: dict | None = None,
         error_if_empty: bool = True,
+        create_summary: bool = True,
         **kwargs,
     ):
         """Save the catalog to disk in HATS format.
@@ -1429,6 +1430,7 @@ class HealpixDataset:
             progress_bar=progress_bar,
             tqdm_kwargs=tqdm_kwargs,
             error_if_empty=error_if_empty,
+            create_summary=create_summary,
             **kwargs,
         )
 

@@ -2,6 +2,7 @@ from pathlib import Path
 
 import hats as hc
 from hats.catalog.catalog_collection import CollectionProperties
+from hats.io.summary_file import write_catalog_summary_file
 from upath import UPath
 
 from lsdb.io.common import new_provenance_properties
@@ -19,6 +20,7 @@ def to_collection(
     progress_bar: bool = True,
     tqdm_kwargs: dict | None = None,
     error_if_empty: bool = True,
+    create_summary: bool = True,
     **kwargs,
 ):
     """Saves the catalog collection to disk in the HATS format.
@@ -68,6 +70,7 @@ def to_collection(
         progress_bar=progress_bar,
         tqdm_kwargs=tqdm_kwargs,
         error_if_empty=error_if_empty,
+        create_summary=create_summary,
         **kwargs,
     )
 
@@ -84,6 +87,7 @@ def to_collection(
             overwrite=overwrite,
             resume=resume,
             error_if_empty=False,
+            create_summary=create_summary,
             **kwargs,
         )
         properties = properties | {"all_margins": margin_name, "default_margin": margin_name}
@@ -91,3 +95,6 @@ def to_collection(
     properties = properties | new_provenance_properties(base_collection_path)
     collection_info = CollectionProperties(**properties)
     collection_info.to_properties_file(base_collection_path)
+
+    if create_summary:
+        write_catalog_summary_file(base_collection_path, fmt="markdown", huggingface_metadata=False)
