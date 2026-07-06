@@ -6,18 +6,17 @@ from typing import TYPE_CHECKING
 import pandas as pd
 from hats.pixel_tree import PixelAlignment, PixelAlignmentType
 
-import lsdb.nested as nd
-from lsdb.dask.merge_catalog_functions import (
+from lsdb.operations.functions.merge_catalog_functions import (  # construct_catalog_args,
     align_and_apply,
     concat_align_catalogs,
     concat_partition_and_margin,
-    construct_catalog_args,
     filter_by_spatial_index_to_margin,
     filter_by_spatial_index_to_pixel,
     get_aligned_pixels_from_alignment,
     get_healpix_pixels_from_alignment,
 )
-from lsdb.types import DaskDFPixelMap
+from lsdb.operations.operation import Operation
+
 
 if TYPE_CHECKING:
     from lsdb.catalog.catalog import Catalog
@@ -187,9 +186,6 @@ def _concat_meta_safe(meta: pd.DataFrame, parts: list[pd.DataFrame | None], **kw
 
     if not keep:
         return _reindex_and_coerce_dtypes(meta.iloc[0:0].copy(), meta)
-
-    if len(keep) == 1:
-        return _reindex_and_coerce_dtypes(keep[0], meta)
 
     # Reindex and coerce all kept DataFrames to meta before concatenation
     keep = [_reindex_and_coerce_dtypes(df, meta) for df in keep]
@@ -393,7 +389,7 @@ def concat_catalog_data(
     left: Catalog,
     right: Catalog,
     **kwargs,
-) -> tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]:
+) -> tuple[Operation, PixelAlignment]:
     """Concatenate main catalog data for two catalogs using pixel alignment.
 
     Parameters
@@ -407,8 +403,8 @@ def concat_catalog_data(
 
     Returns
     -------
-    tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]
-        Tuple containing the concatenated NestedFrame, pixel map, and pixel alignment.
+    tuple[Operation, PixelAlignment]
+        Tuple containing the resulting LSDB Operation, and pixel alignment.
     """
     # Build alignment across both trees (including margins as pixel trees, but filtered by MOCs)
     alignment = concat_align_catalogs(
@@ -424,23 +420,24 @@ def concat_catalog_data(
 
     # Build the meta (union of schemas) with deterministic column order (left then right)
     # pylint: disable=protected-access
-    meta_left = left._ddf._meta
-    meta_right = right._ddf._meta
+    meta_left = left.meta
+    meta_right = right.meta
 
     _check_strict_column_types(meta_left, meta_right)
 
     meta_df = pd.concat([meta_left, meta_right], **kwargs)
     # pylint: enable=protected-access
     # Lazy per-pixel concatenation
-    joined_partitions = align_and_apply(
+    op = align_and_apply(
         [(left, left_pixels), (right, right_pixels), (None, aligned_pixels)],
         perform_concat,
         meta_df,
+        aligned_pixels,
         aligned_meta=meta_df,
         **kwargs,
     )
 
-    return construct_catalog_args(joined_partitions, alignment)
+    return op, alignment
 
 
 # pylint: disable=too-many-locals
@@ -449,7 +446,7 @@ def concat_margin_data(
     right: Catalog,
     margin_radius: float,
     **kwargs,
-) -> tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]:
+) -> tuple[Operation, PixelAlignment]:
     """Concatenate margin data for two catalogs using pixel alignment.
 
     Parameters
@@ -465,8 +462,8 @@ def concat_margin_data(
 
     Returns
     -------
-    tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]
-        Tuple containing the concatenated NestedFrame, pixel map,
+    tuple[Operation, PixelAlignment]
+        Tuple containing the resulting LSDB Operation,
         and pixel alignment for the margin data.
     """
     # Build alignment across both trees (including margins as pixel trees), no MOC filtering
@@ -483,15 +480,15 @@ def concat_margin_data(
 
     # Build the meta (union of schemas) with deterministic column order (left then right)
     # pylint: disable=protected-access
-    meta_left = left._ddf._meta
-    meta_right = right._ddf._meta
+    meta_left = left.meta
+    meta_right = right.meta
 
     _check_strict_column_types(meta_left, meta_right)
 
     meta_df = pd.concat([meta_left, meta_right], **kwargs)
     # pylint: enable=protected-access
     # Lazy per-pixel concatenation for margins
-    joined_partitions = align_and_apply(
+    op = align_and_apply(
         [
             (left, left_pixels),
             (left.margin, left_pixels),
@@ -501,12 +498,13 @@ def concat_margin_data(
         ],
         perform_margin_concat,
         meta_df,
+        aligned_pixels,
         margin_radius=margin_radius,
         aligned_meta=meta_df,
         **kwargs,
     )
 
-    return construct_catalog_args(joined_partitions, alignment)
+    return op, alignment
 
 
 # pylint: disable=too-many-locals
@@ -554,16 +552,13 @@ def handle_margins_for_concat(
             lm.hc_structure.catalog_info.margin_threshold or 0.0,
             rm.hc_structure.catalog_info.margin_threshold or 0.0,
         )
-        margin_ddf, margin_ddf_map, margin_alignment = concat_margin_data(
-            left, right, smallest_margin_radius, **kwargs
-        )
+        margin_op, margin_alignment = concat_margin_data(left, right, smallest_margin_radius, **kwargs)
         margin_hc_catalog = lm.hc_structure.__class__(
             lm.hc_structure.catalog_info,
             margin_alignment.pixel_tree,
         )
         return lm._create_updated_dataset(  # pylint: disable=protected-access
-            ddf=margin_ddf,
-            ddf_pixel_map=margin_ddf_map,
+            op=margin_op,
             hc_structure=margin_hc_catalog,
             updated_catalog_info_params={"margin_threshold": smallest_margin_radius},
         )
@@ -596,16 +591,13 @@ def handle_margins_for_concat(
             "resulting concatenated margin may be incomplete.",
         )
 
-        margin_ddf, margin_ddf_map, margin_alignment = concat_margin_data(
-            left, right, existing_radius, **kwargs
-        )
+        margin_op, margin_alignment = concat_margin_data(left, right, existing_radius, **kwargs)
         margin_hc_catalog = existing.hc_structure.__class__(
             existing.hc_structure.catalog_info,
             margin_alignment.pixel_tree,
         )
         return existing._create_updated_dataset(  # pylint: disable=protected-access
-            ddf=margin_ddf,
-            ddf_pixel_map=margin_ddf_map,
+            op=margin_op,
             hc_structure=margin_hc_catalog,
             updated_catalog_info_params={"margin_threshold": existing_radius},
         )

@@ -11,10 +11,9 @@ import pytest
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 
 import lsdb
-import lsdb.nested as nd
 from lsdb import ConeSearch
 from lsdb.catalog.catalog import Catalog
-from lsdb.dask import concat_catalog_data, merge_catalog_functions
+from lsdb.operations.functions import concat_catalog_data, merge_catalog_functions
 
 # pylint: disable=too-many-lines
 
@@ -244,7 +243,7 @@ def test_concat_catalog_row_count(small_sky_order1_catalog):
     ), f"Expected {expected_total} rows after concat, but got {actual_total}"
 
     # Internal types
-    assert isinstance(concat_cat._ddf, nd.NestedFrame)
+    assert isinstance(concat_cat.meta, npd.NestedFrame)
     assert isinstance(df_concat, npd.NestedFrame)
 
     # Structure/divisions sanity
@@ -347,13 +346,13 @@ def test_concat_catalogs_with_different_schemas(small_sky_order1_collection_dir,
         test_data_dir: Base directory containing right catalog and margin cache.
         helpers: Utility fixture with helper assertions.
     """
-    left_cat = cast(Catalog, lsdb.open_catalog(small_sky_order1_collection_dir))
+    left_cat = lsdb.open_catalog(small_sky_order1_collection_dir)
     left_margin = getattr(left_cat, "margin", None)
     assert left_margin is not None
 
     right_dir = test_data_dir / "small_sky_order3_source"
     right_margin_dir = test_data_dir / "small_sky_order3_source_margin"
-    right_cat = cast(Catalog, lsdb.open_catalog(right_dir, margin_cache=right_margin_dir))
+    right_cat = lsdb.open_catalog(right_dir, margin_cache=right_margin_dir)
     right_margin = getattr(right_cat, "margin", None)
     assert right_margin is not None
 
@@ -431,7 +430,7 @@ def test_concat_catalogs_with_different_schemas(small_sky_order1_collection_dir,
         )
 
     # Structural checks
-    assert isinstance(concat_cat._ddf, nd.NestedFrame)
+    assert isinstance(concat_cat.meta, npd.NestedFrame)
 
     # (5) Symmetry check (main and margin handled internally)
     _assert_concat_symmetry(left_cat, right_cat)
@@ -696,7 +695,7 @@ def test_concat_kwargs_forwarding_does_not_change_content(test_data_dir):
         test_data_dir: Base directory containing test catalogs.
     """
     src_dir = test_data_dir / "small_sky_order3_source"
-    cat = cast(Catalog, lsdb.open_catalog(src_dir))
+    cat = lsdb.open_catalog(src_dir)
 
     left = cat.search(ConeSearch(325, -55, 36000))
     right = cat.search(ConeSearch(325, -25, 36000))
@@ -704,12 +703,15 @@ def test_concat_kwargs_forwarding_does_not_change_content(test_data_dir):
     concat_default = left.concat(right)
     concat_kwargs = left.concat(right, ignore_index=True)
 
-    df_default = concat_default.compute().reset_index()
-    df_kwargs = concat_kwargs.compute().reset_index()
+    result_default = concat_default.compute()
+    result_kwargs = concat_kwargs.compute()
+
+    df_default = result_default.reset_index(drop=True)
+    df_kwargs = result_kwargs.reset_index(drop=True)
     df_default, df_kwargs = _align_columns(df_default, df_kwargs)
-    assert _row_multiset(df_default) == _row_multiset(
-        df_kwargs
-    ), "Passing kwargs to concat should not change the logical content"
+    pd.testing.assert_frame_equal(df_default, df_kwargs)
+
+    assert result_default.index != result_kwargs.index
 
 
 def test_concat_both_margins_uses_smallest_threshold(small_sky_order1_collection_dir, test_data_dir):
@@ -1223,11 +1225,10 @@ class _DummyMargin:  # pylint: disable=too-few-public-methods
         # capture arguments passed to _create_updated_dataset
         self._last_kwargs = None
 
-    def _create_updated_dataset(self, *, ddf, ddf_pixel_map, hc_structure, updated_catalog_info_params):
+    def _create_updated_dataset(self, *, op, hc_structure, updated_catalog_info_params):
         # store for assertions
         self._last_kwargs = {
-            "ddf": ddf,
-            "ddf_pixel_map": ddf_pixel_map,
+            "op": op,
             "hc_structure": hc_structure,
             "updated_catalog_info_params": updated_catalog_info_params,
         }
@@ -1249,7 +1250,7 @@ def test_handle_margins_both_have_margin_uses_min_threshold_and_calls_concat(mon
     right = _DummyCat(margin=right_margin)
 
     # Spy concat_margin_data to capture args and return a lightweight triple
-    fake_concat = MagicMock(return_value=("DD", "MAP", SimpleNamespace(pixel_tree="PIXELS")))
+    fake_concat = MagicMock(return_value=("OP", SimpleNamespace(pixel_tree="PIXELS")))
     monkeypatch.setattr(concat_catalog_data, "concat_margin_data", fake_concat)
 
     got = concat_catalog_data.handle_margins_for_concat(left, right, ignore_empty_margins=False)
@@ -1316,7 +1317,7 @@ def test_handle_margins_one_side_has_margin_keep_existing_calls_concat(monkeypat
     right = _DummyCat(margin=None)
 
     # Spy concat_margin_data to capture args and return a lightweight triple
-    fake_concat = MagicMock(return_value=("DD", "MAP", SimpleNamespace(pixel_tree="PIXELS")))
+    fake_concat = MagicMock(return_value=("OP", SimpleNamespace(pixel_tree="PIXELS")))
     monkeypatch.setattr(concat_catalog_data, "concat_margin_data", fake_concat)
 
     with pytest.warns(UserWarning, match=r"ignore_empty_margins=True.*treated as empty"):

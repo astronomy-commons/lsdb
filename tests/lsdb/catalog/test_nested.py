@@ -6,7 +6,6 @@ import pytest
 from nested_pandas import NestedDtype
 
 import lsdb
-import lsdb.nested as nd
 from lsdb import Catalog
 
 
@@ -16,53 +15,37 @@ def test_nested_columns_property(small_sky_with_nested_sources):
 
 def test_nest_lists(small_sky_with_nested_sources):
     """Test the behavior of catalog.nest_lists"""
-    cat_ndf = small_sky_with_nested_sources._ddf.map_partitions(
-        lambda df: df.set_index(df.index.to_numpy() + np.arange(len(df)))
-    )
-    catlists_ndf = cat_ndf.sources.nest.to_lists()
-    smallsky_lists = cat_ndf[["id", "ra", "dec"]].join(catlists_ndf)
-    small_sky_with_nested_sources._ddf = smallsky_lists
-    cat_ndf_renested = small_sky_with_nested_sources.nest_lists(base_columns=["id", "ra", "dec"])
 
-    # check column structure
-    assert "nested" in cat_ndf_renested.columns
-    assert "id" in cat_ndf_renested.columns
-    assert "ra" in cat_ndf_renested.columns
-    assert "dec" in cat_ndf_renested.columns
-    assert cat_ndf_renested._ddf["nested"].nest.columns == cat_ndf["sources"].nest.columns
+    def listify_sources(nf):
+        nf_result = nf.join(nf["sources"].to_lists())
+        # Need to set dtypes properly
+        return nf_result.astype(
+            {
+                "source_id": pd.ArrowDtype(pa.list_(pa.int64())),
+                "source_ra": pd.ArrowDtype(pa.list_(pa.float64())),
+                "source_dec": pd.ArrowDtype(pa.list_(pa.float64())),
+                "mag": pd.ArrowDtype(pa.list_(pa.float64())),
+            }
+        )
+
+    meta_sampler = small_sky_with_nested_sources.head(1)
+    meta = listify_sources(meta_sampler)
+    list_sources = small_sky_with_nested_sources.map_partitions(listify_sources, meta=meta)
+
+    cat_renested = list_sources.nest_lists(
+        name="repacked", list_columns=["source_id", "source_ra", "source_dec", "mag"]
+    )
+
+    assert "repacked.source_id" in cat_renested.exploded_columns
+    assert "repacked.source_ra" in cat_renested.exploded_columns
+    assert "repacked.source_dec" in cat_renested.exploded_columns
+    assert "repacked.mag" in cat_renested.exploded_columns
+    assert "repacked.band" not in cat_renested.exploded_columns
 
     # try a compute call
-    renested_flat = cat_ndf_renested.compute()["nested"].nest.to_flat()
-    original_flat = cat_ndf.compute()["sources"].nest.to_flat()
-
-    pd.testing.assert_frame_equal(renested_flat, original_flat)
-
-
-def test_nest_lists_only_list_columns(small_sky_with_nested_sources):
-    """Test the behavior of catalog.nest_lists when only list columns are provided"""
-    cat_ndf = small_sky_with_nested_sources._ddf.map_partitions(
-        lambda df: df.set_index(df.index.to_numpy() + np.arange(len(df)))
-    )
-    catlists_ndf = cat_ndf.sources.nest.to_lists()
-    smallsky_lists = cat_ndf[["id", "ra", "dec"]].join(catlists_ndf)
-    small_sky_with_nested_sources._ddf = smallsky_lists
-
-    # Use the columns from the original catalog as the list columns. All other
-    # columns are inferred to be "base" columns.
-    cat_ndf_renested = small_sky_with_nested_sources.nest_lists(list_columns=cat_ndf["sources"].nest.columns)
-
-    # check column structure
-    assert "nested" in cat_ndf_renested.columns
-    assert "id" in cat_ndf_renested.columns
-    assert "ra" in cat_ndf_renested.columns
-    assert "dec" in cat_ndf_renested.columns
-    assert cat_ndf_renested._ddf["nested"].nest.columns == cat_ndf["sources"].nest.columns
-
-    # try a compute call
-    renested_flat = cat_ndf_renested.compute()["nested"].nest.to_flat()
-    original_flat = cat_ndf.compute()["sources"].nest.to_flat()
-
-    pd.testing.assert_frame_equal(renested_flat, original_flat)
+    cat_renested_ndf = cat_renested.compute()
+    assert isinstance(cat_renested_ndf, npd.NestedFrame)
+    assert len(cat_renested_ndf["sources"]) == len(cat_renested_ndf["repacked"])
 
 
 def test_map_rows(small_sky_with_nested_sources):
@@ -76,7 +59,6 @@ def test_map_rows(small_sky_with_nested_sources):
         meta={"ra": float, "dec": float, "mean_mag": float},
     )
     assert isinstance(reduced_cat, Catalog)
-    assert isinstance(reduced_cat._ddf, nd.NestedFrame)
 
     assert reduced_cat.hc_structure.catalog_info.ra_column == "ra"
     assert reduced_cat.hc_structure.catalog_info.dec_column == "dec"
@@ -84,14 +66,18 @@ def test_map_rows(small_sky_with_nested_sources):
     reduced_cat_compute = reduced_cat.compute()
     assert isinstance(reduced_cat_compute, npd.NestedFrame)
 
-    reduced_ddf = small_sky_with_nested_sources._ddf.map_rows(
-        mean_mag,
-        columns=["ra", "dec", "sources.mag"],
-        row_container="args",
-        meta={"ra": float, "dec": float, "mean_mag": float},
+    def map_row_part(nf):
+        return nf.map_rows(
+            mean_mag,
+            columns=["ra", "dec", "sources.mag"],
+            row_container="args",
+        )
+
+    reduced_mp_cat = small_sky_with_nested_sources.map_partitions(
+        map_row_part, meta=reduced_cat_compute.head(0)
     )
 
-    pd.testing.assert_frame_equal(reduced_cat_compute, reduced_ddf.compute())
+    pd.testing.assert_frame_equal(reduced_cat_compute, reduced_mp_cat.compute())
 
 
 def test_map_rows_meta_required(small_sky_with_nested_sources):
@@ -109,17 +95,16 @@ def test_map_rows_append_columns(small_sky_with_nested_sources):
         mean_mag, columns=["sources.mag"], row_container="args", meta={"mean_mag": float}, append_columns=True
     )
     assert isinstance(reduced_cat, Catalog)
-    assert isinstance(reduced_cat._ddf, nd.NestedFrame)
     reduced_cat_compute = reduced_cat.compute()
     assert isinstance(reduced_cat_compute, npd.NestedFrame)
 
-    reduced_ddf = small_sky_with_nested_sources._ddf.map_rows(
-        mean_mag,
-        columns=["sources.mag"],
-        row_container="args",
-        meta={"mean_mag": float},
+    def map_row_part(nf):
+        return nf.map_rows(mean_mag, columns=["sources.mag"], row_container="args", append_columns=True)
+
+    reduced_mp_cat = small_sky_with_nested_sources.map_partitions(
+        map_row_part, meta=reduced_cat_compute.head(0)
     )
-    pd.testing.assert_series_equal(reduced_cat_compute["mean_mag"], reduced_ddf.compute()["mean_mag"])
+    pd.testing.assert_series_equal(reduced_cat_compute["mean_mag"], reduced_mp_cat.compute()["mean_mag"])
     pd.testing.assert_frame_equal(
         reduced_cat_compute[small_sky_with_nested_sources.columns], small_sky_with_nested_sources.compute()
     )
@@ -138,12 +123,18 @@ def test_map_rows_append_columns(small_sky_with_nested_sources):
     reduced_cat_compute = reduced_cat.compute()
     assert isinstance(reduced_cat_compute, npd.NestedFrame)
 
-    reduced_ddf = small_sky_with_nested_sources._ddf.map_rows(
-        create_subcolumn,
-        columns=["ra", "sources.source_ra"],
-        row_container="args",
+    def map_row_part_2(nf):
+        return nf.map_rows(
+            create_subcolumn,
+            columns=["ra", "sources.source_ra"],
+            row_container="args",
+            append_columns=True,
+        )
+
+    reduced_mp_cat = small_sky_with_nested_sources.map_partitions(
+        map_row_part_2, meta=reduced_cat_compute.head(0)
     )
-    expected_t_ra = reduced_ddf.compute()["sources.t_ra"]
+    expected_t_ra = reduced_mp_cat.compute()["sources.t_ra"]
     pd.testing.assert_series_equal(expected_t_ra, reduced_cat_compute["sources.t_ra"])
 
     def create_subcolumn_2(ra, source_ra):
@@ -182,7 +173,7 @@ def test_map_rows_append_columns_raises_error_with_full_meta(small_sky_with_nest
     def calc_magerr(ra_err, dec_err):
         return {"mean_err": abs(ra_err - dec_err) / 2}
 
-    meta = small_sky_with_nested_sources._ddf._meta.copy()
+    meta = small_sky_with_nested_sources.meta.copy()
     meta["mean_err"] = np.float64(0)
 
     with pytest.raises(ValueError, match="already exist"):
@@ -208,19 +199,23 @@ def test_map_rows_no_return_column(small_sky_with_nested_sources):
     )
 
     assert isinstance(reduced_cat, Catalog)
-    assert isinstance(reduced_cat._ddf, nd.NestedFrame)
 
     reduced_cat_compute = reduced_cat.compute()
     assert isinstance(reduced_cat_compute, npd.NestedFrame)
 
-    reduced_ddf = small_sky_with_nested_sources._ddf.map_rows(
-        mean_mag,
-        columns=["sources.mag"],
-        row_container="args",
-        meta={0: float},
+    def map_row_part(nf):
+        return nf.map_rows(
+            mean_mag,
+            columns=["sources.mag"],
+            row_container="args",
+            append_columns=True,
+        )
+
+    reduced_mp_cat = small_sky_with_nested_sources.map_partitions(
+        map_row_part, meta=reduced_cat_compute.head(0)
     )
 
-    pd.testing.assert_series_equal(reduced_cat_compute[0], reduced_ddf.compute()[0])
+    pd.testing.assert_series_equal(reduced_cat_compute[0], reduced_mp_cat.compute()[0])
     pd.testing.assert_frame_equal(
         reduced_cat_compute[small_sky_with_nested_sources.columns], small_sky_with_nested_sources.compute()
     )
@@ -237,11 +232,9 @@ def test_map_rows_invalid_return_column(small_sky_with_nested_sources):
         meta={0: float},
         append_columns=True,
     )
-
     assert isinstance(reduced_cat, Catalog)
-    assert isinstance(reduced_cat._ddf, nd.NestedFrame)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(RuntimeError):
         reduced_cat.compute()
 
 
@@ -267,8 +260,9 @@ def test_map_rows_infer_nesting(small_sky_with_nested_sources):
         meta=true_meta,
     )
 
-    assert "new_nested" in res_true.columns and "new_nested" in res_true._ddf.nested_columns
-    assert list(res_true["new_nested"].nest.columns) == ["ra_mag", "dec_mag"]
+    assert "new_nested" in res_true.columns
+    assert "new_nested.ra_mag" in res_true.exploded_columns
+    assert "new_nested.dec_mag" in res_true.exploded_columns
 
     # Without inferred nesting:
     false_meta = (
@@ -312,7 +306,8 @@ def test_serialization_round_trip(tmp_path, small_sky_order1_catalog, small_sky_
 def test_getitem(small_sky_with_nested_sources):
     cat = small_sky_with_nested_sources[["ra", "dec", "sources.source_id", "sources.source_ra"]]
     assert np.all(cat.columns == ["ra", "dec", "sources"])
-    assert cat["sources"].columns == ["source_id", "source_ra"]
+    assert "sources.source_id" in cat.exploded_columns
+    assert "sources.source_ra" in cat.exploded_columns
     computed = cat.compute()
     assert np.all(computed.columns == ["ra", "dec", "sources"])
     assert np.all(computed["sources"].iloc[0].columns == ["source_id", "source_ra"])
@@ -332,13 +327,15 @@ def test_nested_columns_after_filter(small_sky_with_nested_sources_dir):
         small_sky_with_nested_sources_dir, columns=["ra", "dec", "sources.source_id", "sources.source_ra"]
     )
     assert np.all(cat.columns == ["ra", "dec", "sources"])
-    assert cat["sources"].columns == ["source_id", "source_ra"]
+    assert "sources.source_id" in cat.exploded_columns
+    assert "sources.source_ra" in cat.exploded_columns
     computed = cat.compute()
     assert np.all(computed.columns == ["ra", "dec", "sources"])
     assert np.all(computed["sources"].iloc[0].columns == ["source_id", "source_ra"])
     filtered = cat.cone_search(300, -40, 10000)
     assert np.all(filtered.columns == ["ra", "dec", "sources"])
-    assert filtered["sources"].columns == ["source_id", "source_ra"]
+    assert "sources.source_id" in filtered.exploded_columns
+    assert "sources.source_ra" in filtered.exploded_columns
     computed = filtered.compute()
     assert np.all(computed.columns == ["ra", "dec", "sources"])
     assert np.all(computed["sources"].iloc[0].columns == ["source_id", "source_ra"])

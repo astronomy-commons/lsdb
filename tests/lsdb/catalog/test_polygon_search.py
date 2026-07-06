@@ -4,16 +4,17 @@ import numpy.testing as npt
 import pytest
 from hats.pixel_math.validators import ValidatorsErrors
 
-import lsdb.nested as nd
 from lsdb.core.search.region_search import get_cartesian_polygon
 
 
-def test_polygon_search_filters_correct_points(small_sky_order1_catalog, helpers):
+def test_polygon_search_filters_correct_points(
+    small_sky_order1_catalog,
+):
     pytest.importorskip("lsst.sphgeom")
     vertices = [(300, -50), (300, -55), (272, -55), (272, -50)]
     polygon = get_cartesian_polygon(vertices)
     polygon_search_catalog = small_sky_order1_catalog.polygon_search(vertices)
-    assert isinstance(polygon_search_catalog._ddf, nd.NestedFrame)
+    assert isinstance(polygon_search_catalog.meta, npd.NestedFrame)
     polygon_search_df = polygon_search_catalog.compute()
     assert isinstance(polygon_search_df, npd.NestedFrame)
     ra_values_radians = np.radians(
@@ -23,10 +24,9 @@ def test_polygon_search_filters_correct_points(small_sky_order1_catalog, helpers
         polygon_search_df[small_sky_order1_catalog.hc_structure.catalog_info.dec_column]
     )
     assert all(polygon.contains(ra_values_radians, dec_values_radians))
-    helpers.assert_divisions_are_correct(polygon_search_catalog)
 
 
-def test_polygon_search_filters_correct_points_margin(small_sky_order1_source_with_margin, helpers):
+def test_polygon_search_filters_correct_points_margin(small_sky_order1_source_with_margin):
     pytest.importorskip("lsst.sphgeom")
     vertices = [(300, -50), (300, -55), (272, -55), (272, -50)]
     polygon = get_cartesian_polygon(vertices)
@@ -39,7 +39,6 @@ def test_polygon_search_filters_correct_points_margin(small_sky_order1_source_wi
         polygon_search_df[small_sky_order1_source_with_margin.hc_structure.catalog_info.dec_column]
     )
     assert all(polygon.contains(ra_values_radians, dec_values_radians))
-    helpers.assert_divisions_are_correct(polygon_search_catalog)
 
     assert polygon_search_catalog.margin is not None
     polygon_search_margin_df = polygon_search_catalog.margin.compute()
@@ -50,7 +49,6 @@ def test_polygon_search_filters_correct_points_margin(small_sky_order1_source_wi
         polygon_search_margin_df[small_sky_order1_source_with_margin.hc_structure.catalog_info.dec_column]
     )
     assert all(polygon.contains(ra_values_radians, dec_values_radians))
-    helpers.assert_divisions_are_correct(polygon_search_catalog.margin)
 
 
 def test_polygon_search_filters_partitions(small_sky_order1_catalog):
@@ -59,9 +57,12 @@ def test_polygon_search_filters_partitions(small_sky_order1_catalog):
     hc_polygon_search = small_sky_order1_catalog.hc_structure.filter_by_polygon(vertices)
     polygon_search_catalog = small_sky_order1_catalog.polygon_search(vertices, fine=False)
     assert len(hc_polygon_search.get_healpix_pixels()) == len(polygon_search_catalog.get_healpix_pixels())
-    assert len(hc_polygon_search.get_healpix_pixels()) == polygon_search_catalog._ddf.npartitions
+    assert len(hc_polygon_search.get_healpix_pixels()) == len(
+        polygon_search_catalog._operation.healpix_pixels
+    )
+    pixel_set = set(polygon_search_catalog._operation.healpix_pixels)
     for pixel in hc_polygon_search.get_healpix_pixels():
-        assert pixel in polygon_search_catalog._ddf_pixel_map
+        assert pixel in pixel_set
 
 
 def test_polygon_search_coarse_versus_fine(small_sky_order1_catalog):
@@ -70,7 +71,7 @@ def test_polygon_search_coarse_versus_fine(small_sky_order1_catalog):
     coarse_polygon_search = small_sky_order1_catalog.polygon_search(vertices, fine=False)
     fine_polygon_search = small_sky_order1_catalog.polygon_search(vertices)
     assert coarse_polygon_search.get_healpix_pixels() == fine_polygon_search.get_healpix_pixels()
-    assert coarse_polygon_search._ddf.npartitions == fine_polygon_search._ddf.npartitions
+    assert coarse_polygon_search._operation.healpix_pixels == fine_polygon_search._operation.healpix_pixels
     assert len(coarse_polygon_search.compute()) > len(fine_polygon_search.compute())
 
 
@@ -141,5 +142,5 @@ def test_empty_polygon_search_with_margin(small_sky_order1_source_with_margin):
     pytest.importorskip("lsst.sphgeom")
     vertices = [(90, 0), (100, 30), (120, 0)]
     polygon = small_sky_order1_source_with_margin.polygon_search(vertices)
-    assert len(polygon._ddf_pixel_map) == 0
-    assert len(polygon.margin._ddf_pixel_map) == 0
+    assert len(polygon._operation.healpix_pixels) == 0
+    assert len(polygon.margin._operation.healpix_pixels) == 0

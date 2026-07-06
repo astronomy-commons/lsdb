@@ -5,10 +5,10 @@ from copy import copy
 from pathlib import Path
 from typing import Any
 
-import dask
 import hats as hc
 import nested_pandas as npd
 import numpy as np
+import pandas as pd
 import pyarrow.parquet as pq
 from hats.catalog import CatalogType, PartitionInfo
 from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
@@ -25,8 +25,9 @@ from lsdb.io.common import new_provenance_properties, set_default_write_table_kw
 DONE_DIR_NAME = "done"
 HISTOGRAM_DIR_NAME = "hists"
 
+WRITE_RESULT_META = pd.DataFrame({"count": pd.Series(dtype=int), "histogram": pd.Series(dtype=object)})
 
-@dask.delayed
+
 def perform_write(
     df: npd.NestedFrame,
     hp_pixel: HealpixPixel,
@@ -35,7 +36,7 @@ def perform_write(
     npix_suffix: str = ".parquet",
     npix_parquet_name: str | None = None,
     **kwargs,
-) -> tuple[int, SparseHistogram]:
+) -> pd.DataFrame:
     """Writes a pandas dataframe to a single parquet file and returns the total count
     for the partition as well as a count histogram at the specified order.
 
@@ -65,7 +66,10 @@ def perform_write(
         at the specified order.
     """
     if len(df) == 0:
-        return 0, SparseHistogram([], [], histogram_order)
+        histogram = SparseHistogram([], [], histogram_order)
+        write_histogram(histogram, base_catalog_dir, hp_pixel)
+        write_done_pixel(base_catalog_dir, hp_pixel)
+        return pd.DataFrame({"count": [0], "histogram": [histogram]})
     pixel_path = hc.io.paths.new_pixel_catalog_file(
         base_catalog_dir,
         hp_pixel,
@@ -77,7 +81,7 @@ def perform_write(
     histogram = calculate_histogram(df, histogram_order)
     write_histogram(histogram, base_catalog_dir, hp_pixel)
     write_done_pixel(base_catalog_dir, hp_pixel)
-    return len(df), histogram
+    return pd.DataFrame({"count": [len(df)], "histogram": [histogram]})
 
 
 def calculate_histogram(df: npd.NestedFrame, histogram_order: int) -> SparseHistogram:
@@ -466,11 +470,11 @@ def _write_skymaps(
 def _validate_default_columns(catalog: HealpixDataset, default_columns: list[str]):
     """Checks that the provided default columns are valid"""
     # Check if any of the default columns is missing
-    missing_columns = set(default_columns) - set(catalog._ddf.exploded_columns)
+    missing_columns = set(default_columns) - set(catalog.exploded_columns)
     if missing_columns:
         raise ValueError(f"Default columns `{missing_columns}` not found in catalog")
     # Check for full and partial load of the same column and error
-    all_subcolumns = catalog._ddf._meta.get_subcolumns()
+    all_subcolumns = catalog.meta.get_subcolumns()
     for col in default_columns:
         if col in all_subcolumns:
             nested_col = col.split(".")[0]
@@ -521,31 +525,26 @@ def write_partitions(
         as well as the array with the sparse count histograms.
     """
     base_catalog_dir_fp = hc.io.file_io.get_upath(base_catalog_dir_fp)
-    results, pixels = [], []
-    partitions = catalog._ddf.to_delayed()
     existing_pixels_set = set(existing_pixels) if existing_pixels is not None else set()
+    pixels = [p for p in catalog.get_healpix_pixels() if p not in existing_pixels_set]
 
-    for pixel, partition_index in catalog._ddf_pixel_map.items():
-        if pixel in existing_pixels_set:
-            continue
-        results.append(
-            perform_write(
-                partitions[partition_index],
-                pixel,
-                base_catalog_dir_fp,
-                histogram_order,
-                npix_suffix,
-                npix_parquet_name,
-                **kwargs,
-            )
-        )
-        pixels.append(pixel)
+    if len(pixels) == 0:
+        return [], [], []
 
-    if len(results) > 0:
-        results = dask.compute(*results)
-        counts, histograms = list(zip(*results))
-    else:
-        counts, histograms = (), ()
+    write_cat = catalog.partitions[pixels]
+
+    res_cat = write_cat.map_partitions(
+        perform_write,
+        base_catalog_dir_fp,
+        histogram_order,
+        npix_suffix,
+        npix_parquet_name,
+        meta=WRITE_RESULT_META,
+        include_pixel=True,
+        **kwargs,
+    )
+    results = res_cat.compute()
+    counts, histograms = results["count"].tolist(), results["histogram"].tolist()
 
     non_empty_indices = np.nonzero(counts)
     non_empty_pixels = np.array(pixels)[non_empty_indices]

@@ -1,21 +1,21 @@
 from __future__ import annotations
 
-import dask.dataframe as dd
+import pandas as pd
 import pyarrow as pa
 
 
-def get_arrow_schema(ddf: dd.DataFrame) -> pa.Schema:
-    """Constructs the pyarrow schema from the meta of a Dask DataFrame.
+def get_arrow_schema(df: pd.DataFrame) -> pa.Schema:
+    """Constructs the pyarrow schema from a Pandas DataFrame.
 
     Parameters
     ----------
-    ddf : dd.DataFrame
-        A Dask DataFrame.
+    df : pd.DataFrame
+        A pandas DataFrame to extract the schema from.
 
     Returns
     -------
     pa.Schema
-        The arrow schema for the provided Dask DataFrame.
+        The arrow schema for the provided DataFrame.
     """
     # pylint: disable=protected-access
-    return pa.Schema.from_pandas(ddf._meta).remove_metadata()
+    return pa.Schema.from_pandas(df).remove_metadata()

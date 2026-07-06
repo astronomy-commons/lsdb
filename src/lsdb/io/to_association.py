@@ -3,11 +3,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-import dask
 import hats
 import hats.io as file_io
 import nested_pandas as npd
 import numpy as np
+import pandas as pd
 from hats.catalog import CatalogType, PartitionInfo, TableProperties
 from hats.catalog.catalog_collection import CatalogCollection
 from hats.pixel_math import HealpixPixel
@@ -18,15 +18,16 @@ from lsdb.io.common import set_default_write_table_kwargs
 if TYPE_CHECKING:
     from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
 
+WRITE_RESULT_META = pd.DataFrame({"count": pd.Series(dtype=int), "max_sep": pd.Series(dtype=float)})
 
-@dask.delayed
+
 def perform_write(
     df: npd.NestedFrame,
     hp_pixel: HealpixPixel,
     base_catalog_dir: str | Path | UPath,
     separation_column: str | None = None,
     **kwargs,
-) -> tuple[int, float]:
+) -> pd.DataFrame:
     """Writes a pandas dataframe to a single parquet file and returns the total count
     for the partition as well as a count histogram at the specified order.
 
@@ -51,13 +52,13 @@ def perform_write(
         column is not provided.
     """
     if len(df) == 0:
-        return (0, -1)
+        return pd.DataFrame({"count": [0], "max_sep": [-1.0]})
     pixel_dir = file_io.pixel_directory(base_catalog_dir, hp_pixel.order, hp_pixel.pixel)
     file_io.file_io.make_directory(pixel_dir, exist_ok=True)
     pixel_path = file_io.paths.pixel_catalog_file(base_catalog_dir, hp_pixel)
     df.to_parquet(pixel_path.path, filesystem=pixel_path.fs, **kwargs)
     max_sep = df[separation_column].max() if separation_column is not None else -1
-    return len(df), max_sep
+    return pd.DataFrame({"count": [len(df)], "max_sep": [max_sep]})
 
 
 # pylint: disable=protected-access,too-many-locals,too-many-arguments
@@ -247,23 +248,17 @@ def write_partitions(
         A tuple with the array of non-empty pixels, the array with the total counts
         as well as the array with the maximum point separations.
     """
-    results, pixels = [], []
-    partitions = catalog._ddf.to_delayed()
+    pixels = catalog.get_ordered_healpix_pixels()
 
-    for pixel, partition_index in catalog._ddf_pixel_map.items():
-        results.append(
-            perform_write(
-                partitions[partition_index],
-                pixel,
-                base_catalog_dir_fp,
-                separation_column,
-                **kwargs,
-            )
-        )
-        pixels.append(pixel)
-
-    results = dask.compute(*results)
-    counts, max_separations = list(zip(*results))
+    results = catalog.map_partitions(
+        perform_write,
+        base_catalog_dir_fp,
+        separation_column,
+        meta=WRITE_RESULT_META,
+        include_pixel=True,
+        **kwargs,
+    ).compute()
+    counts, max_separations = results["count"], results["max_sep"]
 
     non_empty_indices = np.nonzero(counts)
     non_empty_pixels = np.array(pixels)[non_empty_indices]

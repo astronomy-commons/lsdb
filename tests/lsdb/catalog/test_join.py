@@ -8,8 +8,7 @@ from hats.pixel_math import HealpixPixel
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN, spatial_index_to_healpix
 
 import lsdb
-import lsdb.nested as nd
-from lsdb.dask.merge_catalog_functions import align_catalogs
+from lsdb.operations.functions.merge_catalog_functions import align_catalogs
 
 
 def test_small_sky_join_small_sky_order1(small_sky_catalog, small_sky_order1_catalog, helpers):
@@ -18,7 +17,7 @@ def test_small_sky_join_small_sky_order1(small_sky_catalog, small_sky_order1_cat
         joined = small_sky_catalog.join(
             small_sky_order1_catalog, left_on="id", right_on="id", suffixes=suffixes
         )
-        assert isinstance(joined._ddf, nd.NestedFrame)
+        assert isinstance(joined.meta, npd.NestedFrame)
 
     expected_columns = [
         "id_a",
@@ -34,8 +33,8 @@ def test_small_sky_join_small_sky_order1(small_sky_catalog, small_sky_order1_cat
     ]
 
     assert np.all(joined.columns == expected_columns)
-    assert joined._ddf.index.name == SPATIAL_INDEX_COLUMN
-    assert joined._ddf.index.dtype == pd.ArrowDtype(pa.int64())
+    assert joined.meta.index.name == SPATIAL_INDEX_COLUMN
+    assert joined.meta.index.dtype == pd.ArrowDtype(pa.int64())
     alignment = align_catalogs(small_sky_catalog, small_sky_order1_catalog)
     assert joined.hc_structure.moc == alignment.moc
     assert joined.get_healpix_pixels() == alignment.pixel_tree.get_healpix_pixels()
@@ -66,7 +65,7 @@ def test_small_sky_join_overlapping_suffix(small_sky_catalog, small_sky_order1_c
             suffixes=suffixes,
             suffix_method="overlapping_columns",
         )
-        assert isinstance(joined._ddf, nd.NestedFrame)
+        assert isinstance(joined.meta, npd.NestedFrame)
 
     expected_columns = [
         "id_a",
@@ -189,7 +188,7 @@ def test_join_association(
     joined = small_sky_catalog.join(
         small_sky_order1_source_collection_catalog, through=small_sky_to_o1source_catalog, suffixes=suffixes
     )
-    assert isinstance(joined._ddf, nd.NestedFrame)
+    assert isinstance(joined.meta, npd.NestedFrame)
     alignment = align_catalogs(small_sky_catalog, small_sky_order1_source_collection_catalog)
     assert joined.hc_structure.moc == alignment.moc
     assert joined.get_healpix_pixels() == alignment.pixel_tree.get_healpix_pixels()
@@ -214,8 +213,8 @@ def test_join_association(
 
     assert np.all(joined.columns == expected_columns)
 
-    assert joined._ddf.index.name == SPATIAL_INDEX_COLUMN
-    assert joined._ddf.index.dtype == pd.ArrowDtype(pa.int64())
+    assert joined.meta.index.name == SPATIAL_INDEX_COLUMN
+    assert joined.meta.index.dtype == pd.ArrowDtype(pa.int64())
 
     joined_data = joined.compute()
 
@@ -357,7 +356,7 @@ def test_join_nested(small_sky_catalog, small_sky_order1_source_with_margin):
         "object_dec",
     ]
     assert np.all(joined.columns == expected_columns)
-    assert np.all(joined["sources"].nest.columns == expected_nested_columns)
+    assert np.all(joined.meta["sources"].nest.columns == expected_nested_columns)
     alignment = align_catalogs(small_sky_catalog, small_sky_order1_source_with_margin)
     assert joined.hc_structure.moc == alignment.moc
     assert joined.get_healpix_pixels() == alignment.pixel_tree.get_healpix_pixels()
@@ -439,7 +438,7 @@ def test_join_nested_invalid_how(small_sky_order1_catalog, small_sky_order1_sour
 def test_merge_asof(small_sky_catalog, small_sky_xmatch_catalog, direction):
     suffixes = ("_a", "_b")
     joined = small_sky_catalog.merge_asof(small_sky_xmatch_catalog, direction=direction, suffixes=suffixes)
-    assert isinstance(joined._ddf, nd.NestedFrame)
+    assert isinstance(joined.meta, npd.NestedFrame)
     alignment = align_catalogs(small_sky_catalog, small_sky_xmatch_catalog)
     assert joined.hc_structure.moc == alignment.moc
     assert joined.get_healpix_pixels() == alignment.pixel_tree.get_healpix_pixels()

@@ -1,12 +1,9 @@
 from pathlib import Path
 
-import dask.dataframe as dd
 import hats as hc
 import nested_pandas as npd
-import numpy as np
 import numpy.testing as npt
 import pandas as pd
-import pyarrow as pa
 import pytest
 from hats.io import paths
 from hats.pixel_math import spatial_index_to_healpix
@@ -17,7 +14,6 @@ from hats.pixel_math.spatial_index import (
 )
 
 import lsdb
-import lsdb.nested as nd
 
 DATA_DIR_NAME = "data"
 SMALL_SKY_DIR_NAME = "small_sky"
@@ -400,31 +396,28 @@ def cone_search_margin_expected(cone_search_expected_dir):
 class Helpers:
     @staticmethod
     def assert_divisions_are_correct(catalog):
-        # Check that number of divisions == number of pixels + 1
-        hp_pixels = [None] * len(catalog._ddf_pixel_map)
-        for pix, index in catalog._ddf_pixel_map.items():
-            hp_pixels[index] = pix
+        ddf = catalog.to_dask_dataframe()
+        hp_pixels = catalog.get_healpix_pixels()
         if len(hp_pixels) == 0:
             # Special case if there are no partitions.
-            assert catalog._ddf.divisions == (None, None)
+            assert ddf.divisions == (None, None)
             return
-        assert len(catalog._ddf.divisions) == len(hp_pixels) + 1
+        assert len(ddf.divisions) == len(hp_pixels) + 1
         # Check that the divisions are not None
-        assert None not in catalog._ddf.divisions
+        assert None not in ddf.divisions
         # Check that divisions belong to the correct pixel
-        for division, hp_pixel in zip(catalog._ddf.divisions, hp_pixels):
+        for division, hp_pixel in zip(ddf.divisions, hp_pixels):
             div_pixel = spatial_index_to_healpix([division], target_order=hp_pixel.order)
             assert hp_pixel.pixel == div_pixel
         # The last division corresponds to the largest healpix value
-        assert catalog._ddf.divisions[-1] == healpix_to_spatial_index(
-            hp_pixels[-1].order, hp_pixels[-1].pixel + 1
-        )
+        assert ddf.divisions[-1] == healpix_to_spatial_index(hp_pixels[-1].order, hp_pixels[-1].pixel + 1)
 
     @staticmethod
     def assert_index_correct(cat):
-        assert cat._ddf.index.name == SPATIAL_INDEX_COLUMN
+        ddf = cat.to_dask_dataframe()
+        assert ddf.index.name == SPATIAL_INDEX_COLUMN
         cat_comp = cat.compute()
-        assert cat_comp.index.name == SPATIAL_INDEX_COLUMN
+        assert ddf.index.name == SPATIAL_INDEX_COLUMN
         npt.assert_array_equal(
             cat_comp.index.to_numpy(),
             compute_spatial_index(cat_comp["ra"].to_numpy(), cat_comp["dec"].to_numpy()),
@@ -437,13 +430,13 @@ class Helpers:
         )
         if SPATIAL_INDEX_COLUMN in schema_to_pandas.columns:
             schema_to_pandas = schema_to_pandas.set_index(SPATIAL_INDEX_COLUMN)
-        pd.testing.assert_frame_equal(cat._ddf._meta, schema_to_pandas)
+        pd.testing.assert_frame_equal(cat.meta, schema_to_pandas)
 
     @staticmethod
     def assert_default_columns_in_columns(cat):
         if cat.hc_structure.catalog_info.default_columns is not None:
             for col in cat.hc_structure.catalog_info.default_columns:
-                assert col in cat._ddf.exploded_columns
+                assert col in cat.exploded_columns
 
     @staticmethod
     def assert_columns_in_nested_joined_catalog(
@@ -454,7 +447,7 @@ class Helpers:
                 assert (col_name, dtype) in joined_cat.dtypes.items()
         for col_name, dtype in right_cat.dtypes.items():
             if col_name not in right_ignore_columns and col_name not in paths.HIVE_COLUMNS:
-                assert (col_name, dtype.pyarrow_dtype) in joined_cat[
+                assert (col_name, dtype.pyarrow_dtype) in joined_cat.meta[
                     nested_colname
                 ].dtypes.column_dtypes.items()
 
@@ -482,34 +475,3 @@ class Helpers:
 @pytest.fixture
 def helpers():
     return Helpers()
-
-
-@pytest.fixture
-def test_dataset():
-    """create a toy dataset for testing purposes"""
-    n_base = 50
-    layer_size = 500
-    randomstate = np.random.RandomState(seed=1)  # pylint: disable=no-member
-
-    # Generate base data
-    base_data = {"a": randomstate.random(n_base), "b": randomstate.random(n_base) * 2}
-    base_nf = npd.NestedFrame(data=base_data)
-
-    layer_data = {
-        "t": randomstate.random(layer_size * n_base) * 20,
-        "flux": randomstate.random(layer_size * n_base) * 100,
-        # Ensure pyarrow[string] dtype, not large_string
-        # https://github.com/lincc-frameworks/nested-dask/issues/71
-        "band": pd.Series(
-            randomstate.choice(["r", "g"], size=layer_size * n_base), dtype=pd.ArrowDtype(pa.string())
-        ),
-        "index": np.arange(layer_size * n_base) % n_base,
-    }
-    layer_nf = npd.NestedFrame(data=layer_data).set_index("index").sort_index()
-
-    result = dd.from_pandas(base_nf, npartitions=5)
-    base_nd = nd.NestedFrame.from_dask_dataframe(result)
-    result = dd.from_pandas(layer_nf, npartitions=10)
-    layer_nd = nd.NestedFrame.from_dask_dataframe(result)
-
-    return base_nd.join_nested(layer_nd, "nested")

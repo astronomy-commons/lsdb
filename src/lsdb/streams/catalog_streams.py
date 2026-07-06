@@ -106,12 +106,14 @@ class CatalogStream:
         # same full graph. We cull each to its own subgraph so that
         # client.compute() only sends the minimal per-partition graph to the
         # scheduler, avoiding O(N^2) graph transmission overhead.
-        raw_delayed = catalog.to_delayed(optimize_graph=True)
-        shared_graph = dict(raw_delayed[0].__dask_graph__())
+
+        # It's possible that the full build here practically limits the memory gains of streaming
+        # TODO: Follow up on this after custom graph construction
+        healpix_graph = catalog._operation.build()
         self._delayed_partitions = []
-        for d in raw_delayed:
-            culled_graph, _ = cull(shared_graph, list(d.__dask_keys__()))
-            self._delayed_partitions.append(Delayed(d.key, culled_graph))
+        for _, key in healpix_graph.pixel_to_key_map.items():
+            culled_graph, _ = cull(healpix_graph.graph, [key])
+            self._delayed_partitions.append(Delayed(key, culled_graph))
 
     def get_next_partitions(
         self, partitions_left: np.ndarray, rng: np.random.Generator  # pylint: disable=unused-argument

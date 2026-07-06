@@ -6,20 +6,16 @@ import pandas as pd
 from hats.io.paths import get_data_thumbnail_pointer
 
 import lsdb
-import lsdb.nested as nd
 from lsdb.catalog.margin_catalog import MarginCatalog
 
 
 def test_read_margin_catalog(small_sky_xmatch_margin_dir):
     margin = lsdb.read_hats(small_sky_xmatch_margin_dir)
     assert isinstance(margin, MarginCatalog)
-    assert isinstance(margin._ddf, nd.NestedFrame)
     hc_margin = hc.read_hats(small_sky_xmatch_margin_dir)
     assert margin.hc_structure.catalog_info == hc_margin.catalog_info
     assert margin.hc_structure.get_healpix_pixels() == hc_margin.get_healpix_pixels()
     assert margin.get_healpix_pixels() == margin.hc_structure.get_healpix_pixels()
-    assert repr(margin) == repr(margin._ddf)
-    pd.testing.assert_frame_equal(margin.compute(), margin._ddf.compute())
 
 
 def test_margin_catalog_partitions_correct(small_sky_xmatch_margin_dir):
@@ -45,12 +41,11 @@ def test_save_margin_catalog(small_sky_xmatch_margin_catalog, tmp_path, helpers)
     expected_catalog = lsdb.read_hats(base_catalog_path)
     assert expected_catalog.hc_structure.catalog_name == new_catalog_name
     assert expected_catalog.get_healpix_pixels() == small_sky_xmatch_margin_catalog.get_healpix_pixels()
-    pd.testing.assert_frame_equal(expected_catalog.compute(), small_sky_xmatch_margin_catalog._ddf.compute())
 
     # When saving a catalog with write_catalog, we update the hats_max_rows
     # to the maximum count of points per partition.
-    partition_sizes = small_sky_xmatch_margin_catalog._ddf.map_partitions(len).compute()
-    assert max(partition_sizes) == 10
+    partition_sizes = small_sky_xmatch_margin_catalog.map_partitions(lambda df: {"len": [len(df)]}).compute()
+    assert max(partition_sizes["len"]) == 10
 
     helpers.assert_catalog_info_is_correct(
         expected_catalog.hc_structure.catalog_info,

@@ -26,20 +26,29 @@ from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatc
 from lsdb.core.crossmatch.kdtree_match import KdTreeCrossmatch
 from lsdb.core.search.abstract_search import AbstractSearch
 from lsdb.core.search.index_search import IndexSearch
-from lsdb.dask.concat_catalog_data import _assert_same_ra_dec, concat_catalog_data, handle_margins_for_concat
-from lsdb.dask.crossmatch_catalog_data import crossmatch_catalog_data, crossmatch_catalog_data_nested
-from lsdb.dask.join_catalog_data import (
+from lsdb.io.schema import get_arrow_schema
+from lsdb.loaders.hats.hats_loading_config import HatsLoadingConfig
+from lsdb.operations.functions.concat_catalog_data import (
+    _assert_same_ra_dec,
+    concat_catalog_data,
+    handle_margins_for_concat,
+)
+from lsdb.operations.functions.crossmatch_catalog_data import (
+    crossmatch_catalog_data,
+    crossmatch_catalog_data_nested,
+)
+from lsdb.operations.functions.join_catalog_data import (
     join_catalog_data_nested,
     join_catalog_data_on,
     join_catalog_data_through,
     merge_asof_catalog_data,
 )
-from lsdb.dask.merge_catalog_functions import DEFAULT_SUFFIX_METHOD, create_merged_catalog_info
-from lsdb.dask.merge_map_catalog_data import merge_map_catalog_data
-from lsdb.io.schema import get_arrow_schema
-from lsdb.loaders.hats.hats_loading_config import HatsLoadingConfig
-from lsdb.nested.core import NestedFrame
-from lsdb.types import DaskDFPixelMap
+from lsdb.operations.functions.merge_catalog_functions import (
+    DEFAULT_SUFFIX_METHOD,
+    create_merged_catalog_info,
+)
+from lsdb.operations.functions.merge_map_catalog_data import merge_map_catalog_data
+from lsdb.operations.operation import Operation
 
 
 def _default_suffixes(left_name: str, right_name: str) -> tuple[str, str]:
@@ -67,8 +76,7 @@ class Catalog(HealpixDataset):
 
     def __init__(
         self,
-        ddf: NestedFrame,
-        ddf_pixel_map: DaskDFPixelMap,
+        operation: Operation,
         hc_structure: hc.catalog.Catalog,
         *,
         loading_config: HatsLoadingConfig | None = None,
@@ -81,10 +89,8 @@ class Catalog(HealpixDataset):
 
         Parameters
         ----------
-        ddf: nd.NestedFrame
-            Dask Nested DataFrame with the source data of the catalog
-        ddf_pixel_map: DaskDFPixelMap
-            Dictionary mapping HEALPix order and pixel to partition index of ddf
+        operation: Operation
+            The LSDB operation that created the catalog
         hc_structure: HCHealpixDataset
             Object with hats metadata of the catalog
         loading_config: HatsLoadingConfig or None, default None
@@ -92,20 +98,18 @@ class Catalog(HealpixDataset):
         margin: MarginCatalog or None, default None
             The margin catalog.
         """
-        super().__init__(ddf, ddf_pixel_map, hc_structure, loading_config)
+        super().__init__(operation, hc_structure, loading_config)
         self.margin = margin
 
     def _create_updated_dataset(
         self,
-        ddf: NestedFrame | None = None,
-        ddf_pixel_map: DaskDFPixelMap | None = None,
+        op: Operation | None = None,
         hc_structure: HCHealpixDataset | None = None,
         updated_catalog_info_params: dict | None = None,
         margin: MarginCatalog | None = None,
     ) -> Self:
         cat = super()._create_updated_dataset(
-            ddf,
-            ddf_pixel_map,
+            op,
             hc_structure,
             updated_catalog_info_params,
         )
@@ -155,7 +159,7 @@ class Catalog(HealpixDataset):
         Filter a small synthetic catalog using a pandas-style query string:
 
         >>> import lsdb
-        >>> from lsdb.nested.datasets import generate_data
+        >>> from lsdb import generate_data
         >>> nf = generate_data(1000, 10, seed=0, ra_range=(0.0, 300.0), dec_range=(-50.0, 50.0))
         >>> catalog = lsdb.from_dataframe(nf.compute())
         >>> filtered = catalog.query("ra < 100 and dec > 0")
@@ -353,7 +357,7 @@ class Catalog(HealpixDataset):
         Crossmatch two small synthetic catalogs:
 
         >>> import lsdb
-        >>> from lsdb.nested.datasets import generate_data
+        >>> from lsdb import generate_data
         >>> nf = generate_data(1000, 5, seed=0, ra_range=(0.0, 300.0), dec_range=(-50.0, 50.0))
         >>> df = nf.compute()[["ra", "dec", "id"]]
         >>> left = lsdb.from_dataframe(df, catalog_name="left")
@@ -414,7 +418,7 @@ class Catalog(HealpixDataset):
         if output_catalog_name is None:
             output_catalog_name = f"{self.name}_x_{other.name}"
 
-        ddf, ddf_map, alignment = crossmatch_catalog_data(
+        op, alignment = crossmatch_catalog_data(
             self,
             other,
             algorithm,
@@ -431,9 +435,9 @@ class Catalog(HealpixDataset):
             suffix_method,
         )
         hc_catalog = self.hc_structure.__class__(
-            new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(ddf), moc=alignment.moc
+            new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(op.meta), moc=alignment.moc
         )
-        return self.__class__(ddf, ddf_map, hc_catalog)
+        return self.__class__(op, hc_catalog)
 
     def crossmatch_nested(
         self,
@@ -558,17 +562,14 @@ class Catalog(HealpixDataset):
         if output_catalog_name is None:
             output_catalog_name = f"{self.name}_x_{other.name}"
 
-        ddf, ddf_map, alignment = crossmatch_catalog_data_nested(
-            self, other, algorithm, how, nested_column_name
-        )
+        op, alignment = crossmatch_catalog_data_nested(self, other, algorithm, how, nested_column_name)
         hc_catalog = self.hc_structure.__class__(
             self.hc_structure.catalog_info,
             alignment.pixel_tree,
             moc=alignment.moc,
         )
         return self._create_updated_dataset(
-            ddf=ddf,
-            ddf_pixel_map=ddf_map,
+            op=op,
             hc_structure=hc_catalog,
             updated_catalog_info_params={"catalog_name": output_catalog_name},
         )
@@ -618,15 +619,14 @@ class Catalog(HealpixDataset):
         )
 
         # Main catalog concatenation
-        ddf, ddf_map, alignment = concat_catalog_data(self, other, **kwargs)
+        op, alignment = concat_catalog_data(self, other, **kwargs)
         hc_catalog = self.hc_structure.__class__(
             self.hc_structure.catalog_info,
             alignment.pixel_tree,
             moc=alignment.moc,
         )
         return self._create_updated_dataset(
-            ddf=ddf,
-            ddf_pixel_map=ddf_map,
+            op=op,
             hc_structure=hc_catalog,
             margin=margin,
         )
@@ -681,14 +681,14 @@ class Catalog(HealpixDataset):
             respective suffixes and, whenever specified, a set of extra columns generated by the
             crossmatch algorithm.
         """
-        ddf, ddf_map, alignment = merge_map_catalog_data(self, map_catalog, func, *args, meta=meta, **kwargs)
+        op, alignment = merge_map_catalog_data(self, map_catalog, func, *args, meta=meta, **kwargs)
         hc_catalog = self.hc_structure.__class__(
             self.hc_structure.catalog_info,
             alignment.pixel_tree,
-            schema=get_arrow_schema(ddf),
+            schema=get_arrow_schema(op.meta),
             moc=alignment.moc,
         )
-        return self._create_updated_dataset(ddf=ddf, ddf_pixel_map=ddf_map, hc_structure=hc_catalog)
+        return self._create_updated_dataset(op=op, hc_structure=hc_catalog)
 
     def id_search(
         self,
@@ -807,7 +807,7 @@ class Catalog(HealpixDataset):
         cat.margin = self.margin.search(search) if self.margin is not None else None
         return cat
 
-    def map_partitions(
+    def map_partitions(  # type: ignore[override]
         self,
         func: Callable[..., npd.NestedFrame],
         *args,
@@ -873,7 +873,7 @@ class Catalog(HealpixDataset):
         Apply a function to each partition (e.g., add a derived column):
 
         >>> import lsdb
-        >>> from lsdb.nested.datasets import generate_data
+        >>> from lsdb import generate_data
         >>> nf = generate_data(1000, 5, seed=0, ra_range=(0.0, 300.0), dec_range=(-50.0, 50.0))
         >>> catalog = lsdb.from_dataframe(nf.compute()[["ra", "dec", "id"]])
         >>> def add_flag(df):
@@ -904,15 +904,14 @@ class Catalog(HealpixDataset):
                 pixel = catalog.get_healpix_pixels()[0]
 
                 # Update the margin for this pixel only
-                if pixel in self.margin._ddf_pixel_map:
-                    margin_partition_index = self.margin.get_partition_index(pixel.order, pixel.pixel)
+                if pixel in self.margin.get_healpix_pixels():
                     catalog.margin = self.margin.map_partitions(
                         func,
                         *args,
                         meta=meta,
                         include_pixel=include_pixel,
                         compute_single_partition=True,
-                        partition_index=margin_partition_index,
+                        partition_index=pixel,
                         **kwargs,
                     )  # type: ignore[assignment]
             else:
@@ -925,83 +924,6 @@ class Catalog(HealpixDataset):
                     **kwargs,
                 )  # type: ignore[assignment]
         return catalog
-
-    def merge(
-        self,
-        other: Catalog,
-        how: str = "inner",
-        on: str | list | None = None,
-        left_on: str | list | None = None,
-        right_on: str | list | None = None,
-        left_index: bool = False,
-        right_index: bool = False,
-        suffixes: tuple[str, str] | None = None,
-    ) -> NestedFrame:
-        """Performs the merge of two catalog Dataframes
-
-        More information about pandas merge is available
-        `here <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.merge.html>`__.
-
-        Parameters
-        ----------
-        other : Catalog
-            The right catalog to merge with.
-        how : str
-            How to handle the merge of the two catalogs.
-            One of {'left', 'right', 'outer', 'inner', 'leftsemi'}, default 'inner'
-        on : str | List
-            Column or index names to join on. Defaults to the
-            intersection of columns in both Dataframes if on is None and not
-            merging on indexes.
-        left_on : str | List
-            Column to join on the left Dataframe. Lists are
-            supported if their length is one.
-        right_on : str | List
-            Column to join on the right Dataframe. Lists are
-            supported if their length is one.
-        left_index : bool, default False
-            Use the index of the left Dataframe as the join key.
-        right_index : bool, default False
-            Use the index of the right Dataframe as the join key.
-        suffixes : tuple[str,str]
-            A pair of suffixes to be appended to the end of each column name
-            when they are joined. Defaults to using the name of the catalog
-            for the suffix.
-
-        Returns
-        -------
-        Catalog
-            A new Dask Dataframe containing the data points that result from the merge
-            of the two catalogs.
-        """
-        if suffixes is None:
-            suffixes = _default_suffixes(self.name, other.name)
-        if len(suffixes) != 2:
-            raise ValueError("`suffixes` must be a tuple with two strings")
-
-        def make_strlist(col: str | list[str] | None) -> list[str]:
-            if col is None:
-                return []
-            if isinstance(col, str):
-                return [col]
-            return col
-
-        names_to_check = make_strlist(on)
-        if not left_index:
-            names_to_check += make_strlist(left_on)
-        if not right_index:
-            names_to_check += make_strlist(right_on)
-        self._check_unloaded_columns(names_to_check)
-        return self._ddf.merge(
-            other._ddf,
-            how=how,
-            on=on,
-            left_on=left_on,
-            right_on=right_on,
-            left_index=left_index,
-            right_index=right_index,
-            suffixes=suffixes,
-        )
 
     def merge_asof(
         self,
@@ -1064,7 +986,7 @@ class Catalog(HealpixDataset):
                 FutureWarning,
             )
 
-        ddf, ddf_map, alignment = merge_asof_catalog_data(
+        op, alignment = merge_asof_catalog_data(
             self,
             other,
             suffixes=suffixes,
@@ -1087,9 +1009,12 @@ class Catalog(HealpixDataset):
             suffix_method,
         )
         hc_catalog = hc.catalog.Catalog(
-            new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(ddf), moc=alignment.moc
+            new_catalog_info,
+            alignment.pixel_tree,
+            schema=get_arrow_schema(op.meta),
+            moc=alignment.moc,
         )
-        return Catalog(ddf, ddf_map, hc_catalog)
+        return self.__class__(op, hc_catalog)
 
     def join(
         self,
@@ -1109,8 +1034,8 @@ class Catalog(HealpixDataset):
         This is an inner join: only rows with matching join keys are returned (unmatched rows are dropped).
 
         The operation only joins data from matching partitions, and does not join rows that have a matching
-        column value but are in separate partitions in the sky. For a more general join, see the `merge`
-        function.
+        column value but are in separate partitions in the sky. For a more general join, consider using Dasks
+        `merge` function by converting the catalog to a Dask DataFrame with `to_dask_dataframe`.
 
         Parameters
         ----------
@@ -1150,7 +1075,7 @@ class Catalog(HealpixDataset):
         Join two catalogs on a shared key within the same sky partitions:
 
         >>> import lsdb
-        >>> from lsdb.nested.datasets import generate_data
+        >>> from lsdb import generate_data
         >>> nf = generate_data(1000, 5, seed=0, ra_range=(0.0, 300.0), dec_range=(-50.0, 50.0))
         >>> base = lsdb.from_dataframe(nf.compute()[["ra", "dec", "id"]])
         >>> left = base.rename({"ra": "ra_left", "dec": "dec_left"})
@@ -1188,17 +1113,17 @@ class Catalog(HealpixDataset):
         self._check_unloaded_columns([left_on, right_on])
 
         if through is not None:
-            ddf, ddf_map, alignment = join_catalog_data_through(
+            op, alignment = join_catalog_data_through(
                 self, other, through, suffixes, suffix_method=suffix_method, log_changes=log_changes
             )
         else:
             if left_on is None or right_on is None:
                 raise ValueError("Either both of left_on and right_on, or through must be set")
-            if left_on not in self._ddf.columns:
+            if left_on not in self.columns:
                 raise ValueError("left_on must be a column in the left catalog")
-            if right_on not in other._ddf.columns:
+            if right_on not in other.columns:
                 raise ValueError("right_on must be a column in the right catalog")
-            ddf, ddf_map, alignment = join_catalog_data_on(
+            op, alignment = join_catalog_data_on(
                 self, other, left_on, right_on, suffixes, suffix_method=suffix_method, log_changes=log_changes
             )
 
@@ -1213,9 +1138,12 @@ class Catalog(HealpixDataset):
             suffix_method,
         )
         hc_catalog = hc.catalog.Catalog(
-            new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(ddf), moc=alignment.moc
+            new_catalog_info,
+            alignment.pixel_tree,
+            schema=get_arrow_schema(op.meta),
+            moc=alignment.moc,
         )
-        return Catalog(ddf, ddf_map, hc_catalog)
+        return self.__class__(op, hc_catalog)
 
     def join_nested(
         self,
@@ -1237,7 +1165,8 @@ class Catalog(HealpixDataset):
 
         The operation only joins data from matching partitions and their margin caches, and does not join rows
         that have a matching column value but are in separate partitions in the sky. For a more general join,
-        see the `merge` function.
+        consider using Dasks `merge` function by converting the catalog to a Dask DataFrame with
+        `to_dask_dataframe`.
 
         Parameters
         ----------
@@ -1265,14 +1194,14 @@ class Catalog(HealpixDataset):
             raise ValueError("Both of left_on and right_on must be set")
 
         self._check_unloaded_columns([left_on])
-        if left_on not in self._ddf.columns:
+        if left_on not in self.columns:
             raise ValueError("left_on must be a column in the left catalog")
 
         other._check_unloaded_columns([right_on])
-        if right_on not in other._ddf.columns:
+        if right_on not in other.columns:
             raise ValueError("right_on must be a column in the right catalog")
 
-        ddf, ddf_map, alignment = join_catalog_data_nested(
+        op, alignment = join_catalog_data_nested(
             self, other, left_on, right_on, nested_column_name=nested_column_name, how=how
         )
 
@@ -1283,9 +1212,9 @@ class Catalog(HealpixDataset):
             catalog_name=output_catalog_name, total_rows=None
         )
         hc_catalog = hc.catalog.Catalog(
-            new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(ddf), moc=alignment.moc
+            new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(op.meta), moc=alignment.moc
         )
-        return Catalog(ddf, ddf_map, hc_catalog)
+        return self.__class__(op, hc_catalog)
 
     def nest_lists(
         self,
@@ -1565,7 +1494,7 @@ class Catalog(HealpixDataset):
         Write a small synthetic catalog to disk:
 
         >>> import lsdb
-        >>> from lsdb.nested.datasets import generate_data
+        >>> from lsdb import generate_data
         >>> nf = generate_data(1000, 5, seed=0, ra_range=(0.0, 300.0), dec_range=(-50.0, 50.0))
         >>> catalog = lsdb.from_dataframe(nf.compute()[["ra", "dec", "id"]], catalog_name="demo")
         >>> catalog.write_catalog(<your path here> / "demo_catalog", overwrite=True)  # doctest: +SKIP

@@ -1,36 +1,32 @@
+import nested_pandas as npd
 import pandas as pd
 import pytest
 
-import lsdb.nested as nd
 from lsdb.core.search.region_search import OrderSearch
 
 
-def test_order_search_filters_correct_pixels(small_sky_source_catalog, helpers):
+def test_order_search_filters_correct_pixels(small_sky_source_catalog):
     order_search_catalog = small_sky_source_catalog.order_search(min_order=1, max_order=1)
-    assert isinstance(order_search_catalog._ddf, nd.NestedFrame)
+    assert isinstance(order_search_catalog.meta, npd.NestedFrame)
     pixel_orders = [pixel.order for pixel in order_search_catalog.get_healpix_pixels()]
     assert all(order == 1 for order in pixel_orders)
-    helpers.assert_divisions_are_correct(order_search_catalog)
 
     order_search_catalog = small_sky_source_catalog.order_search(min_order=1, max_order=2)
     pixel_orders = [pixel.order for pixel in order_search_catalog.get_healpix_pixels()]
     assert all(1 <= order <= 2 for order in pixel_orders)
-    helpers.assert_divisions_are_correct(order_search_catalog)
 
     order_search_catalog = small_sky_source_catalog.order_search(min_order=1)
     pixel_orders = [pixel.order for pixel in order_search_catalog.get_healpix_pixels()]
     assert all(1 <= order <= 2 for order in pixel_orders)
-    helpers.assert_divisions_are_correct(order_search_catalog)
 
     order_search_catalog = small_sky_source_catalog.order_search(max_order=1)
     pixel_orders = [pixel.order for pixel in order_search_catalog.get_healpix_pixels()]
     assert all(0 <= order <= 1 for order in pixel_orders)
-    helpers.assert_divisions_are_correct(order_search_catalog)
 
 
 def test_order_search_keeps_all_points(small_sky_source_catalog):
     metadata = small_sky_source_catalog.hc_structure
-    partition_df = small_sky_source_catalog._ddf.partitions[0].compute()
+    partition_df = small_sky_source_catalog.partitions[0].compute()
     search = OrderSearch(min_order=1, max_order=2)
     filtered_df = search.search_points(partition_df, metadata)
     pd.testing.assert_frame_equal(partition_df, filtered_df)

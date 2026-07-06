@@ -9,14 +9,13 @@ from hats.pixel_math import HealpixPixel
 from hats.pixel_tree import PixelAlignment, PixelAlignmentType
 from hats.pixel_tree.pixel_alignment import align_with_mocs
 
-import lsdb.nested as nd
-from lsdb.dask.merge_catalog_functions import (
+from lsdb.operations.functions.merge_catalog_functions import (
     align_and_apply,
-    construct_catalog_args,
     filter_by_spatial_index_to_pixel,
+    get_aligned_pixels_from_alignment,
     get_healpix_pixels_from_alignment,
 )
-from lsdb.types import DaskDFPixelMap
+from lsdb.operations.operation import Operation
 
 if TYPE_CHECKING:
     from lsdb.catalog import Catalog, MapCatalog
@@ -86,7 +85,7 @@ def merge_map_catalog_data(
     *args,
     meta: npd.NestedFrame | None = None,
     **kwargs,
-) -> tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]:
+) -> tuple[Operation, PixelAlignment]:
     """Applies a function to each pair of partitions in this catalog and the map catalog.
 
     The pixels from each catalog are aligned via a `PixelAlignment`, and the respective dataframes
@@ -124,15 +123,14 @@ def merge_map_catalog_data(
 
     Returns
     -------
-    tuple[nd.NestedFrame, DaskDFPixelMap, PixelAlignment]
-        A tuple of the dask dataframe with the result of the operation, the pixel map from HEALPix
-        pixel to partition index within the dataframe, and the PixelAlignment of the two input
+    tuple[Operation, PixelAlignment]
+        A tuple of the LSDB Operation mapping to the result, and the PixelAlignment of the two input
         catalogs.
     """
     if meta is None:
         meta = func(
-            point_catalog._ddf._meta.copy(),
-            map_catalog._ddf._meta.copy(),
+            point_catalog.meta.copy(),
+            map_catalog.meta.copy(),
             HealpixPixel(0, 0),
             HealpixPixel(0, 0),
         )
@@ -151,14 +149,16 @@ def merge_map_catalog_data(
     )
 
     left_pixels, right_pixels = get_healpix_pixels_from_alignment(alignment)
+    aligned_pixels = get_aligned_pixels_from_alignment(alignment)
 
-    partitions_with_func = align_and_apply(
+    op = align_and_apply(
         [(point_catalog, left_pixels), (map_catalog, right_pixels)],
         perform_merge_map,
         meta,
+        aligned_pixels,
         func,
         *args,
         **kwargs,
     )
 
-    return construct_catalog_args(partitions_with_func, alignment)
+    return op, alignment

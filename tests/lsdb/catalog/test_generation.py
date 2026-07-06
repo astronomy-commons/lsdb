@@ -9,7 +9,7 @@ import numpy as np
 import pytest
 from hats.pixel_math.healpix_shim import radec2pix
 
-import lsdb.nested as nd
+from lsdb import generate_catalog, generate_data
 from lsdb.core.search.region_search import BoxSearch, ConeSearch, PixelSearch
 
 
@@ -17,9 +17,9 @@ def test_generate_data():
     """test the dataset generator function"""
 
     # test the seed
-    generate_1 = nd.datasets.generate_data(10, 100, npartitions=2, seed=1)
-    generate_2 = nd.datasets.generate_data(10, 100, npartitions=2, seed=1)
-    generate_3 = nd.datasets.generate_data(10, 100, npartitions=2, seed=2)
+    generate_1 = generate_data(10, 100, npartitions=2, seed=1)
+    generate_2 = generate_data(10, 100, npartitions=2, seed=1)
+    generate_3 = generate_data(10, 100, npartitions=2, seed=2)
 
     assert generate_1.compute().equals(generate_2.compute())
     assert not generate_1.compute().equals(generate_3.compute())
@@ -28,43 +28,44 @@ def test_generate_data():
     assert generate_1.npartitions == 2
 
     # test the length
-    assert len(generate_1) == 10
-    assert len(generate_1.nested.nest.to_flat()) == 1000
-
     computed = generate_1.compute()
+    assert len(computed) == 10
+    assert len(computed.nested.nest.to_flat()) == 1000
+
     # test seed stability
     assert pytest.approx(computed.loc[0]["a"], 0.1) == 0.417
     assert pytest.approx(computed.loc[0]["b"], 0.1) == 0.838
-    assert pytest.approx(generate_1.nested.nest.to_flat().compute().iloc[0]["t"], 0.1) == 16.015
+    assert pytest.approx(computed.nested.nest.to_flat().iloc[0]["t"], 0.1) == 16.015
 
 
 def test_generate_data_with_dict():
     """test the dataset generator function with a dictionary"""
 
     # test the seed
-    generate_1 = nd.datasets.generate_data(10, {"nest1": 100, "nest2": 200}, npartitions=2, seed=1)
+    generate_1 = generate_data(10, {"nest1": 100, "nest2": 200}, npartitions=2, seed=1)
 
     # test npartitions
     assert generate_1.npartitions == 2
 
     # test the length
-    assert len(generate_1) == 10
-    assert len(generate_1.nest1.nest.to_flat()) == 1000
-    assert len(generate_1.nest2.nest.to_flat()) == 2000
+    computed = generate_1.compute()
+    assert len(computed) == 10
+    assert len(computed.nest1.nest.to_flat()) == 1000
+    assert len(computed.nest2.nest.to_flat()) == 2000
 
 
 def test_generate_catalog():
     """test the dataset generator function"""
 
     # test the seed
-    generate_1 = nd.datasets.generate_catalog(100, 3, seed=1)
+    generate_1 = generate_catalog(100, 3, seed=1)
 
     # test the length
     assert len(generate_1) == 100
-    assert len(generate_1._ddf.nested.nest.to_flat()) == 300
+    assert len(generate_1.compute().nested.nest.to_flat()) == 300
 
     # test catalog naming
-    generate_1 = nd.datasets.generate_catalog(2, 3, catalog_name="test_catalog")
+    generate_1 = generate_catalog(2, 3, catalog_name="test_catalog")
     assert generate_1.name == "test_catalog"
 
 
@@ -72,13 +73,13 @@ def test_generate_catalog_ra_dec_ranges():
     """test the dataset generator function with ra and dec ranges"""
 
     # test the seed
-    generate_1 = nd.datasets.generate_catalog(100, 3, seed=1, ra_range=(50.0, 51.0), dec_range=(0.5, 1.0))
+    generate_1 = generate_catalog(100, 3, seed=1, ra_range=(50.0, 51.0), dec_range=(0.5, 1.0))
 
     # test the length
     assert len(generate_1) == 100
-    assert len(generate_1._ddf.nested.nest.to_flat()) == 300
 
     computed = generate_1.compute()
+    assert len(computed.nested.nest.to_flat()) == 300
     # test the ra and dec ranges
     assert computed.ra.min() >= 50.0
     assert computed.ra.max() <= 51.0
@@ -90,13 +91,13 @@ def test_generate_catalog_with_cone():
     """test the dataset generator function with a ConeSearch"""
 
     # test the seed
-    generate_1 = nd.datasets.generate_catalog(100, 3, seed=1, search_region=ConeSearch(5, 5, 1))
+    generate_1 = generate_catalog(100, 3, seed=1, search_region=ConeSearch(5, 5, 1))
 
     # test the length
     assert len(generate_1) == 100
-    assert len(generate_1._ddf.nested.nest.to_flat()) == 300
 
     generate_1 = generate_1.compute()
+    assert len(generate_1.nested.nest.to_flat()) == 300
 
     # make sure that ra and dec are within the circular search radius
     assert all(
@@ -108,15 +109,13 @@ def test_generate_catalog_with_box():
     """test the dataset generator function with a BoxSearch"""
 
     # test the seed
-    generate_1 = nd.datasets.generate_catalog(
-        100, 3, seed=1, search_region=BoxSearch((50.0, 51.0), (0.5, 1.0))
-    )
+    generate_1 = generate_catalog(100, 3, seed=1, search_region=BoxSearch((50.0, 51.0), (0.5, 1.0)))
 
     # test the length
     assert len(generate_1) == 100
-    assert len(generate_1._ddf.nested.nest.to_flat()) == 300
 
     computed = generate_1.compute()
+    assert len(computed.nested.nest.to_flat()) == 300
 
     # make sure that ra and dec are within the box search range
     assert computed.ra.min() >= 50.0
@@ -130,14 +129,14 @@ def test_generate_catalog_with_pixels():
     pixel1 = (1, 0)
     pixel2 = (2, 4)
 
-    generate_1 = nd.datasets.generate_catalog(100, 3, seed=1, search_region=PixelSearch([pixel1, pixel2]))
+    generate_1 = generate_catalog(100, 3, seed=1, search_region=PixelSearch([pixel1, pixel2]))
 
     # test the length
     assert len(generate_1) == 100
-    assert len(generate_1._ddf.nested.nest.to_flat()) == 300
 
     # test that objects are on the right pixels
     computed = generate_1.compute()
+    assert len(computed.nested.nest.to_flat()) == 300
     order1_indexes = np.unique(radec2pix(1, computed.ra, computed.dec))
     np.testing.assert_array_equal(order1_indexes, [0, 1])
     order2_indexes, order2_counts = np.unique(radec2pix(2, computed.ra, computed.dec), return_counts=True)
@@ -152,4 +151,4 @@ def test_generate_catalog_with_invalid_search_region():
 
     # test the seed
     with pytest.raises(NotImplementedError):
-        nd.datasets.generate_catalog(100, 3, seed=1, search_region="invalid_search_region")
+        generate_catalog(100, 3, seed=1, search_region="invalid_search_region")
