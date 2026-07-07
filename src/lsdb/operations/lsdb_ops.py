@@ -469,7 +469,7 @@ class AlignAndApply(Operation):
             requested = set(pixels)
             output_indices = [i for i, p in enumerate(self.output_pixels) if p in requested]
             input_pixel_subsets = [
-                list({pixel_list[i] for i in output_indices if pixel_list[i] is not None})
+                [pixel_list[i] for i in output_indices if pixel_list[i] is not None]
                 for pixel_list in self.pixel_lists
             ]
         else:
