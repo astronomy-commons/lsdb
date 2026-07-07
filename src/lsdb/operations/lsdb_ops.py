@@ -368,8 +368,8 @@ class SelectPixels(Operation):
     def build(self, pixels: list[HealpixPixel] | None = None) -> HealpixGraph:
         """Build the HealpixGraph from the Operation."""
         # intersect the caller's requested subset with a provided pixel filter
-        pixel_set = set(pixels)
-        effective = [p for p in self.pixels if pixels is None or p in pixel_set]
+        pixel_set = set(pixels) if pixels is not None else None
+        effective = [p for p in self.pixels if pixel_set is None or p in pixel_set]
         previous = self.base.build(pixels=effective if pixels is not None else None)
         selected_pixels = self.pixels
         for p in selected_pixels:
