@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 
 def run_and_verify_meta(func, meta, *args, **kwargs):
     """Run func and verify that its output matches the provided meta."""
-    result = func(*args, **kwargs)
+    result = npd.NestedFrame(func(*args, **kwargs))
     if not isinstance(result, meta.__class__):
         raise ValueError(
             f"Function returned result of type {type(result)}, but meta is of type {type(meta)}. "
@@ -70,13 +70,13 @@ class FromHealpixMap(Operation):
         return f"{funcname(self.func)}-{tokenized}"
 
     @property
-    def meta(self) -> npd.NestedFrame | pd.DataFrame:
+    def meta(self) -> npd.NestedFrame:
         if self._meta is not None:
             return self._meta
         first_part = self.func(self.pixels[0], *self.args, **self.kwargs)
         if not isinstance(first_part, pd.DataFrame):
             raise ValueError("FromMap function must return a pandas DataFrame")
-        return first_part.iloc[:0].copy()
+        return npd.NestedFrame(first_part.iloc[:0].copy())
 
     @property
     def dependencies(self) -> list[Operation]:
@@ -151,7 +151,7 @@ def map_parts_meta(
 def _coerce_to_meta(result) -> tuple[npd.NestedFrame, bool]:
     """Coerce a function result to an empty npd.NestedFrame for use as meta."""
 
-    def _safe_dtype(t: type) -> np.dtype:
+    def _safe_dtype(t: type) -> np.dtype | pd.api.extensions.ExtensionDtype:
         """Return the pandas dtype, falling back to object for unsupported types."""
         try:
             return pd.api.types.pandas_dtype(t)
