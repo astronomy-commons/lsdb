@@ -651,9 +651,24 @@ def test_map_partitions_non_df(small_sky_order1_catalog):
 
     mapped = small_sky_order1_catalog.map_partitions(get_col)
 
-    assert isinstance(mapped, Catalog)
+    assert isinstance(mapped, dd.Series)
     mapcomp = mapped.compute()
-    assert np.all(mapcomp["result"] == small_sky_order1_catalog.compute()["ra"] + 1)
+    assert np.all(mapcomp == small_sky_order1_catalog.compute()["ra"] + 1)
+
+
+def test_map_partitions_scalar_result(small_sky_order1_catalog):
+    def return_len(df):
+        return len(df)
+
+    def return_len_df(df):
+        return pd.DataFrame({"length": [len(df)]})
+
+    mapped_series = small_sky_order1_catalog.map_partitions(return_len)
+    mapped_df = small_sky_order1_catalog.map_partitions(return_len_df)
+
+    assert isinstance(mapped_series, dd.Series)
+    assert isinstance(mapped_df, Catalog)
+    assert np.all(mapped_series.compute() == mapped_df.compute()["length"])
 
 
 def test_non_working_empty_raises(small_sky_order1_catalog):
@@ -1107,16 +1122,6 @@ def test_boolean_filter_preserves_columns(small_sky_order1_catalog):
     assert filtered.columns.tolist() == original_cols
 
 
-def test_boolean_filter_errors_on_multi_column(small_sky_order1_catalog):
-    with pytest.raises(ValueError, match="single-column"):
-        _ = small_sky_order1_catalog > 0
-
-
-def test_boolean_filter_errors_on_non_boolean(small_sky_order1_catalog):
-    with pytest.raises(ValueError, match="boolean dtype"):
-        small_sky_order1_catalog[small_sky_order1_catalog["ra"]]  # pylint: disable=pointless-statement
-
-
 def test_boolean_filter_errors_on_different_partitioning(small_sky_catalog, small_sky_order1_catalog):
-    with pytest.raises(ValueError, match="same HEALPix partitioning"):
+    with pytest.raises(ValueError, match="Number of partitions"):
         small_sky_order1_catalog[small_sky_catalog["ra"] > 0]  # pylint: disable=pointless-statement

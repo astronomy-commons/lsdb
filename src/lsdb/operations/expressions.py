@@ -2,7 +2,7 @@ import functools
 
 import nested_pandas as npd
 import numpy as np
-from dask._task_spec import Alias
+from dask._task_spec import Alias, cull
 from dask.dataframe.dask_expr._expr import Expr
 from dask.utils import ensure_dict
 from hats import HealpixPixel
@@ -15,7 +15,7 @@ from lsdb.operations.operation import HealpixGraph, Operation
 class FromOperation(Expr):
     """Dask Expression from an LSDB operation."""
 
-    _parameters = ["operation"]
+    _parameters = ["operation", "_divisions"]
 
     @functools.cached_property
     def operation_graph(self) -> HealpixGraph:
@@ -32,6 +32,8 @@ class FromOperation(Expr):
         return self.operand("operation").meta
 
     def _divisions(self):
+        if not self.operand("_divisions"):
+            return [None] * (len(self.sorted_pixels) + 1)
         divisions = get_pixels_divisions(self.sorted_pixels)
         return divisions
 
@@ -69,8 +71,13 @@ class FromDaskExpression(Operation):
     def healpix_pixels(self) -> list[HealpixPixel]:
         return self._healpix_pixels
 
-    def build(self) -> HealpixGraph:
+    def build(self, pixels=None) -> HealpixGraph:
         graph = self._expr.__dask_graph__()
         last_dask_keys = self._expr.__dask_keys__()
         pixel_to_key_map = {pixel: key for pixel, key in zip(self._healpix_pixels, last_dask_keys)}
+        if pixels is not None:
+            pixel_to_key_map = {
+                pixel: pixel_to_key_map[pixel] for pixel in pixels if pixel in pixel_to_key_map
+            }
+            graph = cull(graph, list(pixel_to_key_map.values()))
         return HealpixGraph(graph, pixel_to_key_map)

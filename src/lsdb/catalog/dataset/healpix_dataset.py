@@ -5,7 +5,7 @@ import random
 import warnings
 from collections.abc import Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable, Iterable, Type, cast
+from typing import TYPE_CHECKING, Any, Callable, Iterable, Type, cast, overload
 
 import astropy
 import dask.dataframe as dd
@@ -318,6 +318,28 @@ class HealpixDataset:
         new_op = op_class(self._operation, func, *args, meta=meta, **kwargs)
         return self._create_updated_dataset(op=new_op)
 
+    @overload
+    def map_partitions(
+        self,
+        func: Callable[..., pd.DataFrame],
+        *args: Any,
+        meta: pd.DataFrame | pd.Series | dict | Iterable | tuple | None = None,
+        include_pixel: bool = False,
+        compute_single_partition: bool = False,
+        partition_index: int | HealpixPixel | None = None,
+        **kwargs: Any,
+    ) -> Self: ...
+    @overload
+    def map_partitions(
+        self,
+        func: Callable[..., object],
+        *args: Any,
+        meta: pd.DataFrame | pd.Series | dict | Iterable | tuple | None = None,
+        include_pixel: bool = False,
+        compute_single_partition: bool = False,
+        partition_index: int | HealpixPixel | None = None,
+        **kwargs: Any,
+    ) -> Self | dd.Series: ...
     def map_partitions(
         self,
         func: Callable,
@@ -327,7 +349,7 @@ class HealpixDataset:
         compute_single_partition: bool = False,
         partition_index: int | HealpixPixel | None = None,
         **kwargs,
-    ) -> Self:
+    ) -> Self | dd.Series:
         """Applies a function to each partition in the catalog.
 
         The ra and dec of each row is assumed to remain unchanged.
@@ -372,9 +394,9 @@ class HealpixDataset:
 
         Returns
         -------
-        Self
+        Self or dd.Series
             A new catalog with each partition replaced with the output of the function applied to the original
-            partition.
+            partition. If the function returns a non dataframe output, a dask Series will be returned.
         """
         if compute_single_partition:
             if partition_index is None:
@@ -385,6 +407,8 @@ class HealpixDataset:
             result = (
                 func(partition, pixel, *args, **kwargs) if include_pixel else func(partition, *args, **kwargs)
             )
+            if not isinstance(result, pd.DataFrame):
+                return result
             output_op = FromSinglePartition(result, pixel)
             hc_structure = self.hc_structure.__class__(
                 catalog_info=self.hc_structure.catalog_info,
@@ -396,12 +420,13 @@ class HealpixDataset:
         new_cat = self._apply_partitionwise_operation(
             MapPartitions, func, *args, meta=meta, include_pixel=include_pixel, **kwargs
         )
+        if isinstance(new_cat._operation, MapPartitions) and not new_cat._operation.is_df_type:
+            col_name = new_cat.columns[0]
+            return new_cat.to_dask_dataframe()[col_name]
         return new_cat
 
-    def __getitem__(self, item: str | list[str] | HealpixDataset) -> Self | dd.Series:
+    def __getitem__(self, item: str | list[str] | dd.Series) -> Self | dd.Series:
         """Select a column or columns, or filter rows by a boolean single-column catalog."""
-        if isinstance(item, HealpixDataset):
-            return self._filter_by_boolean_catalog(item)
         if isinstance(item, dd.Series):
             return self._filter_by_dask_series(item)
         if isinstance(item, str):
@@ -440,133 +465,6 @@ class HealpixDataset:
             self.meta,
             healpix_pixels,
         )
-        return self._create_updated_dataset(op=new_op)
-
-    def _filter_by_boolean_catalog(self, boolean_cat: HealpixDataset) -> Self:
-        """Filter rows using a boolean single-column catalog.
-
-        If the boolean catalog has more than one column, a ValueError is raised. The boolean catalog must
-        have the same HEALPix partitioning as the original catalog, otherwise a ValueError is raised.
-
-        Masking with a non-boolean catalog such as with an integer or float column will raise a ValueError.
-
-        The function returns a new catalog with only the rows where the boolean column is True.
-        """
-        if len(boolean_cat.columns) != 1:
-            raise ValueError(
-                "Boolean filtering requires a single-column boolean catalog. "
-                "Use catalog['column'] > value to create one."
-            )
-        bool_col = boolean_cat.columns[0]
-        if not pd.api.types.is_bool_dtype(boolean_cat.meta.dtypes[bool_col]):
-            raise ValueError(f"Column '{bool_col}' must have boolean dtype for boolean filtering")
-        pixels = self.get_healpix_pixels()
-
-        if not pixels == boolean_cat.get_healpix_pixels():
-            raise ValueError("Both catalogs must have the same HEALPix partitioning for boolean filtering")
-
-        def filter_func(
-            data_df, bool_df, data_pixel, bool_pixel, data_info, bool_info
-        ):  # pylint: disable=unused-argument
-            return data_df[bool_df[bool_col].values]
-
-        new_op = align_and_apply(
-            [(self, pixels), (boolean_cat, pixels)],
-            filter_func,
-            self.meta,
-            pixels,
-        )
-        return self._create_updated_dataset(op=new_op)
-
-    def _check_single_column_for_boolean_op(self, op_name: str) -> None:
-        if len(self.columns) != 1:
-            raise ValueError(
-                f"Operator '{op_name}' requires a single-column catalog. "
-                "Use catalog['column_name'] to select a column first."
-            )
-
-    def _apply_comparison(self, op, other) -> Self:
-        """Applies a comparison operator to a single-column catalog.
-
-        Used to allow filtering such as `cat[cat['column'] > value]` to create a boolean catalog for
-        filtering. Applies a comparison operation function to a single-column catalog, returning a new
-        catalog with the result of the comparison.
-
-        Comparison operators must be applied to a single-column catalog. If the catalog has more than one
-        column, a ValueError is raised.
-
-        The value to compare against must be a scalar or a value that can be broadcast to the column's shape
-        in every partition. This means something like `cat['column'] > 5` is valid, but
-        `cat['column'] > cat['other_column']` is not.
-
-        Parameters
-        ----------
-        op : Callable
-            A comparison operator function that supports element-wise comparison
-        other : Any
-            The value to compare the column against. Must be a scalar or a value that can be broadcast to
-            the column's shape in every partition.
-        """
-        if len(self.columns) != 1:
-            raise ValueError(
-                "Comparison operations require a single-column catalog. "
-                "Use catalog['column_name'] to select a column first."
-            )
-        col = self.columns[0]
-        return self.map_partitions(lambda df, v: df.assign(**{col: op(df[col], v)}), other)
-
-    def __gt__(self, other) -> Self:
-        self._check_single_column_for_boolean_op(">")
-        return self._apply_comparison(lambda a, b: a > b, other)
-
-    def __lt__(self, other) -> Self:
-        self._check_single_column_for_boolean_op("<")
-        return self._apply_comparison(lambda a, b: a < b, other)
-
-    def __ge__(self, other) -> Self:
-        self._check_single_column_for_boolean_op(">=")
-        return self._apply_comparison(lambda a, b: a >= b, other)
-
-    def __le__(self, other) -> Self:
-        self._check_single_column_for_boolean_op("<=")
-        return self._apply_comparison(lambda a, b: a <= b, other)
-
-    def __eq__(self, other) -> Self:  # type: ignore[override]
-        self._check_single_column_for_boolean_op("==")
-        return self._apply_comparison(lambda a, b: a == b, other)
-
-    def __ne__(self, other) -> Self:  # type: ignore[override]
-        self._check_single_column_for_boolean_op("!=")
-        return self._apply_comparison(lambda a, b: a != b, other)
-
-    __hash__: None = None  # type: ignore[assignment]
-
-    def __invert__(self) -> Self:
-        """Negate a boolean single-column catalog (~mask)."""
-        self._check_single_column_for_boolean_op("~")
-        col = self.columns[0]
-        if not pd.api.types.is_bool_dtype(self.meta.dtypes[col]):
-            raise ValueError(f"Cannot invert non-boolean column '{col}'")
-        return self.map_partitions(lambda df: df.assign(**{col: ~df[col]}), meta=self.meta)
-
-    def __and__(self, other: HealpixDataset) -> Self:
-        """Combine two boolean single-column catalogs with logical AND (&)."""
-        self._check_single_column_for_boolean_op("&")
-        left_col = self.columns[0]
-        right_col = other.columns[0]
-        pixels = self.get_healpix_pixels()
-        if not pixels == other.get_healpix_pixels():
-            raise ValueError(
-                "Both catalogs must have the same HEALPix partitioning for logical AND operation"
-            )
-        meta = self.meta
-
-        def and_func(
-            left_df, right_df, left_pixel, right_pixel, left_info, right_info
-        ):  # pylint: disable=unused-argument
-            return npd.NestedFrame({left_col: left_df[left_col] & right_df[right_col]})
-
-        new_op = align_and_apply([(self, pixels), (other, pixels)], and_func, meta, pixels)
         return self._create_updated_dataset(op=new_op)
 
     def __or__(self, other: HealpixDataset) -> Self:
@@ -655,7 +553,6 @@ class HealpixDataset:
         return pd.concat(result)
 
     def to_dask_dataframe(self, divisions=True):
-    def to_dask_dataframe(self):
         """Converts to a Dask DataFrame
 
         Parameters
@@ -665,7 +562,7 @@ class HealpixDataset:
             pixels. If True, will set divisions to the HEALPix pixels. If
             False, will not set divisions.
         """
-        expr = FromOperation(self._operation)
+        expr = FromOperation(self._operation, divisions)
         df = dd.DataFrame(expr)
 
         return df

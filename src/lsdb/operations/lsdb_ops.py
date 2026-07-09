@@ -129,7 +129,9 @@ class EmptyOperation(FromHealpixMap):
         return False
 
 
-def map_parts_meta(func, base_meta: npd.NestedFrame, *args, include_pixel=False, **kwargs) -> npd.NestedFrame:
+def map_parts_meta(
+    func, base_meta: npd.NestedFrame, *args, include_pixel=False, **kwargs
+) -> tuple[npd.NestedFrame, bool]:
     """Infer meta for a MapPartitions operation by running func on an empty DataFrame."""
     try:
         if include_pixel:
@@ -146,7 +148,7 @@ def map_parts_meta(func, base_meta: npd.NestedFrame, *args, include_pixel=False,
     return _coerce_to_meta(result)
 
 
-def _coerce_to_meta(result) -> npd.NestedFrame:
+def _coerce_to_meta(result) -> tuple[npd.NestedFrame, bool]:
     """Coerce a function result to an empty npd.NestedFrame for use as meta."""
 
     def _safe_dtype(t: type) -> np.dtype:
@@ -163,24 +165,28 @@ def _coerce_to_meta(result) -> npd.NestedFrame:
             "input, or supply a meta for your function"
         )
     if isinstance(result, npd.NestedFrame):
-        return result.iloc[:0]
+        return result.iloc[:0], True
     if isinstance(result, pd.DataFrame):
-        return npd.NestedFrame(result.iloc[:0])
+        return npd.NestedFrame(result.iloc[:0]), True
     if isinstance(result, pd.Series):
-        return npd.NestedFrame({"result": result.iloc[:0]})
+        return npd.NestedFrame({result.name: result.iloc[:0]}), False
     if isinstance(result, dict):
-        return npd.NestedFrame(
-            {
-                k: pd.Series(dtype=_safe_dtype(type(v[0] if hasattr(v, "__len__") and len(v) > 0 else v)))
-                for k, v in result.items()
-            }
+        return (
+            npd.NestedFrame(
+                {
+                    k: pd.Series(dtype=_safe_dtype(type(v[0] if hasattr(v, "__len__") and len(v) > 0 else v)))
+                    for k, v in result.items()
+                }
+            ),
+            True,
         )
     if isinstance(result, (list, tuple)):
-        return npd.NestedFrame(
-            {"result": pd.Series(dtype=_safe_dtype(type(result[0])) if result else object)}
+        return (
+            npd.NestedFrame({"result": pd.Series(dtype=_safe_dtype(type(result[0])) if result else object)}),
+            False,
         )
     # scalar
-    return npd.NestedFrame({"result": pd.Series(dtype=_safe_dtype(type(result)))})
+    return npd.NestedFrame({"result": pd.Series(dtype=_safe_dtype(type(result)))}), False
 
 
 def _coerce_to_frame(result) -> npd.NestedFrame:
@@ -190,7 +196,7 @@ def _coerce_to_frame(result) -> npd.NestedFrame:
     if isinstance(result, pd.DataFrame):
         return npd.NestedFrame(result)
     if isinstance(result, pd.Series):
-        return npd.NestedFrame({"result": result.values}, index=result.index)
+        return npd.NestedFrame({result.name: result.values}, index=result.index)
     if isinstance(result, dict):
         return npd.NestedFrame({k: [v] if not hasattr(v, "__len__") else v for k, v in result.items()})
     if isinstance(result, (list, tuple)):
@@ -261,12 +267,21 @@ class MapPartitions(Operation):
         return f"{func_name}-{tokenized}"
 
     @functools.cached_property
-    def meta(self) -> npd.NestedFrame:
+    def coerced_meta_and_is_df_type(self) -> tuple[npd.NestedFrame, bool]:
         if self._meta is not None:
-            return self._meta
+            return self._meta, True
         return map_parts_meta(
             self.func, self.base.meta, *self.args, include_pixel=self.include_pixel, **self.kwargs
         )
+
+    @property
+    def is_df_type(self) -> bool:
+        """Return True if the function returns a DataFrame, False if it returns a Series."""
+        return self.coerced_meta_and_is_df_type[1]
+
+    @property
+    def meta(self) -> npd.NestedFrame:
+        return self.coerced_meta_and_is_df_type[0]
 
     @property
     def dependencies(self) -> list[Operation]:
