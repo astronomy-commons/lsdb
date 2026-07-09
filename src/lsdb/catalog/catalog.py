@@ -48,6 +48,7 @@ from lsdb.operations.functions.merge_catalog_functions import (
     create_merged_catalog_info,
 )
 from lsdb.operations.functions.merge_map_catalog_data import merge_map_catalog_data
+from lsdb.operations.lsdb_ops import MapPartitions
 from lsdb.operations.operation import Operation
 
 
@@ -807,6 +808,16 @@ class Catalog(HealpixDataset):
         cat.margin = self.margin.search(search) if self.margin is not None else None
         return cat
 
+    def _apply_partitionwise_operation(
+        self, op_class: type[MapPartitions], func, *args, meta=None, **kwargs
+    ) -> Self:
+        cat = super()._apply_partitionwise_operation(op_class, func, *args, meta=meta, **kwargs)
+        if self.margin is not None:
+            cat.margin = self.margin._apply_partitionwise_operation(
+                op_class, func, *args, meta=meta, **kwargs
+            )
+        return cat
+
     @overload
     def map_partitions(
         self,
@@ -919,30 +930,20 @@ class Catalog(HealpixDataset):
             partition_index=partition_index,
             **kwargs,
         )
-        if isinstance(catalog, Catalog) and self.margin is not None:
+        if compute_single_partition and isinstance(catalog, Catalog) and self.margin is not None:
             # For single partition updates, we need to update the margin for that partition only
-            if compute_single_partition:
-                # Get the corresponding pixel for this partition
-                pixel = catalog.get_healpix_pixels()[0]
+            # Get the corresponding pixel for this partition
+            pixel = catalog.get_healpix_pixels()[0]
 
-                # Update the margin for this pixel only
-                if pixel in self.margin.get_healpix_pixels():
-                    catalog.margin = self.margin.map_partitions(
-                        func,
-                        *args,
-                        meta=meta,
-                        include_pixel=include_pixel,
-                        compute_single_partition=True,
-                        partition_index=pixel,
-                        **kwargs,
-                    )  # type: ignore[assignment]
-            else:
-                # Update all margins as before
+            # Update the margin for this pixel only
+            if pixel in self.margin.get_healpix_pixels():
                 catalog.margin = self.margin.map_partitions(
                     func,
                     *args,
                     meta=meta,
                     include_pixel=include_pixel,
+                    compute_single_partition=True,
+                    partition_index=pixel,
                     **kwargs,
                 )  # type: ignore[assignment]
         return catalog
