@@ -467,24 +467,6 @@ class HealpixDataset:
         )
         return self._create_updated_dataset(op=new_op)
 
-    def __or__(self, other: HealpixDataset) -> Self:
-        """Combine two boolean single-column catalogs with logical OR (|)."""
-        self._check_single_column_for_boolean_op("|")
-        left_col = self.columns[0]
-        right_col = other.columns[0]
-        pixels = self.get_healpix_pixels()
-        if not pixels == other.get_healpix_pixels():
-            raise ValueError("Both catalogs must have the same HEALPix partitioning for logical OR operation")
-        meta = self.meta
-
-        def or_func(
-            left_df, right_df, left_pixel, right_pixel, left_info, right_info
-        ):  # pylint: disable=unused-argument
-            return npd.NestedFrame({left_col: left_df[left_col] | right_df[right_col]})
-
-        new_op = align_and_apply([(self, pixels), (other, pixels)], or_func, meta, pixels)
-        return self._create_updated_dataset(op=new_op)
-
     def __len__(self):
         """The number of rows in the catalog.
 

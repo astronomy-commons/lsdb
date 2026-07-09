@@ -585,6 +585,15 @@ def test_square_bracket_columns(small_sky_order1_catalog, helpers):
     helpers.assert_schema_correct(column_subset)
 
 
+def test_square_bracket_single_column(small_sky_order1_catalog):
+    ra_series = small_sky_order1_catalog["ra"]
+    assert isinstance(ra_series, dd.Series)
+    assert ra_series.name == "ra"
+    computed = ra_series.compute()
+    assert isinstance(computed, pd.Series)
+    pd.testing.assert_series_equal(computed, small_sky_order1_catalog.compute()["ra"])
+
+
 def test_square_bracket_columns_default_columns(small_sky_order1_default_cols_catalog, helpers):
     columns = ["ra", "dec"]
     column_subset = small_sky_order1_default_cols_catalog[columns]
@@ -654,6 +663,17 @@ def test_map_partitions_non_df(small_sky_order1_catalog):
     assert isinstance(mapped, dd.Series)
     mapcomp = mapped.compute()
     assert np.all(mapcomp == small_sky_order1_catalog.compute()["ra"] + 1)
+
+
+def test_map_partitions_series_meta(small_sky_order1_catalog):
+    def get_col(df):
+        return df["ra"] + 1
+
+    series_meta = pd.Series(dtype=small_sky_order1_catalog.dtypes["ra"], name="ra")
+    mapped = small_sky_order1_catalog.map_partitions(get_col, meta=series_meta)
+
+    assert isinstance(mapped, dd.Series)
+    assert np.all(mapped.compute() == small_sky_order1_catalog.compute()["ra"] + 1)
 
 
 def test_map_partitions_scalar_result(small_sky_order1_catalog):

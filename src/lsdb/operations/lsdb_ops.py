@@ -205,19 +205,24 @@ def _coerce_to_frame(result) -> npd.NestedFrame:
     return npd.NestedFrame({"result": [result]})
 
 
-def _normalize_meta(meta) -> npd.NestedFrame:
-    """Normalize meta input to an npd.NestedFrame, accepting the same formats as Dask."""
+def _normalize_meta(meta) -> tuple[npd.NestedFrame, bool]:
+    """Normalize meta input to an npd.NestedFrame, accepting the same formats as Dask.
+
+    Returns the normalized meta and whether it describes a DataFrame output (False for a Series).
+    """
     if isinstance(meta, npd.NestedFrame):
-        return meta
+        return meta, True
     if isinstance(meta, pd.DataFrame):
-        return npd.NestedFrame(meta)
+        return npd.NestedFrame(meta), True
+    if isinstance(meta, pd.Series):
+        return npd.NestedFrame({meta.name: meta.iloc[:0]}), False
     if isinstance(meta, dict):
-        return npd.NestedFrame({k: pd.Series(dtype=v) for k, v in meta.items()})
+        return npd.NestedFrame({k: pd.Series(dtype=v) for k, v in meta.items()}), True
     if isinstance(meta, (list, tuple)) and all(isinstance(m, tuple) and len(m) == 2 for m in meta):
         # list of (name, dtype) tuples — another Dask-accepted format
-        return npd.NestedFrame({k: pd.Series(dtype=v) for k, v in meta})
+        return npd.NestedFrame({k: pd.Series(dtype=v) for k, v in meta}), True
     raise ValueError(
-        f"meta must be a DataFrame, dict of {{name: dtype}}, or list of (name, dtype) tuples, got {type(meta)}"  # pylint: disable=line-too-long
+        f"meta must be a DataFrame, Series, dict of {{name: dtype}}, or list of (name, dtype) tuples, got {type(meta)}"  # pylint: disable=line-too-long
     )
 
 
@@ -241,8 +246,7 @@ class MapPartitions(Operation):
             )
         self._func = func
         self.args = args
-        # Ensure that input meta is normalized to a NestedFrame
-        self._meta = _normalize_meta(meta) if meta is not None else None
+        self._meta = meta
         self.include_pixel = include_pixel
         self.verify_meta = verify_meta
         self.kwargs = kwargs
@@ -269,7 +273,7 @@ class MapPartitions(Operation):
     @functools.cached_property
     def coerced_meta_and_is_df_type(self) -> tuple[npd.NestedFrame, bool]:
         if self._meta is not None:
-            return self._meta, True
+            return _normalize_meta(self._meta)
         return map_parts_meta(
             self.func, self.base.meta, *self.args, include_pixel=self.include_pixel, **self.kwargs
         )
