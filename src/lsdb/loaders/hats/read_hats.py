@@ -37,6 +37,7 @@ def open_catalog(
     error_empty_filter: bool = True,
     filters: list[tuple[str]] | None = None,
     path_generator: Callable[[UPath, HealpixPixel, dict | None, str], UPath] = hc.io.pixel_catalog_file,
+    show_statistics: bool = False,
     **kwargs,
 ) -> Catalog:
     """Open a catalog from a HATS path.
@@ -107,6 +108,8 @@ def open_catalog(
 
         The catalog metadata files need to live where the HATS standard expects them.
         Defaults to `hats.io.pixel_catalog_file`.
+    show_statistics : bool, default False
+        If True, the catalog's repr displays a per-column statistics table (min/max values).
     **kwargs
         Arguments to pass to the pandas parquet file reader
 
@@ -126,6 +129,7 @@ def open_catalog(
         error_empty_filter=error_empty_filter,
         filters=filters,
         path_generator=path_generator,
+        show_statistics=show_statistics,
         **kwargs,
     )
 
@@ -199,6 +203,7 @@ def _read_dataset(
     error_empty_filter: bool = True,
     filters: list[tuple[str]] | None = None,
     path_generator: Callable[[UPath, HealpixPixel, dict | None, str], UPath] = hc.io.pixel_catalog_file,
+    show_statistics: bool = False,
     **kwargs,
 ):
     """Internal method to read any HATS collection/dataset"""
@@ -209,6 +214,7 @@ def _read_dataset(
         margin_cache=margin_cache,
         filters=filters,
         path_generator=path_generator,
+        show_statistics=show_statistics,
         kwargs=kwargs,
     )
     if isinstance(hc_catalog, hc.catalog.CatalogCollection):

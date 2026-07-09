@@ -96,11 +96,25 @@ class HealpixDataset:
         self.hc_structure = hc_structure
         self.loading_config = loading_config
 
+    @property
+    def _show_statistics(self) -> bool:
+        """Whether the catalog repr should display the per-column statistics table"""
+        return self.loading_config is not None and self.loading_config.show_statistics
+
     def __repr__(self):
-        # TODO: This changes to just be the operation name, not the lazy df view.
-        # Should we add a df like repr?
-        return self._operation.__repr__()
-        # return self._repr_data()
+        data = self._repr_data().to_string(max_rows=5, show_dimensions=False)
+        loaded_cols = len(self.columns)
+        available_cols = len(self.all_columns)
+        lines = [
+            f"lsdb Catalog {self.name}:",
+            data,
+            f"{loaded_cols} out of {available_cols} available columns in the catalog have been "
+            f"loaded lazily, meaning no data has been read, only the catalog schema",
+        ]
+        est_size = self.est_size()
+        if est_size is not None:
+            lines.append(f"This catalog has an estimated size of {file_size(est_size * 1024)}")
+        return "\n".join(lines)
 
     @property
     def name(self):
@@ -497,7 +511,7 @@ class HealpixDataset:
         cols = meta.columns
         if len(cols) == 0:
             return pd.DataFrame([[]] * len(index), columns=cols, index=index)
-        pixel_stats = self._get_repr_pixel_stats(cols)
+        pixel_stats = self._get_repr_pixel_stats(cols) if self._show_statistics else None
         if pixel_stats is None:
             return pd.concat([_repr_data_series(s, index=index) for _, s in meta.items()], axis=1)
         return _repr_data_min_max(meta, index, pixel_stats)
