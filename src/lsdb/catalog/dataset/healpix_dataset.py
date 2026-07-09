@@ -451,7 +451,7 @@ class HealpixDataset:
         filter_column_name = "filter_series"
         series_df = series.to_frame(filter_column_name)
 
-        operation = FromDaskExpression(series_df.expr, healpix_pixels)
+        operation = FromDaskExpression(series_df, healpix_pixels)
 
         filter_cat = HealpixDataset(operation, self.hc_structure)
 

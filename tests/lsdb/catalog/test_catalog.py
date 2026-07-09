@@ -1112,6 +1112,15 @@ def test_boolean_filter_and(small_sky_order1_catalog):
     assert ((result["ra"] > 280) & (result["ra"] < 320)).all()
 
 
+def test_boolean_filter_and_different_columns(small_sky_order1_catalog):
+    # series on different columns produce distinct dask expressions, which dask must align
+    filtered = small_sky_order1_catalog[
+        (small_sky_order1_catalog["ra"] < 300) & (small_sky_order1_catalog["id"] > 700)
+    ]
+    result = filtered.compute()
+    assert ((result["ra"] < 300) & (result["id"] > 700)).all()
+
+
 def test_boolean_filter_or(small_sky_order1_catalog):
     filtered = small_sky_order1_catalog[
         (small_sky_order1_catalog["ra"] < 200) | (small_sky_order1_catalog["ra"] > 300)

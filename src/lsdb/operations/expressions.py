@@ -1,5 +1,6 @@
 import functools
 
+import dask.dataframe as dd
 import nested_pandas as npd
 import numpy as np
 from dask._task_spec import Alias, Task, cull
@@ -51,23 +52,23 @@ class FromOperation(Expr):
 
 
 class FromDaskExpression(Operation):
-    """LSDB Operation to create an operation from a dask expression."""
+    """LSDB Operation to create an operation from a dask collection."""
 
-    def __init__(self, expr: Expr, healpix_pixels: list[HealpixPixel]) -> None:
-        self._expr = expr
+    def __init__(self, frame: dd.DataFrame, healpix_pixels: list[HealpixPixel]) -> None:
+        self._frame = frame
         self._healpix_pixels = healpix_pixels
 
     @property
     def name(self) -> str:
-        return f"FromDaskExpression({self._expr})"
+        return f"FromDaskExpression({self._frame.expr})"
 
     @functools.cached_property
     def key_name(self) -> str:
-        return f"from_expr-{self._expr.__dask_tokenize__()}"
+        return f"from_expr-{self._frame.__dask_tokenize__()}"
 
     @property
     def meta(self) -> npd.NestedFrame:
-        return self._expr._meta  # pylint: disable=protected-access
+        return self._frame._meta  # pylint: disable=protected-access
 
     @property
     def dependencies(self) -> list[Operation]:
@@ -78,8 +79,8 @@ class FromDaskExpression(Operation):
         return self._healpix_pixels
 
     def build(self, pixels=None) -> HealpixGraph:
-        graph = self._expr.__dask_graph__()
-        last_dask_keys = self._expr.__dask_keys__()
+        graph = self._frame.__dask_graph__()
+        last_dask_keys = self._frame.__dask_keys__()
         pixel_to_key_map = dict(zip(self._healpix_pixels, last_dask_keys))
         if pixels is not None:
             pixel_to_key_map = {
