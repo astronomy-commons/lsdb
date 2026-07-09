@@ -79,11 +79,22 @@ def test_map_parts_meta_wraps_error_from_function_assuming_nonempty_data():
 
 def test_coerce_to_meta_plain_dataframe_is_converted_and_emptied():
     df = pd.DataFrame({"a": [1, 2], "b": ["x", "y"]})
-    meta = _coerce_to_meta(df)
+    meta, is_df_type = _coerce_to_meta(df)
 
     assert isinstance(meta, npd.NestedFrame)
     assert len(meta) == 0
     assert list(meta.columns) == ["a", "b"]
+    assert is_df_type
+
+
+def test_coerce_to_meta_series_keeps_name_and_marks_non_df():
+    series = pd.Series([1.0, 2.0], name="flux")
+    meta, is_df_type = _coerce_to_meta(series)
+
+    assert isinstance(meta, npd.NestedFrame)
+    assert len(meta) == 0
+    assert list(meta.columns) == ["flux"]
+    assert not is_df_type
 
 
 @pytest.mark.parametrize(
@@ -95,18 +106,20 @@ def test_coerce_to_meta_plain_dataframe_is_converted_and_emptied():
     ],
 )
 def test_coerce_to_meta_dict_of_lists_infers_dtype_from_first_element(values, expected_dtype_kind):
-    meta = _coerce_to_meta({"col": values})
+    meta, is_df_type = _coerce_to_meta({"col": values})
 
     assert len(meta) == 0
     assert meta["col"].dtype.kind == expected_dtype_kind
+    assert is_df_type
 
 
 @pytest.mark.parametrize("empty_collection", [[], ()])
 def test_coerce_to_meta_empty_list_or_tuple_uses_object_dtype(empty_collection):
-    meta = _coerce_to_meta(empty_collection)
+    meta, is_df_type = _coerce_to_meta(empty_collection)
 
     assert len(meta) == 0
     assert meta["result"].dtype == object
+    assert not is_df_type
 
 
 @pytest.mark.parametrize(
@@ -119,11 +132,12 @@ def test_coerce_to_meta_empty_list_or_tuple_uses_object_dtype(empty_collection):
     ],
 )
 def test_coerce_to_meta_scalar_infers_dtype_from_type(scalar, expected_dtype):
-    meta = _coerce_to_meta(scalar)
+    meta, is_df_type = _coerce_to_meta(scalar)
 
     assert len(meta) == 0
     assert list(meta.columns) == ["result"]
     assert meta["result"].dtype == expected_dtype
+    assert not is_df_type
 
 
 def test_coerce_to_meta_unsafe_pandas_type():
@@ -132,10 +146,11 @@ def test_coerce_to_meta_unsafe_pandas_type():
         pass
 
     # result should be a pd.series with dtype=object
-    meta = _coerce_to_meta(Custom())
+    meta, is_df_type = _coerce_to_meta(Custom())
     assert len(meta) == 0
     assert list(meta.columns) == ["result"]
     assert meta["result"].dtype == object
+    assert not is_df_type
 
 
 @pytest.mark.parametrize("values", [[1, 2, 3], (1, 2, 3)])
@@ -166,8 +181,10 @@ def test_coerce_to_frame_scalar_creates_single_row(scalar):
 
 def test_normalize_meta_nestedframe_passthrough():
     nf = npd.NestedFrame({"a": pd.Series(dtype="int64")})
+    result, is_df_type = _normalize_meta(nf)
 
-    assert _normalize_meta(nf) is nf
+    assert result is nf
+    assert is_df_type
 
 
 @pytest.mark.parametrize(
@@ -179,11 +196,23 @@ def test_normalize_meta_nestedframe_passthrough():
     ],
 )
 def test_normalize_meta_accepted_formats_produce_equivalent_nestedframe(meta):
-    result = _normalize_meta(meta)
+    result, is_df_type = _normalize_meta(meta)
 
     assert isinstance(result, npd.NestedFrame)
     assert list(result.columns) == ["a", "b"]
     assert dict(result.dtypes) == {"a": pd.Series(dtype="int64").dtype, "b": pd.Series(dtype="float64").dtype}
+    assert is_df_type
+
+
+def test_normalize_meta_series_marks_non_df_output():
+    series_meta = pd.Series(dtype="float64", name="flux")
+    result, is_df_type = _normalize_meta(series_meta)
+
+    assert isinstance(result, npd.NestedFrame)
+    assert len(result) == 0
+    assert list(result.columns) == ["flux"]
+    assert result["flux"].dtype == series_meta.dtype
+    assert not is_df_type
 
 
 @pytest.mark.parametrize("bad_meta", ["not valid", 5, [1, 2, 3]])

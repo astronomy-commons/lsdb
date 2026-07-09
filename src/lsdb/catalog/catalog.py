@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import warnings
 from pathlib import Path
-from typing import Any, Callable, Iterable
+from typing import Any, Callable, Iterable, overload
 
 import dask.dataframe as dd
 import hats as hc
@@ -807,9 +807,31 @@ class Catalog(HealpixDataset):
         cat.margin = self.margin.search(search) if self.margin is not None else None
         return cat
 
-    def map_partitions(  # type: ignore[override]
+    @overload
+    def map_partitions(
         self,
-        func: Callable[..., npd.NestedFrame],
+        func: Callable[..., pd.DataFrame],
+        *args: Any,
+        meta: pd.DataFrame | pd.Series | dict | Iterable | tuple | None = None,
+        include_pixel: bool = False,
+        compute_single_partition: bool = False,
+        partition_index: int | HealpixPixel | None = None,
+        **kwargs: Any,
+    ) -> Catalog: ...
+    @overload
+    def map_partitions(
+        self,
+        func: Callable[..., object],
+        *args: Any,
+        meta: pd.DataFrame | pd.Series | dict | Iterable | tuple | None = None,
+        include_pixel: bool = False,
+        compute_single_partition: bool = False,
+        partition_index: int | HealpixPixel | None = None,
+        **kwargs: Any,
+    ) -> Catalog | dd.Series: ...
+    def map_partitions(
+        self,
+        func: Callable,
         *args,
         meta: pd.DataFrame | pd.Series | dict | Iterable | tuple | None = None,
         include_pixel: bool = False,

@@ -17,7 +17,6 @@ from lsdb.operations.functions.merge_catalog_functions import (  # construct_cat
 )
 from lsdb.operations.operation import Operation
 
-
 if TYPE_CHECKING:
     from lsdb.catalog.catalog import Catalog
     from lsdb.catalog.margin_catalog import MarginCatalog

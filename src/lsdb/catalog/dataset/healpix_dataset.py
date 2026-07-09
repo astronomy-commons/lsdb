@@ -5,7 +5,7 @@ import random
 import warnings
 from collections.abc import Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable, Iterable, Type, cast
+from typing import TYPE_CHECKING, Any, Callable, Iterable, Type, cast, overload
 
 import astropy
 import dask.dataframe as dd
@@ -45,7 +45,7 @@ from lsdb.core.search.region_search import (
 )
 from lsdb.io.schema import get_arrow_schema
 from lsdb.loaders.hats.hats_loading_config import HatsLoadingConfig
-from lsdb.operations.functions.divisions import get_pixels_divisions
+from lsdb.operations.expressions import FromDaskExpression, FromOperation
 from lsdb.operations.functions.merge_catalog_functions import align_and_apply, concat_metas, make_meta
 from lsdb.operations.functions.partition_indexer import PartitionIndexer
 from lsdb.operations.lsdb_ops import (
@@ -317,6 +317,28 @@ class HealpixDataset:
         new_op = op_class(self._operation, func, *args, meta=meta, **kwargs)
         return self._create_updated_dataset(op=new_op)
 
+    @overload
+    def map_partitions(
+        self,
+        func: Callable[..., pd.DataFrame],
+        *args: Any,
+        meta: pd.DataFrame | pd.Series | dict | Iterable | tuple | None = None,
+        include_pixel: bool = False,
+        compute_single_partition: bool = False,
+        partition_index: int | HealpixPixel | None = None,
+        **kwargs: Any,
+    ) -> Self: ...
+    @overload
+    def map_partitions(
+        self,
+        func: Callable[..., object],
+        *args: Any,
+        meta: pd.DataFrame | pd.Series | dict | Iterable | tuple | None = None,
+        include_pixel: bool = False,
+        compute_single_partition: bool = False,
+        partition_index: int | HealpixPixel | None = None,
+        **kwargs: Any,
+    ) -> Self | dd.Series: ...
     def map_partitions(
         self,
         func: Callable,
@@ -326,7 +348,7 @@ class HealpixDataset:
         compute_single_partition: bool = False,
         partition_index: int | HealpixPixel | None = None,
         **kwargs,
-    ) -> Self:
+    ) -> Self | dd.Series:
         """Applies a function to each partition in the catalog.
 
         The ra and dec of each row is assumed to remain unchanged.
@@ -371,9 +393,9 @@ class HealpixDataset:
 
         Returns
         -------
-        Self
+        Self or dd.Series
             A new catalog with each partition replaced with the output of the function applied to the original
-            partition.
+            partition. If the function returns a non dataframe output, a dask Series will be returned.
         """
         if compute_single_partition:
             if partition_index is None:
@@ -384,6 +406,8 @@ class HealpixDataset:
             result = (
                 func(partition, pixel, *args, **kwargs) if include_pixel else func(partition, *args, **kwargs)
             )
+            if not isinstance(result, pd.DataFrame):
+                return result
             output_op = FromSinglePartition(result, pixel)
             hc_structure = self.hc_structure.__class__(
                 catalog_info=self.hc_structure.catalog_info,
@@ -395,164 +419,52 @@ class HealpixDataset:
         new_cat = self._apply_partitionwise_operation(
             MapPartitions, func, *args, meta=meta, include_pixel=include_pixel, **kwargs
         )
+        if isinstance(new_cat._operation, MapPartitions) and not new_cat._operation.is_df_type:
+            col_name = new_cat.columns[0]
+            return new_cat.to_dask_dataframe()[col_name]
         return new_cat
 
-    def __getitem__(self, item: str | list[str] | HealpixDataset) -> Self:
+    def __getitem__(self, item: str | list[str] | dd.Series) -> Self | dd.Series:
         """Select a column or columns, or filter rows by a boolean single-column catalog."""
-        if isinstance(item, HealpixDataset):
-            return self._filter_by_boolean_catalog(item)
+        if isinstance(item, dd.Series):
+            return self._filter_by_dask_series(item)
         if isinstance(item, str):
             self._check_unloaded_columns([item])
-        elif isinstance(item, Sequence):
+            single_column_catalog = self[[item]]
+            return single_column_catalog.to_dask_dataframe()[item]
+        if isinstance(item, Sequence):
             self._check_unloaded_columns([col for col in item if isinstance(col, str)])
         meta = self.meta
         if isinstance(meta, npd.NestedFrame) and meta._is_key_list(item):
             return self._apply_partitionwise_operation(SelectColumns, None, item)
         return self._apply_partitionwise_operation(MapPartitions, lambda df, item: df[item], item)
 
-    def _filter_by_boolean_catalog(self, boolean_cat: HealpixDataset) -> Self:
-        """Filter rows using a boolean single-column catalog.
-
-        If the boolean catalog has more than one column, a ValueError is raised. The boolean catalog must
-        have the same HEALPix partitioning as the original catalog, otherwise a ValueError is raised.
-
-        Masking with a non-boolean catalog such as with an integer or float column will raise a ValueError.
-
-        The function returns a new catalog with only the rows where the boolean column is True.
-        """
-        if len(boolean_cat.columns) != 1:
+    def _filter_by_dask_series(self, series: dd.Series) -> Self:
+        """Filter rows using a dask Series."""
+        if series.npartitions != len(self.get_healpix_pixels()):
             raise ValueError(
-                "Boolean filtering requires a single-column boolean catalog. "
-                "Use catalog['column'] > value to create one."
+                "Number of partitions in Series must match the number of partitions in the catalog"
             )
-        bool_col = boolean_cat.columns[0]
-        if not pd.api.types.is_bool_dtype(boolean_cat.meta.dtypes[bool_col]):
-            raise ValueError(f"Column '{bool_col}' must have boolean dtype for boolean filtering")
-        pixels = self.get_healpix_pixels()
 
-        if not pixels == boolean_cat.get_healpix_pixels():
-            raise ValueError("Both catalogs must have the same HEALPix partitioning for boolean filtering")
+        healpix_pixels = self.get_healpix_pixels()
 
-        def filter_func(
-            data_df, bool_df, data_pixel, bool_pixel, data_info, bool_info
-        ):  # pylint: disable=unused-argument
-            return data_df[bool_df[bool_col].values]
+        filter_column_name = "filter_series"
+        series_df = series.to_frame(filter_column_name)
+
+        operation = FromDaskExpression(series_df, healpix_pixels)
+
+        filter_cat = HealpixDataset(operation, self.hc_structure)
+
+        # pylint: disable=unused-argument
+        def filter_func(data_df, series_df, data_pixel, bool_pixel, data_info, bool_info):
+            return data_df[series_df[filter_column_name]]
 
         new_op = align_and_apply(
-            [(self, pixels), (boolean_cat, pixels)],
+            [(self, healpix_pixels), (filter_cat, healpix_pixels)],
             filter_func,
             self.meta,
-            pixels,
+            healpix_pixels,
         )
-        return self._create_updated_dataset(op=new_op)
-
-    def _check_single_column_for_boolean_op(self, op_name: str) -> None:
-        if len(self.columns) != 1:
-            raise ValueError(
-                f"Operator '{op_name}' requires a single-column catalog. "
-                "Use catalog['column_name'] to select a column first."
-            )
-
-    def _apply_comparison(self, op, other) -> Self:
-        """Applies a comparison operator to a single-column catalog.
-
-        Used to allow filtering such as `cat[cat['column'] > value]` to create a boolean catalog for
-        filtering. Applies a comparison operation function to a single-column catalog, returning a new
-        catalog with the result of the comparison.
-
-        Comparison operators must be applied to a single-column catalog. If the catalog has more than one
-        column, a ValueError is raised.
-
-        The value to compare against must be a scalar or a value that can be broadcast to the column's shape
-        in every partition. This means something like `cat['column'] > 5` is valid, but
-        `cat['column'] > cat['other_column']` is not.
-
-        Parameters
-        ----------
-        op : Callable
-            A comparison operator function that supports element-wise comparison
-        other : Any
-            The value to compare the column against. Must be a scalar or a value that can be broadcast to
-            the column's shape in every partition.
-        """
-        if len(self.columns) != 1:
-            raise ValueError(
-                "Comparison operations require a single-column catalog. "
-                "Use catalog['column_name'] to select a column first."
-            )
-        col = self.columns[0]
-        return self.map_partitions(lambda df, v: df.assign(**{col: op(df[col], v)}), other)
-
-    def __gt__(self, other) -> Self:
-        self._check_single_column_for_boolean_op(">")
-        return self._apply_comparison(lambda a, b: a > b, other)
-
-    def __lt__(self, other) -> Self:
-        self._check_single_column_for_boolean_op("<")
-        return self._apply_comparison(lambda a, b: a < b, other)
-
-    def __ge__(self, other) -> Self:
-        self._check_single_column_for_boolean_op(">=")
-        return self._apply_comparison(lambda a, b: a >= b, other)
-
-    def __le__(self, other) -> Self:
-        self._check_single_column_for_boolean_op("<=")
-        return self._apply_comparison(lambda a, b: a <= b, other)
-
-    def __eq__(self, other) -> Self:  # type: ignore[override]
-        self._check_single_column_for_boolean_op("==")
-        return self._apply_comparison(lambda a, b: a == b, other)
-
-    def __ne__(self, other) -> Self:  # type: ignore[override]
-        self._check_single_column_for_boolean_op("!=")
-        return self._apply_comparison(lambda a, b: a != b, other)
-
-    __hash__: None = None  # type: ignore[assignment]
-
-    def __invert__(self) -> Self:
-        """Negate a boolean single-column catalog (~mask)."""
-        self._check_single_column_for_boolean_op("~")
-        col = self.columns[0]
-        if not pd.api.types.is_bool_dtype(self.meta.dtypes[col]):
-            raise ValueError(f"Cannot invert non-boolean column '{col}'")
-        return self.map_partitions(lambda df: df.assign(**{col: ~df[col]}), meta=self.meta)
-
-    def __and__(self, other: HealpixDataset) -> Self:
-        """Combine two boolean single-column catalogs with logical AND (&)."""
-        self._check_single_column_for_boolean_op("&")
-        left_col = self.columns[0]
-        right_col = other.columns[0]
-        pixels = self.get_healpix_pixels()
-        if not pixels == other.get_healpix_pixels():
-            raise ValueError(
-                "Both catalogs must have the same HEALPix partitioning for logical AND operation"
-            )
-        meta = self.meta
-
-        def and_func(
-            left_df, right_df, left_pixel, right_pixel, left_info, right_info
-        ):  # pylint: disable=unused-argument
-            return npd.NestedFrame({left_col: left_df[left_col] & right_df[right_col]})
-
-        new_op = align_and_apply([(self, pixels), (other, pixels)], and_func, meta, pixels)
-        return self._create_updated_dataset(op=new_op)
-
-    def __or__(self, other: HealpixDataset) -> Self:
-        """Combine two boolean single-column catalogs with logical OR (|)."""
-        self._check_single_column_for_boolean_op("|")
-        left_col = self.columns[0]
-        right_col = other.columns[0]
-        pixels = self.get_healpix_pixels()
-        if not pixels == other.get_healpix_pixels():
-            raise ValueError("Both catalogs must have the same HEALPix partitioning for logical OR operation")
-        meta = self.meta
-
-        def or_func(
-            left_df, right_df, left_pixel, right_pixel, left_info, right_info
-        ):  # pylint: disable=unused-argument
-            return npd.NestedFrame({left_col: left_df[left_col] | right_df[right_col]})
-
-        new_op = align_and_apply([(self, pixels), (other, pixels)], or_func, meta, pixels)
         return self._create_updated_dataset(op=new_op)
 
     def __len__(self):
@@ -632,16 +544,10 @@ class HealpixDataset:
             pixels. If True, will set divisions to the HEALPix pixels. If
             False, will not set divisions.
         """
-        meta = self.meta
-        if divisions:
-            pixels = self.get_ordered_healpix_pixels()
-            divisions = get_pixels_divisions(pixels)
-        else:
-            divisions = None
+        expr = FromOperation(self._operation, divisions)
+        df = dd.DataFrame(expr)
 
-        delayed_tasks = self.to_delayed()
-
-        return dd.from_delayed(delayed_tasks, meta=meta, divisions=divisions)
+        return df
 
     def to_delayed(self) -> list[Delayed]:
         """Get a list of Dask Delayed objects for each partition in the dataset

@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 
 def run_and_verify_meta(func, meta, *args, **kwargs):
     """Run func and verify that its output matches the provided meta."""
-    result = func(*args, **kwargs)
+    result = npd.NestedFrame(func(*args, **kwargs))
     if not isinstance(result, meta.__class__):
         raise ValueError(
             f"Function returned result of type {type(result)}, but meta is of type {type(meta)}. "
@@ -70,13 +70,13 @@ class FromHealpixMap(Operation):
         return f"{funcname(self.func)}-{tokenized}"
 
     @property
-    def meta(self) -> npd.NestedFrame | pd.DataFrame:
+    def meta(self) -> npd.NestedFrame:
         if self._meta is not None:
             return self._meta
         first_part = self.func(self.pixels[0], *self.args, **self.kwargs)
         if not isinstance(first_part, pd.DataFrame):
             raise ValueError("FromMap function must return a pandas DataFrame")
-        return first_part.iloc[:0].copy()
+        return npd.NestedFrame(first_part.iloc[:0].copy())
 
     @property
     def dependencies(self) -> list[Operation]:
@@ -129,7 +129,9 @@ class EmptyOperation(FromHealpixMap):
         return False
 
 
-def map_parts_meta(func, base_meta: npd.NestedFrame, *args, include_pixel=False, **kwargs) -> npd.NestedFrame:
+def map_parts_meta(
+    func, base_meta: npd.NestedFrame, *args, include_pixel=False, **kwargs
+) -> tuple[npd.NestedFrame, bool]:
     """Infer meta for a MapPartitions operation by running func on an empty DataFrame."""
     try:
         if include_pixel:
@@ -146,10 +148,10 @@ def map_parts_meta(func, base_meta: npd.NestedFrame, *args, include_pixel=False,
     return _coerce_to_meta(result)
 
 
-def _coerce_to_meta(result) -> npd.NestedFrame:
+def _coerce_to_meta(result) -> tuple[npd.NestedFrame, bool]:
     """Coerce a function result to an empty npd.NestedFrame for use as meta."""
 
-    def _safe_dtype(t: type) -> np.dtype:
+    def _safe_dtype(t: type) -> np.dtype | pd.api.extensions.ExtensionDtype:
         """Return the pandas dtype, falling back to object for unsupported types."""
         try:
             return pd.api.types.pandas_dtype(t)
@@ -163,24 +165,28 @@ def _coerce_to_meta(result) -> npd.NestedFrame:
             "input, or supply a meta for your function"
         )
     if isinstance(result, npd.NestedFrame):
-        return result.iloc[:0]
+        return result.iloc[:0], True
     if isinstance(result, pd.DataFrame):
-        return npd.NestedFrame(result.iloc[:0])
+        return npd.NestedFrame(result.iloc[:0]), True
     if isinstance(result, pd.Series):
-        return npd.NestedFrame({"result": result.iloc[:0]})
+        return npd.NestedFrame({result.name: result.iloc[:0]}), False
     if isinstance(result, dict):
-        return npd.NestedFrame(
-            {
-                k: pd.Series(dtype=_safe_dtype(type(v[0] if hasattr(v, "__len__") and len(v) > 0 else v)))
-                for k, v in result.items()
-            }
+        return (
+            npd.NestedFrame(
+                {
+                    k: pd.Series(dtype=_safe_dtype(type(v[0] if hasattr(v, "__len__") and len(v) > 0 else v)))
+                    for k, v in result.items()
+                }
+            ),
+            True,
         )
     if isinstance(result, (list, tuple)):
-        return npd.NestedFrame(
-            {"result": pd.Series(dtype=_safe_dtype(type(result[0])) if result else object)}
+        return (
+            npd.NestedFrame({"result": pd.Series(dtype=_safe_dtype(type(result[0])) if result else object)}),
+            False,
         )
     # scalar
-    return npd.NestedFrame({"result": pd.Series(dtype=_safe_dtype(type(result)))})
+    return npd.NestedFrame({"result": pd.Series(dtype=_safe_dtype(type(result)))}), False
 
 
 def _coerce_to_frame(result) -> npd.NestedFrame:
@@ -190,7 +196,7 @@ def _coerce_to_frame(result) -> npd.NestedFrame:
     if isinstance(result, pd.DataFrame):
         return npd.NestedFrame(result)
     if isinstance(result, pd.Series):
-        return npd.NestedFrame({"result": result.values}, index=result.index)
+        return npd.NestedFrame({result.name: result.values}, index=result.index)
     if isinstance(result, dict):
         return npd.NestedFrame({k: [v] if not hasattr(v, "__len__") else v for k, v in result.items()})
     if isinstance(result, (list, tuple)):
@@ -199,29 +205,36 @@ def _coerce_to_frame(result) -> npd.NestedFrame:
     return npd.NestedFrame({"result": [result]})
 
 
-def _normalize_meta(meta) -> npd.NestedFrame:
-    """Normalize meta input to an npd.NestedFrame, accepting the same formats as Dask."""
+def _normalize_meta(meta) -> tuple[npd.NestedFrame, bool]:
+    """Normalize meta input to an npd.NestedFrame, accepting the same formats as Dask.
+
+    Returns the normalized meta and whether it describes a DataFrame output (False for a Series).
+    """
     if isinstance(meta, npd.NestedFrame):
-        return meta
+        return meta, True
     if isinstance(meta, pd.DataFrame):
-        return npd.NestedFrame(meta)
+        return npd.NestedFrame(meta), True
+    if isinstance(meta, pd.Series):
+        return npd.NestedFrame({meta.name: meta.iloc[:0]}), False
     if isinstance(meta, dict):
-        return npd.NestedFrame({k: pd.Series(dtype=v) for k, v in meta.items()})
+        return npd.NestedFrame({k: pd.Series(dtype=v) for k, v in meta.items()}), True
     if isinstance(meta, (list, tuple)) and all(isinstance(m, tuple) and len(m) == 2 for m in meta):
         # list of (name, dtype) tuples — another Dask-accepted format
-        return npd.NestedFrame({k: pd.Series(dtype=v) for k, v in meta})
+        return npd.NestedFrame({k: pd.Series(dtype=v) for k, v in meta}), True
     raise ValueError(
-        f"meta must be a DataFrame, dict of {{name: dtype}}, or list of (name, dtype) tuples, got {type(meta)}"  # pylint: disable=line-too-long
+        f"meta must be a DataFrame, Series, dict of {{name: dtype}}, or list of (name, dtype) tuples, got {type(meta)}"  # pylint: disable=line-too-long
     )
 
 
 class MapPartitions(Operation):
     """An Operation that applies a function to each partition of a HealpixGraph."""
 
+    # Subclasses with a predictable function supply this,
+    # and a custom user-function cannot be applied in that case
     class_func = None
-    """Subclasses with a predictable function supply this, and a custom user-function cannot be applied in that case"""
+    # Subclasses that determine their own pixels will supply this, and a custom user-defined set of pixels
+    # cannot be supplied in that case.
     class_include_pixels: bool | None = None
-    """Subclasses that determine their own pixels will supply this, and a custom user-defined set of pixels cannot be supplied in that case."""
 
     def __init__(
         self, base: Operation, func, *args, meta=None, include_pixel=False, verify_meta=True, **kwargs
@@ -235,8 +248,7 @@ class MapPartitions(Operation):
             )
         self._func = func
         self.args = args
-        # Ensure that input meta is normalized to a NestedFrame
-        self._meta = _normalize_meta(meta) if meta is not None else None
+        self._meta = meta
         self.include_pixel = include_pixel
         self.verify_meta = verify_meta
         self.kwargs = kwargs
@@ -257,15 +269,27 @@ class MapPartitions(Operation):
         tokenized = _tokenize_deterministic(
             self.func, self.base.meta, self.base.key_name, self.args, self.kwargs
         )
-        return f"{funcname(self.func)}-{tokenized}"
+        func_name = funcname(self.func) if self.class_func is None else type(self).__name__
+        return f"{func_name}-{tokenized}"
 
     @functools.cached_property
-    def meta(self) -> npd.NestedFrame:
+    def coerced_meta_and_is_df_type(self) -> tuple[npd.NestedFrame, bool]:
+        """Infer meta for the MapPartitions operation, using _meta if provided, and determine if the
+        function returns a DataFrame or Series."""
         if self._meta is not None:
-            return self._meta
+            return _normalize_meta(self._meta)
         return map_parts_meta(
             self.func, self.base.meta, *self.args, include_pixel=self.include_pixel, **self.kwargs
         )
+
+    @property
+    def is_df_type(self) -> bool:
+        """Return True if the function returns a DataFrame, False if it returns a Series."""
+        return self.coerced_meta_and_is_df_type[1]
+
+    @property
+    def meta(self) -> npd.NestedFrame:
+        return self.coerced_meta_and_is_df_type[0]
 
     @property
     def dependencies(self) -> list[Operation]:
@@ -460,25 +484,39 @@ class AlignAndApply(Operation):
         """Return the HealpixPixels corresponding to the output pixels of the operation"""
         return list(self.output_pixels)
 
+    def _resolve_build_subsets(
+        self, pixels: list[HealpixPixel] | None
+    ) -> tuple[list[int], list[list[HealpixPixel] | None]]:
+        """Resolve the output indices to build and the pixel subset to request from each input"""
+        if pixels is None:
+            return list(range(len(self.output_pixels))), [None] * len(self.input_cats)
+        requested = set(pixels)
+        output_indices = [i for i, p in enumerate(self.output_pixels) if p in requested]
+        input_pixel_subsets: list[list[HealpixPixel] | None] = [
+            [p for i in output_indices if (p := pixel_list[i]) is not None] for pixel_list in self.pixel_lists
+        ]
+        return output_indices, input_pixel_subsets
+
+    def _input_task_refs(self, graphs: list[HealpixGraph | None], input_pixels: tuple) -> list:
+        """Get the task ref for each input's partition, falling back to its meta for missing pixels"""
+        task_refs: list = []
+        for g, m, p in zip(graphs, self.metas, input_pixels):
+            if g is None:
+                task_refs.append(None)
+            elif p is None or p not in g.pixel_to_key_map:
+                task_refs.append(m)
+            else:
+                task_refs.append(TaskRef(g.pixel_to_key_map[p]))
+        return task_refs
+
     def build(self, pixels: list[HealpixPixel] | None = None) -> HealpixGraph:
         """Build the HealpixGraph from the Operation."""
-        input_ops = self.input_ops
-
         # resolve against a custom input pixel list
-        if pixels is not None:
-            requested = set(pixels)
-            output_indices = [i for i, p in enumerate(self.output_pixels) if p in requested]
-            input_pixel_subsets = [
-                [pixel_list[i] for i in output_indices if pixel_list[i] is not None]
-                for pixel_list in self.pixel_lists
-            ]
-        else:
-            output_indices = list(range(len(self.output_pixels)))
-            input_pixel_subsets = [None] * len(input_ops)
+        output_indices, input_pixel_subsets = self._resolve_build_subsets(pixels)
 
         graphs = [
             op.build(pixels=subset) if op is not None else None
-            for op, subset in zip(input_ops, input_pixel_subsets)
+            for op, subset in zip(self.input_ops, input_pixel_subsets)
         ]
 
         func = _verified(self.func, self.meta) if self.verify_meta else self.func
@@ -488,21 +526,11 @@ class AlignAndApply(Operation):
             if g is not None:
                 graph = graph | g.graph
         for i in output_indices:
-            output_pixel = self.output_pixels[i]
             input_pixels = tuple(pl[i] for pl in self.pixel_lists)
-            task_refs: list = []
-            for g, m, p in zip(graphs, self.metas, input_pixels):
-                if g is None:
-                    task_refs.append(None)
-                elif p is None or p not in g.pixel_to_key_map:
-                    task_refs.append(m)
-                else:
-                    task_refs.append(TaskRef(g.pixel_to_key_map[p]))
+            task_refs = self._input_task_refs(graphs, input_pixels)
             args = task_refs + list(input_pixels) + self.catalog_infos + list(self.args)
-            kwargs = self.kwargs
             key = (self.key_name, i)
-            task = Task(key, func, *args, **kwargs)
-            graph[key] = task
-            pixel_key_map[output_pixel] = key
+            graph[key] = Task(key, func, *args, **self.kwargs)
+            pixel_key_map[self.output_pixels[i]] = key
         culled_graph = cull(graph, list(pixel_key_map.values()))
         return HealpixGraph(culled_graph, pixel_key_map)
