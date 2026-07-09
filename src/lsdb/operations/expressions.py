@@ -51,7 +51,7 @@ class FromOperation(Expr):
 
 
 class FromDaskExpression(Operation):
-    """LSDB Operation to create a Dask Expression from an LSDB operation."""
+    """LSDB Operation to create an operation from a dask expression."""
 
     def __init__(self, expr: Expr, healpix_pixels: list[HealpixPixel]) -> None:
         self._expr = expr
