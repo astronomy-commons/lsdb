@@ -591,9 +591,7 @@ def test_square_bracket_columns_updates_margin(small_sky_order1_source_with_marg
     assert isinstance(column_subset.margin, MarginCatalog)
     assert all(column_subset.margin.columns == columns)
     margin_comp = column_subset.margin.compute()
-    pd.testing.assert_frame_equal(
-        margin_comp, small_sky_order1_source_with_margin.margin.compute()[columns]
-    )
+    pd.testing.assert_frame_equal(margin_comp, small_sky_order1_source_with_margin.margin.compute()[columns])
 
 
 def test_square_bracket_single_column(small_sky_order1_catalog):
