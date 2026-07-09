@@ -45,8 +45,7 @@ from lsdb.core.search.region_search import (
 )
 from lsdb.io.schema import get_arrow_schema
 from lsdb.loaders.hats.hats_loading_config import HatsLoadingConfig
-from lsdb.operations.expressions import FromOperation, FromDaskExpression
-from lsdb.operations.functions.divisions import get_pixels_divisions
+from lsdb.operations.expressions import FromDaskExpression, FromOperation
 from lsdb.operations.functions.merge_catalog_functions import align_and_apply, concat_metas, make_meta
 from lsdb.operations.functions.partition_indexer import PartitionIndexer
 from lsdb.operations.lsdb_ops import (
@@ -433,7 +432,7 @@ class HealpixDataset:
             self._check_unloaded_columns([item])
             single_column_catalog = self[[item]]
             return single_column_catalog.to_dask_dataframe()[item]
-        elif isinstance(item, Sequence):
+        if isinstance(item, Sequence):
             self._check_unloaded_columns([col for col in item if isinstance(col, str)])
         meta = self.meta
         if isinstance(meta, npd.NestedFrame) and meta._is_key_list(item):
@@ -456,6 +455,7 @@ class HealpixDataset:
 
         filter_cat = HealpixDataset(operation, self.hc_structure)
 
+        # pylint: disable=unused-argument
         def filter_func(data_df, series_df, data_pixel, bool_pixel, data_info, bool_info):
             return data_df[series_df[filter_column_name]]
 

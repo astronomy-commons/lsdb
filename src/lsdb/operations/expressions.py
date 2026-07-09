@@ -2,8 +2,9 @@ import functools
 
 import nested_pandas as npd
 import numpy as np
-from dask._task_spec import Alias, cull
+from dask._task_spec import Alias, Task, cull
 from dask.dataframe.dask_expr._expr import Expr
+from dask.typing import Key
 from dask.utils import ensure_dict
 from hats import HealpixPixel
 from hats.pixel_math.healpix_pixel_function import get_pixel_argsort
@@ -19,10 +20,12 @@ class FromOperation(Expr):
 
     @functools.cached_property
     def operation_graph(self) -> HealpixGraph:
+        """The HealpixGraph built from the operation."""
         return self.operand("operation").build()
 
     @functools.cached_property
     def sorted_pixels(self) -> list[HealpixPixel]:
+        """Returns the list of HEALPix pixels sorted in healpix order."""
         pixels = list(self.operation_graph.pixel_to_key_map.keys())
         sorted_pixels = list(np.array(pixels)[get_pixel_argsort(pixels)])
         return sorted_pixels
@@ -43,6 +46,9 @@ class FromOperation(Expr):
             graph_dict[(self._name, i)] = Alias((self._name, i), self.operation_graph.pixel_to_key_map[pixel])
         return graph_dict
 
+    def _task(self, key: Key, index: int) -> Task:
+        raise NotImplementedError("FromOperation does not implement _task; use the _layer instead.")
+
 
 class FromDaskExpression(Operation):
     """LSDB Operation to create a Dask Expression from an LSDB operation."""
@@ -61,7 +67,7 @@ class FromDaskExpression(Operation):
 
     @property
     def meta(self) -> npd.NestedFrame:
-        return self._expr._meta
+        return self._expr._meta  # pylint: disable=protected-access
 
     @property
     def dependencies(self) -> list[Operation]:
@@ -74,7 +80,7 @@ class FromDaskExpression(Operation):
     def build(self, pixels=None) -> HealpixGraph:
         graph = self._expr.__dask_graph__()
         last_dask_keys = self._expr.__dask_keys__()
-        pixel_to_key_map = {pixel: key for pixel, key in zip(self._healpix_pixels, last_dask_keys)}
+        pixel_to_key_map = dict(zip(self._healpix_pixels, last_dask_keys))
         if pixels is not None:
             pixel_to_key_map = {
                 pixel: pixel_to_key_map[pixel] for pixel in pixels if pixel in pixel_to_key_map

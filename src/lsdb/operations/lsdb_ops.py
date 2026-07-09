@@ -229,10 +229,12 @@ def _normalize_meta(meta) -> tuple[npd.NestedFrame, bool]:
 class MapPartitions(Operation):
     """An Operation that applies a function to each partition of a HealpixGraph."""
 
+    # Subclasses with a predictable function supply this,
+    # and a custom user-function cannot be applied in that case
     class_func = None
-    """Subclasses with a predictable function supply this, and a custom user-function cannot be applied in that case"""
+    # Subclasses that determine their own pixels will supply this, and a custom user-defined set of pixels
+    # cannot be supplied in that case.
     class_include_pixels: bool | None = None
-    """Subclasses that determine their own pixels will supply this, and a custom user-defined set of pixels cannot be supplied in that case."""
 
     def __init__(
         self, base: Operation, func, *args, meta=None, include_pixel=False, verify_meta=True, **kwargs
@@ -272,6 +274,8 @@ class MapPartitions(Operation):
 
     @functools.cached_property
     def coerced_meta_and_is_df_type(self) -> tuple[npd.NestedFrame, bool]:
+        """Infer meta for the MapPartitions operation, using _meta if provided, and determine if the
+        function returns a DataFrame or Series."""
         if self._meta is not None:
             return _normalize_meta(self._meta)
         return map_parts_meta(
@@ -480,25 +484,39 @@ class AlignAndApply(Operation):
         """Return the HealpixPixels corresponding to the output pixels of the operation"""
         return list(self.output_pixels)
 
+    def _resolve_build_subsets(
+        self, pixels: list[HealpixPixel] | None
+    ) -> tuple[list[int], list[list[HealpixPixel] | None]]:
+        """Resolve the output indices to build and the pixel subset to request from each input"""
+        if pixels is None:
+            return list(range(len(self.output_pixels))), [None] * len(self.input_cats)
+        requested = set(pixels)
+        output_indices = [i for i, p in enumerate(self.output_pixels) if p in requested]
+        input_pixel_subsets: list[list[HealpixPixel] | None] = [
+            [p for i in output_indices if (p := pixel_list[i]) is not None] for pixel_list in self.pixel_lists
+        ]
+        return output_indices, input_pixel_subsets
+
+    def _input_task_refs(self, graphs: list[HealpixGraph | None], input_pixels: tuple) -> list:
+        """Get the task ref for each input's partition, falling back to its meta for missing pixels"""
+        task_refs: list = []
+        for g, m, p in zip(graphs, self.metas, input_pixels):
+            if g is None:
+                task_refs.append(None)
+            elif p is None or p not in g.pixel_to_key_map:
+                task_refs.append(m)
+            else:
+                task_refs.append(TaskRef(g.pixel_to_key_map[p]))
+        return task_refs
+
     def build(self, pixels: list[HealpixPixel] | None = None) -> HealpixGraph:
         """Build the HealpixGraph from the Operation."""
-        input_ops = self.input_ops
-
         # resolve against a custom input pixel list
-        if pixels is not None:
-            requested = set(pixels)
-            output_indices = [i for i, p in enumerate(self.output_pixels) if p in requested]
-            input_pixel_subsets = [
-                [pixel_list[i] for i in output_indices if pixel_list[i] is not None]
-                for pixel_list in self.pixel_lists
-            ]
-        else:
-            output_indices = list(range(len(self.output_pixels)))
-            input_pixel_subsets = [None] * len(input_ops)
+        output_indices, input_pixel_subsets = self._resolve_build_subsets(pixels)
 
         graphs = [
             op.build(pixels=subset) if op is not None else None
-            for op, subset in zip(input_ops, input_pixel_subsets)
+            for op, subset in zip(self.input_ops, input_pixel_subsets)
         ]
 
         func = _verified(self.func, self.meta) if self.verify_meta else self.func
@@ -508,21 +526,11 @@ class AlignAndApply(Operation):
             if g is not None:
                 graph = graph | g.graph
         for i in output_indices:
-            output_pixel = self.output_pixels[i]
             input_pixels = tuple(pl[i] for pl in self.pixel_lists)
-            task_refs: list = []
-            for g, m, p in zip(graphs, self.metas, input_pixels):
-                if g is None:
-                    task_refs.append(None)
-                elif p is None or p not in g.pixel_to_key_map:
-                    task_refs.append(m)
-                else:
-                    task_refs.append(TaskRef(g.pixel_to_key_map[p]))
+            task_refs = self._input_task_refs(graphs, input_pixels)
             args = task_refs + list(input_pixels) + self.catalog_infos + list(self.args)
-            kwargs = self.kwargs
             key = (self.key_name, i)
-            task = Task(key, func, *args, **kwargs)
-            graph[key] = task
-            pixel_key_map[output_pixel] = key
+            graph[key] = Task(key, func, *args, **self.kwargs)
+            pixel_key_map[self.output_pixels[i]] = key
         culled_graph = cull(graph, list(pixel_key_map.values()))
         return HealpixGraph(culled_graph, pixel_key_map)
