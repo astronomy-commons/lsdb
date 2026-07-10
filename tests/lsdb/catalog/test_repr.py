@@ -41,6 +41,15 @@ def test_catalog_html_repr_empty(small_sky_order1_catalog):
     assert "estimated size of 0.0 Bytes" in full_html
 
 
+def test_repr_mimebundle(small_sky_order1_dir):
+    # Notebook display requests both text/plain and text/html.
+    catalog = lsdb.open_catalog(small_sky_order1_dir, show_statistics=True)
+    bundle = catalog._repr_mimebundle_()
+    assert set(bundle) == {"text/plain", "text/html"}
+    assert bundle["text/plain"] == repr(catalog)
+    assert bundle["text/html"] == catalog._repr_html_()
+
+
 def _assert_statistics(catalog, *, shown):
     """Assert whether the statistics table is rendered in both repr forms.
 
@@ -52,7 +61,7 @@ def _assert_statistics(catalog, *, shown):
 
 
 def test_repr_statistics(small_sky_order1_dir):
-    # By default the repr does not show statistics.
+    # By default, the repr does not show statistics.
     catalog = lsdb.open_catalog(small_sky_order1_dir)
     assert catalog._operation.preserves_pixel_stats
     _assert_statistics(catalog, shown=False)
@@ -141,6 +150,15 @@ def test_repr_when_statistics_unavailable(small_sky_order1_dir, monkeypatch):
 
     monkeypatch.setattr(catalog, "per_partition_statistics", _not_found)
     _assert_statistics(catalog, shown=False)
+
+
+def test_repr_data_with_no_columns(small_sky_order1_dir):
+    catalog = lsdb.open_catalog(small_sky_order1_dir)[[]]
+    assert not list(catalog.columns)
+    data = catalog._repr_data()
+    assert not list(data.columns)
+    assert len(data.index) == catalog.npartitions
+    assert repr(catalog).startswith(f"lsdb Catalog {catalog.name}:")
 
 
 def test_shows_statistics_except_for_nested_columns(small_sky_with_nested_sources_dir):

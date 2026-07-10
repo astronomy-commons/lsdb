@@ -227,7 +227,20 @@ class HealpixDataset:
         return None
 
     def __repr__(self):
-        data = self._repr_data().to_string(max_rows=5, show_dimensions=False)
+        return self._format_text_repr(self._repr_data())
+
+    def _repr_html_(self):
+        return self._format_html_repr(self._repr_data())
+
+    def _repr_mimebundle_(self, **kwargs):  # pylint: disable=unused-argument
+        """Return both the text and HTML representations for notebook display."""
+        data = self._repr_data()
+        text = self._format_text_repr(data)
+        html = self._format_html_repr(data)
+        return {"text/plain": text, "text/html": html}
+
+    def _format_text_repr(self, data):
+        body = data.to_string(max_rows=5, show_dimensions=False)
         loaded_cols = len(self.columns)
         available_cols = len(self.all_columns)
         est_size = self.est_size()
@@ -238,13 +251,13 @@ class HealpixDataset:
         )
         return (
             f"lsdb Catalog {self.name}:\n"
-            f"{data}\n"
+            f"{body}\n"
             f"{loaded_cols} out of {available_cols} available columns in the catalog have been "
             f"loaded lazily, meaning no data has been read, only the catalog schema"
         ) + est_size_text
 
-    def _repr_html_(self):
-        data = self._repr_data().to_html(max_rows=5, show_dimensions=False, notebook=True)
+    def _format_html_repr(self, data):
+        body = data.to_html(max_rows=5, show_dimensions=False, notebook=True)
         loaded_cols = len(self.columns)
         available_cols = len(self.all_columns)
         est_size = self.est_size()
@@ -255,7 +268,7 @@ class HealpixDataset:
         )
         return (
             f"<div><strong>lsdb Catalog {self.name}:</strong></div>"
-            f"{data}"
+            f"{body}"
             f"<div>{loaded_cols} out of {available_cols} available columns in the catalog have been loaded "
             f"<strong>lazily</strong>, meaning no data has been read, only the catalog schema</div>"
         ) + est_size_text

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-_MAX_STR_WIDTH = 10
+_MAX_STR_WIDTH = 20
 
 
 def _repr_data_min_max(meta, index, pixel_stats) -> pd.DataFrame:
@@ -49,6 +49,6 @@ def _get_formatter(dtype):
 
     def fmt_str(v):
         s = str(v)
-        return s if len(s) <= _MAX_STR_WIDTH else s[: _MAX_STR_WIDTH - 1] + "…"
+        return s if len(s) <= _MAX_STR_WIDTH else s[: _MAX_STR_WIDTH - 1] + "»"
 
     return fmt_str
