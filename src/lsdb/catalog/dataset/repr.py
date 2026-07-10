@@ -30,7 +30,7 @@ def _make_pixel_range(index, stats_by_pixel, min_col, max_col, dtype) -> list[st
     values = []
     for pixel in index:
         row = stats_by_pixel.get(pixel)
-        if row is None or row[min_col] is None or row[max_col] is None:
+        if row is None or pd.isna(row[min_col]) or pd.isna(row[max_col]):
             values.append("...")
             continue
         min_str, max_str = formatter(row[min_col]), formatter(row[max_col])

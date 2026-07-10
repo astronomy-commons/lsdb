@@ -402,11 +402,12 @@ def test_set_columns_includes_healpix_column():
         dec_column="dec",
         hats_col_healpix="_healpix_29",
     )
-    config = HatsLoadingConfig(columns=["id"])
+    config = HatsLoadingConfig(columns=["id"], filters=[("id", ">", 0)])
     config.set_columns_from_catalog_info(catalog_info)
     assert "_healpix_29" in config.columns
     assert "ra" in config.columns
     assert "dec" in config.columns
+    assert config.user_provided_filters
 
 
 def test_read_hats_with_extra_kwargs(small_sky_order1_dir):

@@ -97,26 +97,6 @@ class HealpixDataset:
         self.loading_config = loading_config
 
     @property
-    def _show_statistics(self) -> bool:
-        """Whether the catalog repr should display the per-column statistics table"""
-        return self.loading_config is not None and self.loading_config.show_statistics
-
-    def __repr__(self):
-        data = self._repr_data().to_string(max_rows=5, show_dimensions=False)
-        loaded_cols = len(self.columns)
-        available_cols = len(self.all_columns)
-        lines = [
-            f"lsdb Catalog {self.name}:",
-            data,
-            f"{loaded_cols} out of {available_cols} available columns in the catalog have been "
-            f"loaded lazily, meaning no data has been read, only the catalog schema",
-        ]
-        est_size = self.est_size()
-        if est_size is not None:
-            lines.append(f"This catalog has an estimated size of {file_size(est_size * 1024)}")
-        return "\n".join(lines)
-
-    @property
     def name(self):
         """The name of the catalog"""
         return self.hc_structure.catalog_name
@@ -246,6 +226,23 @@ class HealpixDataset:
                     return float(self.hc_structure.catalog_info.hats_estsize) * partition_ratio * column_ratio
         return None
 
+    def __repr__(self):
+        data = self._repr_data().to_string(max_rows=5, show_dimensions=False)
+        loaded_cols = len(self.columns)
+        available_cols = len(self.all_columns)
+        est_size = self.est_size()
+        est_size_text = (
+            f"\nThis catalog has an estimated size of {file_size(est_size * 1024)}"
+            if est_size is not None
+            else ""
+        )
+        return (
+            f"lsdb Catalog {self.name}:\n"
+            f"{data}\n"
+            f"{loaded_cols} out of {available_cols} available columns in the catalog have been "
+            f"loaded lazily, meaning no data has been read, only the catalog schema"
+        ) + est_size_text
+
     def _repr_html_(self):
         data = self._repr_data().to_html(max_rows=5, show_dimensions=False, notebook=True)
         loaded_cols = len(self.columns)
@@ -262,6 +259,38 @@ class HealpixDataset:
             f"<div>{loaded_cols} out of {available_cols} available columns in the catalog have been loaded "
             f"<strong>lazily</strong>, meaning no data has been read, only the catalog schema</div>"
         ) + est_size_text
+
+    def _repr_data(self):
+        meta = self.meta
+        index = self._repr_divisions
+        cols = meta.columns
+        if len(cols) == 0:
+            return pd.DataFrame([[]] * len(index), columns=cols, index=index)
+        show_statistics = (
+            self.loading_config is not None
+            and self.loading_config.show_statistics
+            and self._operation.pixel_stats_preserved
+        )
+        pixel_stats = self._get_repr_pixel_stats(cols) if show_statistics else None
+        if pixel_stats is None:
+            return pd.concat([_repr_data_series(s, index=index) for _, s in meta.items()], axis=1)
+        return _repr_data_min_max(meta, index, pixel_stats)
+
+    def _get_repr_pixel_stats(self, cols) -> pd.DataFrame | None:
+        """Fetch per-pixel min/max stats for display"""
+        try:
+            non_nested_cols = [c for c in cols if c not in self.nested_columns]
+            if len(non_nested_cols) == 0:
+                return None
+            return self.per_partition_statistics(
+                use_default_columns=False,
+                exclude_hats_columns=True,
+                include_columns=non_nested_cols,
+                include_stats=["min_value", "max_value"],
+            )
+        except Exception:  # pylint: disable=broad-exception-caught
+            logging.debug("Could not read partition statistics for catalog %s", self.name, exc_info=True)
+            return None
 
     def _create_modified_hc_structure(
         self, hc_structure=None, updated_schema=None, updated_pixels=None, **kwargs
@@ -504,34 +533,6 @@ class HealpixDataset:
             The list of nested columns in the catalog.
         """
         return self.meta.nested_columns
-
-    def _repr_data(self):
-        meta = self.meta
-        index = self._repr_divisions
-        cols = meta.columns
-        if len(cols) == 0:
-            return pd.DataFrame([[]] * len(index), columns=cols, index=index)
-        pixel_stats = self._get_repr_pixel_stats(cols) if self._show_statistics else None
-        if pixel_stats is None:
-            return pd.concat([_repr_data_series(s, index=index) for _, s in meta.items()], axis=1)
-        return _repr_data_min_max(meta, index, pixel_stats)
-
-    def _get_repr_pixel_stats(self, cols) -> pd.DataFrame | None:
-        """Fetch per-pixel min/max stats for display"""
-        try:
-            if not self.hc_structure.unmodified:
-                return None
-            non_nested_cols = [c for c in cols if c not in self.nested_columns]
-            if len(non_nested_cols) == 0:
-                return None
-            return self.per_partition_statistics(
-                use_default_columns=False,
-                exclude_hats_columns=True,
-                include_columns=non_nested_cols,
-                include_stats=["min_value", "max_value"],
-            )
-        except Exception:  # pylint: disable=broad-exception-caught
-            return None
 
     def compute(self, progress_bar=True, tqdm_kwargs=None) -> npd.NestedFrame:
         """Compute dask distributed dataframe to pandas dataframe.
@@ -1305,6 +1306,7 @@ class HealpixDataset:
             new_loading_config.filters = self.loading_config.filters
             new_loading_config.kwargs = self.loading_config.kwargs
             new_loading_config.path_generator = self.loading_config.path_generator
+            new_loading_config.show_statistics = self.loading_config.show_statistics
 
         return _load_catalog(hc_structure, new_loading_config)
 

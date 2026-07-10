@@ -295,9 +295,15 @@ def _update_hc_structure(catalog: HealpixDataset):
             for col in catalog.hc_structure.catalog_info.default_columns
             if col in exploded_columns(catalog.meta)
         ]
+
+    updated_info: dict = {}
+    if catalog.loading_config is not None and catalog.loading_config.filters:
+        updated_info["total_rows"] = None
+
     return catalog._create_modified_hc_structure(
         updated_schema=get_arrow_schema(catalog.meta),
         default_columns=default_columns,
+        **updated_info,
     )
 
 
@@ -456,6 +462,7 @@ def _load_operation(catalog: HCHealpixDataset, config) -> Operation:
         index_column=index_column,
         meta=dask_meta_schema,
         is_dir=(npix_suffix == "/"),
+        preserves_pixel_stats=not config.user_provided_filters,
         **config.kwargs,
     )
     return op
