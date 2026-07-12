@@ -1,3 +1,5 @@
+import warnings
+
 import nested_pandas as npd
 import numpy as np
 import pytest
@@ -77,6 +79,30 @@ def test_invalid_margin_args_crossmatch(small_sky_catalog, small_sky_xmatch_cata
             require_right_margin=True,
             right_args={"margin_threshold": None},
         )
+
+
+def test_crossmatch_forwards_suffix_method_and_log_changes(
+    small_sky_catalog, small_sky_xmatch_catalog, xmatch_correct
+):
+    """The top-level function must forward suffix_method / log_changes to Catalog.crossmatch().
+
+    Regression test for #1470: these params were absent from the function signature and the
+    delegating call, so a function-form caller could not reach them. A missing forward would
+    leave the method's suffix_method at None and trip the FutureWarning; supplying it here must
+    suppress the warning and produce a correct result.
+    """
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", FutureWarning)
+        result = lsdb.crossmatch(
+            small_sky_catalog,
+            small_sky_xmatch_catalog,
+            radius_arcsec=0.01 * 3600,
+            suffix_method="all_columns",
+            log_changes=False,
+        ).compute()
+
+    assert isinstance(result, npd.NestedFrame)
+    assert len(result) == len(xmatch_correct)
 
 
 def test_crossmatch_healpix_indexes(small_sky_healpix13_dir, small_sky_xmatch_catalog, xmatch_correct):
