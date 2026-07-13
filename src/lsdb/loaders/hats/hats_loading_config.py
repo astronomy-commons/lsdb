@@ -46,16 +46,14 @@ class HatsLoadingConfig:
     """Whether to show the per-column statistics table in the catalog repr. Defaults to False."""
 
     def __post_init__(self):
-        # Whether the user explicitly passed row `filters`, as opposed to the spatial
-        # pruning filters later derived from a search MOC. User filters will often
-        # invalidate the on-disk statistics, the MOC-derived filters do not.
-        self.user_provided_filters = self.filters is not None
         # Check for commonly misspelled or mistaken keys
         for nonused_kwarg in ["margin", "maargin", "margins", "cache", "margincache"]:
             if nonused_kwarg in self.kwargs:
                 raise ValueError(
                     f"Invalid keyword argument '{nonused_kwarg}' found. Did you mean 'margin_cache'?"
                 )
+        # Whether the user passed row `filters`.
+        self.user_provided_filters = self.filters is not None
 
     def set_columns_from_catalog_info(self, catalog_info):
         """Set the appropriate columns to load, based on the user-provided `columns` argument

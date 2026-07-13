@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import pandas as pd
+from human_readable import int_comma
 
-_MAX_STR_WIDTH = 20
+_MAX_CELL_WIDTH = 10
 
 
 def _repr_data_min_max(meta, index, pixel_stats) -> pd.DataFrame:
-    """Build repr DataFrame with a dtype header row and per-pixel min..max for every pixel."""
+    """Build repr DataFrame with a dtype header row and per-pixel min..max for every pixel"""
     dtype_index = pd.Index([index.name] + list(index), name=None)
     stats_by_pixel = {pixel: pixel_stats.loc[pixel] for pixel in pixel_stats.index}
     series_list = []
@@ -25,7 +26,7 @@ def _repr_data_min_max(meta, index, pixel_stats) -> pd.DataFrame:
 
 
 def _make_pixel_range(index, stats_by_pixel, min_col, max_col, dtype) -> list[str]:
-    """Make a 'min..max' string for each pixel in the index."""
+    """Make a 'min..max' string for each pixel in the index"""
     formatter = _get_formatter(dtype)
     values = []
     for pixel in index:
@@ -39,16 +40,23 @@ def _make_pixel_range(index, stats_by_pixel, min_col, max_col, dtype) -> list[st
 
 
 def _get_formatter(dtype):
-    """Return a scalar formatting function for the given dtype, resolved once per column."""
+    """Return a function to format a given scalar of dtype"""
     if pd.api.types.is_bool_dtype(dtype):
         return lambda v: str(bool(v))
-    if pd.api.types.is_integer_dtype(dtype):
-        return lambda v: f"{int(v):.4g}" if abs(int(v)) >= 1_000_000 else str(int(v))
+
     if pd.api.types.is_float_dtype(dtype):
         return lambda v: f"{float(v):.4g}"
 
+    if pd.api.types.is_integer_dtype(dtype):
+
+        def fmt_int(v):
+            s = int_comma(int(v))
+            return s if len(s) <= _MAX_CELL_WIDTH else f"{int(v):.4g}"
+
+        return fmt_int
+
     def fmt_str(v):
         s = str(v)
-        return s if len(s) <= _MAX_STR_WIDTH else s[: _MAX_STR_WIDTH - 1] + "»"
+        return s if len(s) <= _MAX_CELL_WIDTH else s[: _MAX_CELL_WIDTH - 1] + "»"
 
     return fmt_str

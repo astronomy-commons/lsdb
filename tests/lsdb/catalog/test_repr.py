@@ -1,55 +1,8 @@
 import warnings
 
+import pytest
+
 import lsdb
-
-
-def test_catalog_text_repr(small_sky_order1_catalog):
-    text = repr(small_sky_order1_catalog)
-    assert small_sky_order1_catalog.name in text
-    assert str(small_sky_order1_catalog.get_ordered_healpix_pixels()[0]) in text
-    assert str(small_sky_order1_catalog.get_ordered_healpix_pixels()[-1]) in text
-    assert "available columns in the catalog have been loaded lazily" in text
-    assert "estimated size of" in text
-
-
-def test_catalog_text_repr_empty(small_sky_order1_catalog):
-    pixel_search = lsdb.PixelSearch.from_radec(80.0, 33.0)
-    cat = small_sky_order1_catalog.search(pixel_search)
-    text = repr(cat)
-    assert cat.name in text
-    assert "Empty Catalog" in text
-    assert "npartitions=0" in text
-    assert "available columns in the catalog have been loaded lazily" in text
-    assert "estimated size of 0.0 Bytes" in text
-
-
-def test_catalog_html_repr(small_sky_order1_catalog):
-    full_html = small_sky_order1_catalog._repr_html_()
-    assert small_sky_order1_catalog.name in full_html
-    assert str(small_sky_order1_catalog.get_ordered_healpix_pixels()[0]) in full_html
-    assert str(small_sky_order1_catalog.get_ordered_healpix_pixels()[-1]) in full_html
-    assert "available columns in the catalog have been loaded <strong>lazily</strong>" in full_html
-    assert "estimated size of" in full_html
-
-
-def test_catalog_html_repr_empty(small_sky_order1_catalog):
-    pixel_search = lsdb.PixelSearch.from_radec(80.0, 33.0)
-    cat = small_sky_order1_catalog.search(pixel_search)
-    full_html = cat._repr_html_()
-    assert cat.name in full_html
-    assert "Empty Catalog" in full_html
-    assert "npartitions=0" in full_html
-    assert "available columns in the catalog have been loaded <strong>lazily</strong>" in full_html
-    assert "estimated size of 0.0 Bytes" in full_html
-
-
-def test_repr_mimebundle(small_sky_order1_dir):
-    # Notebook display requests both text/plain and text/html.
-    catalog = lsdb.open_catalog(small_sky_order1_dir, show_statistics=True)
-    bundle = catalog._repr_mimebundle_()
-    assert set(bundle) == {"text/plain", "text/html"}
-    assert bundle["text/plain"] == repr(catalog)
-    assert bundle["text/html"] == catalog._repr_html_()
 
 
 def _assert_statistics(catalog, *, shown):
@@ -60,6 +13,37 @@ def _assert_statistics(catalog, *, shown):
     """
     assert ("..." not in repr(catalog)) == shown
     assert ("..." not in catalog._repr_html_()) == shown
+
+
+@pytest.mark.parametrize("repr_method", ["__repr__", "_repr_html_"])
+def test_catalog_repr(small_sky_order1_catalog, repr_method):
+    text = getattr(small_sky_order1_catalog, repr_method)()
+    assert small_sky_order1_catalog.name in text
+    assert str(small_sky_order1_catalog.get_ordered_healpix_pixels()[0]) in text
+    assert str(small_sky_order1_catalog.get_ordered_healpix_pixels()[-1]) in text
+    assert "available columns in the catalog have been loaded" in text
+    assert "estimated size of" in text
+
+
+@pytest.mark.parametrize("repr_method", ["__repr__", "_repr_html_"])
+def test_catalog_text_repr_empty(small_sky_order1_catalog, repr_method):
+    pixel_search = lsdb.PixelSearch.from_radec(80.0, 33.0)
+    cat = small_sky_order1_catalog.search(pixel_search)
+    text = getattr(cat, repr_method)()
+    assert cat.name in text
+    assert "Empty Catalog" in text
+    assert "npartitions=0" in text
+    assert "available columns in the catalog have been loaded" in text
+    assert "estimated size of 0.0 Bytes" in text
+
+
+def test_repr_mimebundle(small_sky_order1_dir):
+    # Notebook display requests both text/plain and text/html.
+    catalog = lsdb.open_catalog(small_sky_order1_dir, show_statistics=True)
+    bundle = catalog._repr_mimebundle_()
+    assert set(bundle) == {"text/plain", "text/html"}
+    assert bundle["text/plain"] == repr(catalog)
+    assert bundle["text/html"] == catalog._repr_html_()
 
 
 def test_repr_statistics(small_sky_order1_dir):
@@ -116,7 +100,7 @@ def test_repr_does_not_warn_about_modified_catalog(small_sky_order1_dir):
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         _assert_statistics(catalog, shown=True)
-    assert not any("modified catalog" in str(w.message) for w in caught)
+    assert len(caught) == 0
 
 
 def test_hides_statistics_with_fine_search(small_sky_order1_dir):

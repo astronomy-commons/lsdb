@@ -275,13 +275,17 @@ def _load_catalog(hc_catalog: hc.catalog.Dataset, config: HatsLoadingConfig) -> 
     ):
         raise ValueError("The selected sky region has no coverage")
 
-    catalog.hc_structure = _update_hc_structure(catalog)
+    updated_info: dict = {}
+    if config.filters is not None:
+        updated_info["total_rows"] = None
+
+    catalog.hc_structure = _update_hc_structure(catalog, **updated_info)
     if isinstance(catalog, Catalog) and catalog.margin is not None:
-        catalog.margin.hc_structure = _update_hc_structure(catalog.margin)
+        catalog.margin.hc_structure = _update_hc_structure(catalog.margin, **updated_info)
     return catalog
 
 
-def _update_hc_structure(catalog: HealpixDataset):
+def _update_hc_structure(catalog: HealpixDataset, **updated_info):
     """Create the modified schema of the catalog after all the processing on the `read_hats` call"""
     # pylint: disable=protected-access
     default_columns = None
@@ -295,10 +299,6 @@ def _update_hc_structure(catalog: HealpixDataset):
             for col in catalog.hc_structure.catalog_info.default_columns
             if col in exploded_columns(catalog.meta)
         ]
-
-    updated_info: dict = {}
-    if catalog.loading_config is not None and catalog.loading_config.filters:
-        updated_info["total_rows"] = None
 
     return catalog._create_modified_hc_structure(
         updated_schema=get_arrow_schema(catalog.meta),

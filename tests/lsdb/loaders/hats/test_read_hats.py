@@ -414,8 +414,8 @@ def test_read_hats_with_extra_kwargs(small_sky_order1_dir):
     catalog = lsdb.open_catalog(small_sky_order1_dir, filters=[("ra", ">", 300)])
     assert isinstance(catalog, lsdb.Catalog)
     assert np.greater(catalog.compute()["ra"].to_numpy(), 300).all()
-
     assert catalog.loading_config.make_query_url_params() == {"filters": "ra>300"}
+    assert catalog.hc_structure.catalog_info.total_rows is None
 
 
 def test_read_hats_with_mistaken_kwargs(small_sky_order1_dir, small_sky_xmatch_margin_dir):
