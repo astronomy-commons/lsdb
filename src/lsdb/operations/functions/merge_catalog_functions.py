@@ -225,10 +225,12 @@ def concat_partition_and_margin(
     npd.NestedFrame
         The concatenated dataframe with the partition on top and the margin on the bottom
     """
-    if margin is None:
-        return partition
     if partition is None:
         return margin
+    if margin is None or len(margin) == 0:
+        # An empty (but not None) margin contributes no rows. Skipping the concat
+        # avoids a pandas FutureWarning about concatenating empty/all-NA entries.
+        return partition
     joined_df = pd.concat([partition, margin])
     return npd.NestedFrame(joined_df)
 
