@@ -1,3 +1,5 @@
+import warnings
+
 import lsdb
 
 
@@ -100,6 +102,21 @@ def test_shows_statistics_with_coarse_search(small_sky_order1_dir):
     catalog = catalog.cone_search(0, -80, 20 * 3600, fine=False)
     assert catalog._operation.preserves_pixel_stats
     _assert_statistics(catalog, shown=True)
+
+
+def test_repr_does_not_warn_about_modified_catalog(small_sky_order1_dir):
+    catalog = lsdb.open_catalog(small_sky_order1_dir, show_statistics=True)
+    catalog = catalog.cone_search(0, -80, 20 * 3600, fine=False)
+    # A coarse search modifies the hats catalog, setting `total_rows` to None.
+    assert catalog.hc_structure.catalog_info.total_rows is None
+    # However, the pixel statistics are still preserved.
+    assert catalog._operation.preserves_pixel_stats
+    # The representation should show the statistics, and not raise a
+    # "Results may be inaccurate" warning to the user.
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        _assert_statistics(catalog, shown=True)
+    assert not any("modified catalog" in str(w.message) for w in caught)
 
 
 def test_hides_statistics_with_fine_search(small_sky_order1_dir):

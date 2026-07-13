@@ -280,6 +280,7 @@ class HealpixDataset:
         if len(cols) == 0:
             return pd.DataFrame([[]] * len(index), columns=cols, index=index)
         show_statistics = (
+            # In-memory catalogs have no loading config
             self.loading_config is not None
             and self.loading_config.show_statistics
             and self._operation.pixel_stats_preserved
@@ -295,12 +296,15 @@ class HealpixDataset:
             non_nested_cols = [c for c in cols if c not in self.nested_columns]
             if len(non_nested_cols) == 0:
                 return None
-            return self.per_partition_statistics(
-                use_default_columns=False,
-                exclude_hats_columns=True,
-                include_columns=non_nested_cols,
-                include_stats=["min_value", "max_value"],
-            )
+            # Only reached when pixel stats are preserved.
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", message=".*modified catalog.*")
+                return self.per_partition_statistics(
+                    use_default_columns=False,
+                    exclude_hats_columns=True,
+                    include_columns=non_nested_cols,
+                    include_stats=["min_value", "max_value"],
+                )
         except Exception:  # pylint: disable=broad-exception-caught
             logging.debug("Could not read partition statistics for catalog %s", self.name, exc_info=True)
             return None
