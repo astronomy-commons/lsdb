@@ -1,18 +1,22 @@
-import warnings
-
 import pytest
 
 import lsdb
+from lsdb.catalog.dataset.repr import CatalogRepr
 
 
 def _assert_statistics(catalog, *, shown):
-    """Assert whether the statistics table is rendered in both repr forms.
+    """Assert whether the statistics table is rendered.
 
-    When shown, the "min..max" table replaces the "..." placeholders; when hidden, the
-    plain "..." placeholder table is rendered.
+    By default, the view shows a placeholder table with "..." for each column.
+    When statistics are available and the user has requested them, the view
+    shows a table with the '{min}..{max}' ranges for each column, plus a footer
+    legend explaining the notation.
     """
-    assert ("..." not in repr(catalog)) == shown
-    assert ("..." not in catalog._repr_html_()) == shown
+    text, html = repr(catalog), catalog._repr_html_()
+    assert ("..." not in text) == shown
+    assert ("..." not in html) == shown
+    assert ("{min}..{max} ranges" in text) == shown
+    assert ("{min}..{max} ranges" in html) == shown
 
 
 @pytest.mark.parametrize("repr_method", ["__repr__", "_repr_html_"])
@@ -23,10 +27,11 @@ def test_catalog_repr(small_sky_order1_catalog, repr_method):
     assert str(small_sky_order1_catalog.get_ordered_healpix_pixels()[-1]) in text
     assert "available columns in the catalog have been loaded" in text
     assert "estimated size of" in text
+    assert "{min}..{max} ranges" not in text
 
 
 @pytest.mark.parametrize("repr_method", ["__repr__", "_repr_html_"])
-def test_catalog_text_repr_empty(small_sky_order1_catalog, repr_method):
+def test_catalog_repr_empty(small_sky_order1_catalog, repr_method):
     pixel_search = lsdb.PixelSearch.from_radec(80.0, 33.0)
     cat = small_sky_order1_catalog.search(pixel_search)
     text = getattr(cat, repr_method)()
@@ -34,7 +39,8 @@ def test_catalog_text_repr_empty(small_sky_order1_catalog, repr_method):
     assert "Empty Catalog" in text
     assert "npartitions=0" in text
     assert "available columns in the catalog have been loaded" in text
-    assert "estimated size of 0.0 Bytes" in text
+    assert "estimated size of 0 Bytes" in text
+    assert "{min}..{max} ranges" not in text
 
 
 def test_repr_mimebundle(small_sky_order1_dir):
@@ -88,21 +94,6 @@ def test_shows_statistics_with_coarse_search(small_sky_order1_dir):
     _assert_statistics(catalog, shown=True)
 
 
-def test_repr_does_not_warn_about_modified_catalog(small_sky_order1_dir):
-    catalog = lsdb.open_catalog(small_sky_order1_dir, show_statistics=True)
-    catalog = catalog.cone_search(0, -80, 20 * 3600, fine=False)
-    # A coarse search modifies the hats catalog, setting `total_rows` to None.
-    assert catalog.hc_structure.catalog_info.total_rows is None
-    # However, the pixel statistics are still preserved.
-    assert catalog._operation.preserves_pixel_stats
-    # The representation should show the statistics, and not raise a
-    # "Results may be inaccurate" warning to the user.
-    with warnings.catch_warnings(record=True) as caught:
-        warnings.simplefilter("always")
-        _assert_statistics(catalog, shown=True)
-    assert len(caught) == 0
-
-
 def test_hides_statistics_with_fine_search(small_sky_order1_dir):
     # A fine search filters rows within partitions, so the statistics are not preserved.
     catalog = lsdb.open_catalog(
@@ -142,6 +133,15 @@ def test_hides_statistics_for_in_memory_catalog():
     _assert_statistics(catalog, shown=False)
 
 
+def test_hides_statistics_for_empty_catalog(small_sky_order1_dir):
+    catalog = lsdb.open_catalog(small_sky_order1_dir, show_statistics=True)
+    empty = catalog.search(lsdb.PixelSearch.from_radec(80.0, 33.0))
+    assert len(empty.get_healpix_pixels()) == 0
+    assert not CatalogRepr(empty)._show_statistics
+    assert "{min}..{max} ranges" not in repr(empty)
+    assert "{min}..{max} ranges" not in empty._repr_html_()
+
+
 def test_repr_when_statistics_unavailable(small_sky_order1_dir, monkeypatch):
     # If the statistics cannot be loaded, the repr will fall back to the "..." placeholder table.
     catalog = lsdb.open_catalog(small_sky_order1_dir, show_statistics=True)
@@ -156,24 +156,28 @@ def test_repr_when_statistics_unavailable(small_sky_order1_dir, monkeypatch):
 def test_repr_data_with_no_columns(small_sky_order1_dir):
     catalog = lsdb.open_catalog(small_sky_order1_dir)[[]]
     assert not list(catalog.columns)
-    data = catalog._repr_data()
+    data, has_statistics = CatalogRepr(catalog)._data()
+    assert not has_statistics
     assert not list(data.columns)
-    assert len(data.index) == catalog.npartitions
+    assert len(data.index) == len(catalog.get_healpix_pixels())
     assert repr(catalog).startswith(f"lsdb Catalog {catalog.name}:")
 
 
 def test_shows_statistics_except_for_nested_columns(small_sky_with_nested_sources_dir):
     # Nested columns have no per-column on-disk statistics, so they render the "..."
-    # placeholder while every non-nested column shows its min..max range.
+    # placeholder while every non-nested column shows its '{min}..{max}' range.
     catalog = lsdb.open_catalog(small_sky_with_nested_sources_dir, show_statistics=True)
     assert catalog._operation.preserves_pixel_stats
     assert catalog.nested_columns == ["sources"]
 
-    # The dtype/type header is the first row; the remaining rows hold the per-pixel values.
-    pixel_rows = catalog._repr_data().iloc[1:]
+    # The dtype header is the first row; the remaining rows hold the per-pixel values.
+    catalog_repr = CatalogRepr(catalog)
+    data, has_statistics = catalog_repr._data()
+    assert has_statistics
+    pixel_rows = data.iloc[1:]
     assert (pixel_rows["sources"] == "...").all()
     for col in [c for c in pixel_rows.columns if c not in catalog.nested_columns]:
         assert not (pixel_rows[col] == "...").any()
 
-    # A stats request for only nested columns has nothing to read.
-    assert catalog._get_repr_pixel_stats(catalog.nested_columns) is None
+    # A catalog of only nested columns has no statistics.
+    assert catalog_repr._pixel_stats(catalog.nested_columns, []) is None

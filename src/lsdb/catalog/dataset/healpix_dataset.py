@@ -18,7 +18,6 @@ from astropy.coordinates import SkyCoord
 from astropy.units import Quantity
 from dask import threaded
 from dask.base import get_scheduler
-from dask.dataframe.core import _repr_data_series
 from dask.delayed import Delayed
 from deprecated import deprecated  # type: ignore
 from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
@@ -33,7 +32,7 @@ from typing_extensions import Self
 from upath import UPath
 
 from lsdb import io
-from lsdb.catalog.dataset.repr import _repr_data_min_max
+from lsdb.catalog.dataset.repr import CatalogRepr
 from lsdb.core.plotting.plot_points import plot_points
 from lsdb.core.search.abstract_search import AbstractSearch
 from lsdb.core.search.region_search import (
@@ -227,87 +226,13 @@ class HealpixDataset:
         return None
 
     def __repr__(self):
-        return self._format_text_repr(self._repr_data())
+        return CatalogRepr(self).text()
 
     def _repr_html_(self):
-        return self._format_html_repr(self._repr_data())
+        return CatalogRepr(self).html()
 
     def _repr_mimebundle_(self, **kwargs):  # pylint: disable=unused-argument
-        """Return both the text and HTML representations for notebook display."""
-        data = self._repr_data()
-        text = self._format_text_repr(data)
-        html = self._format_html_repr(data)
-        return {"text/plain": text, "text/html": html}
-
-    def _format_text_repr(self, data):
-        body = data.to_string(max_rows=5, show_dimensions=False)
-        loaded_cols = len(self.columns)
-        available_cols = len(self.all_columns)
-        est_size = self.est_size()
-        est_size_text = (
-            f"\nThis catalog has an estimated size of {file_size(est_size * 1024)}"
-            if est_size is not None
-            else ""
-        )
-        return (
-            f"lsdb Catalog {self.name}:\n"
-            f"{body}\n"
-            f"{loaded_cols} out of {available_cols} available columns in the catalog have been "
-            f"loaded lazily, meaning no data has been read, only the catalog schema"
-        ) + est_size_text
-
-    def _format_html_repr(self, data):
-        body = data.to_html(max_rows=5, show_dimensions=False, notebook=True)
-        loaded_cols = len(self.columns)
-        available_cols = len(self.all_columns)
-        est_size = self.est_size()
-        est_size_text = (
-            f"<div>This catalog has an estimated size of {file_size(est_size * 1024)}</div>"
-            if est_size is not None
-            else ""
-        )
-        return (
-            f"<div><strong>lsdb Catalog {self.name}:</strong></div>"
-            f"{body}"
-            f"<div>{loaded_cols} out of {available_cols} available columns in the catalog have been loaded "
-            f"<strong>lazily</strong>, meaning no data has been read, only the catalog schema</div>"
-        ) + est_size_text
-
-    def _repr_data(self):
-        meta = self.meta
-        index = self._repr_divisions
-        cols = meta.columns
-        if len(cols) == 0:
-            return pd.DataFrame([[]] * len(index), columns=cols, index=index)
-        show_statistics = (
-            # In-memory catalogs have no loading config
-            self.loading_config is not None
-            and self.loading_config.show_statistics
-            and self._operation.pixel_stats_preserved
-        )
-        pixel_stats = self._get_repr_pixel_stats(cols) if show_statistics else None
-        if pixel_stats is None:
-            return pd.concat([_repr_data_series(s, index=index) for _, s in meta.items()], axis=1)
-        return _repr_data_min_max(meta, index, pixel_stats)
-
-    def _get_repr_pixel_stats(self, cols) -> pd.DataFrame | None:
-        """Fetch per-pixel min/max stats for display"""
-        try:
-            non_nested_cols = [c for c in cols if c not in self.nested_columns]
-            if len(non_nested_cols) == 0:
-                return None
-            # Only reached when pixel stats are preserved.
-            with warnings.catch_warnings():
-                warnings.filterwarnings("ignore", message=".*modified catalog.*")
-                return self.per_partition_statistics(
-                    use_default_columns=False,
-                    exclude_hats_columns=True,
-                    include_columns=non_nested_cols,
-                    include_stats=["min_value", "max_value"],
-                )
-        except Exception:  # pylint: disable=broad-exception-caught
-            logging.debug("Could not read partition statistics for catalog %s", self.name, exc_info=True)
-            return None
+        return CatalogRepr(self).mimebundle()
 
     def _create_modified_hc_structure(
         self, hc_structure=None, updated_schema=None, updated_pixels=None, **kwargs
@@ -638,17 +563,6 @@ class HealpixDataset:
             msg = f"Columns {confusing_columns} are in the catalog but were not loaded."
         raise ValueError(msg)
 
-    @property
-    def _repr_divisions(self):
-        pixels = self.get_ordered_healpix_pixels()
-        name = f"npartitions={len(pixels)}"
-        # Dask will raise an exception, preventing display,
-        # if the index does not have at least one element.
-        if len(pixels) == 0:
-            pixels = ["Empty Catalog"]
-        divisions = pd.Index(pixels, name=name)
-        return divisions
-
     def get_healpix_pixels(self) -> list[HealpixPixel]:
         """Get all HEALPix pixels that are contained in the catalog
 
@@ -678,6 +592,7 @@ class HealpixDataset:
         exclude_columns: list[str] | None = None,
         include_columns: list[str] | None = None,
         include_pixels: list[HealpixPixel] | None = None,
+        warn_on_modified_catalog: bool = True,
     ) -> pd.DataFrame:
         """Read footer statistics in parquet metadata, and report on global min/max values.
 
@@ -696,6 +611,9 @@ class HealpixDataset:
         include_pixels : list[HealpixPixel] or None, default None
             If specified, only return statistics for the pixels indicated. Defaults to none,
             and returns all pixels.
+        warn_on_modified_catalog : bool
+            if True, this method will warn if the catalog has been modified from its original on-disk
+            state. Defaults to True.
 
         Returns
         -------
@@ -710,6 +628,7 @@ class HealpixDataset:
             exclude_columns=exclude_columns,
             include_columns=include_columns,
             include_pixels=include_pixels,
+            warn_on_modified_catalog=warn_on_modified_catalog,
         )
 
     @deprecated(
@@ -727,6 +646,7 @@ class HealpixDataset:
         include_stats: list[str] | None = None,
         multi_index=False,
         include_pixels: list[HealpixPixel] | None = None,
+        warn_on_modified_catalog: bool = True,
     ):  # pragma: no cover
         """Read footer statistics in parquet metadata, and report on
         min/max values for for each data partition."""
@@ -738,6 +658,7 @@ class HealpixDataset:
             include_stats=include_stats,
             multi_index=multi_index,
             include_pixels=include_pixels,
+            warn_on_modified_catalog=warn_on_modified_catalog,
         )
 
     def per_partition_statistics(
@@ -752,6 +673,7 @@ class HealpixDataset:
         multi_index: bool = False,
         per_row_group: bool = False,
         include_pixels: list[HealpixPixel] | None = None,
+        warn_on_modified_catalog: bool = True,
     ) -> pd.DataFrame:
         """Read footer statistics in parquet metadata, and report on
         min/max values for each data partition.
@@ -784,6 +706,9 @@ class HealpixDataset:
         include_pixels : list[HealpixPixel] or None, default None
             If specified, only return statistics for the pixels indicated. Defaults to none,
             and returns all pixels.
+        warn_on_modified_catalog : bool
+            if True, this method will warn if the catalog has been modified from its original on-disk
+            state. Defaults to True.
 
         Returns
         -------
@@ -802,6 +727,7 @@ class HealpixDataset:
             multi_index=multi_index,
             per_row_group=per_row_group,
             include_pixels=include_pixels,
+            warn_on_modified_catalog=warn_on_modified_catalog,
         )
 
     def get_partition(self, order: int, pixel: int) -> Self:
