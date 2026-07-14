@@ -20,8 +20,7 @@ def _validate_and_convert_to_catalog(
         data_args["catalog_name"] = suffix if suffix else default_suffix
 
     # Convert the DataFrame to a Catalog.
-    data = from_dataframe(data, **data_args)
-    return data
+    return from_dataframe(data, **data_args)
 
 
 # pylint: disable=too-many-arguments

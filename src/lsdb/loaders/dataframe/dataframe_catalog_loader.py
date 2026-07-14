@@ -92,6 +92,7 @@ class DataframeCatalogLoader:
             Arguments to pass to the creation of the catalog info.
         """
         self.dataframe = npd.NestedFrame(dataframe)
+        self.catalog_name = kwargs.get("catalog_name", "from_lsdb_dataframe")
         self.lowest_order = lowest_order
         self.highest_order = highest_order
         self.drop_empty_siblings = drop_empty_siblings
@@ -148,7 +149,10 @@ class DataframeCatalogLoader:
         ]
         n_matches = len(matches)
         if n_matches == 0:
-            raise ValueError(f"No column found for {search_term}")
+            raise ValueError(
+                f"No column found for {search_term} in catalog '{self.catalog_name}'. "
+                f"Specify {search_term}_column='<column_name>'."
+            )
         if n_matches > 1:
             raise ValueError(f"Found {n_matches} possible columns for {search_term}")
         return matches[0]
