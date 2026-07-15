@@ -552,11 +552,12 @@ class MockCrossmatchAlgorithm(AbstractCrossmatchAlgorithm):
 
     extra_columns = pd.DataFrame({"_DIST": pd.Series(dtype=np.float64)})
 
-    def __init__(self, mock_results: pd.DataFrame = None, n_neighbors: int = 1):
+    def __init__(self, mock_results: pd.DataFrame | None = None, n_neighbors: int = 1):
         self.mock_results = mock_results
         self.n_neighbors = n_neighbors
 
     def perform_crossmatch(self, crossmatch_args: CrossmatchArgs):
+        assert self.mock_results is not None
         left_reset = crossmatch_args.left_df.reset_index(drop=True)
         right_reset = crossmatch_args.right_df.reset_index(drop=True)
         mock_results = self.mock_results[self.mock_results["ss_id"].isin(left_reset["id"].to_numpy())]
@@ -618,7 +619,7 @@ class MockCrossmatchAlgorithmOverwrite(AbstractCrossmatchAlgorithm):
 
     extra_columns = pd.DataFrame({"_DIST": pd.Series(dtype=np.float64)})
 
-    def __init__(self, mock_results: pd.DataFrame = None):
+    def __init__(self, mock_results: pd.DataFrame | None = None):
         self.mock_results = mock_results
 
     def crossmatch(self, crossmatch_args, how, suffixes, suffix_method="all_columns"):

@@ -207,7 +207,9 @@ class AbstractCrossmatchAlgorithm(ABC):
         dataframe.rename(columns=columns_renamed, inplace=True)
 
     @classmethod
-    def _append_extra_columns(cls, dataframe: npd.NestedFrame, extra_columns: pd.DataFrame | None = None):
+    def _append_extra_columns(
+        cls, dataframe: npd.NestedFrame | pd.DataFrame, extra_columns: pd.DataFrame | None = None
+    ):
         """Adds crossmatch extra columns to the resulting Dataframe."""
         if cls.extra_columns is None:
             return
@@ -219,16 +221,16 @@ class AbstractCrossmatchAlgorithm(ABC):
                 raise ValueError(f"Provided extra column '{col}' not found in definition")
         # Update columns according to crossmatch algorithm specification
         columns_to_update = []
-        for col, col_type in cls.extra_columns.dtypes.items():
-            if col not in extra_columns:
-                raise ValueError(f"Missing extra column '{col} of type {col_type}'")
-            if col_type != extra_columns[col].dtype:
-                raise ValueError(f"Invalid type '{col_type}' for extra column '{col}'")
-            columns_to_update.append(col)
-        for col in columns_to_update:
-            new_col = extra_columns[col]
+        for extra_col, col_type in cls.extra_columns.dtypes.items():
+            if extra_col not in extra_columns:
+                raise ValueError(f"Missing extra column '{extra_col} of type {col_type}'")
+            if col_type != extra_columns[extra_col].dtype:
+                raise ValueError(f"Invalid type '{col_type}' for extra column '{extra_col}'")
+            columns_to_update.append(extra_col)
+        for update_col in columns_to_update:
+            new_col = extra_columns[update_col]
             new_col.index = dataframe.index
-            dataframe[col] = new_col
+            dataframe[update_col] = new_col
 
     # pylint: disable=too-many-locals
     def _create_crossmatch_df(
@@ -274,7 +276,7 @@ class AbstractCrossmatchAlgorithm(ABC):
         index_name = left_df.index.name if left_df.index.name is not None else "index"
         left_join_part = left_df.iloc[left_idx].reset_index()
         right_join_part = right_df.iloc[right_idx].reset_index(drop=True)
-        out = pd.concat(
+        out: pd.DataFrame = pd.concat(
             [
                 left_join_part,
                 right_join_part,

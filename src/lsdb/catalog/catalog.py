@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import warnings
 from pathlib import Path
-from typing import Any, Callable, Iterable, overload
+from typing import Any, Callable, Iterable, Literal, overload
 
 import dask.dataframe as dd
 import hats as hc
@@ -951,7 +951,7 @@ class Catalog(HealpixDataset):
     def merge_asof(
         self,
         other: Catalog,
-        direction: str = "backward",
+        direction: Literal["backward", "forward", "nearest"] = "backward",
         suffixes: tuple[str, str] | None = None,
         output_catalog_name: str | None = None,
         suffix_method: str | None = None,
@@ -971,7 +971,7 @@ class Catalog(HealpixDataset):
             The right catalog to merge to
         suffixes : tuple[str,str]
             The suffixes to apply to each partition's column names
-        direction : str, default "backward"
+        direction : {"backward", "forward", "nearest"}, default "backward"
             The direction to perform the merge_asof
         output_catalog_name : str
             The name of the resulting catalog to be stored in metadata
@@ -1175,7 +1175,7 @@ class Catalog(HealpixDataset):
         right_on: str | None = None,
         nested_column_name: str | None = None,
         output_catalog_name: str | None = None,
-        how: str = "inner",
+        how: Literal["inner", "left"] = "inner",
     ) -> Catalog:
         """Perform a spatial join to another catalog by adding the other catalog as a nested column
 

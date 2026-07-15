@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import warnings
+from typing import cast
 
 import hats as hc
 import hats.pixel_math.healpix_shim as hp
@@ -155,7 +156,7 @@ class MarginCatalogGenerator:
         return pixels, partitions
 
     def _generate_op(
-        self, pixels: list[HealpixPixel], partitions: list[pd.DataFrame]
+        self, pixels: list[HealpixPixel], partitions: list[npd.NestedFrame]
     ) -> tuple[Operation, int]:
         """Create the Dask Dataframe containing the data points in the margins
         for the catalog as well as the mapping of those HEALPix to Dataframes
@@ -164,7 +165,7 @@ class MarginCatalogGenerator:
         ----------
         pixels : list[HealpixPixel]
             The list of healpix pixels in the catalog with margins
-        partitions : list[pd.DataFrame]
+        partitions : list[npd.NestedFrame]
             The list of dataframes containing the margin rows for each
             partition, aligned with the pixels list
 
@@ -215,7 +216,7 @@ class MarginCatalogGenerator:
             columns=["partition_order", "partition_pixel", "margin_pixel"],
         )
 
-    def _create_margins(self, margin_pairs_df: pd.DataFrame) -> dict[HealpixPixel, pd.DataFrame]:
+    def _create_margins(self, margin_pairs_df: pd.DataFrame) -> dict[HealpixPixel, npd.NestedFrame]:
         """Compute the margins for all the pixels in the catalog
 
         Parameters
@@ -226,7 +227,7 @@ class MarginCatalogGenerator:
 
         Returns
         -------
-        dict[HealpixPixel, pd.DataFrame]
+        dict[HealpixPixel, npd.NestedFrame]
             A dictionary mapping each margin pixel to the respective DataFrame.
         """
         margin_pixel_df_map: dict[HealpixPixel, npd.NestedFrame] = {}
@@ -240,8 +241,10 @@ class MarginCatalogGenerator:
             for partition_group, partition_df in constrained_data.groupby(
                 ["partition_order", "partition_pixel"]
             ):
-                margin_pixel = HealpixPixel(partition_group[0], partition_group[1])
-                margin_pixel_df_map[margin_pixel] = _format_margin_partition_dataframe(partition_df)
+                margin_pixel = HealpixPixel(cast(int, partition_group[0]), cast(int, partition_group[1]))
+                margin_pixel_df_map[margin_pixel] = _format_margin_partition_dataframe(
+                    npd.NestedFrame(partition_df)
+                )
         return margin_pixel_df_map
 
     def _create_catalog_info(self, catalog_name: str | None = None, **kwargs) -> TableProperties:

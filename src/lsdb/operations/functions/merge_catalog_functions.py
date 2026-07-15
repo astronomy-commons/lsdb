@@ -7,13 +7,11 @@ from typing import TYPE_CHECKING, Callable, Literal, Sequence
 import hats.pixel_math.healpix_shim as hp
 import nested_pandas as npd
 import numpy as np
-import numpy.typing as npt
 import pandas as pd
 from dask.dataframe.dispatch import make_meta
 from hats.catalog import TableProperties
 from hats.io import paths
 from hats.pixel_math import HealpixPixel
-from hats.pixel_math.healpix_pixel import get_lower_order_pixel
 from hats.pixel_math.pixel_margins import get_margin
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN, SPATIAL_INDEX_ORDER, healpix_to_spatial_index
 from hats.pixel_tree import PixelAlignment, PixelAlignmentType, align_trees
@@ -25,6 +23,8 @@ from lsdb.operations.lsdb_ops import AlignAndApply
 from lsdb.operations.operation import Operation
 
 if TYPE_CHECKING:
+    from pandas._typing import Dtype
+
     from lsdb.catalog.association_catalog import AssociationCatalog
     from lsdb.catalog.catalog import Catalog
     from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
@@ -175,7 +175,7 @@ def apply_left_suffix(
 
 def apply_right_suffix(
     col_name: str,
-    left_col_names: list[str],
+    left_col_names: list[str] | pd.Index,
     suffixes: tuple[str, str],
     suffix_method: str | None = None,
     log_changes: bool = False,
@@ -186,7 +186,7 @@ def apply_right_suffix(
     ----------
     col_name : str
         The column name to apply the suffix to
-    left_col_names : list[str]
+    left_col_names : list[str] | pd.Index
         The column names in the left dataframe
     suffixes : tuple[str, str]
         The suffixes to apply to the left and right dataframes
@@ -640,9 +640,8 @@ def filter_by_spatial_index_to_margin(
 
     margin_pixels = get_margin(order, pixel, margin_order - order)
     spatial_index_values = dataframe.index.to_numpy()
-    margin_order_hp_pix = get_lower_order_pixel(
-        spatial_index_order, spatial_index_values, spatial_index_order - margin_order
-    )
+    # Vectorized equivalent of get_lower_order_pixel, which only accepts a scalar pixel.
+    margin_order_hp_pix = spatial_index_values >> (2 * (spatial_index_order - margin_order))
     mask = np.isin(margin_order_hp_pix, margin_pixels)
     filtered_df = dataframe[mask]
     return filtered_df
@@ -744,7 +743,7 @@ def generate_meta_df_for_joined_tables(
     suffix_method: str | None = None,
     extra_columns: pd.DataFrame | None = None,
     index_name: str = SPATIAL_INDEX_COLUMN,
-    index_type: npt.DTypeLike | None = None,
+    index_type: Dtype | None = None,
     log_changes: bool = True,
 ) -> npd.NestedFrame:
     """Generates a Dask meta DataFrame that would result from joining two catalogs
@@ -764,7 +763,7 @@ def generate_meta_df_for_joined_tables(
         Any additional columns to the merged catalogs
     index_name : str, default SPATIAL_INDEX_COLUMN
         The name of the index in the resulting DataFrame
-    index_type : npt.DTypeLike or None
+    index_type : Dtype or None
         The type of the index in the resulting DataFrame.
         Default: type of index in the first catalog
     log_changes : bool, default True
@@ -785,7 +784,7 @@ def generate_meta_df_for_joined_tables(
         suffix_method,
         log_changes=log_changes,
     )
-    meta = pd.concat([left_meta, right_meta], axis=1)
+    meta: pd.DataFrame = pd.concat([left_meta, right_meta], axis=1)
     # Construct meta for crossmatch result columns
     if extra_columns is not None:
         meta = pd.concat([meta, extra_columns], axis=1)
@@ -806,7 +805,7 @@ def generate_meta_df_for_nested_tables(
     extra_columns: pd.DataFrame | None = None,
     extra_nested_columns: pd.DataFrame | None = None,
     index_name: str = SPATIAL_INDEX_COLUMN,
-    index_type: npt.DTypeLike | None = None,
+    index_type: Dtype | None = None,
 ) -> npd.NestedFrame:
     """Generates a Dask meta DataFrame that would result from joining two catalogs, adding the right as a
     nested frame
@@ -829,7 +828,7 @@ def generate_meta_df_for_nested_tables(
         Any additional columns to the merged catalogs
     index_name : str, default SPATIAL_INDEX_COLUMN
         The name of the index in the resulting DataFrame
-    index_type : npt.DTypeLike or None, default None
+    index_type : Dtype or None, default None
         The type of the index in the resulting DataFrame
 
     Returns
