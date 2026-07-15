@@ -32,7 +32,7 @@ def set_default_write_table_kwargs(write_table_kwargs):
 
     Parameters
     ----------
-    **kwargs :
+    write_table_kwargs : dict or None
         Arguments to pass to the parquet write operations
 
     Returns
