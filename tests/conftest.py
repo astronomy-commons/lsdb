@@ -32,7 +32,6 @@ SMALL_SKY_ORDER1_MARGIN_1DEG_DIR_NAME = "small_sky_order1_margin_1deg"
 SMALL_SKY_ORDER1_MARGIN_2DEG_DIR_NAME = "small_sky_order1_margin_2deg"
 SMALL_SKY_ORDER1_COLLECTION_DIR_NAME = "small_sky_order1_collection"
 SMALL_SKY_ORDER1_NESTED_SOURCES_NAME = "small_sky_order1_nested_sources"
-SMALL_SKY_ORDER1_NESTED_SOURCES_MARGIN_NAME = "small_sky_order1_nested_sources_margin"
 SMALL_SKY_ORDER1_NO_PANDAS_DIR_NAME = "small_sky_order1_no_pandas_meta"
 SMALL_SKY_ORDER1_DEFAULT_COLS_DIR_NAME = "small_sky_order1_default_columns"
 SMALL_SKY_ORDER1_SOURCE_NAME = "small_sky_order1_source"
@@ -190,11 +189,6 @@ def small_sky_with_nested_sources_dir(test_data_dir):
 
 
 @pytest.fixture
-def small_sky_with_nested_sources_margin_dir(test_data_dir):
-    return test_data_dir / SMALL_SKY_ORDER1_NESTED_SOURCES_MARGIN_NAME
-
-
-@pytest.fixture
 def small_sky_hats_catalog(small_sky_dir):
     return hc.read_hats(small_sky_dir)
 
@@ -317,15 +311,6 @@ def small_sky_order3_source_margin_catalog(test_data_dir):
 @pytest.fixture
 def small_sky_with_nested_sources(small_sky_with_nested_sources_dir):
     return lsdb.open_catalog(small_sky_with_nested_sources_dir)
-
-
-@pytest.fixture
-def small_sky_with_nested_sources_with_margin(
-    small_sky_with_nested_sources_dir, small_sky_with_nested_sources_margin_dir
-):
-    return lsdb.open_catalog(
-        small_sky_with_nested_sources_dir, margin_cache=small_sky_with_nested_sources_margin_dir
-    )
 
 
 @pytest.fixture

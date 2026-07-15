@@ -41,6 +41,21 @@ def test_id_search_with_multiple_fields(
     assert all(index_search_df["band"] == "r")
 
 
+def test_nested_id_search(
+    small_sky_with_nested_sources,
+):
+    cat = small_sky_with_nested_sources.id_search(values={"sources.source_id": 70003})
+    assert isinstance(cat.meta, npd.NestedFrame)
+    index_search_df = cat.compute()
+    assert isinstance(index_search_df, npd.NestedFrame)
+    assert len(index_search_df) == 1
+    assert all(index_search_df["id"] == 745)
+    lightcurve_df = index_search_df.iloc[0].sources
+    ## Should contain ALL sources on the object, not just the matching ID.
+    assert len(lightcurve_df) > 1
+    assert 70003 in list(lightcurve_df["source_id"])
+
+
 def test_id_search_with_index_catalog_path(
     small_sky_order1_source_with_margin, small_sky_order1_source_object_id_index_dir
 ):
