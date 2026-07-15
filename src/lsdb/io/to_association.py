@@ -106,12 +106,16 @@ def to_association(
     join_column_association : str or None, default None
         The column in the association catalog
         that matches the joining (right) side of join
+    join_to_primary_id_column : str or None, default None
+        The name of the primary id column as it appears in the join catalog
     join_id_column : str or None, default None
         The id column in the join catalog
     separation_column : str or None, default None
         The name of the crossmatch separation column
     overwrite : bool, default False
         If True existing catalog is overwritten
+    addl_hats_properties : dict or None, default None
+        Additional properties to add to the output catalog's hats properties
     **kwargs
         Arguments to pass to the parquet write operations
 

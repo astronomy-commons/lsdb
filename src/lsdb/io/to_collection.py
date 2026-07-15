@@ -29,7 +29,7 @@ def to_collection(
     ----------
     catalog : HealpixDataset
         A catalog to export
-    base_catalog_path : path-like
+    base_collection_path : path-like
         Location where catalog is saved to
     catalog_name : str or None, default None
         The name of the catalog to be saved
@@ -39,6 +39,8 @@ def to_collection(
         original hats catalog if they exist.
     overwrite : bool, default False
         If True existing collection is overwritten
+    resume : bool, default False
+        If True, resumes a previous, incomplete write of the collection
     progress_bar : bool, default True
         If True, shows a progress bar during the export process
     tqdm_kwargs : dict or None, default None

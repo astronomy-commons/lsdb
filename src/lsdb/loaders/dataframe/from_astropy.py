@@ -21,7 +21,7 @@ def from_astropy(
     should_generate_moc: bool = True,
     moc_max_order: int = 10,
     use_pyarrow_types: bool = True,
-    schema=None,
+    schema: pa.Schema | None = None,
     flatten_tensors: bool = False,
     **kwargs,
 ):

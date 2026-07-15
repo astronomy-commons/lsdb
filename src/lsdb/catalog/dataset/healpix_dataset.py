@@ -5,7 +5,7 @@ import random
 import warnings
 from collections.abc import Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Iterable, Type, cast, overload
+from typing import TYPE_CHECKING, Any, Callable, Iterable, Literal, Type, cast, overload
 
 import astropy
 import dask.dataframe as dd
@@ -546,7 +546,7 @@ class HealpixDataset:
             return self.meta.copy()
         return npd.NestedFrame(pd.concat(result))
 
-    def to_dask_dataframe(self, divisions=True):
+    def to_dask_dataframe(self, divisions: bool | list = True):
         """Converts to a Dask DataFrame
 
         Parameters
@@ -1196,7 +1196,9 @@ class HealpixDataset:
         return self.search(OrderSearch(min_order, max_order))
 
     def pixel_search(
-        self, pixels: tuple[int, int] | HealpixPixel | list[tuple[int, int] | HealpixPixel], fine=False
+        self,
+        pixels: tuple[int, int] | HealpixPixel | list[tuple[int, int] | HealpixPixel],
+        fine: bool = False,
     ) -> Self:
         """Finds all catalog pixels that overlap with the requested pixel set.
 
@@ -1204,6 +1206,8 @@ class HealpixDataset:
         ----------
         pixels : list[tuple[int, int]]
             The list of HEALPix tuples (order, pixel) that define the region for the search.
+        fine : bool, default False
+            True if points are to be filtered, False if only partitions. Defaults to False.
 
         Returns
         -------
@@ -1289,11 +1293,6 @@ class HealpixDataset:
 
     def prune_empty_partitions(self) -> Self:
         """Prunes the catalog of its empty partitions
-
-        Parameters
-        ----------
-        persist : bool, default False
-            If True previous computations are saved. Defaults to False.
 
         Returns
         -------
@@ -1599,14 +1598,14 @@ class HealpixDataset:
 
     def map_rows(
         self,
-        func,
-        columns=None,
+        func: Callable,
+        columns: str | list[str] | None = None,
         *,
-        meta,
-        row_container="dict",
-        output_names=None,
-        infer_nesting=True,
-        append_columns=False,
+        meta: object,
+        row_container: Literal["dict", "args"] = "dict",
+        output_names: str | list[str] | None = None,
+        infer_nesting: bool = True,
+        append_columns: bool = False,
         **kwargs,
     ) -> Self:
         """Takes a function and applies it to each top-level row of the Catalog.
@@ -1720,22 +1719,22 @@ class HealpixDataset:
         if meta is None:
             raise ValueError("Please specify `meta`.")
         self_meta = self.meta.copy()
-        meta = npd.NestedFrame(make_meta(meta))
+        meta_frame = npd.NestedFrame(make_meta(meta))
 
         if append_columns:
             ra_col = self.hc_structure.catalog_info.ra_column
             dec_col = self.hc_structure.catalog_info.dec_column
-            overlapping_columns = set(self_meta.columns) & set(meta.columns)
+            overlapping_columns = set(self_meta.columns) & set(meta_frame.columns)
             if overlapping_columns:
                 raise ValueError(
                     f"`meta` specifies columns to append that already exist: {list(overlapping_columns)}."
                 )
-            if ra_col in meta.columns or dec_col in meta.columns:
+            if ra_col in meta_frame.columns or dec_col in meta_frame.columns:
                 raise ValueError("ra and dec columns can not be modified using `map_rows`")
-            added_nested_subcols = [str(col) for col in meta.columns if "." in str(col)]
-            self_meta = self_meta.assign(**{col: meta[col] for col in added_nested_subcols})
-            meta = meta.drop(columns=added_nested_subcols)
-            meta = concat_metas([self_meta, meta])
+            added_nested_subcols = [str(col) for col in meta_frame.columns if "." in str(col)]
+            self_meta = self_meta.assign(**{col: meta_frame[col] for col in added_nested_subcols})
+            meta_frame = meta_frame.drop(columns=added_nested_subcols)
+            meta_frame = concat_metas([self_meta, meta_frame])
 
         def perform_map_rows(df, func, *args, **kwargs):
             return df.map_rows(func, *args, **kwargs)
@@ -1749,7 +1748,7 @@ class HealpixDataset:
             output_names=output_names,
             infer_nesting=infer_nesting,
             append_columns=append_columns,
-            meta=meta,
+            meta=meta_frame,
             **kwargs,
         )
 
@@ -1758,8 +1757,8 @@ class HealpixDataset:
             ra_col = self.hc_structure.catalog_info.ra_column
             dec_col = self.hc_structure.catalog_info.dec_column
             hc_updates = {
-                "ra_column": ra_col if ra_col in meta.columns else "",
-                "dec_column": dec_col if dec_col in meta.columns else "",
+                "ra_column": ra_col if ra_col in meta_frame.columns else "",
+                "dec_column": dec_col if dec_col in meta_frame.columns else "",
             }
         return self._create_updated_dataset(op=op, updated_catalog_info_params=hc_updates)
 

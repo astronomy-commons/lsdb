@@ -1259,6 +1259,8 @@ class Catalog(HealpixDataset):
             the name provided in ``nested_name``. All columns in list_columns must have pyarrow list
             dtypes, otherwise the operation will fail. If None, is defined as all columns not in
             ``base_columns``.
+        name : str, default "nested"
+            The name of the resulting nested column.
 
         Returns
         -------
@@ -1298,14 +1300,14 @@ class Catalog(HealpixDataset):
 
     def map_rows(
         self,
-        func,
-        columns=None,
+        func: Callable,
+        columns: str | list[str] | None = None,
         *,
-        meta,
-        row_container="dict",
-        output_names=None,
-        infer_nesting=True,
-        append_columns=False,
+        meta: object,
+        row_container: Literal["dict", "args"] = "dict",
+        output_names: str | list[str] | None = None,
+        infer_nesting: bool = True,
+        append_columns: bool = False,
         **kwargs,
     ) -> Catalog:
         """Takes a function and applies it to each top-level row of the Catalog.

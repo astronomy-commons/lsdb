@@ -830,6 +830,8 @@ def generate_meta_df_for_nested_tables(
         The name of the column in the right catalog to join on
     extra_columns : pd.Dataframe or None, default None
         Any additional columns to the merged catalogs
+    extra_nested_columns : pd.Dataframe or None, default None
+        Any additional columns to add to the nested column
     index_name : str, default SPATIAL_INDEX_COLUMN
         The name of the index in the resulting DataFrame
     index_type : Dtype or None, default None

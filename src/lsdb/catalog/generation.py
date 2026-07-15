@@ -19,7 +19,7 @@ def generate_data(
     ----------
     n_base : int
         The number of rows to generate for the base layer
-    n_layer : int, or dict
+    n_layer : int or dict
         The number of rows per n_base row to generate for a nested layer.
         Alternatively, a dictionary of layer label, layer_size pairs may be
         specified to created multiple nested columns with custom sizing.
@@ -179,7 +179,7 @@ def generate_catalog(
     ----------
     n_base : int
         The number of rows to generate for the base layer
-    n_layer : int, or dict
+    n_layer : int or dict
         The number of rows per n_base row to generate for a nested layer.
         Alternatively, a dictionary of layer label, layer_size pairs may be
         specified to created multiple nested columns with custom sizing.
