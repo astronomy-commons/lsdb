@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import warnings
-from typing import cast
+from typing import SupportsInt, cast
 
 import hats as hc
 import hats.pixel_math.healpix_shim as hp
@@ -236,14 +236,19 @@ class MarginCatalogGenerator:
             self.dataframe[self.hc_structure.catalog_info.ra_column].to_numpy(),
             self.dataframe[self.hc_structure.catalog_info.dec_column].to_numpy(),
         )
+        # merge()/groupby() preserve the NestedFrame subclass via its _constructor mechanism;
+        # pandas-stubs types multi-column groupby keys as Hashable regardless of column dtype.
         constrained_data = self.dataframe.reset_index().merge(margin_pairs_df, on="margin_pixel")
         if len(constrained_data):
             for partition_group, partition_df in constrained_data.groupby(
                 ["partition_order", "partition_pixel"]
             ):
-                margin_pixel = HealpixPixel(cast(int, partition_group[0]), cast(int, partition_group[1]))
+                margin_pixel = HealpixPixel(
+                    int(cast(SupportsInt, partition_group[0])),
+                    int(cast(SupportsInt, partition_group[1])),
+                )
                 margin_pixel_df_map[margin_pixel] = _format_margin_partition_dataframe(
-                    npd.NestedFrame(partition_df)
+                    cast(npd.NestedFrame, partition_df)
                 )
         return margin_pixel_df_map
 

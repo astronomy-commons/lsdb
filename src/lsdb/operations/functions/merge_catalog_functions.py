@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Callable, Literal, Sequence
+from typing import TYPE_CHECKING, Callable, Literal, Sequence, cast
 
 import hats.pixel_math.healpix_shim as hp
 import nested_pandas as npd
@@ -12,6 +12,7 @@ from dask.dataframe.dispatch import make_meta
 from hats.catalog import TableProperties
 from hats.io import paths
 from hats.pixel_math import HealpixPixel
+from hats.pixel_math.healpix_pixel import get_lower_order_pixel
 from hats.pixel_math.pixel_margins import get_margin
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN, SPATIAL_INDEX_ORDER, healpix_to_spatial_index
 from hats.pixel_tree import PixelAlignment, PixelAlignmentType, align_trees
@@ -640,8 +641,9 @@ def filter_by_spatial_index_to_margin(
 
     margin_pixels = get_margin(order, pixel, margin_order - order)
     spatial_index_values = dataframe.index.to_numpy()
-    # Vectorized equivalent of get_lower_order_pixel, which only accepts a scalar pixel.
-    margin_order_hp_pix = spatial_index_values >> (2 * (spatial_index_order - margin_order))
+    margin_order_hp_pix = get_lower_order_pixel(
+        spatial_index_order, spatial_index_values, spatial_index_order - margin_order
+    )
     mask = np.isin(margin_order_hp_pix, margin_pixels)
     filtered_df = dataframe[mask]
     return filtered_df
@@ -784,10 +786,12 @@ def generate_meta_df_for_joined_tables(
         suffix_method,
         log_changes=log_changes,
     )
-    meta: pd.DataFrame = pd.concat([left_meta, right_meta], axis=1)
+    # pd.concat preserves the NestedFrame subclass via its _constructor mechanism, even when
+    # mixed with a plain DataFrame below; pandas-stubs' concat overloads don't know that.
+    meta = cast(npd.NestedFrame, pd.concat([left_meta, right_meta], axis=1))
     # Construct meta for crossmatch result columns
     if extra_columns is not None:
-        meta = pd.concat([meta, extra_columns], axis=1)
+        meta = cast(npd.NestedFrame, pd.concat([meta, extra_columns], axis=1))
     if index_type is None:
         index_type = catalogs[0].meta.index.dtype
     if catalogs[0].hc_structure.has_healpix_column():

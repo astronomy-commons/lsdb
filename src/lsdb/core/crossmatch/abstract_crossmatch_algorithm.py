@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import nested_pandas as npd
 import numpy as np
@@ -207,9 +207,7 @@ class AbstractCrossmatchAlgorithm(ABC):
         dataframe.rename(columns=columns_renamed, inplace=True)
 
     @classmethod
-    def _append_extra_columns(
-        cls, dataframe: npd.NestedFrame | pd.DataFrame, extra_columns: pd.DataFrame | None = None
-    ):
+    def _append_extra_columns(cls, dataframe: npd.NestedFrame, extra_columns: pd.DataFrame | None = None):
         """Adds crossmatch extra columns to the resulting Dataframe."""
         if cls.extra_columns is None:
             return
@@ -274,14 +272,19 @@ class AbstractCrossmatchAlgorithm(ABC):
         left_df, right_df = apply_suffixes(left_df, right_df, suffixes, suffix_method, log_changes=False)
         # concat dataframes together
         index_name = left_df.index.name if left_df.index.name is not None else "index"
+        # pd.concat preserves the NestedFrame subclass via its _constructor mechanism, even when
+        # mixed with a plain DataFrame below; pandas-stubs' concat overloads don't know that.
         left_join_part = left_df.iloc[left_idx].reset_index()
         right_join_part = right_df.iloc[right_idx].reset_index(drop=True)
-        out: pd.DataFrame = pd.concat(
-            [
-                left_join_part,
-                right_join_part,
-            ],
-            axis=1,
+        out = cast(
+            npd.NestedFrame,
+            pd.concat(
+                [
+                    left_join_part,
+                    right_join_part,
+                ],
+                axis=1,
+            ),
         )
         out.set_index(index_name, inplace=True)
         if how == "left":
@@ -309,7 +312,7 @@ class AbstractCrossmatchAlgorithm(ABC):
             unmatched_out = pd.concat([left_unmatched, unmatched_right], axis=1)
 
             # Combine matched (one row per match) and unmatched (one row per non-match)
-            out = pd.concat([matched_out, unmatched_out], axis=0, ignore_index=True)
+            out = cast(npd.NestedFrame, pd.concat([matched_out, unmatched_out], axis=0, ignore_index=True))
             # Restore the original left index as the DataFrame index
             out.set_index(index_name, inplace=True)
 
@@ -336,12 +339,15 @@ class AbstractCrossmatchAlgorithm(ABC):
         elif how == "inner":
             left_join_part = left_df.iloc[left_idx].reset_index()
             right_join_part = right_df.iloc[right_idx].reset_index(drop=True)
-            out = pd.concat(
-                [
-                    left_join_part,
-                    right_join_part,
-                ],
-                axis=1,
+            out = cast(
+                npd.NestedFrame,
+                pd.concat(
+                    [
+                        left_join_part,
+                        right_join_part,
+                    ],
+                    axis=1,
+                ),
             )
             out.set_index(index_name, inplace=True)
         # align index

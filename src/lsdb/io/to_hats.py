@@ -100,11 +100,7 @@ def calculate_histogram(df: npd.NestedFrame, histogram_order: int) -> SparseHist
     SparseHistogram
         The sparse count histogram for the partition, at the specified order.
     """
-    # spatial_index_to_healpix is annotated for list[int] but also accepts (and is commonly called
-    # with) an ndarray, which it handles equivalently via vectorized bit-shifting.
-    order_pixels = spatial_index_to_healpix(
-        df.index.to_numpy(), target_order=histogram_order  # type: ignore[arg-type]
-    )
+    order_pixels = spatial_index_to_healpix(df.index.to_numpy(), target_order=histogram_order)
     gb = df.groupby(order_pixels, sort=False).apply(len)
     indexes, counts_at_indexes = gb.index.to_numpy(), gb.to_numpy(na_value=0)
     return SparseHistogram(indexes, counts_at_indexes, histogram_order)
