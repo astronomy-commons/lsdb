@@ -75,7 +75,9 @@ class IndexSearch(AbstractSearch):
             )
             if "." in index_column:
                 mask = frame.map_rows(
-                    lambda x: np.isin(x, field_values).any(), columns=index_column, row_container="args"
+                    lambda x, field_values=field_values: np.isin(x, field_values).any(),
+                    columns=index_column,
+                    row_container="args",
                 )[0]
             else:
                 mask = frame[index_column].isin(field_values)
