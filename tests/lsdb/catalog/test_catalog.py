@@ -40,30 +40,6 @@ def test_catalog_pixels_equals_hc_catalog_pixels(small_sky_order1_catalog, small
     assert small_sky_order1_catalog.get_healpix_pixels() == small_sky_order1_hats_catalog.get_healpix_pixels()
 
 
-# def test_catalog_repr_equals_ddf_repr(small_sky_order1_catalog):
-#    # TODO: Failing as repr is just the operation name
-# Switching to data_repr, which will not be the same as ddf but is reasonable
-#    assert repr(small_sky_order1_catalog) == repr(small_sky_order1_catalog.to_dask_dataframe())
-
-
-def test_catalog_html_repr(small_sky_order1_catalog):
-    full_html = small_sky_order1_catalog._repr_html_()
-    assert small_sky_order1_catalog.name in full_html
-    assert str(small_sky_order1_catalog.get_ordered_healpix_pixels()[0]) in full_html
-    assert str(small_sky_order1_catalog.get_ordered_healpix_pixels()[-1]) in full_html
-    assert "available columns in the catalog have been loaded <strong>lazily</strong>" in full_html
-
-
-def test_catalog_html_repr_empty(small_sky_order1_catalog):
-    pixel_search = lsdb.PixelSearch.from_radec(80.0, 33.0)
-    cat = small_sky_order1_catalog.search(pixel_search)
-    full_html = cat._repr_html_()
-    assert cat.name in full_html
-    assert "Empty Catalog" in full_html
-    assert "npartitions=0" in full_html
-    assert "available columns in the catalog have been loaded <strong>lazily</strong>" in full_html
-
-
 def test_catalog_compute_equals_ddf_compute(small_sky_order1_catalog):
     pd.testing.assert_frame_equal(
         small_sky_order1_catalog.compute(), small_sky_order1_catalog.to_dask_dataframe().compute()

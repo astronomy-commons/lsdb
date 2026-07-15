@@ -37,6 +37,7 @@ def open_catalog(
     error_empty_filter: bool = True,
     filters: list[tuple[str]] | None = None,
     path_generator: Callable[[UPath, HealpixPixel, dict | None, str], UPath] = hc.io.pixel_catalog_file,
+    show_statistics: bool = False,
     **kwargs,
 ) -> Catalog:
     """Open a catalog from a HATS path.
@@ -107,6 +108,8 @@ def open_catalog(
 
         The catalog metadata files need to live where the HATS standard expects them.
         Defaults to `hats.io.pixel_catalog_file`.
+    show_statistics : bool, default False
+        If True, the catalog's repr displays a per-column statistics table (min/max values).
     **kwargs
         Arguments to pass to the pandas parquet file reader
 
@@ -126,6 +129,7 @@ def open_catalog(
         error_empty_filter=error_empty_filter,
         filters=filters,
         path_generator=path_generator,
+        show_statistics=show_statistics,
         **kwargs,
     )
 
@@ -199,6 +203,7 @@ def _read_dataset(
     error_empty_filter: bool = True,
     filters: list[tuple[str]] | None = None,
     path_generator: Callable[[UPath, HealpixPixel, dict | None, str], UPath] = hc.io.pixel_catalog_file,
+    show_statistics: bool = False,
     **kwargs,
 ):
     """Internal method to read any HATS collection/dataset"""
@@ -209,6 +214,7 @@ def _read_dataset(
         margin_cache=margin_cache,
         filters=filters,
         path_generator=path_generator,
+        show_statistics=show_statistics,
         kwargs=kwargs,
     )
     if isinstance(hc_catalog, hc.catalog.CatalogCollection):
@@ -269,13 +275,17 @@ def _load_catalog(hc_catalog: hc.catalog.Dataset, config: HatsLoadingConfig) -> 
     ):
         raise ValueError("The selected sky region has no coverage")
 
-    catalog.hc_structure = _update_hc_structure(catalog)
+    updated_info: dict = {}
+    if config.filters is not None:
+        updated_info["total_rows"] = None
+
+    catalog.hc_structure = _update_hc_structure(catalog, **updated_info)
     if isinstance(catalog, Catalog) and catalog.margin is not None:
-        catalog.margin.hc_structure = _update_hc_structure(catalog.margin)
+        catalog.margin.hc_structure = _update_hc_structure(catalog.margin, **updated_info)
     return catalog
 
 
-def _update_hc_structure(catalog: HealpixDataset):
+def _update_hc_structure(catalog: HealpixDataset, **updated_info):
     """Create the modified schema of the catalog after all the processing on the `read_hats` call"""
     # pylint: disable=protected-access
     default_columns = None
@@ -289,9 +299,11 @@ def _update_hc_structure(catalog: HealpixDataset):
             for col in catalog.hc_structure.catalog_info.default_columns
             if col in exploded_columns(catalog.meta)
         ]
+
     return catalog._create_modified_hc_structure(
         updated_schema=get_arrow_schema(catalog.meta),
         default_columns=default_columns,
+        **updated_info,
     )
 
 
@@ -450,6 +462,7 @@ def _load_operation(catalog: HCHealpixDataset, config) -> Operation:
         index_column=index_column,
         meta=dask_meta_schema,
         is_dir=(npix_suffix == "/"),
+        preserves_pixel_stats=not config.user_provided_filters,
         **config.kwargs,
     )
     return op

@@ -402,19 +402,20 @@ def test_set_columns_includes_healpix_column():
         dec_column="dec",
         hats_col_healpix="_healpix_29",
     )
-    config = HatsLoadingConfig(columns=["id"])
+    config = HatsLoadingConfig(columns=["id"], filters=[("id", ">", 0)])
     config.set_columns_from_catalog_info(catalog_info)
     assert "_healpix_29" in config.columns
     assert "ra" in config.columns
     assert "dec" in config.columns
+    assert config.user_provided_filters
 
 
 def test_read_hats_with_extra_kwargs(small_sky_order1_dir):
     catalog = lsdb.open_catalog(small_sky_order1_dir, filters=[("ra", ">", 300)])
     assert isinstance(catalog, lsdb.Catalog)
     assert np.greater(catalog.compute()["ra"].to_numpy(), 300).all()
-
     assert catalog.loading_config.make_query_url_params() == {"filters": "ra>300"}
+    assert catalog.hc_structure.catalog_info.total_rows is None
 
 
 def test_read_hats_with_mistaken_kwargs(small_sky_order1_dir, small_sky_xmatch_margin_dir):

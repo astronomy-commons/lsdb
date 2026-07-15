@@ -43,12 +43,23 @@ def _verified(func, meta):
 class FromHealpixMap(Operation):
     """An Operation that constructs a HealpixGraph from a function that maps HealpixPixels to DataFrames."""
 
-    def __init__(self, func, pixels, *args, meta=None, map_kwargs=None, verify_meta=True, **kwargs):
+    def __init__(
+        self,
+        func,
+        pixels,
+        *args,
+        meta=None,
+        map_kwargs=None,
+        verify_meta=True,
+        preserves_pixel_stats=True,
+        **kwargs,
+    ):
         self.func = func
         self.pixels = pixels
         self.args = args
         self._meta = meta
         self.verify_meta = verify_meta
+        self.preserves_pixel_stats = preserves_pixel_stats
         if map_kwargs is not None:
             for k in map_kwargs:
                 if k in kwargs:
@@ -347,6 +358,8 @@ def perform_select_columns(df, columns):
 class SelectColumns(MapPartitions):
     """An Operation that selects a subset of columns from each partition of a HealpixGraph."""
 
+    preserves_pixel_stats = True
+
     @staticmethod
     def class_func(df, item):
         """Select the specified columns from the DataFrame."""
@@ -360,6 +373,8 @@ class SelectColumns(MapPartitions):
 
 class SelectPixels(Operation):
     """An Operation that selects a subset of HealpixPixels from a HealpixGraph."""
+
+    preserves_pixel_stats = True
 
     def __init__(self, base: Operation, pixels: Sequence[HealpixPixel]):
         self.base = base
