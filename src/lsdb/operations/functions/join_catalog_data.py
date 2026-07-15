@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 import nested_pandas as npd
 import pandas as pd
@@ -124,7 +124,7 @@ def perform_join_nested(
     right_on: str,
     right_name: str,
     right_meta: npd.NestedFrame,
-    how: str,
+    how: Literal["inner", "left"],
 ):
     """Performs a join on two catalog partitions by adding the right catalog a nested column using
     nested-pandas
@@ -181,9 +181,9 @@ def perform_join_nested(
 
     right_joined_df = right_meta if right_pixel is None else concat_partition_and_margin(right, right_margin)
 
-    right_joined_df = pack_flat(npd.NestedFrame(right_joined_df.set_index(right_on))).rename(right_name)
+    right_joined_nested = pack_flat(npd.NestedFrame(right_joined_df.set_index(right_on))).rename(right_name)
 
-    merged = left.reset_index().merge(right_joined_df, left_on=left_on, right_index=True, how=how)
+    merged = left.reset_index().merge(right_joined_nested, left_on=left_on, right_index=True, how=how)
     merged.set_index(left_catalog_info.healpix_column, inplace=True)
     return merged
 
@@ -316,7 +316,7 @@ def perform_merge_asof(
     left_catalog_info: TableProperties,
     right_catalog_info: TableProperties,
     suffixes: tuple[str, str],
-    direction: str,
+    direction: Literal["backward", "forward", "nearest"],
     suffix_method: str | None = None,
 ):
     """Performs a merge_asof on two catalog partitions
@@ -440,7 +440,7 @@ def join_catalog_data_nested(
     left_on: str,
     right_on: str,
     nested_column_name: str | None = None,
-    how: str = "inner",
+    how: Literal["inner", "left"] = "inner",
 ) -> tuple[Operation, PixelAlignment]:
     """Joins two catalogs spatially on a specified column, adding the right as a nested column with nested
     dask
@@ -613,7 +613,7 @@ def merge_asof_catalog_data(
     left: Catalog,
     right: Catalog,
     suffixes: tuple[str, str],
-    direction: str = "backward",
+    direction: Literal["backward", "forward", "nearest"] = "backward",
     suffix_method: str | None = None,
     log_changes: bool = True,
 ) -> tuple[Operation, PixelAlignment]:

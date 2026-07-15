@@ -31,7 +31,11 @@ def _generate_op(
     tuple[Operation, int]
         The catalog's Operation and its total number of rows.
     """
-    pixel_dfs = [_convert_dtypes_to_pyarrow(df) for df in pixel_dfs] if use_pyarrow_types else pixel_dfs
+    pixel_dfs = (
+        [npd.NestedFrame(_convert_dtypes_to_pyarrow(df)) for df in pixel_dfs]
+        if use_pyarrow_types
+        else pixel_dfs
+    )
     schema = npd.NestedFrame(pixel_dfs[0].iloc[:0, :].copy()) if len(pixels) > 0 else npd.NestedFrame()
     op = FromHealpixMap(_pixel_df, pixels=pixels, meta=schema, map_kwargs={"df": pixel_dfs})
     return op, sum(len(df) for df in pixel_dfs)
