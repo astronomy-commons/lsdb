@@ -24,6 +24,7 @@ class Operation(ABC):
     """Abstract base class defining an operation."""
 
     allow_column_projection_passthrough = False
+    preserves_pixel_stats = False
 
     @property
     @abstractmethod
@@ -72,3 +73,8 @@ class Operation(ABC):
     def __repr__(self):  # pragma: no cover
         """String representation of the operation."""
         return self.name
+
+    @property
+    def pixel_stats_preserved(self) -> bool:
+        """Whether this operation and all its dependencies preserve the on-disk statistics."""
+        return self.preserves_pixel_stats and all(dep.pixel_stats_preserved for dep in self.dependencies)

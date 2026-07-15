@@ -36,6 +36,8 @@ def plot_points(
 
     Parameters
     ----------
+    df : pd.DataFrame
+        The dataframe containing the points to plot
     ra_column : str | None
         The column to use as the RA of the points to plot. Defaults to the
         catalog's default RA column. Useful for plotting joined or cross-matched points

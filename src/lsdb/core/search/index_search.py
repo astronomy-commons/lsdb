@@ -57,8 +57,6 @@ class IndexSearch(AbstractSearch):
         ----------
         frame: npd.NestedFrame
             A pixel data frame.
-        _: hc.catalog.TableProperties
-            The HATS catalog properties.
 
         Returns
         -------

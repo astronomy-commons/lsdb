@@ -42,6 +42,9 @@ class HatsLoadingConfig:
     kwargs: dict = field(default_factory=dict)
     """Extra kwargs for the pandas parquet file reader"""
 
+    show_statistics: bool = False
+    """Whether to show the per-column statistics table in the catalog repr. Defaults to False."""
+
     def __post_init__(self):
         # Check for commonly misspelled or mistaken keys
         for nonused_kwarg in ["margin", "maargin", "margins", "cache", "margincache"]:
@@ -49,6 +52,8 @@ class HatsLoadingConfig:
                 raise ValueError(
                     f"Invalid keyword argument '{nonused_kwarg}' found. Did you mean 'margin_cache'?"
                 )
+        # Whether the user passed row `filters`.
+        self.user_provided_filters = self.filters is not None
 
     def set_columns_from_catalog_info(self, catalog_info):
         """Set the appropriate columns to load, based on the user-provided `columns` argument

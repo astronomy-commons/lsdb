@@ -248,7 +248,7 @@ def to_hats(
     overwrite: bool = False,
     resume: bool = False,
     progress_bar: bool = True,
-    tqdm_kwargs=None,
+    tqdm_kwargs: dict | None = None,
     create_thumbnail: bool = False,
     skymap_alt_orders: list[int] | None = None,
     npix_suffix: str = ".parquet",
