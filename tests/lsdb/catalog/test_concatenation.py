@@ -126,17 +126,17 @@ def _row_multiset(df: pd.DataFrame) -> Counter:
     return Counter(rows)
 
 
-def _align_columns(df1: pd.DataFrame, df2: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+def _align_columns(df1: npd.NestedFrame, df2: npd.NestedFrame) -> tuple[npd.NestedFrame, npd.NestedFrame]:
     """Align two DataFrames to the union of their columns.
 
     Columns are sorted for determinism, and missing columns are filled with NaN.
 
     Args:
-        df1 (pd.DataFrame): First DataFrame.
-        df2 (pd.DataFrame): Second DataFrame.
+        df1 (npd.NestedFrame): First DataFrame.
+        df2 (npd.NestedFrame): Second DataFrame.
 
     Returns:
-        tuple[pd.DataFrame, pd.DataFrame]: DataFrames with aligned columns.
+        tuple[npd.NestedFrame, npd.NestedFrame]: DataFrames with aligned columns.
     """
     all_cols = sorted(set(df1.columns) | set(df2.columns))
     return df1.reindex(columns=all_cols), df2.reindex(columns=all_cols)

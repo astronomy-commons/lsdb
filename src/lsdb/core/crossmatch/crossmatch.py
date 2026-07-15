@@ -7,7 +7,7 @@ from lsdb.loaders.dataframe.from_dataframe import from_dataframe
 
 
 def _validate_and_convert_to_catalog(
-    data: npd.NestedFrame | pd.DataFrame, data_args: dict, suffix: str | None, default_suffix: str
+    data: Catalog | npd.NestedFrame | pd.DataFrame, data_args: dict, suffix: str | None, default_suffix: str
 ) -> Catalog:
     """Validate arguments and convert a DataFrame or NestedFrame to a Catalog."""
     if isinstance(data, Catalog):
@@ -20,8 +20,8 @@ def _validate_and_convert_to_catalog(
         data_args["catalog_name"] = suffix if suffix else default_suffix
 
     # Convert the DataFrame to a Catalog.
-    data = from_dataframe(data, **data_args)
-    return data
+    catalog = from_dataframe(data, **data_args)
+    return catalog
 
 
 # pylint: disable=too-many-arguments
