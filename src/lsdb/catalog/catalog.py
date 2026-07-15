@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import warnings
 from pathlib import Path
-from typing import Any, Callable, Iterable, overload
+from typing import Any, Callable, Iterable, Literal, overload
 
 import dask.dataframe as dd
 import hats as hc
@@ -951,7 +951,7 @@ class Catalog(HealpixDataset):
     def merge_asof(
         self,
         other: Catalog,
-        direction: str = "backward",
+        direction: Literal["backward", "forward", "nearest"] = "backward",
         suffixes: tuple[str, str] | None = None,
         output_catalog_name: str | None = None,
         suffix_method: str | None = None,
@@ -971,7 +971,7 @@ class Catalog(HealpixDataset):
             The right catalog to merge to
         suffixes : tuple[str,str]
             The suffixes to apply to each partition's column names
-        direction : str, default "backward"
+        direction : {"backward", "forward", "nearest"}, default "backward"
             The direction to perform the merge_asof
         output_catalog_name : str
             The name of the resulting catalog to be stored in metadata
@@ -1175,7 +1175,7 @@ class Catalog(HealpixDataset):
         right_on: str | None = None,
         nested_column_name: str | None = None,
         output_catalog_name: str | None = None,
-        how: str = "inner",
+        how: Literal["inner", "left"] = "inner",
     ) -> Catalog:
         """Perform a spatial join to another catalog by adding the other catalog as a nested column
 
@@ -1259,6 +1259,8 @@ class Catalog(HealpixDataset):
             the name provided in ``nested_name``. All columns in list_columns must have pyarrow list
             dtypes, otherwise the operation will fail. If None, is defined as all columns not in
             ``base_columns``.
+        name : str, default "nested"
+            The name of the resulting nested column.
 
         Returns
         -------
@@ -1298,14 +1300,14 @@ class Catalog(HealpixDataset):
 
     def map_rows(
         self,
-        func,
-        columns=None,
+        func: Callable,
+        columns: str | list[str] | None = None,
         *,
-        meta,
-        row_container="dict",
-        output_names=None,
-        infer_nesting=True,
-        append_columns=False,
+        meta: object,
+        row_container: Literal["dict", "args"] = "dict",
+        output_names: str | list[str] | None = None,
+        infer_nesting: bool = True,
+        append_columns: bool = False,
         **kwargs,
     ) -> Catalog:
         """Takes a function and applies it to each top-level row of the Catalog.

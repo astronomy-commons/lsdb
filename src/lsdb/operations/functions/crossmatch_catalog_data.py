@@ -226,18 +226,24 @@ def perform_crossmatch_nested(
         Partition from the right catalog.
     right_margin_df: npd.NestedFrame | None
         Partition from the right catalog margin cache.
+    aligned_df : npd.NestedFrame | None
+        The partition of the aligned pixel
     left_pix : HealpixPixel | None
         HealpixPixel for the left partition.
     right_pix : HealpixPixel | None
         HealpixPixel for the right partition.
     right_margin_pix : HealpixPixel | None
         HealpixPixel for the right margin partition.
+    aligned_pixel : HealpixPixel
+        HealpixPixel for the aligned partition.
     left_catalog_info : hats.catalog.TableProperties
         Catalog info for the left partition.
     right_catalog_info : hats.catalog.TableProperties
         Catalog info for the right partition.
     right_margin_catalog_info : hats.catalog.TableProperties
         Catalog info for the right margin partition.
+    aligned_catalog_info : hats.catalog.TableProperties | None
+        Catalog info for the aligned partition; usually None
     algorithm : AbstractCrossmatchAlgorithm
         The algorithm to use to perform the crossmatch. Specified by subclassing
         `AbstractCrossmatchAlgorithm`. For more details, see `crossmatch` method

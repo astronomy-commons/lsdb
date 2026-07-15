@@ -7,7 +7,7 @@ from lsdb.loaders.dataframe.from_dataframe import from_dataframe
 
 
 def _validate_and_convert_to_catalog(
-    data: npd.NestedFrame | pd.DataFrame, data_args: dict, suffix: str | None, default_suffix: str
+    data: Catalog | npd.NestedFrame | pd.DataFrame, data_args: dict, suffix: str | None, default_suffix: str
 ) -> Catalog:
     """Validate arguments and convert a DataFrame or NestedFrame to a Catalog."""
     if isinstance(data, Catalog):
@@ -20,14 +20,15 @@ def _validate_and_convert_to_catalog(
         data_args["catalog_name"] = suffix if suffix else default_suffix
 
     # Convert the DataFrame to a Catalog.
-    data = from_dataframe(data, **data_args)
-    return data
+    catalog = from_dataframe(data, **data_args)
+    return catalog
 
 
 # pylint: disable=too-many-arguments
 def crossmatch(
     left: Catalog | npd.NestedFrame | pd.DataFrame,
     right: Catalog | npd.NestedFrame | pd.DataFrame,
+    *,
     ra_column: str | None = None,
     dec_column: str | None = None,
     n_neighbors: int | None = None,
@@ -40,6 +41,8 @@ def crossmatch(
     suffixes: tuple[str, str] | None = None,
     left_args: dict | None = None,
     right_args: dict | None = None,
+    suffix_method: str | None = None,
+    log_changes: bool = True,
 ) -> Catalog:
     """Perform a cross-match between two frames, two catalogs,
     a catalog and a frame, or a frame and a catalog.
@@ -83,6 +86,16 @@ def crossmatch(
         Keyword arguments to pass to from_dataframe for the left catalog.
     right_args : dict or None, default None
         Keyword arguments to pass to from_dataframe for the right catalog.
+    suffix_method : str or None, default "all_columns"
+        Method to use to add suffixes to columns. Options are:
+
+        - "overlapping_columns": only add suffixes to columns that are present in both catalogs
+        - "all_columns": add suffixes to all columns from both catalogs
+
+        .. warning:: This default will change to "overlapping_columns" in a future release.
+    log_changes : bool, default True
+        If True, logs an info message for each column that is being renamed.
+        This only applies when suffix_method is 'overlapping_columns'.
 
     Returns
     -------
@@ -126,4 +139,6 @@ def crossmatch(
         require_right_margin=require_right_margin,
         how=how,
         suffixes=suffixes,
+        suffix_method=suffix_method,
+        log_changes=log_changes,
     )

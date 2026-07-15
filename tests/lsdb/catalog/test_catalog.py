@@ -13,6 +13,7 @@ import pandas as pd
 import pytest
 from astropy.coordinates import SkyCoord
 from astropy.visualization.wcsaxes import WCSAxes
+from distributed import Client
 from hats.inspection._plotting import _get_fov_moc_from_wcs
 from hats.io.paths import get_healpix_from_path
 from hats.pixel_math import HealpixPixel
@@ -86,6 +87,59 @@ def test_catalog_compute_progress_bar_kwargs(small_sky_order1_catalog, mocker):
     small_sky_order1_catalog.compute(tqdm_kwargs={"ascii": True, "desc": "Custom Desc"})
 
     tqdm_callback.assert_called_once_with(desc="Custom Desc", disable=False, ascii=True)
+
+
+def local_client():
+    return Client(processes=False, n_workers=1, threads_per_worker=1, dashboard_address=None)
+
+
+def test_catalog_compute_with_distributed_client(small_sky_order1_catalog):
+    expected = small_sky_order1_catalog.compute(progress_bar=False)
+    with local_client():
+        result = small_sky_order1_catalog.compute(progress_bar=False)
+    assert isinstance(result, npd.NestedFrame)
+    pd.testing.assert_frame_equal(result, expected)
+
+
+def test_catalog_compute_with_distributed_client_shows_progress_bar(small_sky_order1_catalog, mocker):
+    tqdm_mock = mocker.patch("lsdb.catalog.dataset.healpix_dataset.tqdm")
+
+    with local_client():
+        small_sky_order1_catalog.compute(progress_bar=True)
+
+    n_partitions = len(small_sky_order1_catalog.get_healpix_pixels())
+    tqdm_mock.assert_called_once_with(total=n_partitions, desc="Computing Catalog", disable=False)
+    progress_bar = tqdm_mock.return_value.__enter__.return_value
+    assert progress_bar.update.call_count == n_partitions
+
+
+def test_catalog_compute_with_distributed_client_without_progress_bar(small_sky_order1_catalog, mocker):
+    tqdm_mock = mocker.patch("lsdb.catalog.dataset.healpix_dataset.tqdm")
+
+    with local_client():
+        small_sky_order1_catalog.compute(progress_bar=False)
+
+    n_partitions = len(small_sky_order1_catalog.get_healpix_pixels())
+    tqdm_mock.assert_called_once_with(total=n_partitions, desc="Computing Catalog", disable=True)
+
+
+def test_catalog_compute_with_distributed_client_progress_bar_kwargs(small_sky_order1_catalog, mocker):
+    tqdm_mock = mocker.patch("lsdb.catalog.dataset.healpix_dataset.tqdm")
+
+    with local_client():
+        small_sky_order1_catalog.compute(tqdm_kwargs={"ascii": True, "desc": "Custom Desc"})
+
+    n_partitions = len(small_sky_order1_catalog.get_healpix_pixels())
+    tqdm_mock.assert_called_once_with(total=n_partitions, desc="Custom Desc", disable=False, ascii=True)
+
+
+def test_catalog_compute_empty_with_distributed_client(small_sky_order1_catalog):
+    pixel_search = lsdb.PixelSearch.from_radec(80.0, 33.0)
+    empty_catalog = small_sky_order1_catalog.search(pixel_search)
+    with local_client():
+        result = empty_catalog.compute(progress_bar=False)
+    assert len(result) == 0
+    assert list(result.columns) == list(small_sky_order1_catalog.columns)
 
 
 def test_catalog_iloc_raises_error(small_sky_order1_catalog):

@@ -2,12 +2,11 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Callable, Literal, Sequence
+from typing import TYPE_CHECKING, Callable, Literal, Sequence, cast
 
 import hats.pixel_math.healpix_shim as hp
 import nested_pandas as npd
 import numpy as np
-import numpy.typing as npt
 import pandas as pd
 from dask.dataframe.dispatch import make_meta
 from hats.catalog import TableProperties
@@ -25,6 +24,8 @@ from lsdb.operations.lsdb_ops import AlignAndApply
 from lsdb.operations.operation import Operation
 
 if TYPE_CHECKING:
+    from pandas._typing import Dtype
+
     from lsdb.catalog.association_catalog import AssociationCatalog
     from lsdb.catalog.catalog import Catalog
     from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
@@ -175,7 +176,7 @@ def apply_left_suffix(
 
 def apply_right_suffix(
     col_name: str,
-    left_col_names: list[str],
+    left_col_names: list[str] | pd.Index,
     suffixes: tuple[str, str],
     suffix_method: str | None = None,
     log_changes: bool = False,
@@ -186,7 +187,7 @@ def apply_right_suffix(
     ----------
     col_name : str
         The column name to apply the suffix to
-    left_col_names : list[str]
+    left_col_names : list[str] | pd.Index
         The column names in the left dataframe
     suffixes : tuple[str, str]
         The suffixes to apply to the left and right dataframes
@@ -225,10 +226,12 @@ def concat_partition_and_margin(
     npd.NestedFrame
         The concatenated dataframe with the partition on top and the margin on the bottom
     """
-    if margin is None:
-        return partition
     if partition is None:
         return margin
+    if margin is None or len(margin) == 0:
+        # An empty (but not None) margin contributes no rows. Skipping the concat
+        # avoids a pandas FutureWarning about concatenating empty frames.
+        return partition
     joined_df = pd.concat([partition, margin])
     return npd.NestedFrame(joined_df)
 
@@ -742,7 +745,7 @@ def generate_meta_df_for_joined_tables(
     suffix_method: str | None = None,
     extra_columns: pd.DataFrame | None = None,
     index_name: str = SPATIAL_INDEX_COLUMN,
-    index_type: npt.DTypeLike | None = None,
+    index_type: Dtype | None = None,
     log_changes: bool = True,
 ) -> npd.NestedFrame:
     """Generates a Dask meta DataFrame that would result from joining two catalogs
@@ -762,7 +765,7 @@ def generate_meta_df_for_joined_tables(
         Any additional columns to the merged catalogs
     index_name : str, default SPATIAL_INDEX_COLUMN
         The name of the index in the resulting DataFrame
-    index_type : npt.DTypeLike or None
+    index_type : Dtype or None
         The type of the index in the resulting DataFrame.
         Default: type of index in the first catalog
     log_changes : bool, default True
@@ -783,10 +786,12 @@ def generate_meta_df_for_joined_tables(
         suffix_method,
         log_changes=log_changes,
     )
-    meta = pd.concat([left_meta, right_meta], axis=1)
+    # pd.concat preserves the NestedFrame subclass via its _constructor mechanism, even when
+    # mixed with a plain DataFrame below; pandas-stubs' concat overloads don't know that.
+    meta = cast(npd.NestedFrame, pd.concat([left_meta, right_meta], axis=1))
     # Construct meta for crossmatch result columns
     if extra_columns is not None:
-        meta = pd.concat([meta, extra_columns], axis=1)
+        meta = cast(npd.NestedFrame, pd.concat([meta, extra_columns], axis=1))
     if index_type is None:
         index_type = catalogs[0].meta.index.dtype
     if catalogs[0].hc_structure.has_healpix_column():
@@ -804,7 +809,7 @@ def generate_meta_df_for_nested_tables(
     extra_columns: pd.DataFrame | None = None,
     extra_nested_columns: pd.DataFrame | None = None,
     index_name: str = SPATIAL_INDEX_COLUMN,
-    index_type: npt.DTypeLike | None = None,
+    index_type: Dtype | None = None,
 ) -> npd.NestedFrame:
     """Generates a Dask meta DataFrame that would result from joining two catalogs, adding the right as a
     nested frame
@@ -825,9 +830,11 @@ def generate_meta_df_for_nested_tables(
         The name of the column in the right catalog to join on
     extra_columns : pd.Dataframe or None, default None
         Any additional columns to the merged catalogs
+    extra_nested_columns : pd.Dataframe or None, default None
+        Any additional columns to add to the nested column
     index_name : str, default SPATIAL_INDEX_COLUMN
         The name of the index in the resulting DataFrame
-    index_type : npt.DTypeLike or None, default None
+    index_type : Dtype or None, default None
         The type of the index in the resulting DataFrame
 
     Returns

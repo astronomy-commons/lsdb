@@ -492,6 +492,12 @@ def read_pixel(
         The HEALPix file whose file is to be read.
     path_generator : Callable[[UPath, HealpixPixel, dict | None, str], UPath]
         The object that translates HEALPix to their respective files.
+    catalog_base_dir : UPath
+        The base directory of the catalog.
+    npix_suffix : str
+        The suffix used for the pixel's file or directory name.
+    query_url_params : dict or None, default None
+        Additional URL query parameters to use, for HTTP-backed catalogs.
     index_column : str, default SPATIAL_INDEX_COLUMN
         The index column.
     columns: list[str] or str or None, default None
@@ -500,6 +506,8 @@ def read_pixel(
         The pyarrow schema expected for the file.
     is_dir : bool, optional
         (Default value = False) If True, the pixel data is stored in a directory.
+    **kwargs
+        Additional keyword arguments to pass to the parquet read operation.
 
     Returns
     -------
