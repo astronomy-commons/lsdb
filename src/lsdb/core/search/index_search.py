@@ -63,6 +63,8 @@ class IndexSearch(AbstractSearch):
         npd.NestedFrame
             The filtered pixel data frame.
         """
+        if len(frame) == 0:
+            return frame
         filter_mask = np.ones(len(frame), dtype=np.bool)
         for field_name, field_index_catalog in self.index_catalogs.items():
             index_column = field_index_catalog.catalog_info.indexing_column
@@ -71,6 +73,13 @@ class IndexSearch(AbstractSearch):
                 if isinstance(self.values[field_name], list)
                 else [self.values[field_name]]
             )
-            mask = frame[index_column].isin(field_values)
+            if "." in index_column:
+                mask = frame.map_rows(
+                    lambda x, field_values=field_values: np.isin(x, field_values).any(),
+                    columns=index_column,
+                    row_container="args",
+                )[0]
+            else:
+                mask = frame[index_column].isin(field_values)
             filter_mask = filter_mask & mask
         return frame[filter_mask]
