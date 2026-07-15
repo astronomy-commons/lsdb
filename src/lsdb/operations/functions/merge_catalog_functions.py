@@ -229,7 +229,7 @@ def concat_partition_and_margin(
         return margin
     if margin is None or len(margin) == 0:
         # An empty (but not None) margin contributes no rows. Skipping the concat
-        # avoids a pandas FutureWarning about concatenating empty/all-NA entries.
+        # avoids a pandas FutureWarning about concatenating empty frames.
         return partition
     joined_df = pd.concat([partition, margin])
     return npd.NestedFrame(joined_df)
