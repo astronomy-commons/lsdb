@@ -1512,6 +1512,10 @@ class Catalog(HealpixDataset):
             per partition, for quick previewing of the catalog's contents.
         error_if_empty : bool, default True
             If True, raises an error if the catalog is empty.
+        create_summary : bool, default True
+            If True, writes ``README.md`` summary file(s) describing the catalog. When
+            ``as_collection`` is True, this generates a summary for the collection, the
+            main catalog, and the margin (if it exists).
         **kwargs
             Arguments to pass to the parquet write operations
 

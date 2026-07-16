@@ -1416,6 +1416,8 @@ class HealpixDataset:
             Keyword arguments to pass to tqdm for customizing the progress bar
         error_if_empty : bool, default True
             If True, raises an error if the catalog is empty.
+        create_summary : bool, default True
+            If True, writes a ``README.md`` summary file describing the catalog.
         **kwargs
             Arguments to pass to the parquet write operations
         """
