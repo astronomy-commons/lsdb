@@ -192,6 +192,7 @@ can run against all staged changes with the command:
     Thus, this bypass should only be used when necessary, 
     as resolving issues locally ensures successful CI/CD checks.)
     
+    
 
 Create a branch
 -------------------------------------------------------------------------------

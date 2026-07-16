@@ -14,6 +14,7 @@ from hats.catalog import CatalogType, PartitionInfo
 from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
 from hats.io import file_io
 from hats.io.skymap import write_skymap
+from hats.io.summary_file import write_catalog_summary_file
 from hats.pixel_math import HealpixPixel, spatial_index_to_healpix
 from hats.pixel_math.sparse_histogram import HistogramAggregator, SparseHistogram
 from tqdm.dask import TqdmCallback
@@ -237,7 +238,7 @@ def remove_done_files(base_catalog_path: UPath):
     file_io.remove_directory(done_path, ignore_errors=True)
 
 
-# pylint: disable=protected-access,too-many-locals
+# pylint: disable=protected-access,too-many-locals,too-many-arguments
 def to_hats(
     catalog: HealpixDataset,
     *,
@@ -250,6 +251,7 @@ def to_hats(
     progress_bar: bool = True,
     tqdm_kwargs: dict | None = None,
     create_thumbnail: bool = False,
+    create_summary: bool = True,
     skymap_alt_orders: list[int] | None = None,
     npix_suffix: str = ".parquet",
     npix_parquet_name: str | None = None,
@@ -292,6 +294,8 @@ def to_hats(
     create_thumbnail : bool, default False
         If True, create a data thumbnail of the catalog for
         previewing purposes. Defaults to False.
+    create_summary : bool, default True
+        If True, writes a ``README.md`` summary file describing the catalog.
     skymap_alt_orders : list[int] or None, default None
         We will write a skymap file at the ``histogram_order``,
         but can also write down-sampled skymaps, for easier previewing of the data.
@@ -400,6 +404,9 @@ def to_hats(
 
     remove_histogram_files(base_catalog_path)
     remove_done_files(base_catalog_path)
+
+    if create_summary:
+        write_catalog_summary_file(base_catalog_path, fmt="markdown", huggingface_metadata=False)
 
 
 def _read_existing_progress(
