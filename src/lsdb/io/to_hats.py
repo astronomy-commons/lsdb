@@ -425,8 +425,8 @@ def to_hats(
         total_rows=int(np.sum(counts)),
         default_columns=default_columns,
         hats_max_rows=hats_max_rows,
-        moc_sky_fraction=partition_info.calculate_fractional_coverage(),
-        hats_order=partition_info.get_highest_order() if len(partition_info) else 0,
+        moc_sky_fraction=f"{partition_info.calculate_fractional_coverage():.5f}",
+        hats_order=partition_info.get_highest_order() if len(partition_info) else None,
         npix_suffix=npix_suffix,
         **addl_hats_properties,
     )
