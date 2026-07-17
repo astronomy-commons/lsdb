@@ -12,9 +12,8 @@ from hats.catalog import CatalogType, PartitionInfo, TableProperties
 from hats.catalog.catalog_collection import CatalogCollection
 from hats.pixel_math import HealpixPixel
 from upath import UPath
-from lsdb.io.common import new_provenance_properties
 
-from lsdb.io.common import set_default_write_table_kwargs
+from lsdb.io.common import new_provenance_properties, set_default_write_table_kwargs
 
 if TYPE_CHECKING:
     from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
@@ -99,6 +98,11 @@ def to_association(
         Location where catalog is saved to
     catalog_name : str or None, default None
         The name of the output catalog
+    inherit_provenance : bool, default False
+        If the original catalog had some provenance info (like creator or bib references),
+        should this new catalog retain all of it?
+    addl_hats_properties : dict or None, default None
+        Additional properties to add to the output catalog's hats properties
     primary_catalog_dir : path-like or None, default None
         The path to the primary catalog
     primary_column_association : str or None, default None
@@ -117,11 +121,15 @@ def to_association(
         The id column in the join catalog
     separation_column : str or None, default None
         The name of the crossmatch separation column
+    create_parquet_metadata : bool, default True
+        Should we create /dataset/_metadata parquet from all data partitions.
+    create_per_partition_statistics : bool, default True
+        Should we create per_partition_statistics.parquet, based on footers from all data partitions
+    error_if_empty : bool, default True
+        If True, raises an error if the output catalog is empty
     overwrite : bool, default False
         If True existing catalog is overwritten
-    addl_hats_properties : dict or None, default None
-        Additional properties to add to the output catalog's hats properties
-    **kwargs
+    write_table_kwargs: dict or None, default None
         Arguments to pass to the parquet write operations
 
     Notes
@@ -258,6 +266,8 @@ def write_partitions(
         Path to the base directory of the catalog
     separation_column : str or None
         The name of the crossmatch separation column
+    error_if_empty : bool, default True
+        If True, raises an error if the output catalog is empty
     **kwargs
         Arguments to pass to the parquet write operations
 

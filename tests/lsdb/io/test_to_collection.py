@@ -221,7 +221,7 @@ def test_save_collection_provenance(small_sky_order1_df, tmp_path):
         base_collection_path,
         catalog_name="small_sky_order1",
         default_columns=["ra", "dec"],
-        addl_hats_properties={"obs_regime": "Optical","hats_creator": "LSDB Unit Test"},
+        addl_hats_properties={"obs_regime": "Optical", "hats_creator": "LSDB Unit Test"},
     )
 
     catalog = lsdb.read_hats(base_collection_path)

@@ -14,6 +14,9 @@ def new_provenance_properties(
     ----------
     path: str | Path | UPath | None, default None
         The path to the catalog.
+    inherit_provenance : bool, default False
+        If the original catalog had some provenance info (like creator or bib references),
+        should this new catalog retain all of it?
     **kwargs
         Additional provenance properties.
 
@@ -30,9 +33,7 @@ def new_provenance_properties(
             "creator_did": None,
             "publisher_id": None,
         }
-    return TableProperties.new_provenance_dict(
-        path, builder=f"lsdb v{version('lsdb')}", **kwargs
-    )
+    return TableProperties.new_provenance_dict(path, builder=f"lsdb v{version('lsdb')}", **kwargs)
 
 
 def set_default_write_table_kwargs(write_table_kwargs):

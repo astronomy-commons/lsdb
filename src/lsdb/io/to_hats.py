@@ -238,7 +238,7 @@ def remove_done_files(base_catalog_path: UPath):
     file_io.remove_directory(done_path, ignore_errors=True)
 
 
-# pylint: disable=protected-access,too-many-locals,too-many-arguments
+# pylint: disable=protected-access,too-many-locals,too-many-arguments,too-many-statements
 def to_hats(
     catalog: HealpixDataset,
     *,
@@ -283,6 +283,12 @@ def to_hats(
         A metadata property with the list of the columns in the
         catalog to be loaded by default. Uses the default columns from the original hats
         catalog if they exist.
+    inherit_provenance : bool, default False
+        If the original catalog had some provenance info (like creator or bib references),
+        should this new catalog retain all of it?
+    addl_hats_properties : dict or None, default None
+        key-value pairs of additional properties to write in the
+        ``hats.properties`` file.
     histogram_order : int or None, default None
         The default order for the count histogram. Defaults to the same
         skymap order as original catalog, or the highest order healpix of the current
@@ -295,11 +301,20 @@ def to_hats(
         If True, shows a progress bar for the export process. Defaults to True.
     tqdm_kwargs : dict, default None
         Additional kwargs to pass to the tqdm progress bar.
+    create_parquet_metadata : bool, default True
+        Should we create /dataset/_metadata parquet from all data partitions.
     create_thumbnail : bool, default False
         If True, create a data thumbnail of the catalog for
         previewing purposes. Defaults to False.
+    create_per_partition_statistics : bool, default True
+        Should we create per_partition_statistics.parquet, based on footers from all data partitions
+    error_if_empty : bool, default True
+        If True, raises an error if the output catalog is empty
     create_summary : bool, default True
         If True, writes a ``README.md`` summary file describing the catalog.
+    should_write_skymap: bool, default True
+        Should we write a `skymap.fits` file, with the point distribution of the catalog?
+        Main catalogs should contain skymap fits files, generally.
     skymap_alt_orders : list[int] or None, default None
         We will write a skymap file at the ``histogram_order``,
         but can also write down-sampled skymaps, for easier previewing of the data.
@@ -309,12 +324,7 @@ def to_hats(
         Name of the pixel parquet file to be used when npix_suffix=/.
         By default, it will be named after the pixel with a .parquet
         extension (e.g. 'Npix=10.parquet').
-    addl_hats_properties : dict or None, default None
-        key-value pairs of additional properties to write in the
-        ``hats.properties`` file.
-    error_if_empty : bool, default True
-        If True, raises an error if the output catalog is empty
-    **kwargs :
+    write_table_kwargs: dict or None, default None
         Arguments to pass to the parquet write operations
     """
     if overwrite and resume:

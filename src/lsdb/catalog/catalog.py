@@ -1468,6 +1468,7 @@ class Catalog(HealpixDataset):
             **kwargs,
         )
 
+    # pylint: disable=too-many-locals,too-many-arguments
     def write_catalog(
         self,
         base_catalog_path: str | Path | UPath,
@@ -1491,7 +1492,6 @@ class Catalog(HealpixDataset):
         npix_suffix: str = ".parquet",
         npix_parquet_name: str | None = None,
         write_table_kwargs: dict | None = None,
-        **kwargs,
     ):
         """Save the catalog to disk in HATS format.
 
@@ -1505,6 +1505,12 @@ class Catalog(HealpixDataset):
             A metadata property with the list of the columns in the
             catalog to be loaded by default. By default, uses the default columns from the
             original hats catalog if they exist.
+        inherit_provenance : bool, default False
+            If the original catalog had some provenance info (like creator or bib references),
+            should this new catalog retain all of it?
+        addl_hats_properties : dict or None, default None
+            key-value pairs of additional properties to write in the
+            ``hats.properties`` file.
         as_collection : bool, default True
             If True, saves the catalog and its margin as a collection
         overwrite : bool, default False
@@ -1516,16 +1522,32 @@ class Catalog(HealpixDataset):
             If True, shows a progress bar for the export process. Defaults to True.
         tqdm_kwargs : dict, default None
             Additional kwargs to pass to the tqdm progress bar.
-        create_thumbnail : bool, default True
-            If True, creates a ``data_thumbnail.parquet`` file containing one row
-            per partition, for quick previewing of the catalog's contents.
+        create_parquet_metadata : bool, default True
+            Should we create /dataset/_metadata parquet from all data partitions.
+        create_thumbnail : bool, default False
+            If True, create a data thumbnail of the catalog for
+            previewing purposes. Defaults to False.
+        create_per_partition_statistics : bool, default True
+            Should we create per_partition_statistics.parquet, based on footers from all data partitions
         error_if_empty : bool, default True
-            If True, raises an error if the catalog is empty.
+            If True, raises an error if the output catalog is empty
         create_summary : bool, default True
             If True, writes ``README.md`` summary file(s) describing the catalog. When
             ``as_collection`` is True, this generates a summary for the collection, the
             main catalog, and the margin (if it exists).
-        **kwargs
+        should_write_skymap: bool, default True
+            Should we write a `skymap.fits` file, with the point distribution of the catalog?
+            Main catalogs should contain skymap fits files, generally.
+        skymap_alt_orders : list[int] or None, default None
+            We will write a skymap file at the ``histogram_order``,
+            but can also write down-sampled skymaps, for easier previewing of the data.
+        npix_suffix : str, default '.parquet'
+            Extension for the parquet file (or `/` if a directory)
+        npix_parquet_name : str | None, default None
+            Name of the pixel parquet file to be used when npix_suffix=/.
+            By default, it will be named after the pixel with a .parquet
+            extension (e.g. 'Npix=10.parquet').
+        write_table_kwargs: dict or None, default None
             Arguments to pass to the parquet write operations
 
         Examples
@@ -1561,7 +1583,6 @@ class Catalog(HealpixDataset):
                 write_table_kwargs=write_table_kwargs,
                 npix_suffix=npix_suffix,
                 npix_parquet_name=npix_parquet_name,
-                **kwargs,
             )
         else:
             super().write_catalog(
@@ -1584,5 +1605,4 @@ class Catalog(HealpixDataset):
                 write_table_kwargs=write_table_kwargs,
                 npix_suffix=npix_suffix,
                 npix_parquet_name=npix_parquet_name,
-                **kwargs,
             )
