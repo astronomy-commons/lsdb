@@ -12,6 +12,7 @@ from hats.catalog import CatalogType, PartitionInfo, TableProperties
 from hats.catalog.catalog_collection import CatalogCollection
 from hats.pixel_math import HealpixPixel
 from upath import UPath
+from lsdb.io.common import new_provenance_properties
 
 from lsdb.io.common import set_default_write_table_kwargs
 
@@ -67,6 +68,8 @@ def to_association(
     *,
     base_catalog_path: str | Path | UPath,
     catalog_name: str | None = None,
+    inherit_provenance: bool = False,
+    addl_hats_properties: dict | None = None,
     primary_catalog_dir: str | Path | UPath | None = None,
     primary_column_association: str | None = None,
     primary_id_column: str | None = None,
@@ -75,9 +78,11 @@ def to_association(
     join_to_primary_id_column: str | None = None,
     join_id_column: str | None = None,
     separation_column: str | None = None,
+    create_parquet_metadata: bool = True,
+    create_per_partition_statistics: bool = True,
+    error_if_empty: bool = True,
     overwrite: bool = False,
-    addl_hats_properties: dict | None = None,
-    **kwargs,
+    write_table_kwargs: dict | None = None,
 ):
     """Writes a crossmatching product to disk, in HATS association table format.
     The output catalog comprises partition parquet files and respective metadata.
@@ -192,13 +197,22 @@ def to_association(
     file_io.file_io.make_directory(base_catalog_path, exist_ok=True)
 
     # Save partition parquet files
-    kwargs = set_default_write_table_kwargs(kwargs)
+    write_table_kwargs = set_default_write_table_kwargs(write_table_kwargs)
     pixels, counts, max_separations = write_partitions(
-        catalog, base_catalog_dir_fp=base_catalog_path, separation_column=separation_column, **kwargs
+        catalog,
+        base_catalog_dir_fp=base_catalog_path,
+        separation_column=separation_column,
+        error_if_empty=error_if_empty,
+        **write_table_kwargs,
     )
 
     # Save parquet metadata
-    file_io.write_parquet_metadata(base_catalog_path, create_thumbnail=False)
+    file_io.write_parquet_metadata(
+        base_catalog_path,
+        create_metadata=create_parquet_metadata,
+        create_per_partition_stats=create_per_partition_statistics,
+        create_thumbnail=False,
+    )
 
     # Save partition info
     partition_info = PartitionInfo(pixels)
@@ -211,8 +225,8 @@ def to_association(
         "contains_leaf_files": True,
         "hats_order": partition_info.get_highest_order(),
         "total_rows": int(np.sum(counts)),
-        "moc_sky_fraction": f"{partition_info.calculate_fractional_coverage():0.5f}",
-    }
+        "moc_sky_fraction": partition_info.calculate_fractional_coverage(),
+    } | new_provenance_properties(inherit_provenance=inherit_provenance)
 
     max_separation = np.max(max_separations)
     if max_separation != -1:
@@ -229,6 +243,7 @@ def write_partitions(
     catalog: HealpixDataset,
     base_catalog_dir_fp: str | Path | UPath,
     separation_column: str | None,
+    error_if_empty: bool = True,
     **kwargs,
 ) -> tuple[list[HealpixPixel], list[int], list[float]]:
     """Saves catalog partitions as parquet to disk and computes the sparse
@@ -270,7 +285,7 @@ def write_partitions(
     non_empty_max_separations = np.array(max_separations)[non_empty_indices]
 
     # Check that the catalog is not empty
-    if len(non_empty_pixels) == 0:
+    if len(non_empty_pixels) == 0 and error_if_empty:
         raise RuntimeError("The output catalog is empty")
 
     return list(non_empty_pixels), list(non_empty_counts), list(non_empty_max_separations)

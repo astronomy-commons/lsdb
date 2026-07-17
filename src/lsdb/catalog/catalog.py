@@ -1440,7 +1440,7 @@ class Catalog(HealpixDataset):
         return catalog
 
     @deprecated(
-        version="0.7.3", reason="`to_hats` will be removed in the future, " "use `write_catalog` instead."
+        version="0.7.3", reason="`to_hats` will be removed in the future, use `write_catalog` instead."
     )
     def to_hats(
         self,
@@ -1474,14 +1474,23 @@ class Catalog(HealpixDataset):
         *,
         catalog_name: str | None = None,
         default_columns: list[str] | None = None,
+        inherit_provenance: bool = False,
+        addl_hats_properties: dict | None = None,
         as_collection: bool = True,
         overwrite: bool = False,
         resume: bool = False,
         progress_bar: bool = True,
         tqdm_kwargs: dict | None = None,
-        create_thumbnail: bool = True,
+        create_parquet_metadata: bool = True,
+        create_thumbnail: bool = False,
+        create_per_partition_statistics: bool = True,
         error_if_empty: bool = True,
         create_summary: bool = True,
+        should_write_skymap: bool = True,
+        skymap_alt_orders: list[int] | None = None,
+        npix_suffix: str = ".parquet",
+        npix_parquet_name: str | None = None,
+        write_table_kwargs: dict | None = None,
         **kwargs,
     ):
         """Save the catalog to disk in HATS format.
@@ -1536,13 +1545,22 @@ class Catalog(HealpixDataset):
                 base_collection_path=base_catalog_path,
                 catalog_name=catalog_name,
                 default_columns=default_columns,
+                inherit_provenance=inherit_provenance,
+                addl_hats_properties=addl_hats_properties,
                 overwrite=overwrite,
                 resume=resume,
                 progress_bar=progress_bar,
                 tqdm_kwargs=tqdm_kwargs,
-                error_if_empty=error_if_empty,
+                create_parquet_metadata=create_parquet_metadata,
                 create_thumbnail=create_thumbnail,
+                create_per_partition_statistics=create_per_partition_statistics,
+                error_if_empty=error_if_empty,
                 create_summary=create_summary,
+                should_write_skymap=should_write_skymap,
+                skymap_alt_orders=skymap_alt_orders,
+                write_table_kwargs=write_table_kwargs,
+                npix_suffix=npix_suffix,
+                npix_parquet_name=npix_parquet_name,
                 **kwargs,
             )
         else:
@@ -1550,12 +1568,21 @@ class Catalog(HealpixDataset):
                 base_catalog_path,
                 catalog_name=catalog_name,
                 default_columns=default_columns,
+                inherit_provenance=inherit_provenance,
+                addl_hats_properties=addl_hats_properties,
                 overwrite=overwrite,
                 resume=resume,
                 progress_bar=progress_bar,
                 tqdm_kwargs=tqdm_kwargs,
+                create_parquet_metadata=create_parquet_metadata,
                 create_thumbnail=create_thumbnail,
+                create_per_partition_statistics=create_per_partition_statistics,
                 error_if_empty=error_if_empty,
                 create_summary=create_summary,
+                should_write_skymap=should_write_skymap,
+                skymap_alt_orders=skymap_alt_orders,
+                write_table_kwargs=write_table_kwargs,
+                npix_suffix=npix_suffix,
+                npix_parquet_name=npix_parquet_name,
                 **kwargs,
             )

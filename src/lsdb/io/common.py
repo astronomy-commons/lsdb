@@ -5,7 +5,9 @@ from hats.catalog import TableProperties
 from upath import UPath
 
 
-def new_provenance_properties(path: str | Path | UPath | None = None, **kwargs) -> dict:
+def new_provenance_properties(
+    path: str | Path | UPath | None = None, inherit_provenance: bool = False, **kwargs
+) -> dict:
     """Create a new provenance properties dictionary for the dataset.
 
     Parameters
@@ -20,7 +22,17 @@ def new_provenance_properties(path: str | Path | UPath | None = None, **kwargs) 
     dict
         A new provenance dictionary.
     """
-    return TableProperties.new_provenance_dict(path, builder=f"lsdb v{version('lsdb')}", **kwargs)
+    if not inherit_provenance:
+        kwargs |= {
+            "hats_creator": None,
+            "bib_reference": None,
+            "bib_reference_url": None,
+            "creator_did": None,
+            "publisher_id": None,
+        }
+    return TableProperties.new_provenance_dict(
+        path, builder=f"lsdb v{version('lsdb')}", **kwargs
+    )
 
 
 def set_default_write_table_kwargs(write_table_kwargs):
