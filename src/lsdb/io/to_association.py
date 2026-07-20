@@ -233,7 +233,7 @@ def to_association(
         "contains_leaf_files": True,
         "hats_order": partition_info.get_highest_order(),
         "total_rows": int(np.sum(counts)),
-        "moc_sky_fraction": f"{partition_info.calculate_fractional_coverage():.5f}",
+        "moc_sky_fraction": f"{partition_info.calculate_fractional_coverage():.5}",
     } | new_provenance_properties(inherit_provenance=inherit_provenance)
 
     max_separation = np.max(max_separations)
