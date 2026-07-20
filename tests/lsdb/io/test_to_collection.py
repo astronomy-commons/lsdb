@@ -18,7 +18,7 @@ def test_save_collection(small_sky_order1_collection_catalog, tmp_path, helpers)
         catalog_name="small_sky_order1",
         default_columns=["ra", "dec"],
         addl_hats_properties={"obs_regime": "Optical"},
-        compression="SNAPPY",
+        write_table_kwargs={"compression": "SNAPPY"},
     )
 
     catalog = lsdb.read_hats(base_collection_path)
@@ -88,7 +88,7 @@ def test_save_collection_progress_bar(small_sky_order1_collection_catalog, tmp_p
         catalog_name="small_sky_order1",
         default_columns=["ra", "dec"],
         addl_hats_properties={"obs_regime": "Optical"},
-        compression="SNAPPY",
+        write_table_kwargs={"compression": "SNAPPY"},
     )
 
     assert tqdm_callback.call_args_list == [
@@ -108,7 +108,7 @@ def test_save_collection_no_progress_bar(small_sky_order1_collection_catalog, tm
         catalog_name="small_sky_order1",
         default_columns=["ra", "dec"],
         addl_hats_properties={"obs_regime": "Optical"},
-        compression="SNAPPY",
+        write_table_kwargs={"compression": "SNAPPY"},
         progress_bar=False,
     )
 
@@ -204,3 +204,73 @@ def test_save_collection_no_summary(small_sky_order1_collection_catalog, tmp_pat
     assert not (base_collection_path / "README.md").exists()
     assert not (base_collection_path / "small_sky_order1" / "README.md").exists()
     assert not (base_collection_path / "small_sky_order1_3600arcs" / "README.md").exists()
+
+
+def test_save_collection_provenance(small_sky_order1_df, tmp_path):
+    """Test inheriting the provenance of the original catalog, with property like 'hats_creator'."""
+    expected_catalog = lsdb.from_dataframe(
+        small_sky_order1_df,
+        catalog_name="small_sky_order1",
+        catalog_type="object",
+        margin_threshold=3000,
+    )
+
+    # save the catalog initially with the property and confirm its presence
+    base_collection_path = Path(tmp_path) / "small_sky_order1_collection"
+    expected_catalog.write_catalog(
+        base_collection_path,
+        catalog_name="small_sky_order1",
+        default_columns=["ra", "dec"],
+        addl_hats_properties={"obs_regime": "Optical", "hats_creator": "LSDB Unit Test"},
+    )
+
+    catalog = lsdb.read_hats(base_collection_path)
+    assert catalog.hc_structure.catalog_info.obs_regime == "Optical"
+    extras = catalog.hc_structure.catalog_info.extra_dict()
+    assert "hats_creator" in extras
+    assert extras["hats_creator"] == "LSDB Unit Test"
+
+    assert catalog.margin is not None
+    assert catalog.margin.hc_structure.catalog_info.obs_regime == "Optical"
+    extras = catalog.margin.hc_structure.catalog_info.extra_dict()
+    assert "hats_creator" in extras
+    assert extras["hats_creator"] == "LSDB Unit Test"
+
+    # create a copy of the catalog, without explicitly inheriting the provenance
+    round_trip_catalog_path = Path(tmp_path) / "small_sky_drop_provenance"
+    catalog.write_catalog(
+        round_trip_catalog_path,
+        catalog_name="small_sky_order1",
+        default_columns=["ra", "dec"],
+    )
+
+    round_trip_catalog = lsdb.read_hats(round_trip_catalog_path)
+    assert round_trip_catalog.hc_structure.catalog_info.obs_regime == "Optical"
+    extras = round_trip_catalog.hc_structure.catalog_info.extra_dict()
+    assert "hats_creator" not in extras
+
+    assert round_trip_catalog.margin is not None
+    assert round_trip_catalog.margin.hc_structure.catalog_info.obs_regime == "Optical"
+    extras = round_trip_catalog.margin.hc_structure.catalog_info.extra_dict()
+    assert "hats_creator" not in extras
+
+    # create a copy of the catalog, *explicitly* inheriting the provenance
+    round_trip_catalog_path = Path(tmp_path) / "small_sky_inherit_provenance"
+    catalog.write_catalog(
+        round_trip_catalog_path,
+        catalog_name="small_sky_order1",
+        default_columns=["ra", "dec"],
+        inherit_provenance=True,
+    )
+
+    round_trip_catalog = lsdb.read_hats(round_trip_catalog_path)
+    assert round_trip_catalog.hc_structure.catalog_info.obs_regime == "Optical"
+    extras = round_trip_catalog.hc_structure.catalog_info.extra_dict()
+    assert "hats_creator" in extras
+    assert extras["hats_creator"] == "LSDB Unit Test"
+
+    assert round_trip_catalog.margin is not None
+    assert round_trip_catalog.margin.hc_structure.catalog_info.obs_regime == "Optical"
+    extras = round_trip_catalog.margin.hc_structure.catalog_info.extra_dict()
+    assert "hats_creator" in extras
+    assert extras["hats_creator"] == "LSDB Unit Test"

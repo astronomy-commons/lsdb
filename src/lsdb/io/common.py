@@ -5,13 +5,18 @@ from hats.catalog import TableProperties
 from upath import UPath
 
 
-def new_provenance_properties(path: str | Path | UPath | None = None, **kwargs) -> dict:
+def new_provenance_properties(
+    path: str | Path | UPath | None = None, inherit_provenance: bool = False, **kwargs
+) -> dict:
     """Create a new provenance properties dictionary for the dataset.
 
     Parameters
     ----------
     path: str | Path | UPath | None, default None
         The path to the catalog.
+    inherit_provenance : bool, default False
+        If the original catalog had some provenance info (like creator or bib references),
+        should this new catalog retain all of it?
     **kwargs
         Additional provenance properties.
 
@@ -20,6 +25,14 @@ def new_provenance_properties(path: str | Path | UPath | None = None, **kwargs) 
     dict
         A new provenance dictionary.
     """
+    if not inherit_provenance:
+        kwargs |= {
+            "hats_creator": None,
+            "bib_reference": None,
+            "bib_reference_url": None,
+            "creator_did": None,
+            "publisher_id": None,
+        }
     return TableProperties.new_provenance_dict(path, builder=f"lsdb v{version('lsdb')}", **kwargs)
 
 
