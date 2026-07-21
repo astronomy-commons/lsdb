@@ -21,7 +21,7 @@ from tqdm.dask import TqdmCallback
 from upath import UPath
 
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
-from lsdb.io.common import new_provenance_properties, set_default_write_table_kwargs
+from lsdb.io.common import new_provenance_properties, round_sig, set_default_write_table_kwargs
 
 DONE_DIR_NAME = "done"
 HISTOGRAM_DIR_NAME = "hists"
@@ -425,7 +425,7 @@ def to_hats(
         total_rows=int(np.sum(counts)),
         default_columns=default_columns,
         hats_max_rows=hats_max_rows,
-        moc_sky_fraction=f"{partition_info.calculate_fractional_coverage():.5}",
+        moc_sky_fraction=round_sig(partition_info.calculate_fractional_coverage()),
         hats_order=partition_info.get_highest_order() if len(partition_info) else None,
         npix_suffix=npix_suffix,
         **addl_hats_properties,
