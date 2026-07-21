@@ -1390,7 +1390,7 @@ class HealpixDataset:
         progress_bar: bool = True,
         tqdm_kwargs: dict | None = None,
         error_if_empty: bool = True,
-        create_summary: bool = True,
+        create_summary: bool = False,
         **kwargs,
     ):
         """Save the catalog to disk in HATS format.
@@ -1416,7 +1416,7 @@ class HealpixDataset:
             Keyword arguments to pass to tqdm for customizing the progress bar
         error_if_empty : bool, default True
             If True, raises an error if the catalog is empty.
-        create_summary : bool, default True
+        create_summary : bool, default False
             If True, writes a ``README.md`` summary file describing the catalog.
         **kwargs
             Arguments to pass to the parquet write operations

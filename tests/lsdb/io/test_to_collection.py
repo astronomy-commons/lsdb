@@ -185,9 +185,11 @@ def test_save_collection_with_empty_margin(small_sky_order1_df, tmp_path):
     pd.testing.assert_frame_equal(expected_catalog.margin.compute(), catalog.margin.compute())
 
 
-def test_save_collection_creates_summary_by_default(small_sky_order1_collection_catalog, tmp_path):
+def test_save_collection_creates_summary_when_enabled(small_sky_order1_collection_catalog, tmp_path):
     base_collection_path = Path(tmp_path) / "small_sky_order1_collection"
-    small_sky_order1_collection_catalog.write_catalog(base_collection_path, catalog_name="small_sky_order1")
+    small_sky_order1_collection_catalog.write_catalog(
+        base_collection_path, catalog_name="small_sky_order1", create_summary=True
+    )
     collection_summary = base_collection_path / "README.md"
     catalog_summary = base_collection_path / "small_sky_order1" / "README.md"
     margin_summary = base_collection_path / "small_sky_order1_3600arcs" / "README.md"
@@ -196,11 +198,9 @@ def test_save_collection_creates_summary_by_default(small_sky_order1_collection_
         assert len(summary_path.read_text()) > 0
 
 
-def test_save_collection_no_summary(small_sky_order1_collection_catalog, tmp_path):
+def test_save_collection_no_summary_by_default(small_sky_order1_collection_catalog, tmp_path):
     base_collection_path = Path(tmp_path) / "small_sky_order1_collection"
-    small_sky_order1_collection_catalog.write_catalog(
-        base_collection_path, catalog_name="small_sky_order1", create_summary=False
-    )
+    small_sky_order1_collection_catalog.write_catalog(base_collection_path, catalog_name="small_sky_order1")
     assert not (base_collection_path / "README.md").exists()
     assert not (base_collection_path / "small_sky_order1" / "README.md").exists()
     assert not (base_collection_path / "small_sky_order1_3600arcs" / "README.md").exists()

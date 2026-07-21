@@ -251,7 +251,7 @@ def to_hats(
     progress_bar: bool = True,
     tqdm_kwargs: dict | None = None,
     create_thumbnail: bool = False,
-    create_summary: bool = True,
+    create_summary: bool = False,
     skymap_alt_orders: list[int] | None = None,
     npix_suffix: str = ".parquet",
     npix_parquet_name: str | None = None,
@@ -294,7 +294,7 @@ def to_hats(
     create_thumbnail : bool, default False
         If True, create a data thumbnail of the catalog for
         previewing purposes. Defaults to False.
-    create_summary : bool, default True
+    create_summary : bool, default False
         If True, writes a ``README.md`` summary file describing the catalog.
     skymap_alt_orders : list[int] or None, default None
         We will write a skymap file at the ``histogram_order``,
