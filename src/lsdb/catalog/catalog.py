@@ -407,13 +407,6 @@ class Catalog(HealpixDataset):
             raise ValueError("`suffixes` must be a tuple with two strings")
         if suffix_method is None:
             suffix_method = DEFAULT_SUFFIX_METHOD
-            warnings.warn(
-                "The default suffix behavior will change from applying suffixes to all columns to only "
-                "applying suffixes to overlapping columns in a future release."
-                "To maintain the current behavior, explicitly set `suffix_method='all_columns'`. "
-                "To change to the new behavior, set `suffix_method='overlapping_columns'`.",
-                FutureWarning,
-            )
         if other.margin is None and require_right_margin:
             raise ValueError("Right catalog margin cache is required for cross-match.")
         if output_catalog_name is None:
@@ -1001,13 +994,6 @@ class Catalog(HealpixDataset):
 
         if suffix_method is None:
             suffix_method = DEFAULT_SUFFIX_METHOD
-            warnings.warn(
-                "The default suffix behavior will change from applying suffixes to all columns to only "
-                "applying suffixes to overlapping columns in a future release."
-                "To maintain the current behavior, explicitly set `suffix_method='all_columns'`. "
-                "To change to the new behavior, set `suffix_method='overlapping_columns'`.",
-                FutureWarning,
-            )
 
         op, alignment = merge_asof_catalog_data(
             self,
@@ -1125,13 +1111,6 @@ class Catalog(HealpixDataset):
 
         if suffix_method is None:
             suffix_method = DEFAULT_SUFFIX_METHOD
-            warnings.warn(
-                "The default suffix behavior will change from applying suffixes to all columns to only "
-                "applying suffixes to overlapping columns in a future release."
-                "To maintain the current behavior, explicitly set `suffix_method='all_columns'`. "
-                "To change to the new behavior, set `suffix_method='overlapping_columns'`.",
-                FutureWarning,
-            )
 
         self._check_unloaded_columns([left_on, right_on])
 

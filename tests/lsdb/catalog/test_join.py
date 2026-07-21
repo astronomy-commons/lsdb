@@ -98,20 +98,20 @@ def test_small_sky_join_small_sky_order1_source(
     )
 
     expected_columns = [
-        "id_a",
-        "ra_a",
-        "dec_a",
-        "ra_error_a",
-        "dec_error_a",
-        "source_id_b",
-        "source_ra_b",
-        "source_dec_b",
-        "mjd_b",
-        "mag_b",
-        "band_b",
-        "object_id_b",
-        "object_ra_b",
-        "object_dec_b",
+        "id",
+        "ra",
+        "dec",
+        "ra_error",
+        "dec_error",
+        "source_id",
+        "source_ra",
+        "source_dec",
+        "mjd",
+        "mag",
+        "band",
+        "object_id",
+        "object_ra",
+        "object_dec",
     ]
 
     assert np.all(joined.columns == expected_columns)
@@ -125,8 +125,8 @@ def test_small_sky_join_small_sky_order1_source(
     assert np.all(joined_compute.columns == expected_columns)
     small_sky_order1_compute = small_sky_order1_source_with_margin.compute()
     assert len(joined_compute) == len(small_sky_order1_compute)
-    joined_test = small_sky_order1_compute.merge(joined_compute, left_on="object_id", right_on="object_id_b")
-    assert (joined_test["id_a"].to_numpy() == joined_test["object_id"].to_numpy()).all()
+    joined_test = small_sky_order1_compute.merge(joined_compute, left_on="object_id", right_on="object_id")
+    assert (joined_test["id"].to_numpy() == joined_test["object_id"].to_numpy()).all()
     helpers.assert_schema_correct(joined)
 
 
@@ -139,18 +139,18 @@ def test_small_sky_join_default_columns(
     )
 
     expected_columns = [
-        "ra_a",
-        "dec_a",
-        "id_a",
-        "source_id_b",
-        "source_ra_b",
-        "source_dec_b",
-        "mjd_b",
-        "mag_b",
-        "band_b",
-        "object_id_b",
-        "object_ra_b",
-        "object_dec_b",
+        "ra",
+        "dec",
+        "id",
+        "source_id",
+        "source_ra",
+        "source_dec",
+        "mjd",
+        "mag",
+        "band",
+        "object_id",
+        "object_ra",
+        "object_dec",
     ]
 
     assert np.all(joined.columns == expected_columns)
@@ -163,8 +163,8 @@ def test_small_sky_join_default_columns(
     assert np.all(joined_compute.columns == expected_columns)
     small_sky_order1_compute = small_sky_order1_source_with_margin.compute()
     assert len(joined_compute) == len(small_sky_order1_compute)
-    joined_test = small_sky_order1_compute.merge(joined_compute, left_on="object_id", right_on="object_id_b")
-    assert (joined_test["id_a"].to_numpy() == joined_test["object_id"].to_numpy()).all()
+    joined_test = small_sky_order1_compute.merge(joined_compute, left_on="object_id", right_on="object_id")
+    assert (joined_test["id"].to_numpy() == joined_test["object_id"].to_numpy()).all()
     helpers.assert_schema_correct(joined)
     helpers.assert_default_columns_in_columns(joined)
 
@@ -194,20 +194,20 @@ def test_join_association(
     assert joined.get_healpix_pixels() == alignment.pixel_tree.get_healpix_pixels()
 
     expected_columns = [
-        "id_a",
-        "ra_a",
-        "dec_a",
-        "ra_error_a",
-        "dec_error_a",
-        "source_id_b",
-        "source_ra_b",
-        "source_dec_b",
-        "mjd_b",
-        "mag_b",
-        "band_b",
-        "object_id_b",
-        "object_ra_b",
-        "object_dec_b",
+        "id",
+        "ra",
+        "dec",
+        "ra_error",
+        "dec_error",
+        "source_id",
+        "source_ra",
+        "source_dec",
+        "mjd",
+        "mag",
+        "band",
+        "object_id",
+        "object_ra",
+        "object_dec",
         "_dist_arcsec",
     ]
 
@@ -227,8 +227,8 @@ def test_join_association(
     small_sky_xmatch_compute = small_sky_order1_source_collection_catalog.compute()
 
     for _, row in association_data.iterrows():
-        left_col = small_sky_to_o1source_catalog.hc_structure.catalog_info.primary_column + suffixes[0]
-        right_col = small_sky_to_o1source_catalog.hc_structure.catalog_info.join_column + suffixes[1]
+        left_col = small_sky_to_o1source_catalog.hc_structure.catalog_info.primary_column
+        right_col = small_sky_to_o1source_catalog.hc_structure.catalog_info.join_column
         left_id = row[small_sky_to_o1source_catalog.hc_structure.catalog_info.primary_column_association]
         right_id = row[small_sky_to_o1source_catalog.hc_structure.catalog_info.join_column_association]
         joined_row = joined_data.query(f"{left_col} == {left_id} & {right_col} == {right_id}")
@@ -291,7 +291,7 @@ def test_join_association_suffix_edge_case(
     right_column = "source_id"
     suffix = small_sky_order1_source_collection_catalog.name
     join_column_assoc = small_sky_to_o1source_catalog.hc_structure.catalog_info.join_column_association
-    assert f"{right_column}_{suffix}" == join_column_assoc
+    assert f"{right_column}" == join_column_assoc
 
     xmatch_df = small_sky_catalog.crossmatch(
         small_sky_order1_source_collection_catalog, radius_arcsec=3600
@@ -301,7 +301,7 @@ def test_join_association_suffix_edge_case(
         small_sky_order1_source_collection_catalog, through=small_sky_to_o1source_catalog
     ).compute()
 
-    assert f"{right_column}_{suffix}" in join_df
+    assert f"{right_column}" in join_df
     assert set(xmatch_df.columns) == set(join_df.columns)
     pd.testing.assert_frame_equal(xmatch_df, join_df, check_like=True)
 

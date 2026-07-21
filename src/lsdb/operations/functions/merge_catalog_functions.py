@@ -34,7 +34,7 @@ if TYPE_CHECKING:
 ASSOC_NORDER = "assoc_Norder"
 ASSOC_NPIX = "assoc_Npix"
 
-DEFAULT_SUFFIX_METHOD: Literal["all_columns", "overlapping_columns"] = "all_columns"
+DEFAULT_SUFFIX_METHOD: Literal["all_columns", "overlapping_columns"] = "overlapping_columns"
 
 
 def apply_suffix_all_columns(
@@ -97,7 +97,7 @@ def apply_suffix_overlapping_columns(
     )
 
     if overlapping_columns and log_changes:
-        logging.warning("Renaming overlapping columns:\n%s", table)
+        logging.info("Renaming overlapping columns:\n%s", table)
 
     return left_df, right_df
 
