@@ -1468,7 +1468,7 @@ class Catalog(HealpixDataset):
             **kwargs,
         )
 
-    # pylint: disable=too-many-locals,too-many-arguments
+    # pylint: disable=too-many-locals,too-many-arguments,duplicate-code
     def write_catalog(
         self,
         base_catalog_path: str | Path | UPath,
@@ -1489,10 +1489,9 @@ class Catalog(HealpixDataset):
         create_summary: bool = False,
         should_write_skymap: bool = True,
         skymap_alt_orders: list[int] | None = None,
-        npix_suffix: str | None = None,
+        npix_suffix: str = ".parquet",
         npix_parquet_name: str | None = None,
         write_table_kwargs: dict | None = None,
-        **kwargs,
     ):
         """Save the catalog to disk in HATS format.
 
@@ -1531,7 +1530,7 @@ class Catalog(HealpixDataset):
         create_per_partition_statistics : bool, default True
             Should we create per_partition_statistics.parquet, based on footers from all data partitions
         error_if_empty : bool, default True
-            If True, raises an error if the catalog is empty.
+            If True, raises an error if the output catalog is empty
         create_summary : bool, default False
             If True, writes ``README.md`` summary file(s) describing the catalog. When
             ``as_collection`` is True, this generates a summary for the collection, the

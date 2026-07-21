@@ -309,7 +309,7 @@ def to_hats(
     create_per_partition_statistics : bool, default True
         Should we create per_partition_statistics.parquet, based on footers from all data partitions
     error_if_empty : bool, default True
-        If True, raises an error if the catalog is empty.
+        If True, raises an error if the output catalog is empty
     create_summary : bool, default False
         If True, writes a ``README.md`` summary file describing the catalog.
     should_write_skymap: bool, default True
