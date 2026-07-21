@@ -1,3 +1,4 @@
+import math as m
 from importlib.metadata import version
 from pathlib import Path
 
@@ -34,6 +35,30 @@ def new_provenance_properties(
             "publisher_id": None,
         }
     return TableProperties.new_provenance_dict(path, builder=f"lsdb v{version('lsdb')}", **kwargs)
+
+
+def round_sig(value: float, digits: int = 5) -> float:
+    """Round a float to a number of significant figures, keeping it a float.
+
+    Equivalent to ``float(f"{value:.{digits}g}")``, but computes the rounding
+    numerically instead of round-tripping through a string.
+
+    Parameters
+    ----------
+    value : float
+        The value to round.
+    digits : int, default 5
+        The number of significant figures to keep.
+
+    Returns
+    -------
+    float
+        The value rounded to the given number of significant figures.
+    """
+    if value == 0:
+        return 0.0
+    decimal_places = digits - 1 - m.floor(m.log10(abs(value)))
+    return round(value, decimal_places)
 
 
 def set_default_write_table_kwargs(write_table_kwargs):

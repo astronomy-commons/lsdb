@@ -13,7 +13,7 @@ from hats.catalog.catalog_collection import CatalogCollection
 from hats.pixel_math import HealpixPixel
 from upath import UPath
 
-from lsdb.io.common import new_provenance_properties, set_default_write_table_kwargs
+from lsdb.io.common import new_provenance_properties, round_sig, set_default_write_table_kwargs
 
 if TYPE_CHECKING:
     from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
@@ -233,7 +233,7 @@ def to_association(
         "contains_leaf_files": True,
         "hats_order": partition_info.get_highest_order(),
         "total_rows": int(np.sum(counts)),
-        "moc_sky_fraction": f"{partition_info.calculate_fractional_coverage():.5}",
+        "moc_sky_fraction": round_sig(partition_info.calculate_fractional_coverage()),
     } | new_provenance_properties(inherit_provenance=inherit_provenance)
 
     max_separation = np.max(max_separations)
