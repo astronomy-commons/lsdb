@@ -452,6 +452,7 @@ class HealpixDataset:
             filter_func,
             self.meta,
             healpix_pixels,
+            error_on_empty_pixels=False,
         )
         return self._create_updated_dataset(op=new_op)
 

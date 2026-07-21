@@ -489,6 +489,7 @@ def align_and_apply(
     meta: npd.NestedFrame | pd.DataFrame | pd.Series,
     output_pixels: list[HealpixPixel],
     *args,
+    error_on_empty_pixels: bool = True,
     **kwargs,
 ) -> Operation:
     """Aligns catalogs to a given ordering of pixels and applies a function each set of aligned partitions
@@ -524,6 +525,8 @@ def align_and_apply(
         The list of HealpixPixels representing the pixel order of the output partition for each aligned
         partition in the input catalogs. This should be the same length as the list of pixels in each catalog
         mapping.
+    error_on_empty_pixels : bool, default True
+        If True, raises an error if any of the catalog mappings have an empty list of pixels.
     *args
         Additional arguments to pass to the function
     **kwargs
@@ -536,9 +539,10 @@ def align_and_apply(
     """
     # gets the pixels and hc_structures to pass to the function
     pixels = [pixels for (_, pixels) in catalog_mappings]
-    for p in pixels:
-        if len(p) == 0:
-            raise RuntimeError("Catalogs do not overlap")
+    if error_on_empty_pixels:
+        for p in pixels:
+            if len(p) == 0:
+                raise RuntimeError("Catalogs do not overlap")
 
     catalogs = [cat for (cat, _) in catalog_mappings]
 
