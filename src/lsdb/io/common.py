@@ -1,3 +1,4 @@
+import math as m
 from importlib.metadata import version
 from pathlib import Path
 
@@ -5,13 +6,18 @@ from hats.catalog import TableProperties
 from upath import UPath
 
 
-def new_provenance_properties(path: str | Path | UPath | None = None, **kwargs) -> dict:
+def new_provenance_properties(
+    path: str | Path | UPath | None = None, inherit_provenance: bool = False, **kwargs
+) -> dict:
     """Create a new provenance properties dictionary for the dataset.
 
     Parameters
     ----------
     path: str | Path | UPath | None, default None
         The path to the catalog.
+    inherit_provenance : bool, default False
+        If the original catalog had some provenance info (like creator or bib references),
+        should this new catalog retain all of it?
     **kwargs
         Additional provenance properties.
 
@@ -20,7 +26,39 @@ def new_provenance_properties(path: str | Path | UPath | None = None, **kwargs) 
     dict
         A new provenance dictionary.
     """
+    if not inherit_provenance:
+        kwargs |= {
+            "hats_creator": None,
+            "bib_reference": None,
+            "bib_reference_url": None,
+            "creator_did": None,
+            "publisher_id": None,
+        }
     return TableProperties.new_provenance_dict(path, builder=f"lsdb v{version('lsdb')}", **kwargs)
+
+
+def round_sig(value: float, digits: int = 5) -> float:
+    """Round a float to a number of significant figures, keeping it a float.
+
+    Equivalent to ``float(f"{value:.{digits}g}")``, but computes the rounding
+    numerically instead of round-tripping through a string.
+
+    Parameters
+    ----------
+    value : float
+        The value to round.
+    digits : int, default 5
+        The number of significant figures to keep.
+
+    Returns
+    -------
+    float
+        The value rounded to the given number of significant figures.
+    """
+    if value == 0:
+        return 0.0
+    decimal_places = digits - 1 - m.floor(m.log10(abs(value)))
+    return round(value, decimal_places)
 
 
 def set_default_write_table_kwargs(write_table_kwargs):

@@ -32,7 +32,10 @@ def test_save_catalog(small_sky_catalog, tmp_path, helpers):
     new_catalog_name = "small_sky"
     base_catalog_path = Path(tmp_path) / new_catalog_name
     small_sky_catalog.write_catalog(
-        base_catalog_path, catalog_name=new_catalog_name, addl_hats_properties={"obs_regime": "Optical"}
+        base_catalog_path,
+        catalog_name=new_catalog_name,
+        create_thumbnail=True,
+        addl_hats_properties={"obs_regime": "Optical"},
     )
 
     expected_catalog = lsdb.read_hats(base_catalog_path)

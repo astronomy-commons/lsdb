@@ -926,6 +926,7 @@ def create_merged_catalog_info(
         The catalog info of the resulting merged catalog
     """
     left_info = left.hc_structure.catalog_info
+    right_info = right.hc_structure.catalog_info
     ra_col = (
         apply_left_suffix(left_info.ra_column, right.columns, suffixes, suffix_method)
         if left_info.ra_column is not None
@@ -936,8 +937,11 @@ def create_merged_catalog_info(
         if left_info.dec_column is not None
         else None
     )
+    types = [left_info.catalog_type, right_info.catalog_type]
+    catalog_type = min(types)
     return left_info.copy_and_update(
         catalog_name=updated_name,
+        catalog_type=catalog_type,
         ra_column=ra_col,
         dec_column=dec_col,
         total_rows=None,
