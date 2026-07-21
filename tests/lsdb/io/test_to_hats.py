@@ -581,15 +581,15 @@ def test_resume_and_overwrite_catalog_write(small_sky_order1_catalog, tmp_path):
         small_sky_order1_catalog.write_catalog(base_catalog_path, resume=True, overwrite=True)
 
 
-def test_save_catalog_creates_summary_by_default(small_sky_order1_catalog, tmp_path):
+def test_save_catalog_creates_summary_when_enabled(small_sky_order1_catalog, tmp_path):
     base_catalog_path = tmp_path / "small_sky"
-    small_sky_order1_catalog.write_catalog(base_catalog_path, as_collection=False)
+    small_sky_order1_catalog.write_catalog(base_catalog_path, as_collection=False, create_summary=True)
     summary_path = base_catalog_path / "README.md"
     assert summary_path.exists()
     assert len(summary_path.read_text()) > 0
 
 
-def test_save_catalog_no_summary(small_sky_order1_catalog, tmp_path):
+def test_save_catalog_no_summary_by_default(small_sky_order1_catalog, tmp_path):
     base_catalog_path = tmp_path / "small_sky"
-    small_sky_order1_catalog.write_catalog(base_catalog_path, as_collection=False, create_summary=False)
+    small_sky_order1_catalog.write_catalog(base_catalog_path, as_collection=False)
     assert not (base_catalog_path / "README.md").exists()

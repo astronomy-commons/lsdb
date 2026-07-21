@@ -61,7 +61,7 @@ class MarginCatalog(HealpixDataset):
         overwrite: bool = False,
         resume: bool = False,
         error_if_empty: bool = False,
-        create_summary: bool = True,
+        create_summary: bool = False,
         **kwargs,
     ):
         super().write_catalog(

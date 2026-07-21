@@ -20,7 +20,7 @@ def to_collection(
     progress_bar: bool = True,
     tqdm_kwargs: dict | None = None,
     error_if_empty: bool = True,
-    create_summary: bool = True,
+    create_summary: bool = False,
     **kwargs,
 ):
     """Saves the catalog collection to disk in the HATS format.
@@ -49,7 +49,7 @@ def to_collection(
         If progress_bar is True, these kwargs are passed to tqdm when creating the progress bar
     error_if_empty : bool, default True
         If True, raises an error if the catalog is empty
-    create_summary : bool, default True
+    create_summary : bool, default False
         If True, writes ``README.md`` summary files for the collection, the main
         catalog, and the margin (if it exists).
     **kwargs
