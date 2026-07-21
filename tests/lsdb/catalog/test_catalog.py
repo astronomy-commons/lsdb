@@ -1193,3 +1193,23 @@ def test_boolean_filter_preserves_columns(small_sky_order1_catalog):
 def test_boolean_filter_errors_on_different_partitioning(small_sky_catalog, small_sky_order1_catalog):
     with pytest.raises(ValueError, match="Number of partitions"):
         small_sky_order1_catalog[small_sky_catalog["ra"] > 0]  # pylint: disable=pointless-statement
+
+
+def test_filter_empty_catalog(small_sky_order1_catalog):
+    empty_catalog = small_sky_order1_catalog.cone_search(0, 0, 0.1)
+    filtered_empty = empty_catalog[empty_catalog["ra"] > 0]
+    assert isinstance(filtered_empty, Catalog)
+    computed = filtered_empty.compute()
+    assert isinstance(computed, npd.NestedFrame)
+    assert len(computed) == 0
+    assert computed.columns.tolist() == empty_catalog.columns.tolist()
+
+
+def test_filter_empty_catalog_and(small_sky_order1_catalog):
+    empty_catalog = small_sky_order1_catalog.cone_search(0, 0, 0.1)
+    filtered_empty = empty_catalog[(empty_catalog["ra"] > 0) & (empty_catalog["dec"] < 0)]
+    assert isinstance(filtered_empty, Catalog)
+    computed = filtered_empty.compute()
+    assert isinstance(computed, npd.NestedFrame)
+    assert len(computed) == 0
+    assert computed.columns.tolist() == empty_catalog.columns.tolist()
