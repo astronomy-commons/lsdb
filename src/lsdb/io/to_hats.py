@@ -17,7 +17,6 @@ from hats.io.skymap import write_skymap
 from hats.io.summary_file import write_catalog_summary_file
 from hats.pixel_math import HealpixPixel, spatial_index_to_healpix
 from hats.pixel_math.sparse_histogram import HistogramAggregator, SparseHistogram
-from tqdm.dask import TqdmCallback
 from upath import UPath
 
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
@@ -358,21 +357,20 @@ def to_hats(
     # Save partition parquet files
     write_table_kwargs = set_default_write_table_kwargs(write_table_kwargs)
 
-    desc = tqdm_kwargs.pop("desc", "Writing Catalog") if tqdm_kwargs else "Writing Catalog"
-
-    with TqdmCallback(desc=desc, disable=not progress_bar, **(tqdm_kwargs or {})):
-        new_pixels, new_counts, new_histograms = write_partitions(
-            catalog,
-            base_catalog_dir_fp=base_catalog_path,
-            histogram_order=histogram_order,
-            existing_pixels=existing_pixels,
-            npix_suffix=npix_suffix,
-            npix_parquet_name=npix_parquet_name,
-            **write_table_kwargs,
-        )
-        pixels = existing_pixels + new_pixels
-        histograms = histograms + new_histograms
-        counts = counts + new_counts
+    new_pixels, new_counts, new_histograms = write_partitions(
+        catalog,
+        base_catalog_dir_fp=base_catalog_path,
+        histogram_order=histogram_order,
+        existing_pixels=existing_pixels,
+        npix_suffix=npix_suffix,
+        npix_parquet_name=npix_parquet_name,
+        progress_bar=progress_bar,
+        tqdm_kwargs=tqdm_kwargs,
+        **write_table_kwargs,
+    )
+    pixels = existing_pixels + new_pixels
+    histograms = histograms + new_histograms
+    counts = counts + new_counts
 
     # Check that the catalog is not empty
     if error_if_empty and len(pixels) == 0:
@@ -539,6 +537,8 @@ def write_partitions(
     existing_pixels: list[HealpixPixel] | None = None,
     npix_suffix: str = ".parquet",
     npix_parquet_name: str | None = None,
+    progress_bar: bool = True,
+    tqdm_kwargs: dict | None = None,
     **kwargs,
 ) -> tuple[list[HealpixPixel], list[int], list[SparseHistogram]]:
     """Saves catalog partitions as parquet to disk and computes the sparse
@@ -561,6 +561,10 @@ def write_partitions(
         Name of the pixel parquet file to be used when npix_suffix=/.
         By default, it will be named after the pixel with a .parquet
         extension (e.g. 'Npix=10.parquet').
+    progress_bar : bool, default True
+        If True, shows a progress bar while writing the partitions.
+    tqdm_kwargs : dict, default None
+        Additional kwargs to pass to the tqdm progress bar.
     **kwargs
         Arguments to pass to the parquet write operations
 
@@ -589,7 +593,8 @@ def write_partitions(
         include_pixel=True,
         **kwargs,
     )
-    results = res_cat.compute()
+    tqdm_kwargs = {"desc": "Writing Catalog", **(tqdm_kwargs or {})}
+    results = res_cat.compute(progress_bar=progress_bar, tqdm_kwargs=tqdm_kwargs)
     counts, histograms = results["count"].tolist(), results["histogram"].tolist()
 
     non_empty_indices = np.nonzero(counts)
