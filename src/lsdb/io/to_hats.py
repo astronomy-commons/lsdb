@@ -254,7 +254,10 @@ def to_hats(
     tqdm_kwargs: dict | None = None,
     create_parquet_metadata: bool = True,
     create_thumbnail: bool = False,
+    create_per_partition_statistics: bool = True,
+    error_if_empty: bool = True,
     create_summary: bool = False,
+    should_write_skymap: bool = True,
     skymap_alt_orders: list[int] | None = None,
     npix_suffix: str = ".parquet",
     npix_parquet_name: str | None = None,
@@ -303,6 +306,10 @@ def to_hats(
     create_thumbnail : bool, default False
         If True, create a data thumbnail of the catalog for
         previewing purposes. Defaults to False.
+    create_per_partition_statistics : bool, default True
+        Should we create per_partition_statistics.parquet, based on footers from all data partitions
+    error_if_empty : bool, default True
+        If True, raises an error if the output catalog is empty
     create_summary : bool, default False
         If True, writes a ``README.md`` summary file describing the catalog.
     should_write_skymap: bool, default True

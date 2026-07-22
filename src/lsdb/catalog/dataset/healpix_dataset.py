@@ -1380,7 +1380,7 @@ class HealpixDataset:
             **kwargs,
         )
 
-    # pylint: disable=too-many-locals,too-many-arguments
+    # pylint: disable=too-many-locals,too-many-arguments,duplicate-code
     def write_catalog(
         self,
         base_catalog_path: str | Path | UPath,
@@ -1398,7 +1398,11 @@ class HealpixDataset:
         create_per_partition_statistics: bool = True,
         error_if_empty: bool = True,
         create_summary: bool = False,
-        **kwargs,
+        should_write_skymap: bool = True,
+        skymap_alt_orders: list[int] | None = None,
+        npix_suffix: str = ".parquet",
+        npix_parquet_name: str | None = None,
+        write_table_kwargs: dict | None = None,
     ):
         """Save the catalog to disk in HATS format.
 
@@ -1435,10 +1439,24 @@ class HealpixDataset:
         create_per_partition_statistics : bool, default True
             Should we create per_partition_statistics.parquet, based on footers from all data partitions
         error_if_empty : bool, default True
-            If True, raises an error if the catalog is empty.
+            If True, raises an error if the output catalog is empty
         create_summary : bool, default False
-            If True, writes a ``README.md`` summary file describing the catalog.
-        **kwargs
+            If True, writes ``README.md`` summary file(s) describing the catalog. When
+            ``as_collection`` is True, this generates a summary for the collection, the
+            main catalog, and the margin (if it exists).
+        should_write_skymap: bool, default True
+            Should we write a `skymap.fits` file, with the point distribution of the catalog?
+            Main catalogs should contain skymap fits files, generally.
+        skymap_alt_orders : list[int] or None, default None
+            We will write a skymap file at the ``histogram_order``,
+            but can also write down-sampled skymaps, for easier previewing of the data.
+        npix_suffix : str, default '.parquet'
+            Extension for the parquet file (or `/` if a directory)
+        npix_parquet_name : str | None, default None
+            Name of the pixel parquet file to be used when npix_suffix=/.
+            By default, it will be named after the pixel with a .parquet
+            extension (e.g. 'Npix=10.parquet').
+        write_table_kwargs: dict or None, default None
             Arguments to pass to the parquet write operations
         """
         self._check_unloaded_columns(default_columns)
