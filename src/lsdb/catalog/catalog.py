@@ -1487,6 +1487,11 @@ class Catalog(HealpixDataset):
         create_per_partition_statistics: bool = True,
         error_if_empty: bool = True,
         create_summary: bool = False,
+        should_write_skymap: bool = True,
+        skymap_alt_orders: list[int] | None = None,
+        npix_suffix: str | None = None,
+        npix_parquet_name: str | None = None,
+        write_table_kwargs: dict | None = None,
         **kwargs,
     ):
         """Save the catalog to disk in HATS format.
