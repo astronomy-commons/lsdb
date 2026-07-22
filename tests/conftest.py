@@ -5,6 +5,7 @@ import nested_pandas as npd
 import numpy.testing as npt
 import pandas as pd
 import pytest
+import tqdm.std
 from hats.io import paths
 from hats.pixel_math import spatial_index_to_healpix
 from hats.pixel_math.spatial_index import (
@@ -455,6 +456,23 @@ class Helpers:
         assert expected_catalog_info.explicit_dict() == catalog_info.explicit_dict()
         if check_extra_properties:
             assert expected_catalog_info.extra_dict() == catalog_info.extra_dict()
+
+    @staticmethod
+    def record_progress_bars(monkeypatch):
+        """Returns a list that records every enabled tqdm progress bar created during
+        the test, no matter which module creates it. All tqdm flavors (tqdm.auto,
+        tqdm.dask.TqdmCallback) subclass tqdm.std.tqdm, so patching its __init__
+        catches them all."""
+        bars = []
+        original_init = tqdm.std.tqdm.__init__
+
+        def recording_init(self, *args, **kwargs):
+            original_init(self, *args, **kwargs)
+            if not self.disable:
+                bars.append(self)
+
+        monkeypatch.setattr(tqdm.std.tqdm, "__init__", recording_init)
+        return bars
 
 
 @pytest.fixture
