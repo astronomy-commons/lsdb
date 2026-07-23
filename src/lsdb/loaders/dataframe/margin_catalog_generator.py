@@ -271,7 +271,7 @@ class MarginCatalogGenerator:
         if kwargs is None:
             kwargs = {}
         kwargs.pop("catalog_type", None)
-        kwargs = kwargs | new_provenance_properties(hats_estsize=0)
+        kwargs = kwargs | new_provenance_properties() | {"hats_estsize": None}
         if not catalog_name:
             catalog_name = self.hc_structure.catalog_info.catalog_name
         return TableProperties(

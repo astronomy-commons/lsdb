@@ -74,7 +74,7 @@ def test_to_association_join_through_roundtrip(
         overwrite=False,
         **association_kwargs,
         addl_hats_properties={"obs_regime": "Optical"},
-        compression="SNAPPY",
+        write_table_kwargs={"compression": "SNAPPY"},
     )
     association_table = lsdb.read_hats(tmp_path)
     assert isinstance(association_table, AssociationCatalog)

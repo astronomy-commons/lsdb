@@ -17,11 +17,10 @@ from hats.io.skymap import write_skymap
 from hats.io.summary_file import write_catalog_summary_file
 from hats.pixel_math import HealpixPixel, spatial_index_to_healpix
 from hats.pixel_math.sparse_histogram import HistogramAggregator, SparseHistogram
-from tqdm.dask import TqdmCallback
 from upath import UPath
 
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
-from lsdb.io.common import new_provenance_properties, set_default_write_table_kwargs
+from lsdb.io.common import new_provenance_properties, round_sig, set_default_write_table_kwargs
 
 DONE_DIR_NAME = "done"
 HISTOGRAM_DIR_NAME = "hists"
@@ -238,26 +237,30 @@ def remove_done_files(base_catalog_path: UPath):
     file_io.remove_directory(done_path, ignore_errors=True)
 
 
-# pylint: disable=protected-access,too-many-locals,too-many-arguments
+# pylint: disable=protected-access,too-many-locals,too-many-arguments,too-many-statements
 def to_hats(
     catalog: HealpixDataset,
     *,
     base_catalog_path: str | Path | UPath,
     catalog_name: str | None = None,
     default_columns: list[str] | None = None,
+    inherit_provenance: bool = False,
+    addl_hats_properties: dict | None = None,
     histogram_order: int | None = None,
     overwrite: bool = False,
     resume: bool = False,
     progress_bar: bool = True,
     tqdm_kwargs: dict | None = None,
+    create_parquet_metadata: bool = True,
     create_thumbnail: bool = False,
-    create_summary: bool = True,
+    create_per_partition_statistics: bool = True,
+    error_if_empty: bool = True,
+    create_summary: bool = False,
+    should_write_skymap: bool = True,
     skymap_alt_orders: list[int] | None = None,
     npix_suffix: str = ".parquet",
     npix_parquet_name: str | None = None,
-    addl_hats_properties: dict | None = None,
-    error_if_empty: bool = True,
-    **kwargs,
+    write_table_kwargs: dict | None = None,
 ):
     """Writes a catalog to disk, in HATS format.
 
@@ -279,6 +282,12 @@ def to_hats(
         A metadata property with the list of the columns in the
         catalog to be loaded by default. Uses the default columns from the original hats
         catalog if they exist.
+    inherit_provenance : bool, default False
+        If the original catalog had some provenance info (like creator or bib references),
+        should this new catalog retain all of it?
+    addl_hats_properties : dict or None, default None
+        key-value pairs of additional properties to write in the
+        ``hats.properties`` file.
     histogram_order : int or None, default None
         The default order for the count histogram. Defaults to the same
         skymap order as original catalog, or the highest order healpix of the current
@@ -291,11 +300,20 @@ def to_hats(
         If True, shows a progress bar for the export process. Defaults to True.
     tqdm_kwargs : dict, default None
         Additional kwargs to pass to the tqdm progress bar.
+    create_parquet_metadata : bool, default True
+        Should we create /dataset/_metadata parquet from all data partitions.
     create_thumbnail : bool, default False
         If True, create a data thumbnail of the catalog for
         previewing purposes. Defaults to False.
-    create_summary : bool, default True
+    create_per_partition_statistics : bool, default True
+        Should we create per_partition_statistics.parquet, based on footers from all data partitions
+    error_if_empty : bool, default True
+        If True, raises an error if the output catalog is empty
+    create_summary : bool, default False
         If True, writes a ``README.md`` summary file describing the catalog.
+    should_write_skymap: bool, default True
+        Should we write a `skymap.fits` file, with the point distribution of the catalog?
+        Main catalogs should contain skymap fits files, generally.
     skymap_alt_orders : list[int] or None, default None
         We will write a skymap file at the ``histogram_order``,
         but can also write down-sampled skymaps, for easier previewing of the data.
@@ -305,12 +323,7 @@ def to_hats(
         Name of the pixel parquet file to be used when npix_suffix=/.
         By default, it will be named after the pixel with a .parquet
         extension (e.g. 'Npix=10.parquet').
-    addl_hats_properties : dict or None, default None
-        key-value pairs of additional properties to write in the
-        ``hats.properties`` file.
-    error_if_empty : bool, default True
-        If True, raises an error if the output catalog is empty
-    **kwargs :
+    write_table_kwargs: dict or None, default None
         Arguments to pass to the parquet write operations
     """
     if overwrite and resume:
@@ -342,23 +355,22 @@ def to_hats(
             )
             histogram_order = max(max_catalog_depth, 8)
     # Save partition parquet files
-    kwargs = set_default_write_table_kwargs(kwargs)
+    write_table_kwargs = set_default_write_table_kwargs(write_table_kwargs)
 
-    desc = tqdm_kwargs.pop("desc", "Writing Catalog") if tqdm_kwargs else "Writing Catalog"
-
-    with TqdmCallback(desc=desc, disable=not progress_bar, **(tqdm_kwargs or {})):
-        new_pixels, new_counts, new_histograms = write_partitions(
-            catalog,
-            base_catalog_dir_fp=base_catalog_path,
-            histogram_order=histogram_order,
-            existing_pixels=existing_pixels,
-            npix_suffix=npix_suffix,
-            npix_parquet_name=npix_parquet_name,
-            **kwargs,
-        )
-        pixels = existing_pixels + new_pixels
-        histograms = histograms + new_histograms
-        counts = counts + new_counts
+    new_pixels, new_counts, new_histograms = write_partitions(
+        catalog,
+        base_catalog_dir_fp=base_catalog_path,
+        histogram_order=histogram_order,
+        existing_pixels=existing_pixels,
+        npix_suffix=npix_suffix,
+        npix_parquet_name=npix_parquet_name,
+        progress_bar=progress_bar,
+        tqdm_kwargs=tqdm_kwargs,
+        **write_table_kwargs,
+    )
+    pixels = existing_pixels + new_pixels
+    histograms = histograms + new_histograms
+    counts = counts + new_counts
 
     # Check that the catalog is not empty
     if error_if_empty and len(pixels) == 0:
@@ -367,9 +379,18 @@ def to_hats(
     # Save parquet metadata and create a data thumbnail if needed
     hats_max_rows = int(max(counts)) if counts else 0
 
-    _write_parquet_metadata(base_catalog_path, catalog, create_thumbnail, hats_max_rows, pixels)
+    _write_parquet_metadata(
+        base_catalog_path,
+        catalog,
+        pixels=pixels,
+        create_parquet_metadata=create_parquet_metadata,
+        create_thumbnail=create_thumbnail,
+        hats_max_rows=hats_max_rows,
+        create_per_partition_statistics=create_per_partition_statistics,
+    )
     # Save partition info
-    PartitionInfo(pixels).write_to_file(base_catalog_path / "partition_info.csv")
+    partition_info = PartitionInfo(pixels)
+    partition_info.write_to_file(base_catalog_path / "partition_info.csv")
 
     # Save catalog info
     if default_columns:
@@ -385,10 +406,15 @@ def to_hats(
             "skymap_order": int(histogram_order),
             "skymap_alt_orders": skymap_alt_orders,
         }
+        if should_write_skymap:
+            _write_skymaps(
+                base_catalog_path, histogram_order, histograms, skymap_alt_orders=skymap_alt_orders
+            )
 
-        _write_skymaps(base_catalog_path, histogram_order, histograms, skymap_alt_orders)
-
-    addl_hats_properties = addl_hats_properties | new_provenance_properties(base_catalog_path)
+    addl_hats_properties = (
+        new_provenance_properties(base_catalog_path, inherit_provenance=inherit_provenance)
+        | addl_hats_properties
+    )
 
     new_hc_structure = create_modified_catalog_structure(
         catalog.hc_structure,
@@ -397,7 +423,9 @@ def to_hats(
         total_rows=int(np.sum(counts)),
         default_columns=default_columns,
         hats_max_rows=hats_max_rows,
-        hats_npix_suffix=npix_suffix,
+        moc_sky_fraction=round_sig(partition_info.calculate_fractional_coverage()),
+        hats_order=partition_info.get_highest_order() if len(partition_info) else None,
+        npix_suffix=npix_suffix,
         **addl_hats_properties,
     )
     new_hc_structure.catalog_info.to_properties_file(base_catalog_path)
@@ -436,15 +464,22 @@ def _read_existing_progress(
 def _write_parquet_metadata(
     base_catalog_path: UPath,
     catalog: HealpixDataset,
-    create_thumbnail: bool,
-    hats_max_rows: int,
     pixels: list[Any],
+    *,
+    create_parquet_metadata: bool = True,
+    create_thumbnail: bool = False,
+    hats_max_rows: int = 1_000_000,
+    create_per_partition_statistics: bool = True,
 ):
     """Writes the parquet metadata for the catalog. If there are no pixels,
     writes empty metadata files with the correct schema."""
     if len(pixels) > 0:
         hc.io.write_parquet_metadata(
-            base_catalog_path, create_thumbnail=create_thumbnail, thumbnail_threshold=hats_max_rows
+            base_catalog_path,
+            create_metadata=create_parquet_metadata,
+            create_thumbnail=create_thumbnail,
+            thumbnail_threshold=hats_max_rows,
+            create_per_partition_stats=create_per_partition_statistics,
         )
     else:
         metadata_path = hc.io.paths.get_parquet_metadata_pointer(base_catalog_path)
@@ -460,7 +495,8 @@ def _write_skymaps(
     base_catalog_path: UPath,
     histogram_order: int,
     histograms: list[Any] | Any,
-    skymap_alt_orders: list[int] | None,
+    *,
+    skymap_alt_orders: list[int] | None = None,
 ):
     """Writes the skymap files for the catalog, based on the histograms for each partition."""
     # Save the point distribution map
@@ -497,9 +533,12 @@ def write_partitions(
     catalog: HealpixDataset,
     base_catalog_dir_fp: str | Path | UPath,
     histogram_order: int,
+    *,
     existing_pixels: list[HealpixPixel] | None = None,
     npix_suffix: str = ".parquet",
     npix_parquet_name: str | None = None,
+    progress_bar: bool = True,
+    tqdm_kwargs: dict | None = None,
     **kwargs,
 ) -> tuple[list[HealpixPixel], list[int], list[SparseHistogram]]:
     """Saves catalog partitions as parquet to disk and computes the sparse
@@ -522,6 +561,10 @@ def write_partitions(
         Name of the pixel parquet file to be used when npix_suffix=/.
         By default, it will be named after the pixel with a .parquet
         extension (e.g. 'Npix=10.parquet').
+    progress_bar : bool, default True
+        If True, shows a progress bar while writing the partitions.
+    tqdm_kwargs : dict, default None
+        Additional kwargs to pass to the tqdm progress bar.
     **kwargs
         Arguments to pass to the parquet write operations
 
@@ -550,7 +593,8 @@ def write_partitions(
         include_pixel=True,
         **kwargs,
     )
-    results = res_cat.compute()
+    tqdm_kwargs = {"desc": "Writing Catalog", **(tqdm_kwargs or {})}
+    results = res_cat.compute(progress_bar=progress_bar, tqdm_kwargs=tqdm_kwargs)
     counts, histograms = results["count"].tolist(), results["histogram"].tolist()
 
     non_empty_indices = np.nonzero(counts)

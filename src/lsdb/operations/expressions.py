@@ -39,6 +39,8 @@ class FromOperation(Expr):
         if not self.operand("_divisions"):
             return [None] * (len(self.sorted_pixels) + 1)
         divisions = get_pixels_divisions(self.sorted_pixels)
+        if divisions is None:
+            return [0]
         return divisions
 
     def _layer(self) -> dict:

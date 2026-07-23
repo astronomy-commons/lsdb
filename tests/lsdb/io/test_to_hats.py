@@ -9,6 +9,7 @@ import pandas as pd
 import pyarrow.parquet as pq
 import pytest
 from dask.diagnostics import Profiler
+from distributed import Client
 from hats.catalog import PartitionInfo, TableProperties
 from hats.io.file_io import get_upath_for_protocol, read_fits_image
 from hats.io.paths import get_data_thumbnail_pointer
@@ -24,7 +25,6 @@ from lsdb.io.to_hats import (
     WRITE_RESULT_META,
     perform_write,
     write_histogram,
-    write_partitions,
 )
 
 
@@ -32,7 +32,10 @@ def test_save_catalog(small_sky_catalog, tmp_path, helpers):
     new_catalog_name = "small_sky"
     base_catalog_path = Path(tmp_path) / new_catalog_name
     small_sky_catalog.write_catalog(
-        base_catalog_path, catalog_name=new_catalog_name, addl_hats_properties={"obs_regime": "Optical"}
+        base_catalog_path,
+        catalog_name=new_catalog_name,
+        create_thumbnail=True,
+        addl_hats_properties={"obs_regime": "Optical"},
     )
 
     expected_catalog = lsdb.read_hats(base_catalog_path)
@@ -112,51 +115,46 @@ def test_save_catalog_default_nested_columns(small_sky_with_nested_sources, tmp_
     helpers.assert_default_columns_in_columns(expected_catalog)
 
 
-def test_save_catalog_shows_progress_bar(small_sky_catalog, tmp_path, mocker):
-    in_progress = {"active": False}
-
-    class _ProgressContext:
-        def __enter__(self):
-            in_progress["active"] = True
-
-        def __exit__(self, exc_type, exc, tb):
-            in_progress["active"] = False
-
-    tqdm_callback = mocker.patch(
-        "lsdb.io.to_hats.TqdmCallback",
-        return_value=_ProgressContext(),
-    )
-
-    def _checked_write_partitions(*args, **kwargs):
-        assert in_progress["active"]
-        return write_partitions(*args, **kwargs)
-
-    mocker.patch("lsdb.io.to_hats.write_partitions", side_effect=_checked_write_partitions)
+def test_save_catalog_shows_progress_bar(small_sky_catalog, tmp_path, helpers, monkeypatch):
+    bars = helpers.record_progress_bars(monkeypatch)
     base_catalog_path = Path(tmp_path) / "small_sky"
 
     small_sky_catalog.write_catalog(base_catalog_path, progress_bar=True)
 
-    tqdm_callback.assert_called_once_with(desc="Writing Catalog", disable=False)
+    assert [pbar.desc for pbar in bars] == ["Writing Catalog"]
 
 
-def test_save_catalog_without_progress_bar(small_sky_catalog, tmp_path, mocker):
-    tqdm_callback = mocker.patch("lsdb.io.to_hats.TqdmCallback")
+def test_save_catalog_shows_progress_bar_with_distributed_client(
+    small_sky_order1_catalog, tmp_path, helpers, monkeypatch
+):
+    bars = helpers.record_progress_bars(monkeypatch)
+    base_catalog_path = Path(tmp_path) / "small_sky_order1"
+
+    with Client(processes=False, n_workers=1, threads_per_worker=1, dashboard_address=None):
+        small_sky_order1_catalog.write_catalog(base_catalog_path, as_collection=False, progress_bar=True)
+
+    assert [pbar.desc for pbar in bars] == ["Writing Catalog"]
+
+
+def test_save_catalog_without_progress_bar(small_sky_catalog, tmp_path, helpers, monkeypatch):
+    bars = helpers.record_progress_bars(monkeypatch)
     base_catalog_path = Path(tmp_path) / "small_sky"
 
     small_sky_catalog.write_catalog(base_catalog_path, progress_bar=False)
 
-    tqdm_callback.assert_called_once_with(desc="Writing Catalog", disable=True)
+    assert bars == []
 
 
-def test_save_catalog_progress_bar_kwargs(small_sky_catalog, tmp_path, mocker):
-    tqdm_callback = mocker.patch("lsdb.io.to_hats.TqdmCallback")
+def test_save_catalog_progress_bar_kwargs(small_sky_catalog, tmp_path, helpers, monkeypatch):
+    bars = helpers.record_progress_bars(monkeypatch)
     base_catalog_path = Path(tmp_path) / "small_sky"
 
     small_sky_catalog.write_catalog(
         base_catalog_path, tqdm_kwargs={"desc": "Custom Description", "ascii": True}
     )
 
-    tqdm_callback.assert_called_once_with(desc="Custom Description", ascii=True, disable=False)
+    assert [pbar.desc for pbar in bars] == ["Custom Description"]
+    assert bars[0].ascii is True
 
 
 def test_save_catalog_empty_default_columns(small_sky_order1_default_cols_catalog, tmp_path, helpers):
@@ -578,15 +576,15 @@ def test_resume_and_overwrite_catalog_write(small_sky_order1_catalog, tmp_path):
         small_sky_order1_catalog.write_catalog(base_catalog_path, resume=True, overwrite=True)
 
 
-def test_save_catalog_creates_summary_by_default(small_sky_order1_catalog, tmp_path):
+def test_save_catalog_creates_summary_when_enabled(small_sky_order1_catalog, tmp_path):
     base_catalog_path = tmp_path / "small_sky"
-    small_sky_order1_catalog.write_catalog(base_catalog_path, as_collection=False)
+    small_sky_order1_catalog.write_catalog(base_catalog_path, as_collection=False, create_summary=True)
     summary_path = base_catalog_path / "README.md"
     assert summary_path.exists()
     assert len(summary_path.read_text()) > 0
 
 
-def test_save_catalog_no_summary(small_sky_order1_catalog, tmp_path):
+def test_save_catalog_no_summary_by_default(small_sky_order1_catalog, tmp_path):
     base_catalog_path = tmp_path / "small_sky"
-    small_sky_order1_catalog.write_catalog(base_catalog_path, as_collection=False, create_summary=False)
+    small_sky_order1_catalog.write_catalog(base_catalog_path, as_collection=False)
     assert not (base_catalog_path / "README.md").exists()

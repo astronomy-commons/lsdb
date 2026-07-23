@@ -452,6 +452,7 @@ class HealpixDataset:
             filter_func,
             self.meta,
             healpix_pixels,
+            error_on_empty_pixels=False,
         )
         return self._create_updated_dataset(op=new_op)
 
@@ -1379,61 +1380,107 @@ class HealpixDataset:
             **kwargs,
         )
 
+    # pylint: disable=too-many-locals,too-many-arguments,duplicate-code
     def write_catalog(
         self,
         base_catalog_path: str | Path | UPath,
         *,
         catalog_name: str | None = None,
         default_columns: list[str] | None = None,
+        inherit_provenance: bool = False,
+        addl_hats_properties: dict | None = None,
         overwrite: bool = False,
         resume: bool = False,
         progress_bar: bool = True,
         tqdm_kwargs: dict | None = None,
+        create_parquet_metadata: bool = True,
+        create_thumbnail: bool = False,
+        create_per_partition_statistics: bool = True,
         error_if_empty: bool = True,
-        create_summary: bool = True,
-        **kwargs,
+        create_summary: bool = False,
+        should_write_skymap: bool = True,
+        skymap_alt_orders: list[int] | None = None,
+        npix_suffix: str = ".parquet",
+        npix_parquet_name: str | None = None,
+        write_table_kwargs: dict | None = None,
     ):
         """Save the catalog to disk in HATS format.
 
         Parameters
         ----------
-        base_catalog_path : str | Path | UPath
+        base_catalog_path : str | Path | UPath,
             Location where catalog is saved to
-        catalog_name : str or None, default None
+        catalog_name : str
             The name of the catalog to be saved
-        default_columns : list[str] or None, default None
-            A metadata property with the list of the columns in the catalog to
-            be loaded by default. By default, uses the default columns from the
-            original hats catalogs if they exist.
+        default_columns : list[str]
+            A metadata property with the list of the columns in the
+            catalog to be loaded by default. By default, uses the default columns from the
+            original hats catalog if they exist.
+        inherit_provenance : bool, default False
+            If the original catalog had some provenance info (like creator or bib references),
+            should this new catalog retain all of it?
+        addl_hats_properties : dict or None, default None
+            key-value pairs of additional properties to write in the
+            ``hats.properties`` file.
         overwrite : bool, default False
             If True existing catalog is overwritten
         resume : bool, default False
             If True, resumes a previous write operation, skipping partitions that were
             already written to disk.
         progress_bar : bool, default True
-            If True, displays a progress bar during the save operation
-        tqdm_kwargs : dict or None, default None
-            Keyword arguments to pass to tqdm for customizing the progress bar
+            If True, shows a progress bar for the export process. Defaults to True.
+        tqdm_kwargs : dict, default None
+            Additional kwargs to pass to the tqdm progress bar.
+        create_parquet_metadata : bool, default True
+            Should we create /dataset/_metadata parquet from all data partitions.
+        create_thumbnail : bool, default False
+            If True, create a data thumbnail of the catalog for
+            previewing purposes. Defaults to False.
+        create_per_partition_statistics : bool, default True
+            Should we create per_partition_statistics.parquet, based on footers from all data partitions
         error_if_empty : bool, default True
-            If True, raises an error if the catalog is empty.
-        create_summary : bool, default True
-            If True, writes a ``README.md`` summary file describing the catalog.
-        **kwargs
+            If True, raises an error if the output catalog is empty
+        create_summary : bool, default False
+            If True, writes ``README.md`` summary file(s) describing the catalog. When
+            ``as_collection`` is True, this generates a summary for the collection, the
+            main catalog, and the margin (if it exists).
+        should_write_skymap: bool, default True
+            Should we write a `skymap.fits` file, with the point distribution of the catalog?
+            Main catalogs should contain skymap fits files, generally.
+        skymap_alt_orders : list[int] or None, default None
+            We will write a skymap file at the ``histogram_order``,
+            but can also write down-sampled skymaps, for easier previewing of the data.
+        npix_suffix : str, default '.parquet'
+            Extension for the parquet file (or `/` if a directory)
+        npix_parquet_name : str | None, default None
+            Name of the pixel parquet file to be used when npix_suffix=/.
+            By default, it will be named after the pixel with a .parquet
+            extension (e.g. 'Npix=10.parquet').
+        write_table_kwargs: dict or None, default None
             Arguments to pass to the parquet write operations
         """
         self._check_unloaded_columns(default_columns)
         io.to_hats(
             self,
-            base_catalog_path=base_catalog_path,
             catalog_name=catalog_name,
+            base_catalog_path=base_catalog_path,
             default_columns=default_columns,
+            inherit_provenance=inherit_provenance,
+            addl_hats_properties=addl_hats_properties,
             overwrite=overwrite,
             resume=resume,
             progress_bar=progress_bar,
             tqdm_kwargs=tqdm_kwargs,
+            create_parquet_metadata=create_parquet_metadata,
+            create_thumbnail=create_thumbnail,
+            create_per_partition_statistics=create_per_partition_statistics,
             error_if_empty=error_if_empty,
             create_summary=create_summary,
-            **kwargs,
+            should_write_skymap=should_write_skymap,
+            skymap_alt_orders=skymap_alt_orders,
+            write_table_kwargs=write_table_kwargs,
+            npix_suffix=npix_suffix,
+            npix_parquet_name=npix_parquet_name,
         )
 
     def to_lance(
