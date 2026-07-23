@@ -4,6 +4,7 @@ Working with Rubin Data
 .. toctree::
     :maxdepth: 1
 
+    About the EDP2 HATS Catalogs </tutorials/rubin_dp2_release>
     Accessing Rubin Data Preview 2 </tutorials/pre_executed/rubin_dp2.ipynb>
     Rubin Data Preview 2: Beginner Tutorial </tutorials/pre_executed/rubin_dp2_tutorial.ipynb>
     Rubin Data Preview 2: Starter Code </tutorials/pre_executed/rubin_dp2_starter.ipynb>
