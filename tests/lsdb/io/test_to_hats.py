@@ -588,3 +588,13 @@ def test_save_catalog_no_summary_by_default(small_sky_order1_catalog, tmp_path):
     base_catalog_path = tmp_path / "small_sky"
     small_sky_order1_catalog.write_catalog(base_catalog_path, as_collection=False)
     assert not (base_catalog_path / "README.md").exists()
+
+
+def test_create_parquet_metadata(small_sky_order1_catalog, tmp_path):
+    base_catalog_path = tmp_path / "small_sky"
+    small_sky_order1_catalog.write_catalog(base_catalog_path, create_parquet_metadata=True)
+    assert (base_catalog_path / "small_sky_order1/dataset/_metadata").exists()
+
+    base_catalog_path = tmp_path / "small_sky_no_metadata"
+    small_sky_order1_catalog.write_catalog(base_catalog_path, create_parquet_metadata=False)
+    assert not (base_catalog_path / "small_sky_order1/dataset/_metadata").exists()
