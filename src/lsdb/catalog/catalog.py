@@ -102,6 +102,25 @@ class Catalog(HealpixDataset):
         super().__init__(operation, hc_structure, loading_config)
         self.margin = margin
 
+    @property
+    def collection_version(self) -> str | None:
+        """Optional data version of this catalog's collection (e.g. ``'v2.1.0'``).
+
+        A data version identifies which release of the data you have loaded. It is a
+        property of the collection as a whole, so it is read from the parent collection;
+        ``None`` is returned for a standalone catalog with no collection, or for a
+        collection written before this field existed. This *data* version is distinct
+        from ``hats_version`` (the HATS format specification version).
+
+        See Also
+        --------
+        lsdb.show_catalog_versions : display the data versions of loaded catalogs.
+        lsdb.show_versions : report installed *software* versions, for bug reports.
+        """
+        if self.hc_collection is None:
+            return None
+        return self.hc_collection.collection_version
+
     def _create_updated_dataset(
         self,
         op: Operation | None = None,

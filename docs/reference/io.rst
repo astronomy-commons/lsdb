@@ -10,6 +10,7 @@ Construction
 
     open_catalog
     show_versions
+    show_catalog_versions
     from_dataframe
     from_astropy
     catalog.generation.generate_catalog
