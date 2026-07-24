@@ -181,9 +181,9 @@ object_photoz
 ------------------------------------------------------
 
 The ``object_photoz`` catalog provides photometric-redshift estimates for EDP2
-objects.
-
-.. Placeholder: describe the photo-z estimator(s), output columns, and any caveats once finalized.
+objects. A full description of the photo-z estimator(s), output columns, and
+caveats will be provided in the `RTN-124 <https://rtn-124.lsst.io/>`_ technical
+note.
 
 
 .. _edp2-visit-detector:
