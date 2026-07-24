@@ -598,3 +598,35 @@ def test_create_parquet_metadata(small_sky_order1_catalog, tmp_path):
     base_catalog_path = tmp_path / "small_sky_no_metadata"
     small_sky_order1_catalog.write_catalog(base_catalog_path, create_parquet_metadata=False)
     assert not (base_catalog_path / "small_sky_order1/dataset/_metadata").exists()
+
+
+def test_create_per_partition_statistics(small_sky_order1_catalog, tmp_path):
+    base_catalog_path = tmp_path / "small_sky"
+    small_sky_order1_catalog.write_catalog(base_catalog_path, create_per_partition_statistics=True)
+    assert (base_catalog_path / "small_sky_order1/per_partition_statistics.parquet").exists()
+
+    base_catalog_path = tmp_path / "small_sky_no_stats"
+    small_sky_order1_catalog.write_catalog(base_catalog_path, create_per_partition_statistics=False)
+    assert not (base_catalog_path / "small_sky_order1/per_partition_statistics.parquet").exists()
+
+
+def test_should_write_skymap(small_sky_order1_catalog, tmp_path):
+    base_catalog_path = tmp_path / "small_sky"
+    small_sky_order1_catalog.write_catalog(base_catalog_path, should_write_skymap=True)
+    assert (base_catalog_path / "small_sky_order1/skymap.fits").exists()
+
+    base_catalog_path = tmp_path / "small_sky_no_skymap"
+    small_sky_order1_catalog.write_catalog(base_catalog_path, should_write_skymap=False)
+    assert not (base_catalog_path / "small_sky_order1/skymap.fits").exists()
+
+
+def test_write_table_kwargs(small_sky_order1_catalog, tmp_path):
+    for compression_algo, expected in [("ZSTD", "ZSTD"), ("NONE", "UNCOMPRESSED"), ("SNAPPY", "SNAPPY")]:
+        base_catalog_path = tmp_path / f"small_sky_{compression_algo}"
+        small_sky_order1_catalog.write_catalog(
+            base_catalog_path, write_table_kwargs={"compression": compression_algo}
+        )
+        meta = pq.read_metadata(base_catalog_path / "small_sky_order1/dataset/_metadata")
+        for group in meta.to_dict()["row_groups"]:
+            for column in group["columns"]:
+                assert column["compression"] == expected
