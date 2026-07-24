@@ -1,4 +1,4 @@
-Rubin Early Data Preview 2 (EDP2) HATS Catalogs
+About the EDP2 HATS Catalogs
 ================================================================
 
 This page describes the HATS distribution of Rubin's **Early Data Preview 2
@@ -227,7 +227,7 @@ citation instructions on the :doc:`citation page </citation>`. If you use the
 corrected flux-error columns, please also cite Malanchev et al. (in prep).
 
 
-Limitations
+Caveats
 ------------------------------------------------------
 
 * **Position precision.** The downcast ``float32`` ``{band}_ra`` / ``{band}_dec``
@@ -236,7 +236,6 @@ Limitations
 * **Unassociated DIA sources.** 0.81% of ``diaSource`` rows (8,136,150 of
   1,000,825,975) are dropped from the nested light curves because their
   ``diaObjectId`` has no match in the ``DiaObject`` table.
-* **Data rights.** Access is restricted to Rubin data-rights holders.
 
 
 How to ask for help
@@ -260,11 +259,16 @@ performance):
 data rights, pipelines):
 
 * Ask on the `LSST Community Forum, Data Products category
-  <https://community.lsst.org/c/support/data/34>`_ — the best place for
-  questions about Rubin data.
+  <https://community.lsst.org/c/support/data/34>`_.
 
 
 Future plans
 ------------------------------------------------------
 
-*To be completed.*
+* **Additional catalogs.** We plan to add HATS distributions of the
+  ``ShearObject`` and ``IsolatedStarStellarMotions`` tables.
+* **Source table.** The ``Source`` table has been imported to HATS, but there are
+  currently no immediate plans to serve it due to its size.
+* **Storage migration.** The data currently hosted on the US Rubin Science
+  Platform (RSP) will be moved to a Google Cloud Storage bucket. This will change
+  the access path (the catalog URLs), but should not impact read performance.
