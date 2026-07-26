@@ -7,6 +7,9 @@ repackaged into the `HATS <https://hats.readthedocs.io>`_ format for use with
 LSDB. In addition to mirroring the Rubin Data Release  catalogs, the HATS distribution adds a number of value-added columns
 intended to make common science workflow easier.
 
+More information is available from the Observatory at
+`dp2.lsst.io <https://dp2.lsst.io>`_.
+
 What's in the release
 ------------------------------------------------------
 
@@ -201,22 +204,6 @@ information: observation-time MJDs, PSF and image-quality metrics, photometric
 zero points, sky background and noise, effective-time metrics, and WCS residuals.
 
 It is keyed by ``visitId`` and ``detectorId`` (also available as ``ccdVisitId``).
-The full column list is::
-
-    detectorId  visitId  physical_filter  band  ra  dec
-    pixelScale  zenithDistance  expTime  zeroPoint  psfSigma  skyBg  skyNoise
-    astromOffsetMean  astromOffsetStd  nPsfStar
-    psfStarDeltaE1Median  psfStarDeltaE2Median  psfStarDeltaE1Scatter  psfStarDeltaE2Scatter
-    psfStarDeltaSizeMedian  psfStarDeltaSizeScatter  psfStarScaledDeltaSizeScatter
-    psfTraceRadiusDelta  psfApFluxDelta  psfApCorrSigmaScaledDelta  maxDistToNearestPsf
-    starEMedian  starUnNormalizedEMedian
-    effTime  effTimePsfSigmaScale  effTimeSkyBgScale  effTimeZeroPointScale  magLim
-    decl  ccdVisitId  detector  seeing  skyRotation
-    expMidpt  expMidptMJD  obsStart  obsStartMJD  darkTime
-    xSize  ySize
-    llcra  llcdec  ulcra  ulcdec  urcra  urcdec  lrcra  lrcdec
-    wcsCornerMaxOffset  wcsDetectorPointingResidual  wcsVisitPointingResidual
-    wcsPreliminaryDetectorPointingResidual  wcsPreliminaryVisitPointingResidual
 
 
 How to cite
