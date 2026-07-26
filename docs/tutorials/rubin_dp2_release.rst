@@ -8,7 +8,7 @@ LSDB. In addition to mirroring the Rubin Data Release  catalogs, the HATS distri
 intended to make common science workflow easier.
 
 More information is available from the Observatory at
-`dp2.lsst.io <https://dp2.lsst.io>`_.
+`dp2.lsst.io <https://dp2.lsst.io/products/user/lsdb.html>`_.
 
 What's in the release
 ------------------------------------------------------
