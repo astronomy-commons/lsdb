@@ -2,12 +2,8 @@ Working with Rubin Data
 ------------------------------------------------------
 
 .. toctree::
-    :maxdepth: 1
+    :maxdepth: 2
 
-    Accessing Rubin Data Preview 2 </tutorials/pre_executed/rubin_dp2>
-    Accessing Rubin Data Preview 1 </tutorials/pre_executed/rubin_dp1>
-    Intro to Rubin Catalog Operations </tutorials/pre_executed/using_rubin_data>
-    Accessing Rubin Data Preview 1 photo-z </tutorials/pre_executed/rubin_dp1_photoz>
-    Cross-matching with Variable Star Index catalog </tutorials/pre_executed/rubin_dp1_vsx>
-    Visualizing Periodic Lightcurves </tutorials/pre_executed/visualize_periodic_lcs>
-
+    /tutorial_toc/toc_rubin_edp2_getting_started
+    /tutorial_toc/toc_rubin_edp2_tutorials
+    /tutorial_toc/toc_rubin_dp1
