@@ -626,7 +626,58 @@ def test_write_table_kwargs(small_sky_order1_catalog, tmp_path):
         small_sky_order1_catalog.write_catalog(
             base_catalog_path, write_table_kwargs={"compression": compression_algo}
         )
-        meta = pq.read_metadata(base_catalog_path / "small_sky_order1/dataset/_metadata")
-        for group in meta.to_dict()["row_groups"]:
+        metadata = pq.read_metadata(base_catalog_path / "small_sky_order1/dataset/_metadata")
+        for group in metadata.to_dict()["row_groups"]:
             for column in group["columns"]:
                 assert column["compression"] == expected
+
+
+def test_row_group_kwargs(small_sky_order1_catalog, tmp_path):
+    base_catalog_path = tmp_path / "small_sky"
+    small_sky_order1_catalog.write_catalog(base_catalog_path)
+    metadata = hc.io.file_io.read_parquet_metadata(
+        small_sky_order1_catalog.hc_structure.catalog_path / "dataset" / "_metadata"
+    )
+    # small_sky_order1 catalog has 131 rows in 4 row groups by default
+    assert metadata.num_rows == 131
+    assert metadata.num_row_groups == 4
+
+    base_catalog_path = tmp_path / "small_sky_10rows_per_group"
+    small_sky_order1_catalog.write_catalog(base_catalog_path, row_group_kwargs={"num_rows": 10})
+    metadata = hc.io.file_io.read_parquet_metadata(
+        small_sky_order1_catalog.hc_structure.catalog_path / "dataset" / "_metadata"
+    )
+    # 131 rows / (10 rows/group) = 14 row groups
+    # BUG why isn't the number of row groups in the metadata changing? it's still 4!
+    # assert metadata.num_row_groups == 14
+
+    base_catalog_path = tmp_path / "small_sky_1000rows_per_group"
+    small_sky_order1_catalog.write_catalog(base_catalog_path, row_group_kwargs={"num_rows": 1000})
+    metadata = hc.io.file_io.read_parquet_metadata(
+        small_sky_order1_catalog.hc_structure.catalog_path / "dataset" / "_metadata"
+    )
+    # assert metadata.num_row_groups == 1
+
+    base_catalog_path = tmp_path / "small_sky_subtile_0"
+    small_sky_order1_catalog.write_catalog(base_catalog_path, row_group_kwargs={"subtile_order_delta": 0})
+    metadata = hc.io.file_io.read_parquet_metadata(
+        small_sky_order1_catalog.hc_structure.catalog_path / "dataset" / "_metadata"
+    )
+    # assert metadata.num_row_groups == ???
+
+    base_catalog_path = tmp_path / "small_sky_subtile_1"
+    small_sky_order1_catalog.write_catalog(base_catalog_path, row_group_kwargs={"subtile_order_delta": 1})
+    metadata = hc.io.file_io.read_parquet_metadata(
+        small_sky_order1_catalog.hc_structure.catalog_path / "dataset" / "_metadata"
+    )
+    # assert metadata.num_row_groups == ???
+
+    base_catalog_path = tmp_path / "small_sky_subtile_0_and_10rows_per_group"
+    small_sky_order1_catalog.write_catalog(base_catalog_path, row_group_kwargs={"subtile_order_delta": 0, "num_rows": 10})
+    metadata = hc.io.file_io.read_parquet_metadata(
+        small_sky_order1_catalog.hc_structure.catalog_path / "dataset" / "_metadata"
+    )
+    # assert metadata.num_row_groups == ???
+
+    # Don't pass tests without correcting the above!
+    assert False
