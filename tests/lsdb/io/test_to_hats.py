@@ -659,13 +659,10 @@ def test_row_group_kwargs(small_sky_order1_catalog, tmp_path):
     # Norder=1/Dir=0/Npix=45: [10, 10, 9]
     # Norder=1/Dir=0/Npix=46: [10, 10, 10, 10, 2]
     # Norder=1/Dir=0/Npix=47: [10, 8]
-    for pix_num, expected_num_row_groups in [
-        (44, 5),
-        (45, 3),
-        (46, 5),
-        (47, 2)
-    ]:
-        pf = pq.ParquetFile(base_catalog_path / f"small_sky_order1/dataset/Norder=1/Dir=0/Npix={pix_num}.parquet")
+    for pix_num, expected_num_row_groups in [(44, 5), (45, 3), (46, 5), (47, 2)]:
+        pf = pq.ParquetFile(
+            base_catalog_path / f"small_sky_order1/dataset/Norder=1/Dir=0/Npix={pix_num}.parquet"
+        )
         assert pf.num_row_groups == expected_num_row_groups
 
     # NOTE why doesn't the number of row groups in the metadata change?
@@ -681,13 +678,10 @@ def test_row_group_kwargs(small_sky_order1_catalog, tmp_path):
     # Norder=1/Dir=0/Npix=45: [29]
     # Norder=1/Dir=0/Npix=46: [42]
     # Norder=1/Dir=0/Npix=47: [18]
-    for pix_num, expected_num_row_groups in [
-        (44, 1),
-        (45, 1),
-        (46, 1),
-        (47, 1)
-    ]:
-        pf = pq.ParquetFile(base_catalog_path / f"small_sky_order1/dataset/Norder=1/Dir=0/Npix={pix_num}.parquet")
+    for pix_num, expected_num_row_groups in [(44, 1), (45, 1), (46, 1), (47, 1)]:
+        pf = pq.ParquetFile(
+            base_catalog_path / f"small_sky_order1/dataset/Norder=1/Dir=0/Npix={pix_num}.parquet"
+        )
         assert pf.num_row_groups == expected_num_row_groups
 
     ### row_group_kwargs["subtile_order_delta"] == 0
@@ -697,15 +691,11 @@ def test_row_group_kwargs(small_sky_order1_catalog, tmp_path):
     # Norder=1/Dir=0/Npix=45: [29]
     # Norder=1/Dir=0/Npix=46: [42]
     # Norder=1/Dir=0/Npix=47: [18]
-    for pix_num, expected_num_row_groups in [
-        (44, 1),
-        (45, 1),
-        (46, 1),
-        (47, 1)
-    ]:
-        pf = pq.ParquetFile(base_catalog_path / f"small_sky_order1/dataset/Norder=1/Dir=0/Npix={pix_num}.parquet")
+    for pix_num, expected_num_row_groups in [(44, 1), (45, 1), (46, 1), (47, 1)]:
+        pf = pq.ParquetFile(
+            base_catalog_path / f"small_sky_order1/dataset/Norder=1/Dir=0/Npix={pix_num}.parquet"
+        )
         assert pf.num_row_groups == expected_num_row_groups
-
 
     ### row_group_kwargs["subtile_order_delta"] == 1
     base_catalog_path = tmp_path / "small_sky_subtile_1"
@@ -714,29 +704,24 @@ def test_row_group_kwargs(small_sky_order1_catalog, tmp_path):
     # Norder=1/Dir=0/Npix=45: [5, 7, 8, 9]
     # Norder=1/Dir=0/Npix=46: [11, 23, 4, 4]
     # Norder=1/Dir=0/Npix=47: [17, 1]
-    for pix_num, expected_num_row_groups in [
-        (44, 4),
-        (45, 4),
-        (46, 4),
-        (47, 2)
-    ]:
-        pf = pq.ParquetFile(base_catalog_path / f"small_sky_order1/dataset/Norder=1/Dir=0/Npix={pix_num}.parquet")
+    for pix_num, expected_num_row_groups in [(44, 4), (45, 4), (46, 4), (47, 2)]:
+        pf = pq.ParquetFile(
+            base_catalog_path / f"small_sky_order1/dataset/Norder=1/Dir=0/Npix={pix_num}.parquet"
+        )
         assert pf.num_row_groups == expected_num_row_groups
 
     ### row_group_kwargs["num_rows"] == 10 and row_group_kwargs["subtile_order_delta"] == 1
     # num_rows takes precedence over subtile_order_delta
     base_catalog_path = tmp_path / "small_sky_subtile_1_and_10rows_per_group"
-    small_sky_order1_catalog.write_catalog(base_catalog_path, row_group_kwargs={"subtile_order_delta": 1, "num_rows": 10})
+    small_sky_order1_catalog.write_catalog(
+        base_catalog_path, row_group_kwargs={"subtile_order_delta": 1, "num_rows": 10}
+    )
     # Norder=1/Dir=0/Npix=44: [10, 10, 10, 10, 2]
     # Norder=1/Dir=0/Npix=45: [10, 10, 9]
     # Norder=1/Dir=0/Npix=46: [10, 10, 10, 10, 2]
     # Norder=1/Dir=0/Npix=47: [10, 8]
-    for pix_num, expected_num_row_groups in [
-        (44, 5),
-        (45, 3),
-        (46, 5),
-        (47, 2)
-    ]:
-        pf = pq.ParquetFile(base_catalog_path / f"small_sky_order1/dataset/Norder=1/Dir=0/Npix={pix_num}.parquet")
+    for pix_num, expected_num_row_groups in [(44, 5), (45, 3), (46, 5), (47, 2)]:
+        pf = pq.ParquetFile(
+            base_catalog_path / f"small_sky_order1/dataset/Norder=1/Dir=0/Npix={pix_num}.parquet"
+        )
         assert pf.num_row_groups == expected_num_row_groups
-
