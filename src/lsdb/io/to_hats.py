@@ -11,7 +11,6 @@ import numpy as np
 import pandas as pd
 import pyarrow.parquet as pq
 import pyarrow as pa
-import hats_import
 from hats.catalog import CatalogType, PartitionInfo
 from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
 from hats.io import file_io
@@ -21,6 +20,7 @@ from hats.pixel_math import HealpixPixel, spatial_index_to_healpix
 from hats.pixel_math.sparse_histogram import HistogramAggregator, SparseHistogram
 from upath import UPath
 
+from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
 from lsdb.io.common import new_provenance_properties, round_sig, set_default_write_table_kwargs
 
@@ -85,7 +85,7 @@ def perform_write(
     if row_group_kwargs:
         table = pa.Table.from_pandas(df)
         # Obtain the row groups for the target file
-        rowgroup_tables = hats_import.catalog.map_reduce._split_to_row_groups(
+        rowgroup_tables = _split_to_row_groups(
             table, row_group_kwargs, hp_pixel.order)
 
         # Option A --- I think df.to_parquet() is writing over the same file when given multiple row groups
@@ -669,3 +669,22 @@ def create_modified_catalog_structure(
     new_hc_structure.catalog_info = new_hc_structure.catalog_info.copy_and_update(**kwargs)
     new_hc_structure.catalog_info.catalog_name = catalog_name
     return new_hc_structure
+
+# Copied from hats_import.catalog.map_reduce
+# TODO DRY refactor
+def _split_to_row_groups(table, row_group_kwargs, pixel_order):
+    """Split the pixel table into its row group chunks according to the specified splitting strategy."""
+    if "num_rows" in row_group_kwargs:
+        chunk_size = row_group_kwargs["num_rows"]
+        return [table.slice(i, chunk_size) for i in range(0, len(table), chunk_size)]
+    if "subtile_order_delta" in row_group_kwargs:
+        split_tables = []
+        parent_pixels = table[SPATIAL_INDEX_COLUMN].to_numpy()
+        target_order = row_group_kwargs["subtile_order_delta"] + pixel_order
+        child_pixs = spatial_index_to_healpix(parent_pixels, target_order=target_order)
+        for child_pix in np.unique(child_pixs):
+            indices = np.where(child_pixs == child_pix)[0]
+            row_group = table.take(pa.array(indices))
+            split_tables.append(row_group)
+        return split_tables
+    return [table]
