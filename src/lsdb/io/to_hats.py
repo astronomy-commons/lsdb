@@ -86,17 +86,16 @@ def perform_write(
     if row_group_kwargs:
         table = pa.Table.from_pandas(df)
         # Obtain the row groups for the target file
-        rowgroup_tables = _split_to_row_groups(
-            table, row_group_kwargs, hp_pixel.order)
+        rowgroup_tables = _split_to_row_groups(table, row_group_kwargs, hp_pixel.order)
 
         with pq.ParquetWriter(
-                    pixel_path.path,
-                    table.schema,
-                    filesystem=pixel_path.fs,
-                    **kwargs,
-                ) as writer:
-                    for table in rowgroup_tables:
-                        writer.write_table(table)
+            pixel_path.path,
+            table.schema,
+            filesystem=pixel_path.fs,
+            **kwargs,
+        ) as writer:
+            for table in rowgroup_tables:
+                writer.write_table(table)
     else:
         df.to_parquet(pixel_path.path, filesystem=pixel_path.fs, **kwargs)
     histogram = calculate_histogram(df, histogram_order)
@@ -663,6 +662,7 @@ def create_modified_catalog_structure(
     new_hc_structure.catalog_info = new_hc_structure.catalog_info.copy_and_update(**kwargs)
     new_hc_structure.catalog_info.catalog_name = catalog_name
     return new_hc_structure
+
 
 # Copied from hats_import.catalog.map_reduce
 # TODO DRY refactor
