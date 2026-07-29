@@ -633,6 +633,7 @@ def test_write_table_kwargs(small_sky_order1_catalog, tmp_path):
 
 
 def test_row_group_kwargs(small_sky_order1_catalog, tmp_path):
+    ### No row_group_kwargs
     base_catalog_path = tmp_path / "small_sky"
     small_sky_order1_catalog.write_catalog(base_catalog_path)
     metadata = hc.io.file_io.read_parquet_metadata(
@@ -642,42 +643,100 @@ def test_row_group_kwargs(small_sky_order1_catalog, tmp_path):
     assert metadata.num_rows == 131
     assert metadata.num_row_groups == 4
 
+    ### Unused row_group_kwargs
+    base_catalog_path = tmp_path / "small_sky_unused_rowgroup_kwargs"
+    small_sky_order1_catalog.write_catalog(base_catalog_path, row_group_kwargs={"unused": 123})
+    metadata = hc.io.file_io.read_parquet_metadata(
+        small_sky_order1_catalog.hc_structure.catalog_path / "dataset" / "_metadata"
+    )
+    assert metadata.num_rows == 131
+    assert metadata.num_row_groups == 4
+
+    ### row_group_kwargs["num_rows"] == 10
     base_catalog_path = tmp_path / "small_sky_10rows_per_group"
     small_sky_order1_catalog.write_catalog(base_catalog_path, row_group_kwargs={"num_rows": 10})
+    # Norder=1/Dir=0/Npix=44: [10, 10, 10, 10, 2]
+    # Norder=1/Dir=0/Npix=45: [10, 10, 9]
+    # Norder=1/Dir=0/Npix=46: [10, 10, 10, 10, 2]
+    # Norder=1/Dir=0/Npix=47: [10, 8]
+    for pix_num, expected_num_row_groups in [
+        (44, 5),
+        (45, 3),
+        (46, 5),
+        (47, 2)
+    ]:
+        pf = pq.ParquetFile(base_catalog_path / f"small_sky_order1/dataset/Norder=1/Dir=0/Npix={pix_num}.parquet")
+        assert pf.num_row_groups == expected_num_row_groups
+
+    # NOTE why doesn't the number of row groups in the metadata change?
     metadata = hc.io.file_io.read_parquet_metadata(
         small_sky_order1_catalog.hc_structure.catalog_path / "dataset" / "_metadata"
     )
-    # 131 rows / (10 rows/group) = 14 row groups
-    # BUG why isn't the number of row groups in the metadata changing? it's still 4!
-    # assert metadata.num_row_groups == 14
+    assert metadata.num_row_groups == 4
 
+    ## row_group_kwargs["num_rows"] == 1000
     base_catalog_path = tmp_path / "small_sky_1000rows_per_group"
     small_sky_order1_catalog.write_catalog(base_catalog_path, row_group_kwargs={"num_rows": 1000})
-    metadata = hc.io.file_io.read_parquet_metadata(
-        small_sky_order1_catalog.hc_structure.catalog_path / "dataset" / "_metadata"
-    )
-    # assert metadata.num_row_groups == 1
+    # Norder=1/Dir=0/Npix=44: [42]
+    # Norder=1/Dir=0/Npix=45: [29]
+    # Norder=1/Dir=0/Npix=46: [42]
+    # Norder=1/Dir=0/Npix=47: [18]
+    for pix_num, expected_num_row_groups in [
+        (44, 1),
+        (45, 1),
+        (46, 1),
+        (47, 1)
+    ]:
+        pf = pq.ParquetFile(base_catalog_path / f"small_sky_order1/dataset/Norder=1/Dir=0/Npix={pix_num}.parquet")
+        assert pf.num_row_groups == expected_num_row_groups
 
+    ### row_group_kwargs["subtile_order_delta"] == 0
     base_catalog_path = tmp_path / "small_sky_subtile_0"
     small_sky_order1_catalog.write_catalog(base_catalog_path, row_group_kwargs={"subtile_order_delta": 0})
-    metadata = hc.io.file_io.read_parquet_metadata(
-        small_sky_order1_catalog.hc_structure.catalog_path / "dataset" / "_metadata"
-    )
-    # assert metadata.num_row_groups == ???
+    # Norder=1/Dir=0/Npix=44: [42]
+    # Norder=1/Dir=0/Npix=45: [29]
+    # Norder=1/Dir=0/Npix=46: [42]
+    # Norder=1/Dir=0/Npix=47: [18]
+    for pix_num, expected_num_row_groups in [
+        (44, 1),
+        (45, 1),
+        (46, 1),
+        (47, 1)
+    ]:
+        pf = pq.ParquetFile(base_catalog_path / f"small_sky_order1/dataset/Norder=1/Dir=0/Npix={pix_num}.parquet")
+        assert pf.num_row_groups == expected_num_row_groups
 
+
+    ### row_group_kwargs["subtile_order_delta"] == 1
     base_catalog_path = tmp_path / "small_sky_subtile_1"
     small_sky_order1_catalog.write_catalog(base_catalog_path, row_group_kwargs={"subtile_order_delta": 1})
-    metadata = hc.io.file_io.read_parquet_metadata(
-        small_sky_order1_catalog.hc_structure.catalog_path / "dataset" / "_metadata"
-    )
-    # assert metadata.num_row_groups == ???
+    # Norder=1/Dir=0/Npix=44: [4, 11, 14, 13]
+    # Norder=1/Dir=0/Npix=45: [5, 7, 8, 9]
+    # Norder=1/Dir=0/Npix=46: [11, 23, 4, 4]
+    # Norder=1/Dir=0/Npix=47: [17, 1]
+    for pix_num, expected_num_row_groups in [
+        (44, 4),
+        (45, 4),
+        (46, 4),
+        (47, 2)
+    ]:
+        pf = pq.ParquetFile(base_catalog_path / f"small_sky_order1/dataset/Norder=1/Dir=0/Npix={pix_num}.parquet")
+        assert pf.num_row_groups == expected_num_row_groups
 
-    base_catalog_path = tmp_path / "small_sky_subtile_0_and_10rows_per_group"
-    small_sky_order1_catalog.write_catalog(base_catalog_path, row_group_kwargs={"subtile_order_delta": 0, "num_rows": 10})
-    metadata = hc.io.file_io.read_parquet_metadata(
-        small_sky_order1_catalog.hc_structure.catalog_path / "dataset" / "_metadata"
-    )
-    # assert metadata.num_row_groups == ???
+    ### row_group_kwargs["num_rows"] == 10 and row_group_kwargs["subtile_order_delta"] == 1
+    # num_rows takes precedence over subtile_order_delta
+    base_catalog_path = tmp_path / "small_sky_subtile_1_and_10rows_per_group"
+    small_sky_order1_catalog.write_catalog(base_catalog_path, row_group_kwargs={"subtile_order_delta": 1, "num_rows": 10})
+    # Norder=1/Dir=0/Npix=44: [10, 10, 10, 10, 2]
+    # Norder=1/Dir=0/Npix=45: [10, 10, 9]
+    # Norder=1/Dir=0/Npix=46: [10, 10, 10, 10, 2]
+    # Norder=1/Dir=0/Npix=47: [10, 8]
+    for pix_num, expected_num_row_groups in [
+        (44, 5),
+        (45, 3),
+        (46, 5),
+        (47, 2)
+    ]:
+        pf = pq.ParquetFile(base_catalog_path / f"small_sky_order1/dataset/Norder=1/Dir=0/Npix={pix_num}.parquet")
+        assert pf.num_row_groups == expected_num_row_groups
 
-    # Don't pass tests without correcting the above!
-    assert False

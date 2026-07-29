@@ -82,18 +82,13 @@ def perform_write(
         npix_suffix=npix_suffix,
         npix_parquet_name=npix_parquet_name,
     )
+    # TODO remove this ifelse; _split_to_row_groups already handles it
     if row_group_kwargs:
         table = pa.Table.from_pandas(df)
         # Obtain the row groups for the target file
         rowgroup_tables = _split_to_row_groups(
             table, row_group_kwargs, hp_pixel.order)
 
-        # Option A --- I think df.to_parquet() is writing over the same file when given multiple row groups
-        # for table in rowgroup_tables:
-        #     df = table.to_pandas()
-        #     df.to_parquet(pixel_path.path, filesystem=pixel_path.fs, **kwargs)
-
-        # Option B --- ParquetWriter is supposed to automatically write different files for row groups
         with pq.ParquetWriter(
                     pixel_path.path,
                     table.schema,
@@ -102,7 +97,6 @@ def perform_write(
                 ) as writer:
                     for table in rowgroup_tables:
                         writer.write_table(table)
-
     else:
         df.to_parquet(pixel_path.path, filesystem=pixel_path.fs, **kwargs)
     histogram = calculate_histogram(df, histogram_order)
@@ -672,6 +666,7 @@ def create_modified_catalog_structure(
 
 # Copied from hats_import.catalog.map_reduce
 # TODO DRY refactor
+# TODO docstring
 def _split_to_row_groups(table, row_group_kwargs, pixel_order):
     """Split the pixel table into its row group chunks according to the specified splitting strategy."""
     if "num_rows" in row_group_kwargs:
