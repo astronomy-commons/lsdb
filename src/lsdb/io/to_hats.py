@@ -82,12 +82,10 @@ def perform_write(
         npix_suffix=npix_suffix,
         npix_parquet_name=npix_parquet_name,
     )
-    # TODO remove this ifelse; _split_to_row_groups already handles it
     if row_group_kwargs:
         table = pa.Table.from_pandas(df)
         # Obtain the row groups for the target file
         rowgroup_tables = _split_to_row_groups(table, row_group_kwargs, hp_pixel.order)
-
         with pq.ParquetWriter(
             pixel_path.path,
             table.schema,
@@ -666,9 +664,31 @@ def create_modified_catalog_structure(
 
 # Copied from hats_import.catalog.map_reduce
 # TODO DRY refactor
-# TODO docstring
 def _split_to_row_groups(table, row_group_kwargs, pixel_order):
-    """Split the pixel table into its row group chunks according to the specified splitting strategy."""
+    """Split the pixel table into its row group chunks according to the specified splitting strategy.
+
+    Parameters
+    ----------
+    table : pa.Table
+        Pixel table.
+    row_group_kwargs : dict
+        if "num_rows" (int >= 1) in row_group_kwargs, limit each chunk to a maximum of this many rows.
+            e.g. if the input table has 32 rows and num_rows == 10, then the chunks will have
+            [10, 10, 10, 2] rows.
+        if "subtile_order_delta" (int >= 0) in row_group_kwargs, create row groups corresponding to angular
+            proximity, approximated by HEALPix pixels.
+            If subtile_order_delta == 0, then each row group contains objects in the same HEALPix pixel of
+            order pixel_order. If subtile_order_delta == 1, then the row groups are split by HEALPix pixels
+            at order pixel_order + 1, etc. Higher numbers correspond to a finer grid (smaller pixels, fewer
+            rows per pixel).
+    pixel_order : int
+        The HEALPix order to split when using subtile_order_delta.
+
+    Returns
+    -------
+    split_tables : list[pa.Table]
+        The input table split into row group chunks.
+    """
     if "num_rows" in row_group_kwargs:
         chunk_size = row_group_kwargs["num_rows"]
         return [table.slice(i, chunk_size) for i in range(0, len(table), chunk_size)]
