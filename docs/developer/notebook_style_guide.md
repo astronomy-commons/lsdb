@@ -15,21 +15,32 @@ rather than picking a side silently.
 Follow the section order in the template:
 
 1. Title (`# [Notebook Title]`)
-2. "In this tutorial we will:" — a short bulleted list of what the reader will learn
+2. "In this tutorial, we will:" — a short bulleted list of what the reader will learn
 3. `## Introduction` — what the feature is and, briefly, why it exists
-4. Content sections, numbered (`## 1 - ...`, with `### 1.1 - ...` sub-sections as needed)
+4. Content sections, numbered (`## 1. ...`, with `### 1.1 ...` sub-sections as needed). Note the
+   punctuation: a period after a top-level number, nothing after a sub-section number.
 5. `## Close the Dask client` — if a client was opened for the notebook
 6. `## About` footer
 
 **Prose comes before code.** The intro text is the first thing a reader sees, so they know what
-the notebook is for before they hit any setup. Import cells follow it.
+the notebook is for before they hit any setup.
+
+**Imports come no earlier than the Introduction, and as early after it as is practical.** The hard
+part of this rule is the "no earlier" — a reader should never hit a code cell before they have been
+told what the notebook is for. Beyond that it is a preference, not a requirement: putting the main
+import cell immediately after the Introduction is ideal, and putting it at the top of the first
+content section is fine. Both are common in our notebooks and neither is worth a revision pass on
+its own. Imports that genuinely belong to one later section (a plotting helper used once, in
+section 4) can stay there.
 
 **Close what you open.** If a notebook instantiates a Dask client that lives for the whole
 notebook, close it at the end with `client.close()`.
 
 **Every notebook needs the footer.** The `## About` section carries author(s), the date the
 notebook was last updated/run, and the citation reminder. Copy it verbatim from the template
-and fill in the fields.
+and fill in the fields. The field labels are `**Authors**:` and `**Last updated on**:` — note the
+colon outside the bold, which is what most of our notebooks already do. We do not pin a date
+format; write it however reads clearly.
 
 ## Logging and the Dask dashboard
 
@@ -115,7 +126,7 @@ axes to the region where the data actually lives rather than showing the full ra
 For a new notebook, or a revision pass over an existing one:
 
 - [ ] Filename uses underscores
-- [ ] Title, then the "In this tutorial we will:" objectives, then the Introduction, then the imports
+- [ ] Title, then the "In this tutorial, we will:" objectives, then the Introduction, then the imports
 - [ ] Logging cell present, at the bottom of / just after the main imports
 - [ ] Dashboard link printed above the bare `client` line, and the link works on the target platform
 - [ ] "Rubin", not "LSST", when naming data releases and data products

@@ -91,4 +91,4 @@ We recommend saving the result as a HATS catalog immediately so you can reload i
 
    cat = lsdb.open_catalog("./vmicro")
 
-For a complete worked example including cross-matching, see the :doc:`ZTF BTS × NGC tutorial </tutorials/pre_executed/ztf_bts-ngc>`.
+For a complete worked example including cross-matching, see the :doc:`ZTF BTS × NGC tutorial </tutorials/pre_executed/ztf_bts_ngc>`.
