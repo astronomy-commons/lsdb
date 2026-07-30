@@ -53,6 +53,8 @@ def to_collection(
     create_summary : bool, default False
         If True, writes ``README.md`` summary files for the collection, the main
         catalog, and the margin (if it exists).
+    row_group_kwargs: dict or None, default None
+        Additional keyword arguments to use in creation of row groups when writing files to parquet.
     **kwargs
         Arguments to pass to the parquet write operations
     """

@@ -9,8 +9,8 @@ import hats as hc
 import nested_pandas as npd
 import numpy as np
 import pandas as pd
-import pyarrow.parquet as pq
 import pyarrow as pa
+import pyarrow.parquet as pq
 from hats.catalog import CatalogType, PartitionInfo
 from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
 from hats.io import file_io
@@ -18,9 +18,9 @@ from hats.io.skymap import write_skymap
 from hats.io.summary_file import write_catalog_summary_file
 from hats.pixel_math import HealpixPixel, spatial_index_to_healpix
 from hats.pixel_math.sparse_histogram import HistogramAggregator, SparseHistogram
+from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 from upath import UPath
 
-from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
 from lsdb.io.common import new_provenance_properties, round_sig, set_default_write_table_kwargs
 
