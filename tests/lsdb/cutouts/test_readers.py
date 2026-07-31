@@ -150,3 +150,8 @@ def test_cutout_column_renders_from_fits(image_rows, fits_image):
     np.testing.assert_array_equal(series.iloc[1].data, data[10:15, 10:15])
     cutout2d = series.iloc[1].to_cutout2d()
     assert cutout2d.wcs is not None
+
+
+def test_fits_reader_file_uri(fits_image):
+    path, data = fits_image
+    np.testing.assert_array_equal(FitsImageReader().read_image(f"file://{path}"), data)

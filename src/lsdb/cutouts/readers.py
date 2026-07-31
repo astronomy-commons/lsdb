@@ -71,7 +71,12 @@ class FitsImageReader(ImageReader):
     def read_image(self, path: str) -> np.ndarray:
         from astropy.io import fits  # pylint: disable=import-outside-toplevel
 
-        use_fsspec = "://" in str(path) and not str(path).startswith("file://")
+        path = str(path)
+        if path.startswith("file://"):
+            # Open local files directly; astropy would otherwise treat the URL
+            # through its download-to-cache machinery (copying the whole file)
+            path = path.removeprefix("file://")
+        use_fsspec = "://" in path
         with fits.open(path, use_fsspec=use_fsspec) as hdu_list:
             if self.hdu_index is not None:
                 return np.asarray(hdu_list[self.hdu_index].data)
