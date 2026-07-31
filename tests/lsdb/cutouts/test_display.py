@@ -8,8 +8,6 @@ from lsdb.cutouts import (
     CutoutRef,
     CutoutSeries,
     InMemoryImageStore,
-    nestedframe_html,
-    register_ipython_formatter,
 )
 from lsdb.cutouts.display import MAX_RENDERED, render_png_base64, series_html, series_repr
 
@@ -91,38 +89,46 @@ def test_series_html_na(store):
     assert html.count("<img") == 2
 
 
-def test_nestedframe_html(store):
-    n = MAX_RENDERED + 2
+def test_nestedframe_repr_renders_thumbnails(store):
     array = CutoutArray.from_arrays(
-        ["img1"] * n, x0=range(n), y0=range(n), width=[3] * n, height=[3] * n, store=store
+        ["img1"] * 4, x0=range(4), y0=range(4), width=[3] * 4, height=[3] * 4, store=store
     )
-    frame = npd.NestedFrame({"a": range(n), "label": ["<b>bold</b>"] * n, "cutouts": pd.Series(array)})
-    html = nestedframe_html(frame, max_rows=n)
-    assert html.count("<img") == MAX_RENDERED
-    assert html.count("not rendered in preview") == 2
-    # Other columns are escaped even though escape=False is used for the img tags
-    assert "<b>bold</b>" not in html
-    assert "&lt;b&gt;bold&lt;/b&gt;" in html
+    frame = npd.NestedFrame({"a": range(4), "cutouts": pd.Series(array)})
+    html = frame._repr_html_()
+    # Rendered natively by NestedFrame via the registered cell formatter
+    assert html.count("<img") == 4
+    assert "data:image/png;base64," in html
 
 
-def test_nestedframe_html_truncates_rows(store):
+def test_nestedframe_repr_truncation_bounds_thumbnails(store):
+    n = 40
     array = CutoutArray.from_arrays(
-        ["img1"] * 15, x0=range(15), y0=range(15), width=[3] * 15, height=[3] * 15, store=store
+        ["img1"] * n,
+        x0=[i % 15 for i in range(n)],
+        y0=[i % 15 for i in range(n)],
+        width=[3] * n,
+        height=[3] * n,
+        store=store,
     )
-    frame = npd.NestedFrame({"a": range(15), "cutouts": pd.Series(array)})
-    html = nestedframe_html(frame, max_rows=10)
-    assert html.count("<img") == MAX_RENDERED
-    assert "... 5 more rows" in html
+    frame = npd.NestedFrame({"a": range(n), "cutouts": pd.Series(array)})
+    with pd.option_context("display.max_rows", 10, "display.min_rows", 5):
+        html = frame._repr_html_()
+    # pandas row truncation bounds the number of thumbnails rendered
+    assert 0 < html.count("<img") <= 6
 
 
-def test_nestedframe_html_without_cutouts_is_default():
+def test_nestedframe_repr_without_cutouts_unchanged():
     frame = npd.NestedFrame({"a": [1, 2, 3]})
-    assert nestedframe_html(frame) == frame._repr_html_()
+    html = frame._repr_html_()
+    assert "<img" not in html
+    assert "<table" in html
 
 
-def test_register_ipython_formatter_no_op_outside_ipython():
-    # Running under pytest there is no IPython kernel; this must not raise.
-    register_ipython_formatter()
+def test_cutout_cell_html_handles_na():
+    from lsdb.cutouts import cutout_cell_html
+
+    assert cutout_cell_html(pd.NA) == "&lt;NA&gt;"
+    assert cutout_cell_html(None) == "&lt;NA&gt;"
 
 
 def test_ref_repr_html(store):
@@ -139,15 +145,15 @@ def test_ref_repr_html_no_store_falls_back():
     assert "CutoutRef" in repr(ref)
 
 
-def test_nestedframe_html_renders_nested_columns(store):
+def test_nestedframe_repr_nested_and_cutout_columns(store):
     array = CutoutArray.from_arrays(
         ["img1"] * 3, x0=[0, 1, 2], y0=[0, 1, 2], width=[3] * 3, height=[3] * 3, store=store
     )
     frame = npd.NestedFrame(
-        {"a": [1, 2, 3], "flux": [[1.0, 2.0], [3.0], [4.0, 5.0]], "cutouts": pd.Series(array)}
+        {"a": [1, 2, 3], "flux": [[1.0, 2.0], [3.0], [4.0, 5.0, 6.0]], "cutouts": pd.Series(array)}
     ).nest_lists(columns=["flux"], name="lightcurve")
-    html = nestedframe_html(frame)
-    # Nested cells render through pandas' formatter, not the raw wrapper object
+    html = frame._repr_html_()
+    # Nested sub-tables and cutout thumbnails render side by side
     assert "_DataFrameWrapperForRepresentation" not in html
-    assert "flux" in html
+    assert "+2 rows" in html  # nested-pandas sub-table footer for the 3-row cell
     assert html.count("<img") == 3

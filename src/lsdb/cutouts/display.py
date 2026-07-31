@@ -5,9 +5,10 @@ lazy image stores); cutouts are shown as descriptor text with a placeholder
 star. HTML reprs render the first :data:`MAX_RENDERED` cutouts as inline PNG
 thumbnails and show the rest as a text placeholder.
 
-Importing :mod:`lsdb.cutouts` registers an IPython display formatter so that
-``NestedFrame`` objects containing cutout columns show thumbnails in notebooks
-without any changes to nested-pandas.
+Importing :mod:`lsdb.cutouts` registers a cell HTML formatter for the cutout
+dtype with nested-pandas, so ``NestedFrame._repr_html_`` renders cutout cells
+as thumbnails natively — the same mechanism nested columns use for their
+sub-table rendering.
 """
 
 from __future__ import annotations
@@ -16,13 +17,13 @@ import base64
 import html as html_module
 import io
 
-import nested_pandas as npd
 import numpy as np
 import pandas as pd
+from nested_pandas import register_html_formatter
 
 from lsdb.cutouts.cutout_array import CutoutDtype, CutoutRef
 
-__all__ = ["MAX_RENDERED", "render_png_base64", "series_repr", "series_html", "nestedframe_html"]
+__all__ = ["MAX_RENDERED", "render_png_base64", "series_repr", "series_html", "cutout_cell_html"]
 
 # Number of cutouts rendered as actual images in HTML previews.
 MAX_RENDERED = 10
@@ -173,67 +174,27 @@ def ref_html(ref: CutoutRef) -> str | None:
     )
 
 
-def nestedframe_html(frame: pd.DataFrame, max_rows: int = 10) -> str:
-    """HTML repr for a frame, rendering cutout columns as thumbnails.
+def cutout_cell_html(value) -> str:
+    """Cell HTML formatter for cutout columns in NestedFrame reprs.
 
-    Frames without cutout columns fall back to the default pandas rendering.
-    Non-cutout columns are formatted through pandas' own machinery (so
-    extension dtypes like nested columns render as they normally would) and
-    escaped, since ``escape=False`` is needed for the thumbnail ``<img>`` tags.
+    Registered with nested-pandas (`register_html_formatter`), which applies
+    it to every *displayed* cutout cell — pandas' own row truncation
+    (``display.max_rows``/``display.min_rows``) bounds how many thumbnails
+    are rendered.
 
     Parameters
     ----------
-    frame : pd.DataFrame
-        The frame to render.
-    max_rows : int
-        Maximum number of rows to display.
+    value : CutoutRef or object
+        The cell value; anything that is not a CutoutRef renders as NA.
 
     Returns
     -------
     str
+        HTML for the cell.
     """
-    # pylint: disable-next=import-outside-toplevel
-    from pandas.io.formats.format import format_array  # type: ignore[attr-defined]
-
-    cutout_columns = [name for name in frame.columns if isinstance(frame.dtypes[name], CutoutDtype)]
-    if not cutout_columns:
-        return frame._repr_html_()  # pylint: disable=protected-access
-
-    # Pre-render every cell to an HTML string: thumbnails for the first
-    # MAX_RENDERED cutouts, pandas-formatted (then escaped) text for the rest
-    head = pd.DataFrame(frame.head(max_rows))
-    rendered = {}
-    for name in head.columns:
-        if name in cutout_columns:
-            array = head[name].array
-            rendered[name] = [
-                _cell_html(array[position], rendered=position < MAX_RENDERED) for position in range(len(head))
-            ]
-        else:
-            strings = format_array(head[name].array, None)
-            rendered[name] = [html_module.escape(value.strip()) for value in strings]
-    cells = pd.DataFrame(rendered, index=head.index)
-
-    # max_colwidth would truncate the base64 image payloads mid-string.
-    with pd.option_context("display.max_colwidth", None):
-        html = cells.to_html(escape=False, notebook=True)
-    if len(frame) > max_rows:
-        html += f"<p>... {len(frame) - max_rows} more rows</p>"
-    return html
+    if not isinstance(value, CutoutRef):
+        return "&lt;NA&gt;"
+    return _cell_html(value, rendered=True)
 
 
-def register_ipython_formatter() -> None:
-    """Register the NestedFrame HTML formatter with IPython, if running under it.
-
-    Called on import of :mod:`lsdb.cutouts`. No-op outside IPython or when
-    IPython is not installed.
-    """
-    try:
-        from IPython import get_ipython  # pylint: disable=import-outside-toplevel
-    except ImportError:
-        return
-    ipython = get_ipython()
-    if ipython is None or getattr(ipython, "display_formatter", None) is None:
-        return
-    html_formatter = ipython.display_formatter.formatters["text/html"]
-    html_formatter.for_type(npd.NestedFrame, nestedframe_html)
+register_html_formatter(CutoutDtype, cutout_cell_html)
