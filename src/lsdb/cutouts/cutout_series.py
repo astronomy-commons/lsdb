@@ -60,13 +60,21 @@ class CutoutAccessor:
     def to_images(self) -> list[np.ndarray | None]:
         """Render every cutout as a numpy array view into the stored images.
 
+        The full batch is announced to the store upfront (``plan_reads``), so
+        the store can pick the optimal read strategy per image from the known
+        request counts instead of discovering them one cutout at a time.
+
         Returns
         -------
         list of np.ndarray or None
             One 2D array per row (a zero-copy view into the source image);
             None for missing cutouts.
         """
-        return [None if ref is pd.NA else ref.data for ref in self._array]
+        refs = [None if ref is pd.NA else ref for ref in self._array]
+        store = self._array.store
+        if store is not None:
+            store.plan_reads([ref.image_id for ref in refs if ref is not None])
+        return [None if ref is None else ref.data for ref in refs]
 
     def to_image_stack(self) -> np.ndarray:
         """Render all cutouts into a single stacked ``(n, height, width)`` array.

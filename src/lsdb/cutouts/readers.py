@@ -54,6 +54,35 @@ class ImageReader(ABC):
             2D pixel array.
         """
 
+    def read_region(self, path: str, y0: int, y1: int, x0: int, x1: int) -> np.ndarray:
+        """Read one rectangular region of an image.
+
+        The base implementation reads the full image and slices it; formats
+        with chunked/tiled storage override this to read only the bytes the
+        region needs. Bounds are clamped to the image, so the result may be
+        smaller than requested at image edges.
+
+        Parameters
+        ----------
+        path : str
+            Path or URI of the image file.
+        y0 : int
+            First row of the region.
+        y1 : int
+            End row (exclusive) of the region.
+        x0 : int
+            First column of the region.
+        x1 : int
+            End column (exclusive) of the region.
+
+        Returns
+        -------
+        np.ndarray
+            2D pixel array of the (clamped) region.
+        """
+        image = self.read_image(path)
+        return image[max(0, y0) : max(0, y1), max(0, x0) : max(0, x1)]
+
 
 class FitsImageReader(ImageReader):
     """Reads FITS images with astropy, using fsspec for remote paths.
@@ -68,22 +97,45 @@ class FitsImageReader(ImageReader):
     def __init__(self, hdu_index: int | None = None):
         self.hdu_index = hdu_index
 
-    def read_image(self, path: str) -> np.ndarray:
-        from astropy.io import fits  # pylint: disable=import-outside-toplevel
-
+    @staticmethod
+    def _normalize_path(path: str) -> tuple[str, bool]:
         path = str(path)
         if path.startswith("file://"):
             # Open local files directly; astropy would otherwise treat the URL
             # through its download-to-cache machinery (copying the whole file)
             path = path.removeprefix("file://")
-        use_fsspec = "://" in path
+        return path, "://" in path
+
+    def _find_image_hdu(self, hdu_list):
+        """The HDU holding the pixels, located without touching pixel data."""
+        if self.hdu_index is not None:
+            return hdu_list[self.hdu_index]
+        for hdu in hdu_list:
+            if hdu.is_image and len(hdu.shape) == 2:
+                return hdu
+        raise ValueError("No 2D image HDU found")
+
+    def read_image(self, path: str) -> np.ndarray:
+        from astropy.io import fits  # pylint: disable=import-outside-toplevel
+
+        path, use_fsspec = self._normalize_path(path)
         with fits.open(path, use_fsspec=use_fsspec) as hdu_list:
-            if self.hdu_index is not None:
-                return np.asarray(hdu_list[self.hdu_index].data)
-            for hdu in hdu_list:
-                if hdu.data is not None and np.ndim(hdu.data) == 2:
-                    return np.asarray(hdu.data)
-        raise ValueError(f"No 2D image HDU found in {path}")
+            return np.asarray(self._find_image_hdu(hdu_list).data)
+
+    def read_region(self, path: str, y0: int, y1: int, x0: int, x1: int) -> np.ndarray:
+        """Read one region via ``hdu.section``: for tile-compressed HDUs only the
+        tiles intersecting the region are read and decompressed."""
+        from astropy.io import fits  # pylint: disable=import-outside-toplevel
+
+        path, use_fsspec = self._normalize_path(path)
+        with fits.open(path, use_fsspec=use_fsspec) as hdu_list:
+            hdu = self._find_image_hdu(hdu_list)
+            height, width = hdu.shape
+            y0, y1 = max(0, y0), min(height, max(0, y1))
+            x0, x1 = max(0, x0), min(width, max(0, x1))
+            if y0 >= y1 or x0 >= x1:
+                return np.empty((max(0, y1 - y0), max(0, x1 - x0)))
+            return np.asarray(hdu.section[y0:y1, x0:x1])
 
 
 class ZarrImageReader(ImageReader):
@@ -99,7 +151,7 @@ class ZarrImageReader(ImageReader):
     def __init__(self, array_key: str = "image"):
         self.array_key = array_key
 
-    def read_image(self, path: str) -> np.ndarray:
+    def _open_array(self, path: str):
         try:
             import zarr  # pylint: disable=import-outside-toplevel
         except ImportError as exception:
@@ -109,7 +161,15 @@ class ZarrImageReader(ImageReader):
         node = zarr.open(path, mode="r")
         if hasattr(node, "keys"):  # a group; read the named array
             node = node[self.array_key]
-        return np.asarray(node[:])
+        return node
+
+    def read_image(self, path: str) -> np.ndarray:
+        return np.asarray(self._open_array(path)[:])
+
+    def read_region(self, path: str, y0: int, y1: int, x0: int, x1: int) -> np.ndarray:
+        """Read one region; zarr fetches only the chunks the region intersects."""
+        array = self._open_array(path)
+        return np.asarray(array[max(0, y0) : max(0, y1), max(0, x0) : max(0, x1)])
 
 
 _READERS: dict[str, ImageReader] = {

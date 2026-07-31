@@ -72,7 +72,11 @@ class CutoutRef:
 
     @property
     def data(self) -> np.ndarray:
-        """The cutout pixels, as a zero-copy view into the stored image.
+        """The cutout pixels.
+
+        Reads through ``store.get_region``: a zero-copy view for in-memory
+        stores; for file-backed stores this may read only the tiles/chunks
+        the cutout intersects (see ``CatalogImageStore`` read modes).
 
         Raises
         ------
@@ -84,11 +88,16 @@ class CutoutRef:
                 f"Cutout of image '{self.image_id}' has no image store attached; "
                 "use `.cutout.with_store(store)` on the series to attach one."
             )
-        image = self.store.get_image(self.image_id)
-        return image[self.y0 : self.y0 + self.height, self.x0 : self.x0 + self.width]
+        return self.store.get_region(
+            self.image_id, self.y0, self.y0 + self.height, self.x0, self.x0 + self.width
+        )
 
     def to_cutout2d(self, copy: bool = False):
         """Render as an `astropy.nddata.Cutout2D`, with WCS if the store provides one.
+
+        Note that ``Cutout2D`` is constructed against the parent image, so
+        this loads the full image from the store (unlike ``.data``, which
+        can read only the cutout's region).
 
         Parameters
         ----------

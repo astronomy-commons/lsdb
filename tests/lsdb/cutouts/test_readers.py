@@ -155,3 +155,145 @@ def test_cutout_column_renders_from_fits(image_rows, fits_image):
 def test_fits_reader_file_uri(fits_image):
     path, data = fits_image
     np.testing.assert_array_equal(FitsImageReader().read_image(f"file://{path}"), data)
+
+
+@pytest.fixture
+def compressed_fits_image(tmp_path):
+    data = np.arange(10000.0, dtype=np.float32).reshape(100, 100)
+    path = tmp_path / "compressed.fits"
+    fits.HDUList([fits.PrimaryHDU(), fits.CompImageHDU(data=data, name="IMAGE")]).writeto(path)
+    return str(path), data
+
+
+def test_fits_read_region_plain(fits_image):
+    path, data = fits_image
+    np.testing.assert_array_equal(FitsImageReader().read_region(path, 10, 20, 5, 15), data[10:20, 5:15])
+
+
+def test_fits_read_region_compressed(compressed_fits_image):
+    path, data = compressed_fits_image
+    region = FitsImageReader().read_region(path, 30, 55, 40, 90)
+    np.testing.assert_array_equal(region, data[30:55, 40:90])
+
+
+def test_fits_read_region_clamps(compressed_fits_image):
+    path, data = compressed_fits_image
+    # Overhanging boxes clamp to the image; fully-outside boxes come back empty
+    np.testing.assert_array_equal(FitsImageReader().read_region(path, -10, 5, 95, 200), data[0:5, 95:100])
+    assert FitsImageReader().read_region(path, 200, 300, 0, 10).size == 0
+
+
+def test_zarr_read_region(tmp_path):
+    zarr = pytest.importorskip("zarr", reason="zarr not installed")
+    data = np.arange(10000.0).reshape(100, 100)
+    path = str(tmp_path / "image.zarr")
+    array = zarr.open(path, mode="w", shape=data.shape, dtype=data.dtype, chunks=(10, 10))
+    array[:] = data
+    np.testing.assert_array_equal(ZarrImageReader().read_region(path, 15, 25, 35, 45), data[15:25, 35:45])
+
+
+class CountingReader(ImageReader):
+    """Test double that counts full vs region reads."""
+
+    def __init__(self, data):
+        self.data = data
+        self.full_reads = 0
+        self.region_reads = 0
+
+    def read_image(self, path):
+        self.full_reads += 1
+        return self.data
+
+    def read_region(self, path, y0, y1, x0, x1):
+        self.region_reads += 1
+        return self.data[max(0, y0) : max(0, y1), max(0, x0) : max(0, x1)]
+
+
+@pytest.fixture
+def counting_store(image_rows):
+    def make(read_mode="auto", full_read_threshold=3):
+        reader = CountingReader(np.arange(2500.0).reshape(50, 50))
+        register_image_reader("counting", reader)
+        rows = image_rows.assign(format="counting")
+        store = CatalogImageStore(rows, read_mode=read_mode, full_read_threshold=full_read_threshold)
+        return store, reader
+
+    yield make
+    from lsdb.cutouts.readers import _READERS
+
+    _READERS.pop("counting", None)
+
+
+def test_store_region_mode_never_reads_full(counting_store):
+    store, reader = counting_store(read_mode="region")
+    for position in range(10):
+        store.get_region("v1", position, position + 5, 0, 5)
+    assert reader.full_reads == 0
+    assert reader.region_reads == 10
+    # Identical region requests are cached: one read for two requests
+    store.get_region("v1", 40, 45, 40, 45)
+    store.get_region("v1", 40, 45, 40, 45)
+    assert reader.region_reads == 11
+
+
+def test_store_full_mode_reads_once(counting_store):
+    store, reader = counting_store(read_mode="full")
+    for position in range(10):
+        store.get_region("v1", position, position + 5, 0, 5)
+    assert reader.full_reads == 1
+    assert reader.region_reads == 0
+
+
+def test_store_auto_mode_switches_to_full(counting_store):
+    store, reader = counting_store(read_mode="auto", full_read_threshold=3)
+    for position in range(10):
+        store.get_region("v1", position, position + 5, 0, 5)
+    # 3 region reads, then one full read serves everything after
+    assert reader.region_reads == 3
+    assert reader.full_reads == 1
+    # Once full is cached, regions are views into it
+    region = store.get_region("v1", 0, 5, 0, 5)
+    assert np.shares_memory(region, store.get_image("v1"))
+
+
+def test_store_read_mode_validation(image_rows):
+    with pytest.raises(ValueError, match="read_mode"):
+        CatalogImageStore(image_rows, read_mode="sometimes")
+
+
+def test_cutout_data_uses_region_reads(image_rows, counting_store):
+    store, reader = counting_store(read_mode="region")
+    array = CutoutArray.from_arrays(["v1"], x0=[10], y0=[20], width=[5], height=[7], store=store)
+    data = array[0].data
+    assert data.shape == (7, 5)
+    assert reader.region_reads == 1
+    assert reader.full_reads == 0
+
+
+def test_to_images_plans_reads_upfront(image_rows, counting_store):
+    # 10 cutouts from one image, threshold 3: planning does ONE full read, zero region reads
+    store, reader = counting_store(read_mode="auto", full_read_threshold=3)
+    array = CutoutArray.from_arrays(
+        ["v1"] * 10, x0=list(range(10)), y0=list(range(10)), width=[5] * 10, height=[5] * 10, store=store
+    )
+    images = pd.Series(array).cutout.to_images()
+    assert len(images) == 10
+    assert reader.full_reads == 1
+    assert reader.region_reads == 0
+
+
+def test_to_images_small_batch_stays_regional(image_rows, counting_store):
+    # 2 cutouts, threshold 3: planning leaves them as cheap region reads
+    store, reader = counting_store(read_mode="auto", full_read_threshold=3)
+    array = CutoutArray.from_arrays(
+        ["v1", "v1"], x0=[0, 10], y0=[0, 10], width=[5, 5], height=[5, 5], store=store
+    )
+    pd.Series(array).cutout.to_images()
+    assert reader.full_reads == 0
+    assert reader.region_reads == 2
+
+
+def test_plan_reads_respects_region_mode(counting_store):
+    store, reader = counting_store(read_mode="region")
+    store.plan_reads(["v1"] * 50)
+    assert reader.full_reads == 0
