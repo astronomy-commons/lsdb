@@ -121,6 +121,26 @@ class CatalogImageStore(ImageStore):
             if count > self._full_read_threshold and image_id not in self._image_cache:
                 self.get_image(image_id)
 
+    def cache_info(self) -> dict:
+        """Memory accounting for the pixel caches.
+
+        Returns
+        -------
+        dict
+            ``full_images``/``full_bytes``: count and bytes of fully-loaded
+            cached images; ``regions``/``region_bytes``: count and bytes of
+            cached region reads; ``total_bytes``: their sum.
+        """
+        full_bytes = sum(image.nbytes for image in self._image_cache.values())
+        region_bytes = sum(region.nbytes for region in self._region_cache.values())
+        return {
+            "full_images": len(self._image_cache),
+            "full_bytes": full_bytes,
+            "regions": len(self._region_cache),
+            "region_bytes": region_bytes,
+            "total_bytes": full_bytes + region_bytes,
+        }
+
     def get_wcs(self, image_id: str) -> WCS | None:
         # Imported here to avoid a circular import at module load time
         from lsdb.catalog.image_catalog import (  # pylint: disable=import-outside-toplevel

@@ -297,3 +297,18 @@ def test_plan_reads_respects_region_mode(counting_store):
     store, reader = counting_store(read_mode="region")
     store.plan_reads(["v1"] * 50)
     assert reader.full_reads == 0
+
+
+def test_cache_info(image_rows, counting_store):
+    store, _ = counting_store(read_mode="auto", full_read_threshold=3)
+    empty = store.cache_info()
+    assert empty["total_bytes"] == 0
+    store.get_region("v1", 0, 5, 0, 5)
+    after_region = store.cache_info()
+    assert after_region["regions"] == 1
+    assert after_region["region_bytes"] == 5 * 5 * 8
+    store.get_image("v1")
+    after_full = store.cache_info()
+    assert after_full["full_images"] == 1
+    assert after_full["full_bytes"] == 50 * 50 * 8
+    assert after_full["total_bytes"] == after_full["full_bytes"] + after_full["region_bytes"]
