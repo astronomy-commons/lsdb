@@ -15,7 +15,6 @@ from __future__ import annotations
 import base64
 import html as html_module
 import io
-from collections.abc import Callable, Hashable, Mapping
 
 import nested_pandas as npd
 import numpy as np
@@ -26,7 +25,7 @@ from lsdb.cutouts.cutout_array import CutoutDtype, CutoutRef
 __all__ = ["MAX_RENDERED", "render_png_base64", "series_repr", "series_html", "nestedframe_html"]
 
 # Number of cutouts rendered as actual images in HTML previews.
-MAX_RENDERED = 5
+MAX_RENDERED = 10
 
 _THUMBNAIL_STYLE = "width:64px;image-rendering:pixelated;"
 _PLACEHOLDER_HTML = '<span style="color:#888;">&lt;not rendered in preview&gt;</span>'
@@ -174,14 +173,13 @@ def ref_html(ref: CutoutRef) -> str | None:
     )
 
 
-def _escaping_formatter(value) -> str:
-    return html_module.escape(str(value))
-
-
 def nestedframe_html(frame: pd.DataFrame, max_rows: int = 10) -> str:
     """HTML repr for a frame, rendering cutout columns as thumbnails.
 
     Frames without cutout columns fall back to the default pandas rendering.
+    Non-cutout columns are formatted through pandas' own machinery (so
+    extension dtypes like nested columns render as they normally would) and
+    escaped, since ``escape=False`` is needed for the thumbnail ``<img>`` tags.
 
     Parameters
     ----------
@@ -194,29 +192,31 @@ def nestedframe_html(frame: pd.DataFrame, max_rows: int = 10) -> str:
     -------
     str
     """
+    # pylint: disable-next=import-outside-toplevel
+    from pandas.io.formats.format import format_array  # type: ignore[attr-defined]
+
     cutout_columns = [name for name in frame.columns if isinstance(frame.dtypes[name], CutoutDtype)]
     if not cutout_columns:
         return frame._repr_html_()  # pylint: disable=protected-access
 
-    # Pre-render cutout cells to HTML strings (thumbnails for the first
-    # MAX_RENDERED rows), since to_html formatters are not called exactly
-    # once per cell in row order.
+    # Pre-render every cell to an HTML string: thumbnails for the first
+    # MAX_RENDERED cutouts, pandas-formatted (then escaped) text for the rest
     head = pd.DataFrame(frame.head(max_rows))
-    for name in cutout_columns:
-        array = head[name].array
-        cells = [
-            _cell_html(array[position], rendered=position < MAX_RENDERED) for position in range(len(head))
-        ]
-        head[name] = pd.Series(cells, index=head.index, dtype=object)
+    rendered = {}
+    for name in head.columns:
+        if name in cutout_columns:
+            array = head[name].array
+            rendered[name] = [
+                _cell_html(array[position], rendered=position < MAX_RENDERED) for position in range(len(head))
+            ]
+        else:
+            strings = format_array(head[name].array, None)
+            rendered[name] = [html_module.escape(value.strip()) for value in strings]
+    cells = pd.DataFrame(rendered, index=head.index)
 
-    # escape=False is needed for the <img> tags, so every other column is
-    # escaped explicitly through its own formatter.
-    formatters: Mapping[Hashable, Callable[[object], str]] = {
-        name: _escaping_formatter for name in head.columns if name not in cutout_columns
-    }
     # max_colwidth would truncate the base64 image payloads mid-string.
     with pd.option_context("display.max_colwidth", None):
-        html = head.to_html(escape=False, formatters=formatters, notebook=True)
+        html = cells.to_html(escape=False, notebook=True)
     if len(frame) > max_rows:
         html += f"<p>... {len(frame) - max_rows} more rows</p>"
     return html

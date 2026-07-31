@@ -35,11 +35,12 @@ def test_render_png_base64():
 
 
 def test_series_repr(store):
-    series = make_series(8, store)
+    n = MAX_RENDERED + 3
+    series = make_series(n, store)
     text = repr(series)
     assert "img1[0:3, 0:3]" in text
     assert "*" in text  # the star
-    assert f"{8 - MAX_RENDERED} more cutouts <not rendered in preview>" in text
+    assert "3 more cutouts <not rendered in preview>" in text
     assert "dtype: cutout" in text
     assert "InMemoryImageStore" in text
 
@@ -68,10 +69,11 @@ def test_series_repr_non_cutout_falls_back():
 
 
 def test_series_html(store):
-    series = make_series(8, store)
+    n = MAX_RENDERED + 3
+    series = make_series(n, store)
     html = series._repr_html_()
     assert html.count("<img") == MAX_RENDERED
-    assert html.count("not rendered in preview") == 8 - MAX_RENDERED
+    assert html.count("not rendered in preview") == 3
     assert "data:image/png;base64," in html
 
 
@@ -90,13 +92,14 @@ def test_series_html_na(store):
 
 
 def test_nestedframe_html(store):
+    n = MAX_RENDERED + 2
     array = CutoutArray.from_arrays(
-        ["img1"] * 8, x0=range(8), y0=range(8), width=[3] * 8, height=[3] * 8, store=store
+        ["img1"] * n, x0=range(n), y0=range(n), width=[3] * n, height=[3] * n, store=store
     )
-    frame = npd.NestedFrame({"a": range(8), "label": ["<b>bold</b>"] * 8, "cutouts": pd.Series(array)})
-    html = nestedframe_html(frame)
+    frame = npd.NestedFrame({"a": range(n), "label": ["<b>bold</b>"] * n, "cutouts": pd.Series(array)})
+    html = nestedframe_html(frame, max_rows=n)
     assert html.count("<img") == MAX_RENDERED
-    assert html.count("not rendered in preview") == 8 - MAX_RENDERED
+    assert html.count("not rendered in preview") == 2
     # Other columns are escaped even though escape=False is used for the img tags
     assert "<b>bold</b>" not in html
     assert "&lt;b&gt;bold&lt;/b&gt;" in html
@@ -134,3 +137,17 @@ def test_ref_repr_html_no_store_falls_back():
     ref = CutoutRef("img1", 2, 3, 5, 4)
     assert ref._repr_html_() is None
     assert "CutoutRef" in repr(ref)
+
+
+def test_nestedframe_html_renders_nested_columns(store):
+    array = CutoutArray.from_arrays(
+        ["img1"] * 3, x0=[0, 1, 2], y0=[0, 1, 2], width=[3] * 3, height=[3] * 3, store=store
+    )
+    frame = npd.NestedFrame(
+        {"a": [1, 2, 3], "flux": [[1.0, 2.0], [3.0], [4.0, 5.0]], "cutouts": pd.Series(array)}
+    ).nest_lists(columns=["flux"], name="lightcurve")
+    html = nestedframe_html(frame)
+    # Nested cells render through pandas' formatter, not the raw wrapper object
+    assert "_DataFrameWrapperForRepresentation" not in html
+    assert "flux" in html
+    assert html.count("<img") == 3
