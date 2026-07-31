@@ -2,6 +2,7 @@ from hats.pixel_math import HealpixPixel
 
 from ._version import __version__
 from .catalog import Catalog, MarginCatalog
+from .catalog.image_catalog import ImageCatalog
 from .catalog.generation import generate_catalog, generate_data
 from .core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
 from .core.crossmatch.crossmatch import crossmatch
@@ -10,4 +11,5 @@ from .core.search.region_search import BoxSearch, ConeSearch, PixelSearch, Polyg
 from .io.show_versions import show_versions
 from .loaders.dataframe.from_astropy import from_astropy
 from .loaders.dataframe.from_dataframe import from_dataframe
+from .loaders.images.from_images import from_images
 from .loaders.hats.read_hats import open_catalog, read_hats

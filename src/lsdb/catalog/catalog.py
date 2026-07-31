@@ -37,6 +37,7 @@ from lsdb.operations.functions.crossmatch_catalog_data import (
     crossmatch_catalog_data,
     crossmatch_catalog_data_nested,
 )
+from lsdb.operations.functions.cutout_catalog_data import add_cutouts_catalog_data
 from lsdb.operations.functions.join_catalog_data import (
     join_catalog_data_nested,
     join_catalog_data_on,
@@ -683,6 +684,69 @@ class Catalog(HealpixDataset):
             crossmatch algorithm.
         """
         op, alignment = merge_map_catalog_data(self, map_catalog, func, *args, meta=meta, **kwargs)
+        hc_catalog = self.hc_structure.__class__(
+            self.hc_structure.catalog_info,
+            alignment.pixel_tree,
+            schema=get_arrow_schema(op.meta),
+            moc=alignment.moc,
+        )
+        return self._create_updated_dataset(op=op, hc_structure=hc_catalog)
+
+    def add_cutouts(
+        self,
+        images,
+        stamp_size: int | tuple[int, int],
+        *,
+        column_name: str = "cutouts",
+        moc_order: int | None = None,
+        attach_store: bool = True,
+    ) -> Catalog:
+        """Append a lazy image-cutout column, matching objects against an image catalog.
+
+        Object partitions are aligned with the image catalog partitions (a LEFT
+        alignment: all objects are kept, and partitions are split where the
+        image tree is finer). Within each partition, objects are matched to
+        images through their healpix29 coverage and a first-fit selection: the
+        chosen image must contain the full stamp around the object. The
+        resulting column stores only cutout descriptors -- pixels are read
+        lazily from the image files when cutouts are rendered.
+
+        Parameters
+        ----------
+        images : ImageCatalog
+            The image metadata catalog (see `lsdb.from_images`).
+        stamp_size : int or (int, int)
+            Cutout size in pixels, as a square side or ``(height, width)``.
+        column_name : str, default "cutouts"
+            Name of the appended cutout column.
+        moc_order : int or None, default None
+            HEALPix order for match-time image footprints. Defaults to the
+            image catalog's ``image_moc_order`` property, or 11.
+        attach_store : bool, default True
+            If True, cutout columns carry a store that can read pixels from
+            the image files; if False, the column is descriptors-only.
+
+        Returns
+        -------
+        Catalog
+            A catalog with all original columns plus the cutout column
+            (NA where no image can host the stamp).
+
+        Examples
+        --------
+        >>> import lsdb
+        >>> catalog = lsdb.open_catalog("./tests/data/small_sky_order1_collection")
+        >>> images = lsdb.read_hats("./tests/data/small_sky_order1_images")  # doctest: +SKIP
+        >>> with_cutouts = catalog.add_cutouts(images, stamp_size=25)  # doctest: +SKIP
+        >>> with_cutouts.compute()["cutouts"].to_cutout2d()  # doctest: +SKIP
+        """
+        if column_name in self.columns:
+            raise ValueError(f"Column '{column_name}' already exists in the catalog")
+        if moc_order is None:
+            moc_order = images.hc_structure.catalog_info.image_moc_order or 11
+        op, alignment = add_cutouts_catalog_data(
+            self, images, stamp_size, column_name, moc_order, attach_store
+        )
         hc_catalog = self.hc_structure.__class__(
             self.hc_structure.catalog_info,
             alignment.pixel_tree,
