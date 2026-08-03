@@ -460,6 +460,10 @@ tuning strategies, see `docs/tutorials/dask-messages-guide.rst`. It covers:
   Do not expose them in `__init__.py` or reference them in documentation.
 - **Partition index vs. pixel:** `ddf_pixel_map` maps `HealpixPixel → int` (partition
   index). Never assume partition indices are contiguous or match pixel order.
+- **Tutorial notebooks:** notebooks under `docs/tutorials/` follow the conventions in
+  [`docs/developer/notebook_style_guide.md`](docs/developer/notebook_style_guide.md) —
+  structure, logging setup, Dask dashboard link, footer, naming, and plotting style.
+  Start new notebooks from `docs/developer/tutorial_template.ipynb`.
 
 ## CI/CD and GitHub Workflows
 
