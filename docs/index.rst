@@ -40,7 +40,7 @@ operations.
           <area shape="rect" coords="126,178,549,243" href="reference/api/lsdb.open_catalog.html" alt="open_catalog" />
           <area shape="rect" coords="126,238,549,303" href="reference/api/lsdb.from_dataframe.html" alt="from_dataframe" />
           <area shape="rect" coords="126,298,549,364" href="reference/api/lsdb.from_astropy.html" alt="from_astropy" />
-          <area shape="rect" coords="126,358,549,424" href="reference/api/lsdb.nested.datasets.generation.generate_catalog.html" alt="generate_catalog" />
+          <area shape="rect" coords="126,358,549,424" href="reference/api/lsdb.catalog.generation.generate_catalog.html" alt="generate_catalog" />
           <area shape="rect" coords="417,632,721,690" href="reference/api/lsdb.show_versions.html" alt="show_versions" />
           <area shape="rect" coords="487,802,829,868" href="reference/api/lsdb.catalog.Catalog.plot_pixels.html" alt="plot_pixels" />
           <area shape="rect" coords="487,862,829,928" href="reference/api/lsdb.catalog.Catalog.plot_coverage.html" alt="plot_coverage" />
@@ -65,14 +65,13 @@ operations.
          <area shape="rect" coords="1757,792,2218,858" href="reference/api/lsdb.io.to_association.html" alt="AssociationCatalog" />
 
           <area shape="rect" coords="1233,948,1308,1014" href="reference/api/lsdb.catalog.Catalog.__len__.html" alt="len" />
-          <area shape="rect" coords="974,1044,1664,1110" href="reference/api/lsdb.catalog.Catalog.aggregate_column_statistics.html" alt="aggregate_column_statistics" />
-          <area shape="rect" coords="1666,1044,2181,1110" href="reference/api/lsdb.catalog.Catalog.per_pixel_statistics.html" alt="per_pixel_statistics" />
-          <area shape="rect" coords="974,1148,1451,1213" href="reference/api/lsdb.catalog.Catalog.get_healpix_pixels.html" alt="get_healpix_pixels" />
-          <area shape="rect" coords="1453,1148,2136,1213" href="reference/api/lsdb.catalog.Catalog.get_ordered_healpix_pixels.html" alt="get_ordered_healpix_pixels" />
-          <area shape="rect" coords="974,1210,1228,1275" href="reference/api/lsdb.catalog.Catalog.partitions.html" alt="partitions" />
-          <area shape="rect" coords="1230,1210,1541,1275" href="reference/api/lsdb.catalog.Catalog.npartitions.html" alt="npartitions" />
-          <area shape="rect" coords="1543,1210,2068,1275" href="reference/api/lsdb.catalog.Catalog.get_partition_index.html" alt="get_partition_index" />
-          <area shape="rect" coords="981,1319,1333,1384" href="reference/api/lsdb.catalog.Catalog.estimate_size.html" alt="estimate_size" />
+          <area shape="rect" coords="982,1033,1695,1106" href="reference/api/lsdb.catalog.Catalog.aggregate_column_statistics.html" alt="aggregate_column_statistics" />
+          <area shape="rect" coords="982,1113,1577,1173" href="reference/api/lsdb.catalog.Catalog.per_partition_statistics.html" alt="per_partition_statistics" />
+          <area shape="rect" coords="974,1194,1451,1259" href="reference/api/lsdb.catalog.Catalog.get_healpix_pixels.html" alt="get_healpix_pixels" />
+          <area shape="rect" coords="1453,1194,2136,1259" href="reference/api/lsdb.catalog.Catalog.get_ordered_healpix_pixels.html" alt="get_ordered_healpix_pixels" />
+          <area shape="rect" coords="974,1256,1228,1321" href="reference/api/lsdb.catalog.Catalog.partitions.html" alt="partitions" />
+          <area shape="rect" coords="1230,1256,1541,1321" href="reference/api/lsdb.catalog.Catalog.npartitions.html" alt="npartitions" />
+          <area shape="rect" coords="981,1348,1333,1413" href="reference/api/lsdb.catalog.Catalog.estimate_size.html" alt="estimate_size" />
           <area shape="rect" coords="1046,1836,1398,1902" href="reference/api/lsdb.catalog.Catalog.get_partition.html" alt="get_partition" />
 
           <area shape="rect" coords="1022,1593,1593,1658" href="reference/api/lsdb.catalog.Catalog.prune_empty_partitions.html" alt="prune_empty_partitions" />
@@ -93,7 +92,6 @@ operations.
 
           <area shape="rect" coords="3106,372,3576,438" href="reference/api/lsdb.catalog.Catalog.crossmatch.html" alt="crossmatch" />
           <area shape="rect" coords="3106,432,3576,498" href="reference/api/lsdb.catalog.Catalog.crossmatch_nested.html" alt="crossmatch_nested" />
-          <area shape="rect" coords="3120,693,3331,758" href="reference/api/lsdb.catalog.Catalog.merge.html" alt="merge" />
           <area shape="rect" coords="3120,753,3409,819" href="reference/api/lsdb.catalog.Catalog.concat.html" alt="concat" />
           <area shape="rect" coords="3120,873,3409,939" href="reference/api/lsdb.catalog.Catalog.join.html" alt="join" />
           <area shape="rect" coords="3120,933,3409,999" href="reference/api/lsdb.catalog.Catalog.join_nested.html" alt="join_nested" />
