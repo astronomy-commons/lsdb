@@ -41,8 +41,7 @@ carries its own light curve as a *nested* column — the per-epoch measurements 
 stored inline with the parent object rather than in a separate source table that
 you would have to join yourself. LSDB loads these as a
 :doc:`NestedFrame </tutorials/pre_executed/nestedframe>` (backed by
-`nested-pandas <https://nested-pandas.readthedocs.io>`_), so the light curves
-travel with their objects through filtering, cross-matching, and analysis.
+`nested-pandas <https://nested-pandas.readthedocs.io>`_).
 
 * ``object_collection`` — each ``Object`` row (indexed by ``objectId``) has a
   nested ``objectForcedSource`` column holding its forced-photometry light curve.
@@ -67,11 +66,24 @@ of columns. The changes are summarized below.
 .. warning::
 
     **Do not use the downcast position columns where full precision matters.**
-    The per-band ``{band}_ra`` and ``{band}_dec`` columns are stored as
+    This applies to *all* the per-band and per-model RA/Dec columns: ``{band}_ra`` / ``{band}_dec`` for the *ugrizy* bands, ``sersic_ra`` /
+    ``sersic_dec``, and ``exponential_ra`` / ``exponential_dec`` are all stored as
     ``float32``. The float32 rounding error can be **larger** than the
-    corresponding ``{band}_raErr`` / ``{band}_decErr`` values, so these columns
-    are unsuitable for precision astrometry or tight positional cross-matching.
-    Use the full-precision object position for those tasks.
+    corresponding ``*_raErr`` / ``*_decErr`` values, so these columns are
+    unsuitable for precision astrometry or tight positional cross-matching. Use
+    the full-precision object position (``coord_ra`` / ``coord_dec`` in
+    ``object_collection``, ``ra`` / ``dec`` in ``dia_object_collection``, both
+    kept as ``float64``) for those tasks.
+
+.. warning::
+
+    **The per-band epoch columns are downsampled in time.** Storing an MJD as
+    ``float32`` puts it on a grid roughly 5 minutes wide, so a ``{band}_epoch``
+    value can differ from the true observation time. The same
+    applies to ``diaSource.timeProcessedMjdTai``. These columns are not suitable
+    for timing work. Use ``midpointMjdTai`` on the nested light curves
+    (``objectForcedSource``, ``diaObjectForcedSource``, and ``diaSource``), which
+    is kept as ``float64``.
 
 
 Changes common to both collections
@@ -140,8 +152,11 @@ Downcast columns (``float64`` → ``float32``):
 
 * ``objectForcedSource``: none.
 
-The ``{band}_ra`` and ``{band}_dec`` columns are downcast from ``float64`` to
-``float32``; see the warning above regarding the resulting precision loss.
+All of the position columns listed above (``{band}_ra`` / ``{band}_dec``,
+``sersic_ra`` / ``sersic_dec``, ``exponential_ra`` / ``exponential_dec``) and the
+``{band}_epoch`` columns are downcast from ``float64`` to ``float32``; see the
+warnings above regarding the resulting precision loss. ``coord_ra`` /
+``coord_dec`` are *not* downcast.
 
 
 dia_object_collection
@@ -156,6 +171,12 @@ Magnitude columns added:
 ``diaSource`` rows whose ``diaObjectId`` does not appear in the ``DiaObject``
 table are not included in the nested light curves: 8,136,150 of 1,000,825,975
 rows (0.81%).
+
+DiaSources that were assigned to Solar System objects are among those not
+carried over — they are associated with an ``SSObject`` rather than a
+``DiaObject``, so they will not be found anywhere in
+``dia_object_collection``. Do not treat this collection as a complete inventory
+of DiaSources.
 
 Downcast columns (``float64`` → ``float32``):
 
@@ -217,12 +238,21 @@ corrected flux-error columns, please also cite Malanchev et al. (in prep).
 Caveats
 ------------------------------------------------------
 
-* **Position precision.** The downcast ``float32`` ``{band}_ra`` / ``{band}_dec``
-  columns can carry a rounding error larger than their reported errors (see the
-  warning above); ``{band}_epoch`` is likewise downcast to ``float32``.
+* **Position precision.** Every per-band and per-model RA/Dec column
+  (``{band}_ra`` / ``{band}_dec``, ``sersic_ra`` / ``sersic_dec``,
+  ``exponential_ra`` / ``exponential_dec``) is downcast to ``float32`` and can
+  carry a rounding error larger than its reported error (see the warning above).
+  ``coord_ra`` / ``coord_dec`` retain full ``float64`` precision.
+* **Time precision.** ``{band}_epoch`` and ``diaSource.timeProcessedMjdTai`` are
+  downcast to ``float32``, which downsamples them onto a grid roughly 5 minutes
+  wide. Use the ``float64`` ``midpointMjdTai`` column on the nested light curves
+  for any time-domain work.
 * **Unassociated DIA sources.** 0.81% of ``diaSource`` rows (8,136,150 of
   1,000,825,975) are dropped from the nested light curves because their
   ``diaObjectId`` has no match in the ``DiaObject`` table.
+* **Solar System objects.** DiaSources assigned to Solar System objects are
+  associated with an ``SSObject`` rather than a ``DiaObject``, so they are not
+  present in ``dia_object_collection``.
 
 
 How to ask for help
