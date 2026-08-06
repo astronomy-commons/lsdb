@@ -410,7 +410,7 @@ class SelectPixels(Operation):
         pixel_set = set(pixels) if pixels is not None else None
         effective = [p for p in self.pixels if pixel_set is None or p in pixel_set]
         previous = self.base.build(pixels=effective if pixels is not None else None)
-        selected_pixels = self.pixels
+        selected_pixels = effective if pixels is not None else self.pixels
         for p in selected_pixels:
             if p not in previous.pixel_to_key_map:
                 raise ValueError(f"Selected Pixel {p} not found in operation")
