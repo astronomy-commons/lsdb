@@ -77,3 +77,17 @@ def test_rng_split():
     assert not np.array_equal(
         first_partitions, second_partitions
     ), "RNG should produce different sequences after splitting."
+
+
+def test_stream_from_search_filter():
+    """test to make sure pixel set handoff from a search filter works"""
+    # explicit test for https://github.com/astronomy-commons/lsdb/issues/1549
+
+    cat = lsdb.generate_catalog(1000, 2, seed=1, ra_range=(0.0, 10.0), dec_range=(0, 10.0), partition_rows=20)
+    cat = cat.cone_search(ra=0, dec=0, radius_arcsec=1000)
+
+    # If this runs without error, then the stream is working
+    for i, chunk in enumerate(CatalogStream(cat)):
+        if i > 0:
+            break
+        print(chunk)
