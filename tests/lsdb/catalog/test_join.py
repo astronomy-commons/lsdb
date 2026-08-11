@@ -4,11 +4,18 @@ import pandas as pd
 import pyarrow as pa
 import pytest
 from hats.io import paths
+from hats.io.file_io import file_io
 from hats.pixel_math import HealpixPixel
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN, spatial_index_to_healpix
+from upath import UPath
 
 import lsdb
 from lsdb.operations.functions.merge_catalog_functions import align_catalogs
+
+BACKEND_UNAVAILABLE_MESSAGE = "right catalog backend unavailable"
+SPARSE_RIGHT_PIXELS = [HealpixPixel(1, 46), HealpixPixel(1, 47)]
+CORE_ONLY_PIXELS = [HealpixPixel(1, 44), HealpixPixel(1, 45)]
+MATCHED_OBJECT_IDS = {700, 756}
 
 
 def test_small_sky_join_small_sky_order1(small_sky_catalog, small_sky_order1_catalog, helpers):
@@ -378,49 +385,194 @@ def test_join_nested(small_sky_catalog, small_sky_order1_source_with_margin):
         )
 
 
-def test_join_nested_how_left(small_sky_order1_catalog, small_sky_order1_source_with_margin, helpers):
-    # All pixels in the object catalog have a corresponding source pixel
-    object_pixels = small_sky_order1_catalog.get_healpix_pixels()
-    source_pixels = small_sky_order1_source_with_margin.get_healpix_pixels()
-    assert all(p in source_pixels for p in object_pixels)
+def test_join_nested_how_left(small_sky_order1_catalog, materialized_sparse_right_catalog, helpers):
+    right_store, sparse_right_catalog = materialized_sparse_right_catalog
+    core_catalog_path = small_sky_order1_catalog.hc_structure.catalog_base_dir
+    right_catalog_path = sparse_right_catalog.hc_structure.catalog_base_dir
 
-    # Now we will select only two pixels from the source catalog
-    selected_pixels = [HealpixPixel(1, 46), HealpixPixel(1, 47)]
-    smaller_sky_sources = small_sky_order1_source_with_margin.pixel_search(selected_pixels, fine=True)
+    # The Extension stand-in is an ordinary, physically persisted HATS collection,
+    # reopened from a different fsspec backend than the local Core fixture.
+    assert (right_store / "collection.properties").is_file()
+    assert sparse_right_catalog.hc_structure.on_disk
+    assert sparse_right_catalog.margin is not None
+    assert sparse_right_catalog.margin.hc_structure.on_disk
+    assert core_catalog_path.protocol != right_catalog_path.protocol
+    assert type(core_catalog_path.fs) is not type(right_catalog_path.fs)
+    assert sparse_right_catalog.margin.hc_structure.catalog_base_dir.protocol == right_catalog_path.protocol
+    assert (right_catalog_path / "hats.properties").is_file()
+    assert (right_catalog_path / "partition_info.csv").is_file()
+
+    # Only two right-catalog pixels exist physically; the other Core pixels are
+    # scientific non-coverage rather than declared-but-missing storage objects.
+    object_pixels = small_sky_order1_catalog.get_healpix_pixels()
+    assert sparse_right_catalog.get_healpix_pixels() == SPARSE_RIGHT_PIXELS
+    assert set(object_pixels) - set(SPARSE_RIGHT_PIXELS) == set(CORE_ONLY_PIXELS)
+    assert all(paths.pixel_catalog_file(right_catalog_path, pixel).is_file() for pixel in SPARSE_RIGHT_PIXELS)
+    assert all(not paths.pixel_catalog_file(right_catalog_path, pixel).exists() for pixel in CORE_ONLY_PIXELS)
 
     # If we `join_nested` with `how="left"`, we keep all objects on the left
     nested_left = small_sky_order1_catalog.join_nested(
-        smaller_sky_sources,
+        sparse_right_catalog,
         left_on="id",
         right_on="object_id",
         nested_column_name="sources",
         how="left",
     )
     helpers.assert_columns_in_nested_joined_catalog(
-        nested_left, small_sky_order1_catalog, smaller_sky_sources, ["object_id"], "sources"
+        nested_left, small_sky_order1_catalog, sparse_right_catalog, ["object_id"], "sources"
     )
 
-    # All object pixels will show up in the final result
+    # Sparse coverage must preserve every core pixel, row, index, and column.
     assert object_pixels == nested_left.get_healpix_pixels()
-    nested_left_compute = nested_left.compute()
-    assert len(small_sky_order1_catalog) == len(nested_left_compute)
+    nested_left_compute = nested_left.compute(progress_bar=False)
+    core_compute = small_sky_order1_catalog.compute(progress_bar=False)
+    pd.testing.assert_frame_equal(nested_left_compute.drop(columns="sources"), core_compute)
 
-    source_compute = smaller_sky_sources.compute()
-    source_margin = smaller_sky_sources.margin.compute()
+    source_compute = sparse_right_catalog.compute(progress_bar=False)
+    source_margin = sparse_right_catalog.margin.compute(progress_bar=False)
+    assert set(source_compute["object_id"].astype(int)) == MATCHED_OBJECT_IDS
     total_sources = pd.concat([source_compute, source_margin]).drop_duplicates(subset="source_id")
+    observed_matches = set()
+    observed_nulls = set()
     for _, row in nested_left_compute.iterrows():
-        row_id = row["id"]
-        if row["sources"] is not None:
-            pd.testing.assert_frame_equal(
-                row["sources"].sort_values("source_ra").reset_index(drop=True),
-                pd.DataFrame(total_sources[total_sources["object_id"] == row_id].set_index("object_id"))
-                .sort_values("source_ra")
-                .reset_index(drop=True)
-                .drop(columns=[c for c in paths.HIVE_COLUMNS if c in source_compute.columns]),
-                check_dtype=False,
-                check_column_type=False,
-                check_index_type=False,
-            )
+        row_id = int(row["id"])
+        sources = row["sources"]
+        if sources is None:
+            observed_nulls.add(row_id)
+            continue
+
+        observed_matches.add(row_id)
+        assert sources["extension_object_id"].eq(row_id).all()
+        assert sources["source_id"].is_unique
+        pd.testing.assert_frame_equal(
+            sources.sort_values("source_ra").reset_index(drop=True),
+            pd.DataFrame(total_sources[total_sources["object_id"] == row_id].set_index("object_id"))
+            .sort_values("source_ra")
+            .reset_index(drop=True)
+            .drop(columns=[c for c in paths.HIVE_COLUMNS if c in source_compute.columns]),
+            check_dtype=False,
+            check_column_type=False,
+            check_index_type=False,
+        )
+
+    core_ids = set(core_compute["id"].astype(int))
+    assert len(core_ids) == 131
+    assert observed_matches == MATCHED_OBJECT_IDS
+    assert observed_nulls == core_ids - MATCHED_OBJECT_IDS
+    assert len(observed_nulls) == 129
+
+
+def test_join_nested_how_left_is_partition_local_for_matching_ids(small_sky_order1_catalog):
+    # This characterizes the documented join_nested behavior only. It does not define
+    # the future identity or partitioning contract for Core + Extension catalogs.
+    core_compute = small_sky_order1_catalog.compute(progress_bar=False)
+    target_row = core_compute.loc[core_compute["id"] == 700].iloc[0]
+    wrong_pixel_row = core_compute.loc[core_compute["id"] == 756].iloc[0]
+    target_pixel = HealpixPixel(
+        1, int(spatial_index_to_healpix(np.array([target_row.name]), target_order=1)[0])
+    )
+    wrong_pixel = HealpixPixel(
+        1, int(spatial_index_to_healpix(np.array([wrong_pixel_row.name]), target_order=1)[0])
+    )
+    assert target_pixel == HealpixPixel(1, 46)
+    assert wrong_pixel == HealpixPixel(1, 47)
+
+    displaced_extension = lsdb.from_dataframe(
+        pd.DataFrame(
+            {
+                "extension_id": [7000],
+                "object_id": [700],
+                "ra": [wrong_pixel_row["ra"]],
+                "dec": [wrong_pixel_row["dec"]],
+            }
+        ),
+        lowest_order=1,
+        highest_order=1,
+        margin_threshold=None,
+        should_generate_moc=False,
+        catalog_name="displaced_extension",
+    )
+    assert displaced_extension.get_healpix_pixels() == [wrong_pixel]
+    assert wrong_pixel in small_sky_order1_catalog.get_healpix_pixels()
+    assert wrong_pixel != target_pixel
+
+    displaced_compute = displaced_extension.compute(progress_bar=False)
+    assert 700 in set(core_compute["id"].astype(int))
+    assert 700 in set(displaced_compute["object_id"].astype(int))
+
+    with pytest.warns(RuntimeWarning, match="margin cache"):
+        nested_left = small_sky_order1_catalog.join_nested(
+            displaced_extension,
+            left_on="id",
+            right_on="object_id",
+            nested_column_name="extensions",
+            how="left",
+        )
+
+    nested_left_compute = nested_left.compute(progress_bar=False)
+    pd.testing.assert_frame_equal(nested_left_compute.drop(columns="extensions"), core_compute)
+    assert nested_left_compute["extensions"].isna().all()
+
+
+def test_join_nested_how_left_raises_when_declared_right_partition_is_missing(
+    small_sky_order1_catalog,
+    materialized_sparse_right_catalog,
+):
+    right_store, sparse_right_catalog = materialized_sparse_right_catalog
+    missing_pixel = SPARSE_RIGHT_PIXELS[0]
+    missing_partition = paths.pixel_catalog_file(
+        sparse_right_catalog.hc_structure.catalog_base_dir, missing_pixel
+    )
+    assert missing_partition.is_file()
+    missing_partition.unlink()
+
+    # Reopening succeeds because HATS metadata still declares the deleted partition.
+    missing_right_partition = lsdb.open_catalog(right_store)
+    assert missing_pixel in missing_right_partition.get_healpix_pixels()
+    assert not missing_partition.exists()
+    nested_left = small_sky_order1_catalog.join_nested(
+        missing_right_partition,
+        left_on="id",
+        right_on="object_id",
+        nested_column_name="sources",
+        how="left",
+    )
+
+    # Scientific sparsity is represented by nulls, while a missing object declared by
+    # the HATS partition metadata is a storage error and must fail loudly.
+    with pytest.raises(FileNotFoundError, match=missing_partition.name):
+        nested_left.compute(progress_bar=False)
+
+
+@pytest.mark.parametrize("backend_error", [TimeoutError, PermissionError])
+def test_join_nested_how_left_propagates_right_backend_failure(
+    small_sky_order1_catalog,
+    materialized_sparse_right_catalog,
+    monkeypatch,
+    backend_error,
+):
+    _, sparse_right_catalog = materialized_sparse_right_catalog
+    nested_left = small_sky_order1_catalog.join_nested(
+        sparse_right_catalog,
+        left_on="id",
+        right_on="object_id",
+        nested_column_name="sources",
+        how="left",
+    )
+
+    original_parquet_reader = file_io.read_parquet_file_to_pandas
+
+    def fail_right_partition_reads(file_pointer, *args, **kwargs):
+        file_pointer = UPath(file_pointer)
+        if file_pointer.protocol == "memory":
+            raise backend_error(BACKEND_UNAVAILABLE_MESSAGE)
+        return original_parquet_reader(file_pointer, *args, **kwargs)
+
+    # Metadata and the lazy join graph are already valid. Fail only subsequent data
+    # reads so an unavailable backend cannot be mistaken for scientific sparsity.
+    monkeypatch.setattr(file_io, "read_parquet_file_to_pandas", fail_right_partition_reads)
+    with pytest.raises(backend_error, match=BACKEND_UNAVAILABLE_MESSAGE):
+        nested_left.compute(progress_bar=False)
 
 
 def test_join_nested_invalid_how(small_sky_order1_catalog, small_sky_order1_source_with_margin):

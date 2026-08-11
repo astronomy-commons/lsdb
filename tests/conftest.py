@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import dask
 import hats as hc
 import nested_pandas as npd
 import numpy.testing as npt
@@ -7,12 +8,13 @@ import pandas as pd
 import pytest
 import tqdm.std
 from hats.io import paths
-from hats.pixel_math import spatial_index_to_healpix
+from hats.pixel_math import HealpixPixel, spatial_index_to_healpix
 from hats.pixel_math.spatial_index import (
     SPATIAL_INDEX_COLUMN,
     compute_spatial_index,
     healpix_to_spatial_index,
 )
+from upath import UPath
 
 import lsdb
 
@@ -272,6 +274,32 @@ def small_sky_order1_default_cols_catalog(small_sky_order1_default_cols_dir):
 @pytest.fixture
 def small_sky_order1_source_with_margin(small_sky_order1_source_dir, small_sky_order1_source_margin_dir):
     return lsdb.open_catalog(small_sky_order1_source_dir, margin_cache=small_sky_order1_source_margin_dir)
+
+
+@pytest.fixture
+def materialized_sparse_right_catalog(small_sky_order1_source_with_margin, tmp_path):
+    """Persist and reopen a sparse Extension stand-in from an independent fsspec backend."""
+    sparse_right_catalog = small_sky_order1_source_with_margin.pixel_search(
+        [HealpixPixel(1, 46), HealpixPixel(1, 47)], fine=True
+    ).query("object_id in [700, 756]")
+    sparse_meta = sparse_right_catalog.meta.assign(extension_object_id=sparse_right_catalog.meta["object_id"])
+    sparse_right_catalog = sparse_right_catalog.map_partitions(
+        lambda frame: frame.assign(extension_object_id=frame["object_id"]),
+        meta=sparse_meta,
+    )
+
+    memory_namespace = f"{tmp_path.parent.name}/{tmp_path.name}"
+    right_store = UPath(f"memory://lsdb-contract-tests/{memory_namespace}/right_catalog")
+    # MemoryFileSystem is process-local. Unsetting an externally configured scheduler
+    # makes LSDB use its explicit in-process threaded fallback for writes and reads.
+    with dask.config.set(scheduler=None):
+        try:
+            sparse_right_catalog.write_catalog(right_store, progress_bar=False)
+            reopened_right_catalog = lsdb.open_catalog(right_store)
+            yield right_store, reopened_right_catalog
+        finally:
+            if right_store.exists():
+                right_store.fs.rm(right_store.path, recursive=True)
 
 
 @pytest.fixture
