@@ -290,8 +290,8 @@ def materialized_sparse_right_catalog(small_sky_order1_source_with_margin, tmp_p
 
     memory_namespace = f"{tmp_path.parent.name}/{tmp_path.name}"
     right_store = UPath(f"memory://lsdb-contract-tests/{memory_namespace}/right_catalog")
-    # MemoryFileSystem is process-local. Unsetting an externally configured scheduler
-    # makes LSDB use its explicit in-process threaded fallback for writes and reads.
+    # MemoryFileSystem is process-local. Clear any configured local scheduler so LSDB's
+    # no-client test path uses its in-process fallback for both writes and reads.
     with dask.config.set(scheduler=None):
         try:
             sparse_right_catalog.write_catalog(right_store, progress_bar=False)

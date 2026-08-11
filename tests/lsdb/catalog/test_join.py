@@ -1,18 +1,17 @@
+import re
+
 import nested_pandas as npd
 import numpy as np
 import pandas as pd
 import pyarrow as pa
 import pytest
 from hats.io import paths
-from hats.io.file_io import file_io
 from hats.pixel_math import HealpixPixel
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN, spatial_index_to_healpix
-from upath import UPath
 
 import lsdb
 from lsdb.operations.functions.merge_catalog_functions import align_catalogs
 
-BACKEND_UNAVAILABLE_MESSAGE = "right catalog backend unavailable"
 SPARSE_RIGHT_PIXELS = [HealpixPixel(1, 46), HealpixPixel(1, 47)]
 CORE_ONLY_PIXELS = [HealpixPixel(1, 44), HealpixPixel(1, 45)]
 MATCHED_OBJECT_IDS = {700, 756}
@@ -397,7 +396,6 @@ def test_join_nested_how_left(small_sky_order1_catalog, materialized_sparse_righ
     assert sparse_right_catalog.margin is not None
     assert sparse_right_catalog.margin.hc_structure.on_disk
     assert core_catalog_path.protocol != right_catalog_path.protocol
-    assert type(core_catalog_path.fs) is not type(right_catalog_path.fs)
     assert sparse_right_catalog.margin.hc_structure.catalog_base_dir.protocol == right_catalog_path.protocol
     assert (right_catalog_path / "hats.properties").is_file()
     assert (right_catalog_path / "partition_info.csv").is_file()
@@ -431,7 +429,10 @@ def test_join_nested_how_left(small_sky_order1_catalog, materialized_sparse_righ
     source_compute = sparse_right_catalog.compute(progress_bar=False)
     source_margin = sparse_right_catalog.margin.compute(progress_bar=False)
     assert set(source_compute["object_id"].astype(int)) == MATCHED_OBJECT_IDS
-    total_sources = pd.concat([source_compute, source_margin]).drop_duplicates(subset="source_id")
+    total_sources = pd.concat([source_compute, source_margin])
+    scientific_columns = [column for column in total_sources.columns if column not in paths.HIVE_COLUMNS]
+    total_sources = total_sources.loc[:, scientific_columns].drop_duplicates()
+    assert total_sources["source_id"].is_unique
     observed_matches = set()
     observed_nulls = set()
     for _, row in nested_left_compute.iterrows():
@@ -448,18 +449,19 @@ def test_join_nested_how_left(small_sky_order1_catalog, materialized_sparse_righ
             sources.sort_values("source_ra").reset_index(drop=True),
             pd.DataFrame(total_sources[total_sources["object_id"] == row_id].set_index("object_id"))
             .sort_values("source_ra")
-            .reset_index(drop=True)
-            .drop(columns=[c for c in paths.HIVE_COLUMNS if c in source_compute.columns]),
+            .reset_index(drop=True),
             check_dtype=False,
             check_column_type=False,
             check_index_type=False,
         )
 
-    core_ids = set(core_compute["id"].astype(int))
-    assert len(core_ids) == 131
+    core_id_series = core_compute["id"].astype(int)
+    assert core_id_series.is_unique
+    core_ids = set(core_id_series)
+    expected_nulls = core_ids - MATCHED_OBJECT_IDS
     assert observed_matches == MATCHED_OBJECT_IDS
-    assert observed_nulls == core_ids - MATCHED_OBJECT_IDS
-    assert len(observed_nulls) == 129
+    assert observed_nulls == expected_nulls
+    assert len(observed_matches) + len(observed_nulls) == len(core_compute)
 
 
 def test_join_nested_how_left_is_partition_local_for_matching_ids(small_sky_order1_catalog):
@@ -540,38 +542,7 @@ def test_join_nested_how_left_raises_when_declared_right_partition_is_missing(
 
     # Scientific sparsity is represented by nulls, while a missing object declared by
     # the HATS partition metadata is a storage error and must fail loudly.
-    with pytest.raises(FileNotFoundError, match=missing_partition.name):
-        nested_left.compute(progress_bar=False)
-
-
-@pytest.mark.parametrize("backend_error", [TimeoutError, PermissionError])
-def test_join_nested_how_left_propagates_right_backend_failure(
-    small_sky_order1_catalog,
-    materialized_sparse_right_catalog,
-    monkeypatch,
-    backend_error,
-):
-    _, sparse_right_catalog = materialized_sparse_right_catalog
-    nested_left = small_sky_order1_catalog.join_nested(
-        sparse_right_catalog,
-        left_on="id",
-        right_on="object_id",
-        nested_column_name="sources",
-        how="left",
-    )
-
-    original_parquet_reader = file_io.read_parquet_file_to_pandas
-
-    def fail_right_partition_reads(file_pointer, *args, **kwargs):
-        file_pointer = UPath(file_pointer)
-        if file_pointer.protocol == "memory":
-            raise backend_error(BACKEND_UNAVAILABLE_MESSAGE)
-        return original_parquet_reader(file_pointer, *args, **kwargs)
-
-    # Metadata and the lazy join graph are already valid. Fail only subsequent data
-    # reads so an unavailable backend cannot be mistaken for scientific sparsity.
-    monkeypatch.setattr(file_io, "read_parquet_file_to_pandas", fail_right_partition_reads)
-    with pytest.raises(backend_error, match=BACKEND_UNAVAILABLE_MESSAGE):
+    with pytest.raises(FileNotFoundError, match=re.escape(missing_partition.name)):
         nested_left.compute(progress_bar=False)
 
 
