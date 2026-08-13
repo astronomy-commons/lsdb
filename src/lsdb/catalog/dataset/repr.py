@@ -156,7 +156,7 @@ def _make_pixel_range(index, stats_by_pixel, min_col, max_col, dtype) -> list[st
     values = []
     for pixel in index:
         row = stats_by_pixel.get(pixel)
-        if row is None or pd.isna(row[min_col]) or pd.isna(row[max_col]):
+        if row is None:
             values.append("...")
             continue
         min_str, max_str = formatter(row[min_col]), formatter(row[max_col])
@@ -165,23 +165,34 @@ def _make_pixel_range(index, stats_by_pixel, min_col, max_col, dtype) -> list[st
 
 
 def _get_formatter(dtype):
-    """Return a function to format a given scalar of dtype"""
+    """Return a function to format a given scalar of dtype.
+
+    Missing values are printed as they come, e.g. 'nan' for floats and 'None' for null objects.
+    """
     if pd.api.types.is_bool_dtype(dtype):
-        return lambda v: str(bool(v))
+        fmt_value = _fmt_bool
+    elif pd.api.types.is_float_dtype(dtype):
+        fmt_value = _fmt_float
+    elif pd.api.types.is_integer_dtype(dtype):
+        fmt_value = _fmt_int
+    else:
+        fmt_value = _fmt_str
+    return lambda v: str(v) if pd.isna(v) else fmt_value(v)
 
-    if pd.api.types.is_float_dtype(dtype):
-        return lambda v: f"{float(v):.4g}"
 
-    if pd.api.types.is_integer_dtype(dtype):
+def _fmt_bool(v) -> str:
+    return str(bool(v))
 
-        def fmt_int(v):
-            s = int_comma(int(v))
-            return s if len(s) <= _MAX_STR_WIDTH else f"{int(v):.4g}"
 
-        return fmt_int
+def _fmt_float(v) -> str:
+    return f"{float(v):.4g}"
 
-    def fmt_str(v):
-        s = str(v)
-        return s if len(s) <= _MAX_STR_WIDTH else s[: _MAX_STR_WIDTH - 1] + "»"
 
-    return fmt_str
+def _fmt_int(v) -> str:
+    s = int_comma(int(v))
+    return s if len(s) <= _MAX_STR_WIDTH else f"{int(v):.4g}"
+
+
+def _fmt_str(v) -> str:
+    s = str(v)
+    return s if len(s) <= _MAX_STR_WIDTH else s[: _MAX_STR_WIDTH - 1] + "»"
