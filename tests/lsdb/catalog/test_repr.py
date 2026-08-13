@@ -189,8 +189,8 @@ def test_shows_statistics_except_for_nested_columns(small_sky_with_nested_source
 def test_missing_min_max_in_pixel_range():
     min_col, max_col = "id: min_value", "id: max_value"
     stats_by_pixel = {
-        "nan": {min_col: None, max_col: np.nan},
-        "none_and_inf": {min_col: 0, max_col: np.inf},
+        "none_and_nan": {min_col: None, max_col: np.nan},
+        "zero_and_inf": {min_col: 0, max_col: np.inf},
         "na_and_nat": {min_col: pd.NA, max_col: pd.NaT},
     }
     index = [*stats_by_pixel, "no_stats"]
