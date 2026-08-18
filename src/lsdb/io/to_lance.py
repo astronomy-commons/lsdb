@@ -12,6 +12,71 @@ from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
 _TABLE_NAME = "data"
 
 
+def _lance_storage_options_from_upath(path: UPath) -> dict[str, str] | None:
+    """Translate a UPath's fsspec-style ``storage_options`` into the key
+    names lance/lancedb's Rust ``object_store`` backend expects.
+
+    fsspec filesystems (s3fs, gcsfs, adlfs, ...) and lance's ``object_store``
+    each have their own, incompatible ``storage_options`` schemas. A UPath
+    built for read/write via fsspec can't be handed to
+    ``lancedb.connect(storage_options=...)`` as-is -- this maps the handful
+    of fields we care about (endpoint, credentials, TLS) between the two.
+
+    Parameters
+    ----------
+    path : UPath
+        A UPath instance pointing at the target Lance dataset location.
+
+    Returns
+    -------
+    dict[str, str] | None
+        A ``storage_options`` dict suitable for ``lancedb.connect``, or
+        ``None`` if the path's protocol needs no special handling (e.g.
+        local filesystem paths).
+    """
+    protocol = path.protocol
+    fsso = dict(path.storage_options or {})
+
+    if protocol == "s3":
+        return _map_s3_storage_options(fsso)
+
+    # Unknown/unsupported protocol (http, memory, ...) -- nothing sensible
+    # to translate; let lance/lancedb use its own defaults.
+    return None
+
+
+def _map_s3_storage_options(fsso: dict) -> dict[str, str]:
+    lance_so: dict[str, str] = {}
+
+    client_kwargs = fsso.get("client_kwargs", {}) or {}
+
+    endpoint_url = fsso.get("endpoint_url") or client_kwargs.get("endpoint_url")
+    if endpoint_url:
+        lance_so["aws_endpoint"] = endpoint_url
+        # object_store refuses plain http endpoints unless told it's ok.
+        if endpoint_url.startswith("http://"):
+            lance_so["allow_http"] = "true"
+
+    region = fsso.get("region_name") or client_kwargs.get("region_name") or fsso.get("region")
+    if region:
+        lance_so["aws_region"] = region
+
+    key = fsso.get("key")
+    secret = fsso.get("secret")
+    token = fsso.get("token")
+    if key:
+        lance_so["aws_access_key_id"] = key
+    if secret:
+        lance_so["aws_secret_access_key"] = secret
+    if token:
+        lance_so["aws_session_token"] = token
+
+    if fsso.get("anon"):
+        lance_so["aws_skip_signature"] = "true"
+
+    return lance_so
+
+
 def to_lance(
     catalog: HealpixDataset,
     *,
@@ -89,10 +154,11 @@ def to_lance(
             )
 
     path = str(base_catalog_path)
+    storage_options = _lance_storage_options_from_upath(base_catalog_path)
     # pylint: disable=protected-access
     delayed_partitions = catalog.to_delayed()
 
-    db = lancedb.connect(path)
+    db = lancedb.connect(path, storage_options=storage_options)
     table: lancedb.Table | None = None
 
     for _, partition in tqdm(
