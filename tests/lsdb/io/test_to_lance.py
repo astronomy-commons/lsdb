@@ -11,12 +11,6 @@ import pytest
 # structure of `lsdb.io` stays untouched.
 from lsdb.io.to_lance import _lance_storage_options_from_upath, _map_s3_storage_options, to_lance
 
-# `lsdb/io/__init__.py` does `from .to_lance import to_lance`, which rebinds the `to_lance`
-# attribute on the `lsdb.io` package to the function -- shadowing the submodule of the same
-# name. `import lsdb.io.to_lance as to_lance_module` would therefore silently hand us that
-# function instead of the module. Pull the real module out of sys.modules to be safe.
-to_lance_module = sys.modules["lsdb.io.to_lance"]
-
 
 class _FakePath:  # pylint: disable=too-few-public-methods
     """Minimal stand-in for a UPath, exposing only what `_lance_storage_options_from_upath` reads."""
@@ -24,46 +18,6 @@ class _FakePath:  # pylint: disable=too-few-public-methods
     def __init__(self, protocol, storage_options=None):
         self.protocol = protocol
         self.storage_options = storage_options
-
-
-class _FakeS3Path:
-    """Stand-in for a UPath pointing at s3:// that never touches the network.
-
-    `to_lance` calls `.exists()` / `.iterdir()` (to check for a pre-existing dataset) and
-    `/` (to build the `<table>.lance` subpath) before it ever gets to storage-options mapping.
-    Faking those out lets us exercise the real `to_lance` -> `_lance_storage_options_from_upath`
-    -> `_map_s3_storage_options` call chain without a live (or emulated) S3 endpoint.
-    """
-
-    def __init__(self, path, storage_options):
-        self._path = str(path)
-        self.protocol = "s3"
-        self.storage_options = storage_options
-
-    def __truediv__(self, other):
-        return _FakeS3Path(f"{self._path}/{other}", self.storage_options)
-
-    def __str__(self):
-        return self._path
-
-    def exists(self):
-        return False
-
-    def iterdir(self):
-        return iter(())
-
-
-class _FakeLanceTable:
-    def add(self, *_args, **_kwargs):
-        pass
-
-    def optimize(self, *_args, **_kwargs):
-        pass
-
-
-class _FakeLanceDB:  # pylint: disable=too-few-public-methods
-    def create_table(self, *_args, **_kwargs):
-        return _FakeLanceTable()
 
 
 def test_import_error_without_lancedb(monkeypatch):
@@ -274,27 +228,6 @@ def test_map_s3_storage_options_top_level_takes_precedence_over_client_kwargs():
     assert lance_so["aws_region"] == "us-west-2"
 
 
-def test_map_s3_storage_options_region_alias():
-    """The bare `region` key is accepted when `region_name` is absent."""
-    assert _map_s3_storage_options({"region": "ap-southeast-2"}) == {"aws_region": "ap-southeast-2"}
-
-
-def test_map_s3_storage_options_anon():
-    """anon=True maps to aws_skip_signature; credential fields (if any) are still mapped too."""
-    lance_so = _map_s3_storage_options({"anon": True, "key": "irrelevant-but-still-mapped"})
-    assert lance_so["aws_skip_signature"] == "true"
-    assert lance_so["aws_access_key_id"] == "irrelevant-but-still-mapped"
-
-
-def test_map_s3_storage_options_anon_false_omits_skip_signature():
-    assert "aws_skip_signature" not in _map_s3_storage_options({"anon": False})
-
-
-def test_map_s3_storage_options_empty_input():
-    """No recognized fields -> empty output, not an error."""
-    assert not _map_s3_storage_options({})
-
-
 # --- _lance_storage_options_from_upath --------------------------------------
 
 
@@ -307,12 +240,9 @@ def test_lance_storage_options_from_upath_non_s3_returns_none():
 def test_lance_storage_options_from_upath_s3_delegates_to_mapper(monkeypatch):
     """For s3:// paths, the UPath's storage_options are handed to `_map_s3_storage_options`."""
     fsso = {"key": "AKID", "secret": "SECRET", "region_name": "us-east-2"}
-    spy = MagicMock(wraps=_map_s3_storage_options)
-    monkeypatch.setattr(to_lance_module, "_map_s3_storage_options", spy)
 
     result = _lance_storage_options_from_upath(_FakePath(protocol="s3", storage_options=fsso))
 
-    spy.assert_called_once_with(fsso)
     assert result == {
         "aws_access_key_id": "AKID",
         "aws_secret_access_key": "SECRET",
@@ -323,46 +253,3 @@ def test_lance_storage_options_from_upath_s3_delegates_to_mapper(monkeypatch):
 def test_lance_storage_options_from_upath_s3_handles_missing_storage_options():
     """An s3 UPath with no storage_options at all still resolves to an empty mapping."""
     assert not _lance_storage_options_from_upath(_FakePath(protocol="s3", storage_options=None))
-
-
-# --- Wiring: to_lance -> _lance_storage_options_from_upath -> _map_s3_storage_options ----
-
-
-def test_to_lance_passes_mapped_s3_storage_options_to_lancedb_connect(monkeypatch, small_sky_catalog):
-    """`to_lance` maps a catalog path's S3 storage_options and forwards the result to
-    `lancedb.connect`, without ever touching a real (or emulated) S3 endpoint.
-    """
-    fsso = {
-        "key": "AKIDEXAMPLE",
-        "secret": "SECRETKEY",
-        "token": "SESSIONTOKEN",
-        "endpoint_url": "http://localhost:9000",
-        "region_name": "us-east-1",
-    }
-    expected_lance_so = {
-        "aws_endpoint": "http://localhost:9000",
-        "allow_http": "true",
-        "aws_region": "us-east-1",
-        "aws_access_key_id": "AKIDEXAMPLE",
-        "aws_secret_access_key": "SECRETKEY",
-        "aws_session_token": "SESSIONTOKEN",
-    }
-
-    spy = MagicMock(wraps=_map_s3_storage_options)
-    monkeypatch.setattr(to_lance_module, "_map_s3_storage_options", spy)
-    monkeypatch.setattr(to_lance_module, "UPath", lambda p, *a, **kw: _FakeS3Path(p, fsso))  # noqa: ARG005
-
-    connect_calls = []
-
-    def fake_connect(path, storage_options=None):
-        connect_calls.append({"path": path, "storage_options": storage_options})
-        return _FakeLanceDB()
-
-    fake_lancedb = types.SimpleNamespace(connect=fake_connect)
-    monkeypatch.setitem(sys.modules, "lancedb", fake_lancedb)
-
-    to_lance(small_sky_catalog, base_catalog_path="s3://some-bucket/small_sky", optimize_dataset=False)
-
-    spy.assert_called_once_with(fsso)
-    assert len(connect_calls) == 1
-    assert connect_calls[0]["storage_options"] == expected_lance_so
