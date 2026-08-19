@@ -50,6 +50,7 @@ from lsdb.operations.functions.merge_catalog_functions import (
 from lsdb.operations.functions.merge_map_catalog_data import merge_map_catalog_data
 from lsdb.operations.lsdb_ops import MapPartitions
 from lsdb.operations.operation import Operation
+from lsdb.registry import find_extensions, get_registry_id, load_extension_entry, refresh_registry
 
 
 def _default_suffixes(left_name: str, right_name: str) -> tuple[str, str]:
@@ -1606,3 +1607,43 @@ class Catalog(HealpixDataset):
                 npix_suffix=npix_suffix,
                 npix_parquet_name=npix_parquet_name,
             )
+
+    def show_extensions(self) -> list[str]:
+        """List extensions registered against this catalog in hats-registry.
+
+        Returns an empty list if this catalog has no registry ID (i.e. it
+        was never registered) or if it has one but no extensions exist yet
+        -- this is a normal, non-error state, not a failure.
+
+        Queries whatever ref (branch/tag/commit) hats_registry is currently
+        configured to use -- see `hats_registry.set_default_ref()` to pin
+        this for a session, e.g. for a reproducible analysis.
+        """
+        return find_extensions(self)
+
+    def load_extension(self, ext_id: str, how="left") -> "Catalog":
+        """Load an extension catalog registered against this one.
+
+        Returns the current catalog with the extension catalog loaded in. Importantly, this is performed
+        as a crossmatch, with the default "how" behavior being a"left" join, meaning all rows in the current
+        catalog will be preserved, and only rows in the extension catalog that match will be added. This
+        differs from the `crossmatch` function, which defaults to an "inner" join, meaning only rows that
+        match between the two catalogs will be preserved.
+
+        Parameters
+        ----------
+        ext_id : str
+            The extension's own catalog_id, as returned by
+            `show_extensions()`.
+        how : str
+            How to handle the crossmatch of the two catalogs. One of {'left', 'inner'}; defaults to 'left'.
+        """
+        # Deferred import - avoid cyclic import
+        from lsdb.loaders.hats.read_hats import open_catalog
+
+        entry = load_extension_entry(ext_id)
+        extension_catalog = open_catalog(entry.path)
+
+        return self.crossmatch(
+            extension_catalog, how=how, suffix_method="overlapping_columns", log_changes=False
+        )
