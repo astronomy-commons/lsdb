@@ -174,7 +174,7 @@ def test_map_s3_storage_options_all_fields_top_level():
         "token": "SESSIONTOKEN",
         "endpoint_url": "http://localhost:9000",
         "region_name": "us-east-1",
-        "anon": False,
+        "anon": True,
     }
 
     assert _map_s3_storage_options(fsso) == {
@@ -184,6 +184,7 @@ def test_map_s3_storage_options_all_fields_top_level():
         "aws_access_key_id": "AKIDEXAMPLE",
         "aws_secret_access_key": "SECRETKEY",
         "aws_session_token": "SESSIONTOKEN",
+        "aws_skip_signature": "true",
     }
 
 
@@ -235,7 +236,7 @@ def test_lance_storage_options_from_upath_non_s3_returns_none():
     assert _lance_storage_options_from_upath(_FakePath(protocol="memory")) is None
 
 
-def test_lance_storage_options_from_upath_s3_delegates_to_mapper(monkeypatch):
+def test_lance_storage_options_from_upath_s3_delegates_to_mapper():
     """For s3:// paths, the UPath's storage_options are handed to `_map_s3_storage_options`."""
     fsso = {"key": "AKID", "secret": "SECRET", "region_name": "us-east-2"}
 
