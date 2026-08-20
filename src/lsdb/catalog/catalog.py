@@ -1642,6 +1642,13 @@ class Catalog(HealpixDataset):
         from lsdb.loaders.hats.read_hats import open_catalog
 
         entry = load_extension_entry(ext_id)
+
+        # raise error if not an extension of this catalog
+        if entry.extends != get_registry_id(self):
+            raise ValueError(
+                f"Extension '{ext_id}' is not an extension of this catalog (catalog_id: "
+                f"'{get_registry_id(self)}'), it extends catalog_id: '{entry.extends}'"
+            )
         extension_catalog = open_catalog(entry.path)
 
         return self.crossmatch(

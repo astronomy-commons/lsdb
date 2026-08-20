@@ -85,7 +85,7 @@ def find_extensions(catalog: "Catalog") -> list[ExtensionCatalogEntry]:
     """
     registry_id = get_registry_id(catalog)
     if registry_id is None:
-        return []
+        raise ValueError("Catalog has no hats_registry_id; cannot find extensions")
     return _get_registry().get_extensions(registry_id)
 
 
