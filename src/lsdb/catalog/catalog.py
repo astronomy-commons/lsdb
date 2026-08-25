@@ -1608,7 +1608,7 @@ class Catalog(HealpixDataset):
                 npix_parquet_name=npix_parquet_name,
             )
 
-    def show_extensions(self) -> list[str]:
+    def show_extensions(self) -> list["ExtensionCatalogEntry"]:
         """List extensions registered against this catalog in hats-registry.
 
         Returns an empty list if this catalog has no registry ID (i.e. it
@@ -1621,36 +1621,25 @@ class Catalog(HealpixDataset):
         """
         return find_extensions(self)
 
-    def load_extension(self, ext_id: str, how="left") -> "Catalog":
+    def load_extension(self, extension: "str | ExtensionCatalogEntry") -> "Catalog":
         """Load an extension catalog registered against this one.
 
-        Returns the current catalog with the extension catalog loaded in. Importantly, this is performed
-        as a crossmatch, with the default "how" behavior being a"left" join, meaning all rows in the current
-        catalog will be preserved, and only rows in the extension catalog that match will be added. This
-        differs from the `crossmatch` function, which defaults to an "inner" join, meaning only rows that
-        match between the two catalogs will be preserved.
+        If this catalog's core is mirrored in multiple locations and the
+        extension has a co-located copy at whichever mirror this catalog
+        was actually opened from, that copy is loaded -- otherwise falls
+        back to the extension's primary location.
 
         Parameters
         ----------
-        ext_id : str
-            The extension's own catalog_id, as returned by
-            `show_extensions()`.
-        how : str
-            How to handle the crossmatch of the two catalogs. One of {'left', 'inner'}; defaults to 'left'.
+        extension : str or ExtensionCatalogEntry
+            Either the extension's own catalog_id, as returned by
+            `show_extensions()`, or one of the ExtensionCatalogEntry
+            objects `show_extensions()` itself returns -- passing an entry
+            straight through skips a redundant registry lookup by ID.
         """
-        # Deferred import - avoid cyclic import
+        # Deferred import: see module-level note above for why this can't
+        # be a top-level import.
         from lsdb.loaders.hats.read_hats import open_catalog
 
-        entry = load_extension_entry(ext_id)
-
-        # raise error if not an extension of this catalog
-        if entry.extends != get_registry_id(self):
-            raise ValueError(
-                f"Extension '{ext_id}' is not an extension of this catalog (catalog_id: "
-                f"'{get_registry_id(self)}'), it extends catalog_id: '{entry.extends}'"
-            )
-        extension_catalog = open_catalog(entry.path)
-
-        return self.crossmatch(
-            extension_catalog, how=how, suffix_method="overlapping_columns", log_changes=False
-        )
+        _entry, resolved_path = load_extension_entry(extension, source_catalog=self)
+        return open_catalog(resolved_path)

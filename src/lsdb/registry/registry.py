@@ -21,14 +21,24 @@ Design choices, matching the earlier hats-registry discussion:
     catalog returns an empty list rather than raising, but a lower-level
     helper is available to distinguish "not registered" from "registered,
     zero extensions" for callers (e.g. a UI) that need to.
+  - Mirror detection (for co-located extensions) is done by comparing the
+    catalog's actual opened location (`hc_structure.catalog_base_dir`)
+    against the registry's recorded `paths` for that catalog's core entry,
+    NOT by a dedicated metadata field -- so it needs zero additional
+    catalog metadata beyond `hats_registry_id`, at the cost of being only
+    as good as the registry's recorded paths matching reality (see
+    `_normalize_path` for the (intentionally modest) normalization this
+    tolerates).
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional
+from pathlib import Path
+from typing import TYPE_CHECKING, Optional, Union
 
 import hats_registry
-from hats_registry import ExtensionCatalogEntry, HatsRegistry
+from hats_registry import CoreCatalogEntry, ExtensionCatalogEntry, HatsRegistry
+from upath import UPath
 
 if TYPE_CHECKING:
     from lsdb.catalog.catalog import Catalog
@@ -76,6 +86,52 @@ def get_registry_id(catalog: "Catalog") -> Optional[str]:
     return getattr(catalog_info, "hats_registry_id", None)
 
 
+def _normalize_path(uri: str) -> str:
+    """Normalize a location string for comparison purposes.
+
+    A remote or explicitly-scheme'd URI (https://, s3://, file://, ...) is
+    already unambiguous and left as-is (modulo a trailing slash). A bare
+    local path -- which may be relative to whatever the caller's cwd
+    happened to be when the catalog was opened -- is resolved to an
+    absolute, canonical form via pathlib, so it compares correctly against
+    a registry-side path regardless of how either one was originally
+    written. (HatsRegistry.from_directory() performs the matching
+    anchor-to-fixture-root step on its side; this is the other half of
+    that, applied to whatever path a catalog was actually opened with.)
+
+    Does NOT resolve symlinks differing between two paths that point to the
+    same real file via different routes, nor equivalent-but-differently-
+    written remote URIs (e.g. an S3 path with vs. without a region-
+    qualified host) -- those remain genuinely unmatched, which just means
+    detection falls back to the primary mirror rather than raising. Tighten
+    this if that fallback rate turns out to matter in practice.
+    """
+    path = UPath(uri)
+    if path.protocol:
+        normalized = str(path)
+    else:
+        normalized = str(Path(uri).resolve())
+    return normalized.rstrip("/")
+
+
+def detect_mirror(catalog: "Catalog", core_entry: "CoreCatalogEntry") -> Optional[str]:
+    """Determine which of a core entry's mirror labels corresponds to where
+    `catalog` was actually opened from, by comparing its opened location
+    against each entry in `core_entry.paths`.
+
+    Returns None if the catalog's opened location doesn't match any
+    registered mirror for its core catalog (e.g. it was opened from an
+    unregistered local copy, or via a path written differently than the
+    registry records) -- callers should treat that the same as "no
+    preference," which naturally falls back to the primary mirror.
+    """
+    opened_path = _normalize_path(str(catalog.hc_structure.catalog_base_dir))
+    for mirror_label, mirror_uri in core_entry.paths.items():
+        if _normalize_path(mirror_uri) == opened_path:
+            return mirror_label
+    return None
+
+
 def find_extensions(catalog: "Catalog") -> list[ExtensionCatalogEntry]:
     """Discover extensions registered against a given catalog.
 
@@ -85,19 +141,50 @@ def find_extensions(catalog: "Catalog") -> list[ExtensionCatalogEntry]:
     """
     registry_id = get_registry_id(catalog)
     if registry_id is None:
-        raise ValueError("Catalog has no hats_registry_id; cannot find extensions")
+        return []
     return _get_registry().get_extensions(registry_id)
 
 
-def load_extension_entry(extension_id: str) -> ExtensionCatalogEntry:
-    """Resolve an extension's registry entry by its own catalog_id.
+def load_extension_entry(
+    extension: Union[str, ExtensionCatalogEntry],
+    source_catalog: Optional["Catalog"] = None,
+) -> tuple[ExtensionCatalogEntry, str]:
+    """Resolve an extension, by catalog_id or by an already-known entry
+    object, to its registry entry plus the specific location to load it
+    from.
 
-    Raises KeyError if no such extension is registered. Returns the entry
-    (with its `path`) rather than an opened catalog -- actually opening it
-    is left to the caller, keeping this module's only dependency on
-    `hats_registry`, not a circular import back into lsdb's own loaders.
+    Parameters
+    ----------
+    extension : str or ExtensionCatalogEntry
+        Either the extension's own catalog_id (looked up in the registry),
+        or an ExtensionCatalogEntry already in hand -- e.g. one returned by
+        `find_extensions()` -- in which case no registry lookup is needed
+        for the entry itself (though the corresponding core entry is still
+        fetched for mirror detection, if `source_catalog` is given).
+    source_catalog : Catalog, optional
+        If given, the returned location is the copy co-located with
+        wherever `source_catalog` was actually opened from (matched via
+        `detect_mirror`), falling back to the extension's primary location
+        if no co-located copy is registered for that mirror -- or if
+        `source_catalog` doesn't itself resolve to any known mirror of its
+        own core catalog. Without `source_catalog`, always returns the
+        primary location.
+
+    Raises KeyError if `extension` is a catalog_id with no matching
+    registry entry.
     """
-    entry = _get_registry().get_extension(extension_id)
-    if entry is None:
-        raise KeyError(f"No extension registered with catalog_id '{extension_id}'")
-    return entry
+    registry = _get_registry()
+    if isinstance(extension, ExtensionCatalogEntry):
+        entry = extension
+    else:
+        entry = registry.get_extension(extension)
+        if entry is None:
+            raise KeyError(f"No extension registered with catalog_id '{extension}'")
+
+    mirror = None
+    if source_catalog is not None:
+        core_entry = registry.get_core(entry.extends)
+        if core_entry is not None:
+            mirror = detect_mirror(source_catalog, core_entry)
+
+    return entry, entry.resolve_path(mirror)
