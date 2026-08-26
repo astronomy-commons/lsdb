@@ -636,9 +636,7 @@ def test_row_group_kwargs(small_sky_order1_catalog, tmp_path):
     ### No row_group_kwargs
     base_catalog_path = tmp_path / "small_sky"
     small_sky_order1_catalog.write_catalog(base_catalog_path)
-    metadata = hc.io.file_io.read_parquet_metadata(
-        small_sky_order1_catalog.hc_structure.catalog_path / "dataset" / "_metadata"
-    )
+    metadata = hc.io.file_io.read_parquet_metadata(base_catalog_path / "small_sky_order1/dataset/_metadata")
     # small_sky_order1 catalog has 131 rows in 4 row groups by default
     assert metadata.num_rows == 131
     assert metadata.num_row_groups == 4
@@ -646,9 +644,7 @@ def test_row_group_kwargs(small_sky_order1_catalog, tmp_path):
     ### Unused row_group_kwargs
     base_catalog_path = tmp_path / "small_sky_unused_rowgroup_kwargs"
     small_sky_order1_catalog.write_catalog(base_catalog_path, row_group_kwargs={"unused": 123})
-    metadata = hc.io.file_io.read_parquet_metadata(
-        small_sky_order1_catalog.hc_structure.catalog_path / "dataset" / "_metadata"
-    )
+    metadata = hc.io.file_io.read_parquet_metadata(base_catalog_path / "small_sky_order1/dataset/_metadata")
     assert metadata.num_rows == 131
     assert metadata.num_row_groups == 4
 
@@ -664,12 +660,8 @@ def test_row_group_kwargs(small_sky_order1_catalog, tmp_path):
             base_catalog_path / f"small_sky_order1/dataset/Norder=1/Dir=0/Npix={pix_num}.parquet"
         )
         assert pf.num_row_groups == expected_num_row_groups
-
-    # NOTE why doesn't the number of row groups in the metadata change?
-    metadata = hc.io.file_io.read_parquet_metadata(
-        small_sky_order1_catalog.hc_structure.catalog_path / "dataset" / "_metadata"
-    )
-    assert metadata.num_row_groups == 4
+    metadata = hc.io.file_io.read_parquet_metadata(base_catalog_path / "small_sky_order1/dataset/_metadata")
+    assert metadata.num_row_groups == 15
 
     ## row_group_kwargs["num_rows"] == 1000
     base_catalog_path = tmp_path / "small_sky_1000rows_per_group"
@@ -683,6 +675,8 @@ def test_row_group_kwargs(small_sky_order1_catalog, tmp_path):
             base_catalog_path / f"small_sky_order1/dataset/Norder=1/Dir=0/Npix={pix_num}.parquet"
         )
         assert pf.num_row_groups == expected_num_row_groups
+    metadata = hc.io.file_io.read_parquet_metadata(base_catalog_path / "small_sky_order1/dataset/_metadata")
+    assert metadata.num_row_groups == 4
 
     ### row_group_kwargs["subtile_order_delta"] == 0
     base_catalog_path = tmp_path / "small_sky_subtile_0"
@@ -696,6 +690,8 @@ def test_row_group_kwargs(small_sky_order1_catalog, tmp_path):
             base_catalog_path / f"small_sky_order1/dataset/Norder=1/Dir=0/Npix={pix_num}.parquet"
         )
         assert pf.num_row_groups == expected_num_row_groups
+    metadata = hc.io.file_io.read_parquet_metadata(base_catalog_path / "small_sky_order1/dataset/_metadata")
+    assert metadata.num_row_groups == 4
 
     ### row_group_kwargs["subtile_order_delta"] == 1
     base_catalog_path = tmp_path / "small_sky_subtile_1"
@@ -709,6 +705,8 @@ def test_row_group_kwargs(small_sky_order1_catalog, tmp_path):
             base_catalog_path / f"small_sky_order1/dataset/Norder=1/Dir=0/Npix={pix_num}.parquet"
         )
         assert pf.num_row_groups == expected_num_row_groups
+    metadata = hc.io.file_io.read_parquet_metadata(base_catalog_path / "small_sky_order1/dataset/_metadata")
+    assert metadata.num_row_groups == 14
 
     ### row_group_kwargs["num_rows"] == 10 and row_group_kwargs["subtile_order_delta"] == 1
     # num_rows takes precedence over subtile_order_delta
@@ -725,3 +723,5 @@ def test_row_group_kwargs(small_sky_order1_catalog, tmp_path):
             base_catalog_path / f"small_sky_order1/dataset/Norder=1/Dir=0/Npix={pix_num}.parquet"
         )
         assert pf.num_row_groups == expected_num_row_groups
+    metadata = hc.io.file_io.read_parquet_metadata(base_catalog_path / "small_sky_order1/dataset/_metadata")
+    assert metadata.num_row_groups == 15
