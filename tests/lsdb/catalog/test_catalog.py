@@ -2,6 +2,7 @@
 from pathlib import Path
 
 import astropy.units as u
+import dask
 import dask.dataframe as dd
 import hats as hc
 import hats.io.file_io
@@ -96,6 +97,14 @@ def local_client():
 def test_catalog_compute_with_distributed_client(small_sky_order1_catalog):
     expected = small_sky_order1_catalog.compute(progress_bar=False)
     with local_client():
+        result = small_sky_order1_catalog.compute(progress_bar=False)
+    assert isinstance(result, npd.NestedFrame)
+    pd.testing.assert_frame_equal(result, expected)
+
+
+def test_catalog_compute_with_threads_scheduler(small_sky_order1_catalog):
+    expected = small_sky_order1_catalog.compute(progress_bar=False)
+    with dask.config.set(scheduler="threads"):
         result = small_sky_order1_catalog.compute(progress_bar=False)
     assert isinstance(result, npd.NestedFrame)
     pd.testing.assert_frame_equal(result, expected)
