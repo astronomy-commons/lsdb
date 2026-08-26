@@ -18,6 +18,7 @@ from nested_pandas.nestedframe.io import from_pyarrow
 from upath import UPath
 
 from lsdb.catalog import Catalog, MapCatalog, MarginCatalog
+from lsdb.catalog.image_catalog import ImageCatalog
 from lsdb.catalog.association_catalog import AssociationCatalog
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset, get_arrow_schema
 from lsdb.catalog.margin_catalog import _validate_margin_catalog
@@ -265,6 +266,8 @@ def _load_catalog(hc_catalog: hc.catalog.Dataset, config: HatsLoadingConfig) -> 
         catalog = _load_association_catalog(hc_catalog, config)
     elif catalog_type == CatalogType.MAP:
         catalog = _load_map_catalog(hc_catalog, config)
+    elif catalog_type == CatalogType.IMAGE:
+        catalog = _load_image_catalog(hc_catalog, config)
     else:
         raise NotImplementedError(f"Cannot load catalog of type {catalog_type}")
 
@@ -400,6 +403,18 @@ def _generate_pyarrow_filters_from_moc(filtered_catalog):
         for hpx_range in depth_array:
             pyarrow_filter.append([(healpix_column, ">=", hpx_range[0]), (healpix_column, "<", hpx_range[1])])
     return pyarrow_filter
+
+
+def _load_image_catalog(hc_catalog, config):
+    """Load an image metadata catalog from the configuration specified when the loader was created
+
+    Returns
+    -------
+    ImageCatalog
+        Catalog object with data from the source given at loader initialization
+    """
+    operation = _load_operation(hc_catalog, config)
+    return ImageCatalog(operation, hc_catalog, loading_config=config)
 
 
 def _load_map_catalog(hc_catalog, config):
