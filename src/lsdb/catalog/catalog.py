@@ -60,6 +60,60 @@ def _default_suffixes(left_name: str, right_name: str) -> tuple[str, str]:
     return (f"_{left_name}", f"_{right_name}")
 
 
+def _drop_extension_radec_columns(
+    result: "Catalog",
+    source_catalog: "Catalog",
+    extension_catalog: "Catalog",
+    left_suffix: str,
+    right_suffix: str,
+) -> "Catalog":
+    """Drop the extension's own ra/dec columns from a crossmatch result,
+    and rename the source catalog's own surviving versions of those
+    columns back to their original bare names -- see `load_extension`'s
+    `drop_join_columns` for the rationale.
+
+    Scoped to ra/dec only -- deliberately not attempting to also catch an
+    "id" or similar identifier column, since HATS has no standardized
+    concept of one the way it does for ra/dec (`ra_column`/`dec_column`
+    are always present on `catalog_info`); guessing at a literal name like
+    "id" would be a heuristic with real false-negative and false-positive
+    potential, not something to bake in as a default.
+
+    Without the rename step, a candidate column that collided (i.e. also
+    exists on `source_catalog`, e.g. both catalogs having "ra") would be
+    left under its *suffixed* name (e.g. "ra_test_core") even after the
+    extension's redundant copy is dropped -- technically correct per how
+    crossmatch's `suffix_method="overlapping_columns"` works, but not
+    "core columns unchanged" as intended, since the rename only happened
+    because of a collision this function is specifically removing.
+    """
+    ext_info = extension_catalog.hc_structure.catalog_info
+    core_columns = set(source_catalog.columns)
+    candidates = {ext_info.ra_column, ext_info.dec_column}
+
+    to_drop = []
+    to_rename = {}
+    for name in candidates:
+        if name in core_columns:
+            right_suffixed = f"{name}{right_suffix}"
+            if right_suffixed in result.columns:
+                to_drop.append(right_suffixed)
+            left_suffixed = f"{name}{left_suffix}"
+            if left_suffixed in result.columns and name not in result.columns:
+                to_rename[left_suffixed] = name
+        elif name in result.columns:
+            to_drop.append(name)
+
+    if to_drop:
+        # drop _dist_arcsec as well
+        if "_dist_arcsec" in result.columns:
+            to_drop.append("_dist_arcsec")
+        result = result.drop(columns=to_drop)
+    if to_rename:
+        result = result.rename(columns=to_rename)
+    return result
+
+
 # pylint: disable=protected-access,too-many-public-methods, too-many-lines
 class Catalog(HealpixDataset):
     """LSDB Catalog to perform analysis of sky catalogs and efficient spatial operations."""
@@ -1608,12 +1662,14 @@ class Catalog(HealpixDataset):
                 npix_parquet_name=npix_parquet_name,
             )
 
-    def show_extensions(self) -> list["ExtensionCatalogEntry"]:
+    def show_extensions(self) -> "ExtensionList":
         """List extensions registered against this catalog in hats-registry.
 
-        Returns an empty list if this catalog has no registry ID (i.e. it
-        was never registered) or if it has one but no extensions exist yet
-        -- this is a normal, non-error state, not a failure.
+        Raises lsdb.registry.CatalogNotRegisteredError if this catalog has
+        no `hats_registry_id` -- it was never registered. Returns an empty
+        ExtensionList if it does have one but no extensions are currently
+        registered against it -- that's a normal, non-error state, unlike
+        the unregistered case above.
 
         Queries whatever ref (branch/tag/commit) hats_registry is currently
         configured to use -- see `hats_registry.set_default_ref()` to pin
@@ -1621,13 +1677,45 @@ class Catalog(HealpixDataset):
         """
         return find_extensions(self)
 
-    def load_extension(self, extension: "str | ExtensionCatalogEntry") -> "Catalog":
-        """Load an extension catalog registered against this one.
+    def _default_crossmatch_suffixes(self, other: "Catalog") -> tuple:
+        """Reimplements lsdb.catalog.catalog._default_suffixes' exact
+        logic (not imported directly since it's a private, "_"-prefixed
+        helper that could change without notice) so
+        `_drop_extension_join_columns` can find the columns crossmatch()
+        actually produced, without requiring `load_extension` callers to
+        pass `suffixes` explicitly just so we can predict them.
+        """
+        if self.name == other.name:
+            return "", "_right"
+        return f"_{self.name}", f"_{other.name}"
 
-        If this catalog's core is mirrored in multiple locations and the
-        extension has a co-located copy at whichever mirror this catalog
-        was actually opened from, that copy is loaded -- otherwise falls
-        back to the extension's primary location.
+    def load_extension(
+        self,
+        extension: "str | ExtensionCatalogEntry",
+        drop_join_columns: bool = True,
+        **crossmatch_kwargs,
+    ) -> "Catalog":
+        """Load an extension catalog registered against this one, and
+        attach its columns to this catalog via a spatial crossmatch.
+
+        This is a simple default, not a claim that a spatial crossmatch is
+        always the *correct* join for a given extension -- an extension
+        that shares an exact row-for-row correspondence with its core
+        (e.g. one derived directly from it) would ideally get an exact
+        id-based join instead, which is cheaper and can't silently drop or
+        duplicate rows the way a radius-based match can. The registry
+        schema doesn't yet have anywhere to declare that a given extension
+        wants a different join strategy -- always crossmatching is the
+        deliberate simplification until that's designed.
+
+        Unlike a bare `self.crossmatch(other)` call, this defaults to
+        `how="left"` (every row of this catalog is kept, with extension
+        columns null where no match is found within the radius) and
+        `suffix_method="overlapping_columns"` (only column names that
+        collide between the two catalogs get suffixed -- e.g. this
+        catalog's own `ra`/`dec` stay as-is rather than being renamed).
+        Both, and any other `crossmatch()` parameter (`radius_arcsec`,
+        `n_neighbors`, ...), can be overridden via `crossmatch_kwargs`.
 
         Parameters
         ----------
@@ -1636,10 +1724,51 @@ class Catalog(HealpixDataset):
             `show_extensions()`, or one of the ExtensionCatalogEntry
             objects `show_extensions()` itself returns -- passing an entry
             straight through skips a redundant registry lookup by ID.
+            Either way, `extension` must actually extend this catalog
+            (its registry entry's `extends` must match this catalog's own
+            `hats_registry_id`) -- raises
+            lsdb.registry.NotAnExtensionError otherwise. Also raises
+            lsdb.registry.CatalogNotRegisteredError if this catalog itself
+            has no `hats_registry_id` set, since that's needed to check
+            the above.
+        drop_join_columns : bool, default True
+            The extension's own ra/dec are needed to perform the spatial
+            match itself, but aren't new information the extension is
+            adding -- by default they're dropped from the result
+            afterward (can't be dropped before the crossmatch, since
+            ra/dec are required to perform it at all). Set False to keep
+            them, suffixed, alongside the extension's other columns.
+
+            Uses the extension's actual registered ra_column/dec_column
+            (not a literal "ra"/"dec" name assumption). Scoped to ra/dec
+            only -- an identifier column, if the extension has one, isn't
+            touched, since HATS has no standardized concept of one the
+            way it does for ra/dec; drop it manually
+            (`result.drop(columns=[...])`) if desired.
+        **crossmatch_kwargs
+            Passed through to `crossmatch()`, overriding the `how` /
+            `suffix_method` defaults above if given explicitly.
         """
         # Deferred import: see module-level note above for why this can't
         # be a top-level import.
         from lsdb.loaders.hats.read_hats import open_catalog
 
         _entry, resolved_path = load_extension_entry(extension, source_catalog=self)
-        return open_catalog(resolved_path)
+        extension_catalog = open_catalog(resolved_path)
+
+        options = {
+            "how": "left",
+            "suffix_method": "overlapping_columns",
+            "log_changes": False,
+            "output_catalog_name": self.name,
+        }
+        options.update(crossmatch_kwargs)
+        result = self.crossmatch(extension_catalog, **options)
+
+        if drop_join_columns:
+            left_suffix, right_suffix = options.get("suffixes") or self._default_crossmatch_suffixes(
+                extension_catalog
+            )
+            result = _drop_extension_radec_columns(result, self, extension_catalog, left_suffix, right_suffix)
+
+        return result
