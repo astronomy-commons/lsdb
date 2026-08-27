@@ -18,7 +18,7 @@ from hats.io.skymap import write_skymap
 from hats.io.summary_file import write_catalog_summary_file
 from hats.pixel_math import HealpixPixel, spatial_index_to_healpix
 from hats.pixel_math.sparse_histogram import HistogramAggregator, SparseHistogram
-from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN, split_to_row_groups
+from hats.pixel_math.spatial_index import split_to_row_groups
 from upath import UPath
 
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
