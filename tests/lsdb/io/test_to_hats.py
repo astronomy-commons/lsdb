@@ -641,12 +641,12 @@ def test_row_group_kwargs(small_sky_order1_catalog, tmp_path):
     assert metadata.num_rows == 131
     assert metadata.num_row_groups == 4
 
-    ### Unused row_group_kwargs
+    ### Invalid row_group_kwargs
     base_catalog_path = tmp_path / "small_sky_unused_rowgroup_kwargs"
-    small_sky_order1_catalog.write_catalog(base_catalog_path, row_group_kwargs={"unused": 123})
-    metadata = hc.io.file_io.read_parquet_metadata(base_catalog_path / "small_sky_order1/dataset/_metadata")
-    assert metadata.num_rows == 131
-    assert metadata.num_row_groups == 4
+    # It's a RuntimeError, instead of the original ValueError, because
+    # write_catalog() calls compute().
+    with pytest.raises(RuntimeError, match="no valid keys in row_group_kwargs"):
+        small_sky_order1_catalog.write_catalog(base_catalog_path, row_group_kwargs={"unused": 123})
 
     ### row_group_kwargs["num_rows"] == 10
     base_catalog_path = tmp_path / "small_sky_10rows_per_group"
@@ -663,7 +663,7 @@ def test_row_group_kwargs(small_sky_order1_catalog, tmp_path):
     metadata = hc.io.file_io.read_parquet_metadata(base_catalog_path / "small_sky_order1/dataset/_metadata")
     assert metadata.num_row_groups == 15
 
-    ## row_group_kwargs["num_rows"] == 1000
+    ### row_group_kwargs["num_rows"] == 1000
     base_catalog_path = tmp_path / "small_sky_1000rows_per_group"
     small_sky_order1_catalog.write_catalog(base_catalog_path, row_group_kwargs={"num_rows": 1000})
     # Norder=1/Dir=0/Npix=44: [42]
@@ -708,20 +708,11 @@ def test_row_group_kwargs(small_sky_order1_catalog, tmp_path):
     metadata = hc.io.file_io.read_parquet_metadata(base_catalog_path / "small_sky_order1/dataset/_metadata")
     assert metadata.num_row_groups == 14
 
-    ### row_group_kwargs["num_rows"] == 10 and row_group_kwargs["subtile_order_delta"] == 1
-    # num_rows takes precedence over subtile_order_delta
+    # Conflicting row_group_kwargs (both num_rows and subtile_order_delta present)
     base_catalog_path = tmp_path / "small_sky_subtile_1_and_10rows_per_group"
-    small_sky_order1_catalog.write_catalog(
-        base_catalog_path, row_group_kwargs={"subtile_order_delta": 1, "num_rows": 10}
-    )
-    # Norder=1/Dir=0/Npix=44: [10, 10, 10, 10, 2]
-    # Norder=1/Dir=0/Npix=45: [10, 10, 9]
-    # Norder=1/Dir=0/Npix=46: [10, 10, 10, 10, 2]
-    # Norder=1/Dir=0/Npix=47: [10, 8]
-    for pix_num, expected_num_row_groups in [(44, 5), (45, 3), (46, 5), (47, 2)]:
-        pf = pq.ParquetFile(
-            base_catalog_path / f"small_sky_order1/dataset/Norder=1/Dir=0/Npix={pix_num}.parquet"
+    # It's a RuntimeError, instead of the original ValueError, because
+    # write_catalog() calls compute().
+    with pytest.raises(RuntimeError, match="row_group_kwargs contains conflicting keys"):
+        small_sky_order1_catalog.write_catalog(
+            base_catalog_path, row_group_kwargs={"subtile_order_delta": 1, "num_rows": 10}
         )
-        assert pf.num_row_groups == expected_num_row_groups
-    metadata = hc.io.file_io.read_parquet_metadata(base_catalog_path / "small_sky_order1/dataset/_metadata")
-    assert metadata.num_row_groups == 15
