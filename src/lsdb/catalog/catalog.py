@@ -1073,7 +1073,7 @@ class Catalog(HealpixDataset):
             between pixels and individual rows.
         suffixes : tuple[str,str]
             Suffixes to apply to the columns of each table
-        output_catalog_name : str
+        output_catalog_name : str, default {left_name}_join_{right_name}
             The name of the resulting catalog to be stored in metadata
         suffix_method : str, default "all_columns"
             Method to use to add suffixes to columns. Options are:
@@ -1151,7 +1151,7 @@ class Catalog(HealpixDataset):
             )
 
         if output_catalog_name is None:
-            output_catalog_name = self.hc_structure.catalog_info.catalog_name
+            output_catalog_name = f"{self.name}_join_{other.name}"
 
         new_catalog_info = create_merged_catalog_info(
             self,
@@ -1202,7 +1202,7 @@ class Catalog(HealpixDataset):
         nested_column_name : str
             The name of the nested column in the resulting dataframe storing the
             joined columns in the right catalog. (Default: name of right catalog)
-        output_catalog_name : str
+        output_catalog_name : str, default {left_name}_join_{right_name}
             The name of the resulting catalog to be stored in metadata
         how : str, {'inner', 'left'}, default 'inner'
             How to handle the alignment
@@ -1229,7 +1229,7 @@ class Catalog(HealpixDataset):
         )
 
         if output_catalog_name is None:
-            output_catalog_name = self.hc_structure.catalog_info.catalog_name
+            output_catalog_name = f"{self.name}_join_{other.name}"
 
         new_catalog_info = self.hc_structure.catalog_info.copy_and_update(
             catalog_name=output_catalog_name, total_rows=None

@@ -175,6 +175,37 @@ def test_small_sky_join_default_columns(
     helpers.assert_default_columns_in_columns(joined)
 
 
+def test_join_default_output_catalog_name(small_sky_catalog, small_sky_order1_catalog):
+    """The joined catalog's name should combine both input names, mirroring the
+    `{left}_x_{right}` convention used by `crossmatch`, instead of only keeping the
+    left catalog's name (see GitHub issue #397)."""
+    with pytest.warns(match="margin"):
+        joined = small_sky_catalog.join(small_sky_order1_catalog, left_on="id", right_on="id")
+    assert joined.name == f"{small_sky_catalog.name}_join_{small_sky_order1_catalog.name}"
+    assert joined.name != small_sky_catalog.name
+    assert joined.hc_structure.catalog_info.catalog_name == joined.name
+
+
+def test_join_explicit_output_catalog_name(small_sky_catalog, small_sky_order1_catalog):
+    """An explicitly provided `output_catalog_name` should still take precedence."""
+    with pytest.warns(match="margin"):
+        joined = small_sky_catalog.join(
+            small_sky_order1_catalog, left_on="id", right_on="id", output_catalog_name="my_custom_name"
+        )
+    assert joined.name == "my_custom_name"
+
+
+def test_join_association_default_output_catalog_name(
+    small_sky_catalog, small_sky_order1_source_collection_catalog, small_sky_to_o1source_catalog
+):
+    """The `through` (association-based) join path should also combine both catalog names."""
+    joined = small_sky_catalog.join(
+        small_sky_order1_source_collection_catalog, through=small_sky_to_o1source_catalog
+    )
+    assert joined.name == f"{small_sky_catalog.name}_join_{small_sky_order1_source_collection_catalog.name}"
+    assert joined.name != small_sky_catalog.name
+
+
 def test_join_wrong_columns(small_sky_catalog, small_sky_order1_catalog):
     with pytest.raises(ValueError):
         small_sky_catalog.join(small_sky_order1_catalog, left_on="bad", right_on="id")
@@ -382,6 +413,20 @@ def test_join_nested(small_sky_catalog, small_sky_order1_source_with_margin):
             check_column_type=False,
             check_index_type=False,
         )
+
+
+def test_join_nested_default_output_catalog_name(small_sky_catalog, small_sky_order1_source_with_margin):
+    """The joined catalog's name should combine both input names rather than only keeping
+    the left catalog's name (see GitHub issue #397)."""
+    joined = small_sky_catalog.join_nested(
+        small_sky_order1_source_with_margin,
+        left_on="id",
+        right_on="object_id",
+        nested_column_name="sources",
+    )
+    assert joined.name == f"{small_sky_catalog.name}_join_{small_sky_order1_source_with_margin.name}"
+    assert joined.name != small_sky_catalog.name
+    assert joined.hc_structure.catalog_info.catalog_name == joined.name
 
 
 def test_join_nested_how_left(small_sky_order1_catalog, small_sky_order1_source_with_margin, helpers):
