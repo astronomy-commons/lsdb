@@ -61,6 +61,21 @@ def test_small_sky_join_small_sky_order1(small_sky_catalog, small_sky_order1_cat
     assert joined.est_size() is None
 
 
+def test_small_sky_join_default_output_catalog_name(small_sky_catalog, small_sky_order1_catalog):
+    # The default output catalog name should combine both catalog names, like crossmatch's `a_x_b`,
+    # rather than silently keeping only the left catalog's name.
+    with pytest.warns(match="margin"):
+        joined = small_sky_catalog.join(small_sky_order1_catalog, left_on="id", right_on="id")
+    assert joined.name == f"{small_sky_catalog.name}_x_{small_sky_order1_catalog.name}"
+    assert joined.hc_structure.catalog_name == f"{small_sky_catalog.name}_x_{small_sky_order1_catalog.name}"
+
+    with pytest.warns(match="margin"):
+        joined_explicit = small_sky_catalog.join(
+            small_sky_order1_catalog, left_on="id", right_on="id", output_catalog_name="my_custom_name"
+        )
+    assert joined_explicit.name == "my_custom_name"
+
+
 def test_small_sky_join_overlapping_suffix(small_sky_catalog, small_sky_order1_catalog, helpers):
     suffixes = ("_a", "_b")
     with pytest.warns(match="margin"):
@@ -382,6 +397,29 @@ def test_join_nested(small_sky_catalog, small_sky_order1_source_with_margin):
             check_column_type=False,
             check_index_type=False,
         )
+
+
+def test_join_nested_default_output_catalog_name(small_sky_catalog, small_sky_order1_source_with_margin):
+    # The default output catalog name should combine both catalog names, like crossmatch's `a_x_b`,
+    # rather than silently keeping only the left catalog's name.
+    joined = small_sky_catalog.join_nested(
+        small_sky_order1_source_with_margin,
+        left_on="id",
+        right_on="object_id",
+        nested_column_name="sources",
+    )
+    expected_name = f"{small_sky_catalog.name}_x_{small_sky_order1_source_with_margin.name}"
+    assert joined.name == expected_name
+    assert joined.hc_structure.catalog_name == expected_name
+
+    joined_explicit = small_sky_catalog.join_nested(
+        small_sky_order1_source_with_margin,
+        left_on="id",
+        right_on="object_id",
+        nested_column_name="sources",
+        output_catalog_name="my_custom_name",
+    )
+    assert joined_explicit.name == "my_custom_name"
 
 
 def test_join_nested_how_left(small_sky_order1_catalog, small_sky_order1_source_with_margin, helpers):
