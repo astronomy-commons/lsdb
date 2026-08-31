@@ -97,6 +97,7 @@ class DataframeCatalogLoader:
         self.drop_empty_siblings = drop_empty_siblings
         self.partition_rows, self.partition_bytes = self._calculate_threshold(partition_rows, partition_bytes)
 
+        # NOTE here is the ra/dec search
         if ra_column is None:
             ra_column = self._find_column("ra")
         if dec_column is None:
@@ -143,6 +144,7 @@ class DataframeCatalogLoader:
 
         The search is case-insensitive and unambiguous. An error is raised
         if there are zero or multiple matches."""
+        # NOTE here is the general column search
         matches = [
             c for c in self.dataframe.columns if re.fullmatch(re.escape(search_term), c, re.IGNORECASE)
         ]
