@@ -2,11 +2,14 @@ from collections.abc import Iterator
 from typing import Optional
 
 import dask
+import hats
+import hats.pixel_math.healpix_shim as hp
 import nested_pandas as npd
 import numpy as np
 import pandas as pd
 from dask.delayed import Delayed
 from dask.distributed import Client, Future
+from hats.inspection import read_skymap
 
 from lsdb import Catalog
 
@@ -294,6 +297,8 @@ class CrossMatchStream:
         else:
             self.rng = np.random.default_rng((1 << 32, self.seed))
 
+        self.mask_generator = CountMapForPixel(self.catalog, self.rng)
+
     def submit_next_partitions(self, partitions: np.ndarray) -> Future | _FakeFuture:
         """Submit the next set of partitions for computation."""
 
@@ -308,10 +313,7 @@ class CrossMatchStream:
 
         for pixel_index in partitions:
             pixel = self._pixels[pixel_index]
-
-            # Generate final cross-match operation
-            # np.ndarray of bool = [True, False, ...], shape n_right_catalogs, True - do crossmatch
-            right_catalog_mask = cross_match_selection_algo(pixel, self.rng)
+            right_catalog_mask = self.mask_generator.get_pixel_catalog_mask(pixel)
 
             def skipped_crossmatch(
                 partition: npd.NestedFrame, *, meta_to_match: npd.NestedFrame
@@ -344,3 +346,62 @@ class CrossMatchStream:
         if self.client is None:
             return _FakeFuture(combined.compute())
         return self.client.compute(combined)
+
+
+class CountMapForPixel:
+    """Helper methods to select HEALPix for selective crossmatch"""
+
+    count_maps: list[np.ndarray]
+
+    def __init__(
+        self,
+        catalog: hats.catalog.Catalog,
+        right_catalogs: list[hats.catalog.Catalog],
+        count_threshold: int,
+    ):
+        """Initialize the CountMapForPixel class.
+
+        Attributes
+        ----------
+        catalog: hats.catalog.Catalog
+            the Anchor catalog
+        right_catalogs: list[hats.catalog.Catalog]
+            the list of catalogs to crossmatch to
+        count_threshold: int
+            the threshold above which a pixel is selected for crossmatching
+        """
+        self.catalog = catalog
+        self.right_catalogs = right_catalogs
+        self.count_threshold = count_threshold
+        self.load_catalog_counts()
+
+    def load_catalog_counts(self):
+        """Reads fixed order skymaps from on-disk fits file"""
+        count_maps = []
+        for cat in [self.catalog, *self.right_catalogs]:
+            skymap = np.asarray(read_skymap(cat, None))
+            count_maps.append(skymap)
+        self.count_maps = count_maps
+
+    def get_pixel_catalog_mask(self, pixel) -> np.ndarray:
+        """Get boolean mask for all right catalogs.
+
+        If True, do crossmatch for provided pixel for catalog at index."""
+        mask = []
+        anchor_counts, right_counts = self.count_maps[0], self.count_maps[1:]
+        for counts in right_counts:
+            do_crossmatch = self.get_count_at_pixel(pixel, anchor_counts, counts)
+            mask.append(do_crossmatch > self.count_threshold)
+        return np.asarray(mask, dtype=bool)
+
+    @staticmethod
+    def get_count_at_pixel(pixel, counts_a, counts_b):
+        """Gets the final count for the target pixel of the crossmatch of two catalogs"""
+        order, ipix = pixel
+        order_a = hp.npix2order(len(counts_a))
+        order_b = hp.npix2order(len(counts_b))
+        n_subpix_a = 4 ** (order_a - order)
+        n_subpix_b = 4 ** (order_b - order)
+        count_a = counts_a[ipix * n_subpix_a : (ipix + 1) * n_subpix_a].sum()
+        count_b = counts_b[ipix * n_subpix_b : (ipix + 1) * n_subpix_b].sum()
+        return int(min(count_a, count_b))
