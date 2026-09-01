@@ -339,6 +339,7 @@ class HealpixDataset:
     ) -> Self | dd.Series:
         """Applies a function to each partition in the catalog.
 
+        NOTE maybe "If the function returns a dataframe, the ra and dec of each row is assumed to remain unchanged."
         The ra and dec of each row is assumed to remain unchanged.
 
         Parameters
@@ -385,17 +386,30 @@ class HealpixDataset:
             A new catalog with each partition replaced with the output of the function applied to the original
             partition. If the function returns a non dataframe output, a dask Series will be returned.
         """
+        ra_col = self.hc_structure.catalog_info.ra_column
+        dec_col = self.hc_structure.catalog_info.dec_column
         if compute_single_partition:
             if partition_index is None:
                 partition_index = 0
             partition_cat = self.partitions[partition_index]
             pixel = partition_cat.get_healpix_pixels()[0]
             partition = partition_cat.compute()
+            radec_orig_df = partition[[ra_col, dec_col]]
             result = (
                 func(partition, pixel, *args, **kwargs) if include_pixel else func(partition, *args, **kwargs)
             )
             if not isinstance(result, pd.DataFrame):
                 return result
+            # Check that ra and dec columns are still present
+            for col in [ra_col, dec_col]:
+                if col not in result.columns:
+                    raise ValueError(f"'{col}' not found in result. map_partitions() must not change names of ra or dec columns '{ra_col}', '{dec_col}'.")
+            # Check that ra and dec values haven't changed
+            # (ra/dec of result is a subset of ra/dec of original)
+            # NOTE this doesn't guarantee that ra and dec values won't change for the whole catalog!
+            radec_res_df = result[[ra_col, dec_col]]
+            if not len(radec_res_df.merge(radec_orig_df)) == len(radec_res_df):
+                raise ValueError(f"ra/dec values have changed. map_partitions() must not change values of ra or dec columns '{ra_col}', '{dec_col}'.")
             output_op = FromSinglePartition(result, pixel)
             hc_structure = self.hc_structure.__class__(
                 catalog_info=self.hc_structure.catalog_info,
@@ -410,6 +424,7 @@ class HealpixDataset:
         if isinstance(new_cat._operation, MapPartitions) and not new_cat._operation.is_df_type:
             col_name = new_cat.columns[0]
             return new_cat.to_dask_dataframe()[col_name]
+        # NOTE unsure how to do the ra/dec checks above in this case
         return new_cat
 
     def __getitem__(self, item: str | list[str] | dd.Series) -> Self | dd.Series:

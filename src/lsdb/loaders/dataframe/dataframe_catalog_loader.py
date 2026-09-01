@@ -151,11 +151,11 @@ class DataframeCatalogLoader:
         n_matches = len(matches)
         if n_matches == 0:
             raise ValueError(
-                f"No column found for {search_term} (required). You can supply ra/dec column names using the arguments `ra_column`, `dec_column`."
+                f"No column found for '{search_term}' (required). You can supply ra/dec column names using the arguments `ra_column`, `dec_column`."
             )
         if n_matches > 1:
             raise ValueError(
-                f"Found {n_matches} possible columns for {search_term}: {matches}. Please rename columns to disambiguate."
+                f"Found {n_matches} possible columns for '{search_term}': {matches}. Please rename columns to disambiguate."
             )
         return matches[0]
 
