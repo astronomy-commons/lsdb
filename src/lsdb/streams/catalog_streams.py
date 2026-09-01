@@ -259,13 +259,13 @@ class CatalogIterator(Iterator[pd.DataFrame]):
 
 class CrossMatchStream:
     def __init__(
-            self,
-            catalog: Catalog,
-            *crossmatching_kwargs: dict[str, object],
-            client: Client | None = None,
-            partitions_per_chunk: int = 1,
-            shuffle: bool = True,
-            seed: int | None = None,
+        self,
+        catalog: Catalog,
+        *crossmatching_kwargs: dict[str, object],
+        client: Client | None = None,
+        partitions_per_chunk: int = 1,
+        shuffle: bool = True,
+        seed: int | None = None,
     ) -> None:
         self.catalog = catalog
         self.client = client
@@ -282,7 +282,9 @@ class CrossMatchStream:
         self.accumulative_meta = [catalog.meta]
         result_catalog = self.catalog
         for right_catalog, right_catalog_kwargs in crossmatching_kwargs:
-            result_catalog = result_catalog.crossmatch(**right_catalog_kwargs).map_partitions(lambda df: df.drop(columns=["_dist_arcsec"]))
+            result_catalog = result_catalog.crossmatch(**right_catalog_kwargs).map_partitions(
+                lambda df: df.drop(columns=["_dist_arcsec"])
+            )
             self.accumulative_meta.append(result_catalog.meta)
 
         self._pixels = result_catalog._operation.healpix_pixels
@@ -311,7 +313,9 @@ class CrossMatchStream:
             # np.ndarray of bool = [True, False, ...], shape n_right_catalogs, True - do crossmatch
             right_catalog_mask = cross_match_selection_algo(pixel, self.rng)
 
-            def skipped_crossmatch(partition: npd.NestedFrame, *, meta_to_match: npd.NestedFrame) -> npd.NestedFrame:
+            def skipped_crossmatch(
+                partition: npd.NestedFrame, *, meta_to_match: npd.NestedFrame
+            ) -> npd.NestedFrame:
                 old_n_columns = partition.shape[1]
                 new_columns = meta_to_match.columns[old_n_columns:]
                 for column in new_columns:
@@ -319,11 +323,15 @@ class CrossMatchStream:
                 return partition
 
             result_catalog = self.catalog
-            for cross_match_kwargs, do_crossmatch, meta_to_match in zip(self.crossmatch_kwargs, right_catalog_mask, self.accumulative_meta, strict=True):
+            for cross_match_kwargs, do_crossmatch, meta_to_match in zip(
+                self.crossmatch_kwargs, right_catalog_mask, self.accumulative_meta, strict=True
+            ):
                 if do_crossmatch:
                     result_catalog = result_catalog.crossmatch(**cross_match_kwargs)
                 else:
-                    result_catalog = result_catalog.map_partitions(skipped_crossmatch, meta_to_match=meta_to_match)
+                    result_catalog = result_catalog.map_partitions(
+                        skipped_crossmatch, meta_to_match=meta_to_match
+                    )
 
             selected.append(_to_delayed(result_catalog.operation, pixel))
 
