@@ -2,6 +2,7 @@ from collections.abc import Iterator
 from typing import Optional
 
 import dask
+import nested_pandas as npd
 import numpy as np
 import pandas as pd
 from dask.delayed import Delayed
@@ -254,3 +255,84 @@ class CatalogIterator(Iterator[pd.DataFrame]):
             raise TypeError("Length is not defined for an InfiniteStream.")
 
         return int(np.ceil(len(self.partitions_left) / self.iterable.partitions_per_chunk))
+
+
+class CrossMatchStream:
+    def __init__(
+            self,
+            catalog: Catalog,
+            *crossmatching_kwargs: dict[str, object],
+            client: Client | None = None,
+            partitions_per_chunk: int = 1,
+            shuffle: bool = True,
+            seed: int | None = None,
+    ) -> None:
+        self.catalog = catalog
+        self.client = client
+        self.partitions_per_chunk = partitions_per_chunk
+        self.shuffle = shuffle
+        self.seed = seed
+
+        self.crossmatching_kwargs = []
+        for kwargs in crossmatching_kwargs:
+            new_kwargs = kwargs.copy()
+            new_kwargs["suffixes"] = ("", "_" + kwargs["other"].name)
+            new_kwargs["suffix_method"] = "all_columns"
+
+        self.accumulative_meta = [catalog.meta]
+        result_catalog = self.catalog
+        for right_catalog, right_catalog_kwargs in crossmatching_kwargs:
+            result_catalog = result_catalog.crossmatch(**right_catalog_kwargs).map_partitions(lambda df: df.drop(columns=["_dist_arcsec"]))
+            self.accumulative_meta.append(result_catalog.meta)
+
+        self._pixels = result_catalog._operation.healpix_pixels
+
+        if self.seed is None:
+            self.rng = np.random.default_rng()
+        else:
+            self.rng = np.random.default_rng((1 << 32, self.seed))
+
+    def submit_next_partitions(self, partitions: np.ndarray) -> Future | _FakeFuture:
+        """Submit the next set of partitions for computation."""
+
+        # Intended to be used with single partition builds
+        def _to_delayed(operation, pixel):
+            build = operation.build(pixels=[pixel])
+            graph = build.graph
+            key = build.pixel_to_key_map[pixel]
+            return Delayed(key, graph)
+
+        selected = []
+
+        for pixel_index in partitions:
+            pixel = self._pixels[pixel_index]
+
+            # Generate final cross-match operation
+            # np.ndarray of bool = [True, False, ...], shape n_right_catalogs, True - do crossmatch
+            right_catalog_mask = cross_match_selection_algo(pixel, self.rng)
+
+            def skipped_crossmatch(partition: npd.NestedFrame, *, meta_to_match: npd.NestedFrame) -> npd.NestedFrame:
+                old_n_columns = partition.shape[1]
+                new_columns = meta_to_match.columns[old_n_columns:]
+                for column in new_columns:
+                    partition[column] = pd.Series(None, dtype=meta_to_match[column].dtype)
+                return partition
+
+            result_catalog = self.catalog
+            for cross_match_kwargs, do_crossmatch, meta_to_match in zip(self.crossmatch_kwargs, right_catalog_mask, self.accumulative_meta, strict=True):
+                if do_crossmatch:
+                    result_catalog = result_catalog.crossmatch(**cross_match_kwargs)
+                else:
+                    result_catalog = result_catalog.map_partitions(skipped_crossmatch, meta_to_match=meta_to_match)
+
+            selected.append(_to_delayed(result_catalog.operation, pixel))
+
+        if len(selected) == 1:
+            if self.client is None:
+                return _FakeFuture(selected[0].compute())
+            return self.client.compute(selected[0])
+
+        combined = dask.delayed(pd.concat)(selected)
+        if self.client is None:
+            return _FakeFuture(combined.compute())
+        return self.client.compute(combined)
