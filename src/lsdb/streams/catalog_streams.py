@@ -297,7 +297,8 @@ class CrossMatchStream:
         else:
             self.rng = np.random.default_rng((1 << 32, self.seed))
 
-        self.mask_generator = CountMapForPixel(self.catalog, self.rng)
+        right_catalogs = [kwargs["other"] for kwargs in crossmatching_kwargs]
+        self.mask_generator = CountMapForPixel(self.catalog, right_catalogs, count_fraction=0.5)
 
     def submit_next_partitions(self, partitions: np.ndarray) -> Future | _FakeFuture:
         """Submit the next set of partitions for computation."""
@@ -313,7 +314,7 @@ class CrossMatchStream:
 
         for pixel_index in partitions:
             pixel = self._pixels[pixel_index]
-            right_catalog_mask = self.mask_generator.get_pixel_catalog_mask(pixel)
+            right_catalog_mask = self.mask_generator.get_pixel_catalog_mask(pixel, self.rng)
 
             def skipped_crossmatch(
                 partition: npd.NestedFrame, *, meta_to_match: npd.NestedFrame
@@ -357,7 +358,8 @@ class CountMapForPixel:
         self,
         catalog: hats.catalog.Catalog,
         right_catalogs: list[hats.catalog.Catalog],
-        count_threshold: int,
+        *,
+        count_fraction: float,
     ):
         """Initialize the CountMapForPixel class.
 
@@ -367,12 +369,12 @@ class CountMapForPixel:
             the Anchor catalog
         right_catalogs: list[hats.catalog.Catalog]
             the list of catalogs to crossmatch to
-        count_threshold: int
-            the threshold above which a pixel is selected for crossmatching
+        count_fraction: float
+            the fraction of matches above which a pixel is selected for crossmatching
         """
         self.catalog = catalog
         self.right_catalogs = right_catalogs
-        self.count_threshold = count_threshold
+        self.count_fraction = count_fraction
         self.load_catalog_counts()
 
     def load_catalog_counts(self):
@@ -383,25 +385,40 @@ class CountMapForPixel:
             count_maps.append(skymap)
         self.count_maps = count_maps
 
-    def get_pixel_catalog_mask(self, pixel) -> np.ndarray:
+    def get_pixel_catalog_mask(self, pixel, rng) -> np.ndarray:
         """Get boolean mask for all right catalogs.
 
         If True, do crossmatch for provided pixel for catalog at index."""
         mask = []
         anchor_counts, right_counts = self.count_maps[0], self.count_maps[1:]
         for counts in right_counts:
-            do_crossmatch = self.get_count_at_pixel(pixel, anchor_counts, counts)
-            mask.append(do_crossmatch > self.count_threshold)
+            do_crossmatch = get_fraction_at_pixel(pixel, anchor_counts, counts)
+            mask.append(do_crossmatch >= self.count_fraction)
         return np.asarray(mask, dtype=bool)
 
-    @staticmethod
-    def get_count_at_pixel(pixel, counts_a, counts_b):
-        """Gets the final count for the target pixel of the crossmatch of two catalogs"""
-        order, ipix = pixel
-        order_a = hp.npix2order(len(counts_a))
-        order_b = hp.npix2order(len(counts_b))
-        n_subpix_a = 4 ** (order_a - order)
-        n_subpix_b = 4 ** (order_b - order)
-        count_a = counts_a[ipix * n_subpix_a : (ipix + 1) * n_subpix_a].sum()
-        count_b = counts_b[ipix * n_subpix_b : (ipix + 1) * n_subpix_b].sum()
-        return int(min(count_a, count_b))
+
+def get_fraction_at_pixel(pixel, counts_a, counts_b) -> float:
+    """Gets the expected match fraction for a pixel of the crossmatch of two catalogs."""
+    order, ipix = pixel
+    order_a = hp.npix2order(len(counts_a))
+    order_b = hp.npix2order(len(counts_b))
+    if order > order_a or order > order_b:
+        raise ValueError("Skymaps order must be as high as the order of the pixel")
+    common_order = min(order_a, order_b)
+    # TODO: We should probably match the skymap orders only once when we
+    # initialize the class, not per partition call, to improve performance
+    counts_a = _subpixel_counts(counts_a, order_a, order, common_order, ipix)
+    counts_b = _subpixel_counts(counts_b, order_b, order, common_order, ipix)
+    total_b = np.sum(counts_b)
+    if total_b == 0:
+        return 0.0
+    n_expected_matches = np.sum(np.minimum(counts_a, counts_b))
+    return float(n_expected_matches / total_b)
+
+
+def _subpixel_counts(counts, order_x, target_order, common_order, ipix) -> np.ndarray:
+    """The target pixel's subpixel counts from `counts`, aggregated to `common_order`."""
+    f = 4 ** (order_x - target_order)
+    seg = counts[ipix * f : (ipix + 1) * f]
+    block = 4 ** (order_x - common_order)
+    return seg.reshape(-1, block).sum(axis=1)
