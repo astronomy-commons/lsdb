@@ -538,6 +538,23 @@ def test_find_radec_from_known_matches():
         cat = lsdb.from_dataframe(df)
 
 
+def test_find_radec_known_matches_ambiguity():
+    """Tests that, if ambiguous ra/dec matches are created by looking up known matches, an error is produced."""
+    dummy_values = list(range(10))
+    col_names = ['id', 'ra', 'dec', 'raMean', 'fake1', 'fake2', 'fake3', 'fake4']
+    df = pd.DataFrame({col: dummy_values for col in col_names})
+    with pytest.raises(ValueError, match=re.escape(f"Found 2 possible columns for 'ra': ['ra', 'raMean']. Please rename columns to disambiguate.")):
+        cat = lsdb.from_dataframe(df)
+
+    # If ra_column and dec_column are passed, no ambiguity
+    col_names = ['id', 'ra', 'dec', 'raMean', 'fake1', 'fake2', 'fake3', 'fake4']
+    df = pd.DataFrame({col: dummy_values for col in col_names})
+    cat = lsdb.from_dataframe(df, ra_column='ra')
+    assert cat.hc_structure.catalog_info.ra_column == "ra"
+    assert cat.hc_structure.catalog_info.dec_column == "dec"
+    assert 'raMean' in cat.columns
+
+
 def test_from_dataframe_with_nan_radec():
     """Test that from_dataframe raises a helpful error when NaN values are present in RA/Dec columns."""
     df = pd.DataFrame({"ra": [10.0, np.nan, 30.0], "dec": [20.0, 40.0, np.nan], "id": [1, 2, 3]})
