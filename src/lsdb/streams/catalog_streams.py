@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 from dask.delayed import Delayed
 from dask.distributed import Client, Future
-from hats.inspection import read_skymap
+from hats.io.skymap import read_skymap
 
 from lsdb import Catalog
 
@@ -260,7 +260,7 @@ class CatalogIterator(Iterator[pd.DataFrame]):
         return int(np.ceil(len(self.partitions_left) / self.iterable.partitions_per_chunk))
 
 
-class CrossMatchStream:
+class CrossMatchStream(CatalogStream):
     def __init__(
         self,
         catalog: Catalog,
@@ -276,15 +276,18 @@ class CrossMatchStream:
         self.shuffle = shuffle
         self.seed = seed
 
-        self.crossmatching_kwargs = []
+        all_kwargs = []
         for kwargs in crossmatching_kwargs:
             new_kwargs = kwargs.copy()
             new_kwargs["suffixes"] = ("", "_" + kwargs["other"].name)
             new_kwargs["suffix_method"] = "all_columns"
+            new_kwargs["how"] = "left"
+            all_kwargs.append(new_kwargs)
+        self.crossmatching_kwargs = all_kwargs
 
-        self.accumulative_meta = [catalog.meta]
+        self.accumulative_meta = []
         result_catalog = self.catalog
-        for right_catalog, right_catalog_kwargs in crossmatching_kwargs:
+        for right_catalog_kwargs in self.crossmatching_kwargs:
             result_catalog = result_catalog.crossmatch(**right_catalog_kwargs).map_partitions(
                 lambda df: df.drop(columns=["_dist_arcsec"])
             )
@@ -297,7 +300,7 @@ class CrossMatchStream:
         else:
             self.rng = np.random.default_rng((1 << 32, self.seed))
 
-        right_catalogs = [kwargs["other"] for kwargs in crossmatching_kwargs]
+        right_catalogs = [kwargs["other"] for kwargs in self.crossmatching_kwargs]
         self.mask_generator = CountMapForPixel(self.catalog, right_catalogs, count_fraction=0.5)
 
     def submit_next_partitions(self, partitions: np.ndarray) -> Future | _FakeFuture:
@@ -325,7 +328,7 @@ class CrossMatchStream:
                     partition[column] = pd.Series(None, dtype=meta_to_match[column].dtype)
                 return partition
 
-            result_catalog = self.catalog
+            result_catalog = self.catalog.partitions[[pixel]]
             for cross_match_kwargs, do_crossmatch, meta_to_match in zip(
                 self.crossmatch_kwargs, right_catalog_mask, self.accumulative_meta, strict=True
             ):
@@ -336,7 +339,7 @@ class CrossMatchStream:
                         skipped_crossmatch, meta_to_match=meta_to_match
                     )
 
-            selected.append(_to_delayed(result_catalog.operation, pixel))
+            selected.append(_to_delayed(result_catalog._operation, pixel))
 
         if len(selected) == 1:
             if self.client is None:
@@ -379,46 +382,60 @@ class CountMapForPixel:
 
     def load_catalog_counts(self):
         """Reads fixed order skymaps from on-disk fits file"""
-        count_maps = []
-        for cat in [self.catalog, *self.right_catalogs]:
-            skymap = np.asarray(read_skymap(cat, None))
-            count_maps.append(skymap)
-        self.count_maps = count_maps
+        left_count_map = np.asarray(read_skymap(self.catalog.hc_structure, None))
+        right_count_maps = []
+        for cat in self.right_catalogs:
+            skymap = np.asarray(read_skymap(cat.hc_structure, None))
+            right_count_maps.append(skymap)
+        self.left_count_map = left_count_map
+        self.right_count_maps = right_count_maps
+        self.minimums = [
+            self.reorder_skymap_and_get_min(left_count_map, right_count_map)
+            for right_count_map in right_count_maps
+        ]
+
+    def reorder_skymap_and_get_min(self, counts_a, counts_b):
+        """Reorder two skymaps to a common order and return the minimum counts."""
+        order_a = hp.npix2order(len(counts_a))
+        order_b = hp.npix2order(len(counts_b))
+        common_order = min(order_a, order_b)
+
+        # Reorder counts_a to common_order
+        if order_a > common_order:
+            counts_a = counts_a.reshape(-1, 4 ** (order_a - common_order)).sum(axis=1)
+
+        # Reorder counts_b to common_order
+        if order_b > common_order:
+            counts_b = counts_b.reshape(-1, 4 ** (order_b - common_order)).sum(axis=1)
+
+        # Return the minimum of the two skymaps
+        return np.minimum(counts_a, counts_b)
 
     def get_pixel_catalog_mask(self, pixel, rng) -> np.ndarray:
         """Get boolean mask for all right catalogs.
 
         If True, do crossmatch for provided pixel for catalog at index."""
         mask = []
-        anchor_counts, right_counts = self.count_maps[0], self.count_maps[1:]
-        for counts in right_counts:
-            do_crossmatch = get_fraction_at_pixel(pixel, anchor_counts, counts)
+        for right_counts, pair_minimums in zip(self.right_count_maps, self.minimums):
+            do_crossmatch = get_fraction_at_pixel(pixel, pair_minimums, self.left_count_map, right_counts)
             mask.append(do_crossmatch >= self.count_fraction)
         return np.asarray(mask, dtype=bool)
 
 
-def get_fraction_at_pixel(pixel, counts_a, counts_b) -> float:
+def get_fraction_at_pixel(pixel, minimums, left_counts, right_counts) -> float:
     """Gets the expected match fraction for a pixel of the crossmatch of two catalogs."""
-    order, ipix = pixel
-    order_a = hp.npix2order(len(counts_a))
-    order_b = hp.npix2order(len(counts_b))
-    if order > order_a or order > order_b:
-        raise ValueError("Skymaps order must be as high as the order of the pixel")
-    common_order = min(order_a, order_b)
-    # TODO: We should probably match the skymap orders only once when we
-    # initialize the class, not per partition call, to improve performance
-    counts_a = _subpixel_counts(counts_a, order_a, order, common_order, ipix)
-    counts_b = _subpixel_counts(counts_b, order_b, order, common_order, ipix)
-    total_b = np.sum(counts_b)
-    if total_b == 0:
+    total_minimums = get_sum_at_pixel(pixel, minimums)
+    total_left_counts = get_sum_at_pixel(pixel, left_counts)
+    total_right_counts = get_sum_at_pixel(pixel, right_counts)
+    max_counts = max(total_left_counts, total_right_counts)
+    if max_counts == 0:
         return 0.0
-    n_expected_matches = np.sum(np.minimum(counts_a, counts_b))
-    return float(n_expected_matches / total_b)
+    return float(total_minimums / max_counts)
 
 
-def _subpixel_counts(counts, order_x, target_order, common_order, ipix) -> np.ndarray:
-    """The target pixel's subpixel counts from `counts`, aggregated to `common_order`."""
-    f = 4 ** (order_x - target_order)
-    seg = counts[ipix * f : (ipix + 1) * f]
-    block = 4 ** (order_x - common_order)
-    return seg.reshape(-1, block).sum(axis=1)
+def get_sum_at_pixel(pixel, counts) -> int:
+    """Gets the sum of counts for a pixel of a catalog."""
+    order, ipix = pixel
+    order_counts = hp.npix2order(len(counts))
+    selected_counts = counts[ipix * 4 ** (order_counts - order) : (ipix + 1) * 4 ** (order_counts - order)]
+    return selected_counts.sum()
