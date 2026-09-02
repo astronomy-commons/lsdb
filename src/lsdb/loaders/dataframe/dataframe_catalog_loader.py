@@ -105,7 +105,6 @@ class DataframeCatalogLoader:
         self.drop_empty_siblings = drop_empty_siblings
         self.partition_rows, self.partition_bytes = self._calculate_threshold(partition_rows, partition_bytes)
 
-        # NOTE here is the ra/dec search
         if ra_column is None:
             ra_column = self._find_column("ra")
         if dec_column is None:
