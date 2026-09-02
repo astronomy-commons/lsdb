@@ -408,6 +408,7 @@ class HealpixDataset:
             # (ra/dec of result is a subset of ra/dec of original)
             # NOTE this doesn't guarantee that ra and dec values won't change for the whole catalog!
             radec_res_df = result[[ra_col, dec_col]]
+            # TODO maybe replace with (...).issubset()
             if not len(radec_res_df.merge(radec_orig_df)) == len(radec_res_df):
                 raise ValueError(f"ra/dec values have changed. map_partitions() must not change values of ra or dec columns '{ra_col}', '{dec_col}'.")
             output_op = FromSinglePartition(result, pixel)

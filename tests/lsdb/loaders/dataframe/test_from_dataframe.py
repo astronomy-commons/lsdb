@@ -1,5 +1,6 @@
 import math
 from importlib.metadata import version
+import re
 
 import astropy.units as u
 import hats as hc
@@ -474,30 +475,22 @@ def test_from_dataframe_finds_radec_columns(small_sky_order1_df):
     catalog = lsdb.from_dataframe(df_renamed, margin_threshold=None)
     assert {"Ra", "Dec"}.issubset(catalog.columns)
     # If no matches are found, an error is raised
-    df_no_radec = small_sky_order1_df.drop(columns=["ra", "dec"])
-    with pytest.raises(ValueError, match="No column found"):
-        lsdb.from_dataframe(df_no_radec, margin_threshold=None)
+    # missing ra
+    df_no_ra = small_sky_order1_df.drop(columns=["ra"])
+    with pytest.raises(ValueError, match=re.escape("No column found for 'ra' (required). You can supply ra/dec column names using the arguments `ra_column`, `dec_column`.")):
+        lsdb.from_dataframe(df_no_ra, margin_threshold=None)
+    # missing dec
+    df_no_dec = small_sky_order1_df.drop(columns=["dec"])
+    with pytest.raises(ValueError, match=re.escape("No column found for 'dec' (required). You can supply ra/dec column names using the arguments `ra_column`, `dec_column`.")):
+        lsdb.from_dataframe(df_no_dec, margin_threshold=None)
     # If multiple matches are found it's ambiguous, and an error is raised
     small_sky_order1_df["RA"] = small_sky_order1_df["ra"].copy()
-    with pytest.raises(ValueError, match="possible columns"):
+    with pytest.raises(ValueError, match=re.escape(f"Found 2 possible columns for 'ra': ['ra', 'RA']. Please rename columns to disambiguate.")):
         lsdb.from_dataframe(small_sky_order1_df, margin_threshold=None)
 
 
-def test_from_dataframe_with_nan_radec():
-    """Test that from_dataframe raises a helpful error when NaN values are present in RA/Dec columns."""
-    df = pd.DataFrame({"ra": [10.0, np.nan, 30.0], "dec": [20.0, 40.0, np.nan], "id": [1, 2, 3]})
-    # Should raise ValueError with a helpful message
-    with pytest.raises(ValueError, match=r"NaN values found in .+ columns"):
-        lsdb.from_dataframe(df, margin_threshold=None)
-
-    # Also test with custom column names
-    df2 = df.rename(columns={"ra": "my_ra", "dec": "my_dec"})
-    with pytest.raises(ValueError, match=r"NaN values found in .+ columns"):
-        lsdb.from_dataframe(df2, ra_column="my_ra", dec_column="my_dec", margin_threshold=None)
-
-
 def test_find_radec_anywhere():
-    """Test that when 'ra' and 'dec' are found anywhere in df columns, ra/dec column find works."""
+    """Test that ra/dec find works for literal 'ra' and 'dec' independent of position."""
     dummy_values = list(range(10))
 
     col_names = ['id', 'ra', 'dec', 'fake1', 'fake2', 'fake3', 'fake4']
@@ -517,3 +510,44 @@ def test_find_radec_anywhere():
     cat = lsdb.from_dataframe(df)
     assert cat.hc_structure.catalog_info.ra_column == "ra"
     assert cat.hc_structure.catalog_info.dec_column == "dec"
+
+
+def test_find_radec_from_known_matches():
+    """Test that ra/dec finding works when matched against column names from known catalogs.
+    See RADEC_COLUMN_MAPPING."""
+    dummy_values = list(range(10))
+
+    # When known replacements are in the first 4 columns, they should be matched.
+    col_names = ['id', 'raMean', 'decMean', 'fake1', 'fake2', 'fake3', 'fake4']
+    df = pd.DataFrame({col: dummy_values for col in col_names})
+    cat = lsdb.from_dataframe(df)
+    assert cat.hc_structure.catalog_info.ra_column == "raMean"
+    assert cat.hc_structure.catalog_info.dec_column == "decMean"
+
+    col_names = ['id', 'RAJ2000', 'DEJ2000', 'fake1', 'fake2', 'fake3', 'fake4']
+    df = pd.DataFrame({col: dummy_values for col in col_names})
+    cat = lsdb.from_dataframe(df)
+    assert cat.hc_structure.catalog_info.ra_column == "RAJ2000"
+    assert cat.hc_structure.catalog_info.dec_column == "DEJ2000"
+
+    # After the first 4 columns, they should NOT be matched.
+    # raMean should be matched, but decMean should not
+    col_names = ['id', 'fake1', 'fake2', 'raMean', 'decMean', 'fake3', 'fake4']
+    df = pd.DataFrame({col: dummy_values for col in col_names})
+    with pytest.raises(ValueError, match=re.escape("No column found for 'dec'")):
+        cat = lsdb.from_dataframe(df)
+
+
+def test_from_dataframe_with_nan_radec():
+    """Test that from_dataframe raises a helpful error when NaN values are present in RA/Dec columns."""
+    df = pd.DataFrame({"ra": [10.0, np.nan, 30.0], "dec": [20.0, 40.0, np.nan], "id": [1, 2, 3]})
+    # Should raise ValueError with a helpful message
+    with pytest.raises(ValueError, match=r"NaN values found in .+ columns"):
+        lsdb.from_dataframe(df, margin_threshold=None)
+
+    # Also test with custom column names
+    df2 = df.rename(columns={"ra": "my_ra", "dec": "my_dec"})
+    with pytest.raises(ValueError, match=r"NaN values found in .+ columns"):
+        lsdb.from_dataframe(df2, ra_column="my_ra", dec_column="my_dec", margin_threshold=None)
+
+
