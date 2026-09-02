@@ -230,8 +230,13 @@ class ExtensionList:
         """
         used_mirror = self._mirror if self._mirror in entry.paths else PRIMARY_MIRROR
 
-        if "coverage" not in entry.__dict__:
-            # optional fields
+        #if "coverage" not in entry.__dict__:
+        #    # optional fields
+        #    entry.coverage = None
+
+        try:
+            entry.coverage
+        except AttributeError:
             entry.coverage = None
 
         fields = {
