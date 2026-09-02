@@ -494,3 +494,26 @@ def test_from_dataframe_with_nan_radec():
     df2 = df.rename(columns={"ra": "my_ra", "dec": "my_dec"})
     with pytest.raises(ValueError, match=r"NaN values found in .+ columns"):
         lsdb.from_dataframe(df2, ra_column="my_ra", dec_column="my_dec", margin_threshold=None)
+
+
+def test_find_radec_anywhere():
+    """Test that when 'ra' and 'dec' are found anywhere in df columns, ra/dec column find works."""
+    dummy_values = list(range(10))
+
+    col_names = ['id', 'ra', 'dec', 'fake1', 'fake2', 'fake3', 'fake4']
+    df = pd.DataFrame({col: dummy_values for col in col_names})
+    cat = lsdb.from_dataframe(df)
+    assert cat.hc_structure.catalog_info.ra_column == "ra"
+    assert cat.hc_structure.catalog_info.dec_column == "dec"
+
+    col_names = ['id', 'fake1', 'fake2', 'fake3', 'fake4', 'ra', 'dec']
+    df = pd.DataFrame({col: dummy_values for col in col_names})
+    cat = lsdb.from_dataframe(df)
+    assert cat.hc_structure.catalog_info.ra_column == "ra"
+    assert cat.hc_structure.catalog_info.dec_column == "dec"
+
+    col_names = ['id', 'ra', 'fake2', 'fake3', 'dec', 'fake4']
+    df = pd.DataFrame({col: dummy_values for col in col_names})
+    cat = lsdb.from_dataframe(df)
+    assert cat.hc_structure.catalog_info.ra_column == "ra"
+    assert cat.hc_structure.catalog_info.dec_column == "dec"
