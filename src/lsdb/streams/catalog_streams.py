@@ -260,14 +260,13 @@ class CatalogIterator(Iterator[pd.DataFrame]):
         return int(np.ceil(len(self.partitions_left) / self.iterable.partitions_per_chunk))
 
 
-class CrossMatchStream(CatalogStream):
+class CrossMatchStream(InfiniteStream):
     def __init__(
         self,
         catalog: Catalog,
         *crossmatch_kwargs: dict[str, object],
         client: Client | None = None,
         partitions_per_chunk: int = 1,
-        shuffle: bool = True,
         seed: int | None = None,
         count_fraction_threshold: float,
     ) -> None:
@@ -275,7 +274,6 @@ class CrossMatchStream(CatalogStream):
             catalog,
             client=client,
             partitions_per_chunk=partitions_per_chunk,
-            shuffle=shuffle,
             seed=seed,
         )
 
