@@ -30,24 +30,24 @@ def test_bounded_kdtree_radius_invalid(small_sky_catalog, small_sky_order1_sourc
 
 
 def test_kdtree_left_columns(small_sky_catalog, small_sky_order1_source_with_margin):
-    with pytest.raises(ValueError, match="left table must have column ra"):
+    with pytest.raises(ValueError, match="left table 'small_sky' must have column 'ra'"):
         KdTreeCrossmatch().validate(
             small_sky_catalog.drop(columns=["ra"]), small_sky_order1_source_with_margin
         )
 
-    with pytest.raises(ValueError, match="left table must have column dec"):
+    with pytest.raises(ValueError, match="left table 'small_sky' must have column 'dec'"):
         KdTreeCrossmatch().validate(
             small_sky_catalog.drop(columns=["dec"]), small_sky_order1_source_with_margin
         )
 
 
 def test_kdtree_right_columns(small_sky_catalog, small_sky_order1_source_with_margin):
-    with pytest.raises(ValueError, match="right table must have column source_ra"):
+    with pytest.raises(ValueError, match="right table 'small_sky_order1_source' must have column 'source_ra'"):
         KdTreeCrossmatch().validate(
             small_sky_catalog, small_sky_order1_source_with_margin.drop(columns=["source_ra"])
         )
 
-    with pytest.raises(ValueError, match="right table must have column source_dec"):
+    with pytest.raises(ValueError, match="right table 'small_sky_order1_source' must have column 'source_dec'"):
         KdTreeCrossmatch().validate(
             small_sky_catalog, small_sky_order1_source_with_margin.drop(columns=["source_dec"])
         )
