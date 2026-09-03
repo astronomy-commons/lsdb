@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 
 import nested_pandas as npd
+import numpy as np
+import numpy.typing as npt
 from hats.catalog.dataset.table_properties import TableProperties
 
 
@@ -27,3 +29,5 @@ class CrossmatchArgs:
     """Catalog info for the right partition"""
     right_margin_catalog_info: TableProperties | None
     """Catalog info for the right margin partition"""
+    right_native_mask: npt.NDArray[np.bool_] | None = None
+    """Rows in ``right_df`` belonging to the primary right partition for this aligned pixel."""

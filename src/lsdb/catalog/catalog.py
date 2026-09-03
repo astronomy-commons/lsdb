@@ -253,7 +253,7 @@ class Catalog(HealpixDataset):
         algorithm: AbstractCrossmatchAlgorithm | None = None,
         output_catalog_name: str | None = None,
         require_right_margin: bool = False,
-        how: str = "inner",
+        how: Literal["inner", "left", "outer"] = "inner",
         suffixes: tuple[str, str] | None = None,
         suffix_method: str | None = None,
         log_changes: bool = True,
@@ -262,13 +262,16 @@ class Catalog(HealpixDataset):
         """Perform a cross-match between two catalogs
 
         The pixels from each catalog are aligned via a `PixelAlignment`, and cross-matching is
-        performed on each pair of overlapping pixels. The resulting catalog will have partitions
-        matching an inner pixel alignment - using pixels that have overlap in both input catalogs
-        and taking the smallest of any overlapping pixels.
+        performed on each selected pixel pair. Inner joins use overlapping pixels; left and outer
+        joins use the left catalog's coverage.
 
-        The resulting catalog will be partitioned using the left catalog's ra and dec, and the
-        index for each row will be the same as the index from the corresponding row in the left
-        catalog's index.
+        Outer joins add unmatched primary-right rows from pixel pairs already read for the left
+        alignment. They do not scan right-only sky coverage. A right row matched only through a
+        neighboring margin may also be emitted as unmatched in its primary pixel; exact
+        full-catalog outer semantics require global right-row reconciliation.
+
+        The resulting catalog uses the left catalog's coordinates. For right-only rows from an
+        outer join, those coordinate columns and the index are populated from the right row.
 
         Parameters
         ----------
@@ -326,9 +329,10 @@ class Catalog(HealpixDataset):
         require_right_margin : bool, default False
             If true, raises an error if the right margin is missing which could
             lead to incomplete crossmatches.
-        how : str
-            How to handle the crossmatch of the two catalogs.
-            One of {'left', 'inner'}; defaults to 'inner'.
+        how : {'inner', 'left', 'outer'}, default 'inner'
+            How to assemble the crossmatch. ``outer`` is limited to unmatched right rows in
+            left-aligned pixel pairs already read by the operation; it does not scan right-only
+            catalog coverage.
         suffixes : Tuple[str,str] or None
             A pair of suffixes to be appended to the end of each column
             name when they are joined. Default uses the name of the catalog for the suffix.
@@ -381,6 +385,7 @@ class Catalog(HealpixDataset):
         TypeError
             If the `other` catalog is not of type `Catalog`
         ValueError
+            If ``how`` is not ``"inner"``, ``"left"``, or ``"outer"``.
             If both the kwargs for the default algorithm and an `algorithm` are specified.
             If the `suffixes` provided is not a tuple of two strings.
             If the right catalog has no margin and `require_right_margin` is True.
@@ -390,6 +395,8 @@ class Catalog(HealpixDataset):
                 f"Expected `other` to be a Catalog instance, got {type(other)}. "
                 "You may want `lsdb.crossmatch(frame_or_catalog, frame_or_catalog)` instead."
             )
+        if how not in ("inner", "left", "outer"):
+            raise ValueError("`how` needs to be 'inner', 'left', or 'outer'")
 
         default_kwargs = {
             k: v
@@ -451,7 +458,7 @@ class Catalog(HealpixDataset):
         output_catalog_name: str | None = None,
         require_right_margin: bool = False,
         nested_column_name: str | None = None,
-        how: str = "inner",
+        how: Literal["inner", "left"] = "inner",
     ) -> Catalog:
         # pylint:disable=unused-argument
         """Perform a cross-match between two catalogs, adding the result as a nested column
