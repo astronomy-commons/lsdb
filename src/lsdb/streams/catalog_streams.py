@@ -336,7 +336,11 @@ class CrossMatchStream(InfiniteStream):
                 self.crossmatch_kwargs, right_catalog_mask, self.accumulative_meta, strict=True
             ):
                 if do_crossmatch:
-                    result_catalog = result_catalog.crossmatch(**cross_match_kwargs)
+                    result_catalog = result_catalog.crossmatch(
+                        **cross_match_kwargs
+                    ).map_partitions(
+                        lambda df: df.drop(columns=["_dist_arcsec"])
+                    )
                 else:
                     result_catalog = result_catalog.map_partitions(
                         skipped_crossmatch, meta_to_match=meta_to_match
