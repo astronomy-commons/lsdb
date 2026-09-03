@@ -11,7 +11,7 @@ from dask.delayed import Delayed
 from dask.distributed import Client, Future
 from hats.io.skymap import read_skymap
 
-from lsdb import Catalog
+from lsdb import Catalog, PixelSearch
 
 
 class _FakeFuture:
@@ -309,12 +309,12 @@ class CrossMatchStream(InfiniteStream):
     def submit_next_partitions(self, partitions: np.ndarray) -> Future | _FakeFuture:
         """Submit the next set of partitions for computation."""
 
-        # Intended to be used with single partition builds
-        def _to_delayed(operation, pixel):
-            build = operation.build(pixels=[pixel])
-            graph = build.graph
-            key = build.pixel_to_key_map[pixel]
-            return Delayed(key, graph)
+        # The crossmatch may leave no pixels at all, when the pixel does not overlap
+        # with one of the right catalogs, so we use whatever keys the build has
+        # instead of looking the left pixel up.
+        def _to_delayed(operation):
+            build = operation.build()
+            return [Delayed(key, build.graph) for key in build.keys]
 
         selected = []
 
@@ -331,7 +331,7 @@ class CrossMatchStream(InfiniteStream):
                     partition[column] = pd.Series(None, dtype=meta_to_match[column].dtype)
                 return partition
 
-            result_catalog = self.catalog.partitions[[pixel]]
+            result_catalog = self.catalog.search(PixelSearch(pixel, fine=True))
             for cross_match_kwargs, do_crossmatch, meta_to_match in zip(
                 self.crossmatch_kwargs, right_catalog_mask, self.accumulative_meta, strict=True
             ):
@@ -344,7 +344,10 @@ class CrossMatchStream(InfiniteStream):
                         skipped_crossmatch, meta_to_match=meta_to_match
                     )
 
-            selected.append(_to_delayed(result_catalog._operation, pixel))
+            selected.extend(_to_delayed(result_catalog._operation))
+
+        if len(selected) == 0:
+            return _FakeFuture(self.accumulative_meta[-1])
 
         if len(selected) == 1:
             if self.client is None:
