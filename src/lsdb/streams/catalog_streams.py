@@ -264,30 +264,33 @@ class CrossMatchStream(CatalogStream):
     def __init__(
         self,
         catalog: Catalog,
-        *crossmatching_kwargs: dict[str, object],
+        *crossmatch_kwargs: dict[str, object],
         client: Client | None = None,
         partitions_per_chunk: int = 1,
         shuffle: bool = True,
         seed: int | None = None,
+        count_fraction_threshold: float,
     ) -> None:
-        self.catalog = catalog
-        self.client = client
-        self.partitions_per_chunk = partitions_per_chunk
-        self.shuffle = shuffle
-        self.seed = seed
+        super().__init__(
+            catalog,
+            client=client,
+            partitions_per_chunk=partitions_per_chunk,
+            shuffle=shuffle,
+            seed=seed,
+        )
 
         all_kwargs = []
-        for kwargs in crossmatching_kwargs:
+        for kwargs in crossmatch_kwargs:
             new_kwargs = kwargs.copy()
             new_kwargs["suffixes"] = ("", "_" + kwargs["other"].name)
             new_kwargs["suffix_method"] = "all_columns"
             new_kwargs["how"] = "left"
             all_kwargs.append(new_kwargs)
-        self.crossmatching_kwargs = all_kwargs
+        self.crossmatch_kwargs = all_kwargs
 
         self.accumulative_meta = []
         result_catalog = self.catalog
-        for right_catalog_kwargs in self.crossmatching_kwargs:
+        for right_catalog_kwargs in self.crossmatch_kwargs:
             result_catalog = result_catalog.crossmatch(**right_catalog_kwargs).map_partitions(
                 lambda df: df.drop(columns=["_dist_arcsec"])
             )
@@ -300,8 +303,10 @@ class CrossMatchStream(CatalogStream):
         else:
             self.rng = np.random.default_rng((1 << 32, self.seed))
 
-        right_catalogs = [kwargs["other"] for kwargs in self.crossmatching_kwargs]
-        self.mask_generator = CountMapForPixel(self.catalog, right_catalogs, count_fraction=0.5)
+        right_catalogs = [kwargs["other"] for kwargs in self.crossmatch_kwargs]
+        self.mask_generator = CountMapForPixel(
+            self.catalog, right_catalogs, count_fraction=count_fraction_threshold
+        )
 
     def submit_next_partitions(self, partitions: np.ndarray) -> Future | _FakeFuture:
         """Submit the next set of partitions for computation."""
@@ -354,8 +359,6 @@ class CrossMatchStream(CatalogStream):
 
 class CountMapForPixel:
     """Helper methods to select HEALPix for selective crossmatch"""
-
-    count_maps: list[np.ndarray]
 
     def __init__(
         self,
@@ -427,10 +430,9 @@ def get_fraction_at_pixel(pixel, minimums, left_counts, right_counts) -> float:
     total_minimums = get_sum_at_pixel(pixel, minimums)
     total_left_counts = get_sum_at_pixel(pixel, left_counts)
     total_right_counts = get_sum_at_pixel(pixel, right_counts)
-    max_counts = max(total_left_counts, total_right_counts)
-    if max_counts == 0:
+    if total_right_counts == 0:
         return 0.0
-    return float(total_minimums / max_counts)
+    return float(total_minimums / total_right_counts)
 
 
 def get_sum_at_pixel(pixel, counts) -> int:
