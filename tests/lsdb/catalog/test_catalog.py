@@ -11,6 +11,7 @@ import numpy as np
 import numpy.testing as npt
 import pandas as pd
 import pytest
+import re
 from astropy.coordinates import SkyCoord
 from astropy.visualization.wcsaxes import WCSAxes
 from distributed import Client
@@ -765,6 +766,8 @@ def test_map_partitions_single_partition(small_sky_order1_catalog):
     # Get a partition index to update
     default_partition_index = 0
 
+    # NOTE: unexpected test failure! hmmmm
+
     # Update a single partition
     mapped = small_sky_order1_catalog.map_partitions(
         add_col, "a", increment_value=1, compute_single_partition=True
@@ -1060,6 +1063,36 @@ def test_map_partitions_error_messages():
         RuntimeError, match=r"function divme to partition 3, pixel Order: 7, Pixel: 77836: Not so fast"
     ):
         nfc.map_partitions(divme, include_pixel=True).compute()
+
+
+def test_map_partitions_disallows_changing_radec(small_sky_source_catalog):
+    """Test that map_partitions() raises errors when ra/dec columns
+    are changed (both column name and values).
+    
+    NOTE this is only implemented for compute_single_partition==True!
+    """
+    def rename_cols(df, names_in, names_out):
+        """df = rename_cols(df, ['ra', 'dec'], ['my_ra', 'my_dec'])"""
+        for name_in, name_out in zip(names_in, names_out):
+            df[name_out] = df[name_in]
+        col_names = [col for col in df.columns if col not in names_in]
+        return df[col_names]
+
+    def my_evil_function(df, col_name):
+        df[col_name] = df[col_name] + 123
+        return df
+
+    # Should raise because ra/dec column names change
+    with pytest.raises(ValueError, match=re.escape("'source_ra' not found in result. map_partitions() must not change names of ra or dec columns 'source_ra', 'source_dec'.")):
+        small_sky_source_catalog.map_partitions(rename_cols, ['source_ra', 'source_dec'], ['my_ra', 'my_dec'], compute_single_partition=True)
+
+    # Should raise because map_partitions() changes ra/dec values
+    # for col_name in ['source_ra', 'source_dec']:
+    #     with pytest.raises(ValueError, match=re.escape(f"ra/dec values have changed. map_partitions() must not change values of ra or dec columns 'source_ra', 'source_dec'.")):
+    #         small_sky_source_catalog.map_partitions(my_evil_function, col_name, compute_single_partition=True)
+
+    with pytest.raises(ValueError, match=re.escape(f"ra/dec values have changed. map_partitions() must not change values of ra or dec columns 'source_ra', 'source_dec'.")):
+        small_sky_source_catalog.map_partitions(my_evil_function, 'source_ra', compute_single_partition=True)
 
 
 def test_estimate_size(small_sky_source_catalog, capsys):

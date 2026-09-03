@@ -394,7 +394,6 @@ class HealpixDataset:
             partition_cat = self.partitions[partition_index]
             pixel = partition_cat.get_healpix_pixels()[0]
             partition = partition_cat.compute()
-            radec_orig_df = partition[[ra_col, dec_col]]
             result = (
                 func(partition, pixel, *args, **kwargs) if include_pixel else func(partition, *args, **kwargs)
             )
@@ -407,9 +406,7 @@ class HealpixDataset:
             # Check that ra and dec values haven't changed
             # (ra/dec of result is a subset of ra/dec of original)
             # NOTE this doesn't guarantee that ra and dec values won't change for the whole catalog!
-            radec_res_df = result[[ra_col, dec_col]]
-            # TODO maybe replace with (...).issubset()
-            if not len(radec_res_df.merge(radec_orig_df)) == len(radec_res_df):
+            if not _compare_radec_cols(partition, result, ra_col, dec_col):
                 raise ValueError(f"ra/dec values have changed. map_partitions() must not change values of ra or dec columns '{ra_col}', '{dec_col}'.")
             output_op = FromSinglePartition(result, pixel)
             hc_structure = self.hc_structure.__class__(
@@ -1987,3 +1984,10 @@ class HealpixDataset:
             f"Expect up to {mem_size} in MEMORY.\n"
             f"Expect up to {disk_size} on DISK."
         )
+
+
+def _compare_radec_cols(orig_df, res_df, ra_column, dec_column):
+    """Return whether ra/dec values of res_df are a subset of orig_df."""
+    radec_orig = zip(orig_df[ra_column], orig_df[dec_column])
+    radec_res = zip(res_df[ra_column], res_df[dec_column])
+    return set(radec_res).issubset(set(radec_orig))

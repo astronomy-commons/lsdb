@@ -555,6 +555,50 @@ def test_find_radec_known_matches_ambiguity():
     assert 'raMean' in cat.columns
 
 
+def test_find_radec_column_heuristic():
+    """Heuristic matches and non-matches for novel terms.
+    See _is_radec_like()."""
+
+    # should pass with warning
+    df = pd.DataFrame({
+        'ra1234': [1.0, 2.0, 3.0],
+        'dec5678': [4.0, 5.0, 6.0]
+    })
+    cat = lsdb.from_dataframe(df)
+    assert cat.hc_structure.catalog_info.ra_column == "ra1234"
+    assert cat.hc_structure.catalog_info.dec_column == "dec5678"
+
+    # should fail because these columns should be rejected (therefore no valid ra/dec)
+    df = pd.DataFrame({
+        'ra_err': [1.0, 2.0, 3.0],
+        'dec_sig': [4.0, 5.0, 6.0]
+    })
+    with pytest.raises(ValueError, match=re.escape("No column found for 'ra' (required). You can supply ra/dec column names using the arguments `ra_column`, `dec_column`.")):
+        cat = lsdb.from_dataframe(df)
+
+    # should pass because 'ra' should be accepted and 'ra_err' should not
+    df = pd.DataFrame({
+        'ra': [1.0, 2.0, 3.0],
+        'ra_err': [1.0, 2.0, 3.0],
+        'dec': [4.0, 5.0, 6.0]
+    })
+    cat = lsdb.from_dataframe(df)
+    assert cat.hc_structure.catalog_info.ra_column == "ra"
+    assert cat.hc_structure.catalog_info.dec_column == "dec"
+
+    # should fail because of ambiguity (matched with heuristic instead of lookup)
+    df = pd.DataFrame({
+        'ra': [1.0, 2.0, 3.0],
+        'ra1234': [1.0, 2.0, 3.0],
+        'dec': [4.0, 5.0, 6.0]
+    })
+    with pytest.raises(ValueError, match=re.escape(f"Found 2 possible columns for 'ra': ['ra', 'ra1234']. Please rename columns to disambiguate.")):
+        cat = lsdb.from_dataframe(df)
+
+
+
+
+
 def test_from_dataframe_with_nan_radec():
     """Test that from_dataframe raises a helpful error when NaN values are present in RA/Dec columns."""
     df = pd.DataFrame({"ra": [10.0, np.nan, 30.0], "dec": [20.0, 40.0, np.nan], "id": [1, 2, 3]})
