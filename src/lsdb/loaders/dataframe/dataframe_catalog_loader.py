@@ -32,6 +32,14 @@ from lsdb.operations.operation import Operation
 pd.options.mode.chained_assignment = None  # default='warn'
 
 
+# keys: 'ra' or 'dec'
+# values: lowercased ra/dec column names from known catalogs
+RADEC_COLUMN_MAPPING = {
+    'ra': ['ra', 'ra_deg', 'coord_ra', 'raj2000', 'ramean', 'alpha_j2000', 'right_ascension', 'ra_obj', 'objra'],
+    'dec': ['dec', 'dec_deg', 'coord_dec', 'dej2000', 'decmean', 'delta_j2000', 'declination', 'dec_obj', 'objdec']
+}
+
+
 class DataframeCatalogLoader:
     """Creates a HATS formatted Catalog from a Pandas Dataframe"""
 
@@ -143,14 +151,33 @@ class DataframeCatalogLoader:
 
         The search is case-insensitive and unambiguous. An error is raised
         if there are zero or multiple matches."""
-        matches = [
-            c for c in self.dataframe.columns if re.fullmatch(re.escape(search_term), c, re.IGNORECASE)
-        ]
+        search_term = search_term.lower()
+        matches = []
+
+        for col_idx, col_name in enumerate(list(self.dataframe.columns)):
+            # TODO reduce logical test complexity lol
+            # exact match anywhere
+            if str(col_name).lower() == search_term:
+                matches.append(col_name)
+            # known matches, only in the first 4 columns
+            elif (col_idx < 4) and (str(col_name).lower() in RADEC_COLUMN_MAPPING[search_term]):
+                matches.append(col_name)
+            # heuristic match, only in the first 4 columns
+            elif (col_idx < 4) and _is_radec_like(str(col_name).lower(), search_term):
+                # TODO switch to logger.info()
+                print(f"Warning: heuristic match found for `{search_term}`: '{col_name}'. Please check correctness!")
+                matches.append(col_name)
+
         n_matches = len(matches)
+        # Ensure matches exist and are unique (i.e. exactly one match)
         if n_matches == 0:
-            raise ValueError(f"No column found for {search_term}")
+            raise ValueError(
+                f"No column found for '{search_term}' (required). You can supply ra/dec column names using the arguments `ra_column`, `dec_column`."
+            )
         if n_matches > 1:
-            raise ValueError(f"Found {n_matches} possible columns for {search_term}")
+            raise ValueError(
+                f"Found {n_matches} possible columns for '{search_term}': {matches}. Please rename columns to disambiguate."
+            )
         return matches[0]
 
     def _calculate_threshold(
@@ -347,3 +374,24 @@ class DataframeCatalogLoader:
         lon = self.dataframe[self.catalog_info.ra_column].to_numpy() * u.deg
         lat = self.dataframe[self.catalog_info.dec_column].to_numpy() * u.deg
         return MOC.from_lonlat(lon=lon, lat=lat, max_norder=self.moc_max_order)
+
+
+def _is_radec_like(col_name, search_term):
+    """Heuristic match for ra-like and dec-like names
+    Assumes:
+        col_name is a lowercase str
+        col_name is not 'ra' or 'dec'
+        col_name is not anywhere in RADEC_COLUMN_MAPPING
+        search_term is 'ra' or 'dec'
+    """
+    # Clues that a column should not match
+    negative_terms = [
+        # Error terms
+        "err",
+        # Variance / standard deviation terms
+        "sig", "std", "var",
+    ]
+
+    if any(t in col_name for t in negative_terms):
+        return False
+    return any(t in col_name for t in RADEC_COLUMN_MAPPING[search_term])

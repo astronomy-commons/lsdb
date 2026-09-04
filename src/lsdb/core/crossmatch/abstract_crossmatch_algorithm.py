@@ -191,15 +191,15 @@ class AbstractCrossmatchAlgorithm(ABC):
         # Check that we have the appropriate columns in our dataset.
         column_names = left.columns
         if left.hc_structure.catalog_info.ra_column not in column_names:
-            raise ValueError(f"left table must have column {left.hc_structure.catalog_info.ra_column}")
+            raise ValueError(f"left table '{left.name}' must have column '{left.hc_structure.catalog_info.ra_column}'")
         if left.hc_structure.catalog_info.dec_column not in column_names:
-            raise ValueError(f"left table must have column {left.hc_structure.catalog_info.dec_column}")
+            raise ValueError(f"left table '{left.name}' must have column '{left.hc_structure.catalog_info.dec_column}'")
 
         column_names = right.columns
         if right.hc_structure.catalog_info.ra_column not in column_names:
-            raise ValueError(f"right table must have column {right.hc_structure.catalog_info.ra_column}")
+            raise ValueError(f"right table '{right.name}' must have column '{right.hc_structure.catalog_info.ra_column}'")
         if right.hc_structure.catalog_info.dec_column not in column_names:
-            raise ValueError(f"right table must have column {right.hc_structure.catalog_info.dec_column}")
+            raise ValueError(f"right table '{right.name}' must have column '{right.hc_structure.catalog_info.dec_column}'")
 
     @staticmethod
     def _rename_columns_with_suffix(dataframe, suffix):

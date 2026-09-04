@@ -339,6 +339,7 @@ class HealpixDataset:
     ) -> Self | dd.Series:
         """Applies a function to each partition in the catalog.
 
+        NOTE maybe "If the function returns a dataframe, the ra and dec of each row is assumed to remain unchanged."
         The ra and dec of each row is assumed to remain unchanged.
 
         Parameters
@@ -385,6 +386,8 @@ class HealpixDataset:
             A new catalog with each partition replaced with the output of the function applied to the original
             partition. If the function returns a non dataframe output, a dask Series will be returned.
         """
+        ra_col = self.hc_structure.catalog_info.ra_column
+        dec_col = self.hc_structure.catalog_info.dec_column
         if compute_single_partition:
             if partition_index is None:
                 partition_index = 0
@@ -396,6 +399,15 @@ class HealpixDataset:
             )
             if not isinstance(result, pd.DataFrame):
                 return result
+            # Check that ra and dec columns are still present
+            for col in [ra_col, dec_col]:
+                if col not in result.columns:
+                    raise ValueError(f"'{col}' not found in result. map_partitions() must not change names of ra or dec columns '{ra_col}', '{dec_col}'.")
+            # Check that ra and dec values haven't changed
+            # (ra/dec of result is a subset of ra/dec of original)
+            # NOTE this doesn't guarantee that ra and dec values won't change for the whole catalog!
+            if not _compare_radec_cols(partition, result, ra_col, dec_col):
+                raise ValueError(f"ra/dec values have changed. map_partitions() must not change values of ra or dec columns '{ra_col}', '{dec_col}'.")
             output_op = FromSinglePartition(result, pixel)
             hc_structure = self.hc_structure.__class__(
                 catalog_info=self.hc_structure.catalog_info,
@@ -410,6 +422,7 @@ class HealpixDataset:
         if isinstance(new_cat._operation, MapPartitions) and not new_cat._operation.is_df_type:
             col_name = new_cat.columns[0]
             return new_cat.to_dask_dataframe()[col_name]
+        # NOTE unsure how to do the ra/dec checks above in this case
         return new_cat
 
     def __getitem__(self, item: str | list[str] | dd.Series) -> Self | dd.Series:
@@ -1971,3 +1984,10 @@ class HealpixDataset:
             f"Expect up to {mem_size} in MEMORY.\n"
             f"Expect up to {disk_size} on DISK."
         )
+
+
+def _compare_radec_cols(orig_df, res_df, ra_column, dec_column):
+    """Return whether ra/dec values of res_df are a subset of orig_df."""
+    radec_orig = zip(orig_df[ra_column], orig_df[dec_column])
+    radec_res = zip(res_df[ra_column], res_df[dec_column])
+    return set(radec_res).issubset(set(radec_orig))
