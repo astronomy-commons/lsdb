@@ -2,7 +2,9 @@
 from pathlib import Path
 
 import astropy.units as u
+import dask
 import dask.dataframe as dd
+import dask.local
 import hats as hc
 import hats.io.file_io
 import hats.pixel_math.healpix_shim as hp
@@ -131,6 +133,63 @@ def test_catalog_compute_with_distributed_client_progress_bar_kwargs(small_sky_o
 
     n_partitions = len(small_sky_order1_catalog.get_healpix_pixels())
     tqdm_mock.assert_called_once_with(total=n_partitions, desc="Custom Desc", disable=False, ascii=True)
+
+
+@pytest.mark.parametrize("scheduler", ["synchronous", "threads"])
+def test_catalog_compute_with_configured_local_scheduler(small_sky_order1_catalog, scheduler):
+    expected = small_sky_order1_catalog.compute(progress_bar=False)
+    with dask.config.set(scheduler=scheduler):
+        result = small_sky_order1_catalog.compute(progress_bar=False)
+    pd.testing.assert_frame_equal(result, expected)
+
+
+@pytest.mark.parametrize("scheduler", ["synchronous", "threads"])
+def test_catalog_compute_with_scheduler_argument(small_sky_order1_catalog, scheduler, mocker):
+    tqdm_callback = mocker.patch("lsdb.catalog.dataset.healpix_dataset.TqdmCallback")
+    expected = small_sky_order1_catalog.compute(progress_bar=False)
+    tqdm_callback.reset_mock()
+
+    result = small_sky_order1_catalog.compute(scheduler=scheduler)
+
+    pd.testing.assert_frame_equal(result, expected)
+    tqdm_callback.assert_called_once_with(desc="Computing Catalog", disable=False)
+
+
+def test_catalog_compute_with_scheduler_callable(small_sky_order1_catalog):
+    calls = []
+
+    def get(dsk, keys, **kwargs):
+        calls.append(keys)
+        return dask.local.get_sync(dsk, keys, **kwargs)
+
+    result = small_sky_order1_catalog.compute(progress_bar=False, scheduler=get)
+
+    assert len(calls) == 1
+    pd.testing.assert_frame_equal(result, small_sky_order1_catalog.compute(progress_bar=False))
+
+
+def test_catalog_compute_scheduler_argument_beats_default_client(small_sky_order1_catalog, mocker):
+    expected = small_sky_order1_catalog.compute(progress_bar=False)
+    with local_client() as client:
+        client_get = mocker.spy(client, "get")
+        result = small_sky_order1_catalog.compute(progress_bar=False, scheduler="synchronous")
+    assert client_get.call_count == 0
+    pd.testing.assert_frame_equal(result, expected)
+
+
+def test_catalog_compute_with_client_argument(small_sky_order1_catalog, mocker):
+    tqdm_mock = mocker.patch("lsdb.catalog.dataset.healpix_dataset.tqdm")
+    expected = small_sky_order1_catalog.compute(progress_bar=False)
+    with local_client() as client:
+        result = small_sky_order1_catalog.compute(progress_bar=False, scheduler=client)
+    pd.testing.assert_frame_equal(result, expected)
+    n_partitions = len(small_sky_order1_catalog.get_healpix_pixels())
+    tqdm_mock.assert_called_once_with(total=n_partitions, desc="Computing Catalog", disable=True)
+
+
+def test_catalog_compute_with_unknown_scheduler_raises(small_sky_order1_catalog):
+    with pytest.raises(ValueError, match="Expected one of"):
+        small_sky_order1_catalog.compute(progress_bar=False, scheduler="not-a-scheduler")
 
 
 def test_catalog_compute_empty_with_distributed_client(small_sky_order1_catalog):

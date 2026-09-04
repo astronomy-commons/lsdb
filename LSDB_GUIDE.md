@@ -381,6 +381,9 @@ with Client(
   
   # Compute to memory (use only for small results)
   df = cat.compute()
+
+# `compute()` and `write_catalog()` also run without a client, on the scheduler set in the Dask
+# configuration or passed explicitly, e.g. `cat.compute(scheduler="synchronous")`.
 ```
 
 #### CRITICAL
