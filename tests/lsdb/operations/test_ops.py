@@ -297,6 +297,29 @@ def test_select_pixels_build_raises_for_pixel_not_in_base():
         op.build()
 
 
+def test_select_pixels_build_requests_only_selected_pixels_from_base(mocker):
+    base = _base_select()
+    selected = base.healpix_pixels[:1]
+    op = SelectPixels(base, selected)
+    base_build = mocker.spy(base, "build")
+
+    graph = op.build()
+
+    base_build.assert_called_once_with(pixels=selected)
+    assert list(graph.pixel_to_key_map) == selected
+    assert len(graph.graph) == 1
+
+
+def test_select_pixels_build_intersects_requested_pixels():
+    base = _base_select()
+    op = SelectPixels(base, base.healpix_pixels)
+
+    graph = op.build(pixels=[HealpixPixel(0, 1), HealpixPixel(5, 5)])
+
+    assert list(graph.pixel_to_key_map) == [HealpixPixel(0, 1)]
+    assert len(graph.graph) == 1
+
+
 def _meta_aa():
     return npd.NestedFrame({"a": pd.Series(dtype="int64")})
 

@@ -406,11 +406,11 @@ class SelectPixels(Operation):
 
     def build(self, pixels: list[HealpixPixel] | None = None) -> HealpixGraph:
         """Build the HealpixGraph from the Operation."""
-        # intersect the caller's requested subset with a provided pixel filter
+        # intersect the caller's requested subset with a provided pixel filter, and only ask
+        # the base operation for those pixels instead of building its full graph and culling it
         pixel_set = set(pixels) if pixels is not None else None
-        effective = [p for p in self.pixels if pixel_set is None or p in pixel_set]
-        previous = self.base.build(pixels=effective if pixels is not None else None)
-        selected_pixels = effective if pixels is not None else self.pixels
+        selected_pixels = [p for p in self.pixels if pixel_set is None or p in pixel_set]
+        previous = self.base.build(pixels=selected_pixels)
         for p in selected_pixels:
             if p not in previous.pixel_to_key_map:
                 raise ValueError(f"Selected Pixel {p} not found in operation")
