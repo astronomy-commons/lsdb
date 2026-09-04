@@ -55,7 +55,7 @@ def _map_s3_storage_options(fsso: dict) -> dict[str, str]:
     Https endpoints are passed through as-is. Plain http endpoints are passed
     but accompanied by ``allow_http=true`` to opt into the object_store's
     refusal to use plain http endpoints by default.
-    
+
     Parameters
     ----------
     fsso : dict
