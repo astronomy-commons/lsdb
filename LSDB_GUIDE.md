@@ -359,6 +359,10 @@ from lsdb.streams import CatalogStream
 stream = CatalogStream(cat, partitions_per_chunk=10)
 for chunk in stream:
     process(chunk)
+
+# Compute a single partition in the current process, without a Dask client
+(partition,) = cat.to_delayed(pixels=[pixel])
+df = partition.compute(scheduler="synchronous")
 ```
 
 ### Compute and write results

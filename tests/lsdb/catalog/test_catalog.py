@@ -1272,3 +1272,46 @@ def test_filter_empty_catalog_and(small_sky_order1_catalog):
     assert isinstance(computed, npd.NestedFrame)
     assert len(computed) == 0
     assert computed.columns.tolist() == empty_catalog.columns.tolist()
+
+
+def test_to_delayed_returns_all_partitions(small_sky_order1_catalog):
+    delayed = small_sky_order1_catalog.to_delayed()
+    assert len(delayed) == small_sky_order1_catalog.npartitions
+    result = npd.NestedFrame(pd.concat(dask.compute(*delayed, scheduler="synchronous")))
+    pd.testing.assert_frame_equal(result, small_sky_order1_catalog.compute(progress_bar=False))
+
+
+def test_to_delayed_pixels(small_sky_order1_catalog):
+    pixels = small_sky_order1_catalog.get_healpix_pixels()
+    requested = [pixels[2], pixels[0]]
+
+    delayed = small_sky_order1_catalog.to_delayed(pixels=requested)
+
+    assert len(delayed) == 2
+    for partition, pixel in zip(delayed, requested):
+        # only the requested partitions are in the graph, and no scheduler configuration is needed
+        assert len(dict(partition.dask)) == 2
+        expected = small_sky_order1_catalog.get_partition(pixel.order, pixel.pixel).compute(
+            progress_bar=False
+        )
+        pd.testing.assert_frame_equal(partition.compute(scheduler="synchronous"), expected)
+
+
+def test_to_delayed_pixels_accepts_order_pixel_tuples(small_sky_order1_catalog):
+    pixel = small_sky_order1_catalog.get_healpix_pixels()[1]
+    (partition,) = small_sky_order1_catalog.to_delayed(pixels=[(pixel.order, pixel.pixel)])
+    expected = small_sky_order1_catalog.get_partition(pixel.order, pixel.pixel).compute(progress_bar=False)
+    pd.testing.assert_frame_equal(partition.compute(scheduler="synchronous"), expected)
+
+
+def test_to_delayed_pixels_on_crossmatch(small_sky_catalog, small_sky_xmatch_catalog):
+    xmatch = small_sky_catalog.crossmatch(small_sky_xmatch_catalog, radius_arcsec=0.01 * 3600)
+    pixel = xmatch.get_healpix_pixels()[0]
+    (partition,) = xmatch.to_delayed(pixels=[pixel])
+    expected = xmatch.get_partition(pixel.order, pixel.pixel).compute(progress_bar=False)
+    pd.testing.assert_frame_equal(partition.compute(scheduler="synchronous"), expected)
+
+
+def test_to_delayed_unknown_pixel_raises(small_sky_order1_catalog):
+    with pytest.raises(ValueError, match="No data exists for pixels"):
+        small_sky_order1_catalog.to_delayed(pixels=[HealpixPixel(5, 5)])
