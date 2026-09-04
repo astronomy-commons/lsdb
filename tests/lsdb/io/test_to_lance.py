@@ -3,12 +3,23 @@ import sys
 import pandas as pd
 import pytest
 
+# `_map_s3_storage_options` and `_lance_storage_options_from_upath` are private helpers --
+# they're intentionally not exported from `lsdb.io`. We import them directly from the
+# submodule (rather than adding them to `lsdb/io/__init__.py`) so the public import
+# structure of `lsdb.io` stays untouched.
+from lsdb.io.to_lance import _lance_storage_options_from_upath, _map_s3_storage_options, to_lance
+
+
+class _FakePath:  # pylint: disable=too-few-public-methods
+    """Minimal stand-in for a UPath, exposing only what `_lance_storage_options_from_upath` reads."""
+
+    def __init__(self, protocol, storage_options=None):
+        self.protocol = protocol
+        self.storage_options = storage_options
+
 
 def test_import_error_without_lancedb(monkeypatch):
     """Importing to_lance without lancedb installed raises a helpful ImportError."""
-    # pylint: disable=import-outside-toplevel
-    from lsdb.io.to_lance import to_lance  # noqa: F401
-
     monkeypatch.setitem(sys.modules, "lancedb", None)
 
     # Call to_lance with dummy arguments to trigger ImportError
@@ -147,3 +158,97 @@ def test_to_lance_data_matches_nested(small_sky_with_nested_sources, tmp_path):
     original_df = pd.DataFrame(original_df).sort_values(index_col).reset_index(drop=True)
 
     pd.testing.assert_frame_equal(lance_df, original_df, check_like=True)
+
+
+# --- _map_s3_storage_options ------------------------------------------------
+#
+# These exercise the fsspec -> lance/object_store storage-options translation directly,
+# with no network access, no `lancedb` install required, and no S3 emulator involved.
+
+
+def test_map_s3_storage_options_all_fields_top_level():
+    """Every field `_map_s3_storage_options` understands is mapped when given at the top level."""
+    fsso = {
+        "key": "AKIDEXAMPLE",
+        "secret": "SECRETKEY",
+        "token": "SESSIONTOKEN",
+        "endpoint_url": "http://localhost:9000",
+        "region_name": "us-east-1",
+        "anon": True,
+    }
+
+    assert _map_s3_storage_options(fsso) == {
+        "aws_endpoint": "http://localhost:9000",
+        "allow_http": "true",  # http (not https) endpoint -> object_store needs an explicit opt-in
+        "aws_region": "us-east-1",
+        "aws_access_key_id": "AKIDEXAMPLE",
+        "aws_secret_access_key": "SECRETKEY",
+        "aws_session_token": "SESSIONTOKEN",
+        "aws_skip_signature": "true",
+    }
+
+
+def test_map_s3_storage_options_https_endpoint_omits_allow_http():
+    """An https:// endpoint should not set allow_http."""
+    lance_so = _map_s3_storage_options({"endpoint_url": "https://s3.amazonaws.com"})
+    assert lance_so == {"aws_endpoint": "https://s3.amazonaws.com"}
+    assert "allow_http" not in lance_so
+
+
+def test_map_s3_storage_options_falls_back_to_client_kwargs():
+    """endpoint_url/region_name nested under client_kwargs are read as a fallback."""
+    fsso = {
+        "client_kwargs": {
+            "endpoint_url": "http://minio.local:9000",
+            "region_name": "eu-west-1",
+        }
+    }
+
+    assert _map_s3_storage_options(fsso) == {
+        "aws_endpoint": "http://minio.local:9000",
+        "allow_http": "true",
+        "aws_region": "eu-west-1",
+    }
+
+
+def test_map_s3_storage_options_top_level_takes_precedence_over_client_kwargs():
+    """Top-level endpoint_url/region_name win over the same keys in client_kwargs."""
+    fsso = {
+        "endpoint_url": "https://top-level.example.com",
+        "region_name": "us-west-2",
+        "client_kwargs": {
+            "endpoint_url": "https://client-kwargs.example.com",
+            "region_name": "eu-central-1",
+        },
+    }
+
+    lance_so = _map_s3_storage_options(fsso)
+    assert lance_so["aws_endpoint"] == "https://top-level.example.com"
+    assert lance_so["aws_region"] == "us-west-2"
+
+
+# --- _lance_storage_options_from_upath --------------------------------------
+
+
+def test_lance_storage_options_from_upath_non_s3_returns_none():
+    """Protocols other than s3 (local files, memory, http, ...) get no translation."""
+    assert _lance_storage_options_from_upath(_FakePath(protocol="file")) is None
+    assert _lance_storage_options_from_upath(_FakePath(protocol="memory")) is None
+
+
+def test_lance_storage_options_from_upath_s3_delegates_to_mapper():
+    """For s3:// paths, the UPath's storage_options are handed to `_map_s3_storage_options`."""
+    fsso = {"key": "AKID", "secret": "SECRET", "region_name": "us-east-2"}
+
+    result = _lance_storage_options_from_upath(_FakePath(protocol="s3", storage_options=fsso))
+
+    assert result == {
+        "aws_access_key_id": "AKID",
+        "aws_secret_access_key": "SECRET",
+        "aws_region": "us-east-2",
+    }
+
+
+def test_lance_storage_options_from_upath_s3_handles_missing_storage_options():
+    """An s3 UPath with no storage_options at all still resolves to an empty mapping."""
+    assert not _lance_storage_options_from_upath(_FakePath(protocol="s3", storage_options=None))
