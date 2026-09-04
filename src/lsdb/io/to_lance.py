@@ -46,6 +46,27 @@ def _lance_storage_options_from_upath(path: UPath) -> dict[str, str] | None:
 
 
 def _map_s3_storage_options(fsso: dict) -> dict[str, str]:
+    """Translate fsspec-style S3 storage_options into the key names
+    lance/lancedb's Rust ``object_store`` backend expects.
+
+    Will read endpoint_url/region_name from the top level of ``fsso``, or
+    from ``fsso["client_kwargs"]`` if not present at the top level.
+
+    Https endpoints are passed through as-is. Plain http endpoints are passed
+    but accompanied by ``allow_http=true`` to opt into the object_store's
+    refusal to use plain http endpoints by default.
+    
+    Parameters
+    ----------
+    fsso : dict
+        A dict of fsspec-style S3 storage_options, e.g. from a UPath's
+        ``storage_options`` attribute.
+
+    Returns
+    -------
+    dict[str, str]
+        A dict of storage_options suitable for ``lancedb.connect``.
+    """
     lance_so: dict[str, str] = {}
 
     client_kwargs = fsso.get("client_kwargs", {}) or {}
