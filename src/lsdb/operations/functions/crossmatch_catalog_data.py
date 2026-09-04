@@ -4,9 +4,11 @@ import warnings
 from typing import TYPE_CHECKING
 
 import nested_pandas as npd
+import numpy as np
 import pandas as pd
 from hats.catalog import TableProperties
 from hats.pixel_math import HealpixPixel
+from hats.pixel_math.spatial_index import healpix_to_spatial_index
 from hats.pixel_tree import PixelAlignment, PixelAlignmentType
 
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
@@ -84,7 +86,7 @@ def perform_crossmatch(
         in the `Catalog` class.
     how : str
         How to handle the crossmatch of the two catalogs.
-        One of {'left', 'inner'}.
+        One of {'inner', 'left', 'outer'}.
     suffixes : tuple[str,str] | None
         The suffixes to append to the column names from the left and right catalogs respectively
     suffix_method : str, default 'all_columns'
@@ -113,7 +115,8 @@ def perform_crossmatch(
             spatial_index_order=left_catalog_info.healpix_order,
         )
 
-    # For left-join, right_df can be None - replace with empty DataFrame with correct schema
+    right_primary_df = right_df
+    # For left/outer joins, right_df can be None - replace it with the correct empty schema.
     if right_df is None:
         # When right_df is None (partitions don't spatially overlap), we need to create
         # an empty DataFrame with the right catalog's columns and correct dtypes from meta_df.
@@ -180,6 +183,27 @@ def perform_crossmatch(
         # right_margin_df = right_df.copy()
     right_joined_df = concat_partition_and_margin(right_df, right_margin_df)
 
+    right_native_mask = np.zeros(len(right_joined_df), dtype=bool)
+    if right_primary_df is not None and len(right_primary_df):
+        right_native_mask[: len(right_primary_df)] = True
+        if aligned_pixel.order > right_pix.order:
+            spatial_index_order = right_catalog_info.healpix_order
+            if spatial_index_order is None:
+                raise ValueError("Right catalog must define a spatial-index order")
+            lower = healpix_to_spatial_index(
+                aligned_pixel.order,
+                aligned_pixel.pixel,
+                spatial_index_order=spatial_index_order,
+            )
+            upper = healpix_to_spatial_index(
+                aligned_pixel.order,
+                aligned_pixel.pixel + 1,
+                spatial_index_order=spatial_index_order,
+            )
+            right_native_mask[: len(right_primary_df)] &= np.asarray(
+                (right_primary_df.index >= lower) & (right_primary_df.index < upper)
+            )
+
     crossmatch_args = CrossmatchArgs(
         left_df=left_df,
         right_df=right_joined_df,
@@ -190,6 +214,7 @@ def perform_crossmatch(
         left_catalog_info=left_catalog_info,
         right_catalog_info=right_catalog_info,
         right_margin_catalog_info=right_margin_catalog_info,
+        right_native_mask=right_native_mask,
     )
     return algorithm.crossmatch(crossmatch_args, how, suffixes, suffix_method)
 
@@ -331,7 +356,7 @@ def crossmatch_catalog_data(
         in the `Catalog` class.
     how: str
         How to handle the crossmatch of the two catalogs.
-        One of {'left', 'inner'}.
+        One of {'inner', 'left', 'outer'}.
     suffixes : tuple[str,str]
         The suffixes to append to the column names from the left and
         right catalogs respectively.
@@ -359,10 +384,11 @@ def crossmatch_catalog_data(
             RuntimeWarning,
         )
 
-    # perform alignment on the two catalogs
-    alignment = align_catalogs(
-        left, right, add_right_margin=True, alignment_type=PixelAlignmentType[how.upper()]
-    )
+    # ``outer`` intentionally uses left pixel alignment: it recovers unmatched primary-right
+    # rows from pixel pairs already fetched for the left catalog without scanning right-only sky.
+    # ponytail: add stable right-row identity and global reconciliation before using OUTER alignment.
+    alignment_type = PixelAlignmentType.LEFT if how == "outer" else PixelAlignmentType[how.upper()]
+    alignment = align_catalogs(left, right, add_right_margin=True, alignment_type=alignment_type)
     # get lists of HEALPix pixels from alignment to pass to cross-match
     left_pixels, right_pixels = get_healpix_pixels_from_alignment(alignment)
     aligned_pixels = get_aligned_pixels_from_alignment(alignment)

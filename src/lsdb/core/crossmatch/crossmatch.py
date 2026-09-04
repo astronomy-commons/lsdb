@@ -1,3 +1,5 @@
+from typing import Literal
+
 import nested_pandas as npd
 import pandas as pd
 
@@ -37,7 +39,7 @@ def crossmatch(
     algorithm: AbstractCrossmatchAlgorithm | None = None,
     output_catalog_name: str | None = None,
     require_right_margin: bool = False,
-    how: str = "inner",
+    how: Literal["inner", "left", "outer"] = "inner",
     suffixes: tuple[str, str] | None = None,
     left_args: dict | None = None,
     right_args: dict | None = None,
@@ -77,9 +79,9 @@ def crossmatch(
         The name of the output catalog.
     require_right_margin : bool, default False
         Whether to require a right margin.
-    how: str
-        How to handle the crossmatch of the two catalogs.
-        One of {'left', 'inner'}.  Defaults to 'inner'.
+    how : {'inner', 'left', 'outer'}, default 'inner'
+        How to assemble the crossmatch. ``outer`` includes unmatched primary-right rows from
+        left-aligned pixel pairs already read by the operation, but does not scan right-only sky coverage.
     suffixes : tuple[str,str] or None, default None
         Suffixes to append to overlapping column names.
     left_args : dict or None, default None
