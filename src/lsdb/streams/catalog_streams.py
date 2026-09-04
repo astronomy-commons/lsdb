@@ -2,12 +2,16 @@ from collections.abc import Iterator
 from typing import Optional
 
 import dask
+import hats
+import hats.pixel_math.healpix_shim as hp
+import nested_pandas as npd
 import numpy as np
 import pandas as pd
 from dask.delayed import Delayed
 from dask.distributed import Client, Future
+from hats.io.skymap import read_skymap
 
-from lsdb import Catalog
+from lsdb import Catalog, PixelSearch
 
 
 class _FakeFuture:
@@ -254,3 +258,189 @@ class CatalogIterator(Iterator[pd.DataFrame]):
             raise TypeError("Length is not defined for an InfiniteStream.")
 
         return int(np.ceil(len(self.partitions_left) / self.iterable.partitions_per_chunk))
+
+
+class CrossMatchStream(InfiniteStream):
+    def __init__(
+        self,
+        catalog: Catalog,
+        *crossmatch_kwargs: dict[str, object],
+        client: Client | None = None,
+        partitions_per_chunk: int = 1,
+        seed: int | None = None,
+        count_fraction_threshold: float,
+    ) -> None:
+        super().__init__(
+            catalog,
+            client=client,
+            partitions_per_chunk=partitions_per_chunk,
+            seed=seed,
+        )
+
+        all_kwargs = []
+        for kwargs in crossmatch_kwargs:
+            new_kwargs = kwargs.copy()
+            new_kwargs["suffixes"] = ("", "_" + kwargs["other"].name)
+            new_kwargs["suffix_method"] = "all_columns"
+            new_kwargs["how"] = "left"
+            all_kwargs.append(new_kwargs)
+        self.crossmatch_kwargs = all_kwargs
+
+        self.accumulative_meta = []
+        result_catalog = self.catalog
+        for right_catalog_kwargs in self.crossmatch_kwargs:
+            result_catalog = result_catalog.crossmatch(**right_catalog_kwargs).map_partitions(
+                lambda df: df.drop(columns=["_dist_arcsec"])
+            )
+            self.accumulative_meta.append(result_catalog.meta)
+
+        self._pixels = result_catalog._operation.healpix_pixels
+
+        if self.seed is None:
+            self.rng = np.random.default_rng()
+        else:
+            self.rng = np.random.default_rng((1 << 32, self.seed))
+
+        right_catalogs = [kwargs["other"] for kwargs in self.crossmatch_kwargs]
+        self.mask_generator = CountMapForPixel(
+            self.catalog, right_catalogs, count_fraction=count_fraction_threshold
+        )
+
+    def submit_next_partitions(self, partitions: np.ndarray) -> Future | _FakeFuture:
+        """Submit the next set of partitions for computation."""
+
+        # The crossmatch may leave no pixels at all, when the pixel does not overlap
+        # with one of the right catalogs, so we use whatever keys the build has
+        # instead of looking the left pixel up.
+        def _to_delayed(operation):
+            build = operation.build()
+            return [Delayed(key, build.graph) for key in build.keys]
+
+        selected = []
+
+        for pixel_index in partitions:
+            pixel = self._pixels[pixel_index]
+            right_catalog_mask = self.mask_generator.get_pixel_catalog_mask(pixel, self.rng)
+
+            def skipped_crossmatch(
+                partition: npd.NestedFrame, *, meta_to_match: npd.NestedFrame
+            ) -> npd.NestedFrame:
+                old_n_columns = partition.shape[1]
+                new_columns = meta_to_match.columns[old_n_columns:]
+                for column in new_columns:
+                    partition[column] = pd.Series(None, dtype=meta_to_match[column].dtype)
+                return partition
+
+            result_catalog = self.catalog.search(PixelSearch(pixel, fine=True))
+            for cross_match_kwargs, do_crossmatch, meta_to_match in zip(
+                self.crossmatch_kwargs, right_catalog_mask, self.accumulative_meta, strict=True
+            ):
+                if do_crossmatch:
+                    result_catalog = result_catalog.crossmatch(**cross_match_kwargs).map_partitions(
+                        lambda df: df.drop(columns=["_dist_arcsec"])
+                    )
+                else:
+                    result_catalog = result_catalog.map_partitions(
+                        skipped_crossmatch, meta_to_match=meta_to_match
+                    )
+
+            selected.extend(_to_delayed(result_catalog._operation))
+
+        if len(selected) == 0:
+            return _FakeFuture(self.accumulative_meta[-1])
+
+        if len(selected) == 1:
+            if self.client is None:
+                return _FakeFuture(selected[0].compute())
+            return self.client.compute(selected[0])
+
+        combined = dask.delayed(pd.concat)(selected)
+        if self.client is None:
+            return _FakeFuture(combined.compute())
+        return self.client.compute(combined)
+
+
+class CountMapForPixel:
+    """Helper methods to select HEALPix for selective crossmatch"""
+
+    def __init__(
+        self,
+        catalog: hats.catalog.Catalog,
+        right_catalogs: list[hats.catalog.Catalog],
+        *,
+        count_fraction: float,
+    ):
+        """Initialize the CountMapForPixel class.
+
+        Attributes
+        ----------
+        catalog: hats.catalog.Catalog
+            the Anchor catalog
+        right_catalogs: list[hats.catalog.Catalog]
+            the list of catalogs to crossmatch to
+        count_fraction: float
+            the fraction of matches above which a pixel is selected for crossmatching
+        """
+        self.catalog = catalog
+        self.right_catalogs = right_catalogs
+        self.count_fraction = count_fraction
+        self.load_catalog_counts()
+
+    def load_catalog_counts(self):
+        """Reads fixed order skymaps from on-disk fits file"""
+        left_count_map = np.asarray(read_skymap(self.catalog.hc_structure, None))
+        right_count_maps = []
+        for cat in self.right_catalogs:
+            skymap = np.asarray(read_skymap(cat.hc_structure, None))
+            right_count_maps.append(skymap)
+        self.left_count_map = left_count_map
+        self.right_count_maps = right_count_maps
+        self.minimums = [
+            self.reorder_skymap_and_get_min(left_count_map, right_count_map)
+            for right_count_map in right_count_maps
+        ]
+
+    def reorder_skymap_and_get_min(self, counts_a, counts_b):
+        """Reorder two skymaps to a common order and return the minimum counts."""
+        order_a = hp.npix2order(len(counts_a))
+        order_b = hp.npix2order(len(counts_b))
+        common_order = min(order_a, order_b)
+
+        # Reorder counts_a to common_order
+        if order_a > common_order:
+            counts_a = counts_a.reshape(-1, 4 ** (order_a - common_order)).sum(axis=1)
+
+        # Reorder counts_b to common_order
+        if order_b > common_order:
+            counts_b = counts_b.reshape(-1, 4 ** (order_b - common_order)).sum(axis=1)
+
+        # Return the minimum of the two skymaps
+        return np.minimum(counts_a, counts_b)
+
+    def get_pixel_catalog_mask(self, pixel, rng) -> np.ndarray:
+        """Get boolean mask for all right catalogs.
+
+        If True, do crossmatch for provided pixel for catalog at index."""
+        mask = []
+        for right_counts, pair_minimums in zip(self.right_count_maps, self.minimums):
+            do_crossmatch = get_fraction_at_pixel(pixel, pair_minimums, self.left_count_map, right_counts)
+            mask.append(do_crossmatch >= self.count_fraction)
+        return np.asarray(mask, dtype=bool)
+
+
+def get_fraction_at_pixel(pixel, minimums, left_counts, right_counts) -> float:
+    """Gets the expected match fraction for a pixel of the crossmatch of two catalogs."""
+    total_minimums = get_sum_at_pixel(pixel, minimums)
+    total_left_counts = get_sum_at_pixel(pixel, left_counts)
+    total_right_counts = get_sum_at_pixel(pixel, right_counts)
+    if total_right_counts == 0:
+        return 0.0
+    return float(total_minimums / total_right_counts)
+
+
+def get_sum_at_pixel(pixel, counts) -> int:
+    """Gets the sum of counts for a pixel of a catalog."""
+    order, ipix = pixel
+    order_counts = hp.npix2order(len(counts))
+    selected_counts = counts[ipix * 4 ** (order_counts - order) : (ipix + 1) * 4 ** (order_counts - order)]
+    return selected_counts.sum()
