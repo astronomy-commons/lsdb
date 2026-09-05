@@ -20,9 +20,9 @@ from dask import threaded
 from dask.base import get_scheduler
 from dask.delayed import Delayed
 from deprecated import deprecated  # type: ignore
-from distributed import as_completed
+from distributed import Client, as_completed
 from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
-from hats.pixel_math import HealpixPixel
+from hats.pixel_math import HealpixPixel, get_healpix_pixel
 from hats.pixel_math.healpix_pixel_function import get_pixel_argsort
 from human_readable import file_size, int_comma
 from mocpy import MOC
@@ -479,8 +479,13 @@ class HealpixDataset:
         """
         return self.meta.nested_columns
 
-    def compute(self, progress_bar=True, tqdm_kwargs=None) -> npd.NestedFrame:
-        """Compute dask distributed dataframe to pandas dataframe.
+    def compute(
+        self,
+        progress_bar: bool = True,
+        tqdm_kwargs: dict | None = None,
+        scheduler: str | Callable | Client | None = None,
+    ) -> npd.NestedFrame:
+        """Compute the catalog into a single in-memory NestedFrame.
 
         Note:
             This method materializes the computation result in memory. If the
@@ -488,6 +493,33 @@ class HealpixDataset:
             using ``Catalog.write_catalog`` instead. It supports automatic resumption
             via ``resume=True``, which allows recovery from both interruptions and
             late-breaking errors in long-running computations.
+
+        Parameters
+        ----------
+        progress_bar : bool, default True
+            Whether to display a progress bar while the partitions are computed.
+        tqdm_kwargs : dict or None, default None
+            Additional keyword arguments for the tqdm progress bar (for example ``desc``).
+        scheduler : str, Callable, dask.distributed.Client or None, default None
+            The scheduler that runs the task graph, with the same meaning as the ``scheduler``
+            argument of ``dask.compute``: the name of a local scheduler (``"synchronous"``,
+            ``"threads"`` or ``"processes"``), ``"distributed"``, a ``dask.distributed.Client``
+            or a scheduler ``get`` function. If None, the scheduler is resolved the way Dask
+            does: the ``scheduler`` key of the Dask configuration if set, else the default
+            ``dask.distributed.Client`` if one exists, else the threaded scheduler.
+
+        Returns
+        -------
+        npd.NestedFrame
+            The computed catalog, with the rows of all partitions concatenated.
+
+        Examples
+        --------
+        >>> import lsdb
+        >>> catalog = lsdb.generate_catalog(500, 10, seed=1)
+        >>> df = catalog.compute(progress_bar=False, scheduler="synchronous")
+        >>> len(df)
+        500
         """
         est_size = self.est_size()
         if est_size is not None and est_size > COMPUTE_SIZE_WARNING_THRESHOLD_KiB:
@@ -502,11 +534,8 @@ class HealpixDataset:
 
         desc = tqdm_kwargs.pop("desc", "Computing Catalog") if tqdm_kwargs else "Computing Catalog"
         healpix_graph = self._operation.build()
-        schedule = get_scheduler()
-        if schedule is None:
-            with TqdmCallback(desc=desc, disable=not progress_bar, **(tqdm_kwargs or {})):
-                result = threaded.get(healpix_graph.graph, healpix_graph.keys, sync=False)
-        else:
+        schedule = get_scheduler(scheduler=scheduler) or threaded.get
+        if isinstance(getattr(schedule, "__self__", None), Client):
             futures = schedule(healpix_graph.graph, healpix_graph.keys, sync=False)
             result_map = {}
             with tqdm(total=len(futures), desc=desc, disable=not progress_bar, **(tqdm_kwargs or {})) as pbar:
@@ -516,6 +545,9 @@ class HealpixDataset:
             result = [
                 result_map[healpix_graph.pixel_to_key_map[p]] for p in self.get_ordered_healpix_pixels()
             ]
+        else:
+            with TqdmCallback(desc=desc, disable=not progress_bar, **(tqdm_kwargs or {})):
+                result = schedule(healpix_graph.graph, healpix_graph.keys)
 
         # If no partitions, return an empty dataframe with the correct schema
         # This can happen through partition pruning operations
@@ -538,25 +570,52 @@ class HealpixDataset:
 
         return df
 
-    def to_delayed(self) -> list[Delayed]:
-        """Get a list of Dask Delayed objects for each partition in the dataset
+    def to_delayed(self, pixels: Sequence[HealpixPixel | tuple[int, int]] | None = None) -> list[Delayed]:
+        """Get a list of Dask Delayed objects, one for each partition in the dataset
 
         Used for more advanced custom operations, but to use again with LSDB, the delayed objects
         must be converted to a Dask DataFrame and used with extra metadata to construct an
         LSDB Dataset.
 
+        Parameters
+        ----------
+        pixels : sequence of HealpixPixel or (order, pixel) tuples, or None, default None
+            If given, only the task graph of these partitions is built, and one Delayed object
+            is returned per requested pixel, in the same order. This is much cheaper than
+            building the whole catalog when only a few partitions are needed at a time, for
+            example when streaming them. If None, every partition of the dataset is returned.
+
         Returns
         -------
         list[Delayed]
             A list of Dask delayed partitions.
+
+        Raises
+        ------
+        ValueError
+            If any of the requested pixels is not a partition of the dataset.
+
+        Examples
+        --------
+        Compute a single partition in the current process, without a Dask client:
+
+        >>> import lsdb
+        >>> catalog = lsdb.generate_catalog(500, 10, seed=1)
+        >>> pixel = catalog.get_healpix_pixels()[0]
+        >>> (partition,) = catalog.to_delayed(pixels=[pixel])
+        >>> df = partition.compute(scheduler="synchronous")
+        >>> len(df) == len(catalog.get_partition(pixel.order, pixel.pixel).compute(progress_bar=False))
+        True
         """
-        build = self._operation.build()
-        graph = build.graph
-        keys = build.keys
-
-        graph_delayed = [Delayed(key, graph) for key in keys]
-
-        return graph_delayed
+        if pixels is None:
+            build = self._operation.build()
+            return [Delayed(key, build.graph) for key in build.keys]
+        requested = [get_healpix_pixel(pixel) for pixel in pixels]
+        build = self._operation.build(pixels=requested)
+        missing = [pixel for pixel in requested if pixel not in build.pixel_to_key_map]
+        if missing:
+            raise ValueError(f"No data exists for pixels {missing}")
+        return [Delayed(build.pixel_to_key_map[pixel], build.graph) for pixel in requested]
 
     def _check_unloaded_columns(self, column_names: Sequence[str | None] | None):
         """Check the list of given column names for any that are valid

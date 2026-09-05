@@ -4,7 +4,6 @@ from typing import Optional
 import dask
 import numpy as np
 import pandas as pd
-from dask.delayed import Delayed
 from dask.distributed import Client, Future
 
 from lsdb import Catalog
@@ -87,8 +86,7 @@ class CatalogStream:
         if not isinstance(catalog, Catalog):
             raise ValueError(f"The provided catalog input type {type(catalog)} is not a lsdb.Catalog object.")
 
-        self.operation = catalog._operation  # pylint: disable=protected-access
-        self._pixels = catalog._operation.healpix_pixels  # pylint: disable=protected-access
+        self._pixels = catalog.get_healpix_pixels()
 
         self.client = client
         self.partitions_per_chunk = min(partitions_per_chunk, self.catalog.npartitions)
@@ -112,15 +110,7 @@ class CatalogStream:
 
     def submit_next_partitions(self, partitions: np.ndarray) -> Future | _FakeFuture:
         """Submit the next set of partitions for computation."""
-
-        # Intended to be used with single partition builds
-        def _to_delayed(operation, pixel):
-            build = operation.build(pixels=[pixel])
-            graph = build.graph
-            key = build.pixel_to_key_map[pixel]
-            return Delayed(key, graph)
-
-        selected = [_to_delayed(self.operation, self._pixels[i]) for i in partitions]
+        selected = self.catalog.to_delayed(pixels=[self._pixels[i] for i in partitions])
 
         if len(selected) == 1:
             if self.client is None:

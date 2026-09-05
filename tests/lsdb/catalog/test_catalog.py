@@ -2,7 +2,9 @@
 from pathlib import Path
 
 import astropy.units as u
+import dask
 import dask.dataframe as dd
+import dask.local
 import hats as hc
 import hats.io.file_io
 import hats.pixel_math.healpix_shim as hp
@@ -131,6 +133,63 @@ def test_catalog_compute_with_distributed_client_progress_bar_kwargs(small_sky_o
 
     n_partitions = len(small_sky_order1_catalog.get_healpix_pixels())
     tqdm_mock.assert_called_once_with(total=n_partitions, desc="Custom Desc", disable=False, ascii=True)
+
+
+@pytest.mark.parametrize("scheduler", ["synchronous", "threads"])
+def test_catalog_compute_with_configured_local_scheduler(small_sky_order1_catalog, scheduler):
+    expected = small_sky_order1_catalog.compute(progress_bar=False)
+    with dask.config.set(scheduler=scheduler):
+        result = small_sky_order1_catalog.compute(progress_bar=False)
+    pd.testing.assert_frame_equal(result, expected)
+
+
+@pytest.mark.parametrize("scheduler", ["synchronous", "threads"])
+def test_catalog_compute_with_scheduler_argument(small_sky_order1_catalog, scheduler, mocker):
+    tqdm_callback = mocker.patch("lsdb.catalog.dataset.healpix_dataset.TqdmCallback")
+    expected = small_sky_order1_catalog.compute(progress_bar=False)
+    tqdm_callback.reset_mock()
+
+    result = small_sky_order1_catalog.compute(scheduler=scheduler)
+
+    pd.testing.assert_frame_equal(result, expected)
+    tqdm_callback.assert_called_once_with(desc="Computing Catalog", disable=False)
+
+
+def test_catalog_compute_with_scheduler_callable(small_sky_order1_catalog):
+    calls = []
+
+    def get(dsk, keys, **kwargs):
+        calls.append(keys)
+        return dask.local.get_sync(dsk, keys, **kwargs)
+
+    result = small_sky_order1_catalog.compute(progress_bar=False, scheduler=get)
+
+    assert len(calls) == 1
+    pd.testing.assert_frame_equal(result, small_sky_order1_catalog.compute(progress_bar=False))
+
+
+def test_catalog_compute_scheduler_argument_beats_default_client(small_sky_order1_catalog, mocker):
+    expected = small_sky_order1_catalog.compute(progress_bar=False)
+    with local_client() as client:
+        client_get = mocker.spy(client, "get")
+        result = small_sky_order1_catalog.compute(progress_bar=False, scheduler="synchronous")
+    assert client_get.call_count == 0
+    pd.testing.assert_frame_equal(result, expected)
+
+
+def test_catalog_compute_with_client_argument(small_sky_order1_catalog, mocker):
+    tqdm_mock = mocker.patch("lsdb.catalog.dataset.healpix_dataset.tqdm")
+    expected = small_sky_order1_catalog.compute(progress_bar=False)
+    with local_client() as client:
+        result = small_sky_order1_catalog.compute(progress_bar=False, scheduler=client)
+    pd.testing.assert_frame_equal(result, expected)
+    n_partitions = len(small_sky_order1_catalog.get_healpix_pixels())
+    tqdm_mock.assert_called_once_with(total=n_partitions, desc="Computing Catalog", disable=True)
+
+
+def test_catalog_compute_with_unknown_scheduler_raises(small_sky_order1_catalog):
+    with pytest.raises(ValueError, match="Expected one of"):
+        small_sky_order1_catalog.compute(progress_bar=False, scheduler="not-a-scheduler")
 
 
 def test_catalog_compute_empty_with_distributed_client(small_sky_order1_catalog):
@@ -1213,3 +1272,72 @@ def test_filter_empty_catalog_and(small_sky_order1_catalog):
     assert isinstance(computed, npd.NestedFrame)
     assert len(computed) == 0
     assert computed.columns.tolist() == empty_catalog.columns.tolist()
+
+
+def test_to_delayed_returns_all_partitions(small_sky_order1_catalog):
+    delayed = small_sky_order1_catalog.to_delayed()
+    assert len(delayed) == small_sky_order1_catalog.npartitions
+    result = npd.NestedFrame(pd.concat(dask.compute(*delayed, scheduler="synchronous")))
+    pd.testing.assert_frame_equal(result, small_sky_order1_catalog.compute(progress_bar=False))
+
+
+def test_to_delayed_pixels(small_sky_order1_catalog):
+    pixels = small_sky_order1_catalog.get_healpix_pixels()
+    requested = [pixels[2], pixels[0]]
+
+    delayed = small_sky_order1_catalog.to_delayed(pixels=requested)
+
+    assert len(delayed) == 2
+    for partition, pixel in zip(delayed, requested):
+        # only the requested partitions are in the graph, and no scheduler configuration is needed
+        assert len(dict(partition.dask)) == 2
+        expected = small_sky_order1_catalog.get_partition(pixel.order, pixel.pixel).compute(
+            progress_bar=False
+        )
+        pd.testing.assert_frame_equal(partition.compute(scheduler="synchronous"), expected)
+
+
+def test_to_delayed_pixels_accepts_order_pixel_tuples(small_sky_order1_catalog):
+    pixel = small_sky_order1_catalog.get_healpix_pixels()[1]
+    (partition,) = small_sky_order1_catalog.to_delayed(pixels=[(pixel.order, pixel.pixel)])
+    expected = small_sky_order1_catalog.get_partition(pixel.order, pixel.pixel).compute(progress_bar=False)
+    pd.testing.assert_frame_equal(partition.compute(scheduler="synchronous"), expected)
+
+
+def test_to_delayed_pixels_preserves_duplicate_requests(small_sky_order1_catalog):
+    pixels = small_sky_order1_catalog.get_healpix_pixels()
+    requested = [pixels[1], pixels[0], pixels[1]]
+
+    delayed = small_sky_order1_catalog.to_delayed(pixels=requested)
+
+    assert len(delayed) == 3
+    assert delayed[0].key == delayed[2].key
+    assert delayed[0].key != delayed[1].key
+    assert len(dict(delayed[0].dask)) == 2
+    results = dask.compute(*delayed, scheduler="synchronous")
+    for pixel, result in zip(requested, results):
+        expected = small_sky_order1_catalog.get_partition(pixel.order, pixel.pixel).compute(
+            progress_bar=False
+        )
+        pd.testing.assert_frame_equal(result, expected)
+
+
+def test_to_delayed_explicit_empty_subset(small_sky_order1_catalog):
+    assert small_sky_order1_catalog.to_delayed(pixels=[]) == []
+
+
+def test_to_delayed_pixels_on_crossmatch(small_sky_catalog, small_sky_xmatch_catalog):
+    xmatch = small_sky_catalog.crossmatch(small_sky_xmatch_catalog, radius_arcsec=0.01 * 3600)
+    pixel = xmatch.get_healpix_pixels()[0]
+    (partition,) = xmatch.to_delayed(pixels=[pixel])
+    expected = xmatch.get_partition(pixel.order, pixel.pixel).compute(progress_bar=False)
+    pd.testing.assert_frame_equal(partition.compute(scheduler="synchronous"), expected)
+
+
+@pytest.mark.parametrize("include_known", [False, True])
+def test_to_delayed_unknown_pixel_raises(small_sky_order1_catalog, include_known):
+    pixels = [HealpixPixel(5, 5)]
+    if include_known:
+        pixels.extend(small_sky_order1_catalog.get_healpix_pixels()[:1])
+    with pytest.raises(ValueError, match="No data exists for pixels"):
+        small_sky_order1_catalog.to_delayed(pixels=pixels)

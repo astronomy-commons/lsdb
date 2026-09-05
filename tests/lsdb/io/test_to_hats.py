@@ -2,6 +2,7 @@ import shutil
 from importlib.metadata import version
 from pathlib import Path
 
+import dask
 import hats as hc
 import numpy as np
 import numpy.testing as npt
@@ -588,3 +589,13 @@ def test_save_catalog_no_summary_by_default(small_sky_order1_catalog, tmp_path):
     base_catalog_path = tmp_path / "small_sky"
     small_sky_order1_catalog.write_catalog(base_catalog_path, as_collection=False)
     assert not (base_catalog_path / "README.md").exists()
+
+
+def test_write_catalog_with_configured_local_scheduler(small_sky_order1_catalog, tmp_path):
+    base_catalog_path = tmp_path / "small_sky_order1"
+    with dask.config.set(scheduler="synchronous"):
+        small_sky_order1_catalog.write_catalog(base_catalog_path, catalog_name="small_sky_order1")
+    written = lsdb.open_catalog(base_catalog_path)
+    pd.testing.assert_frame_equal(
+        written.compute(progress_bar=False), small_sky_order1_catalog.compute(progress_bar=False)
+    )

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import functools
 from abc import ABC, abstractmethod
 from typing import Self
 
@@ -65,6 +66,24 @@ class Operation(ABC):
     def healpix_pixels(self) -> list[HealpixPixel]:  # pragma: no cover
         """Returns the list of HEALPix pixels that this operation's partitions correspond to"""
         pass
+
+    @functools.cached_property
+    def _pixel_to_index(self) -> dict[HealpixPixel, int]:
+        """Index the fixed pixel layout once for repeated subset builds.
+
+        Catalog transformations create new operations rather than changing an
+        existing operation's pixel layout, so this lookup can be reused.
+        """
+        return {pixel: i for i, pixel in enumerate(self.healpix_pixels)}
+
+    def _get_build_indices(self, pixels: list[HealpixPixel] | None) -> range | list[int]:
+        """Resolve a subset in operation order, retaining the original task indices."""
+        if pixels is None:
+            return range(len(self.healpix_pixels))
+        if not pixels:
+            return []
+        pixel_to_index = self._pixel_to_index
+        return sorted({pixel_to_index[pixel] for pixel in pixels if pixel in pixel_to_index})
 
     def optimize(self) -> Self:  # pragma: no cover
         """Returns an optimized version of the operation."""

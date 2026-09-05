@@ -102,12 +102,10 @@ class FromHealpixMap(Operation):
         return self.pixels
 
     def build(self, pixels: list[HealpixPixel] | None = None) -> HealpixGraph:
-        target = set(pixels) if pixels is not None else None
         graph = {}
         pixel_keys = {}
-        for i, pixel in enumerate(self.pixels):
-            if target is not None and pixel not in target:
-                continue
+        for i in self._get_build_indices(pixels):
+            pixel = self.pixels[i]
             key = (self.key_name, i)
             map_kwargs = {k: v[i] for k, v in self.map_kwargs.items()} if self.map_kwargs is not None else {}
             func = _verified(self.func, self.meta) if self.verify_meta else self.func
@@ -314,12 +312,16 @@ class MapPartitions(Operation):
     def healpix_pixels(self) -> list[HealpixPixel]:
         return self.base.healpix_pixels
 
+    @functools.cached_property
+    def _pixel_to_index(self) -> dict[HealpixPixel, int]:
+        """Share the base lookup because mapping preserves the pixel layout."""
+        return self.base._pixel_to_index  # pylint: disable=protected-access
+
     def build(self, pixels: list[HealpixPixel] | None = None) -> HealpixGraph:
         """Build the HealpixGraph from the Operation"""
         previous = self.base.build(pixels=pixels)
         graph = previous.graph
         pixel_keys = {}
-        pixel_to_index = {pixel: i for i, pixel in enumerate(self.healpix_pixels)}
         func = self.func
         include_pixel = self.include_pixel
         meta = self.meta
@@ -338,7 +340,7 @@ class MapPartitions(Operation):
                 ) from e
 
         for pixel, prev_key in previous.pixel_to_key_map.items():
-            i = pixel_to_index[pixel]
+            i = self._pixel_to_index[pixel]
             args = self.args
             if self.include_pixel:
                 args = (HealpixPixel(*pixel),) + args
@@ -406,11 +408,10 @@ class SelectPixels(Operation):
 
     def build(self, pixels: list[HealpixPixel] | None = None) -> HealpixGraph:
         """Build the HealpixGraph from the Operation."""
-        # intersect the caller's requested subset with a provided pixel filter
-        pixel_set = set(pixels) if pixels is not None else None
-        effective = [p for p in self.pixels if pixel_set is None or p in pixel_set]
-        previous = self.base.build(pixels=effective if pixels is not None else None)
-        selected_pixels = effective if pixels is not None else self.pixels
+        # intersect the caller's requested subset with a provided pixel filter, and only ask
+        # the base operation for those pixels instead of building its full graph and culling it
+        selected_pixels = [self.pixels[i] for i in self._get_build_indices(pixels)]
+        previous = self.base.build(pixels=selected_pixels)
         for p in selected_pixels:
             if p not in previous.pixel_to_key_map:
                 raise ValueError(f"Selected Pixel {p} not found in operation")
@@ -501,12 +502,11 @@ class AlignAndApply(Operation):
 
     def _resolve_build_subsets(
         self, pixels: list[HealpixPixel] | None
-    ) -> tuple[list[int], list[list[HealpixPixel] | None]]:
+    ) -> tuple[range | list[int], list[list[HealpixPixel] | None]]:
         """Resolve the output indices to build and the pixel subset to request from each input"""
         if pixels is None:
-            return list(range(len(self.output_pixels))), [None] * len(self.input_cats)
-        requested = set(pixels)
-        output_indices = [i for i, p in enumerate(self.output_pixels) if p in requested]
+            return range(len(self.output_pixels)), [None] * len(self.input_cats)
+        output_indices = self._get_build_indices(pixels)
         input_pixel_subsets: list[list[HealpixPixel] | None] = [
             [p for i in output_indices if (p := pixel_list[i]) is not None] for pixel_list in self.pixel_lists
         ]
