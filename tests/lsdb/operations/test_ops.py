@@ -1,3 +1,4 @@
+import dask
 import nested_pandas as npd
 import pandas as pd
 import pytest
@@ -44,6 +45,77 @@ def test_meta_inferred_with_map_kwargs_raises_type_error():
     # inferring meta, so the first pixel's func call is missing `scale`.
     with pytest.raises(TypeError):
         _ = op.meta
+
+
+def test_from_healpix_map_subset_preserves_positions_and_map_kwargs():
+    def scaled_frame(pixel, scale):
+        frame = _make_frame(pixel)
+        frame["a"] *= scale
+        return frame
+
+    pixels = [HealpixPixel(0, i) for i in [2, 0, 3, 1]]
+    scales = [10, 20, 30, 40]
+    op = FromHealpixMap(scaled_frame, pixels, meta=_base_meta(), map_kwargs={"scale": scales})
+    graph = op.build(pixels=[pixels[3], pixels[1], pixels[3], HealpixPixel(5, 5)])
+
+    assert list(graph.pixel_to_key_map) == [pixels[1], pixels[3]]
+    assert graph.keys == [(op.key_name, 1), (op.key_name, 3)]
+    assert len(graph.graph) == 2
+    for index, result in zip([1, 3], dask.get(graph.graph, graph.keys)):
+        expected = npd.NestedFrame(scaled_frame(pixels[index], scales[index]))
+        pd.testing.assert_frame_equal(result, expected)
+
+
+class _CountingPixels(list):
+    """Track full pixel-list traversal without relying on wall-clock timings."""
+
+    def __init__(self, pixels):
+        super().__init__(pixels)
+        self.iterations = 0
+
+    def __iter__(self):
+        self.iterations += 1
+        return super().__iter__()
+
+
+def test_mapping_chain_indexes_pixel_layout_only_once():
+    pixels = _CountingPixels([HealpixPixel(0, i) for i in range(8)])
+    op = FromHealpixMap(_make_frame, pixels, meta=_base_meta())
+    for _ in range(3):
+        op = MapPartitions(op, _func, meta=_base_meta())
+
+    op.build(pixels=[pixels[3]])
+
+    assert pixels.iterations == 1
+
+
+@pytest.mark.parametrize("kind", ["source", "mapped", "selected", "aligned"])
+def test_repeated_subset_builds_do_not_rescan_all_pixels(kind):
+    pixels = _CountingPixels([HealpixPixel(0, i) for i in range(8)])
+    base = FromHealpixMap(_make_frame, pixels, meta=_base_meta())
+    if kind == "mapped":
+        op = MapPartitions(base, _func, meta=_base_meta())
+    elif kind == "selected":
+        op = MapPartitions(SelectPixels(base, pixels), _func, meta=_base_meta())
+    elif kind == "aligned":
+        op = AlignAndApply([], [], _func_aa, _meta_aa(), pixels)
+    else:
+        op = base
+
+    op.build(pixels=[pixels[3]])
+    initial_iterations = pixels.iterations
+    for index in [5, 1, 7]:
+        graph = op.build(pixels=[pixels[index]])
+        assert list(graph.pixel_to_key_map) == [pixels[index]]
+        assert graph.keys == [(op.key_name, index)]
+        assert len(graph.graph) <= 2
+    assert pixels.iterations == initial_iterations
+
+    empty = op.build(pixels=[])
+    missing = op.build(pixels=[HealpixPixel(5, 5)])
+    assert empty.graph == missing.graph == {}
+    assert empty.pixel_to_key_map == missing.pixel_to_key_map == {}
+    assert pixels.iterations == initial_iterations
 
 
 @pytest.mark.parametrize(
@@ -320,6 +392,22 @@ def test_select_pixels_build_intersects_requested_pixels():
     assert len(graph.graph) == 1
 
 
+def test_select_pixels_chain_preserves_local_partition_indices():
+    pixels = [HealpixPixel(0, i) for i in range(4)]
+    base = FromHealpixMap(_make_frame, pixels, meta=_base_meta())
+    selected = SelectPixels(base, [pixels[2], pixels[0], pixels[3]])
+    mapped = MapPartitions(selected, _func, meta=_base_meta())
+    op = SelectPixels(mapped, [pixels[3], pixels[2]])
+
+    graph = op.build(pixels=[pixels[2], pixels[3], pixels[2], HealpixPixel(5, 5)])
+
+    assert list(graph.pixel_to_key_map) == [pixels[3], pixels[2]]
+    assert graph.keys == [(mapped.key_name, 2), (mapped.key_name, 0)]
+    assert len(graph.graph) == 4
+    for pixel, result in zip([pixels[3], pixels[2]], dask.get(graph.graph, graph.keys)):
+        pd.testing.assert_frame_equal(result, npd.NestedFrame(_make_frame(pixel)))
+
+
 def _meta_aa():
     return npd.NestedFrame({"a": pd.Series(dtype="int64")})
 
@@ -362,3 +450,31 @@ def test_align_and_apply_name_includes_func_and_input_op_names_or_none():
     )
 
     assert aa.name == f"AlignAndApply({funcname(_func_aa)}, {op1.name}, None, {op2.name})"
+
+
+def test_align_and_apply_subset_preserves_alignment_and_shared_inputs(mocker):
+    def take_input(frame, absent, _pixel, absent_pixel, info, absent_info):
+        assert absent is absent_pixel is info is absent_info is None
+        return frame
+
+    pixels = [HealpixPixel(0, i) for i in range(4)]
+    base = FromHealpixMap(_make_frame, pixels[:1], meta=_base_meta())
+    catalog = mocker.Mock(_operation=base, hc_structure=mocker.Mock(catalog_info=None))
+    op = AlignAndApply(
+        [catalog, None],
+        [[None, pixels[0], pixels[0], pixels[3]], [None] * 4],
+        take_input,
+        _base_meta(),
+        pixels,
+    )
+
+    graph = op.build(pixels=[pixels[2], pixels[0], pixels[1], pixels[2], pixels[3]])
+
+    assert list(graph.pixel_to_key_map) == pixels
+    assert graph.keys == [(op.key_name, i) for i in range(4)]
+    # Two outputs share one input task; explicit None and unavailable inputs receive empty metadata.
+    assert len(graph.graph) == 5
+    results = dask.get(graph.graph, graph.keys)
+    for index, result in enumerate(results):
+        expected = _base_meta() if index in [0, 3] else npd.NestedFrame(_make_frame(pixels[0]))
+        pd.testing.assert_frame_equal(result, expected)

@@ -1304,6 +1304,28 @@ def test_to_delayed_pixels_accepts_order_pixel_tuples(small_sky_order1_catalog):
     pd.testing.assert_frame_equal(partition.compute(scheduler="synchronous"), expected)
 
 
+def test_to_delayed_pixels_preserves_duplicate_requests(small_sky_order1_catalog):
+    pixels = small_sky_order1_catalog.get_healpix_pixels()
+    requested = [pixels[1], pixels[0], pixels[1]]
+
+    delayed = small_sky_order1_catalog.to_delayed(pixels=requested)
+
+    assert len(delayed) == 3
+    assert delayed[0].key == delayed[2].key
+    assert delayed[0].key != delayed[1].key
+    assert len(dict(delayed[0].dask)) == 2
+    results = dask.compute(*delayed, scheduler="synchronous")
+    for pixel, result in zip(requested, results):
+        expected = small_sky_order1_catalog.get_partition(pixel.order, pixel.pixel).compute(
+            progress_bar=False
+        )
+        pd.testing.assert_frame_equal(result, expected)
+
+
+def test_to_delayed_explicit_empty_subset(small_sky_order1_catalog):
+    assert small_sky_order1_catalog.to_delayed(pixels=[]) == []
+
+
 def test_to_delayed_pixels_on_crossmatch(small_sky_catalog, small_sky_xmatch_catalog):
     xmatch = small_sky_catalog.crossmatch(small_sky_xmatch_catalog, radius_arcsec=0.01 * 3600)
     pixel = xmatch.get_healpix_pixels()[0]
@@ -1312,6 +1334,10 @@ def test_to_delayed_pixels_on_crossmatch(small_sky_catalog, small_sky_xmatch_cat
     pd.testing.assert_frame_equal(partition.compute(scheduler="synchronous"), expected)
 
 
-def test_to_delayed_unknown_pixel_raises(small_sky_order1_catalog):
+@pytest.mark.parametrize("include_known", [False, True])
+def test_to_delayed_unknown_pixel_raises(small_sky_order1_catalog, include_known):
+    pixels = [HealpixPixel(5, 5)]
+    if include_known:
+        pixels.extend(small_sky_order1_catalog.get_healpix_pixels()[:1])
     with pytest.raises(ValueError, match="No data exists for pixels"):
-        small_sky_order1_catalog.to_delayed(pixels=[HealpixPixel(5, 5)])
+        small_sky_order1_catalog.to_delayed(pixels=pixels)
