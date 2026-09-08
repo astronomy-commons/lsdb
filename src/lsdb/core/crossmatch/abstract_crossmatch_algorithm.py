@@ -96,14 +96,34 @@ class AbstractCrossmatchAlgorithm(ABC):
             l_inds = np.array([], dtype=np.int64)
             r_inds = np.array([], dtype=np.int64)
             extra_cols = self.extra_columns.copy() if self.extra_columns is not None else pd.DataFrame()
+        elif how == "outer" and (crossmatch_args.left_df is None or len(crossmatch_args.left_df) == 0):
+            # Outer-only: a right-only pixel with no nearby left rows matches nothing. Every
+            # primary right row is emitted unmatched, and there are no left rows to emit.
+            l_inds = np.array([], dtype=np.int64)
+            r_inds = np.array([], dtype=np.int64)
+            extra_cols = self.extra_columns.copy() if self.extra_columns is not None else pd.DataFrame()
         else:
             l_inds, r_inds, extra_cols = self.perform_crossmatch(crossmatch_args)
         if not len(l_inds) == len(r_inds) == len(extra_cols):
             raise ValueError(
                 "Crossmatch algorithm must return left and right indices and extra columns with same length"
             )
+        left_df = crossmatch_args.left_df
+        right_matched_mask = None
+        if how == "outer" and crossmatch_args.left_native_len is not None:
+            native_len = crossmatch_args.left_native_len
+            visitor = l_inds >= native_len
+            if visitor.any():
+                # Pairs from neighborhood (non-native) left rows are emitted by those rows'
+                # home pixels; here they only mark their right rows as matched.
+                right_matched_mask = np.zeros(len(crossmatch_args.right_df), dtype=bool)
+                right_matched_mask[r_inds] = True
+                l_inds = l_inds[~visitor]
+                r_inds = r_inds[~visitor]
+                extra_cols = extra_cols[~visitor].reset_index(drop=True)
+            left_df = left_df.iloc[:native_len]
         return self._create_crossmatch_df(
-            crossmatch_args.left_df,
+            left_df,
             crossmatch_args.right_df,
             l_inds,
             r_inds,
@@ -112,6 +132,7 @@ class AbstractCrossmatchAlgorithm(ABC):
             suffixes,
             suffix_method,
             right_native_mask=crossmatch_args.right_native_mask,
+            right_matched_mask=right_matched_mask,
             left_coordinates=(
                 crossmatch_args.left_catalog_info.ra_column,
                 crossmatch_args.left_catalog_info.dec_column,
@@ -251,6 +272,7 @@ class AbstractCrossmatchAlgorithm(ABC):
         suffixes: tuple[str, str],
         suffix_method: str = "all_columns",
         right_native_mask: npt.NDArray[np.bool_] | None = None,
+        right_matched_mask: npt.NDArray[np.bool_] | None = None,
         left_coordinates: tuple[str | None, str | None] | None = None,
         right_coordinates: tuple[str | None, str | None] | None = None,
     ) -> npd.NestedFrame:
@@ -277,6 +299,9 @@ class AbstractCrossmatchAlgorithm(ABC):
         right_native_mask : np.ndarray or None
             Rows from the primary right partition that belong to the aligned pixel.
             Required for outer joins so margin rows are not emitted independently.
+        right_matched_mask : np.ndarray or None
+            Additional right rows to treat as matched when emitting unmatched right rows
+            (outer joins only): rows paired with neighborhood left rows handled elsewhere.
         left_coordinates : tuple[str or None, str or None] or None
             Original left RA and declination column names.
         right_coordinates : tuple[str or None, str or None] or None
@@ -312,6 +337,8 @@ class AbstractCrossmatchAlgorithm(ABC):
                 raise ValueError("Outer crossmatch requires a native-right mask matching right_df")
             matched_right = np.zeros(len(right_df), dtype=bool)
             matched_right[right_idx] = True
+            if right_matched_mask is not None:
+                matched_right |= right_matched_mask
             right_unmatched = right_df.iloc[right_native_mask & ~matched_right].reset_index(drop=True)
             null_left = pd.DataFrame(
                 {col: _na_series_for_dtype(left_df[col].dtype, len(right_unmatched)) for col in left_df}
@@ -328,7 +355,7 @@ class AbstractCrossmatchAlgorithm(ABC):
 
         out = cast(npd.NestedFrame, pd.concat(blocks, axis=0, ignore_index=True))
         out.set_index(index_name, inplace=True)
-        if not len(extra_cols.columns):
+        if extra_cols.columns.empty:
             return npd.NestedFrame(out)
 
         n_unmatched = len(out) - len(extra_cols)

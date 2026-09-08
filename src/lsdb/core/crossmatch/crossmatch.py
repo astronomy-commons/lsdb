@@ -4,7 +4,9 @@ import nested_pandas as npd
 import pandas as pd
 
 from lsdb.catalog import Catalog
-from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
+from lsdb.core.crossmatch.abstract_crossmatch_algorithm import (
+    AbstractCrossmatchAlgorithm,
+)
 from lsdb.loaders.dataframe.from_dataframe import from_dataframe
 
 
@@ -80,8 +82,9 @@ def crossmatch(
     require_right_margin : bool, default False
         Whether to require a right margin.
     how : {'inner', 'left', 'outer'}, default 'inner'
-        How to assemble the crossmatch. ``outer`` includes unmatched primary-right rows from
-        left-aligned pixel pairs already read by the operation, but does not scan right-only sky coverage.
+        How to assemble the crossmatch. ``outer`` also emits unmatched right rows,
+        scanning sky covered only by the right catalog; it requires margin caches on
+        both catalogs (left threshold at least the matching radius, right at least twice).
     suffixes : tuple[str,str] or None, default None
         Suffixes to append to overlapping column names.
     left_args : dict or None, default None

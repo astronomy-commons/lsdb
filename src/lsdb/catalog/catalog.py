@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import warnings
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Callable, Iterable, Literal, overload
+from typing import Any, Callable, Literal, overload
 
 import dask.dataframe as dd
 import hats as hc
@@ -10,7 +11,9 @@ import nested_pandas as npd
 import pandas as pd
 from deprecated import deprecated  # type: ignore
 from hats.catalog.catalog_collection import CatalogCollection
-from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
+from hats.catalog.healpix_dataset.healpix_dataset import (
+    HealpixDataset as HCHealpixDataset,
+)
 from hats.catalog.index.index_catalog import IndexCatalog as HCIndexCatalog
 from hats.pixel_math import HealpixPixel
 from pandas._typing import Renamer
@@ -22,7 +25,9 @@ from lsdb.catalog.association_catalog import AssociationCatalog
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
 from lsdb.catalog.map_catalog import MapCatalog
 from lsdb.catalog.margin_catalog import MarginCatalog
-from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
+from lsdb.core.crossmatch.abstract_crossmatch_algorithm import (
+    AbstractCrossmatchAlgorithm,
+)
 from lsdb.core.crossmatch.kdtree_match import KdTreeCrossmatch
 from lsdb.core.search.abstract_search import AbstractSearch
 from lsdb.core.search.index_search import IndexSearch
@@ -262,13 +267,13 @@ class Catalog(HealpixDataset):
         """Perform a cross-match between two catalogs
 
         The pixels from each catalog are aligned via a `PixelAlignment`, and cross-matching is
-        performed on each selected pixel pair. Inner joins use overlapping pixels; left and outer
-        joins use the left catalog's coverage.
+        performed on each selected pixel pair. Inner joins use overlapping pixels; left joins
+        use the left catalog's coverage; outer joins use the union of both.
 
-        Outer joins add unmatched primary-right rows from pixel pairs already read for the left
-        alignment. They do not scan right-only sky coverage. A right row matched only through a
-        neighboring margin may also be emitted as unmatched in its primary pixel; exact
-        full-catalog outer semantics require global right-row reconciliation.
+        Outer joins emit right rows with no match anywhere as unmatched rows, including sky
+        covered only by the right catalog. Exact outer semantics require margin caches on
+        both catalogs: the left margin threshold must be at least the matching radius, and
+        the right margin threshold at least twice the matching radius.
 
         The resulting catalog uses the left catalog's coordinates. For right-only rows from an
         outer join, those coordinate columns and the index are populated from the right row.
@@ -330,9 +335,8 @@ class Catalog(HealpixDataset):
             If true, raises an error if the right margin is missing which could
             lead to incomplete crossmatches.
         how : {'inner', 'left', 'outer'}, default 'inner'
-            How to assemble the crossmatch. ``outer`` is limited to unmatched right rows in
-            left-aligned pixel pairs already read by the operation; it does not scan right-only
-            catalog coverage.
+            How to assemble the crossmatch. ``outer`` also emits unmatched right rows,
+            scanning sky covered only by the right catalog.
         suffixes : Tuple[str,str] or None
             A pair of suffixes to be appended to the end of each column
             name when they are joined. Default uses the name of the catalog for the suffix.
@@ -389,6 +393,8 @@ class Catalog(HealpixDataset):
             If both the kwargs for the default algorithm and an `algorithm` are specified.
             If the `suffixes` provided is not a tuple of two strings.
             If the right catalog has no margin and `require_right_margin` is True.
+            If ``how="outer"`` and either catalog lacks a margin cache, a margin threshold
+            is too small for the matching radius, or the algorithm defines no ``radius_arcsec``.
         """
         if not isinstance(other, Catalog):
             raise TypeError(
@@ -791,7 +797,7 @@ class Catalog(HealpixDataset):
                 return hc.read_hats(field_index)
             raise TypeError(f"Catalog index for field `{field}` is not of type `HCIndexCatalog`")
 
-        field_indexes = {field_name: _get_index_catalog_for_field(field_name) for field_name in values.keys()}
+        field_indexes = {field_name: _get_index_catalog_for_field(field_name) for field_name in values}
         return self.search(IndexSearch(values, field_indexes, fine))
 
     def search(self, search: AbstractSearch):

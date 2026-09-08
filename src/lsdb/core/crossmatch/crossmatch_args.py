@@ -31,3 +31,11 @@ class CrossmatchArgs:
     """Catalog info for the right margin partition"""
     right_native_mask: npt.NDArray[np.bool_] | None = None
     """Rows in ``right_df`` belonging to the primary right partition for this aligned pixel."""
+    left_native_len: int | None = None
+    """Number of leading rows of ``left_df`` belonging to the aligned pixel.
+
+    For outer joins, ``left_df`` may be extended with *neighborhood* rows from the left
+    catalog's margin cache or from partitions adjacent to right-only sky. Those trailing
+    rows participate in matching only to exclude right rows from unmatched emission;
+    they are never emitted by this task (they are emitted by their home pixel's task).
+    """
