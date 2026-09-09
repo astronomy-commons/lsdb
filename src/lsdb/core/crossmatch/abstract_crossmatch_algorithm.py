@@ -353,7 +353,7 @@ class AbstractCrossmatchAlgorithm(ABC):
             f"Logic error: extra_cols ({len(extra_cols)} rows) cannot exceed output ({len(out)} rows). "
             "This indicates a bug in the crossmatch algorithm or the join logic."
         )
-        if n_unmatched:
+        if n_unmatched > 0:
             null_extra = pd.DataFrame(
                 {col: _na_series_for_dtype(extra_cols[col].dtype, n_unmatched) for col in extra_cols}
             )
