@@ -91,14 +91,9 @@ class AbstractCrossmatchAlgorithm(ABC):
         npd.NestedFrame
             The dataframe containing the results of the crossmatch.
         """
-        # If there's no right data, return empty arrays (e.g., for left-join with no matching right partition)
-        if crossmatch_args.right_df is None or len(crossmatch_args.right_df) == 0:
-            l_inds = np.array([], dtype=np.int64)
-            r_inds = np.array([], dtype=np.int64)
-            extra_cols = self.extra_columns.copy() if self.extra_columns is not None else pd.DataFrame()
-        elif how == "outer" and (crossmatch_args.left_df is None or len(crossmatch_args.left_df) == 0):
-            # Outer-only: a right-only pixel with no nearby left rows matches nothing. Every
-            # primary right row is emitted unmatched, and there are no left rows to emit.
+        right_empty = crossmatch_args.right_df is None or len(crossmatch_args.right_df) == 0
+        left_empty = crossmatch_args.left_df is None or len(crossmatch_args.left_df) == 0
+        if right_empty or (how == "outer" and left_empty):
             l_inds = np.array([], dtype=np.int64)
             r_inds = np.array([], dtype=np.int64)
             extra_cols = self.extra_columns.copy() if self.extra_columns is not None else pd.DataFrame()
