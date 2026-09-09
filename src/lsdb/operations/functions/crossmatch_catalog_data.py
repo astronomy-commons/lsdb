@@ -7,11 +7,12 @@ from typing import TYPE_CHECKING
 import nested_pandas as npd
 import numpy as np
 import pandas as pd
-from hats.catalog import TableProperties
-from hats.pixel_math import HealpixPixel
+from hats.catalog.dataset.table_properties import TableProperties
+from hats.pixel_math.healpix_pixel import HealpixPixel
 from hats.pixel_math.pixel_margins import get_margin
 from hats.pixel_math.spatial_index import healpix_to_spatial_index
-from hats.pixel_tree import PixelAlignment, PixelAlignmentType, align_trees
+from hats.pixel_tree.pixel_alignment import PixelAlignment, align_trees
+from hats.pixel_tree.pixel_alignment_types import PixelAlignmentType
 from hats.pixel_tree.pixel_tree import PixelTree
 
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import (
@@ -145,9 +146,8 @@ def perform_crossmatch(
 
     left_native_len: int | None = None
     if how == "outer":
-        # Upstream validation guarantees a positive radius for outer joins; this task
-        # never runs otherwise. The assert documents and narrows that invariant.
-        assert radius_arcsec is not None
+        if radius_arcsec is None:
+            raise ValueError("Outer crossmatch requires a matching radius")
         if left_pix is None:
             # Right-only sky: the only possible left partners are rows near this pixel,
             # gathered from the left partitions adjacent to it. No left rows are native.
@@ -233,26 +233,28 @@ def perform_crossmatch(
         # right_margin_df = right_df.copy()
     right_joined_df = concat_partition_and_margin(right_df, right_margin_df)
 
-    right_native_mask = np.zeros(len(right_joined_df), dtype=bool)
-    if right_primary_df is not None and len(right_primary_df):
-        right_native_mask[: len(right_primary_df)] = True
-        if aligned_pixel.order > right_pix.order:
-            spatial_index_order = right_catalog_info.healpix_order
-            if spatial_index_order is None:
-                raise ValueError("Right catalog must define a spatial-index order")
-            lower = healpix_to_spatial_index(
-                aligned_pixel.order,
-                aligned_pixel.pixel,
-                spatial_index_order=spatial_index_order,
-            )
-            upper = healpix_to_spatial_index(
-                aligned_pixel.order,
-                aligned_pixel.pixel + 1,
-                spatial_index_order=spatial_index_order,
-            )
-            right_native_mask[: len(right_primary_df)] &= np.asarray(
-                (right_primary_df.index >= lower) & (right_primary_df.index < upper)
-            )
+    right_native_mask = None
+    if how == "outer":
+        right_native_mask = np.zeros(len(right_joined_df), dtype=bool)
+        if right_primary_df is not None and len(right_primary_df):
+            right_native_mask[: len(right_primary_df)] = True
+            if aligned_pixel.order > right_pix.order:
+                spatial_index_order = right_catalog_info.healpix_order
+                if spatial_index_order is None:
+                    raise ValueError("Right catalog must define a spatial-index order")
+                lower = healpix_to_spatial_index(
+                    aligned_pixel.order,
+                    aligned_pixel.pixel,
+                    spatial_index_order=spatial_index_order,
+                )
+                upper = healpix_to_spatial_index(
+                    aligned_pixel.order,
+                    aligned_pixel.pixel + 1,
+                    spatial_index_order=spatial_index_order,
+                )
+                right_native_mask[: len(right_primary_df)] &= np.asarray(
+                    (right_primary_df.index >= lower) & (right_primary_df.index < upper)
+                )
 
     crossmatch_args = CrossmatchArgs(
         left_df=left_df,
@@ -437,15 +439,7 @@ def _boundary_pixel_lists(
         ring = [(order + 1, cell) for cell in get_margin(order, pixel, 1)]
         rings[(order, pixel)] = ring
         ring_cells.update(ring)
-    cell_order = max(order for order, _ in ring_cells)
-    intervals = np.array(
-        [
-            [pixel << (2 * (cell_order - order)), (pixel + 1) << (2 * (cell_order - order))]
-            for order, pixel in ring_cells
-        ],
-        dtype=np.int64,
-    )
-    cell_tree = PixelTree(intervals[np.argsort(intervals[:, 0])], cell_order)
+    cell_tree = PixelTree.from_healpix(list(ring_cells))
     cell_alignment = align_trees(
         cell_tree, left.hc_structure.pixel_tree, alignment_type=PixelAlignmentType.INNER
     )
@@ -474,12 +468,7 @@ def _boundary_pixel_lists(
 def _plan_outer_alignment(
     left: Catalog, right: Catalog, alignment: PixelAlignment
 ) -> tuple[PixelAlignment, list[tuple[HealpixPixel, ...] | None]]:
-    """Adjust an OUTER alignment for crossmatching.
-
-    Drops aligned pixels that exist only in the right margin cache's halo: they hold no
-    primary right rows and would only create empty partitions, then plans the boundary
-    partitions each right-only pixel needs (see ``_boundary_pixel_lists``).
-    """
+    """Drop margin-only pixels from an OUTER alignment and plan boundary partitions."""
     pixel_mapping = alignment.pixel_mapping
     right_only = pixel_mapping[PixelAlignment.PRIMARY_ORDER_COLUMN_NAME].isna()
     if right_only.any():
@@ -497,15 +486,12 @@ def _plan_outer_alignment(
             drop=True
         )
     tree_order = alignment.pixel_tree.tree_order
+    intervals = np.empty((0, 2), dtype=np.int64)
     if len(pixel_mapping):
         orders = pixel_mapping[PixelAlignment.ALIGNED_ORDER_COLUMN_NAME].to_numpy(dtype=np.int64)
         pixels = pixel_mapping[PixelAlignment.ALIGNED_PIXEL_COLUMN_NAME].to_numpy(dtype=np.int64)
         shift = 2 * (tree_order - orders)
-        intervals = np.stack([np.left_shift(pixels, shift), np.left_shift(pixels + 1, shift)], axis=1).astype(
-            np.int64
-        )
-    else:
-        intervals = np.empty((0, 2), dtype=np.int64)
+        intervals = np.stack([np.left_shift(pixels, shift), np.left_shift(pixels + 1, shift)], axis=1)
     alignment = PixelAlignment(
         PixelTree(intervals, tree_order), pixel_mapping, alignment.alignment_type, alignment.moc
     )

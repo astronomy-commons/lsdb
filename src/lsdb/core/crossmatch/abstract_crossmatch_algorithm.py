@@ -114,8 +114,6 @@ class AbstractCrossmatchAlgorithm(ABC):
             native_len = crossmatch_args.left_native_len
             visitor = l_inds >= native_len
             if visitor.any():
-                # Pairs from neighborhood (non-native) left rows are emitted by those rows'
-                # home pixels; here they only mark their right rows as matched.
                 right_matched_mask = np.zeros(len(crossmatch_args.right_df), dtype=bool)
                 right_matched_mask[r_inds] = True
                 l_inds = l_inds[~visitor]
@@ -300,8 +298,7 @@ class AbstractCrossmatchAlgorithm(ABC):
             Rows from the primary right partition that belong to the aligned pixel.
             Required for outer joins so margin rows are not emitted independently.
         right_matched_mask : np.ndarray or None
-            Additional right rows to treat as matched when emitting unmatched right rows
-            (outer joins only): rows paired with neighborhood left rows handled elsewhere.
+            Additional right rows treated as matched when emitting unmatched right rows.
         left_coordinates : tuple[str or None, str or None] or None
             Original left RA and declination column names.
         right_coordinates : tuple[str or None, str or None] or None
@@ -327,9 +324,7 @@ class AbstractCrossmatchAlgorithm(ABC):
             matched_left = np.zeros(len(left_df), dtype=bool)
             matched_left[left_idx] = True
             left_unmatched = left_df.iloc[~matched_left].reset_index()
-            null_right = pd.DataFrame(
-                {col: _na_series_for_dtype(right_df[col].dtype, len(left_unmatched)) for col in right_df}
-            )
+            null_right = right_df.iloc[:0].reindex(left_unmatched.index, fill_value=None)
             blocks.append(pd.concat([left_unmatched, null_right], axis=1))
 
         if how == "outer":
@@ -339,14 +334,9 @@ class AbstractCrossmatchAlgorithm(ABC):
             matched_right[right_idx] = True
             if right_matched_mask is not None:
                 matched_right |= right_matched_mask
-            right_unmatched = right_df.iloc[right_native_mask & ~matched_right].reset_index(drop=True)
-            null_left = pd.DataFrame(
-                {col: _na_series_for_dtype(left_df[col].dtype, len(right_unmatched)) for col in left_df}
-            )
-            right_index = pd.Series(
-                right_df.index[right_native_mask & ~matched_right].to_numpy(), name=index_name
-            ).reset_index(drop=True)
-            right_only = pd.concat([right_index, null_left, right_unmatched], axis=1)
+            right_unmatched = right_df.iloc[right_native_mask & ~matched_right].reset_index(names=index_name)
+            null_left = left_df.iloc[:0].reindex(right_unmatched.index, fill_value=None)
+            right_only = pd.concat([null_left, right_unmatched], axis=1)
             if left_coordinates is not None and right_coordinates is not None:
                 for left_coord, right_coord in zip(left_coordinates, right_coordinates, strict=True):
                     if left_coord is not None and right_coord is not None:
