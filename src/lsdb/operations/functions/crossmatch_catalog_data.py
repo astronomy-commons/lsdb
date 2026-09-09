@@ -472,7 +472,7 @@ def _plan_outer_alignment(
     pixel_mapping = alignment.pixel_mapping
     right_only = pixel_mapping[PixelAlignment.PRIMARY_ORDER_COLUMN_NAME].isna()
     if right_only.any():
-        primary_right_pixels = {(p.order, p.pixel) for p in right.get_healpix_pixels()}
+        native_right_pixels = {(p.order, p.pixel) for p in right.get_healpix_pixels()}
         join_keys = pd.Series(
             list(
                 zip(
@@ -482,7 +482,7 @@ def _plan_outer_alignment(
             ),
             index=pixel_mapping.index,
         )
-        pixel_mapping = pixel_mapping[~right_only | join_keys.isin(primary_right_pixels)].reset_index(
+        pixel_mapping = pixel_mapping[~right_only | join_keys.isin(native_right_pixels)].reset_index(
             drop=True
         )
     tree_order = alignment.pixel_tree.tree_order
