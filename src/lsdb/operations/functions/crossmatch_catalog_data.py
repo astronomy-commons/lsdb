@@ -492,8 +492,12 @@ def _plan_outer_alignment(
         pixels = pixel_mapping[PixelAlignment.ALIGNED_PIXEL_COLUMN_NAME].to_numpy(dtype=np.int64)
         shift = 2 * (tree_order - orders)
         intervals = np.stack([np.left_shift(pixels, shift), np.left_shift(pixels + 1, shift)], axis=1)
+    pruned_tree = PixelTree(intervals, tree_order)
     alignment = PixelAlignment(
-        PixelTree(intervals, tree_order), pixel_mapping, alignment.alignment_type, alignment.moc
+        pruned_tree,
+        pixel_mapping,
+        alignment.alignment_type,
+        moc=pruned_tree.to_moc(),
     )
     return alignment, _boundary_pixel_lists(left, pixel_mapping)
 
