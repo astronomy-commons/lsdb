@@ -113,7 +113,7 @@ class AbstractCrossmatchAlgorithm(ABC):
                 right_matched_mask[r_inds] = True
                 l_inds = l_inds[~visitor]
                 r_inds = r_inds[~visitor]
-                extra_cols = extra_cols[~visitor].reset_index(drop=True)
+                extra_cols = extra_cols[~visitor]
             left_df = left_df.iloc[:native_len]
         return self._create_crossmatch_df(
             left_df,
