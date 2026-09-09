@@ -39,7 +39,7 @@ def open_catalog(
     filters: list[tuple[str]] | None = None,
     path_generator: Callable[[UPath, HealpixPixel, dict | None, str], UPath] = hc.io.pixel_catalog_file,
     show_statistics: bool = False,
-    storage_options: dict|None = None,
+    storage_options: dict | None = None,
     **kwargs,
 ) -> Catalog:
     """Open a catalog from a HATS path.
@@ -146,7 +146,7 @@ def read_hats(
     error_empty_filter: bool = True,
     filters: list[tuple[str]] | None = None,
     path_generator: Callable[[UPath, HealpixPixel, dict | None, str], UPath] = hc.io.pixel_catalog_file,
-    storage_options: dict|None = None,
+    storage_options: dict | None = None,
     **kwargs,
 ) -> HealpixDataset:
     """Load dataset from a HATS path.
