@@ -82,9 +82,10 @@ def crossmatch(
     require_right_margin : bool, default False
         Whether to require a right margin.
     how : {'inner', 'left', 'outer'}, default 'inner'
-        How to assemble the crossmatch. ``outer`` also emits unmatched right rows,
-        scanning sky covered only by the right catalog; it requires margin caches on
-        both catalogs (left threshold at least the matching radius, right at least twice).
+        ``inner`` emits only matched row pairs; ``left`` also emits unmatched left
+        rows; ``outer`` also emits unmatched rows from both catalogs, including sky
+        covered only by the right catalog. ``outer`` requires margin caches on both
+        catalogs (left threshold at least the matching radius, right at least twice).
     suffixes : tuple[str,str] or None, default None
         Suffixes to append to overlapping column names.
     left_args : dict or None, default None

@@ -335,8 +335,9 @@ class Catalog(HealpixDataset):
             If true, raises an error if the right margin is missing which could
             lead to incomplete crossmatches.
         how : {'inner', 'left', 'outer'}, default 'inner'
-            How to assemble the crossmatch. ``outer`` also emits unmatched right rows,
-            scanning sky covered only by the right catalog.
+            ``inner`` emits only matched row pairs; ``left`` also emits unmatched left
+            rows; ``outer`` also emits unmatched rows from both catalogs, including sky
+            covered only by the right catalog.
         suffixes : Tuple[str,str] or None
             A pair of suffixes to be appended to the end of each column
             name when they are joined. Default uses the name of the catalog for the suffix.
