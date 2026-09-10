@@ -175,29 +175,33 @@ class DataframeCatalogLoader:
         matches = []
 
         for col_idx, col_name in enumerate(list(self.dataframe.columns)):
-            # TODO reduce logical test complexity lol
             # exact match anywhere
             if str(col_name).lower() == search_term:
                 matches.append(col_name)
-            # known matches, only in the first 4 columns
-            elif (col_idx < 4) and (str(col_name).lower() in RADEC_COLUMN_MAPPING[search_term]):
-                matches.append(col_name)
-            # heuristic match, only in the first 4 columns
-            elif (col_idx < 4) and _is_radec_like(str(col_name).lower(), search_term):
-                logging.warning(
-                    f"Warning: heuristic match found for `{search_term}`: '{col_name}'. Please check correctness!"
-                )
-                matches.append(col_name)
+            # attempt column search only in the first 4 columns
+            elif col_idx < 4:
+                # known matches
+                if str(col_name).lower() in RADEC_COLUMN_MAPPING[search_term]:
+                    matches.append(col_name)
+                # heuristic match
+                elif _is_radec_like(str(col_name).lower(), search_term):
+                    logging.warning(
+                        f"Warning: heuristic match found for `{search_term}`: '{col_name}'. "
+                        "Please check correctness!"
+                    )
+                    matches.append(col_name)
 
         n_matches = len(matches)
         # Ensure matches exist and are unique (i.e. exactly one match)
         if n_matches == 0:
             raise ValueError(
-                f"No column found for '{search_term}' (required). You can supply ra/dec column names using the arguments `ra_column`, `dec_column`."
+                f"No column found for '{search_term}' (required). You can supply ra/dec column names "
+                "using the arguments `ra_column`, `dec_column`."
             )
         if n_matches > 1:
             raise ValueError(
-                f"Found {n_matches} possible columns for '{search_term}': {matches}. Please rename columns to disambiguate."
+                f"Found {n_matches} possible columns for '{search_term}': {matches}. Please "
+                "rename columns to disambiguate."
             )
         return matches[0]
 
