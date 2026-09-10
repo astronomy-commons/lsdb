@@ -428,7 +428,6 @@ class HealpixDataset:
         if isinstance(new_cat._operation, MapPartitions) and not new_cat._operation.is_df_type:
             col_name = new_cat.columns[0]
             return new_cat.to_dask_dataframe()[col_name]
-        # NOTE unsure how to do the ra/dec checks above in this case
         return new_cat
 
     def __getitem__(self, item: str | list[str] | dd.Series) -> Self | dd.Series:

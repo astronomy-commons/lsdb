@@ -766,8 +766,6 @@ def test_map_partitions_single_partition(small_sky_order1_catalog):
     # Get a partition index to update
     default_partition_index = 0
 
-    # NOTE: unexpected test failure! hmmmm
-
     # Update a single partition
     mapped = small_sky_order1_catalog.map_partitions(
         add_col, "a", increment_value=1, compute_single_partition=True
