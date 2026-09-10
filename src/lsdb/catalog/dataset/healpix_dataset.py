@@ -339,8 +339,7 @@ class HealpixDataset:
     ) -> Self | dd.Series:
         """Applies a function to each partition in the catalog.
 
-        NOTE maybe "If the function returns a dataframe, the ra and dec of each row is assumed to remain unchanged."
-        The ra and dec of each row is assumed to remain unchanged.
+        If the function returns a dataframe, the ra and dec of each row is assumed to remain unchanged.
 
         Parameters
         ----------
@@ -404,14 +403,16 @@ class HealpixDataset:
             for col in [ra_col, dec_col]:
                 if col not in result.columns:
                     raise ValueError(
-                        f"'{col}' not found in result. map_partitions() must not change names of ra or dec columns '{ra_col}', '{dec_col}'."
+                        f"'{col}' not found in result. map_partitions() must not change names "
+                        f"of ra or dec columns '{ra_col}', '{dec_col}'."
                     )
             # Check that ra and dec values haven't changed
             # (ra/dec of result is a subset of ra/dec of original)
             # NOTE this doesn't guarantee that ra and dec values won't change for the whole catalog!
             if not _compare_radec_cols(orig_coords, result, ra_col, dec_col):
                 raise ValueError(
-                    f"ra/dec values have changed. map_partitions() must not change values of ra or dec columns '{ra_col}', '{dec_col}'."
+                    f"ra/dec values have changed. map_partitions() must not change values "
+                    f"of ra or dec columns '{ra_col}', '{dec_col}'."
                 )
             output_op = FromSinglePartition(result, pixel)
             hc_structure = self.hc_structure.__class__(
@@ -427,7 +428,6 @@ class HealpixDataset:
         if isinstance(new_cat._operation, MapPartitions) and not new_cat._operation.is_df_type:
             col_name = new_cat.columns[0]
             return new_cat.to_dask_dataframe()[col_name]
-        # NOTE unsure how to do the ra/dec checks above in this case
         return new_cat
 
     def __getitem__(self, item: str | list[str] | dd.Series) -> Self | dd.Series:

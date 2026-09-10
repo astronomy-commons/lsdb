@@ -766,8 +766,6 @@ def test_map_partitions_single_partition(small_sky_order1_catalog):
     # Get a partition index to update
     default_partition_index = 0
 
-    # NOTE: unexpected test failure! hmmmm
-
     # Update a single partition
     mapped = small_sky_order1_catalog.map_partitions(
         add_col, "a", increment_value=1, compute_single_partition=True
@@ -1087,7 +1085,8 @@ def test_map_partitions_disallows_changing_radec(small_sky_source_catalog):
     with pytest.raises(
         ValueError,
         match=re.escape(
-            "'source_ra' not found in result. map_partitions() must not change names of ra or dec columns 'source_ra', 'source_dec'."
+            "'source_ra' not found in result. map_partitions() must not change names "
+            "of ra or dec columns 'source_ra', 'source_dec'."
         ),
     ):
         small_sky_source_catalog.map_partitions(
@@ -1099,7 +1098,8 @@ def test_map_partitions_disallows_changing_radec(small_sky_source_catalog):
         with pytest.raises(
             ValueError,
             match=re.escape(
-                f"ra/dec values have changed. map_partitions() must not change values of ra or dec columns 'source_ra', 'source_dec'."
+                "ra/dec values have changed. map_partitions() must not change values "
+                "of ra or dec columns 'source_ra', 'source_dec'."
             ),
         ):
             small_sky_source_catalog.map_partitions(my_evil_function, col_name, compute_single_partition=True)
