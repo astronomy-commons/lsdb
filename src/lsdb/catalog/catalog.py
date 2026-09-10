@@ -11,9 +11,7 @@ import nested_pandas as npd
 import pandas as pd
 from deprecated import deprecated  # type: ignore
 from hats.catalog.catalog_collection import CatalogCollection
-from hats.catalog.healpix_dataset.healpix_dataset import (
-    HealpixDataset as HCHealpixDataset,
-)
+from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
 from hats.catalog.index.index_catalog import IndexCatalog as HCIndexCatalog
 from hats.pixel_math import HealpixPixel
 from pandas._typing import Renamer
