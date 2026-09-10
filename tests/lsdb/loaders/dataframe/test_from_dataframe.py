@@ -477,15 +477,30 @@ def test_from_dataframe_finds_radec_columns(small_sky_order1_df):
     # If no matches are found, an error is raised
     # missing ra
     df_no_ra = small_sky_order1_df.drop(columns=["ra"])
-    with pytest.raises(ValueError, match=re.escape("No column found for 'ra' (required). You can supply ra/dec column names using the arguments `ra_column`, `dec_column`.")):
+    with pytest.raises(
+        ValueError,
+        match=re.escape(
+            "No column found for 'ra' (required). You can supply ra/dec column names using the arguments `ra_column`, `dec_column`."
+        ),
+    ):
         lsdb.from_dataframe(df_no_ra, margin_threshold=None)
     # missing dec
     df_no_dec = small_sky_order1_df.drop(columns=["dec"])
-    with pytest.raises(ValueError, match=re.escape("No column found for 'dec' (required). You can supply ra/dec column names using the arguments `ra_column`, `dec_column`.")):
+    with pytest.raises(
+        ValueError,
+        match=re.escape(
+            "No column found for 'dec' (required). You can supply ra/dec column names using the arguments `ra_column`, `dec_column`."
+        ),
+    ):
         lsdb.from_dataframe(df_no_dec, margin_threshold=None)
     # If multiple matches are found it's ambiguous, and an error is raised
     small_sky_order1_df["RA"] = small_sky_order1_df["ra"].copy()
-    with pytest.raises(ValueError, match=re.escape(f"Found 2 possible columns for 'ra': ['ra', 'RA']. Please rename columns to disambiguate.")):
+    with pytest.raises(
+        ValueError,
+        match=re.escape(
+            f"Found 2 possible columns for 'ra': ['ra', 'RA']. Please rename columns to disambiguate."
+        ),
+    ):
         lsdb.from_dataframe(small_sky_order1_df, margin_threshold=None)
 
 
@@ -493,19 +508,19 @@ def test_find_radec_anywhere():
     """Test that ra/dec find works for literal 'ra' and 'dec' independent of position."""
     dummy_values = list(range(10))
 
-    col_names = ['id', 'ra', 'dec', 'fake1', 'fake2', 'fake3', 'fake4']
+    col_names = ["id", "ra", "dec", "fake1", "fake2", "fake3", "fake4"]
     df = pd.DataFrame({col: dummy_values for col in col_names})
     cat = lsdb.from_dataframe(df)
     assert cat.hc_structure.catalog_info.ra_column == "ra"
     assert cat.hc_structure.catalog_info.dec_column == "dec"
 
-    col_names = ['id', 'fake1', 'fake2', 'fake3', 'fake4', 'ra', 'dec']
+    col_names = ["id", "fake1", "fake2", "fake3", "fake4", "ra", "dec"]
     df = pd.DataFrame({col: dummy_values for col in col_names})
     cat = lsdb.from_dataframe(df)
     assert cat.hc_structure.catalog_info.ra_column == "ra"
     assert cat.hc_structure.catalog_info.dec_column == "dec"
 
-    col_names = ['id', 'ra', 'fake2', 'fake3', 'dec', 'fake4']
+    col_names = ["id", "ra", "fake2", "fake3", "dec", "fake4"]
     df = pd.DataFrame({col: dummy_values for col in col_names})
     cat = lsdb.from_dataframe(df)
     assert cat.hc_structure.catalog_info.ra_column == "ra"
@@ -518,13 +533,13 @@ def test_find_radec_from_known_matches():
     dummy_values = list(range(10))
 
     # When known replacements are in the first 4 columns, they should be matched.
-    col_names = ['id', 'raMean', 'decMean', 'fake1', 'fake2', 'fake3', 'fake4']
+    col_names = ["id", "raMean", "decMean", "fake1", "fake2", "fake3", "fake4"]
     df = pd.DataFrame({col: dummy_values for col in col_names})
     cat = lsdb.from_dataframe(df)
     assert cat.hc_structure.catalog_info.ra_column == "raMean"
     assert cat.hc_structure.catalog_info.dec_column == "decMean"
 
-    col_names = ['id', 'RAJ2000', 'DEJ2000', 'fake1', 'fake2', 'fake3', 'fake4']
+    col_names = ["id", "RAJ2000", "DEJ2000", "fake1", "fake2", "fake3", "fake4"]
     df = pd.DataFrame({col: dummy_values for col in col_names})
     cat = lsdb.from_dataframe(df)
     assert cat.hc_structure.catalog_info.ra_column == "RAJ2000"
@@ -532,7 +547,7 @@ def test_find_radec_from_known_matches():
 
     # After the first 4 columns, they should NOT be matched.
     # raMean should be matched, but decMean should not
-    col_names = ['id', 'fake1', 'fake2', 'raMean', 'decMean', 'fake3', 'fake4']
+    col_names = ["id", "fake1", "fake2", "raMean", "decMean", "fake3", "fake4"]
     df = pd.DataFrame({col: dummy_values for col in col_names})
     with pytest.raises(ValueError, match=re.escape("No column found for 'dec'")):
         cat = lsdb.from_dataframe(df)
@@ -541,18 +556,23 @@ def test_find_radec_from_known_matches():
 def test_find_radec_known_matches_ambiguity():
     """Tests that, if ambiguous ra/dec matches are created by looking up known matches, an error is produced."""
     dummy_values = list(range(10))
-    col_names = ['id', 'ra', 'dec', 'raMean', 'fake1', 'fake2', 'fake3', 'fake4']
+    col_names = ["id", "ra", "dec", "raMean", "fake1", "fake2", "fake3", "fake4"]
     df = pd.DataFrame({col: dummy_values for col in col_names})
-    with pytest.raises(ValueError, match=re.escape(f"Found 2 possible columns for 'ra': ['ra', 'raMean']. Please rename columns to disambiguate.")):
+    with pytest.raises(
+        ValueError,
+        match=re.escape(
+            f"Found 2 possible columns for 'ra': ['ra', 'raMean']. Please rename columns to disambiguate."
+        ),
+    ):
         cat = lsdb.from_dataframe(df)
 
     # If ra_column and dec_column are passed, no ambiguity
-    col_names = ['id', 'ra', 'dec', 'raMean', 'fake1', 'fake2', 'fake3', 'fake4']
+    col_names = ["id", "ra", "dec", "raMean", "fake1", "fake2", "fake3", "fake4"]
     df = pd.DataFrame({col: dummy_values for col in col_names})
-    cat = lsdb.from_dataframe(df, ra_column='ra')
+    cat = lsdb.from_dataframe(df, ra_column="ra")
     assert cat.hc_structure.catalog_info.ra_column == "ra"
     assert cat.hc_structure.catalog_info.dec_column == "dec"
-    assert 'raMean' in cat.columns
+    assert "raMean" in cat.columns
 
 
 def test_find_radec_column_heuristic():
@@ -560,43 +580,36 @@ def test_find_radec_column_heuristic():
     See _is_radec_like()."""
 
     # should pass with warning
-    df = pd.DataFrame({
-        'ra1234': [1.0, 2.0, 3.0],
-        'dec5678': [4.0, 5.0, 6.0]
-    })
+    df = pd.DataFrame({"ra1234": [1.0, 2.0, 3.0], "dec5678": [4.0, 5.0, 6.0]})
     cat = lsdb.from_dataframe(df)
     assert cat.hc_structure.catalog_info.ra_column == "ra1234"
     assert cat.hc_structure.catalog_info.dec_column == "dec5678"
 
     # should fail because these columns should be rejected (therefore no valid ra/dec)
-    df = pd.DataFrame({
-        'ra_err': [1.0, 2.0, 3.0],
-        'dec_sig': [4.0, 5.0, 6.0]
-    })
-    with pytest.raises(ValueError, match=re.escape("No column found for 'ra' (required). You can supply ra/dec column names using the arguments `ra_column`, `dec_column`.")):
+    df = pd.DataFrame({"ra_err": [1.0, 2.0, 3.0], "dec_sig": [4.0, 5.0, 6.0]})
+    with pytest.raises(
+        ValueError,
+        match=re.escape(
+            "No column found for 'ra' (required). You can supply ra/dec column names using the arguments `ra_column`, `dec_column`."
+        ),
+    ):
         cat = lsdb.from_dataframe(df)
 
     # should pass because 'ra' should be accepted and 'ra_err' should not
-    df = pd.DataFrame({
-        'ra': [1.0, 2.0, 3.0],
-        'ra_err': [1.0, 2.0, 3.0],
-        'dec': [4.0, 5.0, 6.0]
-    })
+    df = pd.DataFrame({"ra": [1.0, 2.0, 3.0], "ra_err": [1.0, 2.0, 3.0], "dec": [4.0, 5.0, 6.0]})
     cat = lsdb.from_dataframe(df)
     assert cat.hc_structure.catalog_info.ra_column == "ra"
     assert cat.hc_structure.catalog_info.dec_column == "dec"
 
     # should fail because of ambiguity (matched with heuristic instead of lookup)
-    df = pd.DataFrame({
-        'ra': [1.0, 2.0, 3.0],
-        'ra1234': [1.0, 2.0, 3.0],
-        'dec': [4.0, 5.0, 6.0]
-    })
-    with pytest.raises(ValueError, match=re.escape(f"Found 2 possible columns for 'ra': ['ra', 'ra1234']. Please rename columns to disambiguate.")):
+    df = pd.DataFrame({"ra": [1.0, 2.0, 3.0], "ra1234": [1.0, 2.0, 3.0], "dec": [4.0, 5.0, 6.0]})
+    with pytest.raises(
+        ValueError,
+        match=re.escape(
+            f"Found 2 possible columns for 'ra': ['ra', 'ra1234']. Please rename columns to disambiguate."
+        ),
+    ):
         cat = lsdb.from_dataframe(df)
-
-
-
 
 
 def test_from_dataframe_with_nan_radec():
@@ -610,5 +623,3 @@ def test_from_dataframe_with_nan_radec():
     df2 = df.rename(columns={"ra": "my_ra", "dec": "my_dec"})
     with pytest.raises(ValueError, match=r"NaN values found in .+ columns"):
         lsdb.from_dataframe(df2, ra_column="my_ra", dec_column="my_dec", margin_threshold=None)
-
-

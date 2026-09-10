@@ -1068,9 +1068,10 @@ def test_map_partitions_error_messages():
 def test_map_partitions_disallows_changing_radec(small_sky_source_catalog):
     """Test that map_partitions() raises errors when ra/dec columns
     are changed (both column name and values).
-    
+
     NOTE this is only implemented for compute_single_partition==True!
     """
+
     def rename_cols(df, names_in, names_out):
         """df = rename_cols(df, ['ra', 'dec'], ['my_ra', 'my_dec'])"""
         for name_in, name_out in zip(names_in, names_out):
@@ -1083,12 +1084,24 @@ def test_map_partitions_disallows_changing_radec(small_sky_source_catalog):
         return df
 
     # Should raise because ra/dec column names change
-    with pytest.raises(ValueError, match=re.escape("'source_ra' not found in result. map_partitions() must not change names of ra or dec columns 'source_ra', 'source_dec'.")):
-        small_sky_source_catalog.map_partitions(rename_cols, ['source_ra', 'source_dec'], ['my_ra', 'my_dec'], compute_single_partition=True)
+    with pytest.raises(
+        ValueError,
+        match=re.escape(
+            "'source_ra' not found in result. map_partitions() must not change names of ra or dec columns 'source_ra', 'source_dec'."
+        ),
+    ):
+        small_sky_source_catalog.map_partitions(
+            rename_cols, ["source_ra", "source_dec"], ["my_ra", "my_dec"], compute_single_partition=True
+        )
 
     # Should raise because map_partitions() changes ra/dec values
-    for col_name in ['source_ra', 'source_dec']:
-        with pytest.raises(ValueError, match=re.escape(f"ra/dec values have changed. map_partitions() must not change values of ra or dec columns 'source_ra', 'source_dec'.")):
+    for col_name in ["source_ra", "source_dec"]:
+        with pytest.raises(
+            ValueError,
+            match=re.escape(
+                f"ra/dec values have changed. map_partitions() must not change values of ra or dec columns 'source_ra', 'source_dec'."
+            ),
+        ):
             small_sky_source_catalog.map_partitions(my_evil_function, col_name, compute_single_partition=True)
 
 
