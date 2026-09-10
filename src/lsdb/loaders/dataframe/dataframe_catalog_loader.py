@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import re
+import logging
 import warnings
 
 import astropy.units as u
@@ -35,8 +35,28 @@ pd.options.mode.chained_assignment = None  # default='warn'
 # keys: 'ra' or 'dec'
 # values: lowercased ra/dec column names from known catalogs
 RADEC_COLUMN_MAPPING = {
-    'ra': ['ra', 'ra_deg', 'coord_ra', 'raj2000', 'ramean', 'alpha_j2000', 'right_ascension', 'ra_obj', 'objra'],
-    'dec': ['dec', 'dec_deg', 'coord_dec', 'dej2000', 'decmean', 'delta_j2000', 'declination', 'dec_obj', 'objdec']
+    "ra": [
+        "ra",
+        "ra_deg",
+        "coord_ra",
+        "raj2000",
+        "ramean",
+        "alpha_j2000",
+        "right_ascension",
+        "ra_obj",
+        "objra",
+    ],
+    "dec": [
+        "dec",
+        "dec_deg",
+        "coord_dec",
+        "dej2000",
+        "decmean",
+        "delta_j2000",
+        "declination",
+        "dec_obj",
+        "objdec",
+    ],
 }
 
 
@@ -164,8 +184,9 @@ class DataframeCatalogLoader:
                 matches.append(col_name)
             # heuristic match, only in the first 4 columns
             elif (col_idx < 4) and _is_radec_like(str(col_name).lower(), search_term):
-                # TODO switch to logger.info()
-                print(f"Warning: heuristic match found for `{search_term}`: '{col_name}'. Please check correctness!")
+                logging.warning(
+                    f"Warning: heuristic match found for `{search_term}`: '{col_name}'. Please check correctness!"
+                )
                 matches.append(col_name)
 
         n_matches = len(matches)
@@ -389,7 +410,9 @@ def _is_radec_like(col_name, search_term):
         # Error terms
         "err",
         # Variance / standard deviation terms
-        "sig", "std", "var",
+        "sig",
+        "std",
+        "var",
     ]
 
     if any(t in col_name for t in negative_terms):

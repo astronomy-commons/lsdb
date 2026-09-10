@@ -42,12 +42,16 @@ def test_kdtree_left_columns(small_sky_catalog, small_sky_order1_source_with_mar
 
 
 def test_kdtree_right_columns(small_sky_catalog, small_sky_order1_source_with_margin):
-    with pytest.raises(ValueError, match="right table 'small_sky_order1_source' must have column 'source_ra'"):
+    with pytest.raises(
+        ValueError, match="right table 'small_sky_order1_source' must have column 'source_ra'"
+    ):
         KdTreeCrossmatch().validate(
             small_sky_catalog, small_sky_order1_source_with_margin.drop(columns=["source_ra"])
         )
 
-    with pytest.raises(ValueError, match="right table 'small_sky_order1_source' must have column 'source_dec'"):
+    with pytest.raises(
+        ValueError, match="right table 'small_sky_order1_source' must have column 'source_dec'"
+    ):
         KdTreeCrossmatch().validate(
             small_sky_catalog, small_sky_order1_source_with_margin.drop(columns=["source_dec"])
         )
