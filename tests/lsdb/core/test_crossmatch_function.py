@@ -1,9 +1,9 @@
+import re
 import warnings
 
 import nested_pandas as npd
 import numpy as np
 import pytest
-import re
 
 import lsdb
 

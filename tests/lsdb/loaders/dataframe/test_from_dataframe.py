@@ -1,6 +1,6 @@
 import math
-from importlib.metadata import version
 import re
+from importlib.metadata import version
 
 import astropy.units as u
 import hats as hc

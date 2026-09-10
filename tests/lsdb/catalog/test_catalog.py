@@ -1,4 +1,5 @@
 # pylint: disable=too-many-lines
+import re
 from pathlib import Path
 
 import astropy.units as u
@@ -11,7 +12,6 @@ import numpy as np
 import numpy.testing as npt
 import pandas as pd
 import pytest
-import re
 from astropy.coordinates import SkyCoord
 from astropy.visualization.wcsaxes import WCSAxes
 from distributed import Client
