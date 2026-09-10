@@ -186,8 +186,8 @@ class DataframeCatalogLoader:
                 # heuristic match
                 elif _is_radec_like(str(col_name).lower(), search_term):
                     logging.warning(
-                        f"Warning: heuristic match found for `{search_term}`: '{col_name}'. "
-                        "Please check correctness!"
+                        "Warning: heuristic match found for `%s`: '%s'. "
+                        "Please check correctness!", search_term, col_name
                     )
                     matches.append(col_name)
 
