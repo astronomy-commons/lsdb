@@ -531,7 +531,7 @@ def test_find_radec_anywhere():
 
 def test_find_radec_from_known_matches():
     """Test that ra/dec finding works when matched against column names from known catalogs.
-    See RADEC_COLUMN_MAPPING."""
+    See lsdb.loaders.dataframe.dataframe_catalog_loader.RADEC_COLUMN_MAPPING."""
     dummy_values = list(range(10))
 
     # When known replacements are in the first 4 columns, they should be matched.
@@ -580,13 +580,53 @@ def test_find_radec_known_matches_ambiguity():
 
 def test_find_radec_column_heuristic():
     """Heuristic matches and non-matches for novel terms.
-    See _is_radec_like()."""
+    See lsdb.loaders.dataframe.dataframe_catalog_loader._is_radec_like()."""
 
     # should pass with warning
     df = pd.DataFrame({"ra1234": [1.0, 2.0, 3.0], "dec5678": [4.0, 5.0, 6.0]})
     cat = lsdb.from_dataframe(df)
     assert cat.hc_structure.catalog_info.ra_column == "ra1234"
     assert cat.hc_structure.catalog_info.dec_column == "dec5678"
+
+    # should fail, no valid ra match
+    df = pd.DataFrame({"1234ra": [1.0, 2.0, 3.0], "dec": [4.0, 5.0, 6.0]})
+    with pytest.raises(
+        ValueError,
+        match=re.escape(
+            "No column found for 'ra' (required). You can supply ra/dec column names using the arguments "
+            "`ra_column`, `dec_column`."
+        ),
+    ):
+        cat = lsdb.from_dataframe(df)
+
+    # should pass with warning
+    df = pd.DataFrame({"blah_ra": [1.0, 2.0, 3.0], "dec": [4.0, 5.0, 6.0]})
+    cat = lsdb.from_dataframe(df)
+    assert cat.hc_structure.catalog_info.ra_column == "blah_ra"
+    assert cat.hc_structure.catalog_info.dec_column == "dec"
+
+    # should pass with warning
+    df = pd.DataFrame({"blah.ra": [1.0, 2.0, 3.0], "blah.dec": [4.0, 5.0, 6.0]})
+    cat = lsdb.from_dataframe(df)
+    assert cat.hc_structure.catalog_info.ra_column == "blah.ra"
+    assert cat.hc_structure.catalog_info.dec_column == "blah.dec"
+
+    # should pass with warning
+    df = pd.DataFrame({"blah_ra_blah": [1.0, 2.0, 3.0], "dec": [4.0, 5.0, 6.0]})
+    cat = lsdb.from_dataframe(df)
+    assert cat.hc_structure.catalog_info.ra_column == "blah_ra_blah"
+    assert cat.hc_structure.catalog_info.dec_column == "dec"
+
+    # should fail, no valid ra match
+    df = pd.DataFrame({"blah_rablah": [1.0, 2.0, 3.0], "dec": [4.0, 5.0, 6.0]})
+    with pytest.raises(
+        ValueError,
+        match=re.escape(
+            "No column found for 'ra' (required). You can supply ra/dec column names using the arguments "
+            "`ra_column`, `dec_column`."
+        ),
+    ):
+        cat = lsdb.from_dataframe(df)
 
     # should fail because these columns should be rejected (therefore no valid ra/dec)
     df = pd.DataFrame({"ra_err": [1.0, 2.0, 3.0], "dec_sig": [4.0, 5.0, 6.0]})
