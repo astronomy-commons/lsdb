@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import re
+import logging
 import warnings
 
 import astropy.units as u
@@ -30,6 +30,34 @@ from lsdb.loaders.dataframe.from_dataframe_utils import _generate_op, _has_named
 from lsdb.operations.operation import Operation
 
 pd.options.mode.chained_assignment = None  # default='warn'
+
+
+# keys: 'ra' or 'dec'
+# values: lowercased ra/dec column names from known catalogs
+RADEC_COLUMN_MAPPING = {
+    "ra": [
+        "ra",
+        "ra_deg",
+        "coord_ra",
+        "raj2000",
+        "ramean",
+        "alpha_j2000",
+        "right_ascension",
+        "ra_obj",
+        "objra",
+    ],
+    "dec": [
+        "dec",
+        "dec_deg",
+        "coord_dec",
+        "dej2000",
+        "decmean",
+        "delta_j2000",
+        "declination",
+        "dec_obj",
+        "objdec",
+    ],
+}
 
 
 class DataframeCatalogLoader:
@@ -143,14 +171,39 @@ class DataframeCatalogLoader:
 
         The search is case-insensitive and unambiguous. An error is raised
         if there are zero or multiple matches."""
-        matches = [
-            c for c in self.dataframe.columns if re.fullmatch(re.escape(search_term), c, re.IGNORECASE)
-        ]
+        search_term = search_term.lower()
+        matches = []
+
+        for col_idx, col_name in enumerate(list(self.dataframe.columns)):
+            # exact match anywhere
+            if str(col_name).lower() == search_term:
+                matches.append(col_name)
+            # attempt column search only in the first 4 columns
+            elif col_idx < 4:
+                # known matches
+                if str(col_name).lower() in RADEC_COLUMN_MAPPING[search_term]:
+                    matches.append(col_name)
+                # heuristic match
+                elif _is_radec_like(str(col_name).lower(), search_term):
+                    logging.warning(
+                        "Warning: heuristic match found for `%s`: '%s'. Please check correctness!",
+                        search_term,
+                        col_name,
+                    )
+                    matches.append(col_name)
+
         n_matches = len(matches)
+        # Ensure matches exist and are unique (i.e. exactly one match)
         if n_matches == 0:
-            raise ValueError(f"No column found for {search_term}")
+            raise ValueError(
+                f"No column found for '{search_term}' (required). You can supply ra/dec column names "
+                "using the arguments `ra_column`, `dec_column`."
+            )
         if n_matches > 1:
-            raise ValueError(f"Found {n_matches} possible columns for {search_term}")
+            raise ValueError(
+                f"Found {n_matches} possible columns for '{search_term}': {matches}. Please "
+                "rename columns to disambiguate."
+            )
         return matches[0]
 
     def _calculate_threshold(
@@ -347,3 +400,30 @@ class DataframeCatalogLoader:
         lon = self.dataframe[self.catalog_info.ra_column].to_numpy() * u.deg
         lat = self.dataframe[self.catalog_info.dec_column].to_numpy() * u.deg
         return MOC.from_lonlat(lon=lon, lat=lat, max_norder=self.moc_max_order)
+
+
+def _is_radec_like(col_name, search_term):
+    """Heuristic match for ra-like and dec-like names.
+    Assumes:
+        col_name is a lowercase str.
+        col_name is not 'ra' or 'dec'.
+        col_name is not anywhere in RADEC_COLUMN_MAPPING.
+        search_term is 'ra' or 'dec'.
+    """
+    # If col_name contains terms like "error" or variance/standard deviation, reject
+    negative_terms = [
+        # Error terms
+        "err",
+        # Variance / standard deviation terms
+        "sig",
+        "std",
+        "var",
+    ]
+    if any(t in col_name for t in negative_terms):
+        return False
+    # If col_name starts with any known term, accept
+    if any(col_name.startswith(t) for t in RADEC_COLUMN_MAPPING[search_term]):
+        return True
+    # If col_name parts delimited by ".", "-", "_" equals any known term, accept
+    parts = col_name.replace(".", "_").replace("-", "_").split("_")
+    return any(t in parts for t in RADEC_COLUMN_MAPPING[search_term])
