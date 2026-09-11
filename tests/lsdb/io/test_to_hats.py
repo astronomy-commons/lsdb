@@ -588,3 +588,131 @@ def test_save_catalog_no_summary_by_default(small_sky_order1_catalog, tmp_path):
     base_catalog_path = tmp_path / "small_sky"
     small_sky_order1_catalog.write_catalog(base_catalog_path, as_collection=False)
     assert not (base_catalog_path / "README.md").exists()
+
+
+def test_create_parquet_metadata(small_sky_order1_catalog, tmp_path):
+    base_catalog_path = tmp_path / "small_sky"
+    small_sky_order1_catalog.write_catalog(base_catalog_path, create_parquet_metadata=True)
+    assert (base_catalog_path / "small_sky_order1/dataset/_metadata").exists()
+
+    base_catalog_path = tmp_path / "small_sky_no_metadata"
+    small_sky_order1_catalog.write_catalog(base_catalog_path, create_parquet_metadata=False)
+    assert not (base_catalog_path / "small_sky_order1/dataset/_metadata").exists()
+
+
+def test_create_per_partition_statistics(small_sky_order1_catalog, tmp_path):
+    base_catalog_path = tmp_path / "small_sky"
+    small_sky_order1_catalog.write_catalog(base_catalog_path, create_per_partition_statistics=True)
+    assert (base_catalog_path / "small_sky_order1/per_partition_statistics.parquet").exists()
+
+    base_catalog_path = tmp_path / "small_sky_no_stats"
+    small_sky_order1_catalog.write_catalog(base_catalog_path, create_per_partition_statistics=False)
+    assert not (base_catalog_path / "small_sky_order1/per_partition_statistics.parquet").exists()
+
+
+def test_should_write_skymap(small_sky_order1_catalog, tmp_path):
+    base_catalog_path = tmp_path / "small_sky"
+    small_sky_order1_catalog.write_catalog(base_catalog_path, should_write_skymap=True)
+    assert (base_catalog_path / "small_sky_order1/skymap.fits").exists()
+
+    base_catalog_path = tmp_path / "small_sky_no_skymap"
+    small_sky_order1_catalog.write_catalog(base_catalog_path, should_write_skymap=False)
+    assert not (base_catalog_path / "small_sky_order1/skymap.fits").exists()
+
+
+def test_write_table_kwargs(small_sky_order1_catalog, tmp_path):
+    for compression_algo, expected in [("ZSTD", "ZSTD"), ("NONE", "UNCOMPRESSED"), ("SNAPPY", "SNAPPY")]:
+        base_catalog_path = tmp_path / f"small_sky_{compression_algo}"
+        small_sky_order1_catalog.write_catalog(
+            base_catalog_path, write_table_kwargs={"compression": compression_algo}
+        )
+        metadata = pq.read_metadata(base_catalog_path / "small_sky_order1/dataset/_metadata")
+        for group in metadata.to_dict()["row_groups"]:
+            for column in group["columns"]:
+                assert column["compression"] == expected
+
+
+def test_row_group_kwargs(small_sky_order1_catalog, tmp_path):
+    ### No row_group_kwargs
+    base_catalog_path = tmp_path / "small_sky"
+    small_sky_order1_catalog.write_catalog(base_catalog_path)
+    metadata = hc.io.file_io.read_parquet_metadata(base_catalog_path / "small_sky_order1/dataset/_metadata")
+    # small_sky_order1 catalog has 131 rows in 4 row groups by default
+    assert metadata.num_rows == 131
+    assert metadata.num_row_groups == 4
+
+    ### Invalid row_group_kwargs
+    base_catalog_path = tmp_path / "small_sky_unused_rowgroup_kwargs"
+    # It's a RuntimeError, instead of the original ValueError, because
+    # write_catalog() calls compute().
+    with pytest.raises(RuntimeError, match="no valid keys in row_group_kwargs"):
+        small_sky_order1_catalog.write_catalog(base_catalog_path, row_group_kwargs={"unused": 123})
+
+    ### row_group_kwargs["num_rows"] == 10
+    base_catalog_path = tmp_path / "small_sky_10rows_per_group"
+    small_sky_order1_catalog.write_catalog(base_catalog_path, row_group_kwargs={"num_rows": 10})
+    # Norder=1/Dir=0/Npix=44: [10, 10, 10, 10, 2]
+    # Norder=1/Dir=0/Npix=45: [10, 10, 9]
+    # Norder=1/Dir=0/Npix=46: [10, 10, 10, 10, 2]
+    # Norder=1/Dir=0/Npix=47: [10, 8]
+    for pix_num, expected_num_row_groups in [(44, 5), (45, 3), (46, 5), (47, 2)]:
+        pf = pq.ParquetFile(
+            base_catalog_path / f"small_sky_order1/dataset/Norder=1/Dir=0/Npix={pix_num}.parquet"
+        )
+        assert pf.num_row_groups == expected_num_row_groups
+    metadata = hc.io.file_io.read_parquet_metadata(base_catalog_path / "small_sky_order1/dataset/_metadata")
+    assert metadata.num_row_groups == 15
+
+    ### row_group_kwargs["num_rows"] == 1000
+    base_catalog_path = tmp_path / "small_sky_1000rows_per_group"
+    small_sky_order1_catalog.write_catalog(base_catalog_path, row_group_kwargs={"num_rows": 1000})
+    # Norder=1/Dir=0/Npix=44: [42]
+    # Norder=1/Dir=0/Npix=45: [29]
+    # Norder=1/Dir=0/Npix=46: [42]
+    # Norder=1/Dir=0/Npix=47: [18]
+    for pix_num, expected_num_row_groups in [(44, 1), (45, 1), (46, 1), (47, 1)]:
+        pf = pq.ParquetFile(
+            base_catalog_path / f"small_sky_order1/dataset/Norder=1/Dir=0/Npix={pix_num}.parquet"
+        )
+        assert pf.num_row_groups == expected_num_row_groups
+    metadata = hc.io.file_io.read_parquet_metadata(base_catalog_path / "small_sky_order1/dataset/_metadata")
+    assert metadata.num_row_groups == 4
+
+    ### row_group_kwargs["subtile_order_delta"] == 0
+    base_catalog_path = tmp_path / "small_sky_subtile_0"
+    small_sky_order1_catalog.write_catalog(base_catalog_path, row_group_kwargs={"subtile_order_delta": 0})
+    # Norder=1/Dir=0/Npix=44: [42]
+    # Norder=1/Dir=0/Npix=45: [29]
+    # Norder=1/Dir=0/Npix=46: [42]
+    # Norder=1/Dir=0/Npix=47: [18]
+    for pix_num, expected_num_row_groups in [(44, 1), (45, 1), (46, 1), (47, 1)]:
+        pf = pq.ParquetFile(
+            base_catalog_path / f"small_sky_order1/dataset/Norder=1/Dir=0/Npix={pix_num}.parquet"
+        )
+        assert pf.num_row_groups == expected_num_row_groups
+    metadata = hc.io.file_io.read_parquet_metadata(base_catalog_path / "small_sky_order1/dataset/_metadata")
+    assert metadata.num_row_groups == 4
+
+    ### row_group_kwargs["subtile_order_delta"] == 1
+    base_catalog_path = tmp_path / "small_sky_subtile_1"
+    small_sky_order1_catalog.write_catalog(base_catalog_path, row_group_kwargs={"subtile_order_delta": 1})
+    # Norder=1/Dir=0/Npix=44: [4, 11, 14, 13]
+    # Norder=1/Dir=0/Npix=45: [5, 7, 8, 9]
+    # Norder=1/Dir=0/Npix=46: [11, 23, 4, 4]
+    # Norder=1/Dir=0/Npix=47: [17, 1]
+    for pix_num, expected_num_row_groups in [(44, 4), (45, 4), (46, 4), (47, 2)]:
+        pf = pq.ParquetFile(
+            base_catalog_path / f"small_sky_order1/dataset/Norder=1/Dir=0/Npix={pix_num}.parquet"
+        )
+        assert pf.num_row_groups == expected_num_row_groups
+    metadata = hc.io.file_io.read_parquet_metadata(base_catalog_path / "small_sky_order1/dataset/_metadata")
+    assert metadata.num_row_groups == 14
+
+    # Conflicting row_group_kwargs (both num_rows and subtile_order_delta present)
+    base_catalog_path = tmp_path / "small_sky_subtile_1_and_10rows_per_group"
+    # It's a RuntimeError, instead of the original ValueError, because
+    # write_catalog() calls compute().
+    with pytest.raises(RuntimeError, match="row_group_kwargs contains conflicting keys"):
+        small_sky_order1_catalog.write_catalog(
+            base_catalog_path, row_group_kwargs={"subtile_order_delta": 1, "num_rows": 10}
+        )
