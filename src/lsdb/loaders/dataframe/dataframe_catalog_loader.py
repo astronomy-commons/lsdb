@@ -403,14 +403,14 @@ class DataframeCatalogLoader:
 
 
 def _is_radec_like(col_name, search_term):
-    """Heuristic match for ra-like and dec-like names
+    """Heuristic match for ra-like and dec-like names.
     Assumes:
-        col_name is a lowercase str
-        col_name is not 'ra' or 'dec'
-        col_name is not anywhere in RADEC_COLUMN_MAPPING
-        search_term is 'ra' or 'dec'
+        col_name is a lowercase str.
+        col_name is not 'ra' or 'dec'.
+        col_name is not anywhere in RADEC_COLUMN_MAPPING.
+        search_term is 'ra' or 'dec'.
     """
-    # Clues that a column should not match
+    # If col_name contains terms like "error" or variance/standard deviation, reject
     negative_terms = [
         # Error terms
         "err",
@@ -419,7 +419,11 @@ def _is_radec_like(col_name, search_term):
         "std",
         "var",
     ]
-
     if any(t in col_name for t in negative_terms):
         return False
-    return any(t in col_name for t in RADEC_COLUMN_MAPPING[search_term])
+    # If col_name starts with any known term, accept
+    if any(col_name.startswith(t) for t in RADEC_COLUMN_MAPPING[search_term]):
+        return True
+    # If col_name parts delimited by ".", "-", "_" equals any known term, accept
+    parts = col_name.replace(".", "_").replace("-", "_").split("_")
+    return any(t in parts for t in RADEC_COLUMN_MAPPING[search_term])
