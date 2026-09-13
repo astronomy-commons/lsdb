@@ -64,7 +64,7 @@ class CatalogStream:
     >>> cat.npartitions
     12
 
-    The following grabs 4 random partitions 5 times in a row, looping over the data as needed:
+    The following grabs 4 random partitions 3 times in a row, looping over the data as needed:
 
     >>> cat_stream = CatalogStream(catalog=cat, partitions_per_chunk=4, seed=1)
     >>> for chunk in cat_stream:
