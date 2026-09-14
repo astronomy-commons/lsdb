@@ -24,6 +24,7 @@ from distributed import as_completed
 from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
 from hats.pixel_math import HealpixPixel
 from hats.pixel_math.healpix_pixel_function import get_pixel_argsort
+from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN, SPATIAL_INDEX_ORDER, compute_spatial_index
 from human_readable import file_size, int_comma
 from mocpy import MOC
 from nested_pandas.series.packer import pack_lists
@@ -413,6 +414,12 @@ class HealpixDataset:
                 raise ValueError(
                     f"ra/dec values have changed. map_partitions() must not change values "
                     f"of ra or dec columns '{ra_col}', '{dec_col}'."
+                )
+            # Check that, if the index is a healpix index, it matches the ra/dec columns
+            if _has_invalid_spatial_index(result, ra_col, dec_col):
+                raise ValueError(
+                    "healpix index does not match ra/dec values. map_partitions() must not "
+                    "generate an invalid healpix index."
                 )
             output_op = FromSinglePartition(result, pixel)
             hc_structure = self.hc_structure.__class__(
@@ -1996,3 +2003,13 @@ def _compare_radec_cols(orig_df, res_df, ra_column, dec_column):
     radec_orig = zip(orig_df[ra_column], orig_df[dec_column])
     radec_res = zip(res_df[ra_column], res_df[dec_column])
     return set(radec_res).issubset(set(radec_orig))
+
+
+def _has_invalid_spatial_index(df, ra_col, dec_col):
+    """Return whether df has a spatial index that mismatches the ra and dec columns."""
+    # TODO Implement a more reliable check for spatial index
+    if df.index.name != SPATIAL_INDEX_COLUMN:
+        return False
+    return (
+        df.index != compute_spatial_index(df[ra_col], df[dec_col], spatial_index_order=SPATIAL_INDEX_ORDER)
+    ).any()
