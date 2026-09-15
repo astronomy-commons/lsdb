@@ -331,30 +331,32 @@ class AbstractCrossmatchAlgorithm(ABC):
                 matched_right |= right_matched_mask
             right_unmatched = right_df.iloc[right_native_mask & ~matched_right].reset_index(names=index_name)
             null_left = left_df.iloc[:0].reindex(right_unmatched.index, fill_value=None)
-            right_only = pd.concat([null_left, right_unmatched], axis=1)
-            if left_coordinates is not None and right_coordinates is not None:
-                for left_coord, right_coord in zip(left_coordinates, right_coordinates, strict=True):
-                    if left_coord is not None and right_coord is not None:
-                        right_only[left_name_map[left_coord]] = right_only[right_name_map[right_coord]]
-            blocks.append(right_only)
+            blocks.append(pd.concat([null_left, right_unmatched], axis=1))
 
         out = cast(npd.NestedFrame, pd.concat(blocks, axis=0, ignore_index=True))
         out.set_index(index_name, inplace=True)
-        if extra_cols.columns.empty:
-            return npd.NestedFrame(out)
-
-        n_unmatched = len(out) - len(extra_cols)
-        assert n_unmatched >= 0, (
-            f"Logic error: extra_cols ({len(extra_cols)} rows) cannot exceed output ({len(out)} rows). "
-            "This indicates a bug in the crossmatch algorithm or the join logic."
-        )
-        if n_unmatched > 0:
-            null_extra = pd.DataFrame(
-                {col: _na_series_for_dtype(extra_cols[col].dtype, n_unmatched) for col in extra_cols}
+        if not extra_cols.columns.empty:
+            n_unmatched = len(out) - len(extra_cols)
+            assert n_unmatched >= 0, (
+                f"Logic error: extra_cols ({len(extra_cols)} rows) cannot exceed output ({len(out)} rows). "
+                "This indicates a bug in the crossmatch algorithm or the join logic."
             )
-            extra_cols = pd.concat([extra_cols.reset_index(drop=True), null_extra], ignore_index=True)
-        extra_cols.index = out.index
-        self._append_extra_columns(out, extra_cols)
+            if n_unmatched > 0:
+                null_extra = pd.DataFrame(
+                    {col: _na_series_for_dtype(extra_cols[col].dtype, n_unmatched) for col in extra_cols}
+                )
+                extra_cols = pd.concat([extra_cols.reset_index(drop=True), null_extra], ignore_index=True)
+            extra_cols.index = out.index
+            self._append_extra_columns(out, extra_cols)
+
+        if how == "outer" and left_coordinates is not None and right_coordinates is not None:
+            for output_coord, left_coord, right_coord in zip(
+                ("_ra", "_dec"), left_coordinates, right_coordinates, strict=True
+            ):
+                if left_coord is not None and right_coord is not None:
+                    left_values = cast(pd.Series, out[left_name_map[left_coord]])
+                    right_values = cast(pd.Series, out[right_name_map[right_coord]])
+                    out[output_coord] = left_values.combine_first(right_values)
         return npd.NestedFrame(out)
 
     def _create_nested_crossmatch_df(

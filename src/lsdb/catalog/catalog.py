@@ -273,8 +273,8 @@ class Catalog(HealpixDataset):
         both catalogs: the left margin threshold must be at least the matching radius, and
         the right margin threshold at least twice the matching radius.
 
-        The resulting catalog uses the left catalog's coordinates. For right-only rows from an
-        outer join, those coordinate columns and the index are populated from the right row.
+        Outer joins add ``_ra`` and ``_dec`` result coordinates. They contain the left
+        coordinates for matched and left-only rows, and the right coordinates for right-only rows.
 
         Parameters
         ----------
@@ -447,6 +447,8 @@ class Catalog(HealpixDataset):
             suffixes,
             suffix_method,
         )
+        if how == "outer":
+            new_catalog_info = new_catalog_info.copy_and_update(ra_column="_ra", dec_column="_dec")
         hc_catalog = self.hc_structure.__class__(
             new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(op.meta), moc=alignment.moc
         )

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import warnings
 from collections import defaultdict
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import nested_pandas as npd
 import numpy as np
@@ -192,6 +192,8 @@ def perform_crossmatch(
             extra_column_names = (
                 set(algorithm.extra_columns.columns) if algorithm.extra_columns is not None else set()
             )
+            if how == "outer":
+                extra_column_names.update(("_ra", "_dec"))
 
             # Data columns are all columns except extra columns
             data_columns = [col for col in meta_df.columns if col not in extra_column_names]
@@ -577,6 +579,17 @@ def crossmatch_catalog_data(
         extra_columns=algorithm.extra_columns,
         log_changes=log_changes,
     )
+    if how == "outer":
+        left_info = left.hc_structure.catalog_info
+        for output_coord, source_coord in zip(
+            ("_ra", "_dec"), (left_info.ra_column, left_info.dec_column), strict=True
+        ):
+            if output_coord in meta_df.columns:
+                raise ValueError(f"Outer crossmatch output column '{output_coord}' already exists")
+            if source_coord is None:
+                raise ValueError("Outer crossmatch requires coordinate columns")
+            source_series = cast(pd.Series, left.meta[source_coord])
+            meta_df[output_coord] = pd.Series(dtype=source_series.dtype)
 
     # perform the crossmatch on each partition pairing using dask delayed for lazy computation
     empty_pixels: list[HealpixPixel | None] = [None] * len(aligned_pixels)

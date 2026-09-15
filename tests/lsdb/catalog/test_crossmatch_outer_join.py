@@ -68,13 +68,30 @@ def test_outer_recovers_unmatched_right_rows(suffix_method, helpers):
     assert set(result["id_right"].dropna()) == {10, 11}
     assert len(result[result["id_left"].notna() & result["id_right"].notna()]) == 1
 
+    assert outer.hc_structure.catalog_info.ra_column == "_ra"
+    assert outer.hc_structure.catalog_info.dec_column == "_dec"
+    left_rows = result["id_left"].notna()
+    assert result.loc[left_rows, "_ra"].tolist() == result.loc[left_rows, "ra_left"].tolist()
+    assert result.loc[left_rows, "_dec"].tolist() == result.loc[left_rows, "dec_left"].tolist()
+
     right_only = result[result["id_left"].isna()]
     assert right_only["id_right"].tolist() == [11]
-    assert right_only["ra_left"].tolist() == right_only["ra_right"].tolist()
-    assert right_only["dec_left"].tolist() == right_only["dec_right"].tolist()
+    assert right_only["ra_left"].isna().all()
+    assert right_only["dec_left"].isna().all()
+    assert right_only["_ra"].tolist() == right_only["ra_right"].tolist()
+    assert right_only["_dec"].tolist() == right_only["dec_right"].tolist()
     assert right_only.index.tolist() == pd.DataFrame(right.compute()).query("id == 11").index.tolist()
     unmatched = result["id_left"].isna() | result["id_right"].isna()
     assert result.loc[unmatched, "_dist_arcsec"].isna().all()
+
+
+@pytest.mark.parametrize("reserved_column", ["_ra", "_dec"])
+def test_outer_rejects_existing_output_coordinate(reserved_column):
+    left = _catalog(pd.DataFrame({"id": [1], "ra": [0.0], "dec": [0.0], reserved_column: [0.0]}), "left")
+    right = _catalog(pd.DataFrame({"id": [10], "ra": [0.0], "dec": [0.0]}), "right")
+
+    with pytest.raises(ValueError, match=rf"{reserved_column}.*already exists"):
+        left.crossmatch(right, how="outer", radius_arcsec=1, suffix_method="overlapping_columns")
 
 
 def test_outer_scans_right_only_sky():
