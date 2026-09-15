@@ -12,6 +12,11 @@ import pandas as pd
 import pytest
 from hats.pixel_math.healpix_pixel import HealpixPixel
 from hats.pixel_math.healpix_shim import radec2pix
+from hats.pixel_math.spatial_index import (
+    SPATIAL_INDEX_COLUMN,
+    SPATIAL_INDEX_ORDER,
+    compute_spatial_index,
+)
 
 import lsdb
 from lsdb.core.crossmatch.abstract_crossmatch_algorithm import (
@@ -68,8 +73,17 @@ def test_outer_recovers_unmatched_right_rows(suffix_method, helpers):
     assert set(result["id_right"].dropna()) == {10, 11}
     assert len(result[result["id_left"].notna() & result["id_right"].notna()]) == 1
 
-    assert outer.hc_structure.catalog_info.ra_column == "_ra"
-    assert outer.hc_structure.catalog_info.dec_column == "_dec"
+    catalog_info = outer.hc_structure.catalog_info
+    assert catalog_info.ra_column == "_ra"
+    assert catalog_info.dec_column == "_dec"
+    assert catalog_info.healpix_column == SPATIAL_INDEX_COLUMN
+    assert catalog_info.healpix_order == SPATIAL_INDEX_ORDER
+    assert outer.meta.index.name == SPATIAL_INDEX_COLUMN
+    np.testing.assert_array_equal(
+        result.index.to_numpy(), compute_spatial_index(result["_ra"].to_numpy(), result["_dec"].to_numpy())
+    )
+    assert result.index.is_monotonic_increasing
+
     left_rows = result["id_left"].notna()
     assert result.loc[left_rows, "_ra"].tolist() == result.loc[left_rows, "ra_left"].tolist()
     assert result.loc[left_rows, "_dec"].tolist() == result.loc[left_rows, "dec_left"].tolist()
@@ -92,6 +106,27 @@ def test_outer_rejects_existing_output_coordinate(reserved_column):
 
     with pytest.raises(ValueError, match=rf"{reserved_column}.*already exists"):
         left.crossmatch(right, how="outer", radius_arcsec=1, suffix_method="overlapping_columns")
+
+
+def test_outer_reconstructs_spatial_index_from_lower_order(
+    small_sky_healpix13_dir, small_sky_xmatch_with_margin
+):
+    left = lsdb.open_catalog(small_sky_healpix13_dir)
+
+    outer = left.crossmatch(
+        small_sky_xmatch_with_margin,
+        how="outer",
+        radius_arcsec=36,
+        suffix_method="all_columns",
+    )
+    result = pd.DataFrame(outer.compute())
+
+    assert outer.hc_structure.catalog_info.healpix_column == SPATIAL_INDEX_COLUMN
+    assert outer.hc_structure.catalog_info.healpix_order == SPATIAL_INDEX_ORDER
+    np.testing.assert_array_equal(
+        result.index.to_numpy(), compute_spatial_index(result["_ra"].to_numpy(), result["_dec"].to_numpy())
+    )
+    assert result.index.is_monotonic_increasing
 
 
 def test_outer_scans_right_only_sky():

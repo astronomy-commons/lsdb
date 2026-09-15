@@ -14,6 +14,7 @@ from hats.catalog.catalog_collection import CatalogCollection
 from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
 from hats.catalog.index.index_catalog import IndexCatalog as HCIndexCatalog
 from hats.pixel_math import HealpixPixel
+from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN, SPATIAL_INDEX_ORDER
 from pandas._typing import Renamer
 from typing_extensions import Self
 from upath import UPath
@@ -448,7 +449,12 @@ class Catalog(HealpixDataset):
             suffix_method,
         )
         if how == "outer":
-            new_catalog_info = new_catalog_info.copy_and_update(ra_column="_ra", dec_column="_dec")
+            new_catalog_info = new_catalog_info.copy_and_update(
+                ra_column="_ra",
+                dec_column="_dec",
+                healpix_column=SPATIAL_INDEX_COLUMN,
+                healpix_order=SPATIAL_INDEX_ORDER,
+            )
         hc_catalog = self.hc_structure.__class__(
             new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(op.meta), moc=alignment.moc
         )

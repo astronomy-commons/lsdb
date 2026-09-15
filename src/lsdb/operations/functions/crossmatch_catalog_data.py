@@ -10,7 +10,7 @@ import pandas as pd
 from hats.catalog.dataset.table_properties import TableProperties
 from hats.pixel_math.healpix_pixel import HealpixPixel
 from hats.pixel_math.pixel_margins import get_margin
-from hats.pixel_math.spatial_index import healpix_to_spatial_index
+from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN, healpix_to_spatial_index
 from hats.pixel_tree.pixel_alignment import PixelAlignment, align_trees
 from hats.pixel_tree.pixel_alignment_types import PixelAlignmentType
 from hats.pixel_tree.pixel_tree import PixelTree
@@ -435,6 +435,7 @@ def _boundary_pixel_lists(
     ring_cells: set[tuple[int, int]] = set()
     for i in np.flatnonzero(right_only_mask):
         row = pixel_mapping.iloc[i]
+        # pi-lens-ignore: unchecked-throwing-call-python
         order, pixel = int(row[PixelAlignment.ALIGNED_ORDER_COLUMN_NAME]), int(
             row[PixelAlignment.ALIGNED_PIXEL_COLUMN_NAME]
         )
@@ -590,6 +591,7 @@ def crossmatch_catalog_data(
                 raise ValueError("Outer crossmatch requires coordinate columns")
             source_series = cast(pd.Series, left.meta[source_coord])
             meta_df[output_coord] = pd.Series(dtype=source_series.dtype)
+        meta_df.index.name = SPATIAL_INDEX_COLUMN
 
     # perform the crossmatch on each partition pairing using dask delayed for lazy computation
     empty_pixels: list[HealpixPixel | None] = [None] * len(aligned_pixels)
