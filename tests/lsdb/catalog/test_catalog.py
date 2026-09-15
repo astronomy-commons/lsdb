@@ -1107,7 +1107,8 @@ def test_map_partitions_disallows_changing_radec(small_sky_source_catalog):
 
 
 def test_map_partitions_respects_healpix_index(small_sky_source_catalog):
-    """Check that, if the index is a healpix index, it matches the ra/dec columns.
+    """Check that, if map_partitions() returns a catalog with a healpix index,
+    then the index matches the ra/dec columns.
 
     NOTE this is only implemented for compute_single_partition==True!"""
 
@@ -1127,6 +1128,15 @@ def test_map_partitions_respects_healpix_index(small_sky_source_catalog):
         small_sky_source_catalog.map_partitions(
             my_evil_function, SPATIAL_INDEX_COLUMN, compute_single_partition=True
         )
+
+
+def test_map_partitions_allows_non_spatial_index(small_sky_source_catalog):
+    """Check that, if map_partitions() returns a catalog without a healpix index,
+    then no error is produced.
+
+    NOTE this is only implemented for compute_single_partition==True!"""
+    cat = small_sky_source_catalog.map_partitions(lambda df: df.reset_index(), compute_single_partition=True)
+    assert cat.meta.index.name != SPATIAL_INDEX_COLUMN
 
 
 def test_estimate_size(small_sky_source_catalog, capsys):
