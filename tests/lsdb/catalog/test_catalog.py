@@ -1107,7 +1107,7 @@ def test_map_partitions_disallows_changing_radec(small_sky_source_catalog):
 
 
 def test_map_partitions_respects_healpix_index(small_sky_source_catalog):
-    """Check that, if map_partitions() returns a catalog with a healpix index,
+    """Test that, if map_partitions() returns a catalog with a healpix index,
     then the index matches the ra/dec columns.
 
     NOTE this is only implemented for compute_single_partition==True!"""
@@ -1131,12 +1131,28 @@ def test_map_partitions_respects_healpix_index(small_sky_source_catalog):
 
 
 def test_map_partitions_allows_non_spatial_index(small_sky_source_catalog):
-    """Check that, if map_partitions() returns a catalog without a healpix index,
+    """Test that, if map_partitions() returns a catalog without a healpix index,
     then no error is produced.
 
     NOTE this is only implemented for compute_single_partition==True!"""
     cat = small_sky_source_catalog.map_partitions(lambda df: df.reset_index(), compute_single_partition=True)
     assert cat.meta.index.name != SPATIAL_INDEX_COLUMN
+
+
+def test_map_partitions_allows_non_dataframe_result(small_sky_source_catalog):
+    """Test that, if the function passed to map_partitions() doesn't return a DataFrame,
+    then the result is either:
+    - a dd.Series (if compute_single_partition == False)
+    - a computed value (if compute_single_partition == True)"""
+    res = small_sky_source_catalog.map_partitions(
+        lambda df: df["source_ra"].max(), compute_single_partition=True
+    )
+    assert isinstance(res, float)
+
+    res = small_sky_source_catalog.map_partitions(
+        lambda df: df["source_ra"].max(), compute_single_partition=False
+    )
+    assert isinstance(res, dd.Series)
 
 
 def test_estimate_size(small_sky_source_catalog, capsys):
