@@ -12,6 +12,7 @@ import pytest
 from hats.catalog import CatalogType
 from hats.pixel_math.healpix_pixel_function import get_pixel_argsort
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
+from hats.testing import assert_catalog_info_is_correct
 from mocpy import MOC
 
 import lsdb
@@ -43,7 +44,7 @@ def test_from_dataframe(small_sky_order1_df, small_sky_order1_catalog, helpers):
     assert isinstance(catalog.meta, npd.NestedFrame)
     # Catalogs have the same information
     # New catalog doesn't have a skymap order yet.
-    helpers.assert_catalog_info_is_correct(
+    assert_catalog_info_is_correct(
         small_sky_order1_catalog.hc_structure.catalog_info,
         catalog.hc_structure.catalog_info,
         do_not_compare=["skymap_order", "moc_sky_fraction", "hats_max_rows"],
