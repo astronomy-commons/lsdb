@@ -27,13 +27,18 @@ def new_provenance_properties(
         A new provenance dictionary.
     """
     if not inherit_provenance:
-        kwargs |= {
+        kwargs = {
             "hats_creator": None,
             "bib_reference": None,
             "bib_reference_url": None,
             "creator_did": None,
             "publisher_id": None,
-        }
+        } | kwargs
+
+    kwargs = {
+        "hats_cols_sort": None,
+        "hats_cols_survey_id": None,
+    } | kwargs
     return TableProperties.new_provenance_dict(path, builder=f"lsdb v{version('lsdb')}", **kwargs)
 
 
