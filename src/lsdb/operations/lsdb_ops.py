@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import functools
-from typing import TYPE_CHECKING, Callable, Sequence
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Callable
 
 import nested_pandas as npd
 import numpy as np
@@ -16,6 +17,10 @@ from lsdb.operations.operation import HealpixGraph, Operation
 
 if TYPE_CHECKING:
     from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
+
+
+PixelSlot = HealpixPixel | None | tuple[HealpixPixel, ...]
+"""Per-task pixel(s) for an AlignAndApply input slot: one pixel, None, or a tuple to gather."""
 
 
 def run_and_verify_meta(func, meta, *args, **kwargs):
@@ -420,13 +425,32 @@ class SelectPixels(Operation):
         return HealpixGraph(culled_graph, pixel_keys)
 
 
+def _concat_frames(*frames):
+    """Concatenate partitions gathered for a multi-pixel input slot, dropping empty ones."""
+    nonempty = [frame for frame in frames if frame is not None and len(frame)]
+    if not nonempty:
+        return None
+    if len(nonempty) == 1:
+        return nonempty[0]
+    return npd.NestedFrame(pd.concat(nonempty))
+
+
+def _as_pixel_sequence(entry):
+    """Normalize a pixel-lists entry to a flat list of pixels (empty for None/empty tuple)."""
+    if entry is None:
+        return []
+    if isinstance(entry, (tuple, list)):
+        return [pixel for pixel in entry if pixel is not None]
+    return [entry]
+
+
 class AlignAndApply(Operation):
     """An Operation that applies a function to aligned partitions from multiple HealpixGraphs."""
 
     def __init__(
         self,
         input_cats: Sequence[HealpixDataset | None],
-        pixel_lists: Sequence[Sequence[HealpixPixel | None]],
+        pixel_lists: Sequence[Sequence[PixelSlot]],
         func,
         meta,
         output_pixels: Sequence[HealpixPixel],
@@ -508,16 +532,38 @@ class AlignAndApply(Operation):
         requested = set(pixels)
         output_indices = [i for i, p in enumerate(self.output_pixels) if p in requested]
         input_pixel_subsets: list[list[HealpixPixel] | None] = [
-            [p for i in output_indices if (p := pixel_list[i]) is not None] for pixel_list in self.pixel_lists
+            [pixel for i in output_indices for pixel in _as_pixel_sequence(pixel_list[i])]
+            for pixel_list in self.pixel_lists
         ]
         return output_indices, input_pixel_subsets
 
-    def _input_task_refs(self, graphs: list[HealpixGraph | None], input_pixels: tuple) -> list:
-        """Get the task ref for each input's partition, falling back to its meta for missing pixels"""
+    def _input_task_refs(
+        self,
+        graphs: list[HealpixGraph | None],
+        input_pixels: tuple,
+        base_key: str,
+        index: int,
+        graph: dict,
+    ) -> list:
+        """Get the task ref for each input's partition, falling back to its meta for missing pixels
+
+        A pixel entry may be a tuple of pixels, in which case the partitions are gathered and
+        concatenated into a single intermediate task, and a reference to that task is returned.
+        """
         task_refs: list = []
-        for g, m, p in zip(graphs, self.metas, input_pixels):
+        for slot, (g, m, p) in enumerate(zip(graphs, self.metas, input_pixels)):
             if g is None:
                 task_refs.append(None)
+            elif isinstance(p, (tuple, list)):
+                refs = [TaskRef(g.pixel_to_key_map[pixel]) for pixel in p if pixel in g.pixel_to_key_map]
+                if not refs:
+                    task_refs.append(None)
+                elif len(refs) == 1:
+                    task_refs.append(refs[0])
+                else:
+                    concat_key = (base_key, index, f"concat{slot}")
+                    graph[concat_key] = Task(concat_key, _concat_frames, *refs)
+                    task_refs.append(TaskRef(concat_key))
             elif p is None or p not in g.pixel_to_key_map:
                 task_refs.append(m)
             else:
@@ -542,7 +588,7 @@ class AlignAndApply(Operation):
                 graph = graph | g.graph
         for i in output_indices:
             input_pixels = tuple(pl[i] for pl in self.pixel_lists)
-            task_refs = self._input_task_refs(graphs, input_pixels)
+            task_refs = self._input_task_refs(graphs, input_pixels, self.key_name, i, graph)
             args = task_refs + list(input_pixels) + self.catalog_infos + list(self.args)
             key = (self.key_name, i)
             graph[key] = Task(key, func, *args, **self.kwargs)
