@@ -219,7 +219,6 @@ def test_map_rows_no_return_column(small_sky_with_nested_sources):
     pd.testing.assert_frame_equal(
         reduced_cat_compute[small_sky_with_nested_sources.columns],
         small_sky_with_nested_sources.compute(),
-        check_column_type=False,
     )
 
 
