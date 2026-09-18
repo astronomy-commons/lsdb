@@ -20,7 +20,7 @@ from dask import threaded
 from dask.base import get_scheduler
 from dask.delayed import Delayed
 from deprecated import deprecated  # type: ignore
-from distributed import as_completed
+from distributed import Client, as_completed
 from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
 from hats.pixel_math import HealpixPixel
 from hats.pixel_math.healpix_pixel_function import get_pixel_argsort
@@ -503,9 +503,9 @@ class HealpixDataset:
         desc = tqdm_kwargs.pop("desc", "Computing Catalog") if tqdm_kwargs else "Computing Catalog"
         healpix_graph = self._operation.build()
         schedule = get_scheduler()
-        if schedule is None:
+        if not isinstance(getattr(schedule, "__self__", None), Client):
             with TqdmCallback(desc=desc, disable=not progress_bar, **(tqdm_kwargs or {})):
-                result = threaded.get(healpix_graph.graph, healpix_graph.keys, sync=False)
+                result = (schedule or threaded.get)(healpix_graph.graph, healpix_graph.keys)
         else:
             futures = schedule(healpix_graph.graph, healpix_graph.keys, sync=False)
             result_map = {}
