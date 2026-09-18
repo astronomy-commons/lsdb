@@ -1491,6 +1491,7 @@ class Catalog(HealpixDataset):
         skymap_alt_orders: list[int] | None = None,
         npix_suffix: str = ".parquet",
         npix_parquet_name: str | None = None,
+        row_group_kwargs: dict | None = None,
         write_table_kwargs: dict | None = None,
     ):
         """Save the catalog to disk in HATS format.
@@ -1547,6 +1548,8 @@ class Catalog(HealpixDataset):
             Name of the pixel parquet file to be used when npix_suffix=/.
             By default, it will be named after the pixel with a .parquet
             extension (e.g. 'Npix=10.parquet').
+        row_group_kwargs: dict or None, default None
+            Additional keyword arguments to use in creation of row groups when writing files to parquet.
         write_table_kwargs: dict or None, default None
             Arguments to pass to the parquet write operations
 
@@ -1580,6 +1583,7 @@ class Catalog(HealpixDataset):
                 create_summary=create_summary,
                 should_write_skymap=should_write_skymap,
                 skymap_alt_orders=skymap_alt_orders,
+                row_group_kwargs=row_group_kwargs,
                 write_table_kwargs=write_table_kwargs,
                 npix_suffix=npix_suffix,
                 npix_parquet_name=npix_parquet_name,
@@ -1602,6 +1606,7 @@ class Catalog(HealpixDataset):
                 create_summary=create_summary,
                 should_write_skymap=should_write_skymap,
                 skymap_alt_orders=skymap_alt_orders,
+                row_group_kwargs=row_group_kwargs,
                 write_table_kwargs=write_table_kwargs,
                 npix_suffix=npix_suffix,
                 npix_parquet_name=npix_parquet_name,
