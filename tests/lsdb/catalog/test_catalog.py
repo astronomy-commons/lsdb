@@ -2,6 +2,7 @@
 from pathlib import Path
 
 import astropy.units as u
+import dask
 import dask.dataframe as dd
 import hats as hc
 import hats.io.file_io
@@ -89,6 +90,15 @@ def test_catalog_compute_progress_bar_kwargs(small_sky_order1_catalog, mocker):
     tqdm_callback.assert_called_once_with(desc="Custom Desc", disable=False, ascii=True)
 
 
+@pytest.mark.parametrize("scheduler", ["threads", "processes", "synchronous", "single-threaded"])
+def test_catalog_compute_with_configured_local_scheduler(small_sky_order1_catalog, scheduler):
+    expected = small_sky_order1_catalog.compute(progress_bar=False)
+    with dask.config.set(scheduler=scheduler):
+        result = small_sky_order1_catalog.compute(progress_bar=False)
+    assert isinstance(result, npd.NestedFrame)
+    pd.testing.assert_frame_equal(result, expected)
+
+
 def local_client():
     return Client(processes=False, n_workers=1, threads_per_worker=1, dashboard_address=None)
 
@@ -131,6 +141,18 @@ def test_catalog_compute_with_distributed_client_progress_bar_kwargs(small_sky_o
 
     n_partitions = len(small_sky_order1_catalog.get_healpix_pixels())
     tqdm_mock.assert_called_once_with(total=n_partitions, desc="Custom Desc", disable=False, ascii=True)
+
+
+def test_catalog_compute_with_distributed_client_and_local_scheduler(small_sky_order1_catalog, mocker):
+    """A local scheduler set in the dask config takes precedence over an active client."""
+    tqdm_mock = mocker.patch("lsdb.catalog.dataset.healpix_dataset.tqdm")
+    expected = small_sky_order1_catalog.compute(progress_bar=False)
+
+    with local_client(), dask.config.set(scheduler="threads"):
+        result = small_sky_order1_catalog.compute(progress_bar=False)
+
+    pd.testing.assert_frame_equal(result, expected)
+    tqdm_mock.assert_not_called()
 
 
 def test_catalog_compute_empty_with_distributed_client(small_sky_order1_catalog):
