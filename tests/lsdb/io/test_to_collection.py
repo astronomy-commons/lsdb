@@ -34,6 +34,7 @@ def test_save_collection(small_sky_order1_collection_catalog, tmp_path):
         obs_regime="Optical",
         default_columns=["ra", "dec"],
         hats_builder=f"lsdb v{version('lsdb')}, hats v{version('hats')}",
+        hats_cols_sort=None,
     )
 
     for pixel in catalog.get_healpix_pixels():
