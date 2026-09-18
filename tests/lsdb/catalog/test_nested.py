@@ -219,6 +219,11 @@ def test_map_rows_no_return_column(small_sky_with_nested_sources):
     pd.testing.assert_frame_equal(
         reduced_cat_compute[small_sky_with_nested_sources.columns],
         small_sky_with_nested_sources.compute(),
+        # The unnamed output column is appended with an integer label (0), so
+        # reduced_cat_compute has a mixed int/str column Index (dtype=object) even
+        # after subsetting to the original string columns, unlike a freshly loaded
+        # frame's homogeneous string column Index.
+        check_column_type=False,
     )
 
 
