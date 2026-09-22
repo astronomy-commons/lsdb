@@ -126,9 +126,9 @@ class DataframeCatalogLoader:
         self.partition_rows, self.partition_bytes = self._calculate_threshold(partition_rows, partition_bytes)
 
         if ra_column is None:
-            ra_column = self._find_column("ra")
+            ra_column = self._find_column("ra", "right ascension")
         if dec_column is None:
-            dec_column = self._find_column("dec")
+            dec_column = self._find_column("dec", "declination")
 
         # Validate RA/Dec columns.
         if dataframe[ra_column].isna().any() or dataframe[dec_column].isna().any():
@@ -166,7 +166,7 @@ class DataframeCatalogLoader:
         self.use_pyarrow_types = use_pyarrow_types
         self.schema = schema
 
-    def _find_column(self, search_term: str) -> str:
+    def _find_column(self, search_term: str, descriptive_name: str) -> str:
         """Finds the column in the data frame matching the search term.
 
         The search is case-insensitive and unambiguous. An error is raised
@@ -186,9 +186,10 @@ class DataframeCatalogLoader:
                 # heuristic match
                 elif _is_radec_like(str(col_name).lower(), search_term):
                     logging.warning(
-                        "Warning: heuristic match found for `%s`: '%s'. Please check correctness!",
-                        search_term,
+                        "Found '%s' as a possible %s column. Please check correctness! "
+                        "You can supply ra/dec column names using the arguments `ra_column`, `dec_column`.",
                         col_name,
+                        descriptive_name,
                     )
                     matches.append(col_name)
 
@@ -196,13 +197,13 @@ class DataframeCatalogLoader:
         # Ensure matches exist and are unique (i.e. exactly one match)
         if n_matches == 0:
             raise ValueError(
-                f"No column found for '{search_term}' (required). You can supply ra/dec column names "
-                "using the arguments `ra_column`, `dec_column`."
+                f"No {descriptive_name} column found (required). "
+                "You can supply ra/dec column names using the arguments `ra_column`, `dec_column`."
             )
         if n_matches > 1:
             raise ValueError(
-                f"Found {n_matches} possible columns for '{search_term}': {matches}. Please "
-                "rename columns to disambiguate."
+                f"Found {n_matches} possible {descriptive_name} columns: {matches}. "
+                "You can supply ra/dec column names using the arguments `ra_column`, `dec_column`."
             )
         return matches[0]
 

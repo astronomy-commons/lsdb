@@ -480,8 +480,8 @@ def test_from_dataframe_finds_radec_columns(small_sky_order1_df):
     with pytest.raises(
         ValueError,
         match=re.escape(
-            "No column found for 'ra' (required). You can supply ra/dec column names using the arguments "
-            "`ra_column`, `dec_column`."
+            "No right ascension column found (required). "
+            "You can supply ra/dec column names using the arguments `ra_column`, `dec_column`."
         ),
     ):
         lsdb.from_dataframe(df_no_ra, margin_threshold=None)
@@ -490,8 +490,8 @@ def test_from_dataframe_finds_radec_columns(small_sky_order1_df):
     with pytest.raises(
         ValueError,
         match=re.escape(
-            "No column found for 'dec' (required). You can supply ra/dec column names using the arguments "
-            "`ra_column`, `dec_column`."
+            "No declination column found (required). "
+            "You can supply ra/dec column names using the arguments `ra_column`, `dec_column`."
         ),
     ):
         lsdb.from_dataframe(df_no_dec, margin_threshold=None)
@@ -500,7 +500,8 @@ def test_from_dataframe_finds_radec_columns(small_sky_order1_df):
     with pytest.raises(
         ValueError,
         match=re.escape(
-            "Found 2 possible columns for 'ra': ['ra', 'RA']. Please rename columns to disambiguate."
+            "Found 2 possible right ascension columns: ['ra', 'RA']. "
+            "You can supply ra/dec column names using the arguments `ra_column`, `dec_column`."
         ),
     ):
         lsdb.from_dataframe(small_sky_order1_df, margin_threshold=None)
@@ -551,7 +552,7 @@ def test_find_radec_from_known_matches():
     # raMean should be matched, but decMean should not
     col_names = ["id", "fake1", "fake2", "raMean", "decMean", "fake3", "fake4"]
     df = pd.DataFrame({col: dummy_values for col in col_names})
-    with pytest.raises(ValueError, match=re.escape("No column found for 'dec'")):
+    with pytest.raises(ValueError, match=re.escape("No declination column found")):
         cat = lsdb.from_dataframe(df)
 
 
@@ -564,7 +565,8 @@ def test_find_radec_known_matches_ambiguity():
     with pytest.raises(
         ValueError,
         match=re.escape(
-            "Found 2 possible columns for 'ra': ['ra', 'raMean']. Please rename columns to disambiguate."
+            "Found 2 possible right ascension columns: ['ra', 'raMean']. "
+            "You can supply ra/dec column names using the arguments `ra_column`, `dec_column`."
         ),
     ):
         cat = lsdb.from_dataframe(df)
@@ -593,8 +595,8 @@ def test_find_radec_column_heuristic():
     with pytest.raises(
         ValueError,
         match=re.escape(
-            "No column found for 'ra' (required). You can supply ra/dec column names using the arguments "
-            "`ra_column`, `dec_column`."
+            "No right ascension column found (required). "
+            "You can supply ra/dec column names using the arguments `ra_column`, `dec_column`."
         ),
     ):
         cat = lsdb.from_dataframe(df)
@@ -622,8 +624,8 @@ def test_find_radec_column_heuristic():
     with pytest.raises(
         ValueError,
         match=re.escape(
-            "No column found for 'ra' (required). You can supply ra/dec column names using the arguments "
-            "`ra_column`, `dec_column`."
+            "No right ascension column found (required). "
+            "You can supply ra/dec column names using the arguments `ra_column`, `dec_column`."
         ),
     ):
         cat = lsdb.from_dataframe(df)
@@ -633,8 +635,8 @@ def test_find_radec_column_heuristic():
     with pytest.raises(
         ValueError,
         match=re.escape(
-            "No column found for 'ra' (required). You can supply ra/dec column names using the arguments "
-            "`ra_column`, `dec_column`."
+            "No right ascension column found (required). "
+            "You can supply ra/dec column names using the arguments `ra_column`, `dec_column`."
         ),
     ):
         cat = lsdb.from_dataframe(df)
@@ -650,7 +652,8 @@ def test_find_radec_column_heuristic():
     with pytest.raises(
         ValueError,
         match=re.escape(
-            "Found 2 possible columns for 'ra': ['ra', 'ra1234']. Please rename columns to disambiguate."
+            "Found 2 possible right ascension columns: ['ra', 'ra1234']. "
+            "You can supply ra/dec column names using the arguments `ra_column`, `dec_column`."
         ),
     ):
         cat = lsdb.from_dataframe(df)

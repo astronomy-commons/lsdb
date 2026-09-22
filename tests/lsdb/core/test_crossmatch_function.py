@@ -155,8 +155,8 @@ def test_ra_dec_columns_crossmatch(small_sky_catalog, small_sky_xmatch_catalog, 
     with pytest.raises(
         ValueError,
         match=re.escape(
-            "No column found for 'ra' (required). You can supply ra/dec column names using the arguments "
-            "`ra_column`, `dec_column`."
+            "No right ascension column found (required). "
+            "You can supply ra/dec column names using the arguments `ra_column`, `dec_column`."
         ),
     ):
         lsdb.crossmatch(
@@ -166,8 +166,8 @@ def test_ra_dec_columns_crossmatch(small_sky_catalog, small_sky_xmatch_catalog, 
     with pytest.raises(
         ValueError,
         match=re.escape(
-            "No column found for 'dec' (required). You can supply ra/dec column names using the arguments "
-            "`ra_column`, `dec_column`."
+            "No declination column found (required). "
+            "You can supply ra/dec column names using the arguments `ra_column`, `dec_column`."
         ),
     ):
         lsdb.crossmatch(
