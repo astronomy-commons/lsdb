@@ -289,7 +289,7 @@ def test_read_hats_default_cols_with_ellipsis(small_sky_order1_default_cols_dir)
 
 def test_read_hats_with_ellipsis_errors(small_sky_order1_default_cols_dir):
     # Test that multiple ellipses raise an error
-    with pytest.raises(ValueError, match="one ellipses"):
+    with pytest.raises(ValueError, match="one ellipsis"):
         lsdb.open_catalog(small_sky_order1_default_cols_dir, columns=[..., "ra_error", ...])
 
     # Test that ellipsis with non-list-like columns raises an error
