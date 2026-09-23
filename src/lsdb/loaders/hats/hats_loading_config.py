@@ -72,10 +72,10 @@ class HatsLoadingConfig:
 
         if columns is not None and ... in columns:
             if columns.count(...) > 1:
-                raise ValueError("`columns` argument can only contain one ellipses (...)")
+                raise ValueError("`columns` argument can only contain one ellipsis (...)")
             if catalog_info.default_columns is None:
                 raise ValueError(
-                    "`columns` contains an ellipses (...), but this catalog does not define any "
+                    "`columns` contains an ellipsis (...), but this catalog does not define any "
                     'default columns for it to expand to. Use `columns="all"` to load every '
                     "column, or name the columns you want."
                 )
