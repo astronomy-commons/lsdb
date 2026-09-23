@@ -1,8 +1,12 @@
+from typing import Literal
+
 import nested_pandas as npd
 import pandas as pd
 
 from lsdb.catalog import Catalog
-from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
+from lsdb.core.crossmatch.abstract_crossmatch_algorithm import (
+    AbstractCrossmatchAlgorithm,
+)
 from lsdb.loaders.dataframe.from_dataframe import from_dataframe
 
 
@@ -37,7 +41,7 @@ def crossmatch(
     algorithm: AbstractCrossmatchAlgorithm | None = None,
     output_catalog_name: str | None = None,
     require_right_margin: bool = False,
-    how: str = "inner",
+    how: Literal["inner", "left", "outer"] = "inner",
     suffixes: tuple[str, str] | None = None,
     left_args: dict | None = None,
     right_args: dict | None = None,
@@ -77,9 +81,11 @@ def crossmatch(
         The name of the output catalog.
     require_right_margin : bool, default False
         Whether to require a right margin.
-    how: str
-        How to handle the crossmatch of the two catalogs.
-        One of {'left', 'inner'}.  Defaults to 'inner'.
+    how : {'inner', 'left', 'outer'}, default 'inner'
+        ``inner`` emits only matched row pairs; ``left`` also emits unmatched left
+        rows; ``outer`` also emits unmatched rows from both catalogs, including sky
+        covered only by the right catalog. ``outer`` requires margin caches on both
+        catalogs (left threshold at least the matching radius, right at least twice).
     suffixes : tuple[str,str] or None, default None
         Suffixes to append to overlapping column names.
     left_args : dict or None, default None

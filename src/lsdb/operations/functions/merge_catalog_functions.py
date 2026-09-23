@@ -2,7 +2,8 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Callable, Literal, Sequence, cast
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Callable, Literal, cast
 
 import hats.pixel_math.healpix_shim as hp
 import nested_pandas as npd
@@ -14,13 +15,17 @@ from hats.io import paths
 from hats.pixel_math import HealpixPixel
 from hats.pixel_math.healpix_pixel import get_lower_order_pixel
 from hats.pixel_math.pixel_margins import get_margin
-from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN, SPATIAL_INDEX_ORDER, healpix_to_spatial_index
+from hats.pixel_math.spatial_index import (
+    SPATIAL_INDEX_COLUMN,
+    SPATIAL_INDEX_ORDER,
+    healpix_to_spatial_index,
+)
 from hats.pixel_tree import PixelAlignment, PixelAlignmentType, align_trees
 from hats.pixel_tree.moc_utils import copy_moc
 from hats.pixel_tree.pixel_alignment import align_with_mocs
 from tabulate import tabulate
 
-from lsdb.operations.lsdb_ops import AlignAndApply
+from lsdb.operations.lsdb_ops import AlignAndApply, PixelSlot
 from lsdb.operations.operation import Operation
 
 if TYPE_CHECKING:
@@ -484,7 +489,7 @@ def _merge_association_alignments(left_alignment: PixelAlignment, final_alignmen
 
 
 def align_and_apply(
-    catalog_mappings: list[tuple[HealpixDataset | None, list[HealpixPixel]]],
+    catalog_mappings: list[tuple[HealpixDataset | None, Sequence[PixelSlot]]],
     func: Callable,
     meta: npd.NestedFrame | pd.DataFrame | pd.Series,
     output_pixels: list[HealpixPixel],
@@ -496,9 +501,11 @@ def align_and_apply(
 
     Parameters
     ----------
-    catalog_mappings : list[tuple[HealpixDataset | None, list[HealpixPixel]]]
+    catalog_mappings : list[tuple[HealpixDataset | None, Sequence[PixelSlot]]]
         The catalogs and their corresponding ordering of pixels to align the partitions to.
         Catalog can be None, in which case None will be passed to the function for each partition.
+        A pixel entry may be None (the catalog's meta is passed instead) or a tuple of
+        pixels (their partitions are gathered and concatenated into a single dataframe).
         Each list of pixels should be the same length. Example input:
         [(catalog, pixels), (catalog2, pixels2), ...]
     func : Callable
