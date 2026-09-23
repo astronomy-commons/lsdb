@@ -92,7 +92,8 @@ def open_catalog(
         The spatial filter method to be applied.
     columns : list[str] or str or None, default None
         The set of columns to filter the catalog on. If None, the catalog's default columns
-        will be loaded. To load all catalog columns, use `columns="all"`.
+        will be loaded. To load all catalog columns, use `columns="all"`. To load the default
+        columns plus additional column(s), use `columns=[..., "extra_col_name"].
     margin_cache : path-like or None, default None
         The margin for the main catalog, provided as a path.
     error_empty_filter : bool, default True
