@@ -301,6 +301,16 @@ def test_read_hats_with_ellipsis_errors(small_sky_order1_default_cols_dir):
         lsdb.open_catalog(small_sky_order1_default_cols_dir, columns=[..., "wrong"])
 
 
+def test_read_hats_ellipsis_without_default_cols(small_sky_order1_dir):
+    """A catalog with no default columns has nothing for the ellipsis to expand to."""
+    with pytest.raises(ValueError, match="does not define any default columns"):
+        lsdb.open_catalog(small_sky_order1_dir, columns=[..., "ra"])
+
+    # The same catalog still loads every column when asked explicitly.
+    catalog = lsdb.open_catalog(small_sky_order1_dir, columns="all")
+    assert "ra" in catalog.columns
+
+
 def test_read_hats_no_pandas(small_sky_order1_no_pandas_dir, helpers):
     catalog = lsdb.open_catalog(small_sky_order1_no_pandas_dir)
     assert isinstance(catalog, lsdb.Catalog)
