@@ -13,6 +13,7 @@ from distributed import Client
 from hats.catalog import PartitionInfo, TableProperties
 from hats.io.file_io import get_upath_for_protocol, read_fits_image
 from hats.io.paths import get_data_thumbnail_pointer
+from hats.io.validation import is_valid_collection
 from hats.pixel_math.sparse_histogram import SparseHistogram
 from hats.testing import assert_catalog_info_is_correct
 from pydantic import ValidationError
@@ -723,3 +724,22 @@ def test_row_group_kwargs(small_sky_order1_catalog, tmp_path):
         small_sky_order1_catalog.write_catalog(
             base_catalog_path, row_group_kwargs={"subtile_order_delta": 1, "num_rows": 10}
         )
+
+
+def test_saved_schemas(small_sky_order1_catalog, tmp_path):
+    """Test that saved schema is equivalent whether or not row_group_kwargs gets used."""
+    orig_schema = small_sky_order1_catalog.hc_structure.schema
+
+    base_catalog_path_A = tmp_path / "small_sky_order1_A"
+    small_sky_order1_catalog.write_catalog(base_catalog_path_A, row_group_kwargs=None)
+
+    base_catalog_path_B = tmp_path / "small_sky_order1_B"
+    small_sky_order1_catalog.write_catalog(base_catalog_path_B, row_group_kwargs={"num_rows": 10})
+
+    base_catalog_path_C = tmp_path / "small_sky_order1_C"
+    small_sky_order1_catalog.write_catalog(base_catalog_path_C, row_group_kwargs={"subtile_order_delta": 1})
+
+    for path in [base_catalog_path_A, base_catalog_path_B, base_catalog_path_C]:
+        assert is_valid_collection(path)
+        cat = lsdb.open_catalog(path)
+        assert cat.hc_structure.schema.equals(orig_schema)
