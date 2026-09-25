@@ -52,7 +52,7 @@ def test_kdtree_crossmatch_nested(small_sky_catalog, small_sky_xmatch_catalog, x
     assert xmatched_cat.get_healpix_pixels() == alignment.pixel_tree.get_healpix_pixels()
 
     assert isinstance(xmatched, npd.NestedFrame)
-    assert np.sum(xmatched["small_sky_xmatch"].nest.list_lengths) == len(xmatch_correct)
+    assert np.sum(xmatched["small_sky_xmatch"].nest.len()) == len(xmatch_correct)
     for _, correct_row in xmatch_correct.iterrows():
         assert correct_row["ss_id"] in xmatched["id"].to_numpy()
         xmatch_row = xmatched[xmatched["id"] == correct_row["ss_id"]]
@@ -80,7 +80,7 @@ def test_kdtree_crossmatch_nested_custom_name(small_sky_catalog, small_sky_xmatc
     assert xmatched_cat.get_healpix_pixels() == alignment.pixel_tree.get_healpix_pixels()
 
     assert isinstance(xmatched, npd.NestedFrame)
-    assert np.sum(xmatched[nested_column_name].nest.list_lengths) == len(xmatch_correct)
+    assert np.sum(xmatched[nested_column_name].nest.len()) == len(xmatch_correct)
     for _, correct_row in xmatch_correct.iterrows():
         assert correct_row["ss_id"] in xmatched["id"].to_numpy()
         xmatch_row = xmatched[xmatched["id"] == correct_row["ss_id"]]
@@ -158,7 +158,7 @@ def test_kdtree_crossmatch_nested_multiple_neighbors(
             n_neighbors=3,
             radius_arcsec=2 * 3600,
         ).compute()
-    assert np.sum(xmatched["small_sky_xmatch"].nest.list_lengths) == len(xmatch_correct_3n_2t_no_margin)
+    assert np.sum(xmatched["small_sky_xmatch"].nest.len()) == len(xmatch_correct_3n_2t_no_margin)
     for _, correct_row in xmatch_correct_3n_2t_no_margin.iterrows():
         assert correct_row["ss_id"] in xmatched["id"].to_numpy()
         xmatch_df = xmatched[xmatched["id"] == correct_row["ss_id"]]["small_sky_xmatch"].iloc[0]
@@ -590,7 +590,7 @@ def test_custom_crossmatch_algorithm_nested(small_sky_catalog, small_sky_xmatch_
         xmatched = small_sky_catalog.crossmatch_nested(
             small_sky_xmatch_catalog, algorithm=MockCrossmatchAlgorithm(mock_results=xmatch_mock)
         ).compute()
-    assert np.sum(xmatched["small_sky_xmatch"].nest.list_lengths) == len(xmatch_mock)
+    assert np.sum(xmatched["small_sky_xmatch"].nest.len()) == len(xmatch_mock)
     for _, correct_row in xmatch_mock.iterrows():
         assert correct_row["ss_id"] in xmatched["id"].to_numpy()
         xmatch_row = xmatched[xmatched["id"] == correct_row["ss_id"]]["small_sky_xmatch"].iloc[0]
