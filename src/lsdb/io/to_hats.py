@@ -82,20 +82,18 @@ def perform_write(
         npix_suffix=npix_suffix,
         npix_parquet_name=npix_parquet_name,
     )
-    if row_group_kwargs:
-        table = pa.Table.from_pandas(df)
-        # Obtain the row groups for the target file
-        rowgroup_tables = split_to_row_groups(table, row_group_kwargs, hp_pixel.order)
-        with pq.ParquetWriter(
-            pixel_path.path,
-            table.schema,
-            filesystem=pixel_path.fs,
-            **kwargs,
-        ) as writer:
-            for table in rowgroup_tables:
-                writer.write_table(table)
-    else:
-        df.to_parquet(pixel_path.path, filesystem=pixel_path.fs, **kwargs)
+    table = df.to_pyarrow()
+    # Obtain the row groups for the target file
+    rowgroup_tables = split_to_row_groups(table, row_group_kwargs, hp_pixel.order)
+    with pq.ParquetWriter(
+        pixel_path.path,
+        table.schema,
+        filesystem=pixel_path.fs,
+        **kwargs,
+    ) as writer:
+        for rg_table in rowgroup_tables:
+            writer.write_table(rg_table)
+
     histogram = calculate_histogram(df, histogram_order)
     write_histogram(histogram, base_catalog_dir, hp_pixel)
     write_done_pixel(base_catalog_dir, hp_pixel)
