@@ -31,6 +31,7 @@ MAX_PYARROW_FILTERS = 10
 
 def open_catalog(
     path: str | Path | UPath,
+    *,
     search_filter: AbstractSearch | None = None,
     columns: list[str] | str | None = None,
     margin_cache: str | Path | UPath | None = None,
@@ -38,6 +39,7 @@ def open_catalog(
     filters: list[tuple[str]] | None = None,
     path_generator: Callable[[UPath, HealpixPixel, dict | None, str], UPath] = hc.io.pixel_catalog_file,
     show_statistics: bool = False,
+    storage_options: dict | None = None,
     **kwargs,
 ) -> Catalog:
     """Open a catalog from a HATS path.
@@ -90,7 +92,8 @@ def open_catalog(
         The spatial filter method to be applied.
     columns : list[str] or str or None, default None
         The set of columns to filter the catalog on. If None, the catalog's default columns
-        will be loaded. To load all catalog columns, use `columns="all"`.
+        will be loaded. To load all catalog columns, use `columns="all"`. To load the default
+        columns plus additional column(s), use `columns=[..., "extra_col_name"].
     margin_cache : path-like or None, default None
         The margin for the main catalog, provided as a path.
     error_empty_filter : bool, default True
@@ -110,6 +113,8 @@ def open_catalog(
         Defaults to `hats.io.pixel_catalog_file`.
     show_statistics : bool, default False
         If True, the catalog's repr displays a per-column statistics table (min/max values).
+    storage_options: dict or None, default None
+        additional options for connecting to the catalog, or a collection's affiliated tables.
     **kwargs
         Arguments to pass to the pandas parquet file reader
 
@@ -118,7 +123,7 @@ def open_catalog(
     HealpixDataset
         The catalog loaded according to the specified arguments.
     """
-    hc_catalog = hc.read_hats(path)
+    hc_catalog = hc.read_hats(path, storage_options=storage_options)
     if not isinstance(hc_catalog, (hc.catalog.CatalogCollection, hc.catalog.Catalog)):
         raise TypeError("To load auxiliary datasets please use `lsdb.read_hats()`")
     return _read_dataset(
@@ -142,6 +147,7 @@ def read_hats(
     error_empty_filter: bool = True,
     filters: list[tuple[str]] | None = None,
     path_generator: Callable[[UPath, HealpixPixel, dict | None, str], UPath] = hc.io.pixel_catalog_file,
+    storage_options: dict | None = None,
     **kwargs,
 ) -> HealpixDataset:
     """Load dataset from a HATS path.
@@ -173,6 +179,8 @@ def read_hats(
           - npix_suffix: str - "/" for leaf directory, filename suffix like ".parquet" for leaf file
         The catalog metadata files need to live where the HATS standard expects them.
         Defaults to `hats.io.pixel_catalog_file`.
+    storage_options: dict or None, default None
+        additional options for connecting to the catalog, or a collection's affiliated tables.
     **kwargs
         Arguments to pass to the pandas parquet file reader
 
@@ -181,7 +189,7 @@ def read_hats(
     HealpixDataset
         A valid HATS dataset.
     """
-    hc_catalog = hc.read_hats(path)
+    hc_catalog = hc.read_hats(path, storage_options=storage_options)
     return _read_dataset(
         hc_catalog,
         search_filter=search_filter,
