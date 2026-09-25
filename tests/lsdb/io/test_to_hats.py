@@ -730,16 +730,16 @@ def test_saved_schemas(small_sky_order1_catalog, tmp_path):
     """Test that saved schema is equivalent whether or not row_group_kwargs gets used."""
     orig_schema = small_sky_order1_catalog.hc_structure.schema
 
-    base_catalog_path_A = tmp_path / "small_sky_order1_A"
-    small_sky_order1_catalog.write_catalog(base_catalog_path_A, row_group_kwargs=None)
+    base_catalog_path_a = tmp_path / "small_sky_order1_a"
+    small_sky_order1_catalog.write_catalog(base_catalog_path_a, row_group_kwargs=None)
 
-    base_catalog_path_B = tmp_path / "small_sky_order1_B"
-    small_sky_order1_catalog.write_catalog(base_catalog_path_B, row_group_kwargs={"num_rows": 10})
+    base_catalog_path_b = tmp_path / "small_sky_order1_b"
+    small_sky_order1_catalog.write_catalog(base_catalog_path_b, row_group_kwargs={"num_rows": 10})
 
-    base_catalog_path_C = tmp_path / "small_sky_order1_C"
-    small_sky_order1_catalog.write_catalog(base_catalog_path_C, row_group_kwargs={"subtile_order_delta": 1})
+    base_catalog_path_c = tmp_path / "small_sky_order1_c"
+    small_sky_order1_catalog.write_catalog(base_catalog_path_c, row_group_kwargs={"subtile_order_delta": 1})
 
-    for path in [base_catalog_path_A, base_catalog_path_B, base_catalog_path_C]:
+    for path in [base_catalog_path_a, base_catalog_path_b, base_catalog_path_c]:
         assert is_valid_collection(path)
         cat = lsdb.open_catalog(path)
         assert cat.hc_structure.schema.equals(orig_schema)
