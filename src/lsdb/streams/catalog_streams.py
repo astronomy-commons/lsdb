@@ -239,15 +239,7 @@ class CatalogIterator(Iterator[pd.DataFrame]):
         if self._empty or self.future is None:
             raise StopIteration("All partitions have been processed")
 
-        # Submit the next chunk before waiting for the current result, so
-        # that the next chunk's graph construction -- for CrossMatchStream
-        # this is a per-pixel search + crossmatch plan -- overlaps with the
-        # current chunk's computation instead of sitting on the consumer's
-        # critical path between chunks (measured at ~6-12% end-to-end
-        # throughput loss when constructing after the wait). This reorders
-        # the shared RNG draws -- the next partitions are chosen before the
-        # current result is shuffled -- so the exact chunk sequence for a
-        # given seed differs from the submit-after-wait order.
+        # submitting the next partition request before waiting for the result speeds things up ~10%
         if len(self.partitions_left) > 0:
             next_future = self.iterable.submit_next_partitions(self._get_next_partitions())
         else:
