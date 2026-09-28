@@ -184,8 +184,8 @@ class InfiniteStream(CatalogStream):
     157
     185
     165
-    169
-    185
+    168
+    162
     """
 
     def __init__(
@@ -239,17 +239,19 @@ class CatalogIterator(Iterator[pd.DataFrame]):
         if self._empty or self.future is None:
             raise StopIteration("All partitions have been processed")
 
+        # submitting the next partition request before waiting for the result speeds things up ~10%
+        if len(self.partitions_left) > 0:
+            next_future = self.iterable.submit_next_partitions(self._get_next_partitions())
+        else:
+            self._empty = True
+            next_future = None
+
         result: pd.DataFrame = self.future.result()
 
         if self.iterable.shuffle:
             result = result.sample(frac=1, random_state=self.rng)
 
-        if len(self.partitions_left) > 0:
-            self.future = self.iterable.submit_next_partitions(self._get_next_partitions())
-        else:
-            self._empty = True
-            self.future = None
-
+        self.future = next_future
         return result
 
     def __len__(self) -> int:
