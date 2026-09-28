@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 from hats.catalog import CatalogType, PartitionInfo, TableProperties
 from hats.catalog.catalog_collection import CatalogCollection
+from hats.catalog.catalog_extension import CatalogExtension
 from hats.pixel_math import HealpixPixel
 from upath import UPath
 
@@ -340,6 +341,8 @@ def _check_catalogs_and_columns(
     primary_catalog = hats.read_hats(primary_catalog_dir)
     if isinstance(primary_catalog, CatalogCollection):
         primary_catalog = primary_catalog.main_catalog
+    if isinstance(primary_catalog, CatalogExtension):
+        raise ValueError("primary_catalog_dir must be a catalog or collection")
     if primary_catalog.original_schema and primary_id_column not in primary_catalog.original_schema.names:
         raise ValueError("primary_id_column must be a column in the primary catalog")
 
@@ -351,6 +354,8 @@ def _check_catalogs_and_columns(
     join_catalog = hats.read_hats(join_catalog_dir)
     if isinstance(join_catalog, CatalogCollection):
         join_catalog = join_catalog.main_catalog
+    if isinstance(join_catalog, CatalogExtension):
+        raise ValueError("join_catalog_dir must be a catalog or collection")
     if join_catalog.original_schema:
         if join_id_column not in join_catalog.original_schema.names:
             raise ValueError("join_id_column must be a column in the join catalog")

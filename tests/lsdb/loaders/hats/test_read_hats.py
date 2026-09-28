@@ -289,7 +289,7 @@ def test_read_hats_default_cols_with_ellipsis(small_sky_order1_default_cols_dir)
 
 def test_read_hats_with_ellipsis_errors(small_sky_order1_default_cols_dir):
     # Test that multiple ellipses raise an error
-    with pytest.raises(ValueError, match="one ellipses"):
+    with pytest.raises(ValueError, match="one ellipsis"):
         lsdb.open_catalog(small_sky_order1_default_cols_dir, columns=[..., "ra_error", ...])
 
     # Test that ellipsis with non-list-like columns raises an error
@@ -299,6 +299,16 @@ def test_read_hats_with_ellipsis_errors(small_sky_order1_default_cols_dir):
     # Test that ellipsis with missing columns raises an error
     with pytest.raises(KeyError, match="not in index"):
         lsdb.open_catalog(small_sky_order1_default_cols_dir, columns=[..., "wrong"])
+
+
+def test_read_hats_ellipsis_without_default_cols(small_sky_order1_dir):
+    """A catalog with no default columns has nothing for the ellipsis to expand to."""
+    with pytest.raises(ValueError, match="does not define any default columns"):
+        lsdb.open_catalog(small_sky_order1_dir, columns=[..., "ra"])
+
+    # The same catalog still loads every column when asked explicitly.
+    catalog = lsdb.open_catalog(small_sky_order1_dir, columns="all")
+    assert "ra" in catalog.columns
 
 
 def test_read_hats_no_pandas(small_sky_order1_no_pandas_dir, helpers):

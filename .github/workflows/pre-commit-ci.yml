@@ -25,8 +25,11 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        uv pip install --system .[dev]
-        if [ -f requirements.txt ]; then uv pip install --system -r requirements.txt; fi
+        if [ -f requirements.txt ]; then
+          uv pip install --system -e .[dev] -r requirements.txt
+        else
+          uv pip install --system -e .[dev]
+        fi
     - uses: pre-commit/action@v3.0.1
       with:
         extra_args: --all-files --verbose

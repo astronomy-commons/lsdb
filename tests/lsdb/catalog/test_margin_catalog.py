@@ -4,6 +4,7 @@ from pathlib import Path
 import hats as hc
 import pandas as pd
 from hats.io.paths import get_data_thumbnail_pointer
+from hats.testing import assert_catalog_info_is_correct
 
 import lsdb
 from lsdb.catalog.margin_catalog import MarginCatalog
@@ -33,7 +34,7 @@ def test_margin_catalog_partitions_correct(small_sky_xmatch_margin_dir):
         pd.testing.assert_frame_equal(partition.compute(), data)
 
 
-def test_save_margin_catalog(small_sky_xmatch_margin_catalog, tmp_path, helpers):
+def test_save_margin_catalog(small_sky_xmatch_margin_catalog, tmp_path):
     new_catalog_name = "small_sky_xmatch_margin"
     base_catalog_path = Path(tmp_path) / new_catalog_name
     small_sky_xmatch_margin_catalog.write_catalog(base_catalog_path, catalog_name=new_catalog_name)
@@ -47,7 +48,7 @@ def test_save_margin_catalog(small_sky_xmatch_margin_catalog, tmp_path, helpers)
     partition_sizes = small_sky_xmatch_margin_catalog.map_partitions(lambda df: {"len": [len(df)]}).compute()
     assert max(partition_sizes["len"]) == 10
 
-    helpers.assert_catalog_info_is_correct(
+    assert_catalog_info_is_correct(
         expected_catalog.hc_structure.catalog_info,
         small_sky_xmatch_margin_catalog.hc_structure.catalog_info,
         hats_max_rows=10,

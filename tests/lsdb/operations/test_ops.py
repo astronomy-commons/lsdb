@@ -128,7 +128,7 @@ def test_coerce_to_meta_empty_list_or_tuple_uses_object_dtype(empty_collection):
         (5, "int64"),
         (5.0, "float64"),
         (True, "bool"),
-        ("hello", "object"),
+        ("hello", "str"),
     ],
 )
 def test_coerce_to_meta_scalar_infers_dtype_from_type(scalar, expected_dtype):
