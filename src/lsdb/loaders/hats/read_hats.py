@@ -9,6 +9,7 @@ import numpy as np
 import pyarrow as pa
 from fsspec.implementations.http import HTTPFileSystem
 from hats.catalog import CatalogType
+from hats.catalog.catalog_extension import CatalogExtension as HCCatalogExtension
 from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
 from hats.io.file_io import file_io
 from hats.pixel_math import HealpixPixel
@@ -203,7 +204,7 @@ def read_hats(
 
 
 def _read_dataset(
-    hc_catalog: hc.catalog.CatalogCollection | hc.catalog.Dataset,
+    hc_catalog: hc.catalog.CatalogCollection | HCCatalogExtension | hc.catalog.Dataset,
     *,
     search_filter: AbstractSearch | None = None,
     columns: list[str] | str | None = None,
@@ -225,6 +226,8 @@ def _read_dataset(
         show_statistics=show_statistics,
         kwargs=kwargs,
     )
+    if isinstance(hc_catalog, HCCatalogExtension):
+        raise NotImplementedError("Reading extension catalogs is not yet supported.")
     if isinstance(hc_catalog, hc.catalog.CatalogCollection):
         config.margin_cache = _get_collection_margin(hc_catalog, margin_cache)
         catalog = _load_catalog(hc_catalog.main_catalog, config)
