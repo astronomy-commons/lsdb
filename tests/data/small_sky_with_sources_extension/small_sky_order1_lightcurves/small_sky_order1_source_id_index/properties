@@ -1,0 +1,13 @@
+#HATS catalog
+obs_collection=small_sky_order1_source_id_index
+dataproduct_type=index
+hats_nrows=17161
+hats_primary_table_url=small_sky_with_sources_extension/small_sky_order1_lightcurves/small_sky_order1_lightcurves
+hats_index_column=sources.source_id
+hats_npix_suffix=.parquet
+hats_estsize=60
+obs_regime=Optical
+hats_builder=hats-import v0.11.1.dev12+gbbfffc61a, hats v0.11.1.dev3+g2413b02c1
+hats_creation_date=2026-09-29T20:10UTC
+hats_release_date=2025-08-22
+hats_version=v1.0
