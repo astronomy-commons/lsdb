@@ -83,3 +83,7 @@ class IndexSearch(AbstractSearch):
                 mask = frame[index_column].isin(field_values)
             filter_mask = filter_mask & mask
         return frame[filter_mask]
+
+    def _perform_plot(self, ax, **kwargs):
+        """Perform the plot of the search region on an initialized WCSAxes"""
+        raise NotImplementedError("Plotting is not available for index search.")
