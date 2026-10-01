@@ -99,6 +99,27 @@ def test_outer_recovers_unmatched_right_rows(suffix_method, helpers):
     assert result.loc[unmatched, "_dist_arcsec"].isna().all()
 
 
+def test_outer_top_level_crossmatch_generates_margins_for_dataframes():
+    """`lsdb.crossmatch` on dataframes builds the margins an outer crossmatch requires."""
+    ra_left, ra_boundary = _adjacent_ra_pair()
+    left_df = pd.DataFrame({"id": [1, 2], "ra": [ra_left, 50.0], "dec": [0.0, 0.0]})
+    right_df = pd.DataFrame({"id": [10, 11], "ra": [ra_boundary, 120.0], "dec": [0.0, 10.0]})
+
+    result = pd.DataFrame(
+        lsdb.crossmatch(
+            left_df,
+            right_df,
+            how="outer",
+            radius_arcsec=RADIUS,
+            suffixes=("_left", "_right"),
+            suffix_method="all_columns",
+        ).compute()
+    )
+
+    pairs = result[["id_left", "id_right"]].astype("Int64")
+    assert sorted(pairs.fillna(-1).values.tolist()) == [[-1, 11], [1, 10], [2, -1]]
+
+
 @pytest.mark.parametrize("reserved_column", ["_ra", "_dec"])
 def test_outer_rejects_existing_output_coordinate(reserved_column):
     left = _catalog(pd.DataFrame({"id": [1], "ra": [0.0], "dec": [0.0], reserved_column: [0.0]}), "left")

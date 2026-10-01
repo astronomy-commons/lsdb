@@ -456,7 +456,8 @@ def _plan_outer_alignment(
     )
     for column in (PixelAlignment.PRIMARY_ORDER_COLUMN_NAME, PixelAlignment.PRIMARY_PIXEL_COLUMN_NAME):
         # An object array keeps None as None; assigning through .loc would turn it into NaN.
-        values = pixel_mapping[column].to_numpy(dtype=object)
+        # The copy is needed because pandas 3 returns a read-only view of an object column.
+        values = pixel_mapping[column].to_numpy(dtype=object, copy=True)
         values[~native_left[keep]] = None
         pixel_mapping[column] = values
     tree_order = alignment.pixel_tree.tree_order
