@@ -4,8 +4,9 @@ from pathlib import Path
 
 import nested_pandas as npd
 import pyarrow.parquet as pq
-from hats.catalog import TableProperties
+from hats.catalog import HatsProperties
 from hats.io.file_io.file_io import get_parquet_write_table_kwargs
+from hats.catalog.dataset.hats_properties import KNOWN_PROVENANCE_FIELDS
 from upath import UPath
 
 
@@ -30,19 +31,13 @@ def new_provenance_properties(
         A new provenance dictionary.
     """
     if not inherit_provenance:
-        kwargs = {
-            "hats_creator": None,
-            "bib_reference": None,
-            "bib_reference_url": None,
-            "creator_did": None,
-            "publisher_id": None,
-        } | kwargs
+        kwargs = {key: None for key in KNOWN_PROVENANCE_FIELDS} | kwargs
 
     kwargs = {
         "hats_cols_sort": None,
         "hats_cols_survey_id": None,
     } | kwargs
-    return TableProperties.new_provenance_dict(path, builder=f"lsdb v{version('lsdb')}", **kwargs)
+    return HatsProperties.new_provenance_dict(path, builder=f"lsdb v{version('lsdb')}", **kwargs)
 
 
 def round_sig(value: float, digits: int = 5) -> float:
