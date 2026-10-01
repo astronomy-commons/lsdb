@@ -5,8 +5,8 @@ from pathlib import Path
 import nested_pandas as npd
 import pyarrow.parquet as pq
 from hats.catalog import HatsProperties
-from hats.io.file_io.file_io import get_parquet_write_table_kwargs
 from hats.catalog.dataset.hats_properties import KNOWN_PROVENANCE_FIELDS
+from hats.io.file_io.file_io import get_parquet_write_table_kwargs
 from upath import UPath
 
 
