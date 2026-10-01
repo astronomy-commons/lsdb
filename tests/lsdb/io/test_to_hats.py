@@ -19,7 +19,6 @@ from hats.testing import assert_catalog_info_is_correct
 from pydantic import ValidationError
 
 import lsdb
-from lsdb.io.common import set_default_write_table_kwargs
 from lsdb.io.to_hats import (
     DONE_DIR_NAME,
     HISTOGRAM_DIR_NAME,
@@ -374,7 +373,6 @@ def _write_partial_catalog(catalog, path, pixels_to_write):
         catalog.hc_structure.catalog_info.skymap_order,
         meta=WRITE_RESULT_META,
         include_pixel=True,
-        **set_default_write_table_kwargs(None),
     ).compute()
 
 

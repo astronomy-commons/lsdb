@@ -21,7 +21,7 @@ from hats.pixel_math.spatial_index import split_to_row_groups
 from upath import UPath
 
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
-from lsdb.io.common import new_provenance_properties, round_sig, set_default_write_table_kwargs
+from lsdb.io.common import new_provenance_properties, round_sig, write_partition_parquet
 
 DONE_DIR_NAME = "done"
 HISTOGRAM_DIR_NAME = "hists"
@@ -81,6 +81,8 @@ def perform_write(
         npix_suffix=npix_suffix,
         npix_parquet_name=npix_parquet_name,
     )
+
+    # TODO: resolve merge with write_partition_parquet(df, pixel_path, **kwargs)
     table = df.to_pyarrow()
     # Obtain the row groups for the target file
     rowgroup_tables = split_to_row_groups(table, row_group_kwargs, hp_pixel.order)
@@ -373,8 +375,6 @@ def to_hats(
             )
             histogram_order = max(max_catalog_depth, 8)
     # Save partition parquet files
-    write_table_kwargs = set_default_write_table_kwargs(write_table_kwargs)
-
     new_pixels, new_counts, new_histograms = write_partitions(
         catalog,
         base_catalog_dir_fp=base_catalog_path,
@@ -385,7 +385,7 @@ def to_hats(
         progress_bar=progress_bar,
         tqdm_kwargs=tqdm_kwargs,
         row_group_kwargs=row_group_kwargs,
-        **write_table_kwargs,
+        **(write_table_kwargs or {}),
     )
     pixels = existing_pixels + new_pixels
     histograms = histograms + new_histograms
