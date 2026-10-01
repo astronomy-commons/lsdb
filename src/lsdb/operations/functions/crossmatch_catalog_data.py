@@ -402,6 +402,13 @@ def _validate_outer_crossmatch(left: Catalog, right: Catalog, radius_arcsec: flo
     requires seeing left rows across pixel boundaries: the left margin cache must reach
     at least the matching radius, and the right margin cache must reach twice the radius
     so neighborhood left rows pair against their full set of nearby right rows.
+
+    Known limitation: margin caches cover a ring one HEALPix pixel wide around each
+    partition, which for high partition orders (roughly order 16 and up with ~1 arcsec
+    radii) can be narrower than the matching radius requires. The threshold checks below
+    compare angular quantities only and cannot detect an under-wide margin ring, so
+    matches near pixel boundaries may be missed. This is a pre-existing limitation of
+    margin cache generation, not of the outer join itself.
     """
     if not isinstance(radius_arcsec, (int, float)) or radius_arcsec <= 0:
         raise ValueError("how='outer' requires an algorithm with a positive 'radius_arcsec' attribute")
