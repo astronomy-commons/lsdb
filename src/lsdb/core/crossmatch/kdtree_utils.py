@@ -69,7 +69,7 @@ def _query_min_max_neighbors(
     len_too_close_neighbors[unique] = counts
 
     # Make sure we don't ask for more neighbors than there are points.
-    n_neighbors_to_request = min(n_neighbors + len_too_close_neighbors.max(), len(right_xyz))
+    n_neighbors_to_request = min(n_neighbors + int(len_too_close_neighbors.max()), len(right_xyz))
 
     distances, right_index = tree.query(left_xyz, k=n_neighbors_to_request, distance_upper_bound=max_distance)
     if n_neighbors_to_request == 1:

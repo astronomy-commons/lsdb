@@ -2,7 +2,10 @@ import math as m
 from importlib.metadata import version
 from pathlib import Path
 
+import nested_pandas as npd
+import pyarrow.parquet as pq
 from hats.catalog import TableProperties
+from hats.io.file_io.file_io import get_parquet_write_table_kwargs
 from upath import UPath
 
 
@@ -27,13 +30,18 @@ def new_provenance_properties(
         A new provenance dictionary.
     """
     if not inherit_provenance:
-        kwargs |= {
+        kwargs = {
             "hats_creator": None,
             "bib_reference": None,
             "bib_reference_url": None,
             "creator_did": None,
             "publisher_id": None,
-        }
+        } | kwargs
+
+    kwargs = {
+        "hats_cols_sort": None,
+        "hats_cols_survey_id": None,
+    } | kwargs
     return TableProperties.new_provenance_dict(path, builder=f"lsdb v{version('lsdb')}", **kwargs)
 
 
@@ -61,30 +69,22 @@ def round_sig(value: float, digits: int = 5) -> float:
     return round(value, decimal_places)
 
 
-def set_default_write_table_kwargs(write_table_kwargs):
-    """Set common write table arguments.
-
-    We set compression on parquet files to "ZSTD" level 15. In internal testing,
-    we have found this to be most suitable for the kinds of data stored in
-    Astronomy catalogs.
+def write_partition_parquet(df: npd.NestedFrame, pixel_path: UPath, **kwargs):
+    """Write a partition to a parquet file with the HATS default write settings.
 
     Parameters
     ----------
-    write_table_kwargs : dict or None
-        Arguments to pass to the parquet write operations
-
-    Returns
-    -------
-    dict
-        dictionary of keyword arguments to pass to parquet write operations.
+    df : npd.NestedFrame
+        Partition to write
+    pixel_path : UPath
+        Location of the parquet file
+    **kwargs
+        Arguments to pass to ``pyarrow.parquet.write_table``, taking precedence over
+        the defaults from ``hats.io.file_io.file_io.get_parquet_write_table_kwargs``.
+        ``list_struct`` and ``large_list`` are passed to ``NestedFrame.to_pyarrow`` instead.
     """
-    if write_table_kwargs is None:
-        write_table_kwargs = {}
-
-    if "compression" not in write_table_kwargs:
-        write_table_kwargs = write_table_kwargs | {
-            "compression": "ZSTD",
-            "compression_level": 15,
-        }
-
-    return write_table_kwargs
+    table = df.to_pyarrow(
+        list_struct=kwargs.pop("list_struct", False), large_list=kwargs.pop("large_list", False)
+    )
+    write_table_kwargs = get_parquet_write_table_kwargs(table.schema, write_table_kwargs=kwargs)
+    pq.write_table(table, pixel_path.path, filesystem=pixel_path.fs, **write_table_kwargs)

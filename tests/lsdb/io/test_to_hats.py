@@ -18,7 +18,6 @@ from hats.testing import assert_catalog_info_is_correct
 from pydantic import ValidationError
 
 import lsdb
-from lsdb.io.common import set_default_write_table_kwargs
 from lsdb.io.to_hats import (
     DONE_DIR_NAME,
     HISTOGRAM_DIR_NAME,
@@ -28,7 +27,10 @@ from lsdb.io.to_hats import (
 )
 
 
-def test_save_catalog(small_sky_catalog, tmp_path, helpers):
+def test_save_catalog(small_sky_catalog, tmp_path):
+    extras = small_sky_catalog.hc_structure.catalog_info.extra_dict()
+    assert "hats_cols_sort" in extras
+
     new_catalog_name = "small_sky"
     base_catalog_path = Path(tmp_path) / new_catalog_name
     small_sky_catalog.write_catalog(
@@ -50,13 +52,14 @@ def test_save_catalog(small_sky_catalog, tmp_path, helpers):
     partition_sizes = small_sky_catalog.map_partitions(lambda df: {"len": [len(df)]}).compute()
     assert max(partition_sizes["len"]) == 131
 
-    helpers.assert_catalog_info_is_correct(
+    assert_catalog_info_is_correct(
         expected_catalog.hc_structure.catalog_info,
         small_sky_catalog.hc_structure.catalog_info,
         hats_max_rows=131,
         skymap_order=5,
         obs_regime="Optical",
         hats_builder=f"lsdb v{version('lsdb')}, hats v{version('hats')}",
+        hats_cols_sort=None,
     )
 
     # The catalog has 1 partition, therefore the thumbnail has 1 row
@@ -68,6 +71,9 @@ def test_save_catalog(small_sky_catalog, tmp_path, helpers):
     assert data_thumbnail.schema.equals(small_sky_catalog.hc_structure.schema)
     assert (main_catalog_path / "properties").exists()
     assert (main_catalog_path / "hats.properties").exists()
+
+    extras = expected_catalog.hc_structure.catalog_info.extra_dict()
+    assert "hats_cols_sort" not in extras
 
 
 def test_save_catalog_initializes_upath_once(small_sky_catalog, tmp_path, mocker):
@@ -366,7 +372,6 @@ def _write_partial_catalog(catalog, path, pixels_to_write):
         catalog.hc_structure.catalog_info.skymap_order,
         meta=WRITE_RESULT_META,
         include_pixel=True,
-        **set_default_write_table_kwargs(None),
     ).compute()
 
 

@@ -10,10 +10,11 @@ import numpy as np
 import pandas as pd
 from hats.catalog import CatalogType, PartitionInfo, TableProperties
 from hats.catalog.catalog_collection import CatalogCollection
+from hats.catalog.catalog_extension import CatalogExtension
 from hats.pixel_math import HealpixPixel
 from upath import UPath
 
-from lsdb.io.common import new_provenance_properties, round_sig, set_default_write_table_kwargs
+from lsdb.io.common import new_provenance_properties, round_sig, write_partition_parquet
 
 if TYPE_CHECKING:
     from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
@@ -56,7 +57,7 @@ def perform_write(
     pixel_dir = file_io.pixel_directory(base_catalog_dir, hp_pixel.order, hp_pixel.pixel)
     file_io.file_io.make_directory(pixel_dir, exist_ok=True)
     pixel_path = file_io.paths.pixel_catalog_file(base_catalog_dir, hp_pixel)
-    df.to_parquet(pixel_path.path, filesystem=pixel_path.fs, **kwargs)
+    write_partition_parquet(df, pixel_path, **kwargs)
     max_sep = df[separation_column].max() if separation_column is not None else -1
     return pd.DataFrame({"count": [len(df)], "max_sep": [max_sep]})
 
@@ -205,13 +206,12 @@ def to_association(
     file_io.file_io.make_directory(base_catalog_path, exist_ok=True)
 
     # Save partition parquet files
-    write_table_kwargs = set_default_write_table_kwargs(write_table_kwargs)
     pixels, counts, max_separations = write_partitions(
         catalog,
         base_catalog_dir_fp=base_catalog_path,
         separation_column=separation_column,
         error_if_empty=error_if_empty,
-        **write_table_kwargs,
+        **(write_table_kwargs or {}),
     )
 
     # Save parquet metadata
@@ -340,6 +340,8 @@ def _check_catalogs_and_columns(
     primary_catalog = hats.read_hats(primary_catalog_dir)
     if isinstance(primary_catalog, CatalogCollection):
         primary_catalog = primary_catalog.main_catalog
+    if isinstance(primary_catalog, CatalogExtension):
+        raise ValueError("primary_catalog_dir must be a catalog or collection")
     if primary_catalog.original_schema and primary_id_column not in primary_catalog.original_schema.names:
         raise ValueError("primary_id_column must be a column in the primary catalog")
 
@@ -351,6 +353,8 @@ def _check_catalogs_and_columns(
     join_catalog = hats.read_hats(join_catalog_dir)
     if isinstance(join_catalog, CatalogCollection):
         join_catalog = join_catalog.main_catalog
+    if isinstance(join_catalog, CatalogExtension):
+        raise ValueError("join_catalog_dir must be a catalog or collection")
     if join_catalog.original_schema:
         if join_id_column not in join_catalog.original_schema.names:
             raise ValueError("join_id_column must be a column in the join catalog")

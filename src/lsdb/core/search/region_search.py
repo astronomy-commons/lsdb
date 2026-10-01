@@ -53,6 +53,13 @@ class BoxSearch(AbstractSearch):
         """Determine the search results within a data frame"""
         return box_filter(frame, self.ra, self.dec, metadata)
 
+    def _perform_plot(self, ax, **kwargs):
+        """Perform the plot of the search region on an initialized WCSAxes"""
+        raise NotImplementedError(
+            "Plotting is not available for box search "
+            "(see https://github.com/astronomy-commons/lsdb/issues/1629)."
+        )
+
 
 class ConeSearch(AbstractSearch):
     """Perform a cone search to filter the catalog
@@ -119,6 +126,13 @@ class MOCSearch(AbstractSearch):
         mask = self.moc.contains_lonlat(df_ras * u.deg, df_decs * u.deg)
         return frame.iloc[mask]
 
+    def _perform_plot(self, ax, **kwargs):
+        """Perform the plot of the search region on an initialized WCSAxes"""
+        raise NotImplementedError(
+            "Plotting is not available for MOC search "
+            "(see https://github.com/astronomy-commons/lsdb/issues/1629)."
+        )
+
 
 class OrderSearch(AbstractSearch):
     """Filter the catalog by HEALPix order.
@@ -146,6 +160,10 @@ class OrderSearch(AbstractSearch):
     def search_points(self, frame: npd.NestedFrame, _) -> npd.NestedFrame:
         """Determine the search results within a data frame"""
         return frame
+
+    def _perform_plot(self, ax, **kwargs):
+        """Perform the plot of the search region on an initialized WCSAxes"""
+        raise NotImplementedError("Plotting is not available for order search.")
 
 
 class PixelSearch(MOCSearch):
@@ -194,6 +212,10 @@ class PixelSearch(MOCSearch):
         pixels = [(spatial_index.SPATIAL_INDEX_ORDER, pix) for pix in pixels]
         return cls(pixels)
 
+    def _perform_plot(self, ax, **kwargs):
+        """Perform the plot of the search region on an initialized WCSAxes"""
+        raise NotImplementedError("Plotting is not available for pixel search.")
+
 
 class PolygonSearch(AbstractSearch):
     """Perform a polygonal search to filter the catalog.
@@ -224,3 +246,10 @@ class PolygonSearch(AbstractSearch):
     def search_points(self, frame: npd.NestedFrame, metadata: TableProperties) -> npd.NestedFrame:
         """Determine the search results within a data frame"""
         return polygon_filter(frame, self.polygon, metadata)
+
+    def _perform_plot(self, ax, **kwargs):
+        """Perform the plot of the search region on an initialized WCSAxes"""
+        raise NotImplementedError(
+            "Plotting is not available for polygon search "
+            "(see https://github.com/astronomy-commons/lsdb/issues/1629)."
+        )

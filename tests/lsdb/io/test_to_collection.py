@@ -4,11 +4,12 @@ from pathlib import Path
 import pandas as pd
 import pyarrow.parquet as pq
 from hats.io import paths
+from hats.testing import assert_catalog_info_is_correct
 
 import lsdb
 
 
-def test_save_collection(small_sky_order1_collection_catalog, tmp_path, helpers):
+def test_save_collection(small_sky_order1_collection_catalog, tmp_path):
     base_collection_path = Path(tmp_path) / "small_sky_order1_collection"
 
     small_sky_order1_collection_catalog.write_catalog(
@@ -26,13 +27,14 @@ def test_save_collection(small_sky_order1_collection_catalog, tmp_path, helpers)
         catalog.compute(), small_sky_order1_collection_catalog.compute()[["ra", "dec"]]
     )
 
-    helpers.assert_catalog_info_is_correct(
+    assert_catalog_info_is_correct(
         catalog.hc_structure.catalog_info,
         small_sky_order1_collection_catalog.hc_structure.catalog_info,
         hats_max_rows=42,
         obs_regime="Optical",
         default_columns=["ra", "dec"],
         hats_builder=f"lsdb v{version('lsdb')}, hats v{version('hats')}",
+        hats_cols_sort=None,
     )
 
     for pixel in catalog.get_healpix_pixels():
@@ -47,7 +49,7 @@ def test_save_collection(small_sky_order1_collection_catalog, tmp_path, helpers)
     pd.testing.assert_frame_equal(
         catalog.margin.compute(), small_sky_order1_collection_catalog.margin.compute()[["ra", "dec"]]
     )
-    helpers.assert_catalog_info_is_correct(
+    assert_catalog_info_is_correct(
         catalog.margin.hc_structure.catalog_info,
         small_sky_order1_collection_catalog.margin.hc_structure.catalog_info,
         catalog_name="small_sky_order1_3600arcs",

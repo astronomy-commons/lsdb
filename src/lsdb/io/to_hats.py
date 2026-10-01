@@ -20,7 +20,7 @@ from hats.pixel_math.sparse_histogram import HistogramAggregator, SparseHistogra
 from upath import UPath
 
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
-from lsdb.io.common import new_provenance_properties, round_sig, set_default_write_table_kwargs
+from lsdb.io.common import new_provenance_properties, round_sig, write_partition_parquet
 
 DONE_DIR_NAME = "done"
 HISTOGRAM_DIR_NAME = "hists"
@@ -77,7 +77,7 @@ def perform_write(
         npix_suffix=npix_suffix,
         npix_parquet_name=npix_parquet_name,
     )
-    df.to_parquet(pixel_path.path, filesystem=pixel_path.fs, **kwargs)
+    write_partition_parquet(df, pixel_path, **kwargs)
     histogram = calculate_histogram(df, histogram_order)
     write_histogram(histogram, base_catalog_dir, hp_pixel)
     write_done_pixel(base_catalog_dir, hp_pixel)
@@ -355,8 +355,6 @@ def to_hats(
             )
             histogram_order = max(max_catalog_depth, 8)
     # Save partition parquet files
-    write_table_kwargs = set_default_write_table_kwargs(write_table_kwargs)
-
     new_pixels, new_counts, new_histograms = write_partitions(
         catalog,
         base_catalog_dir_fp=base_catalog_path,
@@ -366,7 +364,7 @@ def to_hats(
         npix_parquet_name=npix_parquet_name,
         progress_bar=progress_bar,
         tqdm_kwargs=tqdm_kwargs,
-        **write_table_kwargs,
+        **(write_table_kwargs or {}),
     )
     pixels = existing_pixels + new_pixels
     histograms = histograms + new_histograms
