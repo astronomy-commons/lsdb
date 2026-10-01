@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+import functools
 import warnings
-from collections import defaultdict
 from typing import TYPE_CHECKING, cast
 
 import nested_pandas as npd
@@ -9,9 +9,8 @@ import numpy as np
 import pandas as pd
 from hats.catalog.dataset.table_properties import TableProperties
 from hats.pixel_math.healpix_pixel import HealpixPixel
-from hats.pixel_math.pixel_margins import get_margin
-from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN, healpix_to_spatial_index
-from hats.pixel_tree.pixel_alignment import PixelAlignment, align_trees
+from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN, SPATIAL_INDEX_ORDER, healpix_to_spatial_index
+from hats.pixel_tree.pixel_alignment import PixelAlignment
 from hats.pixel_tree.pixel_alignment_types import PixelAlignmentType
 from hats.pixel_tree.pixel_tree import PixelTree
 
@@ -36,25 +35,40 @@ if TYPE_CHECKING:
     from lsdb.catalog.catalog import Catalog
 
 
+def _add_left_neighbors(left_df, coarse_partition_df, left_margin_df, right_only, filter_to_margin):
+    """Append the left rows near the aligned pixel that are not native to it (outer joins only).
+
+    Right rows matched to these neighbors are excluded from unmatched emission.
+    """
+    if right_only:
+        # Right-only sky: the only possible left partners are rows near this pixel,
+        # held by the left margin partition covering it.
+        if left_margin_df is not None and len(left_margin_df):
+            return filter_to_margin(left_margin_df)
+        return left_df
+    if coarse_partition_df is not None:
+        # The left partition is coarser than the aligned pixel, so its rows just
+        # outside the aligned pixel are neighbors the margin cache does not hold.
+        left_df = concat_partition_and_margin(left_df, filter_to_margin(coarse_partition_df))
+    return concat_partition_and_margin(left_df, left_margin_df)
+
+
 # pylint: disable=too-many-arguments, too-many-positional-arguments, unused-argument, too-many-locals
 def perform_crossmatch(
     left_df: npd.NestedFrame,
     right_df: npd.NestedFrame,
     right_margin_df: npd.NestedFrame,
     left_margin_df: npd.NestedFrame | None,
-    boundary_df: npd.NestedFrame | None,
     aligned_df: npd.NestedFrame | None,
     left_pix: HealpixPixel,
     right_pix: HealpixPixel,
     right_margin_pix: HealpixPixel,
     left_margin_pix: HealpixPixel,
-    boundary_pixels: tuple[HealpixPixel, ...] | None,
     aligned_pixel: HealpixPixel,
     left_catalog_info: TableProperties,
     right_catalog_info: TableProperties,
     right_margin_catalog_info: TableProperties,
     left_margin_catalog_info: TableProperties,
-    boundary_catalog_info: TableProperties,
     aligned_catalog_info: TableProperties | None,
     algorithm: AbstractCrossmatchAlgorithm,
     how: str,
@@ -111,20 +125,14 @@ def perform_crossmatch(
     meta_df : npd.NestedFrame
         The final meta for the crossmatch.
     radius_arcsec : float | None
-        Matching radius of the algorithm; used to filter boundary rows to the margin
+        Matching radius of the algorithm; used to filter left margin rows to the margin
         ring of right-only pixels (outer joins only).
     left_margin_df : npd.NestedFrame | None
         Partition from the left catalog's margin cache (outer joins only).
     left_margin_pix : HealpixPixel | None
         HealpixPixel for the left margin partition (outer joins only).
-    boundary_df : npd.NestedFrame | None
-        Left partitions adjacent to a right-only pixel, concatenated (outer joins only).
-    boundary_pixels : tuple[HealpixPixel, ...] | None
-        Left pixels adjacent to a right-only aligned pixel (outer joins only).
     left_margin_catalog_info : hats.catalog.TableProperties
         Catalog info for the left margin partition (outer joins only).
-    boundary_catalog_info : hats.catalog.TableProperties
-        Catalog info for the boundary partitions, i.e. the left catalog (outer joins only).
 
     Returns
     -------
@@ -136,6 +144,7 @@ def perform_crossmatch(
         return meta_df
     # The aligned_pixel will be the right_pix if the pixels orders are already
     # compatible, that is, it's the smaller of the left and right pixels.
+    left_partition_df = left_df
     if left_pix is not None and aligned_pixel.order > left_pix.order:
         left_df = filter_by_spatial_index_to_pixel(
             left_df,
@@ -148,22 +157,20 @@ def perform_crossmatch(
     if how == "outer":
         if radius_arcsec is None:
             raise ValueError("Outer crossmatch requires a matching radius")
-        if left_pix is None:
-            # Right-only sky: the only possible left partners are rows near this pixel,
-            # gathered from the left partitions adjacent to it. No left rows are native.
-            if boundary_df is not None and len(boundary_df):
-                left_df = filter_by_spatial_index_to_margin(
-                    boundary_df,
-                    aligned_pixel.order,
-                    aligned_pixel.pixel,
-                    radius_arcsec,
-                )
-            left_native_len = 0
-        else:
-            # Extend the left partition with its margin cache so right rows matched to
-            # left rows just outside this pixel are excluded from unmatched emission.
-            left_native_len = len(left_df)
-            left_df = concat_partition_and_margin(left_df, left_margin_df)
+        left_native_len = len(left_df) if left_pix is not None else 0
+        left_df = _add_left_neighbors(
+            left_df,
+            left_partition_df if left_pix is not None and aligned_pixel.order > left_pix.order else None,
+            left_margin_df,
+            left_pix is None,
+            functools.partial(
+                filter_by_spatial_index_to_margin,
+                order=aligned_pixel.order,
+                pixel=aligned_pixel.pixel,
+                margin_radius=radius_arcsec,
+                spatial_index_order=left_catalog_info.healpix_order or SPATIAL_INDEX_ORDER,
+            ),
+        )
 
     right_primary_df = right_df
     # For left/outer joins, right_df can be None - replace it with the correct empty schema.
@@ -416,78 +423,42 @@ def _validate_outer_crossmatch(left: Catalog, right: Catalog, radius_arcsec: flo
         )
 
 
-def _boundary_pixel_lists(
-    left: Catalog, pixel_mapping: pd.DataFrame
-) -> list[tuple[HealpixPixel, ...] | None]:
-    """For each mapping row, the left pixels adjacent to its aligned pixel.
-
-    Right rows in sky without left coverage can only match left rows near their pixel's
-    boundary; those rows live in the left partitions adjacent to it. Every left pixel
-    within reach intersects one of the cells of the ring one HEALPix order finer than
-    the aligned pixel, so a single alignment of all ring cells against the left pixel
-    tree finds them. Returns None entries for rows that need no boundary data.
-    """
-    boundary_lists: list[tuple[HealpixPixel, ...] | None] = [None] * len(pixel_mapping)
-    right_only_mask = pixel_mapping[PixelAlignment.PRIMARY_ORDER_COLUMN_NAME].isna().to_numpy()
-    if not right_only_mask.any():
-        return boundary_lists
-    rings: dict[tuple[int, int], list[tuple[int, int]]] = {}
-    ring_cells: set[tuple[int, int]] = set()
-    for i in np.flatnonzero(right_only_mask):
-        row = pixel_mapping.iloc[i]
-        # pi-lens-ignore: unchecked-throwing-call-python
-        order, pixel = int(row[PixelAlignment.ALIGNED_ORDER_COLUMN_NAME]), int(
-            row[PixelAlignment.ALIGNED_PIXEL_COLUMN_NAME]
-        )
-        ring = [(order + 1, cell) for cell in get_margin(order, pixel, 1)]
-        rings[(order, pixel)] = ring
-        ring_cells.update(ring)
-    cell_tree = PixelTree.from_healpix(list(ring_cells))
-    cell_alignment = align_trees(
-        cell_tree, left.hc_structure.pixel_tree, alignment_type=PixelAlignmentType.INNER
-    )
-    cells_to_left: dict[tuple[int, int], set[HealpixPixel]] = defaultdict(set)
-    cell_mapping = cell_alignment.pixel_mapping
-    for cell_order_, cell_pixel, left_order, left_pixel in zip(
-        cell_mapping[PixelAlignment.PRIMARY_ORDER_COLUMN_NAME],
-        cell_mapping[PixelAlignment.PRIMARY_PIXEL_COLUMN_NAME],
-        cell_mapping[PixelAlignment.JOIN_ORDER_COLUMN_NAME],
-        cell_mapping[PixelAlignment.JOIN_PIXEL_COLUMN_NAME],
-    ):
-        cells_to_left[(int(cell_order_), int(cell_pixel))].add(HealpixPixel(int(left_order), int(left_pixel)))
-    for i in np.flatnonzero(right_only_mask):
-        row = pixel_mapping.iloc[i]
-        key = (
-            int(row[PixelAlignment.ALIGNED_ORDER_COLUMN_NAME]),
-            int(row[PixelAlignment.ALIGNED_PIXEL_COLUMN_NAME]),
-        )
-        adjacent: set[HealpixPixel] = set()
-        for cell in rings[key]:
-            adjacent |= cells_to_left.get(cell, set())
-        boundary_lists[i] = tuple(sorted(adjacent))
-    return boundary_lists
+def _native_mask(pixel_mapping: pd.DataFrame, order_column: str, pixel_column: str, catalog: Catalog):
+    """Mask of mapping rows whose pixel is a partition of the catalog itself, not only its margin."""
+    native_pixels = {(p.order, p.pixel) for p in catalog.get_healpix_pixels()}
+    keys = zip(pixel_mapping[order_column], pixel_mapping[pixel_column])
+    return np.fromiter((key in native_pixels for key in keys), dtype=bool, count=len(pixel_mapping))
 
 
 def _plan_outer_alignment(
     left: Catalog, right: Catalog, alignment: PixelAlignment
-) -> tuple[PixelAlignment, list[tuple[HealpixPixel, ...] | None]]:
-    """Drop margin-only pixels from an OUTER alignment and plan boundary partitions."""
+) -> tuple[PixelAlignment, list[HealpixPixel]]:
+    """Drop margin-only pixels from an OUTER alignment and find each row's left margin pixel.
+
+    The alignment's left tree includes the left margin's pixels, so sky without left
+    coverage is paired with the left margin partition holding the left rows near it. Those
+    rows are marked as having no left pixel; the margin partition is returned separately.
+    """
     pixel_mapping = alignment.pixel_mapping
-    right_only = pixel_mapping[PixelAlignment.PRIMARY_ORDER_COLUMN_NAME].isna()
-    if right_only.any():
-        native_right_pixels = {(p.order, p.pixel) for p in right.get_healpix_pixels()}
-        join_keys = pd.Series(
-            list(
-                zip(
-                    pixel_mapping[PixelAlignment.JOIN_ORDER_COLUMN_NAME],
-                    pixel_mapping[PixelAlignment.JOIN_PIXEL_COLUMN_NAME],
-                )
-            ),
-            index=pixel_mapping.index,
-        )
-        pixel_mapping = pixel_mapping[~right_only | join_keys.isin(native_right_pixels)].reset_index(
-            drop=True
-        )
+    native_left = _native_mask(
+        pixel_mapping,
+        PixelAlignment.PRIMARY_ORDER_COLUMN_NAME,
+        PixelAlignment.PRIMARY_PIXEL_COLUMN_NAME,
+        left,
+    )
+    native_right = _native_mask(
+        pixel_mapping, PixelAlignment.JOIN_ORDER_COLUMN_NAME, PixelAlignment.JOIN_PIXEL_COLUMN_NAME, right
+    )
+    keep = native_left | native_right
+    pixel_mapping = pixel_mapping[keep].reset_index(drop=True)
+    left_margin_pixels, _ = get_healpix_pixels_from_alignment(
+        PixelAlignment(alignment.pixel_tree, pixel_mapping, alignment.alignment_type)
+    )
+    for column in (PixelAlignment.PRIMARY_ORDER_COLUMN_NAME, PixelAlignment.PRIMARY_PIXEL_COLUMN_NAME):
+        # An object array keeps None as None; assigning through .loc would turn it into NaN.
+        values = pixel_mapping[column].to_numpy(dtype=object)
+        values[~native_left[keep]] = None
+        pixel_mapping[column] = values
     tree_order = alignment.pixel_tree.tree_order
     intervals = np.empty((0, 2), dtype=np.int64)
     if len(pixel_mapping):
@@ -502,7 +473,7 @@ def _plan_outer_alignment(
         alignment.alignment_type,
         moc=pruned_tree.to_moc(),
     )
-    return alignment, _boundary_pixel_lists(left, pixel_mapping)
+    return alignment, left_margin_pixels
 
 
 def crossmatch_catalog_data(
@@ -559,15 +530,21 @@ def crossmatch_catalog_data(
     # ``outer`` aligns pixels in the outer way: every pixel of either catalog is visited,
     # so right rows in sky without left coverage are emitted unmatched. The right margin
     # halo is not added for outer joins: it would only inflate the result catalog's MOC,
-    # and OUTER alignment already keeps every left pixel.
-    alignment = align_catalogs(
-        left, right, add_right_margin=how != "outer", alignment_type=PixelAlignmentType[how.upper()]
-    )
+    # and OUTER alignment already keeps every left pixel. The left margin's pixels are
+    # aligned too, so right-only sky is paired with the left rows just across its boundary.
     radius_arcsec = getattr(algorithm, "radius_arcsec", None)
-    boundary_pixel_lists: list[tuple[HealpixPixel, ...] | None] = []
     if how == "outer":
         _validate_outer_crossmatch(left, right, radius_arcsec)
-        alignment, boundary_pixel_lists = _plan_outer_alignment(left, right, alignment)
+    alignment = align_catalogs(
+        left,
+        right,
+        add_right_margin=how != "outer",
+        alignment_type=PixelAlignmentType[how.upper()],
+        add_left_margin=how == "outer",
+    )
+    left_margin_pixels: list[HealpixPixel] = []
+    if how == "outer":
+        alignment, left_margin_pixels = _plan_outer_alignment(left, right, alignment)
     # get lists of HEALPix pixels from alignment to pass to cross-match
     left_pixels, right_pixels = get_healpix_pixels_from_alignment(alignment)
     aligned_pixels = get_aligned_pixels_from_alignment(alignment)
@@ -594,14 +571,12 @@ def crossmatch_catalog_data(
         meta_df.index.name = SPATIAL_INDEX_COLUMN
 
     # perform the crossmatch on each partition pairing using dask delayed for lazy computation
-    empty_pixels: list[HealpixPixel | None] = [None] * len(aligned_pixels)
     op = align_and_apply(
         [
             (left, left_pixels),
             (right, right_pixels),
             (right.margin, right_pixels),
-            (left.margin if how == "outer" else None, left_pixels if how == "outer" else empty_pixels),
-            (left if how == "outer" else None, boundary_pixel_lists or empty_pixels),
+            (left.margin if how == "outer" else None, left_margin_pixels or left_pixels),
             (None, aligned_pixels),
         ],
         perform_crossmatch,

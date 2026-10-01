@@ -2,8 +2,7 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Sequence
-from typing import TYPE_CHECKING, Callable, Literal, cast
+from typing import TYPE_CHECKING, Callable, Literal, Sequence, cast
 
 import hats.pixel_math.healpix_shim as hp
 import nested_pandas as npd
@@ -15,17 +14,13 @@ from hats.io import paths
 from hats.pixel_math import HealpixPixel
 from hats.pixel_math.healpix_pixel import get_lower_order_pixel
 from hats.pixel_math.pixel_margins import get_margin
-from hats.pixel_math.spatial_index import (
-    SPATIAL_INDEX_COLUMN,
-    SPATIAL_INDEX_ORDER,
-    healpix_to_spatial_index,
-)
+from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN, SPATIAL_INDEX_ORDER, healpix_to_spatial_index
 from hats.pixel_tree import PixelAlignment, PixelAlignmentType, align_trees
 from hats.pixel_tree.moc_utils import copy_moc
 from hats.pixel_tree.pixel_alignment import align_with_mocs
 from tabulate import tabulate
 
-from lsdb.operations.lsdb_ops import AlignAndApply, PixelSlot
+from lsdb.operations.lsdb_ops import AlignAndApply
 from lsdb.operations.operation import Operation
 
 if TYPE_CHECKING:
@@ -265,6 +260,7 @@ def align_catalogs(
     right: Catalog,
     add_right_margin: bool = True,
     alignment_type: PixelAlignmentType = PixelAlignmentType.INNER,
+    add_left_margin: bool = False,
 ) -> PixelAlignment:
     """Aligns two catalogs, also using the right catalog's margin if it exists
 
@@ -278,6 +274,9 @@ def align_catalogs(
         If True, when using MOCs to align catalogs, adds a border to the
     alignment_type : PixelAlignmentType
         The type of alignment to use (Default value = PixelAlignmentType.INNER)
+    add_left_margin : bool, default False
+        If True, the left pixel tree also includes the pixels of the left catalog's margin,
+        so sky bordering the left coverage is aligned to the margin partition covering it.
 
     Returns
     -------
@@ -285,8 +284,13 @@ def align_catalogs(
         The PixelAlignment object from aligning the catalogs
     """
     right_tree, right_moc = _get_right_tree_and_moc(right, add_right_margin)
+    left_tree = left.hc_structure.pixel_tree
+    if add_left_margin and left.margin is not None:
+        left_tree = align_trees(
+            left_tree, left.margin.hc_structure.pixel_tree, alignment_type=PixelAlignmentType.OUTER
+        ).pixel_tree
     return align_with_mocs(
-        left.hc_structure.pixel_tree,
+        left_tree,
         right_tree,
         left.hc_structure.moc,
         right_moc,
@@ -489,7 +493,7 @@ def _merge_association_alignments(left_alignment: PixelAlignment, final_alignmen
 
 
 def align_and_apply(
-    catalog_mappings: list[tuple[HealpixDataset | None, Sequence[PixelSlot]]],
+    catalog_mappings: list[tuple[HealpixDataset | None, list[HealpixPixel]]],
     func: Callable,
     meta: npd.NestedFrame | pd.DataFrame | pd.Series,
     output_pixels: list[HealpixPixel],
@@ -501,11 +505,9 @@ def align_and_apply(
 
     Parameters
     ----------
-    catalog_mappings : list[tuple[HealpixDataset | None, Sequence[PixelSlot]]]
+    catalog_mappings : list[tuple[HealpixDataset | None, list[HealpixPixel]]]
         The catalogs and their corresponding ordering of pixels to align the partitions to.
         Catalog can be None, in which case None will be passed to the function for each partition.
-        A pixel entry may be None (the catalog's meta is passed instead) or a tuple of
-        pixels (their partitions are gathered and concatenated into a single dataframe).
         Each list of pixels should be the same length. Example input:
         [(catalog, pixels), (catalog2, pixels2), ...]
     func : Callable

@@ -3,7 +3,7 @@
 An outer crossmatch aligns pixels in the outer way: every pixel of either catalog is
 visited, right rows in sky without left coverage are emitted unmatched, and right rows
 are emitted unmatched only when no left row pairs with them anywhere — including across
-pixel boundaries, via the left catalog's margin cache and boundary partitions.
+pixel boundaries, via the left catalog's margin cache.
 """
 
 import nested_pandas as npd
@@ -181,11 +181,11 @@ def test_outer_right_only_pixel_boundary_row_matched_once():
     assert right_only["id_right"].tolist() == [11]
 
 
-def test_outer_right_only_pixel_gathers_multiple_left_partitions():
-    """A right-only pixel ring-touching two left partitions gathers and concatenates both.
+def test_outer_right_only_pixel_reads_left_margin_not_left_partitions():
+    """A right-only pixel bordering two left partitions loads neither of them.
 
-    Its task reads several adjacent left partitions through one multi-pixel input slot,
-    so the concatenated neighborhood is queried in a single forward pass.
+    The left rows near it come from the left margin partition covering that sky, so the
+    task does not depend on any partition of the left catalog itself.
     """
     ra_a, ra_b = _adjacent_ra_pair()
     ra_c, dec_c, pix_c = -6.0, -10.0, 67
@@ -200,7 +200,8 @@ def test_outer_right_only_pixel_gathers_multiple_left_partitions():
         suffix_method="all_columns",
     )
     graph = outer._operation.build([HealpixPixel(ORDER, pix_c)])
-    assert any("concat" in str(key) for key in graph.graph)
+    left_graph = left._operation.build(left.get_healpix_pixels())
+    assert not set(left_graph.graph) & set(graph.graph)
 
     result = pd.DataFrame(outer.compute())
     assert len(result) == 3
@@ -267,6 +268,31 @@ def test_outer_filters_coarse_right_partition_to_aligned_pixels():
     assert len(result) == 8
     assert set(result["id_left"].dropna()) == set(range(4))
     assert set(result["id_right"].dropna()) == set(range(10, 14))
+
+
+def test_outer_coarse_left_matches_across_finer_aligned_pixels():
+    """A right row matched to a left row in the same coarse left partition is emitted once.
+
+    The pair straddles the boundary of the finer aligned pixels, so the right row's task
+    must see the left row as a neighbor even though it is not in the left margin cache.
+    """
+    ra_left, ra_right, dec = 40.553, 40.554, 1.0
+    assert _pix(0, ra_left, dec) == _pix(0, ra_right, dec)
+    assert _pix(5, ra_left, dec) != _pix(5, ra_right, dec)
+    left = _catalog(pd.DataFrame({"id": [1], "ra": [ra_left], "dec": [dec]}), "left", order=0)
+    right = _catalog(pd.DataFrame({"id": [10], "ra": [ra_right], "dec": [dec]}), "right", order=5)
+
+    result = pd.DataFrame(
+        left.crossmatch(
+            right,
+            how="outer",
+            radius_arcsec=RADIUS,
+            suffixes=("_left", "_right"),
+            suffix_method="all_columns",
+        ).compute()
+    )
+
+    assert result[["id_left", "id_right"]].values.tolist() == [[1, 10]]
 
 
 def test_crossmatch_rejects_unknown_join_method(small_sky_catalog, small_sky_xmatch_catalog):
