@@ -1,8 +1,11 @@
+import hats.pixel_math.healpix_shim as hp
 import numpy as np
+import pandas as pd
 import pytest
 
 import lsdb
 from lsdb.streams import CatalogStream, InfiniteStream
+from lsdb.streams.catalog_streams import CrossMatchStream
 
 
 def test_catalog_stream():
@@ -91,3 +94,108 @@ def test_stream_from_search_filter():
         if i > 0:
             break
         print(chunk)
+
+
+def _crossmatch_stream_catalogs(monkeypatch):
+    """Two small overlapping catalogs for CrossMatchStream tests.
+
+    CrossMatchStream reads each catalog's on-disk point-map skymap to
+    estimate match fractions; in-memory catalogs have none, so serve a
+    synthetic all-ones skymap (every pixel estimated to match fully)."""
+    monkeypatch.setattr(
+        "lsdb.streams.catalog_streams.read_skymap",
+        lambda hc_catalog, path: np.ones(hp.order2npix(5)),
+    )
+    left_df = pd.DataFrame(
+        {
+            "ra": np.linspace(15.0, 25.0, 64),
+            "dec": np.linspace(34.0, 44.0, 64),
+            "id": np.arange(64),
+        }
+    )
+    right_df = pd.DataFrame(
+        {
+            "ra": np.linspace(15.0, 25.0, 32),
+            "dec": np.linspace(34.0, 44.0, 32),
+            "id": np.arange(32),
+        }
+    )
+    left = lsdb.from_dataframe(
+        left_df,
+        ra_column="ra",
+        dec_column="dec",
+        lowest_order=4,
+        highest_order=5,
+        margin_threshold=30,
+    )
+    right = lsdb.from_dataframe(
+        right_df,
+        ra_column="ra",
+        dec_column="dec",
+        lowest_order=4,
+        highest_order=5,
+        margin_threshold=30,
+    )
+    return left, right
+
+
+def test_crossmatch_stream_yields_left_joined_rows(monkeypatch):
+    left, right = _crossmatch_stream_catalogs(monkeypatch)
+    stream = CrossMatchStream(
+        left,
+        {"other": right},
+        client=None,
+        partitions_per_chunk=2,
+        seed=1,
+        count_fraction_threshold=0.0,
+    )
+    cat_iter = iter(stream)
+    chunk = next(cat_iter)
+    assert len(chunk) > 0
+    # never-skip threshold: every row keeps the right catalog's columns,
+    # suffixed with the right catalog's name
+    assert f"id_{right.name}" in chunk.columns
+    assert len(chunk["id"]) == chunk["id"].notna().sum()
+
+
+def test_stream_submits_next_chunk_before_waiting_for_result():
+    """The next chunk is submitted before the current result is awaited.
+
+    Graph construction and scheduling for chunk N+1 must overlap chunk N's
+    computation (the class docstring's pre-fetch claim), not run on the
+    consumer's critical path after it. Ordering is observable by logging
+    submissions and result reads; with a real dask client this is what
+    hides CrossMatchStream's per-pixel graph construction behind fetches."""
+    cat = lsdb.generate_catalog(
+        100, 2, lowest_order=4, ra_range=(15.0, 25.0), dec_range=(34.0, 44.0), seed=1
+    )
+    events = []
+
+    class _LoggingFuture:
+        def __init__(self, inner):
+            self.inner = inner
+
+        def result(self):
+            value = self.inner.result()
+            events.append("read")
+            return value
+
+    class RecordingStream(CatalogStream):
+        def submit_next_partitions(self, partitions):
+            future = super().submit_next_partitions(partitions)
+            events.append(f"submit:{len(partitions)}")
+            return _LoggingFuture(future)
+
+    stream = RecordingStream(catalog=cat, seed=1, partitions_per_chunk=2)
+    cat_iter = iter(stream)
+    assert events == ["submit:2"]  # the first chunk is pre-submitted
+
+    next(cat_iter)
+    # the second chunk was submitted BEFORE the first result was read
+    assert events == ["submit:2", "submit:2", "read"]
+
+    # iteration still yields every row exactly once
+    total = 0
+    for chunk in RecordingStream(catalog=cat, seed=1, partitions_per_chunk=2):
+        total += len(chunk)
+    assert total == len(cat)
