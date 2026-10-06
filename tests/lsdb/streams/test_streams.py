@@ -1,3 +1,5 @@
+from typing import Any, cast
+
 import hats.pixel_math.healpix_shim as hp
 import numpy as np
 import pandas as pd
@@ -64,7 +66,7 @@ def test_invalid_catalog_input():
     with pytest.raises(
         ValueError, match="The provided catalog input type <class 'str'> is not a lsdb.Catalog object."
     ):
-        CatalogStream(catalog="not a catalog")
+        CatalogStream(catalog=cast(lsdb.Catalog, "not a catalog"))
 
 
 def test_rng_split():
@@ -171,7 +173,7 @@ def test_stream_submits_next_chunk_before_waiting_for_result():
     )
     events = []
 
-    class _LoggingFuture:
+    class _LoggingFuture:  # pylint: disable=too-few-public-methods
         def __init__(self, inner):
             self.inner = inner
 
@@ -181,7 +183,7 @@ def test_stream_submits_next_chunk_before_waiting_for_result():
             return value
 
     class RecordingStream(CatalogStream):
-        def submit_next_partitions(self, partitions):
+        def submit_next_partitions(self, partitions) -> Any:
             future = super().submit_next_partitions(partitions)
             events.append(f"submit:{len(partitions)}")
             return _LoggingFuture(future)

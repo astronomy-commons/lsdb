@@ -1,13 +1,11 @@
 from collections.abc import Iterator
-from typing import Optional
+from typing import Any, Optional, cast
 
-import dask
-import hats
 import hats.pixel_math.healpix_shim as hp
 import nested_pandas as npd
 import numpy as np
 import pandas as pd
-from dask.delayed import Delayed
+from dask.delayed import Delayed, delayed
 from dask.distributed import Client, Future
 from hats.io.skymap import read_skymap
 
@@ -129,12 +127,12 @@ class CatalogStream:
         if len(selected) == 1:
             if self.client is None:
                 return _FakeFuture(selected[0].compute())
-            return self.client.compute(selected[0])
+            return cast(Future, self.client.compute(selected[0]))
 
-        combined = dask.delayed(pd.concat)(selected)
+        combined = delayed(pd.concat)(selected)
         if self.client is None:
             return _FakeFuture(combined.compute())
-        return self.client.compute(combined)
+        return cast(Future, self.client.compute(combined))
 
     def __iter__(self) -> "CatalogIterator":
         """Return an iterator for this iterable."""
@@ -266,7 +264,7 @@ class CrossMatchStream(InfiniteStream):
     def __init__(
         self,
         catalog: Catalog,
-        *crossmatch_kwargs: dict[str, object],
+        *crossmatch_kwargs: dict[str, Any],
         client: Client | None = None,
         partitions_per_chunk: int = 1,
         seed: int | None = None,
@@ -330,7 +328,7 @@ class CrossMatchStream(InfiniteStream):
                 old_n_columns = partition.shape[1]
                 new_columns = meta_to_match.columns[old_n_columns:]
                 for column in new_columns:
-                    partition[column] = pd.Series(None, dtype=meta_to_match[column].dtype)
+                    partition[column] = pd.Series(None, dtype=meta_to_match.dtypes[column])
                 return partition
 
             result_catalog = self.catalog.search(PixelSearch(pixel, fine=True))
@@ -346,7 +344,7 @@ class CrossMatchStream(InfiniteStream):
                         skipped_crossmatch, meta_to_match=meta_to_match
                     )
 
-            selected.extend(_to_delayed(result_catalog._operation))
+            selected.extend(_to_delayed(result_catalog._operation))  # pylint: disable=protected-access
 
         if len(selected) == 0:
             return _FakeFuture(self.accumulative_meta[-1])
@@ -354,12 +352,12 @@ class CrossMatchStream(InfiniteStream):
         if len(selected) == 1:
             if self.client is None:
                 return _FakeFuture(selected[0].compute())
-            return self.client.compute(selected[0])
+            return cast(Future, self.client.compute(selected[0]))
 
-        combined = dask.delayed(pd.concat)(selected)
+        combined = delayed(pd.concat)(selected)
         if self.client is None:
             return _FakeFuture(combined.compute())
-        return self.client.compute(combined)
+        return cast(Future, self.client.compute(combined))
 
 
 class CountMapForPixel:
@@ -367,8 +365,8 @@ class CountMapForPixel:
 
     def __init__(
         self,
-        catalog: hats.catalog.Catalog,
-        right_catalogs: list[hats.catalog.Catalog],
+        catalog: Catalog,
+        right_catalogs: list[Catalog],
         *,
         count_fraction: float,
     ):
@@ -376,9 +374,9 @@ class CountMapForPixel:
 
         Attributes
         ----------
-        catalog: hats.catalog.Catalog
+        catalog: lsdb.Catalog
             the Anchor catalog
-        right_catalogs: list[hats.catalog.Catalog]
+        right_catalogs: list[lsdb.Catalog]
             the list of catalogs to crossmatch to
         count_fraction: float
             the fraction of matches above which a pixel is selected for crossmatching
@@ -419,7 +417,7 @@ class CountMapForPixel:
         # Return the minimum of the two skymaps
         return np.minimum(counts_a, counts_b)
 
-    def get_pixel_catalog_mask(self, pixel, rng) -> np.ndarray:
+    def get_pixel_catalog_mask(self, pixel, rng) -> np.ndarray:  # pylint: disable=unused-argument
         """Get boolean mask for all right catalogs.
 
         If True, do crossmatch for provided pixel for catalog at index."""
@@ -433,7 +431,7 @@ class CountMapForPixel:
 def get_fraction_at_pixel(pixel, minimums, left_counts, right_counts) -> float:
     """Gets the expected match fraction for a pixel of the crossmatch of two catalogs."""
     total_minimums = get_sum_at_pixel(pixel, minimums)
-    total_left_counts = get_sum_at_pixel(pixel, left_counts)
+    _total_left_counts = get_sum_at_pixel(pixel, left_counts)
     total_right_counts = get_sum_at_pixel(pixel, right_counts)
     if total_right_counts == 0:
         return 0.0
