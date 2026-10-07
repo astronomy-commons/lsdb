@@ -149,6 +149,5 @@ def test_generate_catalog_with_pixels():
 def test_generate_catalog_with_invalid_search_region():
     """test the dataset generator function with an invalid search region"""
 
-    # test the seed
     with pytest.raises(NotImplementedError):
         generate_catalog(100, 3, seed=1, search_region="invalid_search_region")
