@@ -13,6 +13,7 @@ Construction
     from_dataframe
     from_astropy
     catalog.generation.generate_catalog
+    catalog.generation.generate_data
 
 Materializing
 ~~~~~~~~~~~~~~~~~~
