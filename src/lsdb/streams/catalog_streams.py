@@ -1,15 +1,17 @@
 from collections.abc import Iterator
-from typing import Optional
+from typing import Any, Optional, cast
 
-import dask
-import hats
 import hats.pixel_math.healpix_shim as hp
 import nested_pandas as npd
 import numpy as np
 import pandas as pd
-from dask.delayed import Delayed
+from dask.delayed import Delayed, delayed
 from dask.distributed import Client, Future
+from hats.io.file_io.file_io import read_parquet_dataset
+from hats.io.paths import pixel_catalog_file
 from hats.io.skymap import read_skymap
+from hats.pixel_math.healpix_pixel import HealpixPixel
+from upath import UPath
 
 from lsdb import Catalog, PixelSearch
 
@@ -129,12 +131,12 @@ class CatalogStream:
         if len(selected) == 1:
             if self.client is None:
                 return _FakeFuture(selected[0].compute())
-            return self.client.compute(selected[0])
+            return cast(Future, self.client.compute(selected[0]))
 
-        combined = dask.delayed(pd.concat)(selected)
+        combined = delayed(pd.concat)(selected)
         if self.client is None:
             return _FakeFuture(combined.compute())
-        return self.client.compute(combined)
+        return cast(Future, self.client.compute(combined))
 
     def __iter__(self) -> "CatalogIterator":
         """Return an iterator for this iterable."""
@@ -263,10 +265,63 @@ class CatalogIterator(Iterator[pd.DataFrame]):
 
 
 class CrossMatchStream(InfiniteStream):
+    """Stream left crossmatches, optionally skipping low-information right catalogs.
+
+    Parameters
+    ----------
+    catalog : lsdb.Catalog
+        Anchor catalog whose rows are preserved.
+    *crossmatch_kwargs : dict
+        One dictionary per right catalog, containing ``other`` and any arguments
+        for ``Catalog.crossmatch``. Each dictionary may additionally specify
+        ``compression_columns`` (a nonempty list of science column names) and
+        ``compression_ratio_threshold`` (a finite, nonnegative minimum ratio).
+        Both must be supplied to enable compression filtering for that catalog.
+        Nested columns may be selected as a group or with dotted subcolumn names.
+    client : dask.distributed.Client or None, default None
+        Client used to compute stream chunks, or None for synchronous execution.
+    partitions_per_chunk : int, default 1
+        Number of partitions per chunk.
+    seed : int or None, default None
+        Random seed for partition and row shuffling.
+    count_fraction_threshold : float
+        Minimum estimated match coverage required to crossmatch a right catalog.
+
+    Notes
+    -----
+    The compression ratio is the sum of compressed Parquet column-chunk sizes
+    divided by the sum of uncompressed sizes across selected columns, row groups,
+    and right-catalog source partitions overlapping the current pixel. Higher
+    ratios mean less-compressible data; compression overhead can produce ratios
+    above one. Finer pixels inherit their source partition's score, which is
+    unaffected by row filters or transformations.
+
+    Both coverage and compression thresholds must pass. Skipping preserves anchor
+    rows and fills right-catalog columns with nulls. Omitting compression options
+    retains coverage-only filtering.
+
+    Scoring reads only footer metadata, with no dedicated cache or data
+    computation. It requires on-disk right catalogs and raises an error for
+    missing selected columns or unusable metadata.
+
+    Examples
+    --------
+    Configure compression filtering independently for each right catalog:
+
+    >>> from lsdb.streams.catalog_streams import CrossMatchStream
+    >>> stream = CrossMatchStream(  # doctest: +SKIP
+    ...     anchor,
+    ...     {"other": photometry, "compression_columns": ["flux_g", "flux_r"],
+    ...      "compression_ratio_threshold": 0.5},
+    ...     {"other": spectra},  # Coverage filtering only.
+    ...     count_fraction_threshold=0.1,
+    ... )
+    """
+
     def __init__(
         self,
         catalog: Catalog,
-        *crossmatch_kwargs: dict[str, object],
+        *crossmatch_kwargs: dict[str, Any],
         client: Client | None = None,
         partitions_per_chunk: int = 1,
         seed: int | None = None,
@@ -280,8 +335,29 @@ class CrossMatchStream(InfiniteStream):
         )
 
         all_kwargs = []
+        self.compression_filters: list[tuple[list[str], float] | None] = []
         for kwargs in crossmatch_kwargs:
             new_kwargs = kwargs.copy()
+            columns = new_kwargs.pop("compression_columns", None)
+            threshold = new_kwargs.pop("compression_ratio_threshold", None)
+            if columns is None and threshold is None:
+                self.compression_filters.append(None)
+            else:
+                configuration_error = (
+                    "Specify both a nonempty list of compression_columns and a finite, "
+                    "nonnegative compression_ratio_threshold."
+                )
+                if (
+                    not isinstance(columns, list)
+                    or not columns
+                    or not all(isinstance(column, str) and column for column in columns)
+                ):
+                    raise ValueError(configuration_error)
+                if not isinstance(threshold, (int, float)) or not np.isfinite(threshold) or threshold < 0:
+                    raise ValueError(configuration_error)
+                if kwargs["other"].hc_structure.catalog_base_dir is None:
+                    raise ValueError("Compression filtering requires an on-disk right catalog.")
+                self.compression_filters.append((columns.copy(), float(threshold)))
             new_kwargs["suffixes"] = ("", "_" + kwargs["other"].name)
             new_kwargs["suffix_method"] = "all_columns"
             new_kwargs["how"] = "left"
@@ -322,7 +398,7 @@ class CrossMatchStream(InfiniteStream):
 
         for pixel_index in partitions:
             pixel = self._pixels[pixel_index]
-            right_catalog_mask = self.mask_generator.get_pixel_catalog_mask(pixel, self.rng)
+            right_catalog_mask = self.mask_generator.get_pixel_catalog_mask(pixel)
 
             def skipped_crossmatch(
                 partition: npd.NestedFrame, *, meta_to_match: npd.NestedFrame
@@ -330,13 +406,22 @@ class CrossMatchStream(InfiniteStream):
                 old_n_columns = partition.shape[1]
                 new_columns = meta_to_match.columns[old_n_columns:]
                 for column in new_columns:
-                    partition[column] = pd.Series(None, dtype=meta_to_match[column].dtype)
+                    partition[column] = pd.Series(index=partition.index, dtype=meta_to_match.dtypes[column])
                 return partition
 
             result_catalog = self.catalog.search(PixelSearch(pixel, fine=True))
-            for cross_match_kwargs, do_crossmatch, meta_to_match in zip(
-                self.crossmatch_kwargs, right_catalog_mask, self.accumulative_meta, strict=True
+            for cross_match_kwargs, do_crossmatch, meta_to_match, compression_filter in zip(
+                self.crossmatch_kwargs,
+                right_catalog_mask,
+                self.accumulative_meta,
+                self.compression_filters,
+                strict=True,
             ):
+                if do_crossmatch and compression_filter is not None:
+                    columns, threshold = compression_filter
+                    do_crossmatch = (
+                        _get_compression_ratio(cross_match_kwargs["other"], pixel, columns) >= threshold
+                    )
                 if do_crossmatch:
                     result_catalog = result_catalog.crossmatch(**cross_match_kwargs).map_partitions(
                         lambda df: df.drop(columns=["_dist_arcsec"])
@@ -346,7 +431,7 @@ class CrossMatchStream(InfiniteStream):
                         skipped_crossmatch, meta_to_match=meta_to_match
                     )
 
-            selected.extend(_to_delayed(result_catalog._operation))
+            selected.extend(_to_delayed(result_catalog._operation))  # pylint: disable=protected-access
 
         if len(selected) == 0:
             return _FakeFuture(self.accumulative_meta[-1])
@@ -354,12 +439,61 @@ class CrossMatchStream(InfiniteStream):
         if len(selected) == 1:
             if self.client is None:
                 return _FakeFuture(selected[0].compute())
-            return self.client.compute(selected[0])
+            return cast(Future, self.client.compute(selected[0]))
 
-        combined = dask.delayed(pd.concat)(selected)
+        combined = delayed(pd.concat)(selected)
         if self.client is None:
             return _FakeFuture(combined.compute())
-        return self.client.compute(combined)
+        return cast(Future, self.client.compute(combined))
+
+
+def _get_compression_ratio(catalog: Catalog, pixel: HealpixPixel, columns: list[str]) -> float:
+    """Read selected-column footer sizes from overlapping source partitions."""
+    structure = catalog.hc_structure
+    source_pixels = PixelSearch(pixel).filter_hc_catalog(structure).get_healpix_pixels()
+    if not source_pixels:
+        return 0.0
+    path_generator = (
+        pixel_catalog_file
+        if catalog.loading_config is None
+        else catalog.loading_config.path_generator or pixel_catalog_file
+    )
+
+    compressed_bytes = 0
+    uncompressed_bytes = 0
+    for source_pixel in source_pixels:
+        path = path_generator(
+            cast(UPath, structure.catalog_base_dir), source_pixel, None, structure.catalog_info.npix_suffix
+        )
+        # Dataset fragments also support HATS pixels stored as directories. Reuse
+        # their metadata (including any footer already read during discovery).
+        _, dataset = read_parquet_dataset(path)
+        for fragment in dataset.get_fragments():
+            metadata = fragment.metadata
+            matched_columns = set()
+            for row_group_index in range(metadata.num_row_groups):
+                row_group = metadata.row_group(row_group_index)
+                for column_index in range(row_group.num_columns):
+                    chunk = row_group.column(column_index)
+                    name = chunk.path_in_schema.replace(".list.element", "")
+                    matches = [
+                        column for column in columns if name == column or name.startswith(column + ".")
+                    ]
+                    if not matches:
+                        continue
+                    matched_columns.update(matches)
+                    if chunk.total_compressed_size < 0 or chunk.total_uncompressed_size <= 0:
+                        raise ValueError(f"Unusable compression metadata for {name!r} in {fragment.path}.")
+                    compressed_bytes += chunk.total_compressed_size
+                    uncompressed_bytes += chunk.total_uncompressed_size
+            if set(columns) - matched_columns:
+                raise ValueError(
+                    f"Compression columns {sorted(set(columns) - matched_columns)} "
+                    f"are missing from footer metadata in {fragment.path}."
+                )
+    if uncompressed_bytes == 0:
+        raise ValueError(f"No usable compression metadata for pixel {pixel} in catalog {catalog.name!r}.")
+    return compressed_bytes / uncompressed_bytes
 
 
 class CountMapForPixel:
@@ -367,8 +501,8 @@ class CountMapForPixel:
 
     def __init__(
         self,
-        catalog: hats.catalog.Catalog,
-        right_catalogs: list[hats.catalog.Catalog],
+        catalog: Catalog,
+        right_catalogs: list[Catalog],
         *,
         count_fraction: float,
     ):
@@ -376,9 +510,9 @@ class CountMapForPixel:
 
         Attributes
         ----------
-        catalog: hats.catalog.Catalog
+        catalog: lsdb.Catalog
             the Anchor catalog
-        right_catalogs: list[hats.catalog.Catalog]
+        right_catalogs: list[lsdb.Catalog]
             the list of catalogs to crossmatch to
         count_fraction: float
             the fraction of matches above which a pixel is selected for crossmatching
@@ -419,21 +553,20 @@ class CountMapForPixel:
         # Return the minimum of the two skymaps
         return np.minimum(counts_a, counts_b)
 
-    def get_pixel_catalog_mask(self, pixel, rng) -> np.ndarray:
+    def get_pixel_catalog_mask(self, pixel) -> np.ndarray:
         """Get boolean mask for all right catalogs.
 
         If True, do crossmatch for provided pixel for catalog at index."""
         mask = []
         for right_counts, pair_minimums in zip(self.right_count_maps, self.minimums):
-            do_crossmatch = get_fraction_at_pixel(pixel, pair_minimums, self.left_count_map, right_counts)
+            do_crossmatch = get_fraction_at_pixel(pixel, pair_minimums, right_counts)
             mask.append(do_crossmatch >= self.count_fraction)
         return np.asarray(mask, dtype=bool)
 
 
-def get_fraction_at_pixel(pixel, minimums, left_counts, right_counts) -> float:
+def get_fraction_at_pixel(pixel, minimums, right_counts) -> float:
     """Gets the expected match fraction for a pixel of the crossmatch of two catalogs."""
     total_minimums = get_sum_at_pixel(pixel, minimums)
-    total_left_counts = get_sum_at_pixel(pixel, left_counts)
     total_right_counts = get_sum_at_pixel(pixel, right_counts)
     if total_right_counts == 0:
         return 0.0
