@@ -13,7 +13,24 @@ def generate_data(
 ):
     """Generates a toy dataset.
 
-    Docstring copied from nested-pandas.
+    The base layer always contains columns ``ra``, ``dec``, ``id``, ``a``, and
+    ``b``.  Each nested layer contains columns ``t``, ``flux``, ``flux_error``,
+    ``band``, and ``flux_err``.  When *n_layer* is an int the single layer is
+    always named ``"nested"``; pass a dict to use custom layer names.
+
+    Column reference:
+
+    - ``ra``, ``dec`` (float64): Sky position in degrees, drawn uniformly
+      over the sphere within *ra_range* and *dec_range* (or the search
+      region when provided).
+    - ``id`` (int64): Unique random integer identifier per base row.
+    - ``a`` (float64): Random float in ``[0, 1)``.
+    - ``b`` (float64): Random float in ``[0, 2)``.
+    - ``<layer>.t`` (float64): Time-like value in ``[0, 20)``.
+    - ``<layer>.flux`` (float64): Flux value in ``[0, 100)``.
+    - ``<layer>.flux_error`` (float64): Constant error ``1.0``.
+    - ``<layer>.band`` (str): Filter band, one of ``"r"`` or ``"g"``.
+    - ``<layer>.flux_err`` (float64): ``flux * 0.05``.
 
     Parameters
     ----------
@@ -46,7 +63,7 @@ def generate_data(
     Examples
     --------
     >>> from lsdb import generate_data
-    >>> nf = generate_data(10,100)
+    >>> nf = generate_data(10, 100)
     >>> nf = generate_data(10, {"nested_a": 100, "nested_b": 200})
 
     Constraining spatial ranges:
@@ -175,6 +192,25 @@ def generate_catalog(
 ):
     """Generates a toy catalog.
 
+    The base layer always contains columns ``ra``, ``dec``, ``id``, ``a``, and
+    ``b``.  Each nested layer contains columns ``t``, ``flux``, ``flux_error``,
+    ``band``, and ``flux_err``.  When *n_layer* is an int the single layer is
+    always named ``"nested"``; pass a dict to use custom layer names.
+
+    Column reference:
+
+    - ``ra``, ``dec`` (float64): Sky position in degrees, drawn uniformly
+      over the sphere within *ra_range* and *dec_range* (or the search
+      region when provided).
+    - ``id`` (int64): Unique random integer identifier per base row.
+    - ``a`` (float64): Random float in ``[0, 1)``.
+    - ``b`` (float64): Random float in ``[0, 2)``.
+    - ``<layer>.t`` (float64): Time-like value in ``[0, 20)``.
+    - ``<layer>.flux`` (float64): Flux value in ``[0, 100)``.
+    - ``<layer>.flux_error`` (float64): Constant error ``1.0``.
+    - ``<layer>.band`` (str): Filter band, one of ``"r"`` or ``"g"``.
+    - ``<layer>.flux_err`` (float64): ``flux * 0.05``.
+
     Parameters
     ----------
     n_base : int
@@ -209,12 +245,12 @@ def generate_catalog(
 
     Constraining spatial ranges:
 
-    >>> gen_cat = generate_data(10, 100, ra_range=(0., 10.), dec_range=(-5., 0.))
+    >>> gen_cat = generate_catalog(10, 100, ra_range=(0., 10.), dec_range=(-5., 0.))
 
     Using a search region:
 
     >>> from lsdb import ConeSearch
-    >>> gen_cat = generate_data(10, 100, search_region=ConeSearch(5, 5, 1))
+    >>> gen_cat = generate_catalog(10, 100, search_region=ConeSearch(5, 5, 1))
     """
 
     base_nf = generate_data(

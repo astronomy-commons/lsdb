@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import random
+import sys
 import warnings
 from collections.abc import Sequence
 from pathlib import Path
@@ -526,6 +527,8 @@ class HealpixDataset:
             )
 
         desc = tqdm_kwargs.pop("desc", "Computing Catalog") if tqdm_kwargs else "Computing Catalog"
+        if progress_bar:
+            tqdm.write("Building task graph...", file=sys.stderr)
         healpix_graph = self._operation.build()
         schedule = get_scheduler()
         if not isinstance(getattr(schedule, "__self__", None), Client):
