@@ -722,3 +722,15 @@ def test_read_hats_catalog_with_custom_tree_and_search(
 def test_read_hats_catalog_with_wrong_path_generator(small_sky_order1_custom_tree_dir):
     with pytest.raises(FileNotFoundError):
         lsdb.open_catalog(small_sky_order1_custom_tree_dir).compute()
+
+
+def test_read_hats_extension(small_sky_with_sources_extension_dir):
+    """Reading the properties file of an extension loads the extension data, with its margin."""
+    extension_name = "small_sky_order1_lightcurves"
+    extension = lsdb.read_hats(small_sky_with_sources_extension_dir / f"{extension_name}.properties")
+    expected = lsdb.read_hats(small_sky_with_sources_extension_dir / extension_name)
+    assert isinstance(extension, lsdb.Catalog)
+    assert extension.name == extension_name
+    assert extension.margin is not None
+    pd.testing.assert_frame_equal(extension.compute(), expected.compute())
+    pd.testing.assert_frame_equal(extension.margin.compute(), expected.margin.compute())

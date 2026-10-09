@@ -153,7 +153,8 @@ def read_hats(
 ) -> HealpixDataset:
     """Load dataset from a HATS path.
 
-    Use this method to load auxiliary (margin, association, map) datasets.
+    Use this method to load auxiliary (margin, association, map) datasets, or the data
+    of a catalog extension, from its ``<extension>.properties`` file.
 
     Parameters
     ----------
@@ -227,7 +228,7 @@ def _read_dataset(
         kwargs=kwargs,
     )
     if isinstance(hc_catalog, HCCatalogExtension):
-        raise NotImplementedError("Reading extension catalogs is not yet supported.")
+        hc_catalog = hc_catalog.catalog
     if isinstance(hc_catalog, hc.catalog.CatalogCollection):
         config.margin_cache = _get_collection_margin(hc_catalog, margin_cache)
         catalog = _load_catalog(hc_catalog.main_catalog, config)

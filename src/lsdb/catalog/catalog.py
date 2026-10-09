@@ -10,6 +10,7 @@ import nested_pandas as npd
 import pandas as pd
 from deprecated import deprecated  # type: ignore
 from hats.catalog.catalog_collection import CatalogCollection
+from hats.catalog.catalog_extension import CatalogExtension as HCCatalogExtension
 from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
 from hats.catalog.index.index_catalog import IndexCatalog as HCIndexCatalog
 from hats.pixel_math import HealpixPixel
@@ -45,6 +46,7 @@ from lsdb.operations.functions.join_catalog_data import (
 )
 from lsdb.operations.functions.merge_catalog_functions import (
     DEFAULT_SUFFIX_METHOD,
+    apply_right_suffix,
     create_merged_catalog_info,
 )
 from lsdb.operations.functions.merge_map_catalog_data import merge_map_catalog_data
@@ -75,6 +77,9 @@ class Catalog(HealpixDataset):
     """`hats.CatalogCollection` object representing the structure and metadata of the
     HATS catalog, as well as links to affiliated tables like margins and indexes."""
 
+    extensions: tuple[str, ...] = ()
+    """The names of the extensions loaded into the catalog with `load_extension`."""
+
     def __init__(
         self,
         operation: Operation,
@@ -101,6 +106,7 @@ class Catalog(HealpixDataset):
         """
         super().__init__(operation, hc_structure, loading_config)
         self.margin = margin
+        self.extensions = ()
 
     def _create_updated_dataset(
         self,
@@ -115,6 +121,8 @@ class Catalog(HealpixDataset):
             updated_catalog_info_params,
         )
         cat.margin = margin
+        cat.hc_collection = self.hc_collection
+        cat.extensions = self.extensions
         return cat
 
     @property
@@ -136,6 +144,17 @@ class Catalog(HealpixDataset):
             " working with a stand-alone catalog, use the `index_catalogs` argument"
             " to specify a HATS index catalog for the desired column."
         )
+
+    @property
+    def all_extensions(self) -> list[str]:
+        """The names of the extensions listed in the catalog's collection, which can be
+        loaded with `load_extension`. Empty if the catalog is not part of a collection."""
+        if self.hc_collection is None:
+            return []
+        return [
+            extension.rstrip("/").split("/")[-1].removesuffix(".properties")
+            for extension in self.hc_collection.all_extensions or []
+        ]
 
     def query(self, expr: str) -> Catalog:
         """Filters catalog and respective margin, if it exists, using a complex query expression
@@ -806,6 +825,8 @@ class Catalog(HealpixDataset):
         """
         cat = super().search(search)
         cat.margin = self.margin.search(search) if self.margin is not None else None
+        cat.hc_collection = self.hc_collection
+        cat.extensions = self.extensions
         return cat
 
     def _apply_partitionwise_operation(
@@ -1257,6 +1278,89 @@ class Catalog(HealpixDataset):
             new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(op.meta), moc=alignment.moc
         )
         return self.__class__(op, hc_catalog)
+
+    def load_extension(
+        self,
+        name: str,
+        path: str | Path | UPath | None = None,
+        columns: list[str] | None = None,
+        storage_options: dict | None = None,
+    ) -> Catalog:
+        """Load an extension of the catalog.
+
+        An extension holds additional columns for the rows of a catalog, stored apart from it.
+        It is either listed in the catalog's collection (see `all_extensions`), or given by the
+        `path` to its ``<extension>.properties`` file, which defines the columns to join on.
+
+        The extension is joined with `Catalog.join`, in the join style that the extension specifies:
+        rows of the catalog with no extension data are kept, with missing values, when it is "left"
+        (the default), and dropped when it is "inner". The resulting catalog has no margin. The loaded
+        extensions are listed in `extensions`.
+
+        Parameters
+        ----------
+        name : str
+            The name of the extension: one of `all_extensions`, or a name for the extension
+            at `path`.
+        path : path-like or None, default None
+            The path to the ``<extension>.properties`` file of an extension that is not listed
+            in the catalog's collection.
+        columns : list[str] or None, default None
+            The extension columns to load, which may name nested subcolumns (e.g. ``"lc.mag"``).
+            Defaults to the columns that the extension lists.
+        storage_options : dict or None, default None
+            Additional options to connect to the extension. Defaults to the storage options
+            of the catalog's collection, if any.
+
+        Returns
+        -------
+        Catalog
+            A new catalog with the extension columns added.
+
+        Raises
+        ------
+        ValueError
+            If the extension is already loaded, if it is not in the catalog's collection and
+            no `path` is given, or if `path` is not an extension.
+        """
+        # pylint: disable=import-outside-toplevel
+        from lsdb.loaders.hats.read_hats import _read_dataset
+
+        if name in self.extensions:
+            raise ValueError(f"Extension `{name}` is already loaded")
+        if path is None:
+            if self.hc_collection is None:
+                raise ValueError(f"The catalog is not part of a collection, so give the `path` to `{name}`")
+            path = self.hc_collection.get_extension_path(name)
+        if storage_options is None and self.hc_collection is not None:
+            storage_options = self.hc_collection.storage_options
+        hc_extension = hc.read_hats(path, storage_options=storage_options)
+        if not isinstance(hc_extension, HCCatalogExtension):
+            raise ValueError(f"`{path}` is not a HATS extension")
+        extension_info = hc_extension.extension_info
+        extension_columns = columns or extension_info.extension_columns
+        if extension_columns is None:
+            raise ValueError(f"Extension `{name}` does not list its columns, so give the `columns` to load")
+        columns = [extension_info.join_column, *extension_columns]
+        extension = _read_dataset(hc_extension, columns=columns)
+        suffixes = ("", f"_{name}")
+        joined = self.join(
+            extension[columns],  # drop the ra/dec added automatically by the reader
+            left_on=extension_info.primary_column,
+            right_on=extension_info.join_column,
+            suffixes=suffixes,
+            suffix_method="overlapping_columns",
+            log_changes=False,
+            how=extension_info.extension_join_style or "left",
+        )
+        # The extension's join column duplicates the catalog's, so it is dropped. It has a suffix
+        # when both have the same name.
+        joined = joined.drop(
+            apply_right_suffix(extension_info.join_column, self.columns, suffixes, "overlapping_columns")
+        )
+        joined.hc_collection = self.hc_collection
+        joined.extensions = (*self.extensions, name)
+        return joined
 
     def nest_lists(
         self,
