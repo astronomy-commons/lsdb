@@ -1,8 +1,12 @@
+from typing import Literal
+
 import nested_pandas as npd
 import pandas as pd
 
 from lsdb.catalog import Catalog
-from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
+from lsdb.core.crossmatch.abstract_crossmatch_algorithm import (
+    AbstractCrossmatchAlgorithm,
+)
 from lsdb.loaders.dataframe.from_dataframe import from_dataframe
 
 
@@ -37,7 +41,7 @@ def crossmatch(
     algorithm: AbstractCrossmatchAlgorithm | None = None,
     output_catalog_name: str | None = None,
     require_right_margin: bool = False,
-    how: str = "inner",
+    how: Literal["inner", "left", "outer"] = "inner",
     suffixes: tuple[str, str] | None = None,
     left_args: dict | None = None,
     right_args: dict | None = None,
@@ -77,9 +81,13 @@ def crossmatch(
         The name of the output catalog.
     require_right_margin : bool, default False
         Whether to require a right margin.
-    how: str
-        How to handle the crossmatch of the two catalogs.
-        One of {'left', 'inner'}.  Defaults to 'inner'.
+    how : {'inner', 'left', 'outer'}, default 'inner'
+        ``inner`` emits only matched row pairs; ``left`` also emits unmatched left
+        rows; ``outer`` also emits unmatched rows from both catalogs, including sky
+        covered only by the right catalog. ``outer`` requires margin caches on both
+        catalogs (left threshold at least the matching radius, right at least twice).
+        When passing dataframes, these margins are generated unless ``margin_threshold``
+        is given in `left_args` or `right_args`.
     suffixes : tuple[str,str] or None, default None
         Suffixes to append to overlapping column names.
     left_args : dict or None, default None
@@ -110,10 +118,13 @@ def crossmatch(
     if require_right_margin and right_args.get("margin_threshold") is None:
         raise ValueError("If require_right_margin is True, margin_threshold must not be None.")
 
-    if radius_arcsec is not None and "margin_threshold" not in right_args:
-        # Check if the margin should be generated according to the
-        # maximum radius specified for the crossmatch.
-        right_args["margin_threshold"] = radius_arcsec
+    if radius_arcsec is not None:
+        # Unless given, generate the margins according to the maximum radius specified for
+        # the crossmatch. An outer crossmatch also needs a left margin, and twice the radius
+        # on the right.
+        right_args.setdefault("margin_threshold", 2 * radius_arcsec if how == "outer" else radius_arcsec)
+        if how == "outer":
+            left_args.setdefault("margin_threshold", radius_arcsec)
 
     # Update left_args and right_args with ra_column and dec_column if given.
     if ra_column:
