@@ -35,21 +35,25 @@ if TYPE_CHECKING:
 NON_JOINING_ASSOCIATION_COLUMNS = ["Norder", "Dir", "Npix", "join_Norder", "join_Dir", "join_Npix"]
 
 
-# pylint: disable=too-many-arguments, unused-argument
+# pylint: disable=too-many-arguments, too-many-positional-arguments, unused-argument, too-many-locals
 def perform_join_on(
     left: npd.NestedFrame,
     right: npd.NestedFrame,
     right_margin: npd.NestedFrame,
+    aligned_df: npd.NestedFrame,
     left_pixel: HealpixPixel,
     right_pixel: HealpixPixel,
     right_margin_pixel: HealpixPixel,
+    aligned_pixel: HealpixPixel,
     left_catalog_info: TableProperties,
     right_catalog_info: TableProperties,
     right_margin_catalog_info: TableProperties,
+    aligned_catalog_info: TableProperties | None,
     left_on: str,
     right_on: str,
     suffixes: tuple[str, str],
     suffix_method: str | None = None,
+    how: Literal["inner", "left"] = "inner",
 ):
     """Performs a join on two catalog partitions
 
@@ -61,18 +65,24 @@ def perform_join_on(
         The right partition to merge
     right_margin : npd.NestedFrame
         The right margin partition to merge
+    aligned_df : npd.NestedFrame
+        The partition of the aligned pixel
     left_pixel : HealpixPixel
         The HEALPix pixel of the left partition
     right_pixel : HealpixPixel
         The HEALPix pixel of the right partition
     right_margin_pixel : HealpixPixel
         The HEALPix pixel of the right margin partition
+    aligned_pixel : HealpixPixel
+        The HEALPix pixel of the aligned partition
     left_catalog_info : hc.TableProperties
         The catalog info of the left catalog
     right_catalog_info : hc.TableProperties
         The catalog info of the right catalog
     right_margin_catalog_info : hc.TableProperties
         The catalog info of the right margin catalog
+    aligned_catalog_info : hc.TableProperties | None
+        The catalog info of the aligned catalog; usually None
     left_on : str
         The column to join on from the left partition
     right_on : str
@@ -85,14 +95,20 @@ def perform_join_on(
         - "overlapping_columns": only add suffixes to columns that are present in both catalogs
         - "all_columns": add suffixes to all columns from both catalogs
 
+    how : {'inner', 'left'}, default 'inner'
+        Whether to keep the rows of the left partition that have no match in the right partition
+
     Returns
     -------
     npd.NestedFrame
         A dataframe with the result of merging the left and right partitions on the specified columns
     """
-    if right_pixel.order > left_pixel.order:
+    if aligned_pixel.order > left_pixel.order:
         left = filter_by_spatial_index_to_pixel(
-            left, right_pixel.order, right_pixel.pixel, spatial_index_order=left_catalog_info.healpix_order
+            left,
+            aligned_pixel.order,
+            aligned_pixel.pixel,
+            spatial_index_order=left_catalog_info.healpix_order,
         )
 
     right_joined_df = concat_partition_and_margin(right, right_margin)
@@ -101,7 +117,9 @@ def perform_join_on(
     right_join_column = apply_right_suffix(right_on, left.columns, suffixes, suffix_method)
     left, right_joined_df = apply_suffixes(left, right_joined_df, suffixes, suffix_method, log_changes=False)
 
-    merged = left.reset_index().merge(right_joined_df, left_on=left_join_column, right_on=right_join_column)
+    merged = left.reset_index().merge(
+        right_joined_df, left_on=left_join_column, right_on=right_join_column, how=how
+    )
     merged.set_index(left_catalog_info.healpix_column, inplace=True)
     return merged
 
@@ -371,6 +389,7 @@ def join_catalog_data_on(
     suffixes: tuple[str, str],
     suffix_method: str | None = None,
     log_changes: bool = True,
+    how: Literal["inner", "left"] = "inner",
 ) -> tuple[Operation, PixelAlignment]:
     """Joins two catalogs spatially on a specified column
 
@@ -397,6 +416,8 @@ def join_catalog_data_on(
     log_changes : bool, default True
         If True, logs an info message for each column that is being renamed.
         This only applies when suffix_method is 'overlapping_columns'.
+    how : {'inner', 'left'}, default 'inner'
+        Whether to keep the rows of the left catalog that have no match in the right catalog
 
     Returns
     -------
@@ -411,7 +432,7 @@ def join_catalog_data_on(
             RuntimeWarning,
         )
 
-    alignment = align_catalogs(left, right)
+    alignment = align_catalogs(left, right, alignment_type=PixelAlignmentType(how))
 
     left_pixels, right_pixels = get_healpix_pixels_from_alignment(alignment)
     aligned_pixels = get_aligned_pixels_from_alignment(alignment)
@@ -421,7 +442,7 @@ def join_catalog_data_on(
     )
 
     op = align_and_apply(
-        [(left, left_pixels), (right, right_pixels), (right.margin, right_pixels)],
+        [(left, left_pixels), (right, right_pixels), (right.margin, right_pixels), (None, aligned_pixels)],
         perform_join_on,
         meta_df,
         aligned_pixels,
@@ -429,6 +450,7 @@ def join_catalog_data_on(
         right_on,
         suffixes,
         suffix_method,
+        how,
     )
 
     return op, alignment

@@ -1049,12 +1049,15 @@ class Catalog(HealpixDataset):
         output_catalog_name: str | None = None,
         suffix_method: str | None = None,
         log_changes: bool = True,
+        how: Literal["inner", "left"] = "inner",
     ) -> Catalog:
         """Perform a spatial join to another catalog
 
         Joins two catalogs together on a shared column value, merging rows where they match.
 
-        This is an inner join: only rows with matching join keys are returned (unmatched rows are dropped).
+        By default, this is an inner join: only rows with matching join keys are returned (unmatched rows
+        are dropped). With ``how="left"``, the rows of the left catalog without a match are kept too, with
+        missing values in the columns of the right catalog.
 
         The operation only joins data from matching partitions, and does not join rows that have a matching
         column value but are in separate partitions in the sky. For a more general join, consider using Dasks
@@ -1086,6 +1089,9 @@ class Catalog(HealpixDataset):
         log_changes : bool, default True
             If True, logs an info message for each column that is being renamed.
             This only applies when suffix_method is 'overlapping_columns'.
+        how : {'inner', 'left'}, default 'inner'
+            Whether to keep the rows of the left catalog that have no match in the right catalog.
+            Only 'inner' is supported when joining `through` an association catalog.
 
         Returns
         -------
@@ -1135,7 +1141,13 @@ class Catalog(HealpixDataset):
 
         self._check_unloaded_columns([left_on, right_on])
 
+        if how not in ("inner", "left"):
+            raise ValueError("`how` needs to be 'inner' or 'left'")
         if through is not None:
+            if how != "inner":
+                raise ValueError(
+                    "Only `how='inner'` is supported when joining through an association catalog"
+                )
             op, alignment = join_catalog_data_through(
                 self, other, through, suffixes, suffix_method=suffix_method, log_changes=log_changes
             )
@@ -1147,7 +1159,14 @@ class Catalog(HealpixDataset):
             if right_on not in other.columns:
                 raise ValueError("right_on must be a column in the right catalog")
             op, alignment = join_catalog_data_on(
-                self, other, left_on, right_on, suffixes, suffix_method=suffix_method, log_changes=log_changes
+                self,
+                other,
+                left_on,
+                right_on,
+                suffixes,
+                suffix_method=suffix_method,
+                log_changes=log_changes,
+                how=how,
             )
 
         if output_catalog_name is None:

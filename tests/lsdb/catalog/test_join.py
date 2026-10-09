@@ -187,6 +187,40 @@ def test_join_wrong_suffixes(small_sky_catalog, small_sky_order1_catalog):
         small_sky_catalog.join(small_sky_order1_catalog, left_on="id", right_on="id", suffixes=("wrong",))
 
 
+def test_join_how_left(small_sky_catalog, small_sky_order1_catalog):
+    # Select only two pixels from the right catalog, which is at a higher order than the left
+    selected_pixels = [HealpixPixel(1, 46), HealpixPixel(1, 47)]
+    right = small_sky_order1_catalog.pixel_search(selected_pixels)
+
+    # If we `join` with `how="left"`, we keep all objects on the left
+    with pytest.warns(match="margin"):
+        joined = small_sky_catalog.join(
+            right,
+            left_on="id",
+            right_on="id",
+            suffixes=("", "_right"),
+            suffix_method="overlapping_columns",
+            how="left",
+        )
+
+    # The joined partitioning is the one of the highest order catalog
+    assert joined.get_healpix_pixels() == small_sky_order1_catalog.get_healpix_pixels()
+    joined_compute = joined.compute()
+    assert len(joined_compute) == len(small_sky_catalog)
+
+    # Only the objects in the selected pixels have a match
+    has_match = joined_compute["id"].isin(right.compute()["id"])
+    assert (joined_compute.loc[has_match, "id_right"] == joined_compute.loc[has_match, "id"]).all()
+    assert joined_compute.loc[~has_match, "id_right"].isna().all()
+
+
+def test_join_invalid_how(small_sky_catalog, small_sky_order1_catalog, small_sky_to_o1source_catalog):
+    with pytest.raises(ValueError, match="`how` needs to be 'inner' or 'left'"):
+        small_sky_catalog.join(small_sky_order1_catalog, left_on="id", right_on="id", how="outer")
+    with pytest.raises(ValueError, match="Only `how='inner'` is supported"):
+        small_sky_catalog.join(small_sky_order1_catalog, through=small_sky_to_o1source_catalog, how="left")
+
+
 def test_join_association(
     small_sky_catalog, small_sky_order1_source_collection_catalog, small_sky_to_o1source_catalog
 ):
