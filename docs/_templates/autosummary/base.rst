@@ -1,10 +1,6 @@
 
-{%- if objname.split('.')[-1] == objname %}
-{{ objname | escape | underline }}
-{%- else %}
-{{ objname.split('.')[-1] | escape | underline }}
-{%- endif %}
+{{ fullname | escape | underline }}
 
 .. currentmodule:: {{ module }}
 
-.. auto{{ objtype }}:: {{ objname }}
+.. auto{{ objtype }}:: {{ fullname }}
