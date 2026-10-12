@@ -27,21 +27,9 @@ We provide several built-in search types:
     ConeSearch
     BoxSearch
     PolygonSearch
-    PixelSearch
-
-.. currentmodule:: lsdb.core.search.region_search
-
-.. autosummary::
-    :toctree: api/
-
     OrderSearch
+    PixelSearch
     MOCSearch
-
-.. currentmodule:: lsdb.core.search.index_search
-
-.. autosummary::
-    :toctree: api/
-
     IndexSearch
 
 Alternatively, you can call the ``search`` method after a catalog has been
