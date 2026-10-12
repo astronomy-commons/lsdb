@@ -17,7 +17,6 @@ from hats.io.skymap import write_skymap
 from hats.io.summary_file import write_catalog_summary_file
 from hats.pixel_math import HealpixPixel, spatial_index_to_healpix
 from hats.pixel_math.sparse_histogram import HistogramAggregator, SparseHistogram
-from hats.pixel_math.spatial_index import split_to_row_groups
 from upath import UPath
 
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
@@ -82,18 +81,9 @@ def perform_write(
         npix_parquet_name=npix_parquet_name,
     )
 
-    # TODO: resolve merge with write_partition_parquet(df, pixel_path, **kwargs)
-    table = df.to_pyarrow()
-    # Obtain the row groups for the target file
-    rowgroup_tables = split_to_row_groups(table, row_group_kwargs, hp_pixel.order)
-    with pq.ParquetWriter(
-        pixel_path.path,
-        table.schema,
-        filesystem=pixel_path.fs,
-        **kwargs,
-    ) as writer:
-        for rg_table in rowgroup_tables:
-            writer.write_table(rg_table)
+    write_partition_parquet(
+        df, pixel_path, hp_pixel_order=hp_pixel.order, row_group_kwargs=row_group_kwargs, **kwargs
+    )
 
     histogram = calculate_histogram(df, histogram_order)
     write_histogram(histogram, base_catalog_dir, hp_pixel)
