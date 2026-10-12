@@ -1,7 +1,7 @@
 =======
 Catalog
 =======
-.. currentmodule:: lsdb.catalog
+.. currentmodule:: lsdb
 
 .. toctree::
    :maxdepth: 2

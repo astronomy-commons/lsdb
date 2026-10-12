@@ -114,7 +114,7 @@ names and their types without loading any data. The rows are displayed using lit
 
     Catalogs define a set of *default columns* that are loaded if you don't specify your own list, in part
     to prevent you from incurring more I/O usage than you expected.  You can always see the full set
-    of columns available with the :attr:`lsdb.catalog.Catalog.all_columns` property.
+    of columns available with the :attr:`lsdb.Catalog.all_columns` property.
 
 
 Where To Get Catalogs
@@ -133,7 +133,7 @@ Performing Filters
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 LSDB can perform spatial filters fast, taking advantage of HATS's spatial partitioning.  For the list of these
-methods see the full docs for the :func:`Catalog <lsdb.catalog.Catalog>` class.
+methods see the full docs for the :func:`Catalog <lsdb.Catalog>` class.
 
 The best place to add filters is at the time of opening the catalog. This allows LSDB to
 avoid loading unused parts of the catalog.
@@ -176,7 +176,7 @@ You can filter the catalog after it's opened. The search filters are methods on 
     ztf_cone = ztf.cone_search(ra=40, dec=30, radius_arcsec=1000)
 
 The row-based filters on column values can be done in the same way that you would on a pandas DataFrame, using
-:func:`lsdb.catalog.Catalog.query` or Pandas-like indexing expressions:
+:func:`lsdb.Catalog.query` or Pandas-like indexing expressions:
 
 .. code-block:: python
 
@@ -212,10 +212,10 @@ next.
     Catalogs used on the right side of a crossmatch need to have a *margin cache* in order to get accurate
     results.  In the above example, Gaia DR3 is a catalog *collection*; opening the collection's URL
     automatically loads an appropriate margin cache. You can see what margin cache your catalog has with the
-    :attr:`lsdb.catalog.Catalog.margin` property. If it exists (is not ``None``), you can inspect its name.
+    :attr:`lsdb.Catalog.margin` property. If it exists (is not ``None``), you can inspect its name.
     In our example, this would be ``gaia.margin.name``.
 
-    If, when calling :func:`lsdb.catalog.Catalog.crossmatch`, you get the warning ``RuntimeWarning: Right
+    If, when calling :func:`lsdb.Catalog.crossmatch`, you get the warning ``RuntimeWarning: Right
     catalog does not have a margin cache. Results may be incomplete and/or inaccurate.``, it means that you
     should provide the margin cache directly with the ``margin_cache=`` argument. You can also use this argument
     to use a different margin cache than the collection's default.
@@ -231,7 +231,7 @@ Computing
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 We've now planned the crossmatch lazily, but it still hasn't been actually performed. To load the data and run
-the workflow we'll call the :func:`lsdb.catalog.Catalog.compute` method, which will perform all the tasks and
+the workflow we'll call the :func:`lsdb.Catalog.compute` method, which will perform all the tasks and
 return the result as a ``NestedFrame`` with all the computed values. For more on ``NestedFrame`` (an extension
 of the Pandas DataFrame) see the :doc:`NestedFrame tutorial section </tutorials/pre_executed/nestedframe>`.
 
@@ -248,7 +248,7 @@ of the Pandas DataFrame) see the :doc:`NestedFrame tutorial section </tutorials/
 Saving the Result
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-For large results, it won't be possible to :func:`lsdb.catalog.Catalog.compute` since the full result won't be
+For large results, it won't be possible to :func:`lsdb.Catalog.compute` since the full result won't be
 able to fit into memory.  So instead, we can run the computation and save the results directly to disk in HATS
 format.
 

@@ -105,7 +105,7 @@ The **links** audit resolves each `href` against the pages Sphinx will actually 
 `docs/reference/api/` is gitignored, so the authority is the `autosummary` blocks carrying
 `:toctree: api` in the curated `docs/reference/*.rst`; the script self-checks by confirming it
 reproduces the on-disk stub set exactly. Note the class-level `autosummary` blocks in
-`docs/reference/api/lsdb.catalog.Catalog.rst` have **no** `:toctree:`, so a name appearing there is
+`docs/reference/api/lsdb.Catalog.rst` have **no** `:toctree:`, so a name appearing there is
 *not* evidence its page exists.
 
 The **alignment** audit samples PNG ink under each hotspot and compares the ink centroid

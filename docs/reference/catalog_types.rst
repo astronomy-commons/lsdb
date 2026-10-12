@@ -1,11 +1,17 @@
 Catalog Types
 ~~~~~~~~~~~~~
 
-.. currentmodule:: lsdb.catalog
-    
+.. currentmodule:: lsdb
+
 .. autosummary::
     :toctree: api/
 
     Catalog
     MarginCatalog
+
+.. currentmodule:: lsdb.catalog
+
+.. autosummary::
+    :toctree: api/
+
     MapCatalog
