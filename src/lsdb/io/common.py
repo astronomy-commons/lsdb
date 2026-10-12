@@ -88,7 +88,7 @@ def write_partition_parquet(
     hp_pixel_order : int or None, default None
         HealPix order of this pixel. Used for calculating row groups with subtile_order_delta.
     row_group_kwargs : dict or None, default None
-        kwargs for splitting this partition into row groups, as in 
+        kwargs for splitting this partition into row groups, as in
         hats.pixel_math.spatial_index.split_to_row_groups().
     **kwargs
         Arguments to pass to ``pyarrow.parquet.write_table``, taking precedence over
