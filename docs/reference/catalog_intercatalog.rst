@@ -1,7 +1,7 @@
 Inter-catalog Methods
 ~~~~~~~~~~~~~~~~~~~~~
 
-.. currentmodule:: lsdb.catalog
+.. currentmodule:: lsdb
     
 .. autosummary::
     :toctree: api/

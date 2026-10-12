@@ -12,8 +12,8 @@ Construction
     show_versions
     from_dataframe
     from_astropy
-    catalog.generation.generate_catalog
-    catalog.generation.generate_data
+    generate_catalog
+    generate_data
 
 Materializing
 ~~~~~~~~~~~~~~~~~~
