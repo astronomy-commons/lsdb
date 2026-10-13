@@ -7,6 +7,7 @@ import pyarrow.parquet as pq
 from hats.catalog import HatsProperties
 from hats.catalog.dataset.hats_properties import KNOWN_PROVENANCE_FIELDS
 from hats.io.file_io.file_io import get_parquet_write_table_kwargs
+from hats.pixel_math.spatial_index import split_to_row_groups
 from upath import UPath
 
 
@@ -64,7 +65,13 @@ def round_sig(value: float, digits: int = 5) -> float:
     return round(value, decimal_places)
 
 
-def write_partition_parquet(df: npd.NestedFrame, pixel_path: UPath, **kwargs):
+def write_partition_parquet(
+    df: npd.NestedFrame,
+    pixel_path: UPath,
+    hp_pixel_order: int | None = None,
+    row_group_kwargs: dict | None = None,
+    **kwargs,
+):
     """Write a partition to a parquet file with the HATS default write settings.
 
     Parameters
@@ -73,6 +80,11 @@ def write_partition_parquet(df: npd.NestedFrame, pixel_path: UPath, **kwargs):
         Partition to write
     pixel_path : UPath
         Location of the parquet file
+    hp_pixel_order : int or None, default None
+        HealPix order of this pixel. Used for calculating row groups with subtile_order_delta.
+    row_group_kwargs : dict or None, default None
+        kwargs for splitting this partition into row groups, as in
+        hats.pixel_math.spatial_index.split_to_row_groups().
     **kwargs
         Arguments to pass to ``pyarrow.parquet.write_table``, taking precedence over
         the defaults from ``hats.io.file_io.file_io.get_parquet_write_table_kwargs``.
@@ -81,5 +93,18 @@ def write_partition_parquet(df: npd.NestedFrame, pixel_path: UPath, **kwargs):
     table = df.to_pyarrow(
         list_struct=kwargs.pop("list_struct", False), large_list=kwargs.pop("large_list", False)
     )
+    rowgroup_tables = split_to_row_groups(table, row_group_kwargs, hp_pixel_order)
     write_table_kwargs = get_parquet_write_table_kwargs(table.schema, write_table_kwargs=kwargs)
-    pq.write_table(table, pixel_path.path, filesystem=pixel_path.fs, **write_table_kwargs)
+
+    # remove 'row_group_size' as it is an invalid kwarg for pq.ParquetWriter
+    del write_table_kwargs["row_group_size"]
+
+    # write all tables as row groups
+    with pq.ParquetWriter(
+        pixel_path.path,
+        table.schema,
+        filesystem=pixel_path.fs,
+        **write_table_kwargs,
+    ) as writer:
+        for rg_table in rowgroup_tables:
+            writer.write_table(rg_table)

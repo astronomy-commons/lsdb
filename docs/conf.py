@@ -60,8 +60,8 @@ exclude_patterns = ["_build", "**.ipynb_checkpoints"]
 master_doc = "index"
 # Remove 'view source code' from top of page (for html, not python)
 html_show_sourcelink = False
-# Remove namespaces from class/method signatures
-add_module_names = False
+# Show the full import path in class/function signatures
+add_module_names = True
 
 
 templates_path = ["_templates"]
