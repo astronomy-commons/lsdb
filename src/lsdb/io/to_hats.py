@@ -35,6 +35,7 @@ def perform_write(
     histogram_order: int,
     npix_suffix: str = ".parquet",
     npix_parquet_name: str | None = None,
+    row_group_kwargs: dict | None = None,
     **kwargs,
 ) -> pd.DataFrame:
     """Writes a pandas dataframe to a single parquet file and returns the total count
@@ -56,6 +57,8 @@ def perform_write(
         Name of the pixel parquet file to be used when npix_suffix=/.
         By default, it will be named after the pixel with a .parquet
         extension (e.g. 'Npix=10.parquet').
+    row_group_kwargs: dict or None, default None
+        Additional keyword arguments to use in creation of row groups when writing files to parquet.
     **kwargs
         Other kwargs to pass to pq.write_table method
 
@@ -77,7 +80,11 @@ def perform_write(
         npix_suffix=npix_suffix,
         npix_parquet_name=npix_parquet_name,
     )
-    write_partition_parquet(df, pixel_path, **kwargs)
+
+    write_partition_parquet(
+        df, pixel_path, hp_pixel_order=hp_pixel.order, row_group_kwargs=row_group_kwargs, **kwargs
+    )
+
     histogram = calculate_histogram(df, histogram_order)
     write_histogram(histogram, base_catalog_dir, hp_pixel)
     write_done_pixel(base_catalog_dir, hp_pixel)
@@ -260,6 +267,7 @@ def to_hats(
     skymap_alt_orders: list[int] | None = None,
     npix_suffix: str = ".parquet",
     npix_parquet_name: str | None = None,
+    row_group_kwargs: dict | None = None,
     write_table_kwargs: dict | None = None,
 ):
     """Writes a catalog to disk, in HATS format.
@@ -323,6 +331,8 @@ def to_hats(
         Name of the pixel parquet file to be used when npix_suffix=/.
         By default, it will be named after the pixel with a .parquet
         extension (e.g. 'Npix=10.parquet').
+    row_group_kwargs: dict or None, default None
+        Additional keyword arguments to use in creation of row groups when writing files to parquet.
     write_table_kwargs: dict or None, default None
         Arguments to pass to the parquet write operations
     """
@@ -364,6 +374,7 @@ def to_hats(
         npix_parquet_name=npix_parquet_name,
         progress_bar=progress_bar,
         tqdm_kwargs=tqdm_kwargs,
+        row_group_kwargs=row_group_kwargs,
         **(write_table_kwargs or {}),
     )
     pixels = existing_pixels + new_pixels
@@ -537,6 +548,7 @@ def write_partitions(
     npix_parquet_name: str | None = None,
     progress_bar: bool = True,
     tqdm_kwargs: dict | None = None,
+    row_group_kwargs: dict | None = None,
     **kwargs,
 ) -> tuple[list[HealpixPixel], list[int], list[SparseHistogram]]:
     """Saves catalog partitions as parquet to disk and computes the sparse
@@ -563,6 +575,8 @@ def write_partitions(
         If True, shows a progress bar while writing the partitions.
     tqdm_kwargs : dict, default None
         Additional kwargs to pass to the tqdm progress bar.
+    row_group_kwargs: dict or None, default None
+        Additional keyword arguments to use in creation of row groups when writing files to parquet.
     **kwargs
         Arguments to pass to the parquet write operations
 
@@ -589,6 +603,7 @@ def write_partitions(
         npix_parquet_name,
         meta=WRITE_RESULT_META,
         include_pixel=True,
+        row_group_kwargs=row_group_kwargs,
         **kwargs,
     )
     tqdm_kwargs = {"desc": "Writing Catalog", **(tqdm_kwargs or {})}

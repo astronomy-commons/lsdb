@@ -21,6 +21,7 @@ def to_collection(
     tqdm_kwargs: dict | None = None,
     error_if_empty: bool = True,
     create_summary: bool = False,
+    row_group_kwargs: dict | None = None,
     **kwargs,
 ):
     """Saves the catalog collection to disk in the HATS format.
@@ -52,6 +53,8 @@ def to_collection(
     create_summary : bool, default False
         If True, writes ``README.md`` summary files for the collection, the main
         catalog, and the margin (if it exists).
+    row_group_kwargs: dict or None, default None
+        Additional keyword arguments to use in creation of row groups when writing files to parquet.
     **kwargs
         Arguments to pass to the parquet write operations
     """
@@ -74,6 +77,7 @@ def to_collection(
         tqdm_kwargs=tqdm_kwargs,
         error_if_empty=error_if_empty,
         create_summary=create_summary,
+        row_group_kwargs=row_group_kwargs,
         **kwargs,
     )
 
@@ -91,6 +95,7 @@ def to_collection(
             resume=resume,
             error_if_empty=False,
             create_summary=create_summary,
+            row_group_kwargs=row_group_kwargs,
             **kwargs,
         )
         properties = properties | {"all_margins": margin_name, "default_margin": margin_name}
