@@ -426,6 +426,9 @@ def join_catalog_data_on(
         pixel to partition index within the dataframe, and the PixelAlignment of the two input
         catalogs.
     """
+    if how not in ["inner", "left"]:
+        raise ValueError("`how` needs to be 'inner' or 'left'")
+
     if right.margin is None:
         warnings.warn(
             "Right catalog does not have a margin cache. Results may be incomplete and/or inaccurate.",
@@ -532,6 +535,7 @@ def join_catalog_data_through(
     suffixes: tuple[str, str],
     suffix_method: str | None = None,
     log_changes: bool = True,
+    how: Literal["inner"] = "inner",
 ) -> tuple[Operation, PixelAlignment]:
     """Joins two catalogs with an association table
 
@@ -555,6 +559,8 @@ def join_catalog_data_through(
     log_changes : bool, default True
         If True, logs an info message for each column that is being renamed.
         This only applies when suffix_method is 'overlapping_columns'.
+    how : One of {'inner'}, default 'inner'
+        How to handle the alignment (Default: 'inner').
 
     Returns
     -------
@@ -562,6 +568,9 @@ def join_catalog_data_through(
         A tuple of the LSDB Operation with the result of the join, and the PixelAlignment of the two input
         catalogs.
     """
+    if how != "inner":
+        raise ValueError("Only `how='inner'` is supported when joining through an association catalog")
+
     if (
         association.hc_structure.catalog_info.primary_column is None
         or association.hc_structure.catalog_info.join_column is None

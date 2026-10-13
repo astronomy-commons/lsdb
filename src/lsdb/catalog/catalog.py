@@ -1141,15 +1141,15 @@ class Catalog(HealpixDataset):
 
         self._check_unloaded_columns([left_on, right_on])
 
-        if how not in ("inner", "left"):
-            raise ValueError("`how` needs to be 'inner' or 'left'")
         if through is not None:
-            if how != "inner":
-                raise ValueError(
-                    "Only `how='inner'` is supported when joining through an association catalog"
-                )
             op, alignment = join_catalog_data_through(
-                self, other, through, suffixes, suffix_method=suffix_method, log_changes=log_changes
+                self,
+                other,
+                through,
+                suffixes,
+                suffix_method=suffix_method,
+                log_changes=log_changes,
+                how=how,  # type: ignore[arg-type]
             )
         else:
             if left_on is None or right_on is None:
