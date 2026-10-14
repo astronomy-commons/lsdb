@@ -32,7 +32,7 @@ class CrossmatchArgs:
     right_native_mask: npt.NDArray[np.bool_] | None = None
     """Rows in ``right_df`` belonging to the primary right partition for this aligned pixel."""
     left_native_len: int | None = None
-    """Number of leading rows of ``left_df`` belonging to the aligned pixel. Only set for outer joins. 
+    """Number of leading rows of ``left_df`` belonging to the aligned pixel. Only set for outer joins.
 
     Any trailing rows are *neighbor* rows: the left margin partition's rows and, when the left
     partition is coarser than the aligned pixel, that partition's own rows just outside the aligned
