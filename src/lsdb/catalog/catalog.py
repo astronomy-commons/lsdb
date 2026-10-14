@@ -1295,23 +1295,19 @@ class Catalog(HealpixDataset):
 
         The loaded extensions are listed in `extensions`.
 
-        Note:
-            The current implementation leans on the default `Catalog.join` behavior and, therefore,
-            the resulting Catalog has no margins. When performing cross-catalog operations with an
-            extended catalog, use it as the left-side of the operation whenever possible.
-
         Parameters
         ----------
         name_or_path : str or path-like
             The name of an extension in the catalog's collection, or else the path to the
             ``<extension>.properties`` file of an extension.
-        columns : list[str] or None, default None
+        columns : list[str] or str or None, default None
             The extension columns to load, which may name nested subcolumns (e.g. ``"lc.mag"``).
             The column to join on is added when missing. Defaults to the default columns of the
-            extension's data, or all of its columns if it has none.
+            extension's data, or all of its columns if it has none. To load all of its columns,
+            use `columns="all"`.
         storage_options : dict or None, default None
-            Additional options to connect to an extension loaded by path. An extension loaded by
-            name uses the storage options of the catalog's collection instead.
+            Additional options to connect to an extension loaded by path. They are not used to
+            load an extension by name, which uses the storage options of the catalog's collection.
 
         Returns
         -------
@@ -1322,9 +1318,15 @@ class Catalog(HealpixDataset):
         ------
         FileNotFoundError
             If `name_or_path` is neither the name of an extension in the catalog's collection nor
-            an existing path.
+            the path to a HATS extension.
         ValueError
             If `name_or_path` does not define an extension, or if the extension is already loaded.
+
+        Notes
+        -----
+        The current implementation leans on the default `Catalog.join` behavior and, therefore,
+        the resulting Catalog has no margins. When performing cross-catalog operations with an
+        extended catalog, use it as the left-side of the operation whenever possible.
         """
         # pylint: disable=import-outside-toplevel
         from lsdb.loaders.hats.read_hats import _read_dataset
@@ -1348,7 +1350,7 @@ class Catalog(HealpixDataset):
             raise ValueError(f"Extension `{name}` is already loaded")
 
         # The column to join on is always loaded.
-        if isinstance(columns, list) and info.join_column not in columns:
+        if columns is not None and not isinstance(columns, str) and info.join_column not in columns:
             columns = [info.join_column, *columns]
         extension = _read_dataset(hc_extension.catalog, columns=columns)
         # The extension's coordinates are the catalog's, so they are not joined again.
