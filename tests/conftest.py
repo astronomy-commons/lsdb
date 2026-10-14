@@ -198,6 +198,11 @@ def small_sky_with_sources_extension_dir(test_data_dir):
 
 
 @pytest.fixture
+def small_sky_with_sources_extension(small_sky_with_sources_extension_dir):
+    return lsdb.open_catalog(small_sky_with_sources_extension_dir)
+
+
+@pytest.fixture
 def small_sky_hats_catalog(small_sky_dir):
     return hc.read_hats(small_sky_dir)
 

@@ -1295,6 +1295,11 @@ class Catalog(HealpixDataset):
 
         The loaded extensions are listed in `extensions`.
 
+        Note:
+            The current implementation leans on the default `Catalog.join` behavior and, therefore,
+            the resulting Catalog has no margins. When performing cross-catalog operations with an
+            extended catalog, use it as the left-side of the operation whenever possible.
+
         Parameters
         ----------
         name_or_path : str or path-like
@@ -1305,8 +1310,8 @@ class Catalog(HealpixDataset):
             The column to join on is added when missing. Defaults to the default columns of the
             extension's data, or all of its columns if it has none.
         storage_options : dict or None, default None
-            Additional options to connect to the extension. When the extension is loaded by
-            name, defaults to the storage options of the catalog's collection.
+            Additional options to connect to an extension loaded by path. An extension loaded by
+            name uses the storage options of the catalog's collection instead.
 
         Returns
         -------
@@ -1315,6 +1320,9 @@ class Catalog(HealpixDataset):
 
         Raises
         ------
+        FileNotFoundError
+            If `name_or_path` is neither the name of an extension in the catalog's collection nor
+            an existing path.
         ValueError
             If `name_or_path` does not define an extension, or if the extension is already loaded.
         """
@@ -1326,12 +1334,11 @@ class Catalog(HealpixDataset):
         if self.hc_collection is not None and name_or_path in self.all_extensions:
             name = str(name_or_path)
             properties_path = self.hc_collection.get_extension_path(name)
-            if storage_options is None:
-                storage_options = self.hc_collection.storage_options
+            storage_options = self.hc_collection.storage_options
 
         hc_extension = hc.read_hats(properties_path, storage_options=storage_options)
         if not isinstance(hc_extension, HCCatalogExtension):
-            raise ValueError(f"`{properties_path}` does not define a HATS extension")
+            raise ValueError(f"`{properties_path}` is not an extension properties file")
         info = hc_extension.extension_info
 
         # An extension loaded by path is named after the name in its properties.
