@@ -160,8 +160,8 @@ def test_load_extension_storage_options(small_sky_with_sources_extension_dir, mo
     catalog.load_extension("lightcurves")
     catalog.load_extension(properties_path)
     catalog.load_extension(properties_path, storage_options={"given": "option"})
-    # The options that the extension data is read with.
-    storage_options = [call.args[0].collection_path.storage_options for call in read_dataset.call_args_list]
+    # The options that the extension data is opened with.
+    storage_options = [call.args[0].storage_options for call in read_dataset.call_args_list]
     assert storage_options == [{"collection": "option"}, {}, {"given": "option"}]
 
 
