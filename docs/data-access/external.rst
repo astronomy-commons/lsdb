@@ -8,7 +8,7 @@ Links
 ----------------------------------------------------------------------------------------
 
 - CDS (France) LSDB access guide: https://vizcat.cds.unistra.fr/hats/
-- HuggingFace LSDB access guide: https://huggingface.co/collections/UniverseTBD/multimodal-universe-hats-693b315bc9b2ec3ac750ffd5
+- HuggingFace LSDB access guide: https://huggingface.co/collections/UniverseTBD/multimodal-universe-hats
 - LIneA (Brazil) LSDB access guide: https://data.linea.org.br/en/index.html 
 
 
