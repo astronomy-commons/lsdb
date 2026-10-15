@@ -106,6 +106,11 @@ class CatalogStream:
         else:
             self.rng = np.random.default_rng((1 << 32, self.seed))
 
+    @property
+    def npartitions(self) -> int:
+        """Number of partitions the stream draws from."""
+        return len(self._pixels)
+
     def get_next_partitions(
         self, partitions_left: np.ndarray, rng: np.random.Generator  # pylint: disable=unused-argument
     ) -> tuple[np.ndarray, np.ndarray]:
@@ -226,8 +231,8 @@ class CatalogIterator(Iterator[pd.DataFrame]):
     def _get_initial_partitions(self) -> np.ndarray:
         """Initialize the partitions left to iterate over."""
         if self.iterable.shuffle:
-            return self.rng.permutation(self.iterable.catalog.npartitions)
-        return np.arange(self.iterable.catalog.npartitions)
+            return self.rng.permutation(self.iterable.npartitions)
+        return np.arange(self.iterable.npartitions)
 
     def _get_next_partitions(self) -> np.ndarray:
         """Get the next set of partitions to process."""
@@ -372,7 +377,9 @@ class CrossMatchStream(InfiniteStream):
             )
             self.accumulative_meta.append(result_catalog.meta)
 
+        # Stream the crossmatch's aligned pixels, which can outnumber the anchor's partitions
         self._pixels = result_catalog._operation.healpix_pixels
+        self.partitions_per_chunk = min(partitions_per_chunk, self.npartitions)
 
         if self.seed is None:
             self.rng = np.random.default_rng()

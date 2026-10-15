@@ -165,6 +165,24 @@ def test_crossmatch_stream_yields_left_joined_rows(monkeypatch):
     assert len(chunk["id"]) == chunk["id"].notna().sum()
 
 
+def test_crossmatch_stream_draws_every_aligned_pixel(monkeypatch):
+    """A finer right catalog splits anchor partitions; every aligned pixel is drawn."""
+    monkeypatch.setattr(
+        "lsdb.streams.catalog_streams.read_skymap",
+        lambda hc_catalog, path: np.ones(hp.order2npix(5)),
+    )
+    ras, decs = np.meshgrid(np.linspace(15.0, 25.0, 20), np.linspace(34.0, 44.0, 20))
+    df = pd.DataFrame({"ra": ras.ravel(), "dec": decs.ravel(), "id": np.arange(ras.size)})
+    left = lsdb.from_dataframe(df, lowest_order=3, highest_order=3, margin_threshold=30)
+    right = lsdb.from_dataframe(df, lowest_order=3, highest_order=5, partition_rows=25, margin_threshold=30)
+    stream = CrossMatchStream(left, {"other": right}, seed=1, count_fraction_threshold=0.0)
+    n_pixels = len(stream._pixels)
+    assert n_pixels > left.npartitions
+
+    cat_iter = iter(stream)
+    assert sorted(cat_iter.partitions_left) == list(range(n_pixels))
+
+
 def test_stream_submits_next_chunk_before_waiting_for_result():
     """The next chunk is submitted before the current result is awaited.
 
