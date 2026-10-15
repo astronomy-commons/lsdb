@@ -117,12 +117,12 @@ def test_read_hats_collection_with_extra_kwargs(small_sky_order1_collection_dir)
 
     assert isinstance(catalog, lsdb.Catalog)
     assert all(catalog.columns == ["ra", "dec"])
-    assert catalog.hc_structure.schema.names == ["ra", "dec", SPATIAL_INDEX_COLUMN]
+    assert catalog.hc_structure.schema.names == [SPATIAL_INDEX_COLUMN, "ra", "dec"]
     assert np.all(catalog.compute()["ra"] > 300)
 
     assert isinstance(catalog.margin, lsdb.MarginCatalog)
     assert all(catalog.margin.columns == ["ra", "dec"])
-    assert catalog.margin.hc_structure.schema.names == ["ra", "dec", SPATIAL_INDEX_COLUMN]
+    assert catalog.margin.hc_structure.schema.names == [SPATIAL_INDEX_COLUMN, "ra", "dec"]
     assert np.all(catalog.margin.compute()["ra"] > 300)
 
 
@@ -137,14 +137,14 @@ def test_read_hats_collection_nested_filters(small_sky_order1_collection_dir):
 
     assert isinstance(catalog, lsdb.Catalog)
     assert all(catalog.columns == ["ra", "dec"])
-    assert catalog.hc_structure.schema.names == ["ra", "dec", SPATIAL_INDEX_COLUMN]
+    assert catalog.hc_structure.schema.names == [SPATIAL_INDEX_COLUMN, "ra", "dec"]
     catalog_contents = catalog.compute()
     assert np.all(catalog_contents["ra"] > 300)
     assert np.all(catalog_contents["dec"] < -50)
 
     assert isinstance(catalog.margin, lsdb.MarginCatalog)
     assert all(catalog.margin.columns == ["ra", "dec"])
-    assert catalog.margin.hc_structure.schema.names == ["ra", "dec", SPATIAL_INDEX_COLUMN]
+    assert catalog.margin.hc_structure.schema.names == [SPATIAL_INDEX_COLUMN, "ra", "dec"]
     catalog_contents = catalog.margin.compute()
     assert np.all(catalog_contents["ra"] > 300)
     assert np.all(catalog_contents["dec"] < -50)
@@ -161,13 +161,13 @@ def test_read_hats_collection_nested_filters_or(small_sky_order1_collection_dir)
 
     assert isinstance(catalog, lsdb.Catalog)
     assert all(catalog.columns == ["ra", "dec"])
-    assert catalog.hc_structure.schema.names == ["ra", "dec", SPATIAL_INDEX_COLUMN]
+    assert catalog.hc_structure.schema.names == [SPATIAL_INDEX_COLUMN, "ra", "dec"]
     catalog_contents = catalog.compute()
     assert np.all(np.logical_or(catalog_contents["ra"] > 340, catalog_contents["ra"] < 290))
 
     assert isinstance(catalog.margin, lsdb.MarginCatalog)
     assert all(catalog.margin.columns == ["ra", "dec"])
-    assert catalog.margin.hc_structure.schema.names == ["ra", "dec", SPATIAL_INDEX_COLUMN]
+    assert catalog.margin.hc_structure.schema.names == [SPATIAL_INDEX_COLUMN, "ra", "dec"]
     catalog_contents = catalog.margin.compute()
     assert np.all(np.logical_or(catalog_contents["ra"] > 340, catalog_contents["ra"] < 290))
 
