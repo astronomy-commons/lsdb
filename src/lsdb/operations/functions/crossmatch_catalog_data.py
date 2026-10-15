@@ -461,6 +461,10 @@ def _plan_outer_alignment(
     left_margin_pixels, _ = get_healpix_pixels_from_alignment(
         PixelAlignment(alignment.pixel_tree, pixel_mapping, alignment.alignment_type)
     )
+    # The left tree includes the left margin's pixels, so a primary pixel may exist only in the
+    # left margin. Now that left_margin_pixels has been read from these columns, set those pixels
+    # to None: perform_crossmatch treats left_pix=None as right-only sky and takes its left rows
+    # from the left margin only.
     for column in (PixelAlignment.PRIMARY_ORDER_COLUMN_NAME, PixelAlignment.PRIMARY_PIXEL_COLUMN_NAME):
         # An object array keeps None as None; assigning through .loc would turn it into NaN.
         # The copy is needed because pandas 3 returns a read-only view of an object column.
