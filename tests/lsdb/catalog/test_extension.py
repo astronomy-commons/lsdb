@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pandas as pd
 import pytest
-from hats.catalog import CollectionProperties, ExtensionProperties
+from hats.catalog import CollectionProperties, ExtensionProperties, TableProperties
 from upath import UPath
 
 import lsdb
@@ -50,6 +50,36 @@ def test_load_extension_with_columns(small_sky_with_sources_extension, small_sky
         ["id", "ra", "dec", "ra_error", "dec_error", "sources.mjd", "sources.mag"]
     ]
     pd.testing.assert_frame_equal(catalog.compute(), expected.compute())
+
+
+def test_load_extension_default_columns(
+    small_sky_with_sources_extension_dir, tmp_path, small_sky_with_nested_sources
+):
+    # The join column is loaded even if the default columns do not specify it.
+    collection = copy_collection(
+        small_sky_with_sources_extension_dir, tmp_path, default_columns=["sources.mjd"]
+    )
+    catalog = lsdb.open_catalog(collection)
+
+    extended = catalog.load_extension("lightcurves")
+    assert extended.columns.tolist() == [*catalog.columns, "sources"]
+    assert extended.meta["sources"].columns == ["mjd"]
+    expected = small_sky_with_nested_sources[["id", "ra", "dec", "ra_error", "dec_error", "sources.mjd"]]
+    pd.testing.assert_frame_equal(extended.compute(), expected.compute())
+
+    # Loading the default columns and some extra also works.
+    extended = catalog.load_extension("lightcurves", columns=[..., "sources.mag"])
+    assert extended.meta["sources"].columns == ["mjd", "mag"]
+    expected = small_sky_with_nested_sources[
+        ["id", "ra", "dec", "ra_error", "dec_error", "sources.mjd", "sources.mag"]
+    ]
+    pd.testing.assert_frame_equal(extended.compute(), expected.compute())
+
+
+def test_load_extension_ellipsis_without_default_columns(small_sky_with_sources_extension):
+    """An ellipsis in `columns` needs the extension data to have default columns."""
+    with pytest.raises(ValueError, match="does not define any default columns"):
+        small_sky_with_sources_extension.load_extension("lightcurves", columns=[..., "sources.mag"])
 
 
 def test_load_extension_after_search(small_sky_with_sources_extension, small_sky_with_nested_sources):
@@ -165,9 +195,11 @@ def test_load_extension_storage_options(small_sky_with_sources_extension_dir, mo
     assert storage_options == [{"collection": "option"}, {}, {"given": "option"}]
 
 
-def copy_collection(collection_dir, tmp_path, *, update_extension=None, properties=None):
+def copy_collection(
+    collection_dir, tmp_path, *, update_extension=None, properties=None, default_columns=None
+):
     """Copy the collection, rewriting the extension data with `update_extension(extension)`,
-    and updating the extension `properties`."""
+    updating the extension `properties`, and setting the `default_columns` of the extension data."""
     collection = tmp_path / "collection"
     shutil.copytree(collection_dir, collection)
     if update_extension is not None:
@@ -180,4 +212,10 @@ def copy_collection(collection_dir, tmp_path, *, update_extension=None, properti
         properties_path = collection / "small_sky_order1_lightcurves.properties"
         extension_properties = ExtensionProperties.read_from_file(properties_path)
         extension_properties.model_copy(update=properties).to_properties_file(collection)
+    if default_columns is not None:
+        extension_dir = collection / "small_sky_order1_lightcurves" / "small_sky_order1_lightcurves"
+        table_properties = TableProperties.read_from_dir(extension_dir)
+        table_properties.model_copy(update={"default_columns": default_columns}).to_properties_file(
+            extension_dir
+        )
     return collection

@@ -1349,10 +1349,14 @@ class Catalog(HealpixDataset):
         if name in self.extensions:
             raise ValueError(f"Extension `{name}` is already loaded")
 
-        # The column to join on is always loaded.
+        # The column to join on is always loaded, also with the default columns of the extension data.
+        hc_data = hc_extension.catalog
+        if columns is None:
+            main_catalog = hc_data.main_catalog if isinstance(hc_data, CatalogCollection) else hc_data
+            columns = main_catalog.catalog_info.default_columns
         if columns is not None and not isinstance(columns, str) and info.join_column not in columns:
             columns = [info.join_column, *columns]
-        extension = _read_dataset(hc_extension.catalog, columns=columns)
+        extension = _read_dataset(hc_data, columns=columns)
         # The extension's coordinates are the catalog's, so they are not joined again.
         if info.shares_primary_coordinates:
             catalog_info = extension.hc_structure.catalog_info
