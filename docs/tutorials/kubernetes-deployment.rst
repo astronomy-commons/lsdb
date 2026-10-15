@@ -6,7 +6,7 @@ Kubernetes provides a flexible platform for running LSDB at scale.
 A Kubernetes cluster can dynamically allocate resources, scale workers up and down based on demand,
 and provide a reproducible environment for data processing pipelines.
 
-This guide walks through deploying a `Dask Kubernetes Operator <https://kubernetes.dask.org/en/latest/operator.html>`__
+This guide walks through deploying a `Dask Kubernetes Operator <https://kubernetes.dask.org/en/latest/>`__
 cluster suitable for LSDB workloads.
 It complements the :doc:`Dask cluster configuration tips </tutorials/dask-cluster-tips>` page,
 which covers local and SLURM-based setups.
@@ -75,7 +75,7 @@ Build and push the image to your registry:
 Installing the Dask Kubernetes Operator
 ---------------------------------------
 
-The `Dask Kubernetes Operator <https://kubernetes.dask.org/en/latest/operator.html>`__
+The `Dask Kubernetes Operator <https://kubernetes.dask.org/en/latest/>`__
 manages ``DaskCluster`` custom resources, handling scheduler and worker pod lifecycles
 and optional autoscaling.
 
@@ -407,7 +407,7 @@ Forward it locally:
     kubectl port-forward svc/lsdb-cluster-scheduler 8787:8787
 
 Then open `<http://localhost:8787/status>`__ in your browser.
-See the :ref:`Dask Dashboard <tutorials/dask-cluster-tips:Dask Dashboard>` section
+See the :ref:`Dask Dashboard <dask-dashboard>` section
 for details on interpreting the dashboard panels.
 
 If your cluster has an ingress controller, you can expose the dashboard through an

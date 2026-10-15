@@ -43,7 +43,7 @@ Finally, to check that your package has been correctly installed, run the packag
 
 .. tip::
     If you are doing development work on both HATS and LSDB simultaneously, the 
-    [development version of HATS](https://hats.readthedocs.io/en/latest/guide/contributing.html) 
+    `development version of HATS <https://hats.readthedocs.io/en/latest/guide/contributing.html>`__ 
     should be **installed first**, as otherwise the ``setup_dev`` script will install the 
     most recent non-development version of HATS.
 
@@ -78,7 +78,7 @@ Some examples of acceptable and unacceptable AI uses are:
   projects. Instead of spreading your resources, you can provide greater value by
   engaging more deeply with one or two projects.
 
-Adapted from `matplotlib generative ai policy <https://matplotlib.org/devdocs/devel/contribute.html#good-first-issues>`__.
+Adapted from `matplotlib generative ai policy <https://matplotlib.org/devdocs/devel/contribute.html#use-of-generative-ai>`__.
 
 Find (or make) a new GitHub issue
 -------------------------------------------------------------------------------

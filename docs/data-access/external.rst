@@ -8,11 +8,11 @@ Links
 ----------------------------------------------------------------------------------------
 
 - CDS (France) LSDB access guide: https://vizcat.cds.unistra.fr/hats/
-- HuggingFace LSDB access guide: https://huggingface.co/collections/UniverseTBD/multimodal-universe-lsdb-hats
+- HuggingFace LSDB access guide: https://huggingface.co/collections/UniverseTBD/multimodal-universe-hats-693b315bc9b2ec3ac750ffd5
 - LIneA (Brazil) LSDB access guide: https://data.linea.org.br/en/index.html 
 
 
 Notes
 ----------------------------------------------------------------------------------------
 
-- CDS uses an experimental HATS-on-the-fly serving infrastructure. It may not support all LSDB features and may be somewhat slower than other providers; however, eventually all catalogs served via Vizier should be avaliable! More technical information can be found in `this presentation <http://wiki.ivoa.net/internal/IVOA/InterOpJune2025Apps/OnTheFlyHATS-FXPIneau-v1.pdf>`_.
+- CDS uses an experimental HATS-on-the-fly serving infrastructure. It may not support all LSDB features and may be somewhat slower than other providers; however, eventually all catalogs served via Vizier should be avaliable! More technical information can be found in `this presentation <https://wiki.ivoa.net/internal/IVOA/InterOpJune2025Apps/OnTheFlyHATS-FXPIneau-v1.pdf>`_.
