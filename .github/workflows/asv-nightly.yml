@@ -12,7 +12,7 @@ permissions: {}
 
 env:
   PYTHON_VERSION: "3.12"
-  ASV_VERSION: "0.6.5"
+  ASV_VERSION: "0.6.6"
   WORKING_DIR: ${{github.workspace}}/benchmarks
   CURRENT_HASH: ${{github.sha}}
   NIGHTLY_HASH_FILE: nightly-hash
@@ -27,16 +27,16 @@ jobs:
         working-directory: ${{env.WORKING_DIR}}
     steps:
     - name: Set up Python ${{env.PYTHON_VERSION}}
-      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
       with:
         python-version: ${{env.PYTHON_VERSION}}
     - name: Checkout main branch of the repository
-      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       with:
         fetch-depth: 0
         persist-credentials: false
     - name: Install dependencies
-      run: pip install asv[virtualenv]==${{env.ASV_VERSION}}
+      run: pip install asv==${{env.ASV_VERSION}}
     - name: Configure git
       run: |
         git config user.name "github-actions[bot]"
@@ -49,7 +49,7 @@ jobs:
         echo "yesterday=$(date -d yesterday +'%Y-%m-%d')" >> $GITHUB_OUTPUT
         echo "today=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
     - name: Use last nightly commit hash from cache
-      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
       with:
         path: ${{env.WORKING_DIR}}/${{env.NIGHTLY_HASH_FILE}}
         key: commit-hash-${{steps.nightly-dates.outputs.yesterday}}
@@ -66,7 +66,7 @@ jobs:
       run: echo $CURRENT_HASH > $NIGHTLY_HASH_FILE
     - name: Upload current commit hash to cache
       if: always()
-      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
       with:
         path: ${{env.WORKING_DIR}}/${{env.NIGHTLY_HASH_FILE}}
         key: commit-hash-${{steps.nightly-dates.outputs.today}}
@@ -76,7 +76,7 @@ jobs:
     - name: Send status to Slack app
       if: ${{ failure() && github.event_name != 'workflow_dispatch' }}
       id: slack
-      uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d # v4.0.0
+      uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d  # v4.0.0
       with:
         # For posting a rich message using Block Kit
         webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
