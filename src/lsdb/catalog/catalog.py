@@ -261,18 +261,21 @@ class Catalog(HealpixDataset):
         suffixes: tuple[str, str] | None = None,
         suffix_method: str | None = None,
         log_changes: bool = True,
+        outer_footprint: Literal["union", "left"] = "union",
     ) -> Catalog:
         # pylint:disable=unused-argument
         """Perform a cross-match between two catalogs
 
         The pixels from each catalog are aligned via a `PixelAlignment`, and cross-matching is
         performed on each selected pixel pair. Inner joins use overlapping pixels; left joins
-        use the left catalog's coverage; outer joins use the union of both.
+        use the left catalog's coverage; outer joins use the union of both, or only the left
+        catalog's coverage with ``outer_footprint="left"``.
 
         Outer joins emit right rows with no match anywhere as unmatched rows, including sky
-        covered only by the right catalog. Exact outer semantics require margin caches on
-        both catalogs: the left margin threshold must be at least the matching radius, and
-        the right margin threshold at least twice the matching radius.
+        covered only by the right catalog unless ``outer_footprint="left"``. Exact outer
+        semantics require margin caches on both catalogs: the left margin threshold must be
+        at least the matching radius, and the right margin threshold at least twice the
+        matching radius.
 
         Outer joins add ``_ra`` and ``_dec`` result coordinates. They contain the left
         coordinates for matched and left-only rows, and the right coordinates for right-only rows.
@@ -337,6 +340,11 @@ class Catalog(HealpixDataset):
             ``inner`` emits only matched row pairs; ``left`` also emits unmatched left
             rows; ``outer`` also emits unmatched rows from both catalogs, including sky
             covered only by the right catalog.
+        outer_footprint : {'union', 'left'}, default 'union'
+            Sky an outer crossmatch covers. ``union`` visits every pixel of either catalog;
+            ``left`` visits only the pixels a left join visits: the left catalog's pixels,
+            kept where it has data. Every unmatched right row read for them is emitted, and
+            right-only sky is never read. Only valid with ``how="outer"``.
         suffixes : Tuple[str,str] or None
             A pair of suffixes to be appended to the end of each column
             name when they are joined. Default uses the name of the catalog for the suffix.
@@ -395,6 +403,8 @@ class Catalog(HealpixDataset):
             If the right catalog has no margin and `require_right_margin` is True.
             If ``how="outer"`` and either catalog lacks a margin cache, a margin threshold
             is too small for the matching radius, or the algorithm defines no ``radius_arcsec``.
+            If ``outer_footprint`` is not ``"union"`` or ``"left"``, or is ``"left"`` without
+            ``how="outer"``.
         """
         if not isinstance(other, Catalog):
             raise TypeError(
@@ -403,6 +413,10 @@ class Catalog(HealpixDataset):
             )
         if how not in ("inner", "left", "outer"):
             raise ValueError("`how` needs to be 'inner', 'left', or 'outer'")
+        if outer_footprint not in ("union", "left"):
+            raise ValueError("`outer_footprint` needs to be 'union' or 'left'")
+        if outer_footprint == "left" and how != "outer":
+            raise ValueError("`outer_footprint='left'` requires how='outer'")
 
         default_kwargs = {
             k: v
@@ -440,6 +454,7 @@ class Catalog(HealpixDataset):
             suffixes,
             suffix_method,
             log_changes,
+            outer_footprint=outer_footprint,
         )
         new_catalog_info = create_merged_catalog_info(
             self,
