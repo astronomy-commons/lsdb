@@ -101,13 +101,6 @@ repos:
       - id: black-jupyter
         name: Format code using black
         types_or: [python, pyi, jupyter]
-        # It is recommended to specify the latest version of Python
-        # supported by your project here, or alternatively use
-        # pre-commit's default_language_version, see
-        # https://pre-commit.com/#top_level-default_language_version
-        # This currently uses the default language version. Uncomment
-        # the following line to use the max version.
-        # language_version: python3.14
     # Analyze type hints and report errors.
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: 2834ec6639549dd6796205c8f011dedcd587288b  # v2.4.0
