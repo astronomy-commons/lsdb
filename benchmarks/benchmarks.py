@@ -4,6 +4,7 @@ For more information on writing benchmarks:
 https://asv.readthedocs.io/en/stable/writing_benchmarks.html."""
 
 import tempfile
+import time
 from pathlib import Path
 
 import hats
@@ -13,6 +14,7 @@ import pandas as pd
 import lsdb
 from benchmarks.utils import upsample_array
 from lsdb.core.search.region_search import box_filter, get_cartesian_polygon
+from lsdb.streams import InfiniteStream
 
 TEST_DIR = Path(__file__).parent.parent / "tests"
 DATA_DIR_NAME = "data"
@@ -132,3 +134,36 @@ def time_save_big_catalog():
 
         read_catalog = hats.read_hats(tmp_path)
         assert len(read_catalog.get_healpix_pixels()) == len(catalog.get_healpix_pixels())
+
+
+class InfiniteStreamThroughput:
+    """Throughput of InfiniteStream over a remote HuggingFace catalog."""
+
+    timeout = 1800
+    repeat = 1
+    number = 1
+    n_chunks = 3
+    params = [1, 4]
+    param_names = ["partitions_per_chunk"]
+
+    def setup(self, partitions_per_chunk):
+        self.catalog = lsdb.open_catalog(
+            # /resolve/main is required: the bare repo URL is not a readable HATS path
+            "https://huggingface.co/datasets/UniverseTBD/mmu_ssl_legacysurvey_north/resolve/main"
+        )
+        self.stream = iter(
+            InfiniteStream(
+                catalog=self.catalog, partitions_per_chunk=partitions_per_chunk, seed=1
+            )
+        )
+
+    def time_stream_chunks(self, partitions_per_chunk):
+        for _ in range(self.n_chunks):
+            next(self.stream)
+
+    def track_rows_per_second(self, partitions_per_chunk):
+        start = time.perf_counter()
+        rows = sum(len(next(self.stream)) for _ in range(self.n_chunks))
+        return rows / (time.perf_counter() - start)
+
+    track_rows_per_second.unit = "rows/s"
