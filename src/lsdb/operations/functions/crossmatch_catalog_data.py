@@ -542,8 +542,8 @@ def crossmatch_catalog_data(
         )
 
     # ``outer`` aligns pixels in the outer way: every pixel of either catalog is visited,
-    # so right rows in sky without left coverage are emitted unmatched. The right margin
-    # halo is not added for outer joins: it would only inflate the result catalog's MOC,
+    # so right rows in sky without left coverage are emitted unmatched. The right MOC is not
+    # padded by the margin for outer joins: it would only inflate the result catalog's MOC,
     # and OUTER alignment already keeps every left pixel. The left margin's pixels are
     # aligned too, so right-only sky is paired with the left rows just across its boundary.
     radius_arcsec = getattr(algorithm, "radius_arcsec", None)
@@ -552,7 +552,7 @@ def crossmatch_catalog_data(
     alignment = align_catalogs(
         left,
         right,
-        add_right_margin=how != "outer",
+        add_right_moc_margin_padding=how != "outer",
         alignment_type=PixelAlignmentType[how.upper()],
         add_left_margin=how == "outer",
     )
@@ -651,7 +651,7 @@ def crossmatch_catalog_data_nested(
 
     # perform alignment on the two catalogs
     alignment = align_catalogs(
-        left, right, add_right_margin=True, alignment_type=PixelAlignmentType[how.upper()]
+        left, right, add_right_moc_margin_padding=True, alignment_type=PixelAlignmentType[how.upper()]
     )
 
     # get lists of HEALPix pixels from alignment to pass to cross-match

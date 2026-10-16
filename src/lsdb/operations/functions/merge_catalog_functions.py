@@ -258,7 +258,7 @@ def remove_hips_columns(df: npd.NestedFrame | None):
 def align_catalogs(
     left: Catalog,
     right: Catalog,
-    add_right_margin: bool = True,
+    add_right_moc_margin_padding: bool = True,
     alignment_type: PixelAlignmentType = PixelAlignmentType.INNER,
     add_left_margin: bool = False,
 ) -> PixelAlignment:
@@ -270,8 +270,9 @@ def align_catalogs(
         The left catalog to align
     right : lsdb.Catalog
         The right catalog to align
-    add_right_margin : bool, default True
+    add_right_moc_margin_padding : bool, default True
         If True, when using MOCs to align catalogs, adds a border to the
+        right catalog's moc to include the margin of the right catalog, if it exists.
     alignment_type : PixelAlignmentType
         The type of alignment to use (Default value = PixelAlignmentType.INNER)
     add_left_margin : bool, default False
@@ -283,7 +284,7 @@ def align_catalogs(
     PixelAlignment
         The PixelAlignment object from aligning the catalogs
     """
-    right_tree, right_moc = _get_right_tree_and_moc(right, add_right_margin)
+    right_tree, right_moc = _get_right_tree_and_moc(right, add_right_moc_margin_padding)
     left_tree = left.hc_structure.pixel_tree
     if add_left_margin and left.margin is not None:
         left_tree = align_trees(
@@ -385,7 +386,7 @@ def align_catalogs_with_association(
     primary_catalog: Catalog,
     association: AssociationCatalog,
     join_catalog: Catalog,
-    add_right_margin: bool = True,
+    add_right_moc_margin_padding: bool = True,
 ) -> PixelAlignment:
     """Aligns two catalogs with an association
 
@@ -397,7 +398,7 @@ def align_catalogs_with_association(
         The association catalog
     join_catalog : Catalog
         The join catalog to align
-    add_right_margin : bool, default True
+    add_right_moc_margin_padding : bool, default True
         If True, when using MOCs to align catalogs, adds a border to the
         right catalog's moc to include the margin of the right catalog, if it exists.
 
@@ -417,7 +418,7 @@ def align_catalogs_with_association(
     )
     # Then align this left alignment with the join catalog. The result
     # will be the final alignment for the join via the association.
-    right_tree, right_moc = _get_right_tree_and_moc(join_catalog, add_right_margin)
+    right_tree, right_moc = _get_right_tree_and_moc(join_catalog, add_right_moc_margin_padding)
     final_alignment = align_with_mocs(
         left_alignment.pixel_tree,
         right_tree,
@@ -430,7 +431,7 @@ def align_catalogs_with_association(
     return _merge_association_alignments(left_alignment, final_alignment)
 
 
-def _get_right_tree_and_moc(right: Catalog, add_right_margin: bool = True):
+def _get_right_tree_and_moc(right: Catalog, add_right_moc_margin_padding: bool = True):
     """Prepare right catalog pixel tree and moc for alignment"""
     right_added_radius = None
 
@@ -440,7 +441,7 @@ def _get_right_tree_and_moc(right: Catalog, add_right_margin: bool = True):
             right.margin.hc_structure.pixel_tree,
             alignment_type=PixelAlignmentType.OUTER,
         ).pixel_tree
-        if add_right_margin:
+        if add_right_moc_margin_padding:
             right_added_radius = right.margin.hc_structure.catalog_info.margin_threshold
     else:
         right_tree = right.hc_structure.pixel_tree
