@@ -139,8 +139,9 @@ def perform_crossmatch(
     npd.NestedFrame
         DataFrame with the results of crossmatching for the pair of partitions.
     """
-    # A missing left partition only yields rows for outer joins (right-only sky).
-    if left_pix is not None and (left_df is None or len(left_df) == 0):
+    # Outer joins must still emit unmatched right rows when the left partition is
+    # missing or empty (e.g. after a query on the left catalog).
+    if how != "outer" and (left_df is None or len(left_df) == 0):
         return meta_df
     # The aligned_pixel will be the right_pix if the pixels orders are already
     # compatible, that is, it's the smaller of the left and right pixels.

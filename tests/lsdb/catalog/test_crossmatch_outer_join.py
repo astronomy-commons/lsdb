@@ -172,6 +172,32 @@ def test_outer_scans_right_only_sky():
     assert set(outer.get_healpix_pixels()) == set(left.get_healpix_pixels()) | set(right.get_healpix_pixels())
 
 
+@pytest.mark.parametrize(
+    ("query", "expected"), [("id != 2", [[1, 10], [None, 11]]), ("id > 100", [[None, 10], [None, 11]])]
+)
+def test_outer_emits_right_rows_for_emptied_left_partitions(query, expected):
+    """A left partition emptied by a query still emits the right rows in its pixel unmatched."""
+    left = _catalog(pd.DataFrame({"id": [1, 2], "ra": [10.3, 60.7], "dec": [5.2, -8.1]}), "left")
+    right = _catalog(pd.DataFrame({"id": [10, 11], "ra": [10.3001, 60.7001], "dec": [5.2, -8.1]}), "right")
+    queried = left.query(query)
+    assert queried.get_healpix_pixels() == left.get_healpix_pixels()
+
+    result = pd.DataFrame(
+        queried.crossmatch(
+            right,
+            how="outer",
+            radius_arcsec=RADIUS,
+            suffixes=("_left", "_right"),
+            suffix_method="all_columns",
+        ).compute()
+    )
+
+    pairs = (
+        result[["id_left", "id_right"]].astype(object).where(result[["id_left", "id_right"]].notna(), None)
+    )
+    assert sorted(pairs.values.tolist(), key=lambda p: p[1]) == expected
+
+
 def test_outer_right_only_pixel_boundary_row_matched_once():
     """A right row just across left coverage is matched once, not also emitted unmatched.
 
