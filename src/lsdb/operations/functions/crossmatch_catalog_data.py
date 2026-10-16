@@ -250,7 +250,7 @@ def perform_crossmatch(
             if aligned_pixel.order > right_pix.order:
                 spatial_index_order = right_catalog_info.healpix_order
                 if spatial_index_order is None:
-                    # Catalogs written before teh property existed used the default index order
+                    # Catalogs written before the property existed used the default index order
                     spatial_index_order = SPATIAL_INDEX_ORDER
                 lower = healpix_to_spatial_index(
                     aligned_pixel.order,
