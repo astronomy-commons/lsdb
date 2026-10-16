@@ -260,6 +260,7 @@ def align_catalogs(
     right: Catalog,
     add_right_margin: bool = True,
     alignment_type: PixelAlignmentType = PixelAlignmentType.INNER,
+    add_left_margin: bool = False,
 ) -> PixelAlignment:
     """Aligns two catalogs, also using the right catalog's margin if it exists
 
@@ -273,6 +274,9 @@ def align_catalogs(
         If True, when using MOCs to align catalogs, adds a border to the
     alignment_type : PixelAlignmentType
         The type of alignment to use (Default value = PixelAlignmentType.INNER)
+    add_left_margin : bool, default False
+        If True, the left pixel tree also includes the pixels of the left catalog's margin,
+        so sky bordering the left coverage is aligned to the margin partition covering it.
 
     Returns
     -------
@@ -280,8 +284,13 @@ def align_catalogs(
         The PixelAlignment object from aligning the catalogs
     """
     right_tree, right_moc = _get_right_tree_and_moc(right, add_right_margin)
+    left_tree = left.hc_structure.pixel_tree
+    if add_left_margin and left.margin is not None:
+        left_tree = align_trees(
+            left_tree, left.margin.hc_structure.pixel_tree, alignment_type=PixelAlignmentType.OUTER
+        ).pixel_tree
     return align_with_mocs(
-        left.hc_structure.pixel_tree,
+        left_tree,
         right_tree,
         left.hc_structure.moc,
         right_moc,
