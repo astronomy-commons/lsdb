@@ -371,19 +371,21 @@ def test_outer_rejects_mismatched_right_native_mask():
         )
 
 
-def test_outer_coarse_right_requires_spatial_index_order():
-    """Filtering a coarse right partition to finer aligned pixels needs its spatial index."""
+def test_outer_coarse_right_defaults_missing_spatial_index_order():
+    """A coarse right catalog without a spatial-index order is treated as order 29"""
     left, right = _coarse_right_catalogs()
-    right.hc_structure.catalog_info.healpix_order = None
+    kwargs = {
+        "how": "outer",
+        "radius_arcsec": 1,
+        "suffixes": ("_left", "_right"),
+        "suffix_method": "all_columns",
+    }
+    expected = pd.DataFrame(left.crossmatch(right, **kwargs).compute())
 
-    with pytest.raises(ValueError, match="spatial-index order"):
-        left.crossmatch(
-            right,
-            how="outer",
-            radius_arcsec=1,
-            suffixes=("_left", "_right"),
-            suffix_method="all_columns",
-        ).compute()
+    right.hc_structure.catalog_info.healpix_order = None
+    result = pd.DataFrame(left.crossmatch(right, **kwargs).compute())
+
+    pd.testing.assert_frame_equal(result, expected)
 
 
 def test_outer_supports_algorithms_without_extra_columns():
