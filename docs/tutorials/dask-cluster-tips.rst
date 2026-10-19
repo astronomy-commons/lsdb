@@ -193,6 +193,8 @@ This is a trick we use to get more RAM per each task, which is crucial for LSDB 
 As was mentioned earlier, LSDB pipelines may still utilize multiple CPU cores per a single Python thread,
 thanks to internal multithreading of underlying libraries, such as NumPy and PyArrow.
 
+.. _dask-dashboard:
+
 Dask Dashboard
 --------------
 

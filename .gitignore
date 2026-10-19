@@ -160,3 +160,7 @@ _html/
 # test notebook
 dev/test.ipynb
 docs/tutorials/pre_executed/data
+
+# uv
+uv.lock
+
