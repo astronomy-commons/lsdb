@@ -165,20 +165,29 @@ def test_partitions_obey_partition_rows(small_sky_order1_df, small_sky_order1_ca
 
 
 def test_partitions_obey_partition_bytes(small_sky_order1_df, small_sky_order1_catalog):
-    """Tests that partitions are limited by the specified size in bytes"""
+    """Tests that partitions are limited by the specified size in bytes.
+
+    ``partition_bytes`` budgets the column data of each partition. The
+    partitioner sizes rows from their loaded arrow buffers, which carry no
+    DataFrame index (the catalog's ``_healpix_29`` index is attached afterwards),
+    so each partition's own measured index size is allowed on top of the budget.
+    """
     # Use partitions with approximately 1 kB
-    partition_bytes = 1 << 10  # 1 kB
+    partition_limit_bytes = 1 << 10  # 1 kB
     # Read CSV file for the small sky order 1 catalog
     kwargs = get_catalog_kwargs(
         small_sky_order1_catalog,
         partition_rows=None,
-        partition_bytes=partition_bytes,
+        partition_bytes=partition_limit_bytes,
     )
     catalog = lsdb.from_dataframe(small_sky_order1_df, margin_threshold=None, **kwargs)
-    # Calculate size of dataframe per partition
+    # The budget covers the column data; the index is not accounted for by the
+    # partitioner, so allow the index size to be subtracted from the deep-measured
+    # before comparing to the budget.
     for partition in catalog.partitions:
-        partition_memory = partition.compute().memory_usage(deep=True).sum()
-        assert partition_memory <= partition_bytes
+        partition = partition.compute()
+        index_bytes = partition.index.memory_usage(deep=True)
+        assert partition.memory_usage(deep=True).sum() - index_bytes <= partition_limit_bytes
 
 
 def test_from_dataframe_large_input(small_sky_order1_catalog):

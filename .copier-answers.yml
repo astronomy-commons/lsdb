@@ -1,10 +1,10 @@
 # Changes here will be overwritten by Copier
-_commit: v2.2.0
+_commit: v2.3.1
 _src_path: gh:lincc-frameworks/python-project-template
 author_email: lincc-frameworks-team@lists.lsst.org
 author_name: LINCC Frameworks
 create_example_module: false
-custom_install: custom
+custom_install: library
 enforce_style:
 - pylint
 - black
@@ -12,6 +12,7 @@ enforce_style:
 failure_notification:
 - slack
 include_benchmarks: true
+include_dev_guide: false
 include_docs: true
 include_notebooks: true
 mypy_type_checking: basic

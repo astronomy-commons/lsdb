@@ -12,7 +12,7 @@ making our products better, or pretty much anything else, reach out!
     * `#lincc-frameworks-lsdb <https://lsstc.slack.com/archives/C04610PQW9F>`_
     * `#lincc-frameworks-qa <https://lsstc.slack.com/archives/C062LG1AK1S>`_
 * If you have questions about HATS data from the Rubin Observatory, the best place to ask at LSST community forum:
-    * `LSST Community Forum - Data Products <https://community.lsst.org/c/support/data/34>`_
+    * `LSST Community Forum - Data Products <https://www.rubin.community/c/support/data/34>`_
 * Attend one of our events. All of our events are open to everyone; and they are also published on the Google Calendar embedded below.
     *  Drop-in / co-working events
         * "HATS/LSDB Drop-in" - Drop-in co-working/office hours. Great for getting help or just working alongside our software engineers using HATS/LSDB. Fridays 10:00-11:00 AM US Pacific Time.
