@@ -6,6 +6,7 @@ Inter-catalog Methods
 .. autosummary::
     :toctree: api/
 
+    crossmatch
     Catalog.crossmatch
     Catalog.crossmatch_nested
     Catalog.concat
@@ -15,5 +16,3 @@ Inter-catalog Methods
     Catalog.join_nested
     Catalog.load_extension
     Catalog.nest_lists
-
-    crossmatch
