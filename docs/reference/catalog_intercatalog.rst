@@ -15,3 +15,5 @@ Inter-catalog Methods
     Catalog.join_nested
     Catalog.load_extension
     Catalog.nest_lists
+
+    crossmatch
