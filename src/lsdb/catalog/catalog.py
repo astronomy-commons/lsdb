@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import warnings
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Callable, Iterable, Literal, overload
+from typing import Any, Callable, Literal, overload
 
 import dask.dataframe as dd
 import hats as hc
@@ -14,6 +15,7 @@ from hats.catalog.catalog_extension import CatalogExtension as HCCatalogExtensio
 from hats.catalog.healpix_dataset.healpix_dataset import HealpixDataset as HCHealpixDataset
 from hats.catalog.index.index_catalog import IndexCatalog as HCIndexCatalog
 from hats.pixel_math import HealpixPixel
+from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN, SPATIAL_INDEX_ORDER
 from pandas._typing import Renamer
 from typing_extensions import Self
 from upath import UPath
@@ -23,7 +25,9 @@ from lsdb.catalog.association_catalog import AssociationCatalog
 from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
 from lsdb.catalog.map_catalog import MapCatalog
 from lsdb.catalog.margin_catalog import MarginCatalog
-from lsdb.core.crossmatch.abstract_crossmatch_algorithm import AbstractCrossmatchAlgorithm
+from lsdb.core.crossmatch.abstract_crossmatch_algorithm import (
+    AbstractCrossmatchAlgorithm,
+)
 from lsdb.core.crossmatch.kdtree_match import KdTreeCrossmatch
 from lsdb.core.search.abstract_search import AbstractSearch
 from lsdb.core.search.index_search import IndexSearch
@@ -269,22 +273,28 @@ class Catalog(HealpixDataset):
         algorithm: AbstractCrossmatchAlgorithm | None = None,
         output_catalog_name: str | None = None,
         require_right_margin: bool = False,
-        how: str = "inner",
+        how: Literal["inner", "left", "outer"] = "inner",
         suffixes: tuple[str, str] | None = None,
         suffix_method: str | None = None,
         log_changes: bool = True,
+        outer_footprint: Literal["union", "left"] = "union",
     ) -> Catalog:
         # pylint:disable=unused-argument
         """Perform a cross-match between two catalogs
 
         The pixels from each catalog are aligned via a `PixelAlignment`, and cross-matching is
-        performed on each pair of overlapping pixels. The resulting catalog will have partitions
-        matching an inner pixel alignment - using pixels that have overlap in both input catalogs
-        and taking the smallest of any overlapping pixels.
+        performed on each selected pixel pair. Inner joins use overlapping pixels; left joins
+        use the left catalog's coverage; outer joins use the union of both, or only the left
+        catalog's coverage with ``outer_footprint="left"``.
 
-        The resulting catalog will be partitioned using the left catalog's ra and dec, and the
-        index for each row will be the same as the index from the corresponding row in the left
-        catalog's index.
+        Outer joins emit right rows with no match anywhere as unmatched rows, including sky
+        covered only by the right catalog unless ``outer_footprint="left"``. Exact outer
+        semantics require margin caches on both catalogs: the left margin threshold must be
+        at least the matching radius, and the right margin threshold at least twice the
+        matching radius.
+
+        Outer joins add ``_ra`` and ``_dec`` result coordinates. They contain the left
+        coordinates for matched and left-only rows, and the right coordinates for right-only rows.
 
         Parameters
         ----------
@@ -342,9 +352,15 @@ class Catalog(HealpixDataset):
         require_right_margin : bool, default False
             If true, raises an error if the right margin is missing which could
             lead to incomplete crossmatches.
-        how : str
-            How to handle the crossmatch of the two catalogs.
-            One of {'left', 'inner'}; defaults to 'inner'.
+        how : {'inner', 'left', 'outer'}, default 'inner'
+            ``inner`` emits only matched row pairs; ``left`` also emits unmatched left
+            rows; ``outer`` also emits unmatched rows from both catalogs, including sky
+            covered only by the right catalog.
+        outer_footprint : {'union', 'left'}, default 'union'
+            Sky an outer crossmatch covers. ``union`` visits every pixel of either catalog;
+            ``left`` visits only the pixels a left join visits: the left catalog's pixels,
+            kept where it has data. Every unmatched right row read for them is emitted, and
+            right-only sky is never read. Only valid with ``how="outer"``.
         suffixes : Tuple[str,str] or None
             A pair of suffixes to be appended to the end of each column
             name when they are joined. Default uses the name of the catalog for the suffix.
@@ -397,15 +413,26 @@ class Catalog(HealpixDataset):
         TypeError
             If the `other` catalog is not of type `Catalog`
         ValueError
+            If ``how`` is not ``"inner"``, ``"left"``, or ``"outer"``.
             If both the kwargs for the default algorithm and an `algorithm` are specified.
             If the `suffixes` provided is not a tuple of two strings.
             If the right catalog has no margin and `require_right_margin` is True.
+            If ``how="outer"`` and either catalog lacks a margin cache, a margin threshold
+            is too small for the matching radius, or the algorithm defines no ``radius_arcsec``.
+            If ``outer_footprint`` is not ``"union"`` or ``"left"``, or is ``"left"`` without
+            ``how="outer"``.
         """
         if not isinstance(other, Catalog):
             raise TypeError(
                 f"Expected `other` to be a Catalog instance, got {type(other)}. "
                 "You may want `lsdb.crossmatch(frame_or_catalog, frame_or_catalog)` instead."
             )
+        if how not in ("inner", "left", "outer"):
+            raise ValueError("`how` needs to be 'inner', 'left', or 'outer'")
+        if outer_footprint not in ("union", "left"):
+            raise ValueError("`outer_footprint` needs to be 'union' or 'left'")
+        if outer_footprint == "left" and how != "outer":
+            raise ValueError("`outer_footprint='left'` requires how='outer'")
 
         default_kwargs = {
             k: v
@@ -443,6 +470,7 @@ class Catalog(HealpixDataset):
             suffixes,
             suffix_method,
             log_changes,
+            outer_footprint=outer_footprint,
         )
         new_catalog_info = create_merged_catalog_info(
             self,
@@ -451,6 +479,13 @@ class Catalog(HealpixDataset):
             suffixes,
             suffix_method,
         )
+        if how == "outer":
+            new_catalog_info = new_catalog_info.copy_and_update(
+                ra_column="_ra",
+                dec_column="_dec",
+                healpix_column=SPATIAL_INDEX_COLUMN,
+                healpix_order=SPATIAL_INDEX_ORDER,
+            )
         hc_catalog = self.hc_structure.__class__(
             new_catalog_info, alignment.pixel_tree, schema=get_arrow_schema(op.meta), moc=alignment.moc
         )
@@ -467,7 +502,7 @@ class Catalog(HealpixDataset):
         output_catalog_name: str | None = None,
         require_right_margin: bool = False,
         nested_column_name: str | None = None,
-        how: str = "inner",
+        how: Literal["inner", "left"] = "inner",
     ) -> Catalog:
         # pylint:disable=unused-argument
         """Perform a cross-match between two catalogs, adding the result as a nested column
@@ -800,7 +835,7 @@ class Catalog(HealpixDataset):
                 return hc.read_hats(field_index)
             raise TypeError(f"Catalog index for field `{field}` is not of type `HCIndexCatalog`")
 
-        field_indexes = {field_name: _get_index_catalog_for_field(field_name) for field_name in values.keys()}
+        field_indexes = {field_name: _get_index_catalog_for_field(field_name) for field_name in values}
         return self.search(IndexSearch(values, field_indexes, fine))
 
     def search(self, search: AbstractSearch):
