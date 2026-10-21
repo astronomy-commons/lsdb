@@ -14,7 +14,8 @@ from hats.io.paths import pixel_catalog_file
 from hats.io.skymap import read_skymap
 from hats.pixel_math.healpix_pixel import HealpixPixel
 from hats.pixel_math.spatial_index import compute_spatial_index, spatial_index_to_healpix
-from hats.pixel_tree import PixelAlignmentType, align_trees
+from hats.pixel_tree.pixel_alignment import align_trees
+from hats.pixel_tree.pixel_alignment_types import PixelAlignmentType
 from upath import UPath
 
 from lsdb import Catalog, PixelSearch

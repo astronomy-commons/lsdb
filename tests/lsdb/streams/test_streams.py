@@ -459,6 +459,7 @@ def test_crossmatch_stream_star_outer(monkeypatch, anchor_order, right_order):
         [2, -1, 21],
         [3, -1, -1],
     ]
+    assert stream._star is not None
     assert list(chunk.columns) == list(stream._star.assembly.meta.columns)
     assert chunk.dtypes.equals(stream._star.assembly.meta.dtypes)
     anchored = chunk["id"].notna()
@@ -563,12 +564,15 @@ def test_crossmatch_stream_star_reads_anchor_once_per_pixel(monkeypatch):
         seed=1,
         count_fraction_threshold=0.0,
     )
+    assert stream._star is not None
     pixel = stream._pixels[0]
     right_parts = [catalog_streams._partition_delayeds(result, pixel) for result in stream._star.results]
     task = delayed(list)(right_parts)
     anchor_key = stream._star.anchor._operation.key_name
 
-    anchor_tasks = [key for key in dict(task.__dask_graph__()) if key[0] == anchor_key]
+    anchor_tasks = [
+        key for key in dict(task.__dask_graph__()) if isinstance(key, tuple) and key[0] == anchor_key
+    ]
     assert len(anchor_tasks) == 1
 
 
