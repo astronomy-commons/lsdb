@@ -108,8 +108,7 @@ def calculate_histogram(df: npd.NestedFrame, histogram_order: int) -> SparseHist
         The sparse count histogram for the partition, at the specified order.
     """
     order_pixels = spatial_index_to_healpix(df.index.to_numpy(), target_order=histogram_order)
-    gb = df.groupby(order_pixels, sort=False).apply(len)
-    indexes, counts_at_indexes = gb.index.to_numpy(), gb.to_numpy(na_value=0)
+    indexes, counts_at_indexes = np.unique(order_pixels, return_counts=True)
     return SparseHistogram(indexes, counts_at_indexes, histogram_order)
 
 
