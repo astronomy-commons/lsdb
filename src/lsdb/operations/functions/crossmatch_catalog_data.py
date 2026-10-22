@@ -498,6 +498,7 @@ def crossmatch_catalog_data(
     suffixes: tuple[str, str],
     suffix_method: str | None = None,
     log_changes: bool = True,
+    outer_footprint: str = "union",
 ) -> tuple[Operation, PixelAlignment]:
     """Cross-matches the data from two catalogs
 
@@ -525,6 +526,9 @@ def crossmatch_catalog_data(
     log_changes : bool, default True
         If True, logs an info message for each column that is being renamed.
         This only applies when suffix_method is 'overlapping_columns'. Default: True
+    outer_footprint : str, default 'union'
+        Sky an outer crossmatch covers: 'union' visits every pixel of either catalog,
+        'left' only the left catalog's pixels.
 
     Returns
     -------
@@ -546,18 +550,27 @@ def crossmatch_catalog_data(
     # padded by the margin for outer joins: it would only inflate the result catalog's MOC,
     # and OUTER alignment already keeps every left pixel. The left margin's pixels are
     # aligned too, so right-only sky is paired with the left rows just across its boundary.
+    #
+    # With ``outer_footprint="left"`` the pixels are aligned as for a left join instead:
+    # every aligned pixel has a left partition, so right-only sky is never visited, and the
+    # right margin halo pairs left pixels at the edge of the right coverage with the right
+    # rows just across it. Each left pixel reads its own left margin partition.
     radius_arcsec = getattr(algorithm, "radius_arcsec", None)
     if how == "outer":
         _validate_outer_crossmatch(left, right, radius_arcsec)
+    union_outer = how == "outer" and outer_footprint == "union"
+    alignment_type = PixelAlignmentType[how.upper()]
+    if how == "outer" and not union_outer:
+        alignment_type = PixelAlignmentType.LEFT
     alignment = align_catalogs(
         left,
         right,
-        add_right_moc_margin_padding=how != "outer",
-        alignment_type=PixelAlignmentType[how.upper()],
-        add_left_margin=how == "outer",
+        add_right_moc_margin_padding=not union_outer,
+        alignment_type=alignment_type,
+        add_left_margin=union_outer,
     )
     left_margin_pixels: list[HealpixPixel] = []
-    if how == "outer":
+    if union_outer:
         alignment, left_margin_pixels = _plan_outer_alignment(left, right, alignment)
     # get lists of HEALPix pixels from alignment to pass to cross-match
     left_pixels, right_pixels = get_healpix_pixels_from_alignment(alignment)

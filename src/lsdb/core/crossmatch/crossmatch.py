@@ -47,6 +47,7 @@ def crossmatch(
     right_args: dict | None = None,
     suffix_method: str | None = None,
     log_changes: bool = True,
+    outer_footprint: Literal["union", "left"] = "union",
 ) -> Catalog:
     """Perform a cross-match between two frames, two catalogs,
     a catalog and a frame, or a frame and a catalog.
@@ -88,6 +89,9 @@ def crossmatch(
         catalogs (left threshold at least the matching radius, right at least twice).
         When passing dataframes, these margins are generated unless ``margin_threshold``
         is given in `left_args` or `right_args`.
+    outer_footprint : {'union', 'left'}, default 'union'
+        Sky an outer crossmatch covers: ``union`` visits every pixel of either catalog,
+        ``left`` only the left catalog's pixels. Only valid with ``how="outer"``.
     suffixes : tuple[str,str] or None, default None
         Suffixes to append to overlapping column names.
     left_args : dict or None, default None
@@ -152,4 +156,5 @@ def crossmatch(
         suffixes=suffixes,
         suffix_method=suffix_method,
         log_changes=log_changes,
+        outer_footprint=outer_footprint,
     )
