@@ -284,6 +284,9 @@ class CrossMatchStream(InfiniteStream):
     *crossmatch_kwargs : dict
         One dictionary per right catalog, containing ``other`` and any arguments
         for ``Catalog.crossmatch``. ``how`` is ``"left"`` (default) or ``"outer"``.
+        Anchor columns keep their names; ``suffixes`` sets only the right catalog's
+        column suffix (default ``"_" + other.name``), which must make every output
+        column name unique.
         Each dictionary may additionally specify
         ``compression_columns`` (a nonempty list of science column names) and
         ``compression_ratio_threshold`` (a finite, nonnegative minimum ratio).
@@ -391,7 +394,8 @@ class CrossMatchStream(InfiniteStream):
                 if kwargs["other"].hc_structure.catalog_base_dir is None:
                     raise ValueError("Compression filtering requires an on-disk right catalog.")
                 self.compression_filters.append((columns.copy(), float(threshold)))
-            new_kwargs["suffixes"] = ("", "_" + kwargs["other"].name)
+            # Anchor columns keep their names, so only the right suffix is the caller's to set
+            new_kwargs["suffixes"] = ("", (kwargs.get("suffixes") or ("", "_" + kwargs["other"].name))[1])
             new_kwargs["suffix_method"] = "all_columns"
             all_kwargs.append(new_kwargs)
         self.crossmatch_kwargs = all_kwargs
@@ -437,6 +441,11 @@ class CrossMatchStream(InfiniteStream):
             + coordinates[:1],
             axis=1,
         )
+        if meta.columns.duplicated().any():
+            raise ValueError(
+                f"Output columns {sorted(set(meta.columns[meta.columns.duplicated()]))} are repeated: "
+                "give each right catalog distinct suffixes=('', '_<label>')."
+            )
         # The crossmatches above already required the anchor's coordinate columns
         catalog_info = self.catalog.hc_structure.catalog_info
         assembly = _StarAssembly(
@@ -608,14 +617,19 @@ def _get_compression_ratio(catalog: Catalog, pixel: HealpixPixel, columns: list[
 class CountMapForPixel:
     """Estimate from skymaps whether each right catalog is worth crossmatching at a pixel.
 
-    The expected match fraction in a pixel is the sum of min(anchor, right) counts, at
-    the pair's coarser skymap order, over the right catalog's count."""
+    The expected match fraction in a pixel is the sum of min(anchor, right) counts over
+    the right catalog's count, both at the pair's coarser skymap order. A pixel finer than
+    that order takes its ancestor's fraction."""
 
     def __init__(self, catalog: Catalog, right_catalogs: list[Catalog], *, count_fraction: float):
         left_counts = np.asarray(read_skymap(catalog.hc_structure, None))
         self.count_fraction = count_fraction
-        self.right_count_maps = [np.asarray(read_skymap(cat.hc_structure, None)) for cat in right_catalogs]
-        self.minimums = [np.minimum(*_to_common_order(left_counts, right)) for right in self.right_count_maps]
+        common = [
+            _to_common_order(left_counts, np.asarray(read_skymap(cat.hc_structure, None)))
+            for cat in right_catalogs
+        ]
+        self.minimums = [np.minimum(left, right) for left, right in common]
+        self.right_count_maps = [right for _, right in common]
 
     def get_pixel_catalog_mask(self, pixel: HealpixPixel) -> np.ndarray:
         """Whether to crossmatch each right catalog at ``pixel``."""
@@ -633,5 +647,8 @@ def _to_common_order(*count_maps: np.ndarray) -> list[np.ndarray]:
 
 
 def _sum_in_pixel(pixel: HealpixPixel, counts: np.ndarray):
-    width = 4 ** (hp.npix2order(len(counts)) - pixel.order)
+    order = hp.npix2order(len(counts))
+    if pixel.order > order:
+        return counts[pixel.convert_to_lower_order(pixel.order - order).pixel]
+    width = 4 ** (order - pixel.order)
     return counts[pixel.pixel * width : (pixel.pixel + 1) * width].sum()
