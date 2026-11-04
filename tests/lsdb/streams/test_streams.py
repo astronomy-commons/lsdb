@@ -604,14 +604,16 @@ def test_crossmatch_stream_right_suffixes():
 
 @pytest.mark.usefixtures("fake_skymaps")
 @pytest.mark.parametrize(
-    ("footprint", "expected"),
+    ("footprint", "min_surveys", "expected"),
     [
         # B's 14 and C's 23 share a spot the anchor lacks, outside its data MOC
-        (None, [[1, 11, 22], [2, -1, 21]]),
-        ("pixel_tree", [[-1, -1, 23], [-1, 14, -1], [1, 11, 22], [2, -1, 21]]),
+        (None, 2, [[1, 11, 22], [2, -1, 21]]),
+        ("pixel_tree", 2, [[-1, -1, 23], [-1, 14, -1], [1, 11, 22], [2, -1, 21]]),
+        (None, 3, [[1, 11, 22]]),
+        ("pixel_tree", 3, [[1, 11, 22]]),
     ],
 )
-def test_crossmatch_stream_min_surveys(footprint, expected):
+def test_crossmatch_stream_min_surveys(footprint, min_surveys, expected):
     """Anchor row 3 and B's 12 sit alone, and row 4 and B's 15 are split by a pixel border."""
     anchor, right_b, right_c = _star_catalogs()
     star_kwargs = [
@@ -625,9 +627,41 @@ def test_crossmatch_stream_min_surveys(footprint, expected):
         *star_kwargs,
         count_fraction_threshold=0.0,
         footprint=_pixel_tree(anchor) if footprint else None,
-        min_surveys=2,
+        min_surveys=min_surveys,
     )
     assert _id_rows(_stream_all_pixels(stream)) == expected
+
+
+@pytest.mark.usefixtures("fake_skymaps")
+def test_crossmatch_stream_min_surveys_ignores_removed_partitions():
+    rows = [(1, 10.0, 10.0), (2, 200.0, 40.0)]
+    anchor = _star_catalog(rows, "A", 2)
+    right = _star_catalog(rows, "B", 2)
+    right = right.get_partition(2, hp.radec2pix(2, 200.0, 40.0)[0].item())
+
+    stream = CrossMatchStream(anchor, {"other": right}, count_fraction_threshold=0.0, min_surveys=2)
+
+    assert _id_rows(_stream_all_pixels(stream), ("id", "id_B")) == [[2, 2]]
+
+
+def test_min_surveys_coverage_work_scales_with_catalogs(small_sky_catalog, monkeypatch):
+    """Bound coverage operations rather than wall-clock time to catch combinatorial growth."""
+    n_catalogs, min_surveys = 20, 10
+    expected = catalog_streams._data_coverage(small_sky_catalog)
+    intersection = MOC.intersection
+    intersections = 0
+
+    def counted_intersection(moc, *others):
+        nonlocal intersections
+        intersections += 1
+        assert intersections <= 2 * n_catalogs * min_surveys
+        return intersection(moc, *others)
+
+    monkeypatch.setattr(MOC, "intersection", counted_intersection)
+    _, footprint = catalog_streams._restrict_to_footprint(
+        small_sky_catalog, None, [small_sky_catalog] * (n_catalogs - 1), min_surveys
+    )
+    assert footprint == expected
 
 
 def test_crossmatch_stream_score_ignores_rows_outside_footprint(monkeypatch):
