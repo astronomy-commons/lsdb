@@ -1,5 +1,7 @@
 from collections.abc import Iterator
 from dataclasses import dataclass
+from functools import reduce
+from itertools import combinations
 from typing import Any, Optional, cast
 
 import hats.pixel_math.healpix_shim as hp
@@ -307,6 +309,11 @@ class CrossMatchStream(InfiniteStream):
         from sky where the anchor has data. A given MOC also restricts the anchor; pass
         ``anchor.hc_structure.pixel_tree.to_moc()`` to emit unmatched right rows
         anywhere in the anchor's pixels.
+    min_surveys : int, default 1
+        Keep only sky where at least this many of the anchor and right catalogs have
+        data (each catalog's ``hc_structure.moc``, or its pixel tree if it has no MOC),
+        judged at the resolution of those MOCs and intersected with ``footprint``.
+        With 2 or more, anchor rows outside that sky are dropped too.
 
     Notes
     -----
@@ -316,6 +323,9 @@ class CrossMatchStream(InfiniteStream):
     ratios mean less-compressible data; compression overhead can produce ratios
     above one. Finer pixels inherit their source partition's score, which is
     unaffected by row filters or transformations.
+
+    The coverage score counts only skymap cells that overlap the footprint, so right
+    rows the footprint drops never lower it.
 
     Both coverage and compression thresholds must pass. Skipping preserves anchor
     rows and fills right-catalog columns with nulls. Omitting compression options
@@ -359,8 +369,15 @@ class CrossMatchStream(InfiniteStream):
         seed: int | None = None,
         count_fraction_threshold: float,
         footprint: MOC | None = None,
+        min_surveys: int = 1,
     ) -> None:
-        catalog, self.footprint = _restrict_to_footprint(catalog, footprint)
+        n_catalogs = 1 + len(crossmatch_kwargs)
+        if not isinstance(min_surveys, int) or not 1 <= min_surveys <= n_catalogs:
+            raise ValueError(
+                f"min_surveys must be an integer from 1 to the number of catalogs ({n_catalogs})."
+            )
+        right_catalogs = [kwargs["other"] for kwargs in crossmatch_kwargs]
+        catalog, self.footprint = _restrict_to_footprint(catalog, footprint, right_catalogs, min_surveys)
         super().__init__(
             catalog,
             client=client,
@@ -404,9 +421,8 @@ class CrossMatchStream(InfiniteStream):
         self._anchor, self._results, self._pixels, self._assembly = self._plan_star()
         self.partitions_per_chunk = min(partitions_per_chunk, self.npartitions)
 
-        right_catalogs = [kwargs["other"] for kwargs in self.crossmatch_kwargs]
         self.mask_generator = CountMapForPixel(
-            self.catalog, right_catalogs, count_fraction=count_fraction_threshold
+            self.catalog, right_catalogs, count_fraction=count_fraction_threshold, footprint=self.footprint
         )
 
     def _plan_star(self) -> tuple[Catalog, list[Catalog], list[HealpixPixel], "_StarAssembly"]:
@@ -481,16 +497,28 @@ class CrossMatchStream(InfiniteStream):
         return delayed(_assemble_star_pixel)(pixel, anchor_parts, right_parts, self._assembly)
 
 
-def _restrict_to_footprint(catalog: Catalog, footprint: MOC | None) -> tuple[Catalog, MOC]:
-    """Clip ``footprint`` to the anchor's pixel tree, so every drawn pixel has anchor rows.
+def _data_coverage(catalog: Catalog) -> MOC:
+    structure = catalog.hc_structure
+    return structure.pixel_tree.to_moc() if structure.moc is None else structure.moc
+
+
+def _restrict_to_footprint(
+    catalog: Catalog, footprint: MOC | None, right_catalogs: list[Catalog], min_surveys: int
+) -> tuple[Catalog, MOC]:
+    """Clip ``footprint`` to the anchor's pixel tree, so every drawn pixel has anchor rows, and
+    to the sky where at least ``min_surveys`` of the anchor and right catalogs have data.
 
     The default, the anchor's data coverage, needs no anchor filtering: its rows lie in its MOC."""
-    pixel_tree = catalog.hc_structure.pixel_tree.to_moc()
+    restricts_anchor = footprint is not None or min_surveys > 1
     if footprint is None:
-        data_coverage = catalog.hc_structure.moc
-        return catalog, pixel_tree if data_coverage is None else data_coverage.intersection(pixel_tree)
-    footprint = footprint.intersection(pixel_tree)
-    return catalog.moc_search(footprint), footprint
+        footprint = _data_coverage(catalog)
+    footprint = footprint.intersection(catalog.hc_structure.pixel_tree.to_moc())
+    if min_surveys > 1:
+        coverages = [_data_coverage(cat) for cat in (catalog, *right_catalogs)]
+        # The union, over every group of min_surveys catalogs, of where all of them have data
+        groups = (reduce(MOC.intersection, group) for group in combinations(coverages, min_surveys))
+        footprint = footprint.intersection(reduce(MOC.union, groups))
+    return (catalog.moc_search(footprint) if restricts_anchor else catalog), footprint
 
 
 _ANCHOR_ROW = "_lsdb_anchor_row"
@@ -618,18 +646,24 @@ class CountMapForPixel:
     """Estimate from skymaps whether each right catalog is worth crossmatching at a pixel.
 
     The expected match fraction in a pixel is the sum of min(anchor, right) counts over
-    the right catalog's count, both at the pair's coarser skymap order. A pixel finer than
-    that order takes its ancestor's fraction."""
+    the right catalog's count, both at the pair's coarser skymap order and only in cells
+    that overlap ``footprint``. A pixel finer than that order takes its ancestor's fraction."""
 
-    def __init__(self, catalog: Catalog, right_catalogs: list[Catalog], *, count_fraction: float):
+    def __init__(
+        self, catalog: Catalog, right_catalogs: list[Catalog], *, count_fraction: float, footprint: MOC
+    ):
         left_counts = np.asarray(read_skymap(catalog.hc_structure, None))
         self.count_fraction = count_fraction
-        common = [
-            _to_common_order(left_counts, np.asarray(read_skymap(cat.hc_structure, None)))
-            for cat in right_catalogs
-        ]
-        self.minimums = [np.minimum(left, right) for left, right in common]
-        self.right_count_maps = [right for _, right in common]
+        self.minimums = []
+        self.right_count_maps = []
+        for cat in right_catalogs:
+            left, right = _to_common_order(left_counts, np.asarray(read_skymap(cat.hc_structure, None)))
+            # Rows outside the footprint are never emitted, so they must not lower the score
+            inside = np.zeros(len(left), dtype=bool)
+            order = hp.npix2order(len(left))
+            inside[MOC.from_depth29_ranges(order, footprint.to_depth29_ranges).flatten()] = True
+            self.minimums.append(np.minimum(left, right) * inside)
+            self.right_count_maps.append(right * inside)
 
     def get_pixel_catalog_mask(self, pixel: HealpixPixel) -> np.ndarray:
         """Whether to crossmatch each right catalog at ``pixel``."""
