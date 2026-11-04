@@ -600,3 +600,54 @@ def test_crossmatch_stream_right_suffixes():
         [3, -1, -1],
         [4, -1, 15],
     ]
+
+
+@pytest.mark.usefixtures("fake_skymaps")
+@pytest.mark.parametrize(
+    ("footprint", "expected"),
+    [
+        # B's 14 and C's 23 share a spot the anchor lacks, outside its data MOC
+        (None, [[1, 11, 22], [2, -1, 21]]),
+        ("pixel_tree", [[-1, -1, 23], [-1, 14, -1], [1, 11, 22], [2, -1, 21]]),
+    ],
+)
+def test_crossmatch_stream_min_surveys(footprint, expected):
+    """Anchor row 3 and B's 12 sit alone, and row 4 and B's 15 are split by a pixel border."""
+    anchor, right_b, right_c = _star_catalogs()
+    star_kwargs = [
+        {"other": right, "how": "outer", "radius_arcsec": STAR_RADIUS} for right in (right_b, right_c)
+    ]
+    with pytest.raises(ValueError, match="min_surveys"):
+        CrossMatchStream(anchor, *star_kwargs, count_fraction_threshold=0.0, min_surveys=4)
+
+    stream = CrossMatchStream(
+        anchor,
+        *star_kwargs,
+        count_fraction_threshold=0.0,
+        footprint=_pixel_tree(anchor) if footprint else None,
+        min_surveys=2,
+    )
+    assert _id_rows(_stream_all_pixels(stream)) == expected
+
+
+def test_crossmatch_stream_score_ignores_rows_outside_footprint(monkeypatch):
+    """A crowd of B rows in the anchor's pixel but outside its data MOC cannot get B skipped."""
+    anchor, right_b, _ = _star_catalogs()
+    maps = {}
+    for catalog in (anchor, right_b):
+        frame = catalog.compute()
+        maps[catalog.name] = np.bincount(
+            hp.radec2pix(5, frame["ra"], frame["dec"]), minlength=hp.order2npix(5)
+        )
+    crowd = hp.radec2pix(5, 5.0, 10.0)[0]
+    pixel = HealpixPixel(2, hp.radec2pix(2, 10.0, 10.0)[0].item())
+    assert crowd >> 6 == pixel.pixel and maps["A"][crowd] == 0
+    maps["B"][crowd] += 1000
+    monkeypatch.setattr(
+        catalog_streams, "read_skymap", lambda hc_catalog, order: maps[hc_catalog.catalog_name]
+    )
+
+    stream = CrossMatchStream(
+        anchor, {"other": right_b, "radius_arcsec": STAR_RADIUS}, count_fraction_threshold=0.5
+    )
+    assert stream.mask_generator.get_pixel_catalog_mask(pixel).tolist() == [True]
