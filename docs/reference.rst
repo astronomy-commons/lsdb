@@ -6,4 +6,4 @@ API Reference
 
     Catalog <reference/catalog>
     IO <reference/io>
-    Crossmatch Algorithms <reference/crossmatch>
+    Crossmatch <reference/crossmatch>
