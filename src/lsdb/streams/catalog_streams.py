@@ -1,7 +1,5 @@
 from collections.abc import Iterator
 from dataclasses import dataclass
-from functools import reduce
-from itertools import combinations
 from typing import Any, Optional, cast
 
 import hats.pixel_math.healpix_shim as hp
@@ -311,8 +309,9 @@ class CrossMatchStream(InfiniteStream):
         anywhere in the anchor's pixels.
     min_surveys : int, default 1
         Keep only sky where at least this many of the anchor and right catalogs have
-        data (each catalog's ``hc_structure.moc``, or its pixel tree if it has no MOC),
-        judged at the resolution of those MOCs and intersected with ``footprint``.
+        data (each catalog's ``hc_structure.moc`` clipped to its current pixel tree,
+        or its pixel tree if it has no MOC), judged at the resolution of those MOCs
+        and intersected with ``footprint``.
         With 2 or more, anchor rows outside that sky are dropped too.
 
     Notes
@@ -499,7 +498,8 @@ class CrossMatchStream(InfiniteStream):
 
 def _data_coverage(catalog: Catalog) -> MOC:
     structure = catalog.hc_structure
-    return structure.pixel_tree.to_moc() if structure.moc is None else structure.moc
+    pixel_coverage = structure.pixel_tree.to_moc()
+    return pixel_coverage if structure.moc is None else structure.moc.intersection(pixel_coverage)
 
 
 def _restrict_to_footprint(
@@ -512,12 +512,16 @@ def _restrict_to_footprint(
     restricts_anchor = footprint is not None or min_surveys > 1
     if footprint is None:
         footprint = _data_coverage(catalog)
-    footprint = footprint.intersection(catalog.hc_structure.pixel_tree.to_moc())
+    else:
+        footprint = footprint.intersection(catalog.hc_structure.pixel_tree.to_moc())
     if min_surveys > 1:
-        coverages = [_data_coverage(cat) for cat in (catalog, *right_catalogs)]
-        # The union, over every group of min_surveys catalogs, of where all of them have data
-        groups = (reduce(MOC.intersection, group) for group in combinations(coverages, min_surveys))
-        footprint = footprint.intersection(reduce(MOC.union, groups))
+        at_least = [footprint] + [MOC.new_empty(max_depth=footprint.max_order) for _ in range(min_surveys)]
+        for n_surveys, cat in enumerate((catalog, *right_catalogs), start=1):
+            coverage = _data_coverage(cat)
+            # Update downward so each catalog is counted only once.
+            for count in range(min(min_surveys, n_surveys), 0, -1):
+                at_least[count] = at_least[count].union(at_least[count - 1].intersection(coverage))
+        footprint = at_least[min_surveys]
     return (catalog.moc_search(footprint) if restricts_anchor else catalog), footprint
 
 
