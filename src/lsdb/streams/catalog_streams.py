@@ -127,17 +127,13 @@ class CatalogStream:
             partitions_left[-self.partitions_per_chunk :],
         )
 
+    def _delayed_partition(self, pixel: HealpixPixel) -> Delayed:
+        build = self.operation.build(pixels=[pixel])
+        return Delayed(build.pixel_to_key_map[pixel], build.graph)
+
     def submit_next_partitions(self, partitions: np.ndarray) -> Future | _FakeFuture:
         """Submit the next set of partitions for computation."""
-
-        # Intended to be used with single partition builds
-        def _to_delayed(operation, pixel):
-            build = operation.build(pixels=[pixel])
-            graph = build.graph
-            key = build.pixel_to_key_map[pixel]
-            return Delayed(key, graph)
-
-        selected = [_to_delayed(self.operation, self._pixels[i]) for i in partitions]
+        selected = [self._delayed_partition(self._pixels[i]) for i in partitions]
 
         if len(selected) == 1:
             if self.client is None:
@@ -329,9 +325,8 @@ class CrossMatchStream(InfiniteStream):
     Every right catalog is crossmatched with the anchor separately (a star around
     the anchor), never with another right catalog, and its matches are merged onto
     the anchor rows. With ``how="outer"``, a right catalog's rows that match no anchor
-    row are also emitted, but only inside ``footprint``: the outer crossmatch is
-    followed by ``moc_search(footprint)``, which drops pixels outside it before
-    anything is read. Each such row has null anchor and other right-catalog columns.
+    row are also emitted, but only inside ``footprint``. Each such row has null
+    anchor and other right-catalog columns.
     With any outer right catalog the stream adds ``_ra``/``_dec`` columns: the
     anchor's coordinates for anchor rows, and the right catalog's own for unmatched
     right rows. Outer right catalogs need margin caches on the anchor and the right
@@ -401,23 +396,16 @@ class CrossMatchStream(InfiniteStream):
             all_kwargs.append(new_kwargs)
         self.crossmatch_kwargs = all_kwargs
 
-        self._star = self._plan_star()
         # Stream the crossmatches' aligned pixels, which can outnumber the anchor's partitions
-        self._pixels = self._star.pixels
+        self._anchor, self._results, self._pixels, self._assembly = self._plan_star()
         self.partitions_per_chunk = min(partitions_per_chunk, self.npartitions)
-
-        if self.seed is None:
-            self.rng = np.random.default_rng()
-        else:
-            self.rng = np.random.default_rng((1 << 32, self.seed))
 
         right_catalogs = [kwargs["other"] for kwargs in self.crossmatch_kwargs]
         self.mask_generator = CountMapForPixel(
             self.catalog, right_catalogs, count_fraction=count_fraction_threshold
         )
 
-    def _plan_star(self) -> "_StarPlan":
-        """Crossmatch the anchor with each right catalog separately."""
+    def _plan_star(self) -> tuple[Catalog, list[Catalog], list[HealpixPixel], "_StarAssembly"]:
         anchor = self.catalog.map_partitions(_number_anchor_rows)
         results = []
         right_columns = []
@@ -426,10 +414,8 @@ class CrossMatchStream(InfiniteStream):
             result = anchor.crossmatch(**kwargs)
             outer.append(kwargs["how"] == "outer")
             if outer[-1]:
-                # An outer crossmatch covers both catalogs' sky. Its rows are placed by
-                # _ra/_dec (the anchor's coordinates for matched rows, the right catalog's
-                # own for unmatched ones), so this keeps unmatched right rows inside the
-                # footprint and drops right-only pixels before they are read.
+                # Rows are placed by _ra/_dec, so this keeps unmatched right rows inside the
+                # footprint and drops right-only pixels before they are read
                 result = result.moc_search(self.footprint)
             results.append(result)
             suffix = kwargs["suffixes"][1]
@@ -460,9 +446,7 @@ class CrossMatchStream(InfiniteStream):
             outer=outer,
             meta=npd.NestedFrame(meta),
         )
-        return _StarPlan(
-            anchor=anchor, results=results, pixels=pixel_tree.get_healpix_pixels(), assembly=assembly
-        )
+        return anchor, results, pixel_tree.get_healpix_pixels(), assembly
 
     def _right_catalog_mask(self, pixel: HealpixPixel) -> list[bool]:
         """Whether to crossmatch each right catalog at ``pixel``: coverage and compression must pass."""
@@ -479,45 +463,19 @@ class CrossMatchStream(InfiniteStream):
             mask.append(bool(do_crossmatch))
         return mask
 
-    def _compute(self, selected: list[Delayed], empty: npd.NestedFrame) -> Future | _FakeFuture:
-        """Compute the selected partitions, concatenated, with the client if there is one."""
-        if len(selected) == 0:
-            return _FakeFuture(empty)
-
-        if len(selected) == 1:
-            if self.client is None:
-                return _FakeFuture(selected[0].compute())
-            return cast(Future, self.client.compute(selected[0]))
-
-        combined = delayed(pd.concat)(selected)
-        if self.client is None:
-            return _FakeFuture(combined.compute())
-        return cast(Future, self.client.compute(combined))
-
-    def submit_next_partitions(self, partitions: np.ndarray) -> Future | _FakeFuture:
-        """Submit star crossmatches of the anchor at the given pixels."""
-        selected = []
-        for pixel_index in partitions:
-            pixel = self._pixels[pixel_index]
-            right_parts = [
-                _partition_delayeds(result, pixel) if do_crossmatch else None
-                for result, do_crossmatch in zip(
-                    self._star.results, self._right_catalog_mask(pixel), strict=True
-                )
-            ]
-            anchor_parts = _partition_delayeds(self._star.anchor, pixel)
-            selected.append(
-                delayed(_assemble_star_pixel)(pixel, anchor_parts, right_parts, self._star.assembly)
-            )
-        return self._compute(selected, self._star.assembly.meta)
+    def _delayed_partition(self, pixel: HealpixPixel) -> Delayed:
+        right_parts = [
+            _partition_delayeds(result, pixel) if do_crossmatch else None
+            for result, do_crossmatch in zip(self._results, self._right_catalog_mask(pixel), strict=True)
+        ]
+        anchor_parts = _partition_delayeds(self._anchor, pixel)
+        return delayed(_assemble_star_pixel)(pixel, anchor_parts, right_parts, self._assembly)
 
 
 def _restrict_to_footprint(catalog: Catalog, footprint: MOC | None) -> tuple[Catalog, MOC]:
-    """The anchor within ``footprint``, and ``footprint`` clipped to the anchor's pixel tree.
+    """Clip ``footprint`` to the anchor's pixel tree, so every drawn pixel has anchor rows.
 
-    Clipping keeps every pixel the stream draws on anchor partitions. With no footprint,
-    the footprint is the anchor's data coverage and the anchor is unchanged: its rows
-    all lie in its own MOC."""
+    The default, the anchor's data coverage, needs no anchor filtering: its rows lie in its MOC."""
     pixel_tree = catalog.hc_structure.pixel_tree.to_moc()
     if footprint is None:
         data_coverage = catalog.hc_structure.moc
@@ -537,8 +495,6 @@ def _number_anchor_rows(partition: npd.NestedFrame) -> npd.NestedFrame:
 
 @dataclass
 class _StarAssembly:
-    """What a star crossmatch task needs to assemble one pixel's rows."""
-
     ra_column: str
     dec_column: str
     right_columns: list[list[str]]
@@ -546,18 +502,7 @@ class _StarAssembly:
     meta: npd.NestedFrame
 
 
-@dataclass
-class _StarPlan:
-    """The anchor, with numbered rows, crossmatched with each right catalog separately."""
-
-    anchor: Catalog
-    results: list[Catalog]
-    pixels: list[HealpixPixel]
-    assembly: _StarAssembly
-
-
 def _partition_delayeds(catalog: Catalog, pixel: HealpixPixel) -> list[Delayed]:
-    """Delayed partitions of ``catalog`` that overlap ``pixel``."""
     pixels = PixelSearch(pixel).filter_hc_catalog(catalog.hc_structure).get_healpix_pixels()
     build = catalog._operation.build(pixels=pixels)  # pylint: disable=protected-access
     return [Delayed(build.pixel_to_key_map[partition_pixel], build.graph) for partition_pixel in pixels]
@@ -574,7 +519,6 @@ def _rows_in_pixel(frame: npd.NestedFrame, pixel: HealpixPixel, ra_column: str, 
 
 
 def _conform(block: pd.DataFrame, meta: npd.NestedFrame) -> npd.NestedFrame:
-    """``block`` with exactly the columns of ``meta``, filling missing ones with nulls."""
     columns = {
         column: (
             block[column]
@@ -592,12 +536,8 @@ def _assemble_star_pixel(
     right_parts: list[list[npd.NestedFrame] | None],
     assembly: _StarAssembly,
 ) -> npd.NestedFrame:
-    """Merge each right catalog's matches onto the anchor rows in ``pixel``.
-
-    ``right_parts`` holds, per right catalog, the partitions of its crossmatch with
-    the anchor that cover ``pixel``, or None when it is skipped there. Outer right
-    catalogs also contribute their unmatched rows inside ``pixel``.
-    """
+    """Merge each right catalog's matches onto the anchor rows in ``pixel``, and append
+    outer catalogs' unmatched rows. A right catalog's parts are None where it is skipped."""
     rows = _rows_in_pixel(pd.concat(anchor_parts), pixel, assembly.ra_column, assembly.dec_column).copy()
     unmatched = []
     for parts, columns, outer in zip(right_parts, assembly.right_columns, assembly.outer, strict=True):
@@ -666,85 +606,32 @@ def _get_compression_ratio(catalog: Catalog, pixel: HealpixPixel, columns: list[
 
 
 class CountMapForPixel:
-    """Helper methods to select HEALPix for selective crossmatch"""
+    """Estimate from skymaps whether each right catalog is worth crossmatching at a pixel.
 
-    def __init__(
-        self,
-        catalog: Catalog,
-        right_catalogs: list[Catalog],
-        *,
-        count_fraction: float,
-    ):
-        """Initialize the CountMapForPixel class.
+    The expected match fraction in a pixel is the sum of min(anchor, right) counts, at
+    the pair's coarser skymap order, over the right catalog's count."""
 
-        Attributes
-        ----------
-        catalog: lsdb.Catalog
-            the Anchor catalog
-        right_catalogs: list[lsdb.Catalog]
-            the list of catalogs to crossmatch to
-        count_fraction: float
-            the fraction of matches above which a pixel is selected for crossmatching
-        """
-        self.catalog = catalog
-        self.right_catalogs = right_catalogs
+    def __init__(self, catalog: Catalog, right_catalogs: list[Catalog], *, count_fraction: float):
+        left_counts = np.asarray(read_skymap(catalog.hc_structure, None))
         self.count_fraction = count_fraction
-        self.load_catalog_counts()
+        self.right_count_maps = [np.asarray(read_skymap(cat.hc_structure, None)) for cat in right_catalogs]
+        self.minimums = [np.minimum(*_to_common_order(left_counts, right)) for right in self.right_count_maps]
 
-    def load_catalog_counts(self):
-        """Reads fixed order skymaps from on-disk fits file"""
-        left_count_map = np.asarray(read_skymap(self.catalog.hc_structure, None))
-        right_count_maps = []
-        for cat in self.right_catalogs:
-            skymap = np.asarray(read_skymap(cat.hc_structure, None))
-            right_count_maps.append(skymap)
-        self.left_count_map = left_count_map
-        self.right_count_maps = right_count_maps
-        self.minimums = [
-            self.reorder_skymap_and_get_min(left_count_map, right_count_map)
-            for right_count_map in right_count_maps
-        ]
-
-    def reorder_skymap_and_get_min(self, counts_a, counts_b):
-        """Reorder two skymaps to a common order and return the minimum counts."""
-        order_a = hp.npix2order(len(counts_a))
-        order_b = hp.npix2order(len(counts_b))
-        common_order = min(order_a, order_b)
-
-        # Reorder counts_a to common_order
-        if order_a > common_order:
-            counts_a = counts_a.reshape(-1, 4 ** (order_a - common_order)).sum(axis=1)
-
-        # Reorder counts_b to common_order
-        if order_b > common_order:
-            counts_b = counts_b.reshape(-1, 4 ** (order_b - common_order)).sum(axis=1)
-
-        # Return the minimum of the two skymaps
-        return np.minimum(counts_a, counts_b)
-
-    def get_pixel_catalog_mask(self, pixel) -> np.ndarray:
-        """Get boolean mask for all right catalogs.
-
-        If True, do crossmatch for provided pixel for catalog at index."""
+    def get_pixel_catalog_mask(self, pixel: HealpixPixel) -> np.ndarray:
+        """Whether to crossmatch each right catalog at ``pixel``."""
         mask = []
-        for right_counts, pair_minimums in zip(self.right_count_maps, self.minimums):
-            do_crossmatch = get_fraction_at_pixel(pixel, pair_minimums, right_counts)
-            mask.append(do_crossmatch >= self.count_fraction)
+        for minimums, right_counts in zip(self.minimums, self.right_count_maps):
+            right_total = _sum_in_pixel(pixel, right_counts)
+            fraction = float(_sum_in_pixel(pixel, minimums) / right_total) if right_total else 0.0
+            mask.append(fraction >= self.count_fraction)
         return np.asarray(mask, dtype=bool)
 
 
-def get_fraction_at_pixel(pixel, minimums, right_counts) -> float:
-    """Gets the expected match fraction for a pixel of the crossmatch of two catalogs."""
-    total_minimums = get_sum_at_pixel(pixel, minimums)
-    total_right_counts = get_sum_at_pixel(pixel, right_counts)
-    if total_right_counts == 0:
-        return 0.0
-    return float(total_minimums / total_right_counts)
+def _to_common_order(*count_maps: np.ndarray) -> list[np.ndarray]:
+    order = min(hp.npix2order(len(counts)) for counts in count_maps)
+    return [counts.reshape(hp.order2npix(order), -1).sum(axis=1) for counts in count_maps]
 
 
-def get_sum_at_pixel(pixel, counts) -> int:
-    """Gets the sum of counts for a pixel of a catalog."""
-    order, ipix = pixel
-    order_counts = hp.npix2order(len(counts))
-    selected_counts = counts[ipix * 4 ** (order_counts - order) : (ipix + 1) * 4 ** (order_counts - order)]
-    return selected_counts.sum()
+def _sum_in_pixel(pixel: HealpixPixel, counts: np.ndarray):
+    width = 4 ** (hp.npix2order(len(counts)) - pixel.order)
+    return counts[pixel.pixel * width : (pixel.pixel + 1) * width].sum()
