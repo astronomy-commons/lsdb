@@ -474,7 +474,6 @@ def test_crossmatch_stream_star_outer(monkeypatch, anchor_order, right_order, pi
     # By default only the anchor's data coverage is kept, which excludes 12, 14 and 23
     unmatched_in_pixels = [[-1, -1, 23], [-1, 12, -1], [-1, 14, -1]] if pixel_tree else []
     assert _id_rows(chunk) == unmatched_in_pixels + anchor_rows
-    assert stream._star is not None
     assert list(chunk.columns) == list(stream._star.assembly.meta.columns)
     assert chunk.dtypes.equals(stream._star.assembly.meta.dtypes)
     anchored = chunk["id"].notna()
@@ -524,12 +523,12 @@ def test_crossmatch_stream_star_skipped_right_catalog(monkeypatch):
     ]
 
 
-@pytest.mark.parametrize("pixel_tree", [False, True])
+@pytest.mark.parametrize(("how", "pixel_tree"), [("left", False), ("outer", False), ("outer", True)])
 @pytest.mark.parametrize(
     ("anchor_order", "right_orders"), [(4, (1, 1)), (1, (4, 4)), (3, (3, 3)), (2, (1, 4))]
 )
 def test_crossmatch_stream_star_matches_pairwise_crossmatches(
-    monkeypatch, anchor_order, right_orders, pixel_tree
+    monkeypatch, anchor_order, right_orders, how, pixel_tree
 ):
     """Across many partitions, every anchor row and unmatched right row is emitted once."""
     monkeypatch.setattr(
@@ -551,7 +550,7 @@ def test_crossmatch_stream_star_matches_pairwise_crossmatches(
         rights.append(_star_catalog(zip(range(first_id, first_id + 400), ras, decs), name, right_order))
     stream = CrossMatchStream(
         anchor,
-        *({"other": right, "how": "outer", "radius_arcsec": STAR_RADIUS} for right in rights),
+        *({"other": right, "how": how, "radius_arcsec": STAR_RADIUS} for right in rights),
         seed=1,
         count_fraction_threshold=0.0,
         footprint=_pixel_tree(anchor) if pixel_tree else None,
@@ -561,32 +560,52 @@ def test_crossmatch_stream_star_matches_pairwise_crossmatches(
     anchored = chunk[chunk["id"].notna()]
     assert sorted(anchored["id"]) == list(range(300))
     for right in rights:
-        # The full outer crossmatch, restricted to the anchor's pixels by HEALPix directly,
-        # or by default to the anchor's data MOC
-        union = pd.DataFrame(
+        # The pairwise crossmatch. An outer one is restricted to the anchor's pixels by
+        # HEALPix directly, or by default to the anchor's data MOC.
+        pairwise = pd.DataFrame(
             anchor.crossmatch(
                 right,
-                how="outer",
+                how=how,
                 radius_arcsec=STAR_RADIUS,
                 suffixes=("", f"_{right.name}"),
                 suffix_method="all_columns",
             ).compute()
         )
-        if pixel_tree:
-            inside = _in_pixels(union["_ra"], union["_dec"], anchor.get_healpix_pixels())
-        else:
-            inside = anchor.hc_structure.moc.contains_lonlat(
-                union["_ra"].to_numpy(dtype=float) * u.deg, union["_dec"].to_numpy(dtype=float) * u.deg
-            )
-        assert not inside.all()
-        pairwise = union[inside]
+        if how == "outer":
+            if pixel_tree:
+                inside = _in_pixels(pairwise["_ra"], pairwise["_dec"], anchor.get_healpix_pixels())
+            else:
+                inside = anchor.hc_structure.moc.contains_lonlat(
+                    pairwise["_ra"].to_numpy(dtype=float) * u.deg,
+                    pairwise["_dec"].to_numpy(dtype=float) * u.deg,
+                )
+            assert not inside.all()
+            pairwise = pairwise[inside]
         id_column = f"id_{right.name}"
         expected = pairwise[pairwise["id"].notna()].set_index("id")[id_column].sort_index()
         assert anchored.set_index("id")[id_column].sort_index().equals(expected)
         right_only = chunk[chunk[id_column].notna() & chunk["id"].isna()][id_column]
         expected_only = pairwise[pairwise["id"].isna()][id_column]
-        assert len(expected_only) > 0
+        assert (len(expected_only) > 0) == (how == "outer")
         assert sorted(right_only) == sorted(expected_only)
+
+
+def test_crossmatch_stream_left_keeps_anchor_rows_without_right_coverage(monkeypatch):
+    """Left-only streams keep anchor pixels a right catalog does not cover, and add no _ra/_dec."""
+    monkeypatch.setattr(
+        "lsdb.streams.catalog_streams.read_skymap",
+        lambda hc_catalog, path: np.ones(hp.order2npix(5)),
+    )
+    anchor = _star_catalog([(1, 10.0, 10.0), (2, 200.0, 40.0)], "A", 2)
+    right = _star_catalog([(11, 10.0005, 10.0)], "B", 2)
+    stream = CrossMatchStream(
+        anchor, {"other": right, "radius_arcsec": STAR_RADIUS}, seed=1, count_fraction_threshold=0.0
+    )
+    chunk = _stream_all_pixels(stream)
+
+    assert _id_rows(chunk, columns=("id", "id_B")) == [[1, 11], [2, -1]]
+    assert list(chunk.columns) == list(anchor.columns) + [f"{column}_B" for column in right.columns]
+    assert chunk.index.name == anchor.meta.index.name
 
 
 def test_crossmatch_stream_star_reads_anchor_once_per_pixel(monkeypatch):
@@ -598,7 +617,6 @@ def test_crossmatch_stream_star_reads_anchor_once_per_pixel(monkeypatch):
         seed=1,
         count_fraction_threshold=0.0,
     )
-    assert stream._star is not None
     pixel = stream._pixels[0]
     right_parts = [catalog_streams._partition_delayeds(result, pixel) for result in stream._star.results]
     task = delayed(list)(right_parts)
@@ -616,7 +634,6 @@ def test_crossmatch_stream_star_never_reads_right_only_sky(monkeypatch):
         {"other": right, "how": "outer", "radius_arcsec": STAR_RADIUS} for right in (right_b, right_c)
     ]
     stream = CrossMatchStream(anchor, *star_kwargs, seed=1, count_fraction_threshold=0.0)
-    assert stream._star is not None
     parts = [
         catalog_streams._partition_delayeds(result, pixel)
         for pixel in stream._pixels

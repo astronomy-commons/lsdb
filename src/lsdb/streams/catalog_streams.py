@@ -276,7 +276,10 @@ class CatalogIterator(Iterator[pd.DataFrame]):
 
 
 class CrossMatchStream(InfiniteStream):
-    """Stream left crossmatches, optionally skipping low-information right catalogs.
+    """Stream an anchor catalog crossmatched with each of several right catalogs.
+
+    Each right catalog is left- or outer-joined to the anchor, and may be skipped
+    where it carries little information.
 
     Parameters
     ----------
@@ -323,15 +326,17 @@ class CrossMatchStream(InfiniteStream):
     computation. It requires on-disk right catalogs and raises an error for
     missing selected columns or unusable metadata.
 
-    Every right catalog is matched against the anchor's rows only (a star around
-    the anchor), never against another right catalog. With ``how="outer"``, a right
-    catalog's rows that match no anchor row are also emitted, but only inside
-    ``footprint``: the outer crossmatch is followed by ``moc_search(footprint)``, which
-    drops pixels outside it before anything is read. Each such row has its own
-    ``_ra``/``_dec`` and null anchor and other right-catalog columns. Anchor rows carry
-    the anchor's coordinates in ``_ra``/``_dec``. Outer right catalogs need margin
-    caches on the anchor and the right catalog (see ``Catalog.crossmatch``). An object
-    detected by two right catalogs but not by the anchor is emitted as two separate rows.
+    Every right catalog is crossmatched with the anchor separately (a star around
+    the anchor), never with another right catalog, and its matches are merged onto
+    the anchor rows. With ``how="outer"``, a right catalog's rows that match no anchor
+    row are also emitted, but only inside ``footprint``: the outer crossmatch is
+    followed by ``moc_search(footprint)``, which drops pixels outside it before
+    anything is read. Each such row has null anchor and other right-catalog columns.
+    With any outer right catalog the stream adds ``_ra``/``_dec`` columns: the
+    anchor's coordinates for anchor rows, and the right catalog's own for unmatched
+    right rows. Outer right catalogs need margin caches on the anchor and the right
+    catalog (see ``Catalog.crossmatch``). An object detected by two right catalogs but
+    not by the anchor is emitted as two separate rows.
 
     Examples
     --------
@@ -367,13 +372,10 @@ class CrossMatchStream(InfiniteStream):
 
         all_kwargs = []
         self.compression_filters: list[tuple[list[str], float] | None] = []
-        self.right_how: list[str] = []
         for kwargs in crossmatch_kwargs:
             new_kwargs = kwargs.copy()
-            how = new_kwargs.pop("how", "left")
-            if how not in ("left", "outer"):
+            if new_kwargs.setdefault("how", "left") not in ("left", "outer"):
                 raise ValueError("CrossMatchStream supports how='left' or how='outer' for each right catalog")
-            self.right_how.append(how)
             columns = new_kwargs.pop("compression_columns", None)
             threshold = new_kwargs.pop("compression_ratio_threshold", None)
             if columns is None and threshold is None:
@@ -396,20 +398,12 @@ class CrossMatchStream(InfiniteStream):
                 self.compression_filters.append((columns.copy(), float(threshold)))
             new_kwargs["suffixes"] = ("", "_" + kwargs["other"].name)
             new_kwargs["suffix_method"] = "all_columns"
-            new_kwargs["how"] = "left"
             all_kwargs.append(new_kwargs)
         self.crossmatch_kwargs = all_kwargs
 
-        self.accumulative_meta = []
-        result_catalog = self.catalog
-        for right_catalog_kwargs in self.crossmatch_kwargs:
-            result_catalog = result_catalog.crossmatch(**right_catalog_kwargs).map_partitions(
-                lambda df: df.drop(columns=["_dist_arcsec"])
-            )
-            self.accumulative_meta.append(result_catalog.meta)
-
-        # Stream the crossmatch's aligned pixels, which can outnumber the anchor's partitions
-        self._pixels = result_catalog._operation.healpix_pixels
+        self._star = self._plan_star()
+        # Stream the crossmatches' aligned pixels, which can outnumber the anchor's partitions
+        self._pixels = self._star.pixels
         self.partitions_per_chunk = min(partitions_per_chunk, self.npartitions)
 
         if self.seed is None:
@@ -422,22 +416,16 @@ class CrossMatchStream(InfiniteStream):
             self.catalog, right_catalogs, count_fraction=count_fraction_threshold
         )
 
-        # With only left joins the chain above is already a star: each crossmatch
-        # matches against the anchor's coordinates. Outer joins need the star built
-        # explicitly, so that right-only rows are never matched to the next catalog.
-        self._star = self._plan_star() if "outer" in self.right_how else None
-        if self._star is not None:
-            self._pixels = self._star.pixels
-            self.partitions_per_chunk = min(partitions_per_chunk, self.npartitions)
-
     def _plan_star(self) -> "_StarPlan":
         """Crossmatch the anchor with each right catalog separately."""
         anchor = self.catalog.map_partitions(_number_anchor_rows)
         results = []
         right_columns = []
-        for kwargs, how in zip(self.crossmatch_kwargs, self.right_how, strict=True):
-            result = anchor.crossmatch(**{**kwargs, "how": how})
-            if how == "outer":
+        outer = []
+        for kwargs in self.crossmatch_kwargs:
+            result = anchor.crossmatch(**kwargs)
+            outer.append(kwargs["how"] == "outer")
+            if outer[-1]:
                 # An outer crossmatch covers both catalogs' sky. Its rows are placed by
                 # _ra/_dec (the anchor's coordinates for matched rows, the right catalog's
                 # own for unmatched ones), so this keeps unmatched right rows inside the
@@ -448,28 +436,28 @@ class CrossMatchStream(InfiniteStream):
             right_columns.append([f"{column}{suffix}" for column in kwargs["other"].columns])
 
         # Draw the finest pixels of all the crossmatches together. Each crossmatch keeps
-        # only the pixels near anchor data, at its own resolution, and emits its unmatched
-        # right rows anywhere in those pixels, so every one of its pixels must be drawn.
-        pixel_tree = results[0].hc_structure.pixel_tree
-        for result in results[1:]:
-            pixel_tree = align_trees(
-                pixel_tree, result.hc_structure.pixel_tree, alignment_type=PixelAlignmentType.OUTER
-            ).pixel_tree
+        # every anchor pixel with data, split at its own resolution, and an outer one emits
+        # its unmatched right rows anywhere in its pixels, so all of them must be drawn.
+        trees = [result.hc_structure.pixel_tree for result in results] or [anchor.hc_structure.pixel_tree]
+        pixel_tree = trees[0]
+        for tree in trees[1:]:
+            pixel_tree = align_trees(pixel_tree, tree, alignment_type=PixelAlignmentType.OUTER).pixel_tree
 
-        outer_meta = next(result.meta for result in results if "_ra" in result.meta.columns)
+        # Outer crossmatches add _ra/_dec, so that unmatched right rows have coordinates
+        coordinates = [result.meta[["_ra", "_dec"]] for result, is_outer in zip(results, outer) if is_outer]
         meta = pd.concat(
             [self.catalog.meta]
             + [result.meta[columns] for result, columns in zip(results, right_columns, strict=True)]
-            + [outer_meta[["_ra", "_dec"]]],
+            + coordinates[:1],
             axis=1,
         )
-        # The outer crossmatches above already required the anchor's coordinate columns
+        # The crossmatches above already required the anchor's coordinate columns
         catalog_info = self.catalog.hc_structure.catalog_info
         assembly = _StarAssembly(
             ra_column=cast(str, catalog_info.ra_column),
             dec_column=cast(str, catalog_info.dec_column),
             right_columns=right_columns,
-            outer=[how == "outer" for how in self.right_how],
+            outer=outer,
             meta=npd.NestedFrame(meta),
         )
         return _StarPlan(
@@ -506,65 +494,22 @@ class CrossMatchStream(InfiniteStream):
             return _FakeFuture(combined.compute())
         return cast(Future, self.client.compute(combined))
 
-    def _submit_star_partitions(self, partitions: np.ndarray) -> Future | _FakeFuture:
+    def submit_next_partitions(self, partitions: np.ndarray) -> Future | _FakeFuture:
         """Submit star crossmatches of the anchor at the given pixels."""
-        star = cast(_StarPlan, self._star)
         selected = []
         for pixel_index in partitions:
             pixel = self._pixels[pixel_index]
             right_parts = [
                 _partition_delayeds(result, pixel) if do_crossmatch else None
-                for result, do_crossmatch in zip(star.results, self._right_catalog_mask(pixel), strict=True)
+                for result, do_crossmatch in zip(
+                    self._star.results, self._right_catalog_mask(pixel), strict=True
+                )
             ]
-            anchor_parts = _partition_delayeds(star.anchor, pixel)
-            selected.append(delayed(_assemble_star_pixel)(pixel, anchor_parts, right_parts, star.assembly))
-        return self._compute(selected, star.assembly.meta)
-
-    def submit_next_partitions(self, partitions: np.ndarray) -> Future | _FakeFuture:
-        """Submit the next set of partitions for computation."""
-        if self._star is not None:
-            return self._submit_star_partitions(partitions)
-
-        # The crossmatch may leave no pixels at all, when the pixel does not overlap
-        # with one of the right catalogs, so we use whatever keys the build has
-        # instead of looking the left pixel up.
-        def _to_delayed(operation):
-            build = operation.build()
-            return [Delayed(key, build.graph) for key in build.keys]
-
-        selected = []
-
-        for pixel_index in partitions:
-            pixel = self._pixels[pixel_index]
-
-            def skipped_crossmatch(
-                partition: npd.NestedFrame, *, meta_to_match: npd.NestedFrame
-            ) -> npd.NestedFrame:
-                old_n_columns = partition.shape[1]
-                new_columns = meta_to_match.columns[old_n_columns:]
-                for column in new_columns:
-                    partition[column] = pd.Series(index=partition.index, dtype=meta_to_match.dtypes[column])
-                return partition
-
-            result_catalog = self.catalog.search(PixelSearch(pixel, fine=True))
-            for cross_match_kwargs, do_crossmatch, meta_to_match in zip(
-                self.crossmatch_kwargs,
-                self._right_catalog_mask(pixel),
-                self.accumulative_meta,
-                strict=True,
-            ):
-                if do_crossmatch:
-                    result_catalog = result_catalog.crossmatch(**cross_match_kwargs).map_partitions(
-                        lambda df: df.drop(columns=["_dist_arcsec"])
-                    )
-                else:
-                    result_catalog = result_catalog.map_partitions(
-                        skipped_crossmatch, meta_to_match=meta_to_match
-                    )
-
-            selected.extend(_to_delayed(result_catalog._operation))  # pylint: disable=protected-access
-
-        return self._compute(selected, self.accumulative_meta[-1])
+            anchor_parts = _partition_delayeds(self._star.anchor, pixel)
+            selected.append(
+                delayed(_assemble_star_pixel)(pixel, anchor_parts, right_parts, self._star.assembly)
+            )
+        return self._compute(selected, self._star.assembly.meta)
 
 
 def _restrict_to_footprint(catalog: Catalog, footprint: MOC | None) -> tuple[Catalog, MOC]:
@@ -664,8 +609,9 @@ def _assemble_star_pixel(
         rows = rows.join(matches, on=_ANCHOR_ROW)
         if outer:
             unmatched.append(_rows_in_pixel(result.loc[~anchored], pixel, "_ra", "_dec"))
-    rows["_ra"] = rows[assembly.ra_column]
-    rows["_dec"] = rows[assembly.dec_column]
+    if any(assembly.outer):
+        rows["_ra"] = rows[assembly.ra_column]
+        rows["_dec"] = rows[assembly.dec_column]
     blocks = [_conform(block, assembly.meta) for block in [rows, *unmatched]]
     return npd.NestedFrame(pd.concat(blocks))
 
