@@ -474,8 +474,8 @@ def test_crossmatch_stream_star_outer(monkeypatch, anchor_order, right_order, pi
     # By default only the anchor's data coverage is kept, which excludes 12, 14 and 23
     unmatched_in_pixels = [[-1, -1, 23], [-1, 12, -1], [-1, 14, -1]] if pixel_tree else []
     assert _id_rows(chunk) == unmatched_in_pixels + anchor_rows
-    assert list(chunk.columns) == list(stream._star.assembly.meta.columns)
-    assert chunk.dtypes.equals(stream._star.assembly.meta.dtypes)
+    assert list(chunk.columns) == list(stream._assembly.meta.columns)
+    assert chunk.dtypes.equals(stream._assembly.meta.dtypes)
     anchored = chunk["id"].notna()
     assert chunk.loc[anchored, "_ra"].tolist() == chunk.loc[anchored, "ra"].tolist()
     b_only = chunk["id_B"].notna() & ~anchored
@@ -618,9 +618,9 @@ def test_crossmatch_stream_star_reads_anchor_once_per_pixel(monkeypatch):
         count_fraction_threshold=0.0,
     )
     pixel = stream._pixels[0]
-    right_parts = [catalog_streams._partition_delayeds(result, pixel) for result in stream._star.results]
+    right_parts = [catalog_streams._partition_delayeds(result, pixel) for result in stream._results]
     task = delayed(list)(right_parts)
-    anchor_key = stream._star.anchor._operation.key_name
+    anchor_key = stream._anchor._operation.key_name
 
     anchor_tasks = [
         key for key in dict(task.__dask_graph__()) if isinstance(key, tuple) and key[0] == anchor_key
@@ -637,7 +637,7 @@ def test_crossmatch_stream_star_never_reads_right_only_sky(monkeypatch):
     parts = [
         catalog_streams._partition_delayeds(result, pixel)
         for pixel in stream._pixels
-        for result in stream._star.results
+        for result in stream._results
     ]
     stream_graph = set(dict(delayed(list)(parts).__dask_graph__()))
 
