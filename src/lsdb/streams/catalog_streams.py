@@ -16,6 +16,7 @@ from hats.pixel_math.healpix_pixel import HealpixPixel
 from hats.pixel_math.spatial_index import compute_spatial_index, spatial_index_to_healpix
 from hats.pixel_tree.pixel_alignment import align_trees
 from hats.pixel_tree.pixel_alignment_types import PixelAlignmentType
+from mocpy import MOC
 from upath import UPath
 
 from lsdb import Catalog, PixelSearch
@@ -297,6 +298,13 @@ class CrossMatchStream(InfiniteStream):
         Random seed for partition and row shuffling.
     count_fraction_threshold : float
         Minimum estimated match coverage required to crossmatch a right catalog.
+    footprint : mocpy.MOC or None, default None
+        Sky region the stream covers, clipped to the anchor's pixel tree. None uses
+        the anchor's data coverage (``anchor.hc_structure.moc``, or its pixel tree if
+        it has no MOC), so every anchor row is kept and unmatched right rows come only
+        from sky where the anchor has data. A given MOC also restricts the anchor; pass
+        ``anchor.hc_structure.pixel_tree.to_moc()`` to emit unmatched right rows
+        anywhere in the anchor's pixels.
 
     Notes
     -----
@@ -317,9 +325,9 @@ class CrossMatchStream(InfiniteStream):
 
     Every right catalog is matched against the anchor's rows only (a star around
     the anchor), never against another right catalog. With ``how="outer"``, a right
-    catalog's rows that match no anchor row are also emitted, but only from the sky
-    its crossmatch already reads: the anchor's pixels, kept where the anchor has data
-    (``outer_footprint="left"`` in ``Catalog.crossmatch``). Each such row has its own
+    catalog's rows that match no anchor row are also emitted, but only inside
+    ``footprint``: the outer crossmatch is followed by ``moc_search(footprint)``, which
+    drops pixels outside it before anything is read. Each such row has its own
     ``_ra``/``_dec`` and null anchor and other right-catalog columns. Anchor rows carry
     the anchor's coordinates in ``_ra``/``_dec``. Outer right catalogs need margin
     caches on the anchor and the right catalog (see ``Catalog.crossmatch``). An object
@@ -347,7 +355,9 @@ class CrossMatchStream(InfiniteStream):
         partitions_per_chunk: int = 1,
         seed: int | None = None,
         count_fraction_threshold: float,
+        footprint: MOC | None = None,
     ) -> None:
+        catalog, self.footprint = _restrict_to_footprint(catalog, footprint)
         super().__init__(
             catalog,
             client=client,
@@ -426,10 +436,14 @@ class CrossMatchStream(InfiniteStream):
         results = []
         right_columns = []
         for kwargs, how in zip(self.crossmatch_kwargs, self.right_how, strict=True):
-            star_kwargs = {**kwargs, "how": how}
+            result = anchor.crossmatch(**{**kwargs, "how": how})
             if how == "outer":
-                star_kwargs["outer_footprint"] = "left"
-            results.append(anchor.crossmatch(**star_kwargs))
+                # An outer crossmatch covers both catalogs' sky. Its rows are placed by
+                # _ra/_dec (the anchor's coordinates for matched rows, the right catalog's
+                # own for unmatched ones), so this keeps unmatched right rows inside the
+                # footprint and drops right-only pixels before they are read.
+                result = result.moc_search(self.footprint)
+            results.append(result)
             suffix = kwargs["suffixes"][1]
             right_columns.append([f"{column}{suffix}" for column in kwargs["other"].columns])
 
@@ -551,6 +565,20 @@ class CrossMatchStream(InfiniteStream):
             selected.extend(_to_delayed(result_catalog._operation))  # pylint: disable=protected-access
 
         return self._compute(selected, self.accumulative_meta[-1])
+
+
+def _restrict_to_footprint(catalog: Catalog, footprint: MOC | None) -> tuple[Catalog, MOC]:
+    """The anchor within ``footprint``, and ``footprint`` clipped to the anchor's pixel tree.
+
+    Clipping keeps every pixel the stream draws on anchor partitions. With no footprint,
+    the footprint is the anchor's data coverage and the anchor is unchanged: its rows
+    all lie in its own MOC."""
+    pixel_tree = catalog.hc_structure.pixel_tree.to_moc()
+    if footprint is None:
+        data_coverage = catalog.hc_structure.moc
+        return catalog, pixel_tree if data_coverage is None else data_coverage.intersection(pixel_tree)
+    footprint = footprint.intersection(pixel_tree)
+    return catalog.moc_search(footprint), footprint
 
 
 _ANCHOR_ROW = "_lsdb_anchor_row"
