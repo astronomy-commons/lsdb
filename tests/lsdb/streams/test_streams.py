@@ -559,3 +559,44 @@ def test_crossmatch_stream_rejects_bad_arguments(options, match):
     anchor.margin = None  # only reached once the other arguments are valid
     with pytest.raises(ValueError, match=match):
         CrossMatchStream(anchor, {"other": right, **options}, count_fraction_threshold=0.0)
+
+
+def test_crossmatch_stream_scores_pixels_finer_than_skymaps(
+    small_sky_order1_catalog, test_data_dir, small_sky_order3_source_margin_catalog
+):
+    """With real order-1 skymaps, pixels split by the order-3 right catalog take their ancestor's score."""
+    right = lsdb.open_catalog(test_data_dir / "small_sky_order3_source")
+    right.margin = small_sky_order3_source_margin_catalog
+    stream = CrossMatchStream(small_sky_order1_catalog, {"other": right}, count_fraction_threshold=0.1)
+    fine_pixels = [pixel for pixel in stream._pixels if pixel.order > 1]
+    assert fine_pixels
+
+    counts = stream.mask_generator
+    for pixel in fine_pixels:
+        ancestor = pixel.convert_to_lower_order(pixel.order - 1)
+        assert counts.get_pixel_catalog_mask(pixel) == counts.get_pixel_catalog_mask(ancestor)
+    assert len(_stream_all_pixels(stream)) == len(small_sky_order1_catalog)
+
+
+@pytest.mark.usefixtures("fake_skymaps")
+def test_crossmatch_stream_right_suffixes():
+    """The same right catalog twice needs distinct suffixes, which the stream keeps."""
+    anchor, right, _ = _star_catalogs()
+    # Anchor rows 1 and 4 are 1.8" and 3.6" from B's rows 11 and 15
+    near, far = {"other": right, "radius_arcsec": 2.0}, {"other": right, "radius_arcsec": STAR_RADIUS}
+    with pytest.raises(ValueError, match="id_B.*distinct suffixes"):
+        CrossMatchStream(anchor, near, far, count_fraction_threshold=0.0)
+
+    stream = CrossMatchStream(
+        anchor,
+        {**near, "suffixes": ("", "_near")},
+        {**far, "suffixes": ("_ignored", "_far")},
+        count_fraction_threshold=0.0,
+    )
+    chunk = _stream_all_pixels(stream)
+    assert _id_rows(chunk, ("id", "id_near", "id_far")) == [
+        [1, 11, 11],
+        [2, -1, -1],
+        [3, -1, -1],
+        [4, -1, 15],
+    ]
