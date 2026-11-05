@@ -248,7 +248,6 @@ class CatalogIterator(Iterator[pd.DataFrame]):
         if self._empty or self.future is None:
             raise StopIteration("All partitions have been processed")
 
-        # submitting the next partition request before waiting for the result speeds things up ~10%
         if len(self.partitions_left) > 0:
             next_future = self.iterable.submit_next_partitions(self._get_next_partitions())
         else:

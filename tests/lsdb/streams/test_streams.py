@@ -1,4 +1,4 @@
-from typing import Any, cast
+from typing import cast
 
 import astropy.units as u
 import hats.pixel_math.healpix_shim as hp
@@ -141,7 +141,7 @@ def test_stream_submits_next_chunk_before_waiting_for_result():
             return self.inner.result()
 
     class RecordingStream(CatalogStream):
-        def submit_next_partitions(self, partitions) -> Any:
+        def submit_next_partitions(self, partitions):
             events.append("submit")
             return _LoggingFuture(super().submit_next_partitions(partitions))
 
