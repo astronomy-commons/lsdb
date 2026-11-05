@@ -91,3 +91,27 @@ def test_stream_from_search_filter():
         if i > 0:
             break
         print(chunk)
+
+
+def test_stream_submits_next_chunk_before_waiting_for_result():
+    """Chunk N+1 is submitted before chunk N's result is read, so their work overlaps."""
+    cat = lsdb.generate_catalog(100, 2, lowest_order=4, ra_range=(15.0, 25.0), dec_range=(34.0, 44.0), seed=1)
+    events = []
+
+    class _LoggingFuture:  # pylint: disable=too-few-public-methods
+        def __init__(self, inner):
+            self.inner = inner
+
+        def result(self):
+            events.append("read")
+            return self.inner.result()
+
+    class RecordingStream(CatalogStream):
+        def submit_next_partitions(self, partitions):
+            events.append("submit")
+            return _LoggingFuture(super().submit_next_partitions(partitions))
+
+    cat_iter = iter(RecordingStream(catalog=cat, seed=1, partitions_per_chunk=2))
+    assert events == ["submit"]  # the first chunk is pre-submitted
+    next(cat_iter)
+    assert events == ["submit", "submit", "read"]
