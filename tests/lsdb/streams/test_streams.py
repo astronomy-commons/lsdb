@@ -1,8 +1,21 @@
+from typing import cast
+
+import astropy.units as u
+import hats.pixel_math.healpix_shim as hp
 import numpy as np
+import pandas as pd
+import pyarrow as pa  # type: ignore[import-untyped]
+import pyarrow.parquet as pq  # type: ignore[import-untyped]
 import pytest
+from dask.delayed import delayed
+from hats.io.paths import pixel_catalog_file
+from hats.pixel_math.healpix_pixel import HealpixPixel
+from mocpy import MOC
+from upath import UPath
 
 import lsdb
-from lsdb.streams import CatalogStream, InfiniteStream
+from lsdb.streams import CatalogStream, InfiniteStream, catalog_streams
+from lsdb.streams.catalog_streams import CrossMatchStream, _get_compression_ratio
 
 
 def test_catalog_stream():
@@ -61,7 +74,7 @@ def test_invalid_catalog_input():
     with pytest.raises(
         ValueError, match="The provided catalog input type <class 'str'> is not a lsdb.Catalog object."
     ):
-        CatalogStream(catalog="not a catalog")
+        CatalogStream(catalog=cast(lsdb.Catalog, "not a catalog"))
 
 
 def test_rng_split():
@@ -93,6 +106,27 @@ def test_stream_from_search_filter():
         print(chunk)
 
 
+@pytest.fixture
+def fake_skymaps(monkeypatch):
+    """In-memory catalogs have no skymaps: estimate that every pixel fully matches."""
+    monkeypatch.setattr(catalog_streams, "read_skymap", lambda hc_catalog, path: np.ones(hp.order2npix(5)))
+
+
+@pytest.mark.usefixtures("fake_skymaps")
+def test_crossmatch_stream_draws_every_aligned_pixel():
+    """A finer right catalog splits anchor partitions; every aligned pixel is drawn."""
+    ras, decs = np.meshgrid(np.linspace(15.0, 25.0, 20), np.linspace(34.0, 44.0, 20))
+    df = pd.DataFrame({"ra": ras.ravel(), "dec": decs.ravel(), "id": np.arange(ras.size)})
+    left = lsdb.from_dataframe(df, lowest_order=3, highest_order=3, margin_threshold=30)
+    right = lsdb.from_dataframe(df, lowest_order=3, highest_order=5, partition_rows=25, margin_threshold=30)
+    stream = CrossMatchStream(left, {"other": right}, seed=1, count_fraction_threshold=0.0)
+    n_pixels = len(stream._pixels)
+    assert n_pixels > left.npartitions
+
+    cat_iter = iter(stream)
+    assert sorted(cat_iter.partitions_left) == list(range(n_pixels))
+
+
 def test_stream_submits_next_chunk_before_waiting_for_result():
     """Chunk N+1 is submitted before chunk N's result is read, so their work overlaps."""
     cat = lsdb.generate_catalog(100, 2, lowest_order=4, ra_range=(15.0, 25.0), dec_range=(34.0, 44.0), seed=1)
@@ -115,3 +149,539 @@ def test_stream_submits_next_chunk_before_waiting_for_result():
     assert events == ["submit"]  # the first chunk is pre-submitted
     next(cat_iter)
     assert events == ["submit", "submit", "read"]
+
+
+def test_compression_ratio_weights_columns_row_groups_and_source_pixels(
+    small_sky_order1_catalog, tmp_path, monkeypatch
+):
+    catalog = small_sky_order1_catalog
+    compressed_bytes = uncompressed_bytes = 0
+    chunk_ratios = []
+    for i, pixel in enumerate(catalog.get_healpix_pixels()):
+        size = 128 * (i + 1)
+        table = pa.table(
+            {
+                "flux": np.zeros(size),
+                "spectrum": np.random.default_rng(i).normal(size=size),
+                "ignored": np.arange(size),
+            }
+        )
+        path = tmp_path / f"{pixel.pixel}.parquet"
+        pq.write_table(
+            table, path, compression="gzip", use_dictionary=False, row_group_size=100, write_statistics=False
+        )
+        metadata = pq.read_metadata(path)
+        for row_group_index in range(metadata.num_row_groups):
+            row_group = metadata.row_group(row_group_index)
+            for column_index in (0, 1):
+                chunk = row_group.column(column_index)
+                compressed_bytes += chunk.total_compressed_size
+                uncompressed_bytes += chunk.total_uncompressed_size
+                chunk_ratios.append(chunk.total_compressed_size / chunk.total_uncompressed_size)
+
+    monkeypatch.setattr(
+        catalog.loading_config,
+        "path_generator",
+        lambda base, pixel, query, suffix: UPath(tmp_path / f"{pixel.pixel}.parquet"),
+    )
+
+    def no_data_read(*_args, **_kwargs):
+        pytest.fail("Scoring must not read science values or compute catalog data")
+
+    monkeypatch.setattr(pq, "read_table", no_data_read)
+    monkeypatch.setattr(lsdb.Catalog, "compute", no_data_read)
+    expected = compressed_bytes / uncompressed_bytes
+    assert expected != pytest.approx(np.mean(chunk_ratios))
+    assert _get_compression_ratio(catalog, HealpixPixel(0, 11), ["flux", "spectrum"]) == expected
+
+
+@pytest.mark.parametrize("catalog_name", ["small_sky", "small_sky_npix_alt_suffix", "small_sky_npix_as_dir"])
+def test_compression_ratio_finer_pixel_and_file_layouts(test_data_dir, catalog_name):
+    catalog = lsdb.open_catalog(test_data_dir / catalog_name)
+    parent = _get_compression_ratio(catalog, HealpixPixel(0, 11), ["ra_error", "dec_error"])
+    assert parent > 0
+    assert _get_compression_ratio(catalog, HealpixPixel(1, 44), ["ra_error", "dec_error"]) == parent
+    assert _get_compression_ratio(catalog, HealpixPixel(0, 0), ["ra_error"]) == 0
+
+
+def test_compression_ratio_nested_features(small_sky_with_nested_sources):
+    catalog = small_sky_with_nested_sources
+    pixel = catalog.get_healpix_pixels()[0]
+    metadata = pq.read_metadata(pixel_catalog_file(catalog.hc_structure.catalog_base_dir, pixel))
+    chunks = [
+        metadata.row_group(i).column(j)
+        for i in range(metadata.num_row_groups)
+        for j in range(metadata.num_columns)
+    ]
+    chunks = [chunk for chunk in chunks if chunk.path_in_schema.startswith("sources.")]
+    expected = sum(chunk.total_compressed_size for chunk in chunks) / sum(
+        chunk.total_uncompressed_size for chunk in chunks
+    )
+    assert _get_compression_ratio(catalog, pixel, ["sources"]) == expected
+    subcolumns = catalog.meta.get_subcolumns()
+    assert _get_compression_ratio(catalog, pixel, subcolumns) == expected
+    # Selecting a group and its subcolumns must not count chunks twice.
+    assert _get_compression_ratio(catalog, pixel, ["sources", *subcolumns]) == expected
+
+
+def test_compression_ratio_missing_columns(small_sky_catalog):
+    with pytest.raises(ValueError, match="missing.*missing from footer"):
+        _get_compression_ratio(small_sky_catalog, HealpixPixel(0, 11), ["ra_error", "missing"])
+
+
+@pytest.mark.parametrize(
+    "threshold, coverage, keep", [(0, 0, True), (10, 0, False), (0, 2, False), (None, 0, True)]
+)
+def test_crossmatch_stream_compression_filter(
+    small_sky_catalog,
+    small_sky_order1_catalog,
+    small_sky_order1_margin_1deg_catalog,
+    monkeypatch,
+    threshold,
+    coverage,
+    keep,
+):
+    right = small_sky_order1_catalog
+    right.margin = small_sky_order1_margin_1deg_catalog
+    kwargs = {"other": right}
+    if threshold is not None:
+        kwargs.update(compression_columns=["ra_error", "dec_error"], compression_ratio_threshold=threshold)
+    original_kwargs = kwargs.copy()
+    stream = CrossMatchStream(small_sky_catalog, kwargs, count_fraction_threshold=coverage)
+    assert kwargs == original_kwargs
+    if coverage > 1 or threshold is None:
+        monkeypatch.setattr(
+            catalog_streams,
+            "_get_compression_ratio",
+            lambda *args: pytest.fail("Disabled/coverage-rejected filters must not read footers"),
+        )
+    chunk = stream.submit_next_partitions(np.arange(len(stream._pixels))).result()
+    assert len(chunk) == len(small_sky_catalog)
+    assert chunk["id"].notna().all()
+    assert chunk[f"id_{right.name}"].notna().sum() == (len(chunk) if keep else 0)
+
+
+def test_crossmatch_stream_per_catalog_thresholds_are_inclusive(
+    small_sky_catalog,
+    small_sky_order1_catalog,
+    small_sky_order1_margin_1deg_catalog,
+    small_sky_xmatch_with_margin,
+    monkeypatch,
+):
+    right = small_sky_order1_catalog
+    right.margin = small_sky_order1_margin_1deg_catalog
+    monkeypatch.setattr(catalog_streams, "_get_compression_ratio", lambda *args: 0.5)
+    stream = CrossMatchStream(
+        small_sky_catalog,
+        {"other": right, "compression_columns": ["ra_error"], "compression_ratio_threshold": 0.5},
+        {
+            "other": small_sky_xmatch_with_margin,
+            "compression_columns": ["ra"],
+            "compression_ratio_threshold": 0.51,
+        },
+        count_fraction_threshold=0,
+    )
+    chunk = stream.submit_next_partitions(np.arange(len(stream._pixels))).result()
+    assert len(chunk) == len(small_sky_catalog)
+    assert chunk[f"id_{right.name}"].notna().all()
+    assert chunk[f"id_{small_sky_xmatch_with_margin.name}"].isna().all()
+
+
+def test_compression_ratio_empty_metadata(small_sky_catalog, tmp_path, monkeypatch):
+    path = UPath(tmp_path / "empty.parquet")
+    pq.write_metadata(pa.schema([("ra_error", pa.int64())]), path.path)
+    monkeypatch.setattr(small_sky_catalog.loading_config, "path_generator", lambda *args: path)
+    with pytest.raises(ValueError, match="footer metadata"):
+        _get_compression_ratio(small_sky_catalog, HealpixPixel(0, 11), ["ra_error"])
+
+
+STAR_RADIUS = 10.0
+
+
+def _star_catalog(rows, name, order):
+    df = pd.DataFrame(rows, columns=["id", "ra", "dec"])
+    return lsdb.from_dataframe(
+        df, catalog_name=name, lowest_order=order, highest_order=order, margin_threshold=60
+    )
+
+
+def _star_catalogs(anchor_order=2, right_order=2):
+    """An anchor and two right catalogs covering every star-mode case.
+
+    Anchor row 1 matches both right catalogs, row 2 only C, row 3 neither. B and C
+    each have a row unmatched inside the anchor's pixels (12, 23) and one outside
+    them (13, 24); B's row 14 and C's row 23 sit at the same position, with no anchor.
+    Rows 12, 14 and 23 lie outside the anchor's order-10 data MOC. Anchor row 4 and
+    B's row 15 straddle an order-2 pixel boundary, so they match across it.
+    """
+    anchor = _star_catalog(
+        [(1, 10.0, 10.0), (2, 10.5, 10.0), (3, 11.0, 10.0), (4, 0.0, 0.0)], "A", anchor_order
+    )
+    right_b = _star_catalog(
+        [(11, 10.0005, 10.0), (12, 10.3, 10.0), (13, 120.0, -30.0), (14, 10.8, 10.0), (15, 0.001, 0.0)],
+        "B",
+        right_order,
+    )
+    right_c = _star_catalog(
+        [(21, 10.5005, 10.0), (22, 10.0007, 10.0), (23, 10.8, 10.0), (24, 200.0, 40.0)], "C", right_order
+    )
+    return anchor, right_b, right_c
+
+
+def _stream_all_pixels(stream):
+    return stream.submit_next_partitions(np.arange(stream.npartitions)).result()
+
+
+def _id_rows(frame, columns=("id", "id_B", "id_C")):
+    return sorted(frame[list(columns)].astype("Int64").fillna(-1).values.tolist())
+
+
+def _in_pixels(ra, dec, pixels):
+    """Whether each coordinate falls in one of ``pixels``, from HEALPix directly."""
+    ra, dec = np.asarray(ra, dtype=float), np.asarray(dec, dtype=float)
+    inside = np.zeros(len(ra), dtype=bool)
+    for order in {pixel.order for pixel in pixels}:
+        indices = [pixel.pixel for pixel in pixels if pixel.order == order]
+        inside |= np.isin(hp.radec2pix(order, ra, dec), indices)
+    return inside
+
+
+def _pixel_tree(catalog):
+    return catalog.hc_structure.pixel_tree.to_moc()
+
+
+ANCHOR_ROWS = [[1, 11, 22], [2, -1, 21], [3, -1, -1], [4, 15, -1]]
+UNMATCHED_IN_PIXELS = [[-1, -1, 23], [-1, 12, -1], [-1, 14, -1]]
+CONE = MOC.from_cone(lon=10.0 * u.deg, lat=10.0 * u.deg, radius=0.35 * u.deg, max_depth=12)
+
+
+@pytest.mark.usefixtures("fake_skymaps")
+@pytest.mark.parametrize(
+    ("orders", "hows", "footprint", "mask", "expected"),
+    [
+        # By default only the anchor's data MOC is kept, which excludes 12, 14 and 23
+        *(((orders, ("outer", "outer"), None, None, ANCHOR_ROWS)) for orders in ((2, 2), (4, 1), (1, 4))),
+        *(
+            ((orders, ("outer", "outer"), "pixel_tree", None, UNMATCHED_IN_PIXELS + ANCHOR_ROWS))
+            for orders in ((2, 2), (4, 1), (1, 4))
+        ),
+        # A given footprint is clipped to the anchor's pixels, and also restricts the anchor
+        ((2, 2), ("outer", "outer"), MOC.from_string("0/0-11"), None, UNMATCHED_IN_PIXELS + ANCHOR_ROWS),
+        ((2, 2), ("outer", "outer"), CONE, None, [[-1, 12, -1], [1, 11, 22]]),
+        # A left right catalog adds no rows; a skipped one adds no matches
+        ((2, 2), ("outer", "left"), "pixel_tree", None, [[-1, 12, -1], [-1, 14, -1], *ANCHOR_ROWS]),
+        (
+            (2, 2),
+            ("outer", "outer"),
+            "pixel_tree",
+            [True, False],
+            [[-1, 12, -1], [-1, 14, -1], [1, 11, -1], [2, -1, -1], [3, -1, -1], [4, 15, -1]],
+        ),
+    ],
+)
+def test_crossmatch_stream_star_rows(monkeypatch, orders, hows, footprint, mask, expected):
+    anchor, right_b, right_c = _star_catalogs(*orders)
+    stream = CrossMatchStream(
+        anchor,
+        *(
+            {"other": right, "how": how, "radius_arcsec": STAR_RADIUS}
+            for right, how in zip((right_b, right_c), hows, strict=True)
+        ),
+        seed=1,
+        count_fraction_threshold=0.0,
+        footprint=_pixel_tree(anchor) if isinstance(footprint, str) else footprint,
+    )
+    if mask is not None:
+        monkeypatch.setattr(stream, "_right_catalog_mask", lambda pixel: mask)
+    chunk = _stream_all_pixels(stream)
+
+    assert _id_rows(chunk) == sorted(expected)
+    assert list(chunk.columns) == list(stream._assembly.meta.columns)
+    assert chunk.dtypes.equals(stream._assembly.meta.dtypes)
+    anchored, b_only = chunk["id"].notna(), chunk["id_B"].notna() & chunk["id"].isna()
+    assert chunk.loc[anchored, "_ra"].tolist() == chunk.loc[anchored, "ra"].tolist()
+    assert chunk.loc[b_only, "_ra"].tolist() == chunk.loc[b_only, "ra_B"].tolist()
+
+
+@pytest.mark.usefixtures("fake_skymaps")
+def test_crossmatch_stream_left_join():
+    """Left-only streams keep anchor pixels no right catalog covers, and add no _ra/_dec."""
+    anchor = _star_catalog([(1, 10.0, 10.0), (2, 200.0, 40.0)], "A", 2)
+    right = _star_catalog([(11, 10.0005, 10.0)], "B", 2)
+    stream = CrossMatchStream(
+        anchor,
+        {"other": right, "radius_arcsec": STAR_RADIUS},
+        partitions_per_chunk=2,
+        seed=1,
+        count_fraction_threshold=0.0,
+    )
+    chunk = next(iter(stream))
+
+    assert _id_rows(chunk, columns=("id", "id_B")) == [[1, 11], [2, -1]]
+    assert list(chunk.columns) == list(anchor.columns) + [f"{column}_B" for column in right.columns]
+    assert chunk.index.name == anchor.meta.index.name
+
+
+@pytest.mark.usefixtures("fake_skymaps")
+@pytest.mark.parametrize(("how", "pixel_tree"), [("left", False), ("outer", False), ("outer", True)])
+@pytest.mark.parametrize(("anchor_order", "right_orders"), [(4, (1, 1)), (1, (4, 4)), (2, (1, 4))])
+def test_crossmatch_stream_star_matches_pairwise_crossmatches(anchor_order, right_orders, how, pixel_tree):
+    """Across many partitions, every anchor row and unmatched right row is emitted once."""
+    rng = np.random.default_rng(0)
+    anchor_ra, anchor_dec = rng.uniform(10, 30, 300), rng.uniform(-10, 10, 300)
+    anchor = _star_catalog(zip(range(300), anchor_ra, anchor_dec), "A", anchor_order)
+    rights = []
+    for name, first_id, right_order in (("B", 1000, right_orders[0]), ("C", 2000, right_orders[1])):
+        matched = rng.choice(300, 100, replace=False)
+        # 36" from an anchor row: unmatched, but often inside the anchor's data MOC
+        near_miss = rng.choice(300, 100, replace=False)
+        ras = np.concatenate(
+            [anchor_ra[matched] + 0.001, anchor_ra[near_miss] + 0.01, rng.uniform(0, 40, 200)]
+        )
+        decs = np.concatenate([anchor_dec[matched], anchor_dec[near_miss], rng.uniform(-20, 20, 200)])
+        rights.append(_star_catalog(zip(range(first_id, first_id + 400), ras, decs), name, right_order))
+    stream = CrossMatchStream(
+        anchor,
+        *({"other": right, "how": how, "radius_arcsec": STAR_RADIUS} for right in rights),
+        seed=1,
+        count_fraction_threshold=0.0,
+        footprint=_pixel_tree(anchor) if pixel_tree else None,
+    )
+    chunk = pd.DataFrame(_stream_all_pixels(stream))
+
+    anchored = chunk[chunk["id"].notna()]
+    assert sorted(anchored["id"]) == list(range(300))
+    for right in rights:
+        # The pairwise crossmatch. An outer one is restricted to the anchor's pixels by
+        # HEALPix directly, or by default to the anchor's data MOC.
+        pairwise = pd.DataFrame(
+            anchor.crossmatch(
+                right,
+                how=how,
+                radius_arcsec=STAR_RADIUS,
+                suffixes=("", f"_{right.name}"),
+                suffix_method="all_columns",
+            ).compute()
+        )
+        if how == "outer":
+            if pixel_tree:
+                inside = _in_pixels(pairwise["_ra"], pairwise["_dec"], anchor.get_healpix_pixels())
+            else:
+                inside = anchor.hc_structure.moc.contains_lonlat(
+                    pairwise["_ra"].to_numpy(dtype=float) * u.deg,
+                    pairwise["_dec"].to_numpy(dtype=float) * u.deg,
+                )
+            assert not inside.all()
+            pairwise = pairwise[inside]
+        id_column = f"id_{right.name}"
+        expected = pairwise[pairwise["id"].notna()].set_index("id")[id_column].sort_index()
+        assert anchored.set_index("id")[id_column].sort_index().equals(expected)
+        right_only = chunk[chunk[id_column].notna() & chunk["id"].isna()][id_column]
+        expected_only = pairwise[pairwise["id"].isna()][id_column]
+        assert (len(expected_only) > 0) == (how == "outer")
+        assert sorted(right_only) == sorted(expected_only)
+
+
+@pytest.mark.usefixtures("fake_skymaps")
+def test_crossmatch_stream_star_reads_anchor_once_per_pixel():
+    anchor, right_b, right_c = _star_catalogs()
+    stream = CrossMatchStream(
+        anchor,
+        {"other": right_b, "how": "outer", "radius_arcsec": STAR_RADIUS},
+        {"other": right_c, "how": "outer", "radius_arcsec": STAR_RADIUS},
+        seed=1,
+        count_fraction_threshold=0.0,
+    )
+    pixel = stream._pixels[0]
+    right_parts = [catalog_streams._partition_delayeds(result, pixel) for result in stream._results]
+    task = delayed(list)(right_parts)
+    anchor_key = stream._anchor._operation.key_name
+
+    anchor_tasks = [
+        key for key in dict(task.__dask_graph__()) if isinstance(key, tuple) and key[0] == anchor_key
+    ]
+    assert len(anchor_tasks) == 1
+
+
+@pytest.mark.usefixtures("fake_skymaps")
+def test_crossmatch_stream_star_never_reads_right_only_sky():
+    anchor, right_b, right_c = _star_catalogs()
+    star_kwargs = [
+        {"other": right, "how": "outer", "radius_arcsec": STAR_RADIUS} for right in (right_b, right_c)
+    ]
+    stream = CrossMatchStream(anchor, *star_kwargs, seed=1, count_fraction_threshold=0.0)
+    parts = [
+        catalog_streams._partition_delayeds(result, pixel)
+        for pixel in stream._pixels
+        for result in stream._results
+    ]
+    stream_graph = set(dict(delayed(list)(parts).__dask_graph__()))
+
+    for right, (ra, dec), kwargs in zip(
+        (right_b, right_c), ((120.0, -30.0), (200.0, 40.0)), stream.crossmatch_kwargs, strict=True
+    ):
+        right_only_pixel = HealpixPixel(2, hp.radec2pix(2, ra, dec)[0].item())
+        assert right_only_pixel in right.get_healpix_pixels()
+        assert right_only_pixel not in anchor.get_healpix_pixels()
+        right_only_keys = set(right._operation.build([right_only_pixel]).graph)
+        assert not right_only_keys & stream_graph
+        # Without the footprint filter the outer crossmatch would read it
+        union = anchor.crossmatch(**kwargs)
+        assert right_only_keys & set(union._operation.build(union.get_healpix_pixels()).graph)
+
+
+@pytest.mark.usefixtures("fake_skymaps")
+@pytest.mark.parametrize(
+    ("options", "match"),
+    [
+        ({"how": "inner"}, "how='left' or how='outer'"),
+        ({"how": "outer", "radius_arcsec": STAR_RADIUS}, "left catalog to have a margin cache"),
+        ({"compression_columns": ["id"], "compression_ratio_threshold": 0.5}, "on-disk right catalog"),
+        *(
+            (options, "Specify both")
+            for options in (
+                {"compression_columns": ["id"]},
+                {"compression_ratio_threshold": 0.5},
+                {"compression_columns": [], "compression_ratio_threshold": 0.5},
+                {"compression_columns": "id", "compression_ratio_threshold": 0.5},
+                {"compression_columns": [1], "compression_ratio_threshold": 0.5},
+                {"compression_columns": [""], "compression_ratio_threshold": 0.5},
+                {"compression_columns": ["id"], "compression_ratio_threshold": -1},
+                {"compression_columns": ["id"], "compression_ratio_threshold": np.nan},
+                {"compression_columns": ["id"], "compression_ratio_threshold": np.inf},
+                {"compression_columns": ["id"], "compression_ratio_threshold": "0.5"},
+            )
+        ),
+    ],
+)
+def test_crossmatch_stream_rejects_bad_arguments(options, match):
+    anchor, right, _ = _star_catalogs()
+    anchor.margin = None  # only reached once the other arguments are valid
+    with pytest.raises(ValueError, match=match):
+        CrossMatchStream(anchor, {"other": right, **options}, count_fraction_threshold=0.0)
+
+
+def test_crossmatch_stream_scores_pixels_finer_than_skymaps(
+    small_sky_order1_catalog, test_data_dir, small_sky_order3_source_margin_catalog
+):
+    """With real order-1 skymaps, pixels split by the order-3 right catalog take their ancestor's score."""
+    right = lsdb.open_catalog(test_data_dir / "small_sky_order3_source")
+    right.margin = small_sky_order3_source_margin_catalog
+    stream = CrossMatchStream(small_sky_order1_catalog, {"other": right}, count_fraction_threshold=0.1)
+    fine_pixels = [pixel for pixel in stream._pixels if pixel.order > 1]
+    assert fine_pixels
+
+    counts = stream.mask_generator
+    for pixel in fine_pixels:
+        ancestor = pixel.convert_to_lower_order(pixel.order - 1)
+        assert counts.get_pixel_catalog_mask(pixel) == counts.get_pixel_catalog_mask(ancestor)
+    assert len(_stream_all_pixels(stream)) == len(small_sky_order1_catalog)
+
+
+@pytest.mark.usefixtures("fake_skymaps")
+def test_crossmatch_stream_right_suffixes():
+    """The same right catalog twice needs distinct suffixes, which the stream keeps."""
+    anchor, right, _ = _star_catalogs()
+    # Anchor rows 1 and 4 are 1.8" and 3.6" from B's rows 11 and 15
+    near, far = {"other": right, "radius_arcsec": 2.0}, {"other": right, "radius_arcsec": STAR_RADIUS}
+    with pytest.raises(ValueError, match="id_B.*distinct suffixes"):
+        CrossMatchStream(anchor, near, far, count_fraction_threshold=0.0)
+
+    stream = CrossMatchStream(
+        anchor,
+        {**near, "suffixes": ("", "_near")},
+        {**far, "suffixes": ("_ignored", "_far")},
+        count_fraction_threshold=0.0,
+    )
+    chunk = _stream_all_pixels(stream)
+    assert _id_rows(chunk, ("id", "id_near", "id_far")) == [
+        [1, 11, 11],
+        [2, -1, -1],
+        [3, -1, -1],
+        [4, -1, 15],
+    ]
+
+
+@pytest.mark.usefixtures("fake_skymaps")
+@pytest.mark.parametrize(
+    ("footprint", "min_surveys", "expected"),
+    [
+        # B's 14 and C's 23 share a spot the anchor lacks, outside its data MOC
+        (None, 2, [[1, 11, 22], [2, -1, 21]]),
+        ("pixel_tree", 2, [[-1, -1, 23], [-1, 14, -1], [1, 11, 22], [2, -1, 21]]),
+        (None, 3, [[1, 11, 22]]),
+        ("pixel_tree", 3, [[1, 11, 22]]),
+    ],
+)
+def test_crossmatch_stream_min_surveys(footprint, min_surveys, expected):
+    """Anchor row 3 and B's 12 sit alone, and row 4 and B's 15 are split by a pixel border."""
+    anchor, right_b, right_c = _star_catalogs()
+    star_kwargs = [
+        {"other": right, "how": "outer", "radius_arcsec": STAR_RADIUS} for right in (right_b, right_c)
+    ]
+    with pytest.raises(ValueError, match="min_surveys"):
+        CrossMatchStream(anchor, *star_kwargs, count_fraction_threshold=0.0, min_surveys=4)
+
+    stream = CrossMatchStream(
+        anchor,
+        *star_kwargs,
+        count_fraction_threshold=0.0,
+        footprint=_pixel_tree(anchor) if footprint else None,
+        min_surveys=min_surveys,
+    )
+    assert _id_rows(_stream_all_pixels(stream)) == expected
+
+
+@pytest.mark.usefixtures("fake_skymaps")
+def test_crossmatch_stream_min_surveys_ignores_removed_partitions():
+    rows = [(1, 10.0, 10.0), (2, 200.0, 40.0)]
+    anchor = _star_catalog(rows, "A", 2)
+    right = _star_catalog(rows, "B", 2)
+    right = right.get_partition(2, hp.radec2pix(2, 200.0, 40.0)[0].item())
+
+    stream = CrossMatchStream(anchor, {"other": right}, count_fraction_threshold=0.0, min_surveys=2)
+
+    assert _id_rows(_stream_all_pixels(stream), ("id", "id_B")) == [[2, 2]]
+
+
+def test_min_surveys_coverage_work_scales_with_catalogs(small_sky_catalog, monkeypatch):
+    """Bound coverage operations rather than wall-clock time to catch combinatorial growth."""
+    n_catalogs, min_surveys = 20, 10
+    expected = catalog_streams._data_coverage(small_sky_catalog)
+    intersection = MOC.intersection
+    intersections = 0
+
+    def counted_intersection(moc, *others):
+        nonlocal intersections
+        intersections += 1
+        assert intersections <= 2 * n_catalogs * min_surveys
+        return intersection(moc, *others)
+
+    monkeypatch.setattr(MOC, "intersection", counted_intersection)
+    _, footprint = catalog_streams._restrict_to_footprint(
+        small_sky_catalog, None, [small_sky_catalog] * (n_catalogs - 1), min_surveys
+    )
+    assert footprint == expected
+
+
+def test_crossmatch_stream_score_ignores_rows_outside_footprint(monkeypatch):
+    """A crowd of B rows in the anchor's pixel but outside its data MOC cannot get B skipped."""
+    anchor, right_b, _ = _star_catalogs()
+    maps = {}
+    for catalog in (anchor, right_b):
+        frame = catalog.compute()
+        maps[catalog.name] = np.bincount(
+            hp.radec2pix(5, frame["ra"], frame["dec"]), minlength=hp.order2npix(5)
+        )
+    crowd = hp.radec2pix(5, 5.0, 10.0)[0]
+    pixel = HealpixPixel(2, hp.radec2pix(2, 10.0, 10.0)[0].item())
+    assert crowd >> 6 == pixel.pixel and maps["A"][crowd] == 0
+    maps["B"][crowd] += 1000
+    monkeypatch.setattr(
+        catalog_streams, "read_skymap", lambda hc_catalog, order: maps[hc_catalog.catalog_name]
+    )
+
+    stream = CrossMatchStream(
+        anchor, {"other": right_b, "radius_arcsec": STAR_RADIUS}, count_fraction_threshold=0.5
+    )
+    assert stream.mask_generator.get_pixel_catalog_mask(pixel).tolist() == [True]
