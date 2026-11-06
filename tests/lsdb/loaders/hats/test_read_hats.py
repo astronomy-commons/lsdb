@@ -623,6 +623,20 @@ def test_read_hats_margin_catalog_subset_is_empty(small_sky_order1_source_margin
         lsdb.read_hats(small_sky_order1_source_margin_dir, search_filter=search_filter)
 
 
+def test_load_filtered_catalog_with_empty_margin(tmp_path):
+    # https://github.com/astronomy-commons/lsdb/issues/1658
+    # 2 rows, one nested column "nested"
+    nf = npd.datasets.generate_data(2, 2, seed=0)
+    nf["ra"], nf["dec"] = [10.0, 20.0], [10.0, 20.0]
+    # 1 partition; the default 5 arcsec margin has 0 rows
+    cat = lsdb.from_dataframe(nf)
+    cat_path = f"{tmp_path}/nested_cat"
+    # any filter before writing
+    cat.query("a > 0").write_catalog(cat_path)
+    cat = lsdb.open_catalog(cat_path)
+    assert len(cat.compute()) == 2
+
+
 def test_read_hats_map_catalog(test_data_dir):
     margin_catalog = lsdb.read_hats(test_data_dir / "square_map")
     assert len(margin_catalog.get_healpix_pixels()) == 12
