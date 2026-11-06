@@ -10,6 +10,7 @@ from hats.pixel_math.healpix_pixel import HealpixPixel
 from mocpy import MOC
 
 import lsdb
+from lsdb.core.crossmatch.kdtree_match import KdTreeCrossmatch
 from lsdb.streams import CatalogStream, InfiniteStream, catalog_streams
 from lsdb.streams.catalog_streams import CrossMatchStream
 
@@ -237,13 +238,14 @@ def test_crossmatch_stream_star_rows(orders, hows, footprint, expected):
     assert chunk.loc[b_only, "_ra"].tolist() == chunk.loc[b_only, "ra_B"].tolist()
 
 
-def test_crossmatch_stream_left_join():
+@pytest.mark.parametrize("n_neighbors", [None, 1])
+def test_crossmatch_stream_left_join(n_neighbors):
     """Left-only streams keep anchor pixels no right catalog covers, and add no _ra/_dec."""
     anchor = _star_catalog([(1, 10.0, 10.0), (2, 200.0, 40.0)], "A", 2)
     right = _star_catalog([(11, 10.0005, 10.0)], "B", 2)
     stream = CrossMatchStream(
         anchor,
-        {"other": right, "radius_arcsec": STAR_RADIUS},
+        {"other": right, "radius_arcsec": STAR_RADIUS, "n_neighbors": n_neighbors},
         partitions_per_chunk=2,
         seed=1,
     )
@@ -361,6 +363,7 @@ def test_crossmatch_stream_star_never_reads_right_only_sky():
     ("options", "match"),
     [
         ({"how": "inner"}, "how='left' or how='outer'"),
+        ({"n_neighbors": 2}, "CrossMatchStream supports at most one neighbor per anchor row"),
         ({"how": "outer", "radius_arcsec": STAR_RADIUS}, "left catalog to have a margin cache"),
     ],
 )
@@ -369,6 +372,26 @@ def test_crossmatch_stream_rejects_bad_arguments(options, match):
     anchor.margin = None  # only reached once the other arguments are valid
     with pytest.raises(ValueError, match=match):
         CrossMatchStream(anchor, {"other": right, **options})
+
+
+@pytest.mark.parametrize("how", ["left", "outer"])
+def test_crossmatch_stream_rejects_multiple_algorithm_matches(how):
+    """Algorithm-specified neighbors must not multiply rows across right catalogs."""
+    anchor = _star_catalog([(1, 10.0, 10.0)], "A", 2)
+    rights = [_star_catalog([(11, 10.0005, 10.0), (12, 10.0007, 10.0)], name, 2) for name in ("B", "C")]
+    stream = CrossMatchStream(
+        anchor,
+        *(
+            {
+                "other": right,
+                "how": how,
+                "algorithm": KdTreeCrossmatch(n_neighbors=2, radius_arcsec=STAR_RADIUS),
+            }
+            for right in rights
+        ),
+    )
+    with pytest.raises(pd.errors.MergeError, match="not a many-to-one merge"):
+        _stream_all_pixels(stream)
 
 
 def test_crossmatch_stream_right_suffixes():
