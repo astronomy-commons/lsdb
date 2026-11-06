@@ -342,6 +342,136 @@ def test_outer_coarse_left_matches_across_finer_aligned_pixels():
     assert result[["id_left", "id_right"]].values.tolist() == [[1, 10]]
 
 
+def _left_footprint_catalogs():
+    """Left rows in two adjacent pixels, and right rows matched across their boundary,
+    unmatched inside the left coverage, and in sky the left catalog does not cover."""
+    ra_a, ra_b = _adjacent_ra_pair()
+    left = _catalog(
+        pd.DataFrame({"id": [1, 2], "ra": [ra_a, round(ra_b + 0.005, 4)], "dec": [0.0, 0.0]}), "left"
+    )
+    right = _catalog(
+        pd.DataFrame({"id": [10, 11, 12], "ra": [ra_b, 5.0, 120.0], "dec": [0.0, 0.0, 10.0]}), "right"
+    )
+    return left, right
+
+
+def _sorted_pairs(result):
+    return sorted(result[["id_left", "id_right"]].astype("Int64").fillna(-1).values.tolist())
+
+
+def test_outer_left_footprint_matches_union_inside_left_coverage():
+    """Restricting an outer crossmatch to the left footprint drops only right-only sky."""
+    left, right = _left_footprint_catalogs()
+    kwargs = {
+        "how": "outer",
+        "radius_arcsec": RADIUS,
+        "suffixes": ("_left", "_right"),
+        "suffix_method": "all_columns",
+    }
+    union = pd.DataFrame(left.crossmatch(right, **kwargs).compute())
+    footprint = left.crossmatch(right, outer_footprint="left", **kwargs)
+    result = pd.DataFrame(footprint.compute())
+
+    left_pixels = {pixel.pixel for pixel in left.get_healpix_pixels()}
+    inside = [_pix(ORDER, ra, dec) in left_pixels for ra, dec in zip(union["_ra"], union["_dec"])]
+    pd.testing.assert_frame_equal(result, union[inside])
+    assert _sorted_pairs(result) == [[-1, 11], [1, 10], [2, -1]]
+    assert set(footprint.get_healpix_pixels()) == set(left.get_healpix_pixels())
+
+
+def test_outer_left_footprint_never_reads_right_only_sky():
+    left, right = _left_footprint_catalogs()
+    footprint = left.crossmatch(
+        right, how="outer", outer_footprint="left", radius_arcsec=RADIUS, suffix_method="all_columns"
+    )
+    right_only_pixel = HealpixPixel(ORDER, _pix(ORDER, 120.0, 10.0))
+    assert right_only_pixel in right.get_healpix_pixels()
+
+    graph = footprint._operation.build(footprint.get_healpix_pixels())
+    right_only_graph = right._operation.build([right_only_pixel])
+    assert not set(right_only_graph.graph) & set(graph.graph)
+
+
+def test_outer_left_footprint_matches_right_rows_across_left_coverage_edge():
+    """A right row just outside the left coverage still matches the left row beside it."""
+    ra_left, ra_boundary = _adjacent_ra_pair()
+    left = _catalog(pd.DataFrame({"id": [1], "ra": [ra_left], "dec": [0.0]}), "left")
+    right = _catalog(pd.DataFrame({"id": [10, 11], "ra": [ra_boundary, 120.0], "dec": [0.0, 10.0]}), "right")
+
+    result = pd.DataFrame(
+        left.crossmatch(
+            right,
+            how="outer",
+            outer_footprint="left",
+            radius_arcsec=RADIUS,
+            suffixes=("_left", "_right"),
+            suffix_method="all_columns",
+        ).compute()
+    )
+
+    assert _sorted_pairs(result) == [[1, 10]]
+
+
+@pytest.mark.parametrize("outer_footprint", ["union", "left"])
+def test_outer_footprints_agree_on_partition_edge_cases(outer_footprint):
+    """Coarse-right and coarse-left layouts lie inside the left coverage, so both agree."""
+    kwargs = {
+        "how": "outer",
+        "outer_footprint": outer_footprint,
+        "suffixes": ("_left", "_right"),
+        "suffix_method": "all_columns",
+    }
+    left, right = _coarse_right_catalogs()
+    coarse_right = pd.DataFrame(left.crossmatch(right, radius_arcsec=1, **kwargs).compute())
+    assert _sorted_pairs(coarse_right) == [
+        [-1, 10],
+        [-1, 11],
+        [-1, 12],
+        [-1, 13],
+        [0, -1],
+        [1, -1],
+        [2, -1],
+        [3, -1],
+    ]
+
+    ra_left, ra_right, dec = 40.553, 40.554, 1.0
+    left = _catalog(pd.DataFrame({"id": [1], "ra": [ra_left], "dec": [dec]}), "left", order=0)
+    right = _catalog(pd.DataFrame({"id": [10], "ra": [ra_right], "dec": [dec]}), "right", order=5)
+    coarse_left = pd.DataFrame(left.crossmatch(right, radius_arcsec=RADIUS, **kwargs).compute())
+    assert _sorted_pairs(coarse_left) == [[1, 10]]
+
+
+def test_outer_left_footprint_top_level_crossmatch():
+    ra_left, ra_boundary = _adjacent_ra_pair()
+    left_df = pd.DataFrame({"id": [1, 2], "ra": [ra_left, 50.0], "dec": [0.0, 0.0]})
+    right_df = pd.DataFrame({"id": [10, 11], "ra": [ra_boundary, 120.0], "dec": [0.0, 10.0]})
+
+    result = pd.DataFrame(
+        lsdb.crossmatch(
+            left_df,
+            right_df,
+            how="outer",
+            outer_footprint="left",
+            radius_arcsec=RADIUS,
+            suffixes=("_left", "_right"),
+            suffix_method="all_columns",
+        ).compute()
+    )
+
+    assert _sorted_pairs(result) == [[1, 10], [2, -1]]
+
+
+@pytest.mark.parametrize(
+    ("how", "outer_footprint", "message"),
+    [("left", "left", "requires how='outer'"), ("outer", "right", "`outer_footprint` needs")],
+)
+def test_outer_footprint_validation(
+    small_sky_catalog, small_sky_xmatch_catalog, how, outer_footprint, message
+):
+    with pytest.raises(ValueError, match=message):
+        small_sky_catalog.crossmatch(small_sky_xmatch_catalog, how=how, outer_footprint=outer_footprint)
+
+
 def test_crossmatch_rejects_unknown_join_method(small_sky_catalog, small_sky_xmatch_catalog):
     with pytest.raises(ValueError, match="`how` needs"):
         small_sky_catalog.crossmatch(small_sky_xmatch_catalog, how="right")  # type: ignore[arg-type]
