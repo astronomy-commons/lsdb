@@ -71,6 +71,30 @@ def test_est_size_nested(small_sky_with_nested_sources):
     assert cat.est_size() > small_sky_with_nested_sources.est_size() * 0.5
 
 
+def test_est_size_nested_sub_fields_scale_with_selection(small_sky_with_nested_sources_dir):
+    full = lsdb.open_catalog(small_sky_with_nested_sources_dir, columns="all").est_size()
+    base = lsdb.open_catalog(small_sky_with_nested_sources_dir, columns=["id"]).est_size()
+    one = lsdb.open_catalog(small_sky_with_nested_sources_dir, columns=["id", "sources.mag"]).est_size()
+    two = lsdb.open_catalog(
+        small_sky_with_nested_sources_dir, columns=["id", "sources.mag", "sources.band"]
+    ).est_size()
+    assert base < one < two < full
+    assert one - base == pytest.approx((two - base) / 2)
+    assert one < full * 0.5
+
+
+def test_est_size_not_negative_when_estsize_below_fixed_width_bytes(small_sky_with_nested_sources_dir):
+    cat = lsdb.open_catalog(small_sky_with_nested_sources_dir, columns=["sources.band"])
+    snapshot = cat.hc_structure.snapshot
+    cat.hc_structure.snapshot = CatalogSnapshot(
+        schema=snapshot.schema,
+        catalog_info=snapshot.catalog_info.copy_and_update(hats_estsize=1),
+        partition_info=snapshot.partition_info,
+    )
+    cat.hc_structure.catalog_info.hats_estsize = 1
+    assert 0 <= cat.est_size() <= 1
+
+
 def test_compute_warns_when_estimated_size_exceeds_threshold(small_sky_order1_catalog, mocker, caplog):
     mocker.patch.object(
         small_sky_order1_catalog, "est_size", return_value=COMPUTE_SIZE_WARNING_THRESHOLD_KiB + 1

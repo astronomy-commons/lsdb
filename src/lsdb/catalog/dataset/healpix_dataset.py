@@ -172,17 +172,12 @@ class HealpixDataset:
             if field.name not in original_schema.names:
                 return None
 
-        # Helper function to estimate size of an Arrow type
-        def estimate_type_size(arrow_type: pa.DataType) -> int | None:
-            """Estimate the size in bytes of an Arrow data type using PyArrow's bit_width when available."""
-            # For fixed-width types, use bit_width
-            try:
-                return arrow_type.bit_width // 8  # Convert bits to bytes
-            except (AttributeError, TypeError, ValueError):
-                return None
+        original_leaves = _leaf_sizes(original_schema)
+        current_leaves = _leaf_sizes(current_schema)
 
-        original_field_sizes = [estimate_type_size(field.type) for field in original_schema]
-        if any(size is None for size in original_field_sizes):
+        original_fixed_size = sum(size for size in original_leaves.values() if size is not None)
+        original_variable_count = sum(1 for size in original_leaves.values() if size is None)
+        if original_variable_count > 0:
             snapshot_info = self.hc_structure.snapshot.catalog_info if self.hc_structure.snapshot else None
             original_size_per_row = (
                 snapshot_info.hats_estsize * 1024 / snapshot_info.total_rows
@@ -190,27 +185,30 @@ class HealpixDataset:
                 else None
             )
         else:
-            original_size_per_row = sum(original_field_sizes)  # type: ignore[arg-type]
+            original_size_per_row = original_fixed_size
 
-        if original_size_per_row is None:
+        if not original_size_per_row:
             return None
 
-        # Compute total size of loaded columns (including index)
-        loaded_size = 0.0
-        non_fixed_column = False
+        # hats_estsize is the on-disk (compressed) size, so it can be smaller than the in-memory
+        # fixed-width bytes; the share left for variable-width data is then zero, never negative.
+        variable_size = max(0.0, original_size_per_row - original_fixed_size)
 
-        for field in current_schema:
-            field_size = estimate_type_size(field.type)
-            if field_size is not None:
-                loaded_size += field_size
+        loaded_fixed_size = 0
+        loaded_variable_count = 0
+        for path, current_size in current_leaves.items():
+            size = original_leaves.get(path, current_size)
+            if size is None:
+                loaded_variable_count += 1
             else:
-                non_fixed_column = True
+                loaded_fixed_size += size
 
-        if non_fixed_column:
-            total_fixed_size_per_row = sum(size for size in original_field_sizes if size is not None)
-            loaded_size += original_size_per_row - total_fixed_size_per_row
+        loaded_size = float(loaded_fixed_size)
+        if original_variable_count > 0:
+            loaded_share = min(loaded_variable_count, original_variable_count) / original_variable_count
+            loaded_size += variable_size * loaded_share
 
-        return loaded_size / original_size_per_row
+        return min(1.0, loaded_size / original_size_per_row)
 
     def est_size(self) -> float | None:
         """Estimate the size of the catalog in KiB
@@ -2020,3 +2018,30 @@ def _has_invalid_spatial_index(df, ra_col, dec_col):
     return (
         df.index != compute_spatial_index(df[ra_col], df[dec_col], spatial_index_order=SPATIAL_INDEX_ORDER)
     ).any()
+
+
+def _leaf_sizes(schema: pa.Schema) -> dict[str, int | None]:
+    """Map each leaf field path (``column`` or ``column.sub_field``) to its fixed byte width.
+
+    Nested columns are flattened so that loading a subset of their sub-fields is counted
+    as such. Leaves inside lists, and leaves without a fixed width (e.g. strings), map to None.
+    """
+    sizes: dict[str, int | None] = {}
+
+    def visit(path: str, arrow_type: pa.DataType, in_list: bool):
+        if pa.types.is_struct(arrow_type):
+            for child in arrow_type:
+                visit(f"{path}.{child.name}", child.type, in_list)
+        elif pa.types.is_list(arrow_type) or pa.types.is_large_list(arrow_type):
+            visit(path, arrow_type.value_type, True)
+        elif in_list:
+            sizes[path] = None
+        else:
+            try:
+                sizes[path] = arrow_type.bit_width // 8
+            except (AttributeError, TypeError, ValueError):
+                sizes[path] = None
+
+    for field in schema:
+        visit(field.name, field.type, False)
+    return sizes
