@@ -175,6 +175,23 @@ def test_small_sky_join_default_columns(
     helpers.assert_default_columns_in_columns(joined)
 
 
+def test_join_default_output_catalog_name(small_sky_catalog, small_sky_order1_catalog):
+    with pytest.warns(match="margin"):
+        joined = small_sky_catalog.join(small_sky_order1_catalog, left_on="id", right_on="id")
+    assert joined.name == f"{small_sky_catalog.name}_join_{small_sky_order1_catalog.name}"
+    with pytest.warns(match="margin"):
+        named = small_sky_catalog.join(
+            small_sky_order1_catalog, left_on="id", right_on="id", output_catalog_name="custom"
+        )
+    assert named.name == "custom"
+
+
+def test_join_nested_default_output_catalog_name(small_sky_catalog, small_sky_order1_catalog):
+    with pytest.warns(match="margin"):
+        joined = small_sky_catalog.join_nested(small_sky_order1_catalog, left_on="id", right_on="id")
+    assert joined.name == f"{small_sky_catalog.name}_join_nested_{small_sky_order1_catalog.name}"
+
+
 def test_join_wrong_columns(small_sky_catalog, small_sky_order1_catalog):
     with pytest.raises(ValueError):
         small_sky_catalog.join(small_sky_order1_catalog, left_on="bad", right_on="id")
