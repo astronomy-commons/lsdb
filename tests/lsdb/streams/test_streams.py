@@ -4,15 +4,19 @@ import astropy.units as u
 import hats.pixel_math.healpix_shim as hp
 import numpy as np
 import pandas as pd
+import pyarrow as pa
+import pyarrow.parquet as pq
 import pytest
 from dask.delayed import delayed
+from hats.io.paths import pixel_catalog_file
 from hats.pixel_math.healpix_pixel import HealpixPixel
 from mocpy import MOC
+from upath import UPath
 
 import lsdb
 from lsdb.core.crossmatch.kdtree_match import KdTreeCrossmatch
 from lsdb.streams import CatalogStream, InfiniteStream, catalog_streams
-from lsdb.streams.catalog_streams import CrossMatchStream
+from lsdb.streams.catalog_streams import CrossMatchStream, _get_compression_ratio
 
 
 def test_catalog_stream():
@@ -141,6 +145,149 @@ def test_crossmatch_stream_draws_every_aligned_pixel():
     assert sorted(cat_iter.partitions_left) == list(range(n_pixels))
 
 
+def test_compression_ratio_weights_columns_row_groups_and_source_pixels(
+    small_sky_order1_catalog, tmp_path, monkeypatch
+):
+    catalog = small_sky_order1_catalog
+    compressed_bytes = uncompressed_bytes = 0
+    chunk_ratios = []
+    for i, pixel in enumerate(catalog.get_healpix_pixels()):
+        size = 128 * (i + 1)
+        table = pa.table(
+            {
+                "flux": np.zeros(size),
+                "spectrum": np.random.default_rng(i).normal(size=size),
+                "ignored": np.arange(size),
+            }
+        )
+        path = tmp_path / f"{pixel.pixel}.parquet"
+        pq.write_table(
+            table, path, compression="gzip", use_dictionary=False, row_group_size=100, write_statistics=False
+        )
+        metadata = pq.read_metadata(path)
+        for row_group_index in range(metadata.num_row_groups):
+            row_group = metadata.row_group(row_group_index)
+            for column_index in (0, 1):
+                chunk = row_group.column(column_index)
+                compressed_bytes += chunk.total_compressed_size
+                uncompressed_bytes += chunk.total_uncompressed_size
+                chunk_ratios.append(chunk.total_compressed_size / chunk.total_uncompressed_size)
+
+    monkeypatch.setattr(
+        catalog.loading_config,
+        "path_generator",
+        lambda base, pixel, query, suffix: UPath(tmp_path / f"{pixel.pixel}.parquet"),
+    )
+
+    def no_data_read(*_args, **_kwargs):
+        pytest.fail("Scoring must not read science values or compute catalog data")
+
+    monkeypatch.setattr(pq, "read_table", no_data_read)
+    monkeypatch.setattr(lsdb.Catalog, "compute", no_data_read)
+    expected = compressed_bytes / uncompressed_bytes
+    assert expected != pytest.approx(np.mean(chunk_ratios))
+    assert _get_compression_ratio(catalog, HealpixPixel(0, 11), ["flux", "spectrum"]) == expected
+
+
+@pytest.mark.parametrize("catalog_name", ["small_sky", "small_sky_npix_alt_suffix", "small_sky_npix_as_dir"])
+def test_compression_ratio_finer_pixel_and_file_layouts(test_data_dir, catalog_name):
+    catalog = lsdb.open_catalog(test_data_dir / catalog_name)
+    parent = _get_compression_ratio(catalog, HealpixPixel(0, 11), ["ra_error", "dec_error"])
+    assert parent > 0
+    assert _get_compression_ratio(catalog, HealpixPixel(1, 44), ["ra_error", "dec_error"]) == parent
+    assert _get_compression_ratio(catalog, HealpixPixel(0, 0), ["ra_error"]) == 0
+
+
+def test_compression_ratio_nested_features(small_sky_with_nested_sources):
+    catalog = small_sky_with_nested_sources
+    pixel = catalog.get_healpix_pixels()[0]
+    metadata = pq.read_metadata(pixel_catalog_file(catalog.hc_structure.catalog_base_dir, pixel))
+    chunks = [
+        metadata.row_group(i).column(j)
+        for i in range(metadata.num_row_groups)
+        for j in range(metadata.num_columns)
+    ]
+    chunks = [chunk for chunk in chunks if chunk.path_in_schema.startswith("sources.")]
+    expected = sum(chunk.total_compressed_size for chunk in chunks) / sum(
+        chunk.total_uncompressed_size for chunk in chunks
+    )
+    assert _get_compression_ratio(catalog, pixel, ["sources"]) == expected
+    subcolumns = catalog.meta.get_subcolumns()
+    assert _get_compression_ratio(catalog, pixel, subcolumns) == expected
+    # Selecting a group and its subcolumns must not count chunks twice.
+    assert _get_compression_ratio(catalog, pixel, ["sources", *subcolumns]) == expected
+
+
+def test_compression_ratio_missing_columns(small_sky_catalog):
+    with pytest.raises(ValueError, match="missing.*missing from footer"):
+        _get_compression_ratio(small_sky_catalog, HealpixPixel(0, 11), ["ra_error", "missing"])
+
+
+@pytest.mark.parametrize(
+    "threshold, coverage, keep", [(0, 0, True), (10, 0, False), (0, 2, False), (None, 0, True)]
+)
+def test_crossmatch_stream_compression_filter(
+    small_sky_catalog,
+    small_sky_order1_catalog,
+    small_sky_order1_margin_1deg_catalog,
+    monkeypatch,
+    threshold,
+    coverage,
+    keep,
+):
+    right = small_sky_order1_catalog
+    right.margin = small_sky_order1_margin_1deg_catalog
+    kwargs = {"other": right}
+    if threshold is not None:
+        kwargs.update(compression_columns=["ra_error", "dec_error"], compression_ratio_threshold=threshold)
+    original_kwargs = kwargs.copy()
+    stream = CrossMatchStream(small_sky_catalog, kwargs, count_fraction_threshold=coverage)
+    assert kwargs == original_kwargs
+    if coverage > 1 or threshold is None:
+        monkeypatch.setattr(
+            catalog_streams,
+            "_get_compression_ratio",
+            lambda *args: pytest.fail("Disabled/coverage-rejected filters must not read footers"),
+        )
+    chunk = stream.submit_next_partitions(np.arange(len(stream._pixels))).result()
+    assert len(chunk) == len(small_sky_catalog)
+    assert chunk["id"].notna().all()
+    assert chunk[f"id_{right.name}"].notna().sum() == (len(chunk) if keep else 0)
+
+
+def test_crossmatch_stream_per_catalog_thresholds_are_inclusive(
+    small_sky_catalog,
+    small_sky_order1_catalog,
+    small_sky_order1_margin_1deg_catalog,
+    small_sky_xmatch_with_margin,
+    monkeypatch,
+):
+    right = small_sky_order1_catalog
+    right.margin = small_sky_order1_margin_1deg_catalog
+    monkeypatch.setattr(catalog_streams, "_get_compression_ratio", lambda *args: 0.5)
+    stream = CrossMatchStream(
+        small_sky_catalog,
+        {"other": right, "compression_columns": ["ra_error"], "compression_ratio_threshold": 0.5},
+        {
+            "other": small_sky_xmatch_with_margin,
+            "compression_columns": ["ra"],
+            "compression_ratio_threshold": 0.51,
+        },
+    )
+    chunk = stream.submit_next_partitions(np.arange(len(stream._pixels))).result()
+    assert len(chunk) == len(small_sky_catalog)
+    assert chunk[f"id_{right.name}"].notna().all()
+    assert chunk[f"id_{small_sky_xmatch_with_margin.name}"].isna().all()
+
+
+def test_compression_ratio_empty_metadata(small_sky_catalog, tmp_path, monkeypatch):
+    path = UPath(tmp_path / "empty.parquet")
+    pq.write_metadata(pa.schema([("ra_error", pa.int64())]), path.path)
+    monkeypatch.setattr(small_sky_catalog.loading_config, "path_generator", lambda *args: path)
+    with pytest.raises(ValueError, match="footer metadata"):
+        _get_compression_ratio(small_sky_catalog, HealpixPixel(0, 11), ["ra_error"])
+
+
 STAR_RADIUS = 10.0
 
 
@@ -202,22 +349,29 @@ CONE = MOC.from_cone(lon=10.0 * u.deg, lat=10.0 * u.deg, radius=0.35 * u.deg, ma
 
 
 @pytest.mark.parametrize(
-    ("orders", "hows", "footprint", "expected"),
+    ("orders", "hows", "footprint", "mask", "expected"),
     [
         # By default only the anchor's data MOC is kept, which excludes 12, 14 and 23
-        *(((orders, ("outer", "outer"), None, ANCHOR_ROWS)) for orders in ((2, 2), (4, 1), (1, 4))),
+        *(((orders, ("outer", "outer"), None, None, ANCHOR_ROWS)) for orders in ((2, 2), (4, 1), (1, 4))),
         *(
-            ((orders, ("outer", "outer"), "pixel_tree", UNMATCHED_IN_PIXELS + ANCHOR_ROWS))
+            ((orders, ("outer", "outer"), "pixel_tree", None, UNMATCHED_IN_PIXELS + ANCHOR_ROWS))
             for orders in ((2, 2), (4, 1), (1, 4))
         ),
         # A given footprint is clipped to the anchor's pixels, and also restricts the anchor
-        ((2, 2), ("outer", "outer"), MOC.from_string("0/0-11"), UNMATCHED_IN_PIXELS + ANCHOR_ROWS),
-        ((2, 2), ("outer", "outer"), CONE, [[-1, 12, -1], [1, 11, 22]]),
-        # A left right catalog adds no rows
-        ((2, 2), ("outer", "left"), "pixel_tree", [[-1, 12, -1], [-1, 14, -1], *ANCHOR_ROWS]),
+        ((2, 2), ("outer", "outer"), MOC.from_string("0/0-11"), None, UNMATCHED_IN_PIXELS + ANCHOR_ROWS),
+        ((2, 2), ("outer", "outer"), CONE, None, [[-1, 12, -1], [1, 11, 22]]),
+        # A left right catalog adds no rows; a skipped one adds no matches
+        ((2, 2), ("outer", "left"), "pixel_tree", None, [[-1, 12, -1], [-1, 14, -1], *ANCHOR_ROWS]),
+        (
+            (2, 2),
+            ("outer", "outer"),
+            "pixel_tree",
+            [True, False],
+            [[-1, 12, -1], [-1, 14, -1], [1, 11, -1], [2, -1, -1], [3, -1, -1], [4, 15, -1]],
+        ),
     ],
 )
-def test_crossmatch_stream_star_rows(orders, hows, footprint, expected):
+def test_crossmatch_stream_star_rows(monkeypatch, orders, hows, footprint, mask, expected):
     anchor, right_b, right_c = _star_catalogs(*orders)
     stream = CrossMatchStream(
         anchor,
@@ -228,6 +382,8 @@ def test_crossmatch_stream_star_rows(orders, hows, footprint, expected):
         seed=1,
         footprint=_pixel_tree(anchor) if isinstance(footprint, str) else footprint,
     )
+    if mask is not None:
+        monkeypatch.setattr(stream, "_right_catalog_mask", lambda pixel: mask)
     chunk = _stream_all_pixels(stream)
 
     assert _id_rows(chunk) == sorted(expected)
@@ -365,6 +521,22 @@ def test_crossmatch_stream_star_never_reads_right_only_sky():
         ({"how": "inner"}, "how='left' or how='outer'"),
         ({"n_neighbors": 2}, "CrossMatchStream supports at most one neighbor per anchor row"),
         ({"how": "outer", "radius_arcsec": STAR_RADIUS}, "left catalog to have a margin cache"),
+        ({"compression_columns": ["id"], "compression_ratio_threshold": 0.5}, "on-disk right catalog"),
+        *(
+            (options, "Specify both")
+            for options in (
+                {"compression_columns": ["id"]},
+                {"compression_ratio_threshold": 0.5},
+                {"compression_columns": [], "compression_ratio_threshold": 0.5},
+                {"compression_columns": "id", "compression_ratio_threshold": 0.5},
+                {"compression_columns": [1], "compression_ratio_threshold": 0.5},
+                {"compression_columns": [""], "compression_ratio_threshold": 0.5},
+                {"compression_columns": ["id"], "compression_ratio_threshold": -1},
+                {"compression_columns": ["id"], "compression_ratio_threshold": np.nan},
+                {"compression_columns": ["id"], "compression_ratio_threshold": np.inf},
+                {"compression_columns": ["id"], "compression_ratio_threshold": "0.5"},
+            )
+        ),
     ],
 )
 def test_crossmatch_stream_rejects_bad_arguments(options, match):
@@ -392,6 +564,23 @@ def test_crossmatch_stream_rejects_multiple_algorithm_matches(how):
     )
     with pytest.raises(pd.errors.MergeError, match="not a many-to-one merge"):
         _stream_all_pixels(stream)
+
+
+def test_crossmatch_stream_scores_pixels_finer_than_skymaps(
+    small_sky_order1_catalog, test_data_dir, small_sky_order3_source_margin_catalog
+):
+    """With real order-1 skymaps, pixels split by the order-3 right catalog take their ancestor's score."""
+    right = lsdb.open_catalog(test_data_dir / "small_sky_order3_source")
+    right.margin = small_sky_order3_source_margin_catalog
+    stream = CrossMatchStream(small_sky_order1_catalog, {"other": right}, count_fraction_threshold=0.1)
+    fine_pixels = [pixel for pixel in stream._pixels if pixel.order > 1]
+    assert fine_pixels
+
+    counts = stream.mask_generator
+    for pixel in fine_pixels:
+        ancestor = pixel.convert_to_lower_order(pixel.order - 1)
+        assert counts.get_pixel_catalog_mask(pixel) == counts.get_pixel_catalog_mask(ancestor)
+    assert len(_stream_all_pixels(stream)) == len(small_sky_order1_catalog)
 
 
 def test_crossmatch_stream_right_suffixes():
@@ -473,3 +662,26 @@ def test_min_surveys_coverage_work_scales_with_catalogs(small_sky_catalog, monke
         small_sky_catalog, None, [small_sky_catalog] * (n_catalogs - 1), min_surveys
     )
     assert footprint == expected
+
+
+def test_crossmatch_stream_score_ignores_rows_outside_footprint(monkeypatch):
+    """A crowd of B rows in the anchor's pixel but outside its data MOC cannot get B skipped."""
+    anchor, right_b, _ = _star_catalogs()
+    maps = {}
+    for catalog in (anchor, right_b):
+        frame = catalog.compute()
+        maps[catalog.name] = np.bincount(
+            hp.radec2pix(5, frame["ra"], frame["dec"]), minlength=hp.order2npix(5)
+        )
+    crowd = hp.radec2pix(5, 5.0, 10.0)[0]
+    pixel = HealpixPixel(2, hp.radec2pix(2, 10.0, 10.0)[0].item())
+    assert crowd >> 6 == pixel.pixel and maps["A"][crowd] == 0
+    maps["B"][crowd] += 1000
+    monkeypatch.setattr(
+        catalog_streams, "read_skymap", lambda hc_catalog, order: maps[hc_catalog.catalog_name]
+    )
+
+    stream = CrossMatchStream(
+        anchor, {"other": right_b, "radius_arcsec": STAR_RADIUS}, count_fraction_threshold=0.5
+    )
+    assert stream.mask_generator.get_pixel_catalog_mask(pixel).tolist() == [True]
