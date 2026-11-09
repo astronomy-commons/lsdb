@@ -302,8 +302,9 @@ class CrossMatchStream(InfiniteStream):
         to multiple chunks. This does not bound the number of input partitions read.
     seed : int or None, default None
         Random seed for partition and row shuffling.
-    count_fraction_threshold : float
+    count_fraction_threshold : float or None, default None
         Minimum estimated match coverage required to crossmatch a right catalog.
+        None disables coverage filtering, so no skymaps are read.
     footprint : mocpy.MOC or None, default None
         Sky region the stream covers, clipped to the anchor's pixel tree. None uses
         the anchor's data coverage (``anchor.hc_structure.moc``, or its pixel tree if
@@ -330,9 +331,8 @@ class CrossMatchStream(InfiniteStream):
     The coverage score counts only skymap cells that overlap the footprint, so right
     rows the footprint drops never lower it.
 
-    Both coverage and compression thresholds must pass. Skipping preserves anchor
-    rows and fills right-catalog columns with nulls. Omitting compression options
-    retains coverage-only filtering.
+    Every enabled filter must pass. Skipping preserves anchor rows and fills
+    right-catalog columns with nulls.
 
     Scoring reads only footer metadata, with no dedicated cache or data
     computation. It requires on-disk right catalogs and raises an error for
@@ -370,7 +370,7 @@ class CrossMatchStream(InfiniteStream):
         client: Client | None = None,
         partitions_per_chunk: int = 1,
         seed: int | None = None,
-        count_fraction_threshold: float,
+        count_fraction_threshold: float | None = None,
         footprint: MOC | None = None,
         min_surveys: int = 1,
     ) -> None:
@@ -428,8 +428,15 @@ class CrossMatchStream(InfiniteStream):
         self._anchor, self._results, self._pixels, self._assembly = self._plan_star()
         self.partitions_per_chunk = min(partitions_per_chunk, self.npartitions)
 
-        self.mask_generator = CountMapForPixel(
-            self.catalog, right_catalogs, count_fraction=count_fraction_threshold, footprint=self.footprint
+        self.mask_generator = (
+            None
+            if count_fraction_threshold is None
+            else CountMapForPixel(
+                self.catalog,
+                right_catalogs,
+                count_fraction=count_fraction_threshold,
+                footprint=self.footprint,
+            )
         )
 
     def _plan_star(self) -> tuple[Catalog, list[Catalog], list[HealpixPixel], "_StarAssembly"]:
@@ -485,7 +492,11 @@ class CrossMatchStream(InfiniteStream):
         mask = []
         for kwargs, do_crossmatch, compression_filter in zip(
             self.crossmatch_kwargs,
-            self.mask_generator.get_pixel_catalog_mask(pixel),
+            (
+                [True] * len(self.crossmatch_kwargs)
+                if self.mask_generator is None
+                else self.mask_generator.get_pixel_catalog_mask(pixel)
+            ),
             self.compression_filters,
             strict=True,
         ):

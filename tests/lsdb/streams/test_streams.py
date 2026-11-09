@@ -107,20 +107,13 @@ def test_stream_from_search_filter():
         print(chunk)
 
 
-@pytest.fixture
-def fake_skymaps(monkeypatch):
-    """In-memory catalogs have no skymaps: estimate that every pixel fully matches."""
-    monkeypatch.setattr(catalog_streams, "read_skymap", lambda hc_catalog, path: np.ones(hp.order2npix(5)))
-
-
-@pytest.mark.usefixtures("fake_skymaps")
 def test_crossmatch_stream_draws_every_aligned_pixel():
     """A finer right catalog splits anchor partitions; every aligned pixel is drawn."""
     ras, decs = np.meshgrid(np.linspace(15.0, 25.0, 20), np.linspace(34.0, 44.0, 20))
     df = pd.DataFrame({"ra": ras.ravel(), "dec": decs.ravel(), "id": np.arange(ras.size)})
     left = lsdb.from_dataframe(df, lowest_order=3, highest_order=3, margin_threshold=30)
     right = lsdb.from_dataframe(df, lowest_order=3, highest_order=5, partition_rows=25, margin_threshold=30)
-    stream = CrossMatchStream(left, {"other": right}, seed=1, count_fraction_threshold=0.0)
+    stream = CrossMatchStream(left, {"other": right}, seed=1)
     n_pixels = len(stream._pixels)
     assert n_pixels > left.npartitions
 
@@ -280,7 +273,6 @@ def test_crossmatch_stream_per_catalog_thresholds_are_inclusive(
             "compression_columns": ["ra"],
             "compression_ratio_threshold": 0.51,
         },
-        count_fraction_threshold=0,
     )
     chunk = stream.submit_next_partitions(np.arange(len(stream._pixels))).result()
     assert len(chunk) == len(small_sky_catalog)
@@ -356,7 +348,6 @@ UNMATCHED_IN_PIXELS = [[-1, -1, 23], [-1, 12, -1], [-1, 14, -1]]
 CONE = MOC.from_cone(lon=10.0 * u.deg, lat=10.0 * u.deg, radius=0.35 * u.deg, max_depth=12)
 
 
-@pytest.mark.usefixtures("fake_skymaps")
 @pytest.mark.parametrize(
     ("orders", "hows", "footprint", "mask", "expected"),
     [
@@ -389,7 +380,6 @@ def test_crossmatch_stream_star_rows(monkeypatch, orders, hows, footprint, mask,
             for right, how in zip((right_b, right_c), hows, strict=True)
         ),
         seed=1,
-        count_fraction_threshold=0.0,
         footprint=_pixel_tree(anchor) if isinstance(footprint, str) else footprint,
     )
     if mask is not None:
@@ -404,7 +394,6 @@ def test_crossmatch_stream_star_rows(monkeypatch, orders, hows, footprint, mask,
     assert chunk.loc[b_only, "_ra"].tolist() == chunk.loc[b_only, "ra_B"].tolist()
 
 
-@pytest.mark.usefixtures("fake_skymaps")
 @pytest.mark.parametrize("n_neighbors", [None, 1])
 def test_crossmatch_stream_left_join(n_neighbors):
     """Left-only streams keep anchor pixels no right catalog covers, and add no _ra/_dec."""
@@ -415,7 +404,6 @@ def test_crossmatch_stream_left_join(n_neighbors):
         {"other": right, "radius_arcsec": STAR_RADIUS, "n_neighbors": n_neighbors},
         partitions_per_chunk=2,
         seed=1,
-        count_fraction_threshold=0.0,
     )
     chunk = next(iter(stream))
 
@@ -424,7 +412,6 @@ def test_crossmatch_stream_left_join(n_neighbors):
     assert chunk.index.name == anchor.meta.index.name
 
 
-@pytest.mark.usefixtures("fake_skymaps")
 @pytest.mark.parametrize(("how", "pixel_tree"), [("left", False), ("outer", False), ("outer", True)])
 @pytest.mark.parametrize(("anchor_order", "right_orders"), [(4, (1, 1)), (1, (4, 4)), (2, (1, 4))])
 def test_crossmatch_stream_star_matches_pairwise_crossmatches(anchor_order, right_orders, how, pixel_tree):
@@ -446,7 +433,6 @@ def test_crossmatch_stream_star_matches_pairwise_crossmatches(anchor_order, righ
         anchor,
         *({"other": right, "how": how, "radius_arcsec": STAR_RADIUS} for right in rights),
         seed=1,
-        count_fraction_threshold=0.0,
         footprint=_pixel_tree(anchor) if pixel_tree else None,
     )
     chunk = pd.DataFrame(_stream_all_pixels(stream))
@@ -484,7 +470,6 @@ def test_crossmatch_stream_star_matches_pairwise_crossmatches(anchor_order, righ
         assert sorted(right_only) == sorted(expected_only)
 
 
-@pytest.mark.usefixtures("fake_skymaps")
 def test_crossmatch_stream_star_reads_anchor_once_per_pixel():
     anchor, right_b, right_c = _star_catalogs()
     stream = CrossMatchStream(
@@ -492,7 +477,6 @@ def test_crossmatch_stream_star_reads_anchor_once_per_pixel():
         {"other": right_b, "how": "outer", "radius_arcsec": STAR_RADIUS},
         {"other": right_c, "how": "outer", "radius_arcsec": STAR_RADIUS},
         seed=1,
-        count_fraction_threshold=0.0,
     )
     pixel = stream._pixels[0]
     right_parts = [catalog_streams._partition_delayeds(result, pixel) for result in stream._results]
@@ -505,13 +489,12 @@ def test_crossmatch_stream_star_reads_anchor_once_per_pixel():
     assert len(anchor_tasks) == 1
 
 
-@pytest.mark.usefixtures("fake_skymaps")
 def test_crossmatch_stream_star_never_reads_right_only_sky():
     anchor, right_b, right_c = _star_catalogs()
     star_kwargs = [
         {"other": right, "how": "outer", "radius_arcsec": STAR_RADIUS} for right in (right_b, right_c)
     ]
-    stream = CrossMatchStream(anchor, *star_kwargs, seed=1, count_fraction_threshold=0.0)
+    stream = CrossMatchStream(anchor, *star_kwargs, seed=1)
     parts = [
         catalog_streams._partition_delayeds(result, pixel)
         for pixel in stream._pixels
@@ -532,7 +515,6 @@ def test_crossmatch_stream_star_never_reads_right_only_sky():
         assert right_only_keys & set(union._operation.build(union.get_healpix_pixels()).graph)
 
 
-@pytest.mark.usefixtures("fake_skymaps")
 @pytest.mark.parametrize(
     ("options", "match"),
     [
@@ -561,10 +543,9 @@ def test_crossmatch_stream_rejects_bad_arguments(options, match):
     anchor, right, _ = _star_catalogs()
     anchor.margin = None  # only reached once the other arguments are valid
     with pytest.raises(ValueError, match=match):
-        CrossMatchStream(anchor, {"other": right, **options}, count_fraction_threshold=0.0)
+        CrossMatchStream(anchor, {"other": right, **options})
 
 
-@pytest.mark.usefixtures("fake_skymaps")
 @pytest.mark.parametrize("how", ["left", "outer"])
 def test_crossmatch_stream_rejects_multiple_algorithm_matches(how):
     """Algorithm-specified neighbors must not multiply rows across right catalogs."""
@@ -580,7 +561,6 @@ def test_crossmatch_stream_rejects_multiple_algorithm_matches(how):
             }
             for right in rights
         ),
-        count_fraction_threshold=0.0,
     )
     with pytest.raises(pd.errors.MergeError, match="not a many-to-one merge"):
         _stream_all_pixels(stream)
@@ -603,20 +583,18 @@ def test_crossmatch_stream_scores_pixels_finer_than_skymaps(
     assert len(_stream_all_pixels(stream)) == len(small_sky_order1_catalog)
 
 
-@pytest.mark.usefixtures("fake_skymaps")
 def test_crossmatch_stream_right_suffixes():
     """The same right catalog twice needs distinct suffixes, which the stream keeps."""
     anchor, right, _ = _star_catalogs()
     # Anchor rows 1 and 4 are 1.8" and 3.6" from B's rows 11 and 15
     near, far = {"other": right, "radius_arcsec": 2.0}, {"other": right, "radius_arcsec": STAR_RADIUS}
     with pytest.raises(ValueError, match="id_B.*distinct suffixes"):
-        CrossMatchStream(anchor, near, far, count_fraction_threshold=0.0)
+        CrossMatchStream(anchor, near, far)
 
     stream = CrossMatchStream(
         anchor,
         {**near, "suffixes": ("", "_near")},
         {**far, "suffixes": ("_ignored", "_far")},
-        count_fraction_threshold=0.0,
     )
     chunk = _stream_all_pixels(stream)
     assert _id_rows(chunk, ("id", "id_near", "id_far")) == [
@@ -627,7 +605,6 @@ def test_crossmatch_stream_right_suffixes():
     ]
 
 
-@pytest.mark.usefixtures("fake_skymaps")
 @pytest.mark.parametrize(
     ("footprint", "min_surveys", "expected"),
     [
@@ -645,26 +622,24 @@ def test_crossmatch_stream_min_surveys(footprint, min_surveys, expected):
         {"other": right, "how": "outer", "radius_arcsec": STAR_RADIUS} for right in (right_b, right_c)
     ]
     with pytest.raises(ValueError, match="min_surveys"):
-        CrossMatchStream(anchor, *star_kwargs, count_fraction_threshold=0.0, min_surveys=4)
+        CrossMatchStream(anchor, *star_kwargs, min_surveys=4)
 
     stream = CrossMatchStream(
         anchor,
         *star_kwargs,
-        count_fraction_threshold=0.0,
         footprint=_pixel_tree(anchor) if footprint else None,
         min_surveys=min_surveys,
     )
     assert _id_rows(_stream_all_pixels(stream)) == expected
 
 
-@pytest.mark.usefixtures("fake_skymaps")
 def test_crossmatch_stream_min_surveys_ignores_removed_partitions():
     rows = [(1, 10.0, 10.0), (2, 200.0, 40.0)]
     anchor = _star_catalog(rows, "A", 2)
     right = _star_catalog(rows, "B", 2)
     right = right.get_partition(2, hp.radec2pix(2, 200.0, 40.0)[0].item())
 
-    stream = CrossMatchStream(anchor, {"other": right}, count_fraction_threshold=0.0, min_surveys=2)
+    stream = CrossMatchStream(anchor, {"other": right}, min_surveys=2)
 
     assert _id_rows(_stream_all_pixels(stream), ("id", "id_B")) == [[2, 2]]
 
