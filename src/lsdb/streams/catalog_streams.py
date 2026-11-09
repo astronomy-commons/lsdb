@@ -283,6 +283,9 @@ class CrossMatchStream(InfiniteStream):
     *crossmatch_kwargs : dict
         One dictionary per right catalog, containing ``other`` and any arguments
         for ``Catalog.crossmatch``. ``how`` is ``"left"`` (default) or ``"outer"``.
+        Only one neighbor per anchor row per right catalog is supported:
+        ``n_neighbors > 1`` is rejected, and algorithm-provided multiple matches
+        raise ``pandas.errors.MergeError`` when a chunk is computed.
         Anchor columns keep their names; ``suffixes`` sets only the right catalog's
         column suffix (default ``"_" + other.name``), which must make every output
         column name unique.
@@ -294,7 +297,9 @@ class CrossMatchStream(InfiniteStream):
     client : dask.distributed.Client or None, default None
         Client used to compute stream chunks, or None for synchronous execution.
     partitions_per_chunk : int, default 1
-        Number of partitions per chunk.
+        Number of aligned output partitions per chunk. These use the finest pixel
+        subdivision across the crossmatches, so one anchor partition may contribute
+        to multiple chunks. This does not bound the number of input partitions read.
     seed : int or None, default None
         Random seed for partition and row shuffling.
     count_fraction_threshold : float
@@ -389,6 +394,11 @@ class CrossMatchStream(InfiniteStream):
             new_kwargs = kwargs.copy()
             if new_kwargs.setdefault("how", "left") not in ("left", "outer"):
                 raise ValueError("CrossMatchStream supports how='left' or how='outer' for each right catalog")
+            n_neighbors = kwargs.get("n_neighbors")
+            if n_neighbors is not None and n_neighbors > 1:
+                raise ValueError(
+                    "CrossMatchStream supports at most one neighbor per anchor row per right catalog"
+                )
             columns = new_kwargs.pop("compression_columns", None)
             threshold = new_kwargs.pop("compression_ratio_threshold", None)
             if columns is None and threshold is None:
@@ -586,7 +596,7 @@ def _assemble_star_pixel(
         result = pd.concat(parts)
         anchored = result[_ANCHOR_ROW].notna().to_numpy()
         matches = result.loc[anchored, [_ANCHOR_ROW, *columns]].set_index(_ANCHOR_ROW)
-        rows = rows.join(matches, on=_ANCHOR_ROW)
+        rows = rows.join(matches, on=_ANCHOR_ROW, validate="many_to_one")
         if outer:
             unmatched.append(_rows_in_pixel(result.loc[~anchored], pixel, "_ra", "_dec"))
     if any(assembly.outer):
