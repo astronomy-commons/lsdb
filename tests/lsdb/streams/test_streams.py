@@ -4,8 +4,8 @@ import astropy.units as u
 import hats.pixel_math.healpix_shim as hp
 import numpy as np
 import pandas as pd
-import pyarrow as pa  # type: ignore[import-untyped]
-import pyarrow.parquet as pq  # type: ignore[import-untyped]
+import pyarrow as pa
+import pyarrow.parquet as pq
 import pytest
 from dask.delayed import delayed
 from hats.io.paths import pixel_catalog_file

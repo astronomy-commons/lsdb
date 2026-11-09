@@ -315,11 +315,9 @@ class CrossMatchStream(InfiniteStream):
         ``anchor.hc_structure.pixel_tree.to_moc()`` to emit unmatched right rows
         anywhere in the anchor's pixels.
     min_surveys : int, default 1
-        Keep only sky where at least this many of the anchor and right catalogs have
-        data (each catalog's ``hc_structure.moc`` clipped to its current pixel tree,
-        or its pixel tree if it has no MOC), judged at the resolution of those MOCs
-        and intersected with ``footprint``.
-        With 2 or more, anchor rows outside that sky are dropped too.
+        Keep only sky inside ``footprint`` where at least this many of the anchor and
+        right catalogs have data, according to their MOCs. With 2 or more, anchor rows
+        outside that sky are dropped too.
 
     Notes
     -----
