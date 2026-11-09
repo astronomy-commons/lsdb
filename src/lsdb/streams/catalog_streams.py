@@ -273,8 +273,10 @@ class CatalogIterator(Iterator[pd.DataFrame]):
 class CrossMatchStream(InfiniteStream):
     """Stream an anchor catalog crossmatched with each of several right catalogs.
 
-    Each right catalog is left- or outer-joined to the anchor, and may be skipped
-    where it carries little information.
+    Each right catalog is left- or outer-joined to the anchor. Optional filters can
+    skip a right catalog in a pixel; its columns are then null and anchor rows are kept.
+    Filter scores come from on-disk metadata, so they ignore any filtering applied
+    to the catalogs.
 
     Parameters
     ----------
@@ -289,11 +291,11 @@ class CrossMatchStream(InfiniteStream):
         Anchor columns keep their names; ``suffixes`` sets only the right catalog's
         column suffix (default ``"_" + other.name``), which must make every output
         column name unique.
-        Each dictionary may additionally specify
-        ``compression_columns`` (a nonempty list of science column names) and
-        ``compression_ratio_threshold`` (a finite, nonnegative minimum ratio).
-        Both must be supplied to enable compression filtering for that catalog.
-        Nested columns may be selected as a group or with dotted subcolumn names.
+        ``compression_columns`` and ``compression_ratio_threshold`` together skip the
+        catalog in pixels where those columns' compressed/uncompressed Parquet size,
+        read from the footers of the on-disk partitions overlapping the pixel, is below
+        the threshold. Nested columns may be selected as a group or with dotted
+        subcolumn names.
     client : dask.distributed.Client or None, default None
         Client used to compute stream chunks, or None for synchronous execution.
     partitions_per_chunk : int, default 1
@@ -303,8 +305,8 @@ class CrossMatchStream(InfiniteStream):
     seed : int or None, default None
         Random seed for partition and row shuffling.
     count_fraction_threshold : float or None, default None
-        Minimum estimated match coverage required to crossmatch a right catalog.
-        None disables coverage filtering, so no skymaps are read.
+        Skip a right catalog in pixels where its estimated match fraction, from the
+        anchor's and its own skymaps, is below this. None disables it (no skymaps read).
     footprint : mocpy.MOC or None, default None
         Sky region the stream covers, clipped to the anchor's pixel tree. None uses
         the anchor's data coverage (``anchor.hc_structure.moc``, or its pixel tree if
@@ -321,23 +323,6 @@ class CrossMatchStream(InfiniteStream):
 
     Notes
     -----
-    The compression ratio is the sum of compressed Parquet column-chunk sizes
-    divided by the sum of uncompressed sizes across selected columns, row groups,
-    and right-catalog source partitions overlapping the current pixel. Higher
-    ratios mean less-compressible data; compression overhead can produce ratios
-    above one. Finer pixels inherit their source partition's score, which is
-    unaffected by row filters or transformations.
-
-    The coverage score counts only skymap cells that overlap the footprint, so right
-    rows the footprint drops never lower it.
-
-    Every enabled filter must pass. Skipping preserves anchor rows and fills
-    right-catalog columns with nulls.
-
-    Scoring reads only footer metadata, with no dedicated cache or data
-    computation. It requires on-disk right catalogs and raises an error for
-    missing selected columns or unusable metadata.
-
     Every right catalog is crossmatched with the anchor separately (a star around
     the anchor), never with another right catalog, and its matches are merged onto
     the anchor rows. With ``how="outer"``, a right catalog's rows that match no anchor
