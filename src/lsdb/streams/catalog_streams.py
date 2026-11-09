@@ -404,18 +404,17 @@ class CrossMatchStream(InfiniteStream):
             if columns is None and threshold is None:
                 self.compression_filters.append(None)
             else:
-                configuration_error = (
-                    "Specify both a nonempty list of compression_columns and a finite, "
-                    "nonnegative compression_ratio_threshold."
-                )
-                if (
-                    not isinstance(columns, list)
-                    or not columns
-                    or not all(isinstance(column, str) and column for column in columns)
+                if not (
+                    isinstance(columns, list)
+                    and columns
+                    and all(isinstance(column, str) and column for column in columns)
+                    and isinstance(threshold, (int, float))
+                    and 0 <= threshold < np.inf  # also rejects NaN
                 ):
-                    raise ValueError(configuration_error)
-                if not isinstance(threshold, (int, float)) or not np.isfinite(threshold) or threshold < 0:
-                    raise ValueError(configuration_error)
+                    raise ValueError(
+                        "Specify both a nonempty list of compression_columns and a finite, "
+                        "nonnegative compression_ratio_threshold."
+                    )
                 if kwargs["other"].hc_structure.catalog_base_dir is None:
                     raise ValueError("Compression filtering requires an on-disk right catalog.")
                 self.compression_filters.append((columns.copy(), float(threshold)))
@@ -612,11 +611,7 @@ def _get_compression_ratio(catalog: Catalog, pixel: HealpixPixel, columns: list[
     source_pixels = PixelSearch(pixel).filter_hc_catalog(structure).get_healpix_pixels()
     if not source_pixels:
         return 0.0
-    path_generator = (
-        pixel_catalog_file
-        if catalog.loading_config is None
-        else catalog.loading_config.path_generator or pixel_catalog_file
-    )
+    path_generator = getattr(catalog.loading_config, "path_generator", None) or pixel_catalog_file
 
     compressed_bytes = 0
     uncompressed_bytes = 0
