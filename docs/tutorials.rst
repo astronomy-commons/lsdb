@@ -26,7 +26,8 @@ work through on your own.
 
 **Most recent tutorials:**
 
-* June 2026: `AstroAI Workshop 2026 LSDB Tutorial <https://github.com/lincc-frameworks/astroai2026-tutorial-lsdb>`_. Focused on remote machine learning training, remote catalog access, and streaming interface.
+* November 2026: `Rebuilding "Coahuila-Tejas" Through Rubin-LSST Collaboration <https://github.com/lincc-frameworks/CoahuilaTejas2026-tutorial-lsdb>`_. Focused on collaboration between Rubin data rights holders and non-holders: sharing safe derived products of Rubin DP2 catalogs, cross-matching, and light-curve analysis.
+* June 2026: `AstroAI Workshop 2026 <https://github.com/lincc-frameworks/astroai2026-tutorial-lsdb>`_. Focused on remote machine learning training, remote catalog access, and streaming interface.
 * May 2026: `LSST-DA Regional Meeting at JHU 2026 — "From Transients to Cosmology" <https://github.com/lincc-frameworks/LSST-DA-meeting-JHU>`_. Focused on working with Rubin Data Preview on the Rubin Science Platform, cross-matching with other catalogs, and light-curve analysis.
 
 **Legacy tutorials:**
