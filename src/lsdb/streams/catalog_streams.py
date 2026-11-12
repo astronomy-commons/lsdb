@@ -298,6 +298,11 @@ class CrossMatchStream(InfiniteStream):
         from sky where the anchor has data. A given MOC also restricts the anchor; pass
         ``anchor.hc_structure.pixel_tree.to_moc()`` to emit unmatched right rows
         anywhere in the anchor's pixels.
+    min_catalogs : int, default 1
+        Keep only sky inside ``footprint`` where at least this many of the anchor and
+        right catalogs have data, according to their MOCs. With 2 or more, anchor rows
+        outside that sky are dropped too.
+
     Notes
     -----
     Every right catalog is crossmatched with the anchor separately (a star around
@@ -332,8 +337,15 @@ class CrossMatchStream(InfiniteStream):
         partitions_per_chunk: int = 1,
         seed: int | None = None,
         footprint: MOC | None = None,
+        min_catalogs: int = 1,
     ) -> None:
-        catalog, self.footprint = _restrict_to_footprint(catalog, footprint)
+        n_catalogs = 1 + len(crossmatch_kwargs)
+        if not isinstance(min_catalogs, int) or not 1 <= min_catalogs <= n_catalogs:
+            raise ValueError(
+                f"min_catalogs must be an integer from 1 to the number of catalogs ({n_catalogs})."
+            )
+        right_catalogs = [kwargs["other"] for kwargs in crossmatch_kwargs]
+        catalog, self.footprint = _restrict_to_footprint(catalog, footprint, right_catalogs, min_catalogs)
         super().__init__(
             catalog,
             client=client,
@@ -421,14 +433,27 @@ def _data_coverage(catalog: Catalog) -> MOC:
     return pixel_coverage if structure.moc is None else structure.moc.intersection(pixel_coverage)
 
 
-def _restrict_to_footprint(catalog: Catalog, footprint: MOC | None) -> tuple[Catalog, MOC]:
-    """Clip ``footprint`` to the anchor's pixel tree, so every drawn pixel has anchor rows.
+def _restrict_to_footprint(
+    catalog: Catalog, footprint: MOC | None, right_catalogs: list[Catalog], min_catalogs: int
+) -> tuple[Catalog, MOC]:
+    """Clip ``footprint`` to the anchor's pixel tree, so every drawn pixel has anchor rows, and
+    to the sky where at least ``min_catalogs`` of the anchor and right catalogs have data.
 
     The default, the anchor's data coverage, needs no anchor filtering: its rows lie in its MOC."""
+    restricts_anchor = footprint is not None or min_catalogs > 1
     if footprint is None:
-        return catalog, _data_coverage(catalog)
-    footprint = footprint.intersection(catalog.hc_structure.pixel_tree.to_moc())
-    return catalog.moc_search(footprint), footprint
+        footprint = _data_coverage(catalog)
+    else:
+        footprint = footprint.intersection(catalog.hc_structure.pixel_tree.to_moc())
+    if min_catalogs > 1:
+        at_least = [footprint] + [MOC.new_empty(max_depth=footprint.max_order) for _ in range(min_catalogs)]
+        for catalogs_seen, cat in enumerate((catalog, *right_catalogs), start=1):
+            coverage = _data_coverage(cat)
+            # Update downward so each catalog is counted only once.
+            for count in range(min(min_catalogs, catalogs_seen), 0, -1):
+                at_least[count] = at_least[count].union(at_least[count - 1].intersection(coverage))
+        footprint = at_least[min_catalogs]
+    return (catalog.moc_search(footprint) if restricts_anchor else catalog), footprint
 
 
 _ANCHOR_ROW = "_lsdb_anchor_row"
