@@ -1,1 +1,1 @@
-hats @ git+https://github.com/astronomy-commons/hats.git@main
+hats @ git+https://github.com/Mnvv08/hats@remove-legacy-properties-file
