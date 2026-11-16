@@ -7,7 +7,6 @@ An introduction to the most common Catalog operations
     :maxdepth: 1
 
     Setting up a Dask Client </tutorials/dask_client>
-    Margins </tutorials/margins>
     Small-scale analysis (e.g. cone_search, partitions, random_sample) </tutorials/small_scale>
     Crossmatching catalogs </tutorials/pre_executed/crossmatching>
     Types of crossmatches </tutorials/pre_executed/types_of_crossmatch>
