@@ -70,7 +70,6 @@ def test_save_catalog(small_sky_catalog, tmp_path):
     data_thumbnail = pq.read_table(data_thumbnail_pointer)
     assert len(data_thumbnail) == 1
     assert data_thumbnail.schema.equals(small_sky_catalog.hc_structure.schema)
-    assert (main_catalog_path / "properties").exists()
     assert (main_catalog_path / "hats.properties").exists()
 
     extras = expected_catalog.hc_structure.catalog_info.extra_dict()
