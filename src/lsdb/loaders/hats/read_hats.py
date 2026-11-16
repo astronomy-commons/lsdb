@@ -356,7 +356,8 @@ def _load_object_catalog(hc_catalog, config):
     if config.margin_cache is not None:
         margin_hc_catalog = hc.read_hats(config.margin_cache, single_catalog=True, read_moc=False)
         margin = _load_margin_catalog(margin_hc_catalog, config)
-        if len(margin) > 0:
+        # only validate margin catalog if it's non-empty
+        if (margin.npartitions > 0) and (margin.map_partitions(len).compute().sum()) > 0:
             _validate_margin_catalog(margin, catalog)
         catalog.margin = margin
     return catalog
