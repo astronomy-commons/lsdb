@@ -293,6 +293,16 @@ def test_map_rows_infer_nesting(small_sky_with_nested_sources):
     assert list(res_false.columns) == ["new_nested.ra_mag", "new_nested.dec_mag"]
 
 
+def test_issue1696():
+    """map_rows must work with empty partitions
+
+    https://github.com/astronomy-commons/lsdb/issues/1696
+    """
+    lsdb.generate_catalog(1000, 1, seed=0).query("ra > 180").map_rows(
+        lambda row: {"c": row["a"] + row["b"]}, meta={"c": float}
+    ).compute()
+
+
 def test_serialization_read(small_sky_with_nested_sources):
     assert isinstance(small_sky_with_nested_sources.dtypes["sources"], NestedDtype)
 
