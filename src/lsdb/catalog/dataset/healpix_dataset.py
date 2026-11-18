@@ -1798,6 +1798,9 @@ class HealpixDataset:
             meta_frame = concat_metas([self_meta, meta_frame])
 
         def perform_map_rows(df, func, *args, **kwargs):
+            # nested-pandas returns empty input as-is, without new columns
+            if len(df) == 0:
+                return meta_frame.iloc[:0].set_axis(df.index)
             return df.map_rows(func, *args, **kwargs)
 
         op = MapPartitions(
