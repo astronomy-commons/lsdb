@@ -2029,10 +2029,16 @@ class HealpixDataset:
         This method never computes. If crossmatching, filtering, or map_partitions have occurred,
         then a warning is logged to inform the user that results might be inaccurate.
         """
+        # TODO check whether catalog has been modified: hats unmodified()
         if resolution is None:
             return self.hc_structure.moc
         elif isinstance(resolution, int):
-            pass
+            max_order = self.hc_structure.moc.max_order
+            if not (0 <= resolution <= max_order):
+                # TODO check if higher order MOC is available
+                # use hats table_properties, skymap_alt_orders
+                raise ValueError(f"resolution must be between 0 and the MOC's max_order, {max_order}")
+            return self.hc_structure.moc.degrade_to_order(resolution)
         elif isinstance(resolution, str):
             if str.lower().strip() != "pixel-tree":
                 raise ValueError('resolution must be int, "pixel-tree", or None.')
