@@ -2007,6 +2007,30 @@ class HealpixDataset:
             f"Expect up to {disk_size} on DISK."
         )
 
+    def moc_footprint(resolution: int | str = None) -> MOC:
+        """Return the catalog's MOC at the requested resolution.
+
+        Parameters
+        ----------
+        resolution: int | str, default None
+            if None, then return the existing MOC from the catalog's hc_structure.
+            if int, then then return the existing MOC, downsampled to the requested order.
+                resolution values greater than the existing MOC raise ValueError.
+            if str, and resolution == 'pixel-tree', then calculate the MOC from the catalog's
+                hc_structure.pixel_tree, e.g. "covered" for a catalog pixel, "not covered" for no pixel.
+                Other strings raise ValueError.
+
+        Returns
+        -------
+        moc: mocpy.MOC
+
+        Notes
+        -----
+        This method never computes. If crossmatching, filtering, or map_partitions have occurred,
+        then a warning is logged to inform the user that results might be inaccurate.
+        """
+        pass
+
 
 def _compare_radec_cols(orig_df, res_df, ra_column, dec_column):
     """Return whether ra/dec values of res_df are a subset of orig_df."""
