@@ -14,7 +14,6 @@ import numpy.testing as npt
 import pandas as pd
 import pytest
 from astropy.coordinates import SkyCoord
-from astropy.visualization.wcsaxes import WCSAxes
 from distributed import Client
 from hats.inspection._plotting import _get_fov_moc_from_wcs
 from hats.io.paths import get_healpix_from_path
@@ -29,7 +28,7 @@ from lsdb.core.search.region_search import MOCSearch
 from lsdb.operations.lsdb_ops import EmptyOperation
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture
 def reset_matplotlib():
     yield
     mpl = pytest.importorskip("matplotlib")
@@ -980,7 +979,11 @@ def test_modified_hc_structure_is_a_deep_copy(small_sky_order1_catalog):
     assert modified_hc_structure.catalog_info.total_rows is None
 
 
+@pytest.mark.usefixtures("reset_matplotlib")
 def test_plot_points(small_sky_order1_catalog, mocker):
+    from astropy.visualization.wcsaxes import WCSAxes  # pylint: disable=import-outside-toplevel
+
+    _ = pytest.importorskip("matplotlib.pyplot")
     mocker.patch("astropy.visualization.wcsaxes.WCSAxes.scatter")
     _, ax = small_sky_order1_catalog.plot_points()
     comp_cat = small_sky_order1_catalog.compute()
@@ -990,7 +993,10 @@ def test_plot_points(small_sky_order1_catalog, mocker):
     assert WCSAxes.scatter.call_args.kwargs["transform"] == ax.get_transform("icrs")
 
 
+@pytest.mark.usefixtures("reset_matplotlib")
 def test_plot_points_fov(small_sky_order1_catalog, mocker):
+    from astropy.visualization.wcsaxes import WCSAxes  # pylint: disable=import-outside-toplevel
+
     plt = pytest.importorskip("matplotlib.pyplot")
     mocker.patch("astropy.visualization.wcsaxes.WCSAxes.scatter")
     fig = plt.figure(figsize=(10, 6))
@@ -1006,7 +1012,10 @@ def test_plot_points_fov(small_sky_order1_catalog, mocker):
     assert WCSAxes.scatter.call_args.kwargs["transform"] == ax.get_transform("icrs")
 
 
+@pytest.mark.usefixtures("reset_matplotlib")
 def test_plot_points_wcs(small_sky_order1_catalog, mocker):
+    from astropy.visualization.wcsaxes import WCSAxes  # pylint: disable=import-outside-toplevel
+
     plt = pytest.importorskip("matplotlib.pyplot")
     mocker.patch("astropy.visualization.wcsaxes.WCSAxes.scatter")
     fig = plt.figure(figsize=(10, 6))
@@ -1022,8 +1031,12 @@ def test_plot_points_wcs(small_sky_order1_catalog, mocker):
     assert WCSAxes.scatter.call_args.kwargs["transform"] == ax.get_transform("icrs")
 
 
+@pytest.mark.usefixtures("reset_matplotlib")
 def test_plot_points_colorcol(small_sky_order1_catalog, mocker):
+    from astropy.visualization.wcsaxes import WCSAxes  # pylint: disable=import-outside-toplevel
+
     plt = pytest.importorskip("matplotlib.pyplot")
+
     mocker.patch("astropy.visualization.wcsaxes.WCSAxes.scatter")
     mocker.patch("matplotlib.pyplot.colorbar")
     _, ax = small_sky_order1_catalog.plot_points(color_col="id")
