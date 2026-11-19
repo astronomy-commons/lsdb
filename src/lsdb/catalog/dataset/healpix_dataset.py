@@ -2029,7 +2029,14 @@ class HealpixDataset:
         This method never computes. If crossmatching, filtering, or map_partitions have occurred,
         then a warning is logged to inform the user that results might be inaccurate.
         """
-        pass
+        if resolution is None:
+            return self.hc_structure.moc
+        elif isinstance(resolution, int):
+            pass
+        elif isinstance(resolution, str):
+            if str.lower().strip() != "pixel-tree":
+                raise ValueError('resolution must be int, "pixel-tree", or None.')
+            return self.hc_structure.pixel_tree.to_moc()
 
 
 def _compare_radec_cols(orig_df, res_df, ra_column, dec_column):
