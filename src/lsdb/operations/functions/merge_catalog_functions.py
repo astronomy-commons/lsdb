@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Callable, Literal, Sequence, cast
+from collections.abc import Callable, Sequence
+from typing import TYPE_CHECKING, Literal, cast
 
 import hats.pixel_math.healpix_shim as hp
 import nested_pandas as npd

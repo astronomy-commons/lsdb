@@ -143,6 +143,10 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"] # Allow re-exports in package __init__ files
+"src/lsdb/catalog/margin_catalog.py" = ["D102"] # Methods override documented base class methods
+"src/lsdb/operations/expressions.py" = ["D102"] # Methods override documented base class methods
+"src/lsdb/operations/lsdb_ops.py" = ["D102"] # Methods override documented base class methods
+"src/lsdb/io/show_versions.py" = ["T201"] # Printing is the purpose of this module
 "tests/**" = ["D101", "D102", "D103", "D106", "T201"] # Docstrings and print() are not required in tests
 "benchmarks/**" = ["D101", "D102", "D103", "D106", "T201"] # Docstrings and print() are not required in benchmarks
 "docs/**" = ["D101", "D102", "D103", "D106", "T201"] # Docstrings and print() are not required in docs and notebooks

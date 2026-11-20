@@ -26,7 +26,7 @@ def _na_series_for_dtype(dtype, length):
     return pd.Series([None] * length, dtype=dtype)
 
 
-class AbstractCrossmatchAlgorithm(ABC):
+class AbstractCrossmatchAlgorithm(ABC):  # noqa: B024
     """Abstract class used to write a crossmatch algorithm.
 
     To specify a custom algorithm, write a class that subclasses the

@@ -166,12 +166,11 @@ def to_lance(
 
     base_catalog_path = UPath(base_catalog_path)
     lance_table_path = base_catalog_path / f"{table_name}.lance"
-    if lance_table_path.exists() and any(lance_table_path.iterdir()):
-        if not overwrite:
-            raise ValueError(
-                f"A Lance table already exists at '{lance_table_path}'."
-                " Choose a different path or set overwrite=True to overwrite the existing dataset."
-            )
+    if lance_table_path.exists() and any(lance_table_path.iterdir()) and not overwrite:
+        raise ValueError(
+            f"A Lance table already exists at '{lance_table_path}'."
+            " Choose a different path or set overwrite=True to overwrite the existing dataset."
+        )
 
     path = str(base_catalog_path)
     storage_options = _lance_storage_options_from_upath(base_catalog_path)
@@ -203,7 +202,7 @@ def to_lance(
 
     if optimize_dataset:
         # TODO: Replace with appropriate logging message and level
-        print("Optimizing Lance dataset...")
+        print("Optimizing Lance dataset...")  # noqa: T201
         table.optimize(cleanup_older_than=timedelta(0), delete_unverified=True)
 
-    print(f"Finished writing output to lance. Path: {path}, Table name: {table_name}")
+    print(f"Finished writing output to lance. Path: {path}, Table name: {table_name}")  # noqa: T201

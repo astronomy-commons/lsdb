@@ -368,7 +368,7 @@ class DataframeCatalogLoader:
             supplemental_count_histogram=mem_size_histogram,
             use_lower_order=True,
         )
-        pixel_list = list({HealpixPixel(tup[0], tup[1]) for tup in alignment if not tup is None})
+        pixel_list = list({HealpixPixel(tup[0], tup[1]) for tup in alignment if tup is not None})
         return list(np.array(pixel_list)[get_pixel_argsort(pixel_list)])
 
     def _generate_op(self, pixel_list: list[HealpixPixel]) -> tuple[Operation, int]:

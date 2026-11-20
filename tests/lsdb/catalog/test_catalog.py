@@ -873,7 +873,7 @@ def test_square_bracket_single_partition(small_sky_order1_catalog):
     index = 1
     subset = small_sky_order1_catalog.partitions[index]
     assert isinstance(subset, Catalog)
-    assert 1 == len(subset.get_healpix_pixels())
+    assert len(subset.get_healpix_pixels()) == 1
     pixel = subset.get_healpix_pixels()[0]
     assert pixel == small_sky_order1_catalog.get_healpix_pixels()[index]
 
@@ -882,7 +882,7 @@ def test_square_bracket_multiple_partitions(small_sky_order1_catalog):
     indices = [0, 1, 2]
     subset = small_sky_order1_catalog.partitions[indices]
     assert isinstance(subset, Catalog)
-    assert 3 == len(subset.get_healpix_pixels())
+    assert len(subset.get_healpix_pixels()) == 3
     for pixel in subset.get_healpix_pixels():
         original_partition = small_sky_order1_catalog.partitions[pixel]
         subset_partition = subset.partitions[pixel]
@@ -892,7 +892,7 @@ def test_square_bracket_multiple_partitions(small_sky_order1_catalog):
 def test_square_bracket_slice_partitions(small_sky_order1_catalog):
     subset = small_sky_order1_catalog.partitions[:2]
     assert isinstance(subset, Catalog)
-    assert 2 == len(subset.get_healpix_pixels())
+    assert len(subset.get_healpix_pixels()) == 2
     subset_2 = small_sky_order1_catalog.partitions[0:2]
     assert isinstance(subset, Catalog)
     pd.testing.assert_frame_equal(subset_2.compute(), subset.compute())

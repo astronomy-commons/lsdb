@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import warnings
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from pathlib import Path
-from typing import Any, Callable, Literal, overload
+from typing import Any, Literal, Self, overload
 
 import dask.dataframe as dd
 import hats as hc
@@ -17,7 +17,6 @@ from hats.catalog.index.index_catalog import IndexCatalog as HCIndexCatalog
 from hats.pixel_math import HealpixPixel
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN, SPATIAL_INDEX_ORDER
 from pandas._typing import Renamer
-from typing_extensions import Self
 from upath import UPath
 
 from lsdb import io
@@ -72,7 +71,7 @@ class Catalog(HealpixDataset):
 
     margin: MarginCatalog | None = None
     """Link to a ``MarginCatalog`` object that represents the objects in other partitions that
-    are within a specified radius of the border with this partition. This is useful for 
+    are within a specified radius of the border with this partition. This is useful for
     finding best counterparts when crossmatching catalogs."""
 
     hc_collection: CatalogCollection | None = None
@@ -795,7 +794,7 @@ class Catalog(HealpixDataset):
             raise ValueError("No values specified for search.")
         list_value_already_found = False
         for field, value in values.items():
-            print(f"Searching for {field}={value}")
+            print(f"Searching for {field}={value}")  # noqa: T201
             if isinstance(value, list):
                 if list_value_already_found:
                     raise ValueError("Only one column may contain a list of values.")

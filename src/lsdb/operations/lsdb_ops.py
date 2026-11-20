@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import functools
-from typing import TYPE_CHECKING, Callable, Sequence
+from collections.abc import Callable, Sequence
+from typing import TYPE_CHECKING
 
 import nested_pandas as npd
 import numpy as np

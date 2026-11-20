@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Type
+from typing import TYPE_CHECKING
 
 import astropy
 import pandas as pd
@@ -24,13 +24,13 @@ def plot_points(
     fov: Quantity | tuple[Quantity, Quantity] | None = None,
     center: SkyCoord | None = None,
     wcs: astropy.wcs.WCS | None = None,
-    frame_class: Type[BaseFrame] | None = None,
+    frame_class: type[BaseFrame] | None = None,
     ax: WCSAxes | None = None,
     fig: Figure | None = None,
     **kwargs,
 ):
     """Plots the points in a given dataframe as a scatter plot
-    
+
     Performs a scatter plot on a WCSAxes with the points in a dataframe.
     The scatter points can be colored by a column of the catalog by using the `color_col` kwarg
 
@@ -61,7 +61,7 @@ def plot_points(
     wcs : WCS | None
         The WCS to specify the projection of the plot. If used, all other WCS parameters
         are ignored and the parameters from the WCS object is used.
-    frame_class : Type[BaseFrame] | None
+    frame_class : type[BaseFrame] | None
         The class of the frame for the WCSAxes to be initialized with.
         if the `ax` kwarg is used, this value is ignored (By Default uses EllipticalFrame for full
         sky projection. If FOV is set, RectangularFrame is used)

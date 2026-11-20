@@ -1,6 +1,6 @@
 from collections.abc import Iterator
 from dataclasses import dataclass
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 import nested_pandas as npd
 import numpy as np
@@ -221,7 +221,7 @@ class CatalogIterator(Iterator[pd.DataFrame]):
         self.iterable = iterable
         self.partitions_left = self._get_initial_partitions()
         self._empty = False
-        self.future: Optional[Future | _FakeFuture] = self.iterable.submit_next_partitions(
+        self.future: Future | _FakeFuture | None = self.iterable.submit_next_partitions(
             self._get_next_partitions()
         )
 

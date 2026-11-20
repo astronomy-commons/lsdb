@@ -183,7 +183,7 @@ def test_association_required_column_names(association_kwargs, tmp_path):
     _check_catalogs_and_columns(column_names, **association_kwargs)
 
     ## Try setting each field to None, and be sad about it.
-    for field in association_kwargs.keys():
+    for field in association_kwargs:
         missing_field = association_kwargs | {field: None}
         with pytest.raises(ValueError, match=field):
             _check_catalogs_and_columns(column_names, **missing_field)
