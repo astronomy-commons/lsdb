@@ -92,8 +92,9 @@ Catalog, and specify which columns we want to use from it.
 .. code-block:: python
 
     import lsdb
+    catalog_path = "https://data.lsdb.io/hats/ztf_dr14/ztf_object"
     ztf = lsdb.open_catalog(
-        "https://data.lsdb.io/hats/ztf_dr14/ztf_object",
+        catalog_path,
         columns=["ra", "dec", "ps1_objid", "nobs_r", "mean_mag_r"],
     )
     >> ztf
