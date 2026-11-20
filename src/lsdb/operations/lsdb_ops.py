@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import functools
-from typing import TYPE_CHECKING, Callable, Sequence
+from collections.abc import Callable, Sequence
+from typing import TYPE_CHECKING
 
 import nested_pandas as npd
 import numpy as np
@@ -233,7 +234,7 @@ def _normalize_meta(meta) -> tuple[npd.NestedFrame, bool]:
         # list of (name, dtype) tuples — another Dask-accepted format
         return npd.NestedFrame({k: pd.Series(dtype=v) for k, v in meta}), True
     raise ValueError(
-        f"meta must be a DataFrame, Series, dict of {{name: dtype}}, or list of (name, dtype) tuples, got {type(meta)}"  # pylint: disable=line-too-long
+        f"meta must be a DataFrame, Series, dict of {{name: dtype}}, or list of (name, dtype) tuples, got {type(meta)}"  # noqa: E501
     )
 
 
@@ -331,7 +332,7 @@ class MapPartitions(Operation):
             except Exception as e:
                 if include_pixel and args:
                     raise RuntimeError(
-                        f"Error applying function {funcname(func)} to partition {_partition_index}, pixel {args[0]}: {e}"  # pylint: disable=line-too-long
+                        f"Error applying function {funcname(func)} to partition {_partition_index}, pixel {args[0]}: {e}"  # noqa: E501
                     ) from e
                 raise RuntimeError(
                     f"Error applying function {funcname(func)} to partition {_partition_index}: {e}"
@@ -448,10 +449,7 @@ class AlignAndApply(Operation):
     @property
     def input_ops(self) -> list[Operation | None]:
         """Get the operations corresponding to the input catalogs"""
-        return [
-            cat._operation if cat is not None else None  # pylint: disable=protected-access
-            for cat in self.input_cats
-        ]
+        return [cat._operation if cat is not None else None for cat in self.input_cats]
 
     @property
     def dependencies(self) -> list[Operation]:

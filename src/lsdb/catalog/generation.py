@@ -103,7 +103,7 @@ def generate_data(
 
     # Add an error column to the nested column
     if isinstance(n_layer, dict):
-        for layer in n_layer.keys():
+        for layer in n_layer:
             base_nf[f"{layer}.flux_err"] = base_nf[f"{layer}.flux"] * 0.05
     else:
         base_nf["nested.flux_err"] = base_nf["nested.flux"] * 0.05

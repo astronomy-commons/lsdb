@@ -1,4 +1,3 @@
-# pylint: disable=duplicate-code
 from __future__ import annotations
 
 import warnings
@@ -35,7 +34,6 @@ if TYPE_CHECKING:
 NON_JOINING_ASSOCIATION_COLUMNS = ["Norder", "Dir", "Npix", "join_Norder", "join_Dir", "join_Npix"]
 
 
-# pylint: disable=too-many-arguments, too-many-positional-arguments, unused-argument, too-many-locals
 def perform_join_on(
     left: npd.NestedFrame,
     right: npd.NestedFrame,
@@ -124,7 +122,6 @@ def perform_join_on(
     return merged
 
 
-# pylint: disable=too-many-arguments, too-many-positional-arguments, unused-argument
 def perform_join_nested(
     left: npd.NestedFrame,
     right: npd.NestedFrame,
@@ -206,7 +203,6 @@ def perform_join_nested(
     return merged
 
 
-# pylint: disable=too-many-arguments, unused-argument, too-many-locals
 def perform_join_through(
     left: npd.NestedFrame,
     right: npd.NestedFrame,
@@ -325,7 +321,6 @@ def perform_join_through(
     return merged
 
 
-# pylint: disable=too-many-arguments, unused-argument
 def perform_merge_asof(
     left: npd.NestedFrame,
     right: npd.NestedFrame,
@@ -521,7 +516,7 @@ def join_catalog_data_nested(
         left_on,
         right_on,
         nested_column_name,
-        right.meta,  # pylint: disable=protected-access
+        right.meta,
         how,
     )
 
@@ -617,7 +612,6 @@ def join_catalog_data_through(
     ]
     non_joining_columns = [c for c in NON_JOINING_ASSOCIATION_COLUMNS if c in association.columns]
 
-    # pylint: disable=protected-access
     extra_df = association.meta.drop(non_joining_columns + association_join_columns, axis=1)
     meta_df = generate_meta_df_for_joined_tables(
         (left, right), suffixes, extra_columns=extra_df, suffix_method=suffix_method, log_changes=log_changes

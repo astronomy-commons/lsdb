@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import warnings
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from pathlib import Path
-from typing import Any, Callable, Literal, overload
+from typing import Any, Literal, Self, overload
 
 import dask.dataframe as dd
 import hats as hc
@@ -17,7 +17,6 @@ from hats.catalog.index.index_catalog import IndexCatalog as HCIndexCatalog
 from hats.pixel_math import HealpixPixel
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN, SPATIAL_INDEX_ORDER
 from pandas._typing import Renamer
-from typing_extensions import Self
 from upath import UPath
 
 from lsdb import io
@@ -64,7 +63,6 @@ def _default_suffixes(left_name: str, right_name: str) -> tuple[str, str]:
     return (f"_{left_name}", f"_{right_name}")
 
 
-# pylint: disable=protected-access,too-many-public-methods, too-many-lines
 class Catalog(HealpixDataset):
     """LSDB Catalog to perform analysis of sky catalogs and efficient spatial operations."""
 
@@ -73,7 +71,7 @@ class Catalog(HealpixDataset):
 
     margin: MarginCatalog | None = None
     """Link to a ``MarginCatalog`` object that represents the objects in other partitions that
-    are within a specified radius of the border with this partition. This is useful for 
+    are within a specified radius of the border with this partition. This is useful for
     finding best counterparts when crossmatching catalogs."""
 
     hc_collection: CatalogCollection | None = None
@@ -278,7 +276,6 @@ class Catalog(HealpixDataset):
         suffix_method: str | None = None,
         log_changes: bool = True,
     ) -> Catalog:
-        # pylint:disable=unused-argument
         """Perform a cross-match between two catalogs
 
         The pixels from each catalog are aligned via a `PixelAlignment`, and cross-matching is
@@ -489,7 +486,6 @@ class Catalog(HealpixDataset):
         nested_column_name: str | None = None,
         how: Literal["inner", "left"] = "inner",
     ) -> Catalog:
-        # pylint:disable=unused-argument
         """Perform a cross-match between two catalogs, adding the result as a nested column
 
         For each row in the left catalog, the cross-matched rows from the right catalog are added
@@ -798,7 +794,7 @@ class Catalog(HealpixDataset):
             raise ValueError("No values specified for search.")
         list_value_already_found = False
         for field, value in values.items():
-            print(f"Searching for {field}={value}")
+            print(f"Searching for {field}={value}")  # noqa: T201
             if isinstance(value, list):
                 if list_value_already_found:
                     raise ValueError("Only one column may contain a list of values.")
@@ -1348,7 +1344,6 @@ class Catalog(HealpixDataset):
         the resulting Catalog has no margins. When performing cross-catalog operations with an
         extended catalog, use it as the left-side of the operation whenever possible.
         """
-        # pylint: disable=import-outside-toplevel
         from lsdb.loaders.hats.read_hats import _read_dataset
 
         name = None
@@ -1626,7 +1621,6 @@ class Catalog(HealpixDataset):
             **kwargs,
         )
 
-    # pylint: disable=too-many-locals,too-many-arguments,duplicate-code
     def write_catalog(
         self,
         base_catalog_path: str | Path | UPath,

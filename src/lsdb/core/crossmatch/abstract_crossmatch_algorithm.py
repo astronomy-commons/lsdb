@@ -26,8 +26,7 @@ def _na_series_for_dtype(dtype, length):
     return pd.Series([None] * length, dtype=dtype)
 
 
-# pylint: disable=too-many-instance-attributes, too-many-arguments
-class AbstractCrossmatchAlgorithm(ABC):
+class AbstractCrossmatchAlgorithm(ABC):  # noqa: B024
     """Abstract class used to write a crossmatch algorithm.
 
     To specify a custom algorithm, write a class that subclasses the
@@ -194,7 +193,6 @@ class AbstractCrossmatchAlgorithm(ABC):
             "Crossmatch algorithm must either implement `perform_crossmatch` or overwrite `crossmatch`"
         )
 
-    # pylint: disable=protected-access
     def validate(self, left: Catalog, right: Catalog):
         """Validate the metadata and arguments.
 
@@ -262,7 +260,6 @@ class AbstractCrossmatchAlgorithm(ABC):
             new_col.index = dataframe.index
             dataframe[update_col] = new_col
 
-    # pylint: disable=too-many-locals,too-many-arguments
     def _create_crossmatch_df(
         self,
         left_df: npd.NestedFrame,
@@ -367,7 +364,8 @@ class AbstractCrossmatchAlgorithm(ABC):
                     right_values = cast(pd.Series, out[right_name_map[right_coord]])
                     out[output_coord] = left_values.combine_first(right_values)
             spatial_index = compute_spatial_index(
-                out["_ra"].to_numpy(), out["_dec"].to_numpy()  # type: ignore[arg-type]
+                out["_ra"].to_numpy(),
+                out["_dec"].to_numpy(),  # type: ignore[arg-type]
             )
             out.index = pd.Index(pd.Series(spatial_index, dtype=out.index.dtype), name=SPATIAL_INDEX_COLUMN)
             out.sort_index(kind="stable", inplace=True)

@@ -10,7 +10,7 @@ import pytest
 from lsdb.io.to_lance import _lance_storage_options_from_upath, _map_s3_storage_options, to_lance
 
 
-class _FakePath:  # pylint: disable=too-few-public-methods
+class _FakePath:
     """Minimal stand-in for a UPath, exposing only what `_lance_storage_options_from_upath` reads."""
 
     def __init__(self, protocol, storage_options=None):

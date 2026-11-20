@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Iterator
+from collections.abc import Iterator
+from typing import TYPE_CHECKING
 
 import numpy as np
 from hats import HealpixPixel
@@ -11,7 +12,6 @@ if TYPE_CHECKING:
     from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
 
 
-# pylint: disable=protected-access
 class PartitionIndexer:
     """Class that implements the square brackets accessor for catalog partitions."""
 

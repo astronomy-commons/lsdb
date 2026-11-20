@@ -406,10 +406,10 @@ def test_resume_catalog_write(small_sky_order1_catalog, tmp_path):
     # Resume the write and confirm that all partitions are written to disk
     with Profiler() as prof:
         small_sky_order1_catalog.write_catalog(base_catalog_path, resume=True, as_collection=False)
-    total_resume_tasks_num = len(prof.results)  # pylint: disable=no-member
+    total_resume_tasks_num = len(prof.results)
     with Profiler() as prof:
         small_sky_order1_catalog.write_catalog(reference_catalog_path, as_collection=False)
-    total_ref_tasks_num = len(prof.results)  # pylint: disable=no-member
+    total_ref_tasks_num = len(prof.results)
 
     assert total_resume_tasks_num < total_ref_tasks_num
 
@@ -440,10 +440,10 @@ def test_resume_catalog_collection_write(small_sky_order1_catalog, tmp_path):
     # Resume the write and confirm that all partitions are written to disk
     with Profiler() as prof:
         small_sky_order1_catalog.write_catalog(base_catalog_path, resume=True)
-    total_resume_tasks_num = len(prof.results)  # pylint: disable=no-member
+    total_resume_tasks_num = len(prof.results)
     with Profiler() as prof:
         small_sky_order1_catalog.write_catalog(reference_catalog_path)
-    total_ref_tasks_num = len(prof.results)  # pylint: disable=no-member
+    total_ref_tasks_num = len(prof.results)
 
     assert total_resume_tasks_num < total_ref_tasks_num
 

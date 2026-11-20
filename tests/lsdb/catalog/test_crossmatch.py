@@ -546,7 +546,6 @@ def test_crossmatch_with_non_catalog(small_sky_catalog, small_sky_xmatch_catalog
         small_sky_catalog.crossmatch(xmatch_df)
 
 
-# pylint: disable=too-few-public-methods, unused-argument
 class MockCrossmatchAlgorithm(AbstractCrossmatchAlgorithm):
     """Mock class used to test a crossmatch algorithm"""
 
@@ -613,7 +612,6 @@ def test_custom_crossmatch_algorithm_with_default_kwargs(
     small_sky_catalog.crossmatch(small_sky_xmatch_catalog, algorithm=algorithm)
 
 
-# pylint: disable=too-many-arguments, abstract-method
 class MockCrossmatchAlgorithmOverwrite(AbstractCrossmatchAlgorithm):
     """Mock class used to test a crossmatch algorithm"""
 

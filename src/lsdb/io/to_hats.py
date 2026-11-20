@@ -243,7 +243,6 @@ def remove_done_files(base_catalog_path: UPath):
     file_io.remove_directory(done_path, ignore_errors=True)
 
 
-# pylint: disable=protected-access,too-many-locals,too-many-arguments,too-many-statements
 def to_hats(
     catalog: HealpixDataset,
     *,

@@ -50,7 +50,8 @@ def main() -> int:
         size = Image.open(raw).size
         if size != EXPECTED_SIZE:
             print(
-                f"REFUSING TO WRITE: exported {size[0]}x{size[1]}, expected {EXPECTED_SIZE[0]}x{EXPECTED_SIZE[1]}.\n"
+                f"REFUSING TO WRITE: exported {size[0]}x{size[1]}, "
+                f"expected {EXPECTED_SIZE[0]}x{EXPECTED_SIZE[1]}.\n"
                 "The hotspots are hand-tuned to that size, so an element must have moved the "
                 "scene's bounding box. Fix the drawing, or re-place every hotspot by hand.",
                 file=sys.stderr,

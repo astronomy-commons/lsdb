@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from copy import copy
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 import pandas as pd
 from hats.pixel_math.healpix_pixel import HealpixPixel

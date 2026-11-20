@@ -84,9 +84,9 @@ def test_rng_split():
     next(cat_iter)  # Advance the iterator to change the RNG state
     second_partitions = cat_iter.partitions_left.copy()
 
-    assert not np.array_equal(
-        first_partitions, second_partitions
-    ), "RNG should produce different sequences after splitting."
+    assert not np.array_equal(first_partitions, second_partitions), (
+        "RNG should produce different sequences after splitting."
+    )
 
 
 def test_stream_from_search_filter():
@@ -108,7 +108,7 @@ def test_stream_submits_next_chunk_before_waiting_for_result():
     cat = lsdb.generate_catalog(100, 2, lowest_order=4, ra_range=(15.0, 25.0), dec_range=(34.0, 44.0), seed=1)
     events = []
 
-    class _LoggingFuture:  # pylint: disable=too-few-public-methods
+    class _LoggingFuture:
         def __init__(self, inner):
             self.inner = inner
 

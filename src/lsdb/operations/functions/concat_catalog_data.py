@@ -117,10 +117,7 @@ def _reindex_and_coerce_dtypes(
     This function is useful to ensure all partitions in a Dask DataFrame have consistent schema.
     """
     meta_columns = meta.columns
-    if df is None:
-        df = meta.copy()
-    else:
-        df = df.reindex(columns=meta_columns)
+    df = meta.copy() if df is None else df.reindex(columns=meta_columns)
     df_types = df.dtypes
     meta_types = meta.dtypes
     coerce_columns = [col for col in meta_columns if df_types[col] != meta_types[col]]
@@ -192,7 +189,6 @@ def _concat_meta_safe(meta: pd.DataFrame, parts: list[pd.DataFrame | None], **kw
     return _reindex_and_coerce_dtypes(out, meta)
 
 
-# pylint: disable=too-many-arguments, unused-argument
 def perform_concat(
     left_df,
     right_df,
@@ -266,7 +262,6 @@ def perform_concat(
     return _concat_meta_safe(aligned_meta, [left_df, right_df], **kwargs)
 
 
-# pylint: disable=too-many-locals, too-many-arguments, too-many-positional-arguments, unused-argument
 def perform_margin_concat(
     left_df,
     left_margin_df,
@@ -383,7 +378,6 @@ def perform_margin_concat(
     return _concat_meta_safe(aligned_meta, [left_part, right_part], **kwargs)
 
 
-# pylint: disable=too-many-locals
 def concat_catalog_data(
     left: Catalog,
     right: Catalog,
@@ -418,14 +412,12 @@ def concat_catalog_data(
     aligned_pixels = get_aligned_pixels_from_alignment(alignment)
 
     # Build the meta (union of schemas) with deterministic column order (left then right)
-    # pylint: disable=protected-access
     meta_left = left.meta
     meta_right = right.meta
 
     _check_strict_column_types(meta_left, meta_right)
 
     meta_df = pd.concat([meta_left, meta_right], **kwargs)
-    # pylint: enable=protected-access
     # Lazy per-pixel concatenation
     op = align_and_apply(
         [(left, left_pixels), (right, right_pixels), (None, aligned_pixels)],
@@ -439,7 +431,6 @@ def concat_catalog_data(
     return op, alignment
 
 
-# pylint: disable=too-many-locals
 def concat_margin_data(
     left: Catalog,
     right: Catalog,
@@ -478,14 +469,12 @@ def concat_margin_data(
     aligned_pixels = get_aligned_pixels_from_alignment(alignment)
 
     # Build the meta (union of schemas) with deterministic column order (left then right)
-    # pylint: disable=protected-access
     meta_left = left.meta
     meta_right = right.meta
 
     _check_strict_column_types(meta_left, meta_right)
 
     meta_df = pd.concat([meta_left, meta_right], **kwargs)
-    # pylint: enable=protected-access
     # Lazy per-pixel concatenation for margins
     op = align_and_apply(
         [
@@ -506,7 +495,6 @@ def concat_margin_data(
     return op, alignment
 
 
-# pylint: disable=too-many-locals
 def handle_margins_for_concat(
     left: Catalog,
     right: Catalog,
@@ -556,7 +544,7 @@ def handle_margins_for_concat(
             lm.hc_structure.catalog_info,
             margin_alignment.pixel_tree,
         )
-        return lm._create_updated_dataset(  # pylint: disable=protected-access
+        return lm._create_updated_dataset(
             op=margin_op,
             hc_structure=margin_hc_catalog,
             updated_catalog_info_params={"margin_threshold": smallest_margin_radius},
@@ -595,7 +583,7 @@ def handle_margins_for_concat(
             existing.hc_structure.catalog_info,
             margin_alignment.pixel_tree,
         )
-        return existing._create_updated_dataset(  # pylint: disable=protected-access
+        return existing._create_updated_dataset(
             op=margin_op,
             hc_structure=margin_hc_catalog,
             updated_catalog_info_params={"margin_threshold": existing_radius},

@@ -56,51 +56,23 @@ repos:
     hooks:
       - id: check-github-workflows
         args: ["--verbose"]
-    # Automatically sort the imports used in .py files
-  - repo: https://github.com/pycqa/isort
-    rev: 9f905615631c545f5aea2516508109350d1d2f7d  # v9.0.2
+    # Lint code and sort imports using ruff
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    # Ruff version.
+    rev: 44b5042edab9382aba712eed4f9c7bab7a3d6a3e  # v0.17.0
     hooks:
-      - id: isort
-        name: Run isort
-        description: Sort and organize imports in .py and .pyi files.
-        types_or: [python, pyi]
-    # Analyze the src code style and report code that doesn't adhere.
-  - repo: local
+      - id: ruff
+        name: Lint code using ruff; sort and organize imports
+        types_or: [ python, pyi ]
+        args: ["--fix"]
+    # Format code using ruff
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    # Ruff version.
+    rev: 44b5042edab9382aba712eed4f9c7bab7a3d6a3e  # v0.17.0
     hooks:
-      - id: pylint
-        name: pylint (python files in src/)
-        entry: pylint
-        language: system
-        types: [python]
-        files: ^src/
-        args:
-          [
-            "-rn", # Only display messages
-            "-sn", # Don't display the score
-            "--rcfile=src/.pylintrc",
-          ]
-    # Analyze the tests code style and report code that doesn't adhere.
-  - repo: local
-    hooks:
-      - id: pylint
-        name: pylint (python files in tests/ and benchmarks/)
-        entry: pylint
-        language: system
-        types: [python]
-        files: ^(tests|benchmarks)/
-        args:
-          [
-            "-rn", # Only display messages
-            "-sn", # Don't display the score
-            "--rcfile=tests/.pylintrc",
-          ]
-    # Analyze the code style and report code that doesn't adhere.
-  - repo: https://github.com/psf/black
-    rev: 258e7dbf348bc23cb70b8cdf693481c04634ebcc  # v26.10.1
-    hooks:
-      - id: black-jupyter
-        name: Format code using black
-        types_or: [python, pyi, jupyter]
+      - id: ruff-format
+        name: Format code using ruff
+        types_or: [ python, pyi, jupyter ]
     # Analyze type hints and report errors.
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: 2834ec6639549dd6796205c8f011dedcd587288b  # v2.4.0

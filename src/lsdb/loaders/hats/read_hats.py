@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 import hats as hc
 import nested_pandas as npd
@@ -298,7 +298,6 @@ def _load_catalog(hc_catalog: hc.catalog.Dataset, config: HatsLoadingConfig) -> 
 
 def _update_hc_structure(catalog: HealpixDataset, **updated_info):
     """Create the modified schema of the catalog after all the processing on the `read_hats` call"""
-    # pylint: disable=protected-access
     default_columns = None
 
     def exploded_columns(df):

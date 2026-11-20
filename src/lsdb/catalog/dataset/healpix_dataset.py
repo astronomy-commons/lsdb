@@ -4,9 +4,9 @@ import logging
 import random
 import sys
 import warnings
-from collections.abc import Sequence
+from collections.abc import Callable, Iterable, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Iterable, Literal, Type, cast, overload
+from typing import TYPE_CHECKING, Any, Literal, Self, cast, overload
 
 import astropy
 import dask.dataframe as dd
@@ -32,7 +32,6 @@ from nested_pandas.series.packer import pack_lists
 from pandas._typing import Renamer
 from tqdm.auto import tqdm
 from tqdm.dask import TqdmCallback
-from typing_extensions import Self
 from upath import UPath
 
 from lsdb import io
@@ -66,10 +65,9 @@ if TYPE_CHECKING:
     from matplotlib.figure import Figure
 
 
-COMPUTE_SIZE_WARNING_THRESHOLD_KiB = 1 << 20  # pylint: disable=invalid-name
+COMPUTE_SIZE_WARNING_THRESHOLD_KiB = 1 << 20
 
 
-# pylint: disable=protected-access,too-many-public-methods,too-many-lines,import-outside-toplevel,cyclic-import
 class HealpixDataset:
     """LSDB Catalog to perform analysis of sky catalogs and efficient spatial operations."""
 
@@ -235,7 +233,7 @@ class HealpixDataset:
     def _repr_html_(self):
         return CatalogRepr(self).html()
 
-    def _repr_mimebundle_(self, **kwargs):  # pylint: disable=unused-argument
+    def _repr_mimebundle_(self, **kwargs):
         return CatalogRepr(self).mimebundle()
 
     def _create_modified_hc_structure(
@@ -469,7 +467,6 @@ class HealpixDataset:
 
         filter_cat = HealpixDataset(operation, self.hc_structure)
 
-        # pylint: disable=unused-argument
         def filter_func(data_df, series_df, data_pixel, bool_pixel, data_info, bool_info):
             return data_df[series_df[filter_column_name]]
 
@@ -1382,7 +1379,7 @@ class HealpixDataset:
         return self.hc_structure.plot_moc(**kwargs)
 
     @deprecated(
-        version="0.7.3", reason="`to_hats` will be removed in the future, " "use `write_catalog` instead."
+        version="0.7.3", reason="`to_hats` will be removed in the future, use `write_catalog` instead."
     )
     def to_hats(
         self,
@@ -1408,7 +1405,6 @@ class HealpixDataset:
             **kwargs,
         )
 
-    # pylint: disable=too-many-locals,too-many-arguments,duplicate-code
     def write_catalog(
         self,
         base_catalog_path: str | Path | UPath,
@@ -1576,7 +1572,7 @@ class HealpixDataset:
         base_columns: list[str] | None = None,
         list_columns: list[str] | None = None,
         name: str = "nested",
-    ) -> Self:  # type: ignore[name-defined] # noqa: F821:
+    ) -> Self:  # type: ignore[name-defined] # noqa: F821
         """Creates a new catalog with a set of list columns packed into a nested column.
 
         Parameters
@@ -1645,9 +1641,9 @@ class HealpixDataset:
         Refer to the docstring for guidance on dtype requirements and assignment."""
                 )
 
-        meta = npd.NestedFrame(self.meta[base_columns])  # pylint: disable=protected-access
+        meta = npd.NestedFrame(self.meta[base_columns])
 
-        nested_meta = pack_lists(self.meta[list_columns], name)  # pylint: disable=protected-access
+        nested_meta = pack_lists(self.meta[list_columns], name)
         meta = meta.join(nested_meta)
 
         return self.map_partitions(
@@ -1826,7 +1822,6 @@ class HealpixDataset:
             }
         return self._create_updated_dataset(op=op, updated_catalog_info_params=hc_updates)
 
-    # pylint: disable=duplicate-code
     def plot_points(
         self,
         *,
@@ -1838,7 +1833,7 @@ class HealpixDataset:
         fov: Quantity | tuple[Quantity, Quantity] | None = None,
         center: SkyCoord | None = None,
         wcs: astropy.wcs.WCS | None = None,
-        frame_class: Type[BaseFrame] | None = None,
+        frame_class: type[BaseFrame] | None = None,
         ax: WCSAxes | None = None,
         fig: Figure | None = None,
         **kwargs,
@@ -1875,7 +1870,7 @@ class HealpixDataset:
         wcs : WCS | None, default None
             The WCS to specify the projection of the plot. If used, all other WCS parameters
             are ignored and the parameters from the WCS object is used.
-        frame_class : Type[BaseFrame] | None, default None
+        frame_class : type[BaseFrame] | None, default None
             The class of the frame for the WCSAxes to be initialized
             with. if the `ax` kwarg is used, this value is ignored (By Default uses EllipticalFrame for
             full sky projection. If FOV is set, RectangularFrame is used)
@@ -1897,9 +1892,8 @@ class HealpixDataset:
             The figure and axes used for the plot
         """
         try:
-            # pylint: disable=import-outside-toplevel
             from hats.inspection._plotting import _get_fov_moc_from_wcs, _initialize_wcs_axes
-            from matplotlib import pyplot as plt  # pylint: disable=unused-import
+            from matplotlib import pyplot as plt  # noqa: F401
         except ImportError as exc:
             raise ImportError(
                 "matplotlib is required to use this method. Install with pip or conda."
@@ -1999,7 +1993,7 @@ class HealpixDataset:
         mem_size = file_size(get_mem_size(pixel_stats), binary=True)
         disk_size = file_size(get_disk_size(pixel_stats), binary=True)
 
-        print(
+        print(  # noqa: T201
             f"You selected {len(self.columns)}/{len(self.all_columns)} columns.\n"
             f"You selected {len(self.get_healpix_pixels())}/{len(orig_cat.get_healpix_pixels())} pixels.\n"
             f"Expect up to {expected_cat_rows} results ({row_pct:.2f}% of the full catalog).\n"

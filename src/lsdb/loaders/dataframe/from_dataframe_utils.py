@@ -8,7 +8,7 @@ from lsdb.operations.lsdb_ops import FromHealpixMap
 from lsdb.operations.operation import Operation
 
 
-def _pixel_df(pixel, df=None):  # pylint: disable=unused-argument
+def _pixel_df(pixel, df=None):
     return npd.NestedFrame(df)
 
 
@@ -101,6 +101,4 @@ def _has_named_index(dataframe: npd.NestedFrame) -> bool:
     if dataframe.index.name is not None:
         ## Single index with a given name.
         return True
-    if len(dataframe.index.names) == 0 or all(name is None for name in dataframe.index.names):
-        return False
-    return True
+    return not (len(dataframe.index.names) == 0 or all(name is None for name in dataframe.index.names))

@@ -42,12 +42,11 @@ documentation = "https://lsdb.readthedocs.io/"
 dev = [
     "asv==0.6.6", # Used to compute performance benchmarks
     "astropy", # Needed for testing astropy table loading
-    "black", # Used for static linting of files
+    "ruff", # Used for static linting of files
     "jupyter", # Clears output from Jupyter notebooks
     "mypy", # Used for static type checking of files
     "pandas-stubs", # additional type info for pandas, used for static type checking of files
     "pre-commit", # Used to run checks before finalizing a git commit
-    "pylint", # Used for static linting of files
     "pytest",
     "pytest-cov", # Used to report total code coverage
     "pytest-mock", # Used to mock objects in tests
@@ -93,12 +92,64 @@ omit = [
     "src/lsdb/_version.py", # auto-generated
 ]
 
-[tool.black]
+[tool.ruff]
 line-length = 110
-[tool.isort]
-profile = "black"
-line_length = 110
-skip_glob = ["benchmarks/env/*"]
+extend-exclude = ["benchmarks/env"]
+
+[tool.ruff.lint]
+exclude = ["*.ipynb"] # Notebooks are auto-formatted but not linted
+select = [
+    # pycodestyle
+    "E",
+    "W",
+    # Pyflakes
+    "F",
+    # pep8-naming
+    "N",
+    # pyupgrade
+    "UP",
+    # flake8-bugbear
+    "B",
+    # flake8-simplify
+    "SIM",
+    # isort
+    "I",
+    # docstrings
+    "D101",
+    "D102",
+    "D103",
+    "D106",
+    "D206",
+    "D207",
+    "D208",
+    "D300",
+    "D417",
+    "D419",
+    # Numpy v2.0 compatibility
+    "NPY201",
+    # flake8-print
+    "T201",
+]
+ignore = [
+    "UP006", # Allow non standard library generics in type hints
+    "UP007", # Allow Union in type hints
+    "SIM114", # Allow if with same arms
+    "B028", # Allow default warning level
+    "SIM117", # Allow nested with
+    "UP015", # Allow redundant open parameters
+    "UP028", # Allow yield in for loop
+    "B905", # Allow zip() without strict= (adding it could change behavior)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"] # Allow re-exports in package __init__ files
+"src/lsdb/catalog/margin_catalog.py" = ["D102"] # Methods override documented base class methods
+"src/lsdb/operations/expressions.py" = ["D102"] # Methods override documented base class methods
+"src/lsdb/operations/lsdb_ops.py" = ["D102"] # Methods override documented base class methods
+"src/lsdb/io/show_versions.py" = ["T201"] # Printing is the purpose of this module
+"tests/**" = ["D101", "D102", "D103", "D106", "T201"] # Docstrings and print() are not required in tests
+"benchmarks/**" = ["D101", "D102", "D103", "D106", "T201"] # Docstrings and print() are not required in benchmarks
+"docs/**" = ["D101", "D102", "D103", "D106", "T201"] # Docstrings and print() are not required in docs and notebooks
 
 [tool.coverage.run]
 omit=["src/lsdb/_version.py"]
