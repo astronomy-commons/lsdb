@@ -3,7 +3,6 @@ import nested_pandas as npd
 import pandas as pd
 import pytest
 from astropy.coordinates import SkyCoord
-from astropy.visualization.wcsaxes import SphericalCircle
 from hats.pixel_math.validators import ValidatorsErrors
 
 from lsdb import ConeSearch
@@ -155,6 +154,8 @@ def test_empty_cone_search_with_margin(small_sky_order1_source_with_margin):
 
 
 def test_cone_search_plot():
+    from astropy.visualization.wcsaxes import SphericalCircle  # pylint: disable=import-outside-toplevel
+
     plt = pytest.importorskip("matplotlib.pyplot")
     colors = pytest.importorskip("matplotlib.colors")
 
@@ -171,6 +172,8 @@ def test_cone_search_plot():
 
 
 def test_cone_search_plot_set_color():
+    from astropy.visualization.wcsaxes import SphericalCircle  # pylint: disable=import-outside-toplevel
+
     plt = pytest.importorskip("matplotlib.pyplot")
     ra = 100
     dec = 80
