@@ -2047,7 +2047,7 @@ class HealpixDataset:
                 raise ValueError(msg)
             return self.hc_structure.moc.degrade_to_order(resolution)
         elif isinstance(resolution, str):
-            if str.lower().strip() != "pixel-tree":
+            if str.lower(resolution).strip() != "pixel-tree":
                 raise ValueError('resolution must be int, "pixel-tree", or None.')
             return self.hc_structure.pixel_tree.to_moc()
 

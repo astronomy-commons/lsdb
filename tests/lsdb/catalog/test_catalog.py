@@ -20,7 +20,7 @@ from hats.inspection._plotting import _get_fov_moc_from_wcs
 from hats.io.paths import get_healpix_from_path
 from hats.pixel_math import HealpixPixel
 from hats.pixel_math.spatial_index import SPATIAL_INDEX_COLUMN
-from mocpy import WCS
+from mocpy import MOC, WCS
 from nested_pandas.datasets import generate_data
 
 import lsdb
@@ -1328,3 +1328,58 @@ def test_filter_empty_catalog_and(small_sky_order1_catalog):
     assert isinstance(computed, npd.NestedFrame)
     assert len(computed) == 0
     assert computed.columns.tolist() == empty_catalog.columns.tolist()
+
+
+def test_moc_footprint_default(small_sky_order1_catalog):
+    res = small_sky_order1_catalog.moc_footprint()
+    assert isinstance(res, MOC)
+
+    expected = MOC.from_string("0/11 1/")
+    assert small_sky_order1_catalog.hc_structure.moc == expected == res
+
+
+def test_moc_footprint_from_pixel_tree(small_sky_order1_catalog):
+    res = small_sky_order1_catalog.moc_footprint("pixel-tree")
+    assert isinstance(res, MOC)
+
+    expected = MOC.from_string("0/11 1/")
+    assert small_sky_order1_catalog.hc_structure.pixel_tree.to_moc() == expected == res
+
+
+def test_moc_footprint_rejects_improper_str_arg(small_sky_order1_catalog):
+    with pytest.raises(ValueError, match='resolution must be int, "pixel-tree", or None.'):
+        res = small_sky_order1_catalog.moc_footprint("invalid")
+
+
+def test_moc_footprint_rejects_negative_resolution(small_sky_order1_catalog):
+    with pytest.raises(ValueError, match="resolution must be between 0 and the MOC's max_order"):
+        res = small_sky_order1_catalog.moc_footprint(-1)
+
+
+def test_moc_footprint_rejects_resolution_too_big(small_sky_order1_catalog):
+    max_order = small_sky_order1_catalog.hc_structure.moc.max_order
+    assert max_order == 1
+
+    with pytest.raises(ValueError, match="resolution must be between 0 and the MOC's max_order, 1"):
+        res = small_sky_order1_catalog.moc_footprint(2)
+
+
+def test_moc_footprint_with_int_resolution(small_sky_order1_catalog):
+    with pytest.warns(
+        UserWarning, match="The new order is more precise than the current order, nothing done."
+    ):
+        res = small_sky_order1_catalog.moc_footprint(1)
+    expected = MOC.from_string("0/11 1/")
+    assert small_sky_order1_catalog.hc_structure.moc == expected == res
+
+    expected = MOC.from_string("0/11")
+    res = small_sky_order1_catalog.moc_footprint(0)
+    assert small_sky_order1_catalog.hc_structure.moc.degrade_to_order(0) == expected == res
+
+
+def test_moc_footprint_warns_when_catalog_modified(small_sky_order1_catalog):
+    small_sky_order1_catalog = small_sky_order1_catalog.query("dec > -30.0")
+    assert not small_sky_order1_catalog.hc_structure.unmodified
+    with pytest.warns(UserWarning, match="Catalog has been modified. MOC might over-estimate coverage."):
+        res = small_sky_order1_catalog.moc_footprint()
+        assert isinstance(res, MOC)
