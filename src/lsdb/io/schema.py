@@ -17,5 +17,4 @@ def get_arrow_schema(df: pd.DataFrame) -> pa.Schema:
     pa.Schema
         The arrow schema for the provided DataFrame.
     """
-    # pylint: disable=protected-access
     return pa.Schema.from_pandas(df).remove_metadata()

@@ -84,7 +84,6 @@ def plot_points(
     """
 
     try:
-        # pylint: disable=import-outside-toplevel
         from hats.inspection.visualize_catalog import _initialize_wcs_axes
         from matplotlib import pyplot as plt
         from mocpy.moc.plot.utils import _set_wcs

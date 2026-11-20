@@ -62,7 +62,6 @@ def perform_write(
     return pd.DataFrame({"count": [len(df)], "max_sep": [max_sep]})
 
 
-# pylint: disable=protected-access,too-many-locals,too-many-arguments
 def to_association(
     catalog: HealpixDataset,
     *,

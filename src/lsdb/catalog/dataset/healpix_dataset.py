@@ -66,10 +66,9 @@ if TYPE_CHECKING:
     from matplotlib.figure import Figure
 
 
-COMPUTE_SIZE_WARNING_THRESHOLD_KiB = 1 << 20  # pylint: disable=invalid-name
+COMPUTE_SIZE_WARNING_THRESHOLD_KiB = 1 << 20
 
 
-# pylint: disable=protected-access,too-many-public-methods,too-many-lines,import-outside-toplevel,cyclic-import
 class HealpixDataset:
     """LSDB Catalog to perform analysis of sky catalogs and efficient spatial operations."""
 
@@ -235,7 +234,7 @@ class HealpixDataset:
     def _repr_html_(self):
         return CatalogRepr(self).html()
 
-    def _repr_mimebundle_(self, **kwargs):  # pylint: disable=unused-argument
+    def _repr_mimebundle_(self, **kwargs):
         return CatalogRepr(self).mimebundle()
 
     def _create_modified_hc_structure(
@@ -469,7 +468,6 @@ class HealpixDataset:
 
         filter_cat = HealpixDataset(operation, self.hc_structure)
 
-        # pylint: disable=unused-argument
         def filter_func(data_df, series_df, data_pixel, bool_pixel, data_info, bool_info):
             return data_df[series_df[filter_column_name]]
 
@@ -1408,7 +1406,6 @@ class HealpixDataset:
             **kwargs,
         )
 
-    # pylint: disable=too-many-locals,too-many-arguments,duplicate-code
     def write_catalog(
         self,
         base_catalog_path: str | Path | UPath,
@@ -1645,9 +1642,9 @@ class HealpixDataset:
         Refer to the docstring for guidance on dtype requirements and assignment."""
                 )
 
-        meta = npd.NestedFrame(self.meta[base_columns])  # pylint: disable=protected-access
+        meta = npd.NestedFrame(self.meta[base_columns])
 
-        nested_meta = pack_lists(self.meta[list_columns], name)  # pylint: disable=protected-access
+        nested_meta = pack_lists(self.meta[list_columns], name)
         meta = meta.join(nested_meta)
 
         return self.map_partitions(
@@ -1826,7 +1823,6 @@ class HealpixDataset:
             }
         return self._create_updated_dataset(op=op, updated_catalog_info_params=hc_updates)
 
-    # pylint: disable=duplicate-code
     def plot_points(
         self,
         *,
@@ -1897,9 +1893,8 @@ class HealpixDataset:
             The figure and axes used for the plot
         """
         try:
-            # pylint: disable=import-outside-toplevel
             from hats.inspection._plotting import _get_fov_moc_from_wcs, _initialize_wcs_axes
-            from matplotlib import pyplot as plt  # pylint: disable=unused-import
+            from matplotlib import pyplot as plt  # noqa: F401
         except ImportError as exc:
             raise ImportError(
                 "matplotlib is required to use this method. Install with pip or conda."

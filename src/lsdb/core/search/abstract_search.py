@@ -17,7 +17,6 @@ if TYPE_CHECKING:
     from lsdb.types import HCCatalogTypeVar
 
 
-# pylint: disable=too-many-instance-attributes, too-many-arguments
 class AbstractSearch(ABC):
     """Abstract class used to write a reusable search query.
 
@@ -135,7 +134,6 @@ class AbstractSearch(ABC):
             The figure and axes used for the plot
         """
         try:
-            # pylint: disable=import-outside-toplevel
             from hats.inspection._plotting import _initialize_wcs_axes
             from matplotlib import pyplot as plt
         except ImportError as exc:

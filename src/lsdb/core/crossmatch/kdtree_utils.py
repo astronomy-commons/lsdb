@@ -43,7 +43,6 @@ def _find_crossmatch_indices(
     return distances[match_mask], left_index[match_mask], right_index[match_mask]
 
 
-# pylint: disable=too-many-locals
 def _query_min_max_neighbors(
     tree: KDTree,
     left_xyz: npt.NDArray[np.float64],

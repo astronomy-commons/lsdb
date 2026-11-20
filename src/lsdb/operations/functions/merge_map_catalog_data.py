@@ -1,4 +1,3 @@
-# pylint: disable=duplicate-code
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Callable
@@ -21,7 +20,6 @@ if TYPE_CHECKING:
     from lsdb.catalog import Catalog, MapCatalog
 
 
-# pylint: disable=too-many-arguments, unused-argument
 def perform_merge_map(
     catalog_partition: npd.NestedFrame,
     map_partition: npd.NestedFrame,
@@ -77,7 +75,6 @@ def perform_merge_map(
     return func(catalog_partition, map_partition, catalog_pixel, map_pixel, *args, **kwargs)
 
 
-# pylint: disable=protected-access
 def merge_map_catalog_data(
     point_catalog: Catalog,
     map_catalog: MapCatalog,

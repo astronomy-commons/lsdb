@@ -64,7 +64,6 @@ def _default_suffixes(left_name: str, right_name: str) -> tuple[str, str]:
     return (f"_{left_name}", f"_{right_name}")
 
 
-# pylint: disable=protected-access,too-many-public-methods, too-many-lines
 class Catalog(HealpixDataset):
     """LSDB Catalog to perform analysis of sky catalogs and efficient spatial operations."""
 
@@ -278,7 +277,6 @@ class Catalog(HealpixDataset):
         suffix_method: str | None = None,
         log_changes: bool = True,
     ) -> Catalog:
-        # pylint:disable=unused-argument
         """Perform a cross-match between two catalogs
 
         The pixels from each catalog are aligned via a `PixelAlignment`, and cross-matching is
@@ -489,7 +487,6 @@ class Catalog(HealpixDataset):
         nested_column_name: str | None = None,
         how: Literal["inner", "left"] = "inner",
     ) -> Catalog:
-        # pylint:disable=unused-argument
         """Perform a cross-match between two catalogs, adding the result as a nested column
 
         For each row in the left catalog, the cross-matched rows from the right catalog are added
@@ -1348,7 +1345,6 @@ class Catalog(HealpixDataset):
         the resulting Catalog has no margins. When performing cross-catalog operations with an
         extended catalog, use it as the left-side of the operation whenever possible.
         """
-        # pylint: disable=import-outside-toplevel
         from lsdb.loaders.hats.read_hats import _read_dataset
 
         name = None
@@ -1626,7 +1622,6 @@ class Catalog(HealpixDataset):
             **kwargs,
         )
 
-    # pylint: disable=too-many-locals,too-many-arguments,duplicate-code
     def write_catalog(
         self,
         base_catalog_path: str | Path | UPath,

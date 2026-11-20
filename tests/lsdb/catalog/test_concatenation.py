@@ -15,7 +15,6 @@ from lsdb import ConeSearch
 from lsdb.catalog.catalog import Catalog
 from lsdb.operations.functions import concat_catalog_data, merge_catalog_functions
 
-# pylint: disable=too-many-lines
 
 # ------------------------------- helpers ---------------------------------- #
 
@@ -1172,7 +1171,7 @@ def test_concat_ignore_empty_margins_mixed_orders(
 # --- New lightweight unit tests for handle_margins_for_concat ---
 
 
-class _DummyInfo:  # pylint: disable=too-few-public-methods
+class _DummyInfo:
     """Minimal metadata stub exposing RA/Dec names and optional margin threshold.
 
     Args:
@@ -1188,7 +1187,7 @@ class _DummyInfo:  # pylint: disable=too-few-public-methods
         self.margin_threshold = margin_threshold
 
 
-class _DummyHCCatalog:  # pylint: disable=too-few-public-methods
+class _DummyHCCatalog:
     """Minimal stub to mimic a HATS catalog-like structure."""
 
     def __init__(self, catalog_info, pixel_tree=None):
@@ -1196,7 +1195,7 @@ class _DummyHCCatalog:  # pylint: disable=too-few-public-methods
         self.pixel_tree = pixel_tree
 
 
-class _DummyCat:  # pylint: disable=too-few-public-methods
+class _DummyCat:
     """Dataset stub that looks like a Catalog or MarginCatalog to the helper checks.
 
     Args:
@@ -1210,7 +1209,7 @@ class _DummyCat:  # pylint: disable=too-few-public-methods
         self.margin = margin
 
 
-class _DummyMargin:  # pylint: disable=too-few-public-methods
+class _DummyMargin:
     """Margin stub with just enough surface for the function under test.
 
     Notes:

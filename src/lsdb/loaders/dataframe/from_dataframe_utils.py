@@ -8,7 +8,7 @@ from lsdb.operations.lsdb_ops import FromHealpixMap
 from lsdb.operations.operation import Operation
 
 
-def _pixel_df(pixel, df=None):  # pylint: disable=unused-argument
+def _pixel_df(pixel, df=None):
     return npd.NestedFrame(df)
 
 

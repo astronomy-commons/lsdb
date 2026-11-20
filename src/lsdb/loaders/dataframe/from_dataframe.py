@@ -8,7 +8,6 @@ from lsdb.loaders.dataframe.dataframe_catalog_loader import DataframeCatalogLoad
 from lsdb.loaders.dataframe.margin_catalog_generator import MarginCatalogGenerator
 
 
-# pylint: disable=too-many-arguments
 def from_dataframe(
     dataframe: pd.DataFrame,
     *,

@@ -58,7 +58,7 @@ def test_meta_inferred_with_map_kwargs_raises_type_error():
     ],
 )
 def test_meta_raises_value_error_for_non_dataframe_result(bad_result):
-    def bad_func(pixel):  # pylint: disable=unused-argument
+    def bad_func(pixel):
         return bad_result
 
     op = FromHealpixMap(bad_func, [HealpixPixel(0, 0)])
@@ -142,7 +142,7 @@ def test_coerce_to_meta_scalar_infers_dtype_from_type(scalar, expected_dtype):
 
 def test_coerce_to_meta_unsafe_pandas_type():
 
-    class Custom:  # pylint: disable=too-few-public-methods
+    class Custom:
         pass
 
     # result should be a pd.series with dtype=object
@@ -268,7 +268,7 @@ def test_map_partitions_name_and_dependencies():
 
 def _base_select():
 
-    def func(pixel):  # pylint: disable=unused-argument
+    def func(pixel):
         return pd.DataFrame({"a": [1], "b": [1.0]})
 
     pixels = [HealpixPixel(0, 0), HealpixPixel(0, 1)]
@@ -305,7 +305,7 @@ def _func_aa():
     return pd.DataFrame({"a": [1]})
 
 
-class _MockCatalog:  # pylint: disable=too-few-public-methods
+class _MockCatalog:
     """Stand-in for a HealpixDataset, exposing only what AlignAndApply needs."""
 
     def __init__(self, operation):

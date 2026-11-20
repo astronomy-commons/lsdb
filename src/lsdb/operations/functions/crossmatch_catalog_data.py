@@ -53,7 +53,6 @@ def _add_left_neighbors(left_df, coarse_partition_df, left_margin_df, right_only
     return concat_partition_and_margin(left_df, left_margin_df)
 
 
-# pylint: disable=too-many-arguments, too-many-positional-arguments, unused-argument, too-many-locals
 def perform_crossmatch(
     left_df: npd.NestedFrame,
     right_df: npd.NestedFrame,
@@ -283,7 +282,6 @@ def perform_crossmatch(
     return algorithm.crossmatch(crossmatch_args, how, suffixes, suffix_method)
 
 
-# pylint: disable=too-many-arguments, unused-argument
 def perform_crossmatch_nested(
     left_df,
     right_df,
@@ -396,7 +394,6 @@ def perform_crossmatch_nested(
     return algorithm.crossmatch_nested(crossmatch_args, nested_column_name, how)
 
 
-# pylint: disable=too-many-locals
 def _validate_outer_crossmatch(left: Catalog, right: Catalog, radius_arcsec: float | None):
     """Validate the margins an outer crossmatch needs to be exact.
 
@@ -607,7 +604,6 @@ def crossmatch_catalog_data(
     return op, alignment
 
 
-# pylint: disable=too-many-locals
 def crossmatch_catalog_data_nested(
     left: Catalog,
     right: Catalog,

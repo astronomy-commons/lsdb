@@ -86,7 +86,6 @@ class ConeSearch(AbstractSearch):
 
     def _perform_plot(self, ax: WCSAxes, **kwargs):
         try:
-            # pylint: disable=import-outside-toplevel
             from astropy.visualization.wcsaxes import SphericalCircle
         except ImportError as exc:
             raise ImportError(
@@ -228,8 +227,7 @@ class PolygonSearch(AbstractSearch):
 
     def __init__(self, vertices: list[tuple[float, float]], fine: bool = True):
         try:
-            # pylint: disable=unused-import,import-outside-toplevel
-            from lsst.sphgeom import ConvexPolygon
+            from lsst.sphgeom import ConvexPolygon  # noqa: F401
         except ImportError as exc:
             raise ImportError(
                 "lsst-sphgeom is required to use this method. Install with pip or conda."

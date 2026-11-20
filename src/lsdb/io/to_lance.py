@@ -158,7 +158,6 @@ def to_lance(
     """
 
     try:
-        # pylint: disable=import-outside-toplevel
         import lancedb
     except ImportError as err:
         raise ImportError(
@@ -176,7 +175,6 @@ def to_lance(
 
     path = str(base_catalog_path)
     storage_options = _lance_storage_options_from_upath(base_catalog_path)
-    # pylint: disable=protected-access
     delayed_partitions = catalog.to_delayed()
 
     db = lancedb.connect(path, storage_options=storage_options)

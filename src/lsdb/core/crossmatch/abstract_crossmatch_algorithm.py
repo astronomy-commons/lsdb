@@ -26,7 +26,6 @@ def _na_series_for_dtype(dtype, length):
     return pd.Series([None] * length, dtype=dtype)
 
 
-# pylint: disable=too-many-instance-attributes, too-many-arguments
 class AbstractCrossmatchAlgorithm(ABC):
     """Abstract class used to write a crossmatch algorithm.
 
@@ -194,7 +193,6 @@ class AbstractCrossmatchAlgorithm(ABC):
             "Crossmatch algorithm must either implement `perform_crossmatch` or overwrite `crossmatch`"
         )
 
-    # pylint: disable=protected-access
     def validate(self, left: Catalog, right: Catalog):
         """Validate the metadata and arguments.
 
@@ -262,7 +260,6 @@ class AbstractCrossmatchAlgorithm(ABC):
             new_col.index = dataframe.index
             dataframe[update_col] = new_col
 
-    # pylint: disable=too-many-locals,too-many-arguments
     def _create_crossmatch_df(
         self,
         left_df: npd.NestedFrame,

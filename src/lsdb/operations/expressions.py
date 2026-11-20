@@ -70,7 +70,7 @@ class FromDaskExpression(Operation):
 
     @property
     def meta(self) -> npd.NestedFrame:
-        return self._frame._meta  # pylint: disable=protected-access
+        return self._frame._meta
 
     @property
     def dependencies(self) -> list[Operation]:

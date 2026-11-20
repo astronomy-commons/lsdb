@@ -101,13 +101,12 @@ class CatalogRepr:
                 include_pixels=pixels,
                 warn_on_modified_catalog=False,
             )
-        except Exception:  # pylint: disable=broad-exception-caught
+        except Exception:
             logging.debug(
                 "Could not read partition statistics for catalog %s", self.catalog.name, exc_info=True
             )
             return None
 
-    # pylint: disable=protected-access
     @property
     def _show_statistics(self) -> bool:
         """Whether the user asked for statistics and the current view still preserves them."""

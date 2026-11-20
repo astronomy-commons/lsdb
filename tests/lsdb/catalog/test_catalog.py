@@ -1,4 +1,3 @@
-# pylint: disable=too-many-lines
 import re
 from pathlib import Path
 
@@ -543,7 +542,6 @@ def test_prune_empty_partitions_all_are_removed(small_sky_order1_catalog):
     assert len(non_empty_partitions) == 0
 
 
-# pylint: disable=no-member
 def test_plot_pixels(small_sky_order1_catalog, mocker):
     mocker.patch("hats.catalog.healpix_dataset.healpix_dataset.plot_pixels")
     small_sky_order1_catalog.plot_pixels()
@@ -555,7 +553,6 @@ def test_plot_pixels(small_sky_order1_catalog, mocker):
     )
 
 
-# pylint: disable=no-member
 def test_plot_coverage(small_sky_order1_catalog, mocker):
     mocker.patch("hats.catalog.healpix_dataset.healpix_dataset.plot_moc")
     small_sky_order1_catalog.plot_coverage()
@@ -1307,7 +1304,7 @@ def test_boolean_filter_preserves_columns(small_sky_order1_catalog):
 
 def test_boolean_filter_errors_on_different_partitioning(small_sky_catalog, small_sky_order1_catalog):
     with pytest.raises(ValueError, match="Number of partitions"):
-        small_sky_order1_catalog[small_sky_catalog["ra"] > 0]  # pylint: disable=pointless-statement
+        small_sky_order1_catalog[small_sky_catalog["ra"] > 0]
 
 
 def test_filter_empty_catalog(small_sky_order1_catalog):

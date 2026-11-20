@@ -11,7 +11,6 @@ if TYPE_CHECKING:
     from lsdb.catalog.dataset.healpix_dataset import HealpixDataset
 
 
-# pylint: disable=protected-access
 class PartitionIndexer:
     """Class that implements the square brackets accessor for catalog partitions."""
 

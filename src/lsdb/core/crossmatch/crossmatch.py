@@ -28,7 +28,6 @@ def _validate_and_convert_to_catalog(
     return catalog
 
 
-# pylint: disable=too-many-arguments
 def crossmatch(
     left: Catalog | npd.NestedFrame | pd.DataFrame,
     right: Catalog | npd.NestedFrame | pd.DataFrame,

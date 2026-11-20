@@ -94,8 +94,8 @@ class CatalogStream:
         if not isinstance(catalog, Catalog):
             raise ValueError(f"The provided catalog input type {type(catalog)} is not a lsdb.Catalog object.")
 
-        self.operation = catalog._operation  # pylint: disable=protected-access
-        self._pixels = catalog._operation.healpix_pixels  # pylint: disable=protected-access
+        self.operation = catalog._operation
+        self._pixels = catalog._operation.healpix_pixels
 
         self.client = client
         self.partitions_per_chunk = min(partitions_per_chunk, self.catalog.npartitions)
@@ -113,7 +113,7 @@ class CatalogStream:
         return len(self._pixels)
 
     def get_next_partitions(
-        self, partitions_left: np.ndarray, rng: np.random.Generator  # pylint: disable=unused-argument
+        self, partitions_left: np.ndarray, rng: np.random.Generator
     ) -> tuple[np.ndarray, np.ndarray]:
         """Get the next set of partitions to iterate over."""
         # Chomp a subset of partitions when running once through the data
@@ -476,7 +476,7 @@ class _StarAssembly:
 
 def _partition_delayeds(catalog: Catalog, pixel: HealpixPixel) -> list[Delayed]:
     pixels = PixelSearch(pixel).filter_hc_catalog(catalog.hc_structure).get_healpix_pixels()
-    build = catalog._operation.build(pixels=pixels)  # pylint: disable=protected-access
+    build = catalog._operation.build(pixels=pixels)
     return [Delayed(build.pixel_to_key_map[partition_pixel], build.graph) for partition_pixel in pixels]
 
 

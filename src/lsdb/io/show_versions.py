@@ -37,7 +37,7 @@ def _get_dependency_info() -> dict[str, str]:
     for modname in deps:
         try:
             result[modname] = importlib.metadata.version(modname)
-        except Exception:  # pylint: disable=broad-exception-caught # pragma: no cover
+        except Exception:  # pragma: no cover
             result[modname] = "N/A"
     return result
 

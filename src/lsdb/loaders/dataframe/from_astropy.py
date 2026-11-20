@@ -5,7 +5,6 @@ from nested_pandas.nestedframe.io import from_pyarrow
 from lsdb.loaders.dataframe.from_dataframe import from_dataframe
 
 
-# pylint: disable=too-many-arguments
 def from_astropy(
     table,
     *,

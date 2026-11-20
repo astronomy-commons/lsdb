@@ -63,7 +63,6 @@ RADEC_COLUMN_MAPPING = {
 class DataframeCatalogLoader:
     """Creates a HATS formatted Catalog from a Pandas Dataframe"""
 
-    # pylint: disable=too-many-arguments
     def __init__(
         self,
         dataframe: pd.DataFrame,
