@@ -2030,7 +2030,7 @@ class HealpixDataset:
         then a warning is logged to inform the user that results might be inaccurate.
         """
         if not self.hc_structure.unmodified:
-            logging.warning("Catalog has been modified. MOC might over-estimate coverage.")
+            warnings.warn("Calling moc_footprint on a modified catalog. Results may be inaccurate.")
         if resolution is None:
             return self.hc_structure.moc
         elif isinstance(resolution, int):

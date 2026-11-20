@@ -1380,6 +1380,10 @@ def test_moc_footprint_with_int_resolution(small_sky_order1_catalog):
 def test_moc_footprint_warns_when_catalog_modified(small_sky_order1_catalog):
     small_sky_order1_catalog = small_sky_order1_catalog.query("dec > -30.0")
     assert not small_sky_order1_catalog.hc_structure.unmodified
-    with pytest.warns(UserWarning, match="Catalog has been modified. MOC might over-estimate coverage."):
+    with pytest.warns(UserWarning, match="modified catalog"):
         res = small_sky_order1_catalog.moc_footprint()
         assert isinstance(res, MOC)
+
+
+def test_moc_footprint_reports_skymap_alt_orders(small_sky_order1_catalog):
+    assert False
