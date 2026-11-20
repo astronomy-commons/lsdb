@@ -1385,5 +1385,34 @@ def test_moc_footprint_warns_when_catalog_modified(small_sky_order1_catalog):
         assert isinstance(res, MOC)
 
 
-def test_moc_footprint_reports_skymap_alt_orders(small_sky_order1_catalog):
-    assert False
+def test_moc_footprint_reports_skymap_alt_orders(small_sky_order1_df, tmp_path):
+    new_catalog_name = "small_sky_order1"
+    base_catalog_path = Path(tmp_path) / new_catalog_name
+
+    small_sky_order1_catalog = lsdb.from_dataframe(
+        small_sky_order1_df,
+        margin_threshold=None,
+        catalog_name="small_sky_order1",
+        moc_max_order=3,
+        partition_rows=500,
+    )
+
+    assert small_sky_order1_catalog.hc_structure.moc.max_order == 3
+
+    small_sky_order1_catalog.write_catalog(
+        base_catalog_path,
+        catalog_name=new_catalog_name,
+        skymap_alt_orders=[1, 2, 8],
+    )
+
+    new_catalog = lsdb.open_catalog(base_catalog_path)
+
+    assert new_catalog.hc_structure.catalog_info.skymap_alt_orders == [1, 2, 8]
+    assert new_catalog.hc_structure.catalog_info.skymap_order == 8
+    assert new_catalog.hc_structure.moc.max_order == 3
+
+    with pytest.raises(
+        ValueError,
+        match="resolution must be between 0 and the MOC's max_order, 3. Higher-order skymaps are available: [1, 2, 8].",
+    ):
+        res = new_catalog.moc_footprint(4)
