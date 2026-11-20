@@ -364,7 +364,8 @@ class AbstractCrossmatchAlgorithm(ABC):  # noqa: B024
                     right_values = cast(pd.Series, out[right_name_map[right_coord]])
                     out[output_coord] = left_values.combine_first(right_values)
             spatial_index = compute_spatial_index(
-                out["_ra"].to_numpy(), out["_dec"].to_numpy()  # type: ignore[arg-type]
+                out["_ra"].to_numpy(),
+                out["_dec"].to_numpy(),  # type: ignore[arg-type]
             )
             out.index = pd.Index(pd.Series(spatial_index, dtype=out.index.dtype), name=SPATIAL_INDEX_COLUMN)
             out.sort_index(kind="stable", inplace=True)

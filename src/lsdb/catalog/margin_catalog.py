@@ -31,7 +31,7 @@ class MarginCatalog(HealpixDataset):
         super().__init__(operation, hc_structure, loading_config=loading_config)
 
     @deprecated(
-        version="0.7.3", reason="`to_hats` will be removed in the future, " "use `write_catalog` instead."
+        version="0.7.3", reason="`to_hats` will be removed in the future, use `write_catalog` instead."
     )
     def to_hats(
         self,

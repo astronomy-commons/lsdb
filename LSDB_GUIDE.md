@@ -330,6 +330,7 @@ def partition_transform(df, *, inc):
     df["new_ra"] = df["ra"] + inc
     return df
 
+
 result = cat.map_partitions(partition_transform, inc=1)
 ```
 
@@ -341,12 +342,13 @@ In that case, manually specify `meta`: `cat.map_partitions(..., meta=)`.
 def row_transform(ra, dec, mag):
     return {"ra": ra, "dec": dec, "num_src": len(mag)}
 
+
 result = cat.map_rows(
     row_transform,
     columns=["ra", "dec", "sources.mag"],
     row_container="args",
     meta={"ra": float, "dec": float, "num_src": int},
-    append_columns=False # default
+    append_columns=False,  # default
 )
 ```
 
@@ -367,20 +369,19 @@ for chunk in stream:
 from dask.distributed import Client
 
 with Client(
-    n_workers=4, 
-    threads_per_worker=1, 
-    memory_limit="4GB", 
+    n_workers=4,
+    threads_per_worker=1,
+    memory_limit="4GB",
     local_directory="/tmp/dask-scratch",
 ) as client:
-  
-  # Write to HATS (Parquet-based, re-readable by lsdb.open_catalog)
-  cat.write_catalog("/output/path")
+    # Write to HATS (Parquet-based, re-readable by lsdb.open_catalog)
+    cat.write_catalog("/output/path")
 
-  # Write to Lance format
-  cat.to_lance("/output/path")
-  
-  # Compute to memory (use only for small results)
-  df = cat.compute()
+    # Write to Lance format
+    cat.to_lance("/output/path")
+
+    # Compute to memory (use only for small results)
+    df = cat.compute()
 ```
 
 #### CRITICAL
@@ -397,6 +398,7 @@ progress, worker memory, and the task stream in real time.
 
 ```python
 from dask.distributed import Client
+
 client = Client(n_workers=4, threads_per_worker=1, memory_limit="4GB")
 print(client.dashboard_link)  # e.g. http://127.0.0.1:8787/status
 ```

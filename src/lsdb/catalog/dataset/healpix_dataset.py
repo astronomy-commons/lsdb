@@ -1379,7 +1379,7 @@ class HealpixDataset:
         return self.hc_structure.plot_moc(**kwargs)
 
     @deprecated(
-        version="0.7.3", reason="`to_hats` will be removed in the future, " "use `write_catalog` instead."
+        version="0.7.3", reason="`to_hats` will be removed in the future, use `write_catalog` instead."
     )
     def to_hats(
         self,

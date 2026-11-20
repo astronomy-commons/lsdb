@@ -100,9 +100,9 @@ def test_generate_catalog_with_cone():
     assert len(generate_1.nested.nest.to_flat()) == 300
 
     # make sure that ra and dec are within the circular search radius
-    assert all(
-        (generate_1.ra - 5) ** 2 + (generate_1.dec - 5) ** 2 <= (1 / 3600.0) ** 2
-    ), "RA and Dec values are not within the search radius"
+    assert all((generate_1.ra - 5) ** 2 + (generate_1.dec - 5) ** 2 <= (1 / 3600.0) ** 2), (
+        "RA and Dec values are not within the search radius"
+    )
 
 
 def test_generate_catalog_with_box():

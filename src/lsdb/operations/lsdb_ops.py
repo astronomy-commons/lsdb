@@ -449,10 +449,7 @@ class AlignAndApply(Operation):
     @property
     def input_ops(self) -> list[Operation | None]:
         """Get the operations corresponding to the input catalogs"""
-        return [
-            cat._operation if cat is not None else None
-            for cat in self.input_cats
-        ]
+        return [cat._operation if cat is not None else None for cat in self.input_cats]
 
     @property
     def dependencies(self) -> list[Operation]:

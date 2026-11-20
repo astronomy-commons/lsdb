@@ -84,9 +84,9 @@ def test_rng_split():
     next(cat_iter)  # Advance the iterator to change the RNG state
     second_partitions = cat_iter.partitions_left.copy()
 
-    assert not np.array_equal(
-        first_partitions, second_partitions
-    ), "RNG should produce different sequences after splitting."
+    assert not np.array_equal(first_partitions, second_partitions), (
+        "RNG should produce different sequences after splitting."
+    )
 
 
 def test_stream_from_search_filter():
