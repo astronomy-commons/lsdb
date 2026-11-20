@@ -164,17 +164,6 @@ can run against all staged changes with the command:
     In many cases, linting changes can be made automatically, which can 
     be verified by rerunning the staging & ``pre-commit`` steps again.
 
-.. admonition:: ``pre-commit`` python version mismatch
-
-    If the python version within your development environment does not 
-    match the specified ``pre-commit`` ``black-jupyter`` hook language version 
-    (in the ``.pre-commit-config.yaml`` file), ``pre-commit`` will fail.
-
-    To solve this, the ``language_version`` variable can be temporarily changed. 
-    ``pre-commit`` can then be run as needed. After finishing, 
-    this variable should be reset to its original value. 
-    Commiting changes will then require bypassing ``pre-commit`` (see below).
-
 .. admonition:: Bypassing ``pre-commit``
 
     In some cases, there can be problems committing due to re-commit failures 

@@ -6,9 +6,8 @@ author_name: LINCC Frameworks
 create_example_module: false
 custom_install: library
 enforce_style:
-- pylint
-- black
-- isort
+- ruff_lint
+- ruff_format
 failure_notification:
 - slack
 include_benchmarks: true
