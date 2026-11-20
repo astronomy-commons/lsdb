@@ -2007,7 +2007,7 @@ class HealpixDataset:
             f"Expect up to {disk_size} on DISK."
         )
 
-    def moc_footprint(resolution: int | str = None) -> MOC:
+    def moc_footprint(self, resolution: int | str = None) -> MOC:
         """Return the catalog's MOC at the requested resolution.
 
         Parameters
@@ -2038,7 +2038,11 @@ class HealpixDataset:
             if not (0 <= resolution <= max_order):
                 skymap_alt_orders = self.hc_structure.catalog_info.skymap_alt_orders
                 msg = f"resolution must be between 0 and the MOC's max_order, {max_order}."
-                if skymap_alt_orders and (len(skymap_alt_orders) > 0) and (max(skymap_alt_orders) >= resolution):
+                if (
+                    skymap_alt_orders
+                    and (len(skymap_alt_orders) > 0)
+                    and (max(skymap_alt_orders) >= resolution)
+                ):
                     msg.append(f" Higher-order skymaps are available: {skymap_alt_orders}.")
                 raise ValueError(msg)
             return self.hc_structure.moc.degrade_to_order(resolution)
