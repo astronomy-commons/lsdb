@@ -10,6 +10,7 @@ from hats.pixel_math.healpix_pixel import HealpixPixel
 from mocpy import MOC
 
 import lsdb
+from lsdb import PixelSearch
 from lsdb.core.crossmatch.kdtree_match import KdTreeCrossmatch
 from lsdb.streams import CatalogStream, InfiniteStream, catalog_streams
 from lsdb.streams.catalog_streams import CrossMatchStream
@@ -50,6 +51,16 @@ def test_catalog_stream():
     for chunk in cat_stream:
         total_len += len(chunk)
     assert total_len == len(cat)
+
+
+def test_catalog_stream_empty_catalog(small_sky_order1_catalog):
+    empty_catalog = small_sky_order1_catalog.search(PixelSearch.from_radec(80, 33)).search(
+        PixelSearch.from_radec(270, 33)
+    )
+    assert empty_catalog.npartitions == 0
+    stream = CatalogStream(empty_catalog)
+    with pytest.raises(StopIteration):
+        next(iter(stream))
 
 
 def test_infinite_stream():

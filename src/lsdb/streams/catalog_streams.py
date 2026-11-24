@@ -220,10 +220,10 @@ class CatalogIterator(Iterator[pd.DataFrame]):
         self.rng = rng  # Use the iterator's own RNG
         self.iterable = iterable
         self.partitions_left = self._get_initial_partitions()
-        self._empty = False
-        self.future: Optional[Future | _FakeFuture] = self.iterable.submit_next_partitions(
-            self._get_next_partitions()
-        )
+        self._empty = len(self.partitions_left) == 0
+        self.future: Optional[Future | _FakeFuture] = None
+        if not self._empty:
+            self.future = self.iterable.submit_next_partitions(self._get_next_partitions())
 
     def _get_initial_partitions(self) -> np.ndarray:
         """Initialize the partitions left to iterate over."""
