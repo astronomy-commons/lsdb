@@ -149,6 +149,7 @@ class HealpixDataset:
             raise ValueError("Original catalog schema is not available")
         return self.hc_structure.original_schema
 
+    # NOTE deprecate this?
     def _compute_column_size_ratio(self) -> float | None:
         """Compute the ratio of loaded column sizes to original column sizes based on Arrow schema.
 
@@ -224,9 +225,7 @@ class HealpixDataset:
                 if len(snapshot.partition_info) == 0:
                     return 0.0
                 partition_ratio = len(self.get_healpix_pixels()) / len(snapshot.partition_info)
-                column_ratio = self._compute_column_size_ratio()
-                if column_ratio is not None:
-                    return float(self.hc_structure.catalog_info.hats_estsize) * partition_ratio * column_ratio
+                return float(self.hc_structure.catalog_info.hats_estsize) * partition_ratio
         return None
 
     def __repr__(self):
