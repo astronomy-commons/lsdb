@@ -62,6 +62,8 @@ def test_catalog_stream_empty_catalog(small_sky_order1_catalog):
     with pytest.raises(StopIteration):
         next(iter(stream))
 
+    assert len(iter(stream)) == 0
+
 
 def test_infinite_stream():
     cat = lsdb.generate_catalog(100, 2, lowest_order=4, ra_range=(15.0, 25.0), dec_range=(34.0, 44.0), seed=1)

@@ -262,6 +262,9 @@ class CatalogIterator(Iterator[pd.DataFrame]):
         if isinstance(self.iterable, InfiniteStream):
             raise TypeError("Length is not defined for an InfiniteStream.")
 
+        if len(self.partitions_left) == 0:
+            return 0
+
         return int(np.ceil(len(self.partitions_left) / self.iterable.partitions_per_chunk))
 
 
