@@ -9,6 +9,7 @@ import dask.dataframe as dd
 import hats as hc
 import nested_pandas as npd
 import pandas as pd
+from dask.base import get_scheduler
 from deprecated import deprecated  # type: ignore
 from hats.catalog.catalog_collection import CatalogCollection
 from hats.catalog.catalog_extension import CatalogExtension as HCCatalogExtension
@@ -156,6 +157,34 @@ class Catalog(HealpixDataset):
         if self.hc_collection is None:
             return {}
         return dict(self.hc_collection.all_extensions or {})
+
+    def compute(self, progress_bar=True, tqdm_kwargs=None, *, streaming=False) -> npd.NestedFrame:
+        if not streaming:
+            return super().compute(progress_bar=progress_bar, tqdm_kwargs=tqdm_kwargs)
+
+        client = getattr(get_scheduler(), "__self__", None)
+        partitions_per_chunk = 1 if client is None else len(client.scheduler_info()["workers"])
+
+        from lsdb.streams import CatalogStream  # pylint: disable=import-outside-toplevel
+
+        catalog_stream = CatalogStream(
+            self,
+            client,
+            partitions_per_chunk=partitions_per_chunk,
+            shuffle=False,
+        )
+
+        batches = []
+        for batch in catalog_stream:
+            if len(batch) == 0:
+                continue
+            batches.append(batch)
+
+        if len(batches) == 0:
+            return self.meta.copy()
+
+        result = pd.concat(batches)
+        return npd.NestedFrame(result)
 
     def query(self, expr: str) -> Catalog:
         """Filters catalog and respective margin, if it exists, using a complex query expression
