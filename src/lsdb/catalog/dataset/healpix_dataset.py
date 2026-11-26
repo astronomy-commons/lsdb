@@ -2007,6 +2007,50 @@ class HealpixDataset:
             f"Expect up to {disk_size} on DISK."
         )
 
+    def moc_footprint(self, resolution: int | str = None) -> MOC:
+        """Return the catalog's MOC at the requested resolution.
+
+        Parameters
+        ----------
+        resolution: int | str, default None
+            if None, then return the existing MOC from the catalog's hc_structure.
+            if int, then then return the existing MOC, downsampled to the requested order.
+                resolution values greater than the existing MOC raise ValueError.
+            if str, and resolution == 'pixel-tree', then calculate the MOC from the catalog's
+                hc_structure.pixel_tree, e.g. "covered" for a catalog pixel, "not covered" for no pixel.
+                Other strings raise ValueError.
+
+        Returns
+        -------
+        moc: mocpy.MOC
+
+        Notes
+        -----
+        This method never computes. If crossmatching, filtering, or map_partitions have occurred,
+        then a warning is logged to inform the user that results might be inaccurate.
+        """
+        if not self.hc_structure.unmodified:
+            warnings.warn("Calling moc_footprint on a modified catalog. Results may be inaccurate.")
+        if resolution is None:
+            return self.hc_structure.moc
+        elif isinstance(resolution, int):
+            max_order = self.hc_structure.moc.max_order
+            if not (0 <= resolution <= max_order):
+                skymap_alt_orders = self.hc_structure.catalog_info.skymap_alt_orders
+                msg = f"resolution must be between 0 and the MOC's max_order, {max_order}."
+                if (
+                    skymap_alt_orders
+                    and (len(skymap_alt_orders) > 0)
+                    and (max(skymap_alt_orders) >= resolution)
+                ):
+                    msg.append(f" Higher-order skymaps are available: {skymap_alt_orders}.")
+                raise ValueError(msg)
+            return self.hc_structure.moc.degrade_to_order(resolution)
+        elif isinstance(resolution, str):
+            if str.lower(resolution).strip() != "pixel-tree":
+                raise ValueError('resolution must be int, "pixel-tree", or None.')
+            return self.hc_structure.pixel_tree.to_moc()
+
 
 def _compare_radec_cols(orig_df, res_df, ra_column, dec_column):
     """Return whether ra/dec values of res_df are a subset of orig_df."""
